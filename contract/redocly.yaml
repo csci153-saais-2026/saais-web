@@ -1,0 +1,10 @@
+apis:
+  saais@v1:
+    root: ./openapi.yaml
+
+theme:
+  openapi:
+    theme:
+      colors:
+        primary:
+          main: "#1e40af"

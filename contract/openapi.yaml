@@ -1,0 +1,39 @@
+openapi: 3.1.0
+info:
+  title: Student Academic Advising Information System (SAAIS) API
+  version: 0.1.0
+  description: >
+    Official OpenAPI contract and single source of truth for the SAAIS application.
+    Covers PostgREST data endpoints and Supabase Edge Function operations.
+servers:
+  - url: http://127.0.0.1:54321
+    description: Local Supabase Development
+paths: {}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth JWT Token
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: PostgREST or Edge Function error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: string
+          nullable: true
+        hint:
+          type: string
+          nullable: true
+security:
+  - bearerAuth: []
