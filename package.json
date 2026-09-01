@@ -7,14 +7,32 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "contract:lint": "redocly lint contract/openapi.yaml",
+    "contract:gen": "openapi-typescript contract/openapi.yaml -o contract/generated/schema.d.ts",
+    "contract:docs": "redocly build-docs contract/openapi.yaml -o dist-docs/index.html",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "@supabase/supabase-js": "^2.112.4",
+    "@tanstack/react-query": "^5.102.8",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.38.0",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-hook-form": "^7.87.0",
+    "react-router": "^8.3.1",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@redocly/cli": "^1.34.4",
+    "@tailwindcss/vite": "^4.0.0",
+    "@testing-library/react": "^16.2.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
@@ -23,8 +41,12 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
-    "typescript": "~6.0.2",
+    "jsdom": "^26.0.0",
+    "openapi-typescript": "^7.6.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.3",
     "typescript-eslint": "^8.67.0",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^3.0.5"
   }
 }

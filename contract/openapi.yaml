@@ -5,10 +5,33 @@ info:
   description: >
     Official OpenAPI contract and single source of truth for the SAAIS application.
     Covers PostgREST data endpoints and Supabase Edge Function operations.
+  license:
+    name: Proprietary
+    url: https://github.com/csci153-saais-2026/saais-web/blob/main/LICENSE.md
 servers:
   - url: http://127.0.0.1:54321
     description: Local Supabase Development
-paths: {}
+paths:
+  /rest/v1/health:
+    get:
+      summary: Health check probe
+      operationId: getHealthStatus
+      description: Returns health status of the PostgREST / Supabase layer.
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500InternalError"
 components:
   securitySchemes:
     bearerAuth:
@@ -16,6 +39,19 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Supabase Auth JWT Token
+  responses:
+    400BadRequest:
+      description: Bad request or validation failure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    500InternalError:
+      description: Internal system error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     Error:
       type: object
@@ -30,10 +66,8 @@ components:
           type: string
           description: Human-readable error message
         details:
-          type: string
-          nullable: true
+          type: ["string", "null"]
         hint:
-          type: string
-          nullable: true
+          type: ["string", "null"]
 security:
   - bearerAuth: []
