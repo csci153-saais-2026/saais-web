@@ -32,3 +32,11 @@ jobs:
 
       - name: Build and Typecheck
         run: npm run build
+
+      - name: Run Tests with Coverage
+        run: npx vitest run --coverage --passWithNoTests
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
