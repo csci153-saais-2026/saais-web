@@ -27,10 +27,16 @@ jobs:
       - name: Lint API Contract (Redocly)
         run: npm run contract:lint
 
+      - name: Verify Contract Freshness
+        run: npm run contract:check
+
+      - name: Run Typecheck
+        run: npm run typecheck
+
       - name: Run ESLint
         run: npm run lint
 
-      - name: Build and Typecheck
+      - name: Build Production Bundle
         run: npm run build
 
       - name: Run Tests with Coverage
