@@ -12,7 +12,8 @@
     "test:coverage": "vitest run --coverage",
     "contract:lint": "redocly lint contract/openapi.yaml",
     "contract:gen": "openapi-typescript contract/openapi.yaml -o contract/generated/schema.d.ts",
-    "contract:docs": "redocly build-docs contract/openapi.yaml -o dist-docs/index.html",
+    "contract:check": "npm run contract:gen && git diff --exit-code contract/generated",
+    "contract:docs": "redocly build-docs contract/openapi.yaml -o docs/openapi/index.html",
     "preview": "vite preview"
   },
   "dependencies": {
