@@ -1,0 +1,109 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Public site & auth" },
+    { "id": "page-2", "name": "Student portal" },
+    { "id": "page-3", "name": "Adviser portal" },
+    { "id": "page-4", "name": "Admin portal" },
+    { "id": "page-5", "name": "Design system & mobile" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Landing page", "page": "page-1", "x": 0, "y": 0, "w": 1440, "h": 9260 },
+    { "file": "Login.dc.html", "title": "Sign in  ·  /login", "page": "page-1", "x": 1560, "y": 0, "w": 1440, "h": 1000 },
+    { "file": "Invite.dc.html", "title": "Set password  ·  /invite/:token", "page": "page-1", "x": 1560, "y": 1120, "w": 1440, "h": 1000 },
+    { "file": "Docs.dc.html", "title": "API contract  ·  /docs", "page": "page-1", "x": 1560, "y": 2240, "w": 1440, "h": 1120 },
+
+    { "file": "Student/StudentDashboard.dc.html", "title": "/student/dashboard", "page": "page-2", "x": 0, "y": 0, "w": 1440, "h": 1320 },
+    { "file": "Student/StudentChecklist.dc.html", "title": "/student/checklist", "page": "page-2", "x": 1560, "y": 0, "w": 1440, "h": 2200 },
+    { "file": "Student/StudentGrades.dc.html", "title": "/student/grades", "page": "page-2", "x": 3120, "y": 0, "w": 1440, "h": 2150 },
+    { "file": "Student/StudentHistory.dc.html", "title": "/student/enrollment-history", "page": "page-2", "x": 0, "y": 2240, "w": 1440, "h": 1660 },
+    { "file": "Student/StudentProfile.dc.html", "title": "/student/profile", "page": "page-2", "x": 1560, "y": 2240, "w": 1440, "h": 1340 },
+
+    { "file": "Adviser/AdviserDashboard.dc.html", "title": "/adviser/dashboard", "page": "page-3", "x": 0, "y": 0, "w": 1440, "h": 1400 },
+    { "file": "Adviser/AdviserAdvisees.dc.html", "title": "/adviser/advisees", "page": "page-3", "x": 1560, "y": 0, "w": 1440, "h": 1340 },
+    { "file": "Adviser/RecordAttempt.dc.html", "title": "/adviser/enrollment/new  ·  override dialog", "page": "page-3", "x": 3120, "y": 0, "w": 1440, "h": 1280 },
+    { "file": "Adviser/AdviseeDetail.dc.html", "title": "/adviser/advisees/:id", "page": "page-3", "x": 0, "y": 1520, "w": 1440, "h": 1520 },
+    { "file": "Adviser/AdviseeNotes.dc.html", "title": "/adviser/advisees/:id/notes", "page": "page-3", "x": 1560, "y": 1520, "w": 1440, "h": 1520 },
+    { "file": "Adviser/AdviseeChecklist.dc.html", "title": "/adviser/advisees/:id/checklist", "page": "page-3", "x": 3120, "y": 1520, "w": 1440, "h": 1620 },
+    { "file": "Adviser/AdviserReassign.dc.html", "title": "/adviser/reassignment", "page": "page-3", "x": 0, "y": 3260, "w": 1440, "h": 1460 },
+
+    { "file": "Admin/AdminDashboard.dc.html", "title": "/admin/dashboard", "page": "page-4", "x": 0, "y": 0, "w": 1440, "h": 1400 },
+    { "file": "Admin/AdminAccounts.dc.html", "title": "/admin/accounts", "page": "page-4", "x": 1560, "y": 0, "w": 1440, "h": 1400 },
+    { "file": "Admin/AdminPrograms.dc.html", "title": "/admin/programs", "page": "page-4", "x": 3120, "y": 0, "w": 1440, "h": 1280 },
+    { "file": "Admin/AdminCurricula.dc.html", "title": "/admin/curricula", "page": "page-4", "x": 0, "y": 1520, "w": 1440, "h": 1660 },
+    { "file": "Admin/AdminCourses.dc.html", "title": "/admin/courses", "page": "page-4", "x": 1560, "y": 1520, "w": 1440, "h": 1520 },
+    { "file": "Admin/AdminOfferings.dc.html", "title": "/admin/course-offerings", "page": "page-4", "x": 3120, "y": 1520, "w": 1440, "h": 1700 },
+    { "file": "Admin/AdminAudit.dc.html", "title": "/admin/audit-log", "page": "page-4", "x": 0, "y": 3300, "w": 1440, "h": 1720 },
+
+    { "file": "DesignSystem.dc.html", "title": "Design system", "page": "page-5", "x": 0, "y": 0, "w": 1440, "h": 3400 },
+    { "file": "MobileStudentHome.dc.html", "title": "Student home  ·  390px", "page": "page-5", "x": 1560, "y": 0, "w": 390, "h": 844 },
+    { "file": "MobileChecklist.dc.html", "title": "Checklist  ·  390px", "page": "page-5", "x": 2030, "y": 0, "w": 390, "h": 844 },
+    { "file": "MobileAdvisees.dc.html", "title": "Advisees  ·  390px", "page": "page-5", "x": 2500, "y": 0, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    {
+      "id": "note-brief",
+      "page": "page-1",
+      "x": 0,
+      "y": -230,
+      "w": 620,
+      "text": "SAAIS — complete mockup set\n\nPalette taken from the logo: deep olive (#1D2F0A / #2F4A12), gold (#E0A82E), cream (#FBF8EF). It is unchanged and non-negotiable.\nType: Syne for every heading (Google Fonts) — the wordmark included — IBM Plex Sans for data, IBM Plex Mono for course codes and grades.\n\nThe landing page is composed against stellic.com — centred sections, a full-bleed product shot under the hero, tab switchers, one large number, a trust-badge row and a newsletter footer. Everything but the colour was taken from that reference; the palette was deliberately retained. See DESIGN.md.\n\nNo institution logo wall: SAAIS is built for one school, not sold to many, so there is no roster of pilot institutions to display. That is a deliberate departure from the stellic.com reference, not an omission.\n\nCopy is written from the PRD, not borrowed. Stellic's proof sections that depend on named customers, press and adoption numbers are either bracketed as placeholders or dropped: SAAIS has none of that evidence and will not invent it."
+    },
+    {
+      "id": "note-gold",
+      "page": "page-1",
+      "x": 1560,
+      "y": -230,
+      "w": 480,
+      "text": "Gold is the only accent and it is rationed.\nIn the product it marks exactly one action — \"Continue with override\" — plus the active sidebar indicator and exception provenance. If gold shows up, something happened that an auditor will read."
+    },
+    {
+      "id": "note-student",
+      "page": "page-2",
+      "x": 0,
+      "y": -190,
+      "w": 700,
+      "text": "Student portal — the five routes in §8 of the spec.\n\nThe student never sees advising notes or attempt remarks; that barrier is a row-level security policy, so it is drawn as absent rather than as a locked panel.\nChecklist slots show their provenance in gold: direct attempt, elective mapping, transfer equivalency, or discontinued-course equivalency."
+    },
+    {
+      "id": "note-gwa",
+      "page": "page-2",
+      "x": 3120,
+      "y": -190,
+      "w": 560,
+      "text": "GWA screen carries the rule that is easiest to get wrong: a lapsed INC keeps status 'inc' forever and is only evaluated as 5.00. The banner states what the cumulative GWA becomes if it lapses (1.68 → 1.84)."
+    },
+    {
+      "id": "note-adviser",
+      "page": "page-3",
+      "x": 0,
+      "y": -190,
+      "w": 700,
+      "text": "Adviser portal — seven routes.\n\nThe prerequisite override dialog (third artboard, top row) is the centre of the whole system: soft warning, named reason, one transaction that writes both the attempt and its audit entry. It is drawn as a modal state over the record-attempt screen."
+    },
+    {
+      "id": "note-reassign",
+      "page": "page-3",
+      "x": 0,
+      "y": 4780,
+      "w": 620,
+      "text": "Zero-gap reassignment: the incoming start date equals the outgoing end date. The continuity check panel shows the four conditions the transaction verifies before it will commit."
+    },
+    {
+      "id": "note-admin",
+      "page": "page-4",
+      "x": 0,
+      "y": -190,
+      "w": 700,
+      "text": "Admin portal — seven routes.\n\nNo delete anywhere: accounts are disabled, courses are discontinued, curricula are superseded by a new version. Anything referenced by an audit entry has to stay resolvable.\nThe audit viewer is read-only for every role, administrators included."
+    },
+    {
+      "id": "note-system",
+      "page": "page-5",
+      "x": 0,
+      "y": -190,
+      "w": 640,
+      "text": "Design system sheet plus the three phone breakpoints called for in the spec: tables collapse to stacked cards, primary nav becomes a bottom bar, every hit target is at least 44px.\n\nNo fake status bar or keyboard is drawn — the device renders its own on top."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
