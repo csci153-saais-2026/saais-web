@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SAAIS — clickable prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/*__FONTS_IMPORT__*/
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #FBF8EF; }
+.view { display: none; }
+.view.active { display: block; }
+img[alt="SAAIS"] { cursor: pointer; }
+
+/*__SCOPED_CSS__*/
+
+/* --- prototype chrome (not part of the original mockup) --- */
+#proto-bar {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1D2F0A;
+  border: 1px solid #2F4A12;
+  border-radius: 999px;
+  padding: 6px 8px 6px 14px;
+  box-shadow: 0 8px 24px rgba(15,20,5,0.35);
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+}
+#proto-bar .proto-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(246,242,228,0.55);
+  font-weight: 600;
+  margin-right: 4px;
+}
+#proto-bar button {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(246,242,228,0.75);
+}
+#proto-bar button:hover { color: #FBF8EF; background: rgba(246,242,228,0.08); }
+#proto-bar button.active { background: #E0A82E; color: #3A2A05; }
+#proto-bar button#proto-map { background: rgba(224,168,46,0.16); color: #F7E9C4; }
+#proto-bar button#proto-map:hover { background: rgba(224,168,46,0.28); }
+#proto-bar .proto-sep { width: 1px; height: 20px; background: rgba(246,242,228,0.16); margin: 0 2px; }
+
+#proto-sitemap {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(22,32,12,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+}
+#proto-sitemap.open { display: flex; }
+#proto-sitemap .sm-panel {
+  background: #FBF8EF;
+  border-radius: 10px;
+  max-width: 880px;
+  width: 100%;
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 28px 30px 32px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+#proto-sitemap .sm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+#proto-sitemap .sm-title {
+  font-family: 'Syne', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #16200C;
+}
+#proto-sitemap .sm-close {
+  cursor: pointer;
+  border: 1px solid #E1DBC6;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #16200C;
+}
+.sm-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 22px; }
+.sm-group-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8C8A76;
+  margin-bottom: 8px;
+}
+.sm-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #2F4A12;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.sm-item:hover { background: #EFEADB; color: #B0761A; }
+.sm-group { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<!--__SECTIONS__-->
+
+<div id="proto-bar">
+  <span class="proto-label">Demo as</span>
+  <button type="button" data-role="student">Student</button>
+  <button type="button" data-role="adviser">Adviser</button>
+  <button type="button" data-role="admin">Admin</button>
+  <span class="proto-sep"></span>
+  <button type="button" id="proto-home">Home</button>
+  <button type="button" id="proto-map">Sitemap</button>
+</div>
+
+<div id="proto-sitemap">
+  <div class="sm-panel">
+    <div class="sm-head">
+      <div class="sm-title">Jump to any screen</div>
+      <button type="button" class="sm-close">Close</button>
+    </div>
+    <div class="sm-grid">
+      <!--__SITEMAP__-->
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ROUTES = /*__ROUTES_JSON__*/;
+  var routeSet = {};
+  ROUTES.forEach(function (r) { routeSet[r] = true; });
+
+  var GLOBAL_ACTIONS = {
+    'Sign in': 'login',
+    'Sign out': 'login',
+    'Request a walkthrough': 'login',
+    'Read the API contract': 'docs',
+    'Student portal': 'student/dashboard',
+    'Adviser portal': 'adviser/dashboard',
+    'Admin portal': 'admin/dashboard',
+    'Curriculum checklist': 'student/checklist',
+    'Grades & GWA': 'student/grades',
+    'Enrollment history': 'student/history',
+    'My profile': 'student/profile',
+    'Advisees': 'adviser/advisees',
+    'Record attempt': 'adviser/enrollment/new',
+    'Add note': 'adviser/advisees/notes',
+    'Reassignment': 'adviser/reassignment',
+    'Accounts': 'admin/accounts',
+    'Programs': 'admin/programs',
+    'Curricula': 'admin/curricula',
+    'Course catalog': 'admin/courses',
+    'Terms & offerings': 'admin/course-offerings',
+    'Audit log': 'admin/audit-log'
+  };
+
+  var PORTAL_DASHBOARD = { student: 'student/dashboard', adviser: 'adviser/dashboard', admin: 'admin/dashboard' };
+
+  var VIEW_ACTIONS = {
+    '': { 'Sign in': 'login', 'Request a walkthrough': 'login', 'Read the API contract': 'docs' },
+    'login': { 'Sign in': 'ROLE_DEFAULT', 'Continue with Google': 'ROLE_DEFAULT' },
+    'adviser/advisees/detail': { 'Checklist': 'adviser/advisees/checklist', 'Notes': 'adviser/advisees/notes' },
+    'adviser/advisees/checklist': { 'Overview': 'adviser/advisees/detail', 'Notes': 'adviser/advisees/notes' },
+    'adviser/advisees/notes': { 'Overview': 'adviser/advisees/detail', 'Checklist': 'adviser/advisees/checklist' },
+    'adviser/enrollment/new': { 'Cancel': 'adviser/advisees/detail', 'Continue with override': 'adviser/advisees/detail' }
+  };
+
+  var ROW_TARGETS = {
+    'adviser/advisees': 'adviser/advisees/detail'
+  };
+
+  var currentSlug = '';
+  var currentRole = 'student';
+
+  function idFor(slug) { return 'view-' + (slug === '' ? 'home' : slug.replace(/\//g, '-')); }
+
+  function portalOf(slug) {
+    if (slug.indexOf('student/') === 0) return 'student';
+    if (slug.indexOf('adviser/') === 0) return 'adviser';
+    if (slug.indexOf('admin/') === 0) return 'admin';
+    return null;
+  }
+
+  function go(slug) {
+    if (!routeSet.hasOwnProperty(slug)) slug = '';
+    location.hash = '#/' + slug;
+  }
+
+  function render() {
+    var slug = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+    if (!routeSet.hasOwnProperty(slug)) slug = '';
+    currentSlug = slug;
+    var portal = portalOf(slug);
+    if (portal) currentRole = portal;
+
+    document.querySelectorAll('.view.active').forEach(function (el) { el.classList.remove('active'); el.hidden = true; });
+    var target = document.getElementById(idFor(slug));
+    if (target) { target.hidden = false; target.classList.add('active'); }
+    window.scrollTo(0, 0);
+
+    document.querySelectorAll('#proto-bar [data-role]').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-role') === currentRole);
+    });
+  }
+
+  function resolve(text, isNavi) {
+    var viewMap = VIEW_ACTIONS[currentSlug];
+    if (viewMap && viewMap.hasOwnProperty(text)) return viewMap[text];
+    if (text === 'Dashboard') {
+      var portal = portalOf(currentSlug) || currentRole;
+      return PORTAL_DASHBOARD[portal] || '';
+    }
+    if (GLOBAL_ACTIONS.hasOwnProperty(text)) return GLOBAL_ACTIONS[text];
+    return null;
+  }
+
+  document.addEventListener('click', function (e) {
+    var logo = e.target.closest('img[alt="SAAIS"]');
+    if (logo) {
+      var portal = portalOf(currentSlug);
+      go(portal ? PORTAL_DASHBOARD[portal] : '');
+      return;
+    }
+
+    if (ROW_TARGETS.hasOwnProperty(currentSlug)) {
+      var row = e.target.closest('tr.row');
+      if (row) { go(ROW_TARGETS[currentSlug]); return; }
+    }
+
+    var node = e.target;
+    var hops = 0;
+    while (node && node.nodeType === 1 && hops < 6) {
+      var text = (node.textContent || '').replace(/\s+/g, ' ').trim();
+      if (text) {
+        var dest = resolve(text, node.classList && node.classList.contains('navi'));
+        if (dest === 'ROLE_DEFAULT') { go(PORTAL_DASHBOARD[currentRole]); return; }
+        if (dest) { go(dest); return; }
+      }
+      node = node.parentElement;
+      hops++;
+    }
+  });
+
+  document.querySelectorAll('#proto-bar [data-role]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      currentRole = b.getAttribute('data-role');
+      go(PORTAL_DASHBOARD[currentRole]);
+    });
+  });
+  document.getElementById('proto-home').addEventListener('click', function () { go(''); });
+
+  var sitemap = document.getElementById('proto-sitemap');
+  document.getElementById('proto-map').addEventListener('click', function () { sitemap.classList.add('open'); });
+  sitemap.addEventListener('click', function (e) {
+    if (e.target === sitemap || e.target.classList.contains('sm-close')) { sitemap.classList.remove('open'); return; }
+    var goto = e.target.closest('[data-goto]');
+    if (goto) { sitemap.classList.remove('open'); go(goto.getAttribute('data-goto')); }
+  });
+
+  window.addEventListener('hashchange', render);
+  render();
+})();
+</script>
+</body>
+</html>
