@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SAAIS — Design system sheet (clickable prototype)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #FBF8EF; }
+.view { display: none; }
+.view.active { display: block; }
+img[alt="SAAIS"] { cursor: pointer; }
+
+.view[data-route="design-system"] {
+600;700;800&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+*, *::before, *::after { box-sizing: border-box; }
+& {
+  margin: 0;
+  background: #FBF8EF;
+  color: #16200C;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+p { margin: 0; }
+a { color: #2F4A12; text-decoration: none; }
+a:hover { color: #B0761A; }
+table { border-collapse: collapse; width: 100%; }
+.dsp { font-family: 'Syne', 'Segoe UI', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; }
+.mono { font-family: 'IBM Plex Mono', 'Consolas', monospace; font-variant-ligatures: none; }
+.kick { font-size: 11.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.row:hover { background: #EFEADB; }
+.navi:hover { background: rgba(224,168,46,0.10); }
+.btnp:hover { background: #1D2F0A; }
+.btns:hover { border-color: #2F4A12; }
+}
+
+/* --- prototype chrome (not part of the original mockup) --- */
+#proto-bar {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1D2F0A;
+  border: 1px solid #2F4A12;
+  border-radius: 999px;
+  padding: 6px 8px 6px 14px;
+  box-shadow: 0 8px 24px rgba(15,20,5,0.35);
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+}
+#proto-bar .proto-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(246,242,228,0.55);
+  font-weight: 600;
+  margin-right: 4px;
+}
+#proto-bar button {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(246,242,228,0.75);
+}
+#proto-bar button:hover { color: #FBF8EF; background: rgba(246,242,228,0.08); }
+#proto-bar button.active { background: #E0A82E; color: #3A2A05; }
+#proto-bar button#proto-map { background: rgba(224,168,46,0.16); color: #F7E9C4; }
+#proto-bar button#proto-map:hover { background: rgba(224,168,46,0.28); }
+#proto-bar .proto-sep { width: 1px; height: 20px; background: rgba(246,242,228,0.16); margin: 0 2px; }
+
+#proto-sitemap {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(22,32,12,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+}
+#proto-sitemap.open { display: flex; }
+#proto-sitemap .sm-panel {
+  background: #FBF8EF;
+  border-radius: 10px;
+  max-width: 880px;
+  width: 100%;
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 28px 30px 32px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+#proto-sitemap .sm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+#proto-sitemap .sm-title {
+  font-family: 'Syne', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #16200C;
+}
+#proto-sitemap .sm-close {
+  cursor: pointer;
+  border: 1px solid #E1DBC6;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #16200C;
+}
+.sm-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 22px; }
+.sm-group-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8C8A76;
+  margin-bottom: 8px;
+}
+.sm-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #2F4A12;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.sm-item:hover { background: #EFEADB; color: #B0761A; }
+.sm-group { margin-bottom: 4px; }
+
+/* --- interactive layer (buttons, dropdowns, modals, toasts) --- */
+[data-select] { position: relative; }
+[data-select] .sel-label { cursor: pointer; user-select: none; }
+[data-select] .sel-menu {
+  position: absolute; left: 0; right: 0; top: calc(100% + 5px); z-index: 400;
+  background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px;
+  box-shadow: 0 10px 26px rgba(22,32,12,0.16); padding: 4px; display: none;
+  max-height: 260px; overflow-y: auto;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+}
+[data-select].open .sel-menu { display: block; }
+[data-select] .sel-opt {
+  padding: 7px 10px; border-radius: 4px; font-size: 13.5px; color: #16200C; cursor: pointer;
+}
+[data-select] .sel-opt:hover { background: #EFEADB; }
+[data-select] .sel-opt.selected { color: #2F4A12; font-weight: 600; background: #F2EDDC; }
+[data-checkbox] { cursor: pointer; }
+[data-pill] { cursor: pointer; }
+[contenteditable="true"] { cursor: text; outline: none; }
+[contenteditable="true"].placeholder { color: #8C8A76; }
+
+.proto-toast-wrap {
+  position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 10600;
+  display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none;
+}
+.proto-toast {
+  background: #1D2F0A; color: #F6F2E4; border: 1px solid #2F4A12; border-radius: 6px;
+  padding: 10px 18px; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px; font-weight: 500; box-shadow: 0 10px 26px rgba(15,26,6,0.3);
+  opacity: 0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease;
+  max-width: 420px; text-align: center;
+}
+.proto-toast.show { opacity: 1; transform: translateY(0); }
+
+.proto-modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,26,6,0.55); z-index: 10300;
+  display: none; align-items: center; justify-content: center; padding: 40px;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+}
+.proto-modal-overlay.open { display: flex; }
+.proto-modal {
+  width: 560px; max-width: 100%; max-height: 86vh; overflow-y: auto;
+  background: #FFFFFF; border-radius: 10px; box-shadow: 0 30px 80px rgba(15,26,6,0.4);
+}
+</style>
+</head>
+<body>
+
+<section class="view" id="view-design-system" data-route="design-system" hidden>
+<helmet>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #FBF8EF;
+  color: #16200C;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+p { margin: 0; }
+a { color: #2F4A12; text-decoration: none; }
+a:hover { color: #B0761A; }
+table { border-collapse: collapse; width: 100%; }
+.dsp { font-family: 'Syne', 'Segoe UI', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; }
+.mono { font-family: 'IBM Plex Mono', 'Consolas', monospace; font-variant-ligatures: none; }
+.kick { font-size: 11.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.row:hover { background: #EFEADB; }
+.navi:hover { background: rgba(224,168,46,0.10); }
+.btnp:hover { background: #1D2F0A; }
+.btns:hover { border-color: #2F4A12; }
+  </style>
+</helmet>
+<div style="background: #FBF8EF; padding: 48px 56px 60px"><div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 40px; padding-bottom: 30px; margin-bottom: 40px; border-bottom: 2px solid #16200C"><div style="display: flex; align-items: center; gap: 16px"><img src="logo-mark.png" alt="" style="width: 60px; height: 60px; border-radius: 14px"><div><h1 class="dsp" style="font-size: 36px">SAAIS design system</h1><p style="font-size: 14.5px; color: #6E6C58; margin-top: 4px">Tokens, type, components and status vocabulary used across all three portals.</p></div></div><div style="text-align: right; font-size: 12.5px; color: #8C8A76; flex-shrink: 0; line-height: 1.7">Derived from the SAAIS mark<br>Syne + IBM Plex Sans<br>WCAG 2.1 AA contrast targets</div></div><section style="margin-bottom: 44px"><div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #16200C"><h2 class="dsp" style="font-size: 24px">Palette</h2></div><p style="font-size: 13.5px; color: #6E6C58; margin-top: 6px; max-width: 78ch">Three colors carried straight off the mark: the deep olive of the tile, the gold of the field, the cream of the letterform. Gold is the only accent and it is reserved — it marks the override, the exception, the thing an auditor will look for.</p><div style="margin-top: 22px"><div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px"><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #1D2F0A"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Forest deep</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#1D2F0A</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Sidebar, hero and footer grounds</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #2F4A12"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Forest</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#2F4A12</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Primary actions, headings on light, active states</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #4A6B22"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Forest soft</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#4A6B22</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Secondary marks, chart fills</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #E0A82E"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Gold</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#E0A82E</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Single accent — override actions, active indicators</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #B0761A"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Gold deep</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#B0761A</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Accent text and links on cream</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #FBF8EF"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Cream</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#FBF8EF</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Application background</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #F2EDDC"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Cream deep</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#F2EDDC</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Table headers, inert chips, panel grounds</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #FFFFFF"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Surface</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#FFFFFF</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Cards, panels, inputs</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #E1DBC6"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Line</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#E1DBC6</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Borders and dividers</div></div></div><div style="border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; background: #FFFFFF"><div style="height: 74px; background: #16200C"></div><div style="padding: 11px 13px"><div style="font-size: 13px; font-weight: 600">Ink</div><div class="mono" style="font-size: 12px; color: #8C8A76; margin-top: 2px">#16200C</div><div style="font-size: 11.5px; color: #6E6C58; margin-top: 6px; line-height: 1.45">Primary text</div></div></div></div></div></section><section style="margin-bottom: 44px"><div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #16200C"><h2 class="dsp" style="font-size: 24px">Typography</h2></div><p style="font-size: 13.5px; color: #6E6C58; margin-top: 6px; max-width: 78ch">Syne carries the institutional voice in headings; IBM Plex Sans carries the data. Numbers are tabular everywhere so grades and units align down a column.</p><div style="margin-top: 22px"><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Display / XL</div><div style="flex-grow: 1; min-width: 0"><div class="dsp" style="font-size: 56px">Advising that leaves a record</div></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">Syne 700 · 56/1.08 · −0.01em</div></div><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Display / L</div><div style="flex-grow: 1; min-width: 0"><div class="dsp" style="font-size: 38px">Curriculum checklist</div></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">Syne 700 · 38/1.1</div></div><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Display / M</div><div style="flex-grow: 1; min-width: 0"><div class="dsp" style="font-size: 30px">System overview</div></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">Syne 700 · 30/1.15</div></div><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Heading</div><div style="flex-grow: 1; min-width: 0"><h3 style="font-size: 16px">Prerequisite check</h3></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">IBM Plex Sans 600 · 16/1.4</div></div><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Kicker</div><div style="flex-grow: 1; min-width: 0"><div class="kick" style="color: #B0761A">The rules engine</div></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">IBM Plex Sans 600 · 11.5 · 0.14em · uppercase</div></div><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Body</div><div style="flex-grow: 1; min-width: 0"><p style="font-size: 15px; color: #6E6C58; max-width: 62ch">Strict prerequisites are checked at enrollment, but SAAIS is a soft-check system: the adviser may continue, and the continuation is the thing that gets recorded.</p></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">IBM Plex Sans 400 · 15/1.55</div></div><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Table cell</div><div style="flex-grow: 1; min-width: 0"><span style="font-size: 13.5px">Design and Analysis of Algorithms</span></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">IBM Plex Sans 400 · 13.5/1.5</div></div><div style="display: flex; align-items: baseline; gap: 24px; padding: 16px 0; border-bottom: 1px solid #EFEADB"><div style="width: 150px; flex-shrink: 0; font-size: 12px; color: #8C8A76; font-weight: 600">Numeric / code</div><div style="flex-grow: 1; min-width: 0"><span class="mono" style="font-size: 14px">CS 132 · 1.75 · 2023-04412</span></div><div class="mono" style="font-size: 11.5px; color: #8C8A76; flex-shrink: 0; text-align: right; width: 260px">IBM Plex Mono 500 · tabular</div></div></div></section><section style="margin-bottom: 44px"><div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #16200C"><h2 class="dsp" style="font-size: 24px">Status vocabulary</h2></div><div style="margin-top: 22px"><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 24px"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; flex-wrap: wrap; "><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #E7F0E2; color: #2C6430; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2C6430; flex-shrink: 0"></span>Passed</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #FAE7E1; color: #9E2E1C; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #9E2E1C; flex-shrink: 0"></span>Failed</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #FBF0D6; color: #8A6206; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #8A6206; flex-shrink: 0"></span>INC</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #FAE7E1; color: #9E2E1C; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #9E2E1C; flex-shrink: 0"></span>INC lapsed</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #E4EDF4; color: #2A4C6B; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2A4C6B; flex-shrink: 0"></span>Enrolled</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #ECE8DA; color: #5C5A4C; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #5C5A4C; flex-shrink: 0"></span>Dropped</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #ECE8DA; color: #5C5A4C; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #5C5A4C; flex-shrink: 0"></span>No attendance</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #ECE8DA; color: #5C5A4C; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #5C5A4C; flex-shrink: 0"></span>Not taken</span></div><p style="font-size: 13.5px; color: #6E6C58; margin-top: 20px; max-width: 88ch; line-height: 1.6">Every badge carries a text label as well as a color, and each pairs a dot with the word — color is never the only channel. <b>INC</b> and <b>INC lapsed</b> are deliberately distinct: a lapsed INC keeps the status it was given and is only <i>evaluated</i> as 5.00.</p><div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 22px"><div style="border: 1px solid #E1DBC6; border-radius: 5px; padding: 13px"><div style="font-size: 12.5px; font-weight: 600">Contrast</div><div style="font-size: 12px; color: #6E6C58; margin-top: 5px; line-height: 1.5">All badge text clears 4.5:1 on its own ground.</div></div><div style="border: 1px solid #E1DBC6; border-radius: 5px; padding: 13px"><div style="font-size: 12.5px; font-weight: 600">Focus ring</div><div style="font-size: 12px; color: #6E6C58; margin-top: 5px; line-height: 1.5">2px forest outline, 2px offset, on every interactive element.</div></div><div style="border: 1px solid #E1DBC6; border-radius: 5px; padding: 13px"><div style="font-size: 12.5px; font-weight: 600">Hit target</div><div style="font-size: 12px; color: #6E6C58; margin-top: 5px; line-height: 1.5">44px minimum on touch surfaces.</div></div><div style="border: 1px solid #E1DBC6; border-radius: 5px; padding: 13px"><div style="font-size: 12.5px; font-weight: 600">Screen readers</div><div style="font-size: 12px; color: #6E6C58; margin-top: 5px; line-height: 1.5">Status is announced as text, not as a color name.</div></div></div></div></div></section><section style="margin-bottom: 44px"><div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #16200C"><h2 class="dsp" style="font-size: 24px">Buttons and controls</h2></div><p style="font-size: 13.5px; color: #6E6C58; margin-top: 6px; max-width: 78ch">Gold is used for exactly one button in the product: <b>Continue with override</b>. Nothing else competes with it.</p><div style="margin-top: 22px"><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 24px"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px; flex-wrap: wrap; "><button class="btnp" style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: #2F4A12; color: #FBF8EF; border: 1px solid #2F4A12"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 5v14M5 12h14"/></svg> Record attempt</button><button class="btnp" style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: #E0A82E; color: #3A2A05; border: 1px solid #E0A82E">Continue with override</button><button class="btns" style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: #FFFFFF; color: #16200C; border: 1px solid #E1DBC6"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M13.5 3H7a1.5 1.5 0 00-1.5 1.5v15A1.5 1.5 0 007 21h10a1.5 1.5 0 001.5-1.5V8z"/><path d="M13.5 3v5H18.5"/></svg> Export PDF</button><button class="btns" style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: transparent; color: #2F4A12; border: 1px solid transparent">Cancel</button><button class="btnp" style="display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 4px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; background: #2F4A12; color: #FBF8EF; border: 1px solid #2F4A12">Small</button><button class="btnp" style="display: inline-flex; align-items: center; gap: 7px; padding: 13px 26px; border-radius: 4px; font-family: inherit; font-size: 15.5px; font-weight: 600; cursor: pointer; background: #2F4A12; color: #FBF8EF; border: 1px solid #2F4A12">Large action</button></div><div style="height: 1px; background: #EFEADB; margin: 24px 0"></div><div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px"><label style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Text field</div><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 4px; padding: 9px 12px; font-size: 14px; color: #16200C">CS 132</div></label><label style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Select</div><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 4px; padding: 9px 12px; font-size: 14px; display: flex; align-items: center; justify-content: space-between"><span>grade_replacement</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#8C8A76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M6 9l6 6 6-6"/></svg></div></label><label style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Disabled</div><div style="background: #F2EDDC; border: 1px solid #E1DBC6; border-radius: 4px; padding: 9px 12px; font-size: 14px; color: #8C8A76">2023-04412</div></label><div><div style="display: flex; align-items: center; gap: 9px; width: 100%; background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 4px; padding: 8px 12px; color: #8C8A76; font-size: 14px"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#8C8A76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span>Search</span></div></div></div><div style="height: 1px; background: #EFEADB; margin: 24px 0"></div><div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px"><div style="display: flex; align-items: flex-start; gap: 11px; background: #FCF4E0; border: 1px solid #EBDCAE; border-radius: 5px; padding: 13px 16px; color: #7A5406; font-size: 13.5px; line-height: 1.5"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M5.5 21V3.5M5.5 4.5h12l-2.4 4 2.4 4h-12"/></svg><div>Advisory — an exception the adviser should read before continuing.</div></div><div style="display: flex; align-items: flex-start; gap: 11px; background: #E7F0E2; border: 1px solid #CBDDC2; border-radius: 5px; padding: 13px 16px; color: #2C6430; font-size: 13.5px; line-height: 1.5"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg><div>Confirmed — the invariant held and the write is safe.</div></div><div style="display: flex; align-items: flex-start; gap: 11px; background: #FAE7E1; border: 1px solid #EFCFC5; border-radius: 5px; padding: 13px 16px; color: #9E2E1C; font-size: 13.5px; line-height: 1.5"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5M12 17h.01"/></svg><div>Blocked — the request was refused by a policy or a lock.</div></div></div></div></div></section><section style="margin-bottom: 44px"><div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #16200C"><h2 class="dsp" style="font-size: 24px">Icons</h2></div><p style="font-size: 13.5px; color: #6E6C58; margin-top: 6px; max-width: 78ch">One stroke-based family on a 24px grid at 1.6 weight. No emoji anywhere in the product.</p><div style="margin-top: 22px"><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 24px"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px; flex-wrap: wrap; "><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">grid</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M4 12.5l5 5L20 6.5"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">check</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">list</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">chart</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.5l3.5 2"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">clock</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0115 0"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">user</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="9" cy="8" r="3.6"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.2a3.6 3.6 0 010 5.6M17.5 20a6.6 6.6 0 00-2.2-4.9"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">users</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M6 3.5h9l4 4V20a.5.5 0 01-.5.5h-12A.5.5 0 016 20V4a.5.5 0 010-.5z"/><path d="M14.5 3.8V8h4.2M9 13h6M9 16.5h4"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">note</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">swap</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 5v14M5 12h14"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">plus</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 19a2 2 0 012-2h13"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">book</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">cal</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">shield</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v2.4M12 19v2.4M21.4 12H19M5 12H2.6M18.6 5.4l-1.7 1.7M7.1 16.9l-1.7 1.7M18.6 18.6l-1.7-1.7M7.1 7.1L5.4 5.4"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">cog</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">search</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M18 15V10a6 6 0 10-12 0v5l-1.8 3h15.6z"/><path d="M9.8 21h4.4"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">bell</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5M12 17h.01"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">alert</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M5.5 21V3.5M5.5 4.5h12l-2.4 4 2.4 4h-12"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">flag</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><rect x="4.5" y="10" width="15" height="10.5" rx="1.6"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">lock</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><rect x="3" y="5" width="18" height="14" rx="1.6"/><path d="M3.6 6l8.4 6.6L20.4 6"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">mail</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="7.5" rx="1.4"/><path d="M7 14h10v6.5H7z"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">print</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M13.5 3H7a1.5 1.5 0 00-1.5 1.5v15A1.5 1.5 0 007 21h10a1.5 1.5 0 001.5-1.5V8z"/><path d="M13.5 3v5H18.5"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">file</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="6" cy="6" r="2.6"/><circle cx="18" cy="12" r="2.6"/><circle cx="6" cy="18" r="2.6"/><path d="M8.4 7.2l7.2 3.6M8.4 16.8l7.2-3.6"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">node</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 3l9 4.8-9 4.8-9-4.8z"/><path d="M3 12.4l9 4.8 9-4.8M3 16.9l9 4.8 9-4.8"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">layers</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M3.5 5.5h17l-6.6 7.6V20l-3.8-2.2v-4.7z"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">filter</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">eye</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M15 3h6v6M21 3l-9 9"/><path d="M18 13.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1h6.5"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">out</div></div><div style="display: flex; flex-direction: column; align-items: center; gap: 7px; width: 74px"><div style="width: 42px; height: 42px; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #2F4A12"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M9 21H5a1 1 0 01-1-1V4a1 1 0 011-1h4"/><path d="M15.5 16.5L20 12l-4.5-4.5M20 12H9"/></svg></div><div style="font-size: 10.5px; color: #8C8A76">logout</div></div></div></div></div></section><section style="margin-bottom: 44px"><div style="display: flex; align-items: baseline; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #16200C"><h2 class="dsp" style="font-size: 24px">Layout and density</h2></div><div style="margin-top: 22px"><div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px"><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 20px; "><div class="kick" style="color: #8C8A76">Sidebar</div><div class="dsp" style="font-size: 26px; margin-top: 8px">250 px</div><div style="font-size: 13px; color: #6E6C58; margin-top: 8px; line-height: 1.55">Fixed. Collapses to a drawer below the md breakpoint.</div></div><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 20px; "><div class="kick" style="color: #8C8A76">Content gutter</div><div class="dsp" style="font-size: 26px; margin-top: 8px">32 px</div><div style="font-size: 13px; color: #6E6C58; margin-top: 8px; line-height: 1.55">30px top padding; 40px bottom on every app page.</div></div><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 20px; "><div class="kick" style="color: #8C8A76">Grid gap</div><div class="dsp" style="font-size: 26px; margin-top: 8px">16–18 px</div><div style="font-size: 13px; color: #6E6C58; margin-top: 8px; line-height: 1.55">Cards and panels sit on a consistent rhythm.</div></div><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 20px; "><div class="kick" style="color: #8C8A76">Card radius</div><div class="dsp" style="font-size: 26px; margin-top: 8px">6 px</div><div style="font-size: 13px; color: #6E6C58; margin-top: 8px; line-height: 1.55">Panels and cards. 4px on inputs and chips.</div></div><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 20px; "><div class="kick" style="color: #8C8A76">Table row</div><div class="dsp" style="font-size: 26px; margin-top: 8px">11 px</div><div style="font-size: 13px; color: #6E6C58; margin-top: 8px; line-height: 1.55">Vertical padding; 13.5px cell type; 1px hairline rule.</div></div><div style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 20px; "><div class="kick" style="color: #8C8A76">Breakpoint</div><div class="dsp" style="font-size: 26px; margin-top: 8px">768 px</div><div style="font-size: 13px; color: #6E6C58; margin-top: 8px; line-height: 1.55">Tables become stacked cards; nav becomes a drawer.</div></div></div></div></section></div>
+</section>
+
+<div id="proto-toast-wrap"></div>
+<div id="proto-modal-overlay" class="proto-modal-overlay"><div class="proto-modal" id="proto-modal-body"></div></div>
+
+<div id="proto-bar">
+  <span class="proto-label">Demo as</span>
+  <button type="button" data-role="student">Student</button>
+  <button type="button" data-role="adviser">Adviser</button>
+  <button type="button" data-role="admin">Admin</button>
+  <span class="proto-sep"></span>
+  <button type="button" id="proto-home">Home</button>
+  <button type="button" id="proto-map">Sitemap</button>
+</div>
+
+<div id="proto-sitemap">
+  <div class="sm-panel">
+    <div class="sm-head">
+      <div class="sm-title">Jump to any screen</div>
+      <button type="button" class="sm-close">Close</button>
+    </div>
+    <div class="sm-grid">
+      
+  <div class="sm-group">
+    <div class="sm-group-title">Public site & auth</div>
+    <button type="button" class="sm-item" data-goto="">Landing page</button>
+    <button type="button" class="sm-item" data-goto="login">Sign in</button>
+    <button type="button" class="sm-item" data-goto="invite">Set password (invite link)</button>
+    <button type="button" class="sm-item" data-goto="docs">API contract</button>
+  </div>
+
+  <div class="sm-group">
+    <div class="sm-group-title">Student portal</div>
+    <button type="button" class="sm-item" data-goto="student/dashboard">Student · Dashboard</button>
+    <button type="button" class="sm-item" data-goto="student/checklist">Student · Curriculum checklist</button>
+    <button type="button" class="sm-item" data-goto="student/grades">Student · Grades & GWA</button>
+    <button type="button" class="sm-item" data-goto="student/history">Student · Enrollment history</button>
+    <button type="button" class="sm-item" data-goto="student/profile">Student · My profile</button>
+  </div>
+
+  <div class="sm-group">
+    <div class="sm-group-title">Adviser portal</div>
+    <button type="button" class="sm-item" data-goto="adviser/dashboard">Adviser · Dashboard</button>
+    <button type="button" class="sm-item" data-goto="adviser/advisees">Adviser · Advisees</button>
+    <button type="button" class="sm-item" data-goto="adviser/advisees/detail">Adviser · Advisee overview</button>
+    <button type="button" class="sm-item" data-goto="adviser/advisees/checklist">Adviser · Advisee checklist</button>
+    <button type="button" class="sm-item" data-goto="adviser/advisees/grades">Adviser · Advisee grades</button>
+    <button type="button" class="sm-item" data-goto="adviser/advisees/history">Adviser · Advisee history</button>
+    <button type="button" class="sm-item" data-goto="adviser/advisees/notes">Adviser · Advisee notes</button>
+    <button type="button" class="sm-item" data-goto="adviser/enrollment/new">Adviser · Record attempt</button>
+    <button type="button" class="sm-item" data-goto="adviser/reassignment">Adviser · Reassignment</button>
+  </div>
+
+  <div class="sm-group">
+    <div class="sm-group-title">Admin portal</div>
+    <button type="button" class="sm-item" data-goto="admin/dashboard">Admin · Dashboard</button>
+    <button type="button" class="sm-item" data-goto="admin/accounts">Admin · Accounts</button>
+    <button type="button" class="sm-item" data-goto="admin/programs">Admin · Programs</button>
+    <button type="button" class="sm-item" data-goto="admin/curricula">Admin · Curricula</button>
+    <button type="button" class="sm-item" data-goto="admin/courses">Admin · Course catalog</button>
+    <button type="button" class="sm-item" data-goto="admin/course-offerings">Admin · Terms & offerings</button>
+    <button type="button" class="sm-item" data-goto="admin/audit-log">Admin · Audit log</button>
+  </div>
+
+  <div class="sm-group">
+    <div class="sm-group-title">Design system & mobile</div>
+    <button type="button" class="sm-item" data-goto="design-system">Design system sheet</button>
+    <button type="button" class="sm-item" data-goto="mobile/student-home">Mobile · Student home</button>
+    <button type="button" class="sm-item" data-goto="mobile/checklist">Mobile · Checklist</button>
+    <button type="button" class="sm-item" data-goto="mobile/advisees">Mobile · Advisees</button>
+  </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // Route slug -> the split file that owns it. Unlike the single-file
+  // prototype, navigating to a route outside this file does a real
+  // page load; navigating within this file's own routes just changes
+  // the hash, same as before.
+  var ROUTE_FILE = {"":"index.html","login":"index.html","invite":"index.html","docs":"index.html","student/dashboard":"student.html","student/checklist":"student.html","student/grades":"student.html","student/history":"student.html","student/profile":"student.html","adviser/dashboard":"adviser.html","adviser/advisees":"adviser.html","adviser/advisees/detail":"adviser.html","adviser/advisees/checklist":"adviser.html","adviser/advisees/grades":"adviser.html","adviser/advisees/history":"adviser.html","adviser/advisees/notes":"adviser.html","adviser/enrollment/new":"adviser.html","adviser/reassignment":"adviser.html","admin/dashboard":"admin.html","admin/accounts":"admin.html","admin/programs":"admin.html","admin/curricula":"admin.html","admin/courses":"admin.html","admin/course-offerings":"admin.html","admin/audit-log":"admin.html","mobile/student-home":"mobile.html","mobile/checklist":"mobile.html","mobile/advisees":"mobile.html","design-system":"design-system.html"};
+  var DEFAULT_ROUTE = "design-system";
+  var routeSet = {};
+  Object.keys(ROUTE_FILE).forEach(function (r) { routeSet[r] = true; });
+
+  var CURRENT_FILE = location.pathname.split('/').pop() || 'index.html';
+
+  var GLOBAL_ACTIONS = {
+    'Sign in': 'login',
+    'Sign out': 'login',
+    'Request a walkthrough': 'login',
+    'Read the API contract': 'docs',
+    'Student portal': 'student/dashboard',
+    'Adviser portal': 'adviser/dashboard',
+    'Admin portal': 'admin/dashboard',
+    'Curriculum checklist': 'student/checklist',
+    'Grades & GWA': 'student/grades',
+    'Enrollment history': 'student/history',
+    'My profile': 'student/profile',
+    'Advisees': 'adviser/advisees',
+    'Record attempt': 'adviser/enrollment/new',
+    'Add note': 'adviser/advisees/notes',
+    'Reassignment': 'adviser/reassignment',
+    'Accounts': 'admin/accounts',
+    'Programs': 'admin/programs',
+    'Curricula': 'admin/curricula',
+    'Course catalog': 'admin/courses',
+    'Terms & offerings': 'admin/course-offerings',
+    'Audit log': 'admin/audit-log'
+  };
+
+  var PORTAL_DASHBOARD = { student: 'student/dashboard', adviser: 'adviser/dashboard', admin: 'admin/dashboard' };
+
+  var VIEW_ACTIONS = {
+    '': { 'Sign in': 'login', 'Request a walkthrough': 'login', 'Read the API contract': 'docs' },
+    'login': { 'Sign in': 'ROLE_DEFAULT', 'Continue with Google': 'ROLE_DEFAULT' },
+    'adviser/advisees/detail': { 'Checklist': 'adviser/advisees/checklist', 'Notes': 'adviser/advisees/notes' },
+    'adviser/advisees/checklist': { 'Overview': 'adviser/advisees/detail', 'Notes': 'adviser/advisees/notes' },
+    'adviser/advisees/notes': { 'Overview': 'adviser/advisees/detail', 'Checklist': 'adviser/advisees/checklist' },
+    'adviser/enrollment/new': { 'Cancel': 'adviser/advisees/detail', 'Continue with override': 'adviser/advisees/detail' }
+  };
+
+  var ROW_TARGETS = {
+    'adviser/advisees': 'adviser/advisees/detail'
+  };
+
+  var currentSlug = '';
+  var currentRole = 'student';
+
+  function idFor(slug) { return 'view-' + (slug === '' ? 'home' : slug.replace(/\//g, '-')); }
+
+  function portalOf(slug) {
+    if (slug.indexOf('student/') === 0) return 'student';
+    if (slug.indexOf('adviser/') === 0) return 'adviser';
+    if (slug.indexOf('admin/') === 0) return 'admin';
+    return null;
+  }
+
+  function go(slug) {
+    if (!routeSet.hasOwnProperty(slug)) slug = DEFAULT_ROUTE;
+    var file = ROUTE_FILE[slug];
+    if (file === CURRENT_FILE) {
+      location.hash = '#/' + slug;
+    } else {
+      location.href = file + '#/' + slug;
+    }
+  }
+
+  function render() {
+    var rawHash = location.hash.replace(/^#\/?/, '');
+    // No hash at all (e.g. this file opened directly) means "show this
+    // file's own default view", not the global '' route -- '' is itself a
+    // valid route (the landing page) owned by index.html, so it can't be
+    // used as the sentinel for "no hash was given".
+    var slug = rawHash === '' ? DEFAULT_ROUTE : decodeURIComponent(rawHash);
+    if (!routeSet.hasOwnProperty(slug)) slug = DEFAULT_ROUTE;
+
+    var file = ROUTE_FILE[slug];
+    if (file !== CURRENT_FILE) {
+      location.replace(file + '#/' + slug);
+      return;
+    }
+
+    currentSlug = slug;
+    var portal = portalOf(slug);
+    if (portal) currentRole = portal;
+
+    document.querySelectorAll('.view.active').forEach(function (el) { el.classList.remove('active'); el.hidden = true; });
+    var target = document.getElementById(idFor(slug));
+    if (target) { target.hidden = false; target.classList.add('active'); }
+    window.scrollTo(0, 0);
+
+    document.querySelectorAll('#proto-bar [data-role]').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-role') === currentRole);
+    });
+
+    applyAdviseeContext();
+  }
+
+  function resolve(text, isNavi) {
+    var viewMap = VIEW_ACTIONS[currentSlug];
+    if (viewMap && viewMap.hasOwnProperty(text)) return viewMap[text];
+    if (text === 'Dashboard') {
+      var portal = portalOf(currentSlug) || currentRole;
+      return PORTAL_DASHBOARD[portal] || '';
+    }
+    if (GLOBAL_ACTIONS.hasOwnProperty(text)) return GLOBAL_ACTIONS[text];
+    return null;
+  }
+
+  // ------------------------------------------------------------------
+  // Interactive layer: toasts, dropdowns, checkboxes, pills and modals.
+  // This turns the previously inert form controls into a working (if
+  // shallow) simulation — nothing here is persisted past a page reload.
+  // ------------------------------------------------------------------
+
+  function showToast(msg) {
+    var wrap = document.getElementById('proto-toast-wrap');
+    if (!wrap) return;
+    var t = document.createElement('div');
+    t.className = 'proto-toast';
+    t.textContent = msg;
+    wrap.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('show'); });
+    setTimeout(function () {
+      t.classList.remove('show');
+      setTimeout(function () { t.remove(); }, 220);
+    }, 2600);
+  }
+
+  function openModal(html) {
+    var overlay = document.getElementById('proto-modal-overlay');
+    var body = document.getElementById('proto-modal-body');
+    if (!overlay || !body) return;
+    body.innerHTML = html;
+    overlay.classList.add('open');
+  }
+  function closeModal() {
+    var overlay = document.getElementById('proto-modal-overlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  function closeAllSelects(except) {
+    document.querySelectorAll('[data-select].open').forEach(function (s) {
+      if (s !== except) s.classList.remove('open');
+    });
+  }
+
+  function toggleSelect(sel) {
+    var wasOpen = sel.classList.contains('open');
+    closeAllSelects(null);
+    if (!wasOpen) sel.classList.add('open');
+  }
+
+  function pickOption(opt) {
+    var sel = opt.closest('[data-select]');
+    if (!sel) return;
+    var label = sel.querySelector('.sel-label span');
+    if (label) label.textContent = opt.textContent;
+    sel.setAttribute('data-value', opt.getAttribute('data-value') || opt.textContent);
+    sel.querySelectorAll('.sel-opt').forEach(function (o) { o.classList.remove('selected'); });
+    opt.classList.add('selected');
+    sel.classList.remove('open');
+    sel.dispatchEvent(new CustomEvent('select-change', { bubbles: true }));
+  }
+
+  var CHECK_SVG = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#FBF8EF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 12.5l5 5L20 6.5"/></svg>';
+
+  function toggleCheckbox(box) {
+    var on = box.getAttribute('data-checked') === '1';
+    on = !on;
+    box.setAttribute('data-checked', on ? '1' : '0');
+    box.style.background = on ? '#2F4A12' : '#FFFFFF';
+    box.innerHTML = on ? CHECK_SVG : '';
+    box.dispatchEvent(new CustomEvent('checkbox-change', { bubbles: true, detail: { checked: on } }));
+  }
+
+  function selectPill(pill) {
+    var group = pill.parentElement;
+    if (!group) return;
+    group.querySelectorAll('[data-pill]').forEach(function (p) {
+      var active = p === pill;
+      p.style.background = active ? '#FFFFFF' : 'transparent';
+      p.style.borderColor = active ? '#E1DBC6' : 'transparent';
+      p.style.color = active ? '#16200C' : '#6E6C58';
+      p.style.fontWeight = active ? '600' : '450';
+    });
+    pill.dispatchEvent(new CustomEvent('pill-change', { bubbles: true }));
+  }
+
+  function filterRowsByText(input) {
+    var sel = input.getAttribute('data-live-search');
+    var table = sel ? document.querySelector('.view.active ' + sel) : input.closest('section').querySelector('table');
+    if (!table) return;
+    var q = input.value.trim().toLowerCase();
+    table.querySelectorAll('tbody tr').forEach(function (tr) {
+      var text = (tr.textContent || '').toLowerCase();
+      tr.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+    });
+  }
+
+  function placeholderFocus(el) {
+    if (el.classList.contains('placeholder')) {
+      el.textContent = '';
+      el.classList.remove('placeholder');
+      el.style.color = '#16200C';
+    }
+  }
+  function placeholderBlur(el) {
+    var ph = el.getAttribute('data-placeholder');
+    if (ph && !el.textContent.trim()) {
+      el.textContent = ph;
+      el.classList.add('placeholder');
+      el.style.color = '#8C8A76';
+    }
+  }
+
+  function fmtNow() {
+    var d = new Date();
+    var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var hh = d.getHours(), mm = d.getMinutes();
+    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear() + ', ' +
+      (hh < 10 ? '0' + hh : hh) + ':' + (mm < 10 ? '0' + mm : mm);
+  }
+
+  function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ---- dynamic advisee context: clicking a row on the Advisees list
+  // populates the detail/checklist/notes header with that student's data,
+  // instead of always showing the one hard-coded demo record. ----
+
+  var STANDING_STYLE = {
+    'good standing': { bg: '#E7F0E2', fg: '#2C6430' },
+    'watchlist': { bg: '#FBF0D6', fg: '#8A6206' },
+    'delinquent': { bg: '#FAE7E1', fg: '#9E2E1C' }
+  };
+  var CURRICULUM_BY_YEAR = { '1st': '2025–2026', '2nd': '2024–2025', '3rd': '2023–2024', '4th': '2022–2023' };
+
+  function initialsOf(name) {
+    var parts = name.split(',');
+    var surname = (parts[0] || '').trim();
+    var given = ((parts[1] || '').trim().split(' ')[0] || '');
+    return ((given[0] || '') + (surname[0] || '')).toUpperCase();
+  }
+  function emailOf(name) {
+    var parts = name.split(',');
+    var surname = (parts[0] || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+    var given = ((parts[1] || '').trim().split(' ')[0] || '').toLowerCase().replace(/[^a-z]/g, '');
+    return given + '.' + surname + '@[university].edu.ph';
+  }
+
+  var ADVISEE_CONTEXT = null;
+
+  function selectAdviseeFromRow(row) {
+    var cells = row.querySelectorAll(':scope > td');
+    if (cells.length < 7) return;
+    var flex = cells[0].querySelector('div');
+    var infoDiv = flex && flex.children[1];
+    var nameDiv = infoDiv && infoDiv.children[0];
+    var idDiv = infoDiv && infoDiv.children[1];
+    var name = nameDiv ? nameDiv.textContent.trim() : '';
+    if (!name) return;
+    var studentId = idDiv ? idDiv.textContent.trim() : '';
+    var program = cells[1].textContent.trim();
+    var year = cells[2].textContent.trim();
+    var gwa = cells[3].textContent.trim();
+    var units = cells[4].textContent.trim();
+    var standing = cells[5].textContent.trim();
+    var inc = cells[6].textContent.trim();
+    if (inc === '—' || inc === '') inc = '0';
+    var assignedSince = cells[7] ? cells[7].textContent.trim() : '';
+    ADVISEE_CONTEXT = {
+      name: name, studentId: studentId, program: program, year: year,
+      gwa: gwa, units: units, standing: standing, inc: parseInt(inc, 10) || 0,
+      initials: initialsOf(name), email: emailOf(name),
+      curriculum: CURRICULUM_BY_YEAR[year] || '2023–2024',
+      assignedSince: assignedSince
+    };
+  }
+
+  // ---- per-student content generation (courses, timeline, notes, checklist) ----
+  // The flagship demo record (Bautista) keeps its hand-authored static content;
+  // everyone else gets a plausible, data-driven version built from their row.
+
+  var DEFAULT_STUDENT_NAME = 'Bautista, Maria Isabel L.';
+
+  var COURSE_BANK = {
+    '1st': [
+      { code: 'CS 111', title: 'Introduction to Computing' },
+      { code: 'CS 110', title: 'Discrete Computing Structures' },
+      { code: 'MATH 21', title: 'Calculus I', units: '5.0' },
+      { code: 'GE 1', title: 'Understanding the Self' },
+      { code: 'PE 1', title: 'Foundations of Movement', units: '2.0' }
+    ],
+    '2nd': [
+      { code: 'CS 121', title: 'Data Structures' },
+      { code: 'CS 122', title: 'Object-Oriented Programming' },
+      { code: 'MATH 22', title: 'Calculus II', units: '5.0' },
+      { code: 'GE 7', title: 'Ethics' },
+      { code: 'PE 3', title: 'Team Sports', units: '2.0' }
+    ],
+    '3rd': [
+      { code: 'CS 132', title: 'Design and Analysis of Algorithms' },
+      { code: 'CS 133', title: 'Computer Organization' },
+      { code: 'CS 134', title: 'Information Management' },
+      { code: 'STAT 101', title: 'Statistics' },
+      { code: 'GE ELEC 1', title: 'General Education Elective 1' }
+    ],
+    '4th': [
+      { code: 'CS 191', title: 'Software Engineering' },
+      { code: 'CS 198', title: 'Undergraduate Thesis 1' },
+      { code: 'CS 141', title: 'Computer Networks' },
+      { code: 'MAJ ELEC 1', title: 'Major Elective 1' },
+      { code: 'MAJ ELEC 2', title: 'Major Elective 2' }
+    ]
+  };
+
+  var STATUS_STYLE = {
+    'Enrolled': { bg: '#E4EDF4', fg: '#2A4C6B' },
+    'INC': { bg: '#FBF0D6', fg: '#8A6206' },
+    'Failed': { bg: '#FAE7E1', fg: '#9E2E1C' },
+    'In progress': { bg: '#E4EDF4', fg: '#2A4C6B' },
+    'Not taken': { bg: '#ECE8DA', fg: '#5C5A4C' }
+  };
+
+  function courseSlug(code) { return code.replace(/\s+/g, ''); }
+
+  function buildCourses(c) {
+    var bank = COURSE_BANK[c.year] || COURSE_BANK['2nd'];
+    var courses = bank.map(function (b, i) {
+      var course = { code: b.code, title: b.title, units: b.units || '3.0', status: 'Enrolled', section: courseSlug(b.code) + '-' + String.fromCharCode(65 + i) };
+      if (c.program.indexOf('Info. Technology') !== -1 && i === 0) { course.code = 'IT 101'; course.title = 'Introduction to Information Technology'; course.section = 'IT101-A'; }
+      return course;
+    });
+    if (c.standing === 'Delinquent') {
+      courses[0].status = 'Failed';
+    } else if (c.standing === 'Watchlist' && c.inc > 0) {
+      for (var i = 0; i < Math.min(c.inc, 2); i++) courses[i].status = 'INC';
+    }
+    return courses;
+  }
+
+  function renderCourseRow(course) {
+    var st = STATUS_STYLE[course.status];
+    return (
+      '<tr class="row">' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span class="mono" style="font-size: 13px; font-weight: 500">' + esc(course.code) + '</span></td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle">' + esc(course.title) + '</td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle">' + esc(course.units) + '</td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle">' + esc(course.section) + '</td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: ' + st.bg + '; color: ' + st.fg + '; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: ' + st.fg + '; flex-shrink: 0"></span>' + esc(course.status) + '</span></td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><a href="#" data-open-modal="remark" data-code="' + esc(course.code) + '" data-course="' + esc(course.title) + '" style="font-size: 12.5px; font-weight: 600">Remark</a></td>' +
+      '</tr>'
+    );
+  }
+
+  function buildTimeline(c, courses) {
+    var entries = [{ date: c.assignedSince || '—', dot: '#2F4A12', title: 'Adviser assignment', desc: 'Assigned to Prof. Ramon Reyes' }];
+    if (c.standing === 'Delinquent') {
+      entries.push({ date: '02 Sep 2026', dot: '#9E2E1C', title: 'Delinquency flag', desc: 'Delinquency threshold reached — requires a documented plan' });
+    } else if (c.standing === 'Watchlist' && c.inc > 0) {
+      var incCourse = courses.filter(function (co) { return co.status === 'INC'; })[0];
+      entries.push({ date: '02 Sep 2026', dot: '#8A6206', title: 'INC recorded', desc: 'INC in ' + esc(incCourse ? incCourse.code : 'a current course') + ' — compliance deadline pending' });
+    } else {
+      entries.push({ date: '02 Sep 2026', dot: '#B0761A', title: 'No exceptions on file', desc: 'No mappings, equivalencies or overrides recorded for this student yet.' });
+    }
+    return entries;
+  }
+
+  function renderTimeline(entries) {
+    return entries.map(function (e) {
+      return (
+        '<div style="display: flex; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #EFEADB">' +
+        '<div style="width: 96px; flex-shrink: 0; font-size: 12px; color: #8C8A76; padding-top: 2px">' + esc(e.date) + '</div>' +
+        '<div style="width: 7px; height: 7px; border-radius: 50%; background: ' + e.dot + '; margin-top: 7px; flex-shrink: 0"></div>' +
+        '<div><div style="font-size: 13.5px; font-weight: 600">' + esc(e.title) + '</div><div style="font-size: 12.5px; color: #6E6C58; margin-top: 3px; line-height: 1.5">' + esc(e.desc) + '</div></div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  function noteTextFor(c) {
+    if (c.standing === 'Delinquent') return 'Discussed the delinquency threshold and next steps. Agreed on a documented improvement plan for the current term.';
+    if (c.standing === 'Watchlist') return 'Discussed the pending INC and course load for next term. Will follow up before the compliance deadline.';
+    return 'Routine check-in this term. No concerns raised; student is on track.';
+  }
+
+  function renderStaffNotesCompact(c) {
+    return (
+      '<div style="padding: 12px 0; border-top: 1px solid #EFEADB">' +
+      '<div style="display: flex; justify-content: space-between; font-size: 11.5px; color: #8C8A76"><span>R. Reyes</span><span>02 Sep 2026</span></div>' +
+      '<p style="font-size: 13px; color: #6E6C58; margin-top: 5px; line-height: 1.55">' + esc(noteTextFor(c)) + '</p>' +
+      '</div>'
+    );
+  }
+
+  function renderAdvisingNoteFull(c) {
+    return (
+      '<div data-entry-type="note" data-entry-author="me" style="display: flex; gap: 14px; padding: 18px 20px; border-bottom: 1px solid #EFEADB">' +
+      '<div style="width: 34px; height: 34px; border-radius: 50%; background: #F2EDDC; color: #2F4A12; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; letter-spacing: 0.02em">RR</div>' +
+      '<div style="flex-grow: 1">' +
+      '<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="font-size: 13.5px; font-weight: 600">Prof. Ramon Reyes</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #F2EDDC; color: #2F4A12; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap">Advising note</span><span style="font-size: 12px; color: #8C8A76">02 September 2026, 09:00</span></div>' +
+      '<p style="font-size: 13.5px; color: #6E6C58; line-height: 1.62; margin-top: 8px">' + esc(noteTextFor(c)) + '</p>' +
+      '</div></div>'
+    );
+  }
+
+  var SLOT_POOL = [
+    { slot: 'GE ELEC 2', req: 'Open elective slot', generic: true },
+    { slot: 'CS 132', req: 'Design and Analysis of Algorithms', generic: false },
+    { slot: 'CS 133', req: 'Computer Organization', generic: false },
+    { slot: 'CS 134', req: 'Information Management', generic: false },
+    { slot: 'GE 6', req: 'Art Appreciation', generic: false },
+    { slot: 'MAJ ELEC 1', req: 'Major elective slot', generic: true }
+  ];
+
+  function buildOpenSlots(c, courses) {
+    var courseCodes = courses.map(function (co) { return co.code; });
+    return SLOT_POOL.map(function (s) {
+      var inProgress = courseCodes.indexOf(s.slot) !== -1;
+      var status = 'Not taken';
+      var action = s.generic ? 'Map a course' : 'Record attempt';
+      if (inProgress) { status = 'In progress'; action = null; }
+      else if (s.slot === 'GE 6' && c.standing === 'Delinquent') { status = 'Failed'; action = 'Record retake'; }
+      return { slot: s.slot, req: s.req, status: status, action: action };
+    });
+  }
+
+  function renderOpenSlotRow(s) {
+    var st = STATUS_STYLE[s.status];
+    var actionHtml = s.action
+      ? '<a href="#" ' + (s.action === 'Map a course' ? 'data-action="scroll-to-mapping-form"' : 'data-goto="adviser/enrollment/new"') + ' style="font-size: 12.5px; font-weight: 600">' + esc(s.action) + '</a>'
+      : '<span style="color: #8C8A76; font-size: 12.5px">—</span>';
+    return (
+      '<tr class="row">' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span class="mono" style="font-size: 13px; font-weight: 500">' + esc(s.slot) + '</span></td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div><div>' + esc(s.req) + '</div></div></td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span style="color: #8C8A76">3.0</span></td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: ' + st.bg + '; color: ' + st.fg + '; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: ' + st.fg + '; flex-shrink: 0"></span>' + esc(s.status) + '</span></td>' +
+      '<td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle">' + actionHtml + '</td>' +
+      '</tr>'
+    );
+  }
+
+  function buildExceptionCard(kind, src, dest, decided, by) {
+    return (
+      '<div data-exception-card style="background:#FBF8EF;border:1px solid #E1DBC6;border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:11px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+      '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 8px;border-radius:3px;background:#FBF0D6;color:#B0761A;font-size:12px;font-weight:600;letter-spacing:0.01em;white-space:nowrap">' + esc(kind) + '</span>' +
+      '<span style="font-size:12px;color:#8C8A76;white-space:nowrap">' + esc(decided) + ' &middot; ' + esc(by) + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+      '<div style="flex:1;min-width:0;font-size:13.5px;line-height:1.4">' + esc(src) + '</div>' +
+      '<div style="flex-shrink:0;color:#8C8A76"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>' +
+      '<div style="flex-shrink:0;font-size:13.5px;line-height:1.4;text-align:right">' + esc(dest) + '</div>' +
+      '</div></div>'
+    );
+  }
+
+  // Snapshot of each container's pristine (hand-authored) markup, taken the
+  // first time it's touched, so switching back to the default student
+  // restores the original content instead of leaving another student's
+  // generated content behind.
+  var ORIGINAL_CACHE = {};
+  function cacheAndGet(view, selector, key) {
+    var el = view.querySelector(selector);
+    if (!el) return null;
+    var cacheKey = view.getAttribute('data-route') + ':' + key;
+    if (!(cacheKey in ORIGINAL_CACHE)) ORIGINAL_CACHE[cacheKey] = el.innerHTML;
+    return { el: el, cacheKey: cacheKey };
+  }
+  function setContent(info, isDefault, html) {
+    if (!info) return;
+    info.el.innerHTML = isDefault ? ORIGINAL_CACHE[info.cacheKey] : html;
+  }
+
+  function applyPerStudentContent(c) {
+    var view = document.querySelector('.view.active');
+    if (!view) return;
+    var route = view.getAttribute('data-route');
+    var isDefault = c.name === DEFAULT_STUDENT_NAME;
+    var courses = isDefault ? null : buildCourses(c);
+
+    setContent(cacheAndGet(view, '[data-adv-courses]', 'courses'), isDefault, courses && courses.map(renderCourseRow).join(''));
+    setContent(cacheAndGet(view, '[data-adv-timeline]', 'timeline'), isDefault, courses && renderTimeline(buildTimeline(c, courses)));
+
+    var notesInfo = cacheAndGet(view, '[data-notes-list]', 'notes');
+    setContent(notesInfo, isDefault, courses && (route === 'adviser/advisees/notes' ? renderAdvisingNoteFull(c) : renderStaffNotesCompact(c)));
+
+    var notesCountInfo = cacheAndGet(view, '[data-adv-notes-count]', 'notes-count');
+    if (notesCountInfo) notesCountInfo.el.textContent = isDefault ? ORIGINAL_CACHE[notesCountInfo.cacheKey] : '1 entry · append-only';
+
+    var slots = isDefault ? null : buildOpenSlots(c, courses);
+    setContent(cacheAndGet(view, '[data-adv-openslots]', 'openslots'), isDefault, slots && slots.map(renderOpenSlotRow).join(''));
+
+    var slotsCountInfo = cacheAndGet(view, '[data-adv-openslots-count]', 'openslots-count');
+    if (slotsCountInfo) {
+      if (isDefault) { slotsCountInfo.el.textContent = ORIGINAL_CACHE[slotsCountInfo.cacheKey]; }
+      else {
+        var openCount = slots.filter(function (s) { return s.status === 'Not taken' || s.status === 'Failed'; }).length;
+        slotsCountInfo.el.textContent = openCount + ' open slot' + (openCount === 1 ? '' : 's');
+      }
+    }
+
+    setContent(cacheAndGet(view, '[data-exceptions-table]', 'exceptions'), isDefault,
+      '<div style="padding: 16px 14px; font-size: 13px; color: #8C8A76">No exceptions on file for this student.</div>');
+
+    var exceptionsCountInfo = cacheAndGet(view, '[data-adv-exceptions-count]', 'exceptions-count');
+    if (exceptionsCountInfo) exceptionsCountInfo.el.textContent = isDefault ? ORIGINAL_CACHE[exceptionsCountInfo.cacheKey] : '0 exceptions on file';
+  }
+
+  function applyAdviseeContext() {
+    if (!ADVISEE_CONTEXT) return;
+    var view = document.querySelector('.view.active');
+    if (!view) return;
+    var c = ADVISEE_CONTEXT;
+
+    var avatar = view.querySelector('[data-adv-avatar]');
+    if (avatar) avatar.textContent = c.initials;
+
+    var nameEl = view.querySelector('[data-adv-name]');
+    if (nameEl) nameEl.textContent = c.name;
+
+    var bc = view.querySelector('[data-adv-breadcrumb]');
+    if (bc) bc.textContent = c.name;
+
+    var standing = view.querySelector('[data-adv-standing]');
+    if (standing) {
+      var st = STANDING_STYLE[c.standing.toLowerCase()] || STANDING_STYLE['good standing'];
+      standing.style.background = st.bg;
+      standing.style.color = st.fg;
+      standing.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:' + st.fg + ';flex-shrink:0"></span>' + esc(c.standing);
+    }
+
+    var meta = view.querySelector('[data-adv-meta]');
+    if (meta) {
+      meta.innerHTML =
+        '<span class="mono">' + esc(c.studentId) + '</span>' +
+        '<span>' + esc(c.program) + '</span>' +
+        '<span>Curriculum ' + esc(c.curriculum) + '</span>' +
+        '<span>' + esc(c.year) + ' year</span>' +
+        '<span>' + esc(c.email) + '</span>';
+    }
+
+    var gwaEl = view.querySelector('[data-adv-gwa]'); if (gwaEl) gwaEl.textContent = c.gwa;
+    var unitsEl = view.querySelector('[data-adv-units]'); if (unitsEl) unitsEl.textContent = c.units;
+    var incEl = view.querySelector('[data-adv-inc]'); if (incEl) incEl.textContent = c.inc;
+
+    view.querySelectorAll('[data-open-modal="add-note"]').forEach(function (b) {
+      b.setAttribute('data-student', c.name);
+    });
+
+    applyPerStudentContent(c);
+  }
+
+  // ---- modal content builders (visual language matches the rest of the mockup) ----
+
+  function modalShell(iconSvg, iconBg, iconColor, title, bodyHtml, footerLeft, buttons) {
+    return (
+      '<div style="padding:26px 28px 22px">' +
+        '<div style="display:flex;align-items:center;gap:12px">' +
+          '<div style="width:40px;height:40px;border-radius:50%;background:' + iconBg + ';color:' + iconColor + ';display:flex;align-items:center;justify-content:center">' + iconSvg + '</div>' +
+          '<h2 class="dsp" style="font-size:22px">' + title + '</h2>' +
+        '</div>' +
+        '<div style="margin-top:18px">' + bodyHtml + '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:#FBF8EF;border-top:1px solid #E1DBC6">' +
+        '<div style="font-size:12px;color:#8C8A76">' + (footerLeft || '') + '</div>' +
+        '<div style="display:flex;gap:10px">' + buttons + '</div>' +
+      '</div>'
+    );
+  }
+
+  var ICON_NOTE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l4 4V20a.5.5 0 01-.5.5h-12A.5.5 0 016 20V4a.5.5 0 010-.5z"/><path d="M14.5 3.8V8h4.2M9 13h6M9 16.5h4"/></svg>';
+  var ICON_REMARK = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10" width="15" height="10.5" rx="1.6"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>';
+  var ICON_REASSIGN = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>';
+
+  function selectField(labelText, valueText, options, name) {
+    var opts = options.map(function (o) {
+      return '<div class="sel-opt' + (o === valueText ? ' selected' : '') + '" data-value="' + esc(o) + '">' + esc(o) + '</div>';
+    }).join('');
+    return (
+      '<label style="display:block;width:100%;margin-bottom:14px">' +
+        '<div style="font-size:12.5px;font-weight:600;color:#6E6C58;margin-bottom:6px">' + labelText + '</div>' +
+        '<div data-select data-name="' + name + '" data-value="' + esc(valueText) + '" style="background:#FFFFFF;border:1px solid #E1DBC6;border-radius:4px;font-size:14px">' +
+          '<div class="sel-label" style="padding:9px 12px;display:flex;align-items:center;justify-content:space-between"><span>' + esc(valueText) + '</span>' +
+          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#8C8A76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>' +
+          '<div class="sel-menu">' + opts + '</div>' +
+        '</div>' +
+      '</label>'
+    );
+  }
+
+  function textField(labelText, placeholder, name) {
+    return (
+      '<label style="display:block;margin-bottom:6px">' +
+        '<div style="font-size:12.5px;font-weight:600;color:#6E6C58;margin-bottom:6px">' + labelText + '</div>' +
+        '<div contenteditable="true" class="placeholder" data-field="' + name + '" data-placeholder="' + esc(placeholder) + '" style="background:#FFFFFF;border:1px solid #E1DBC6;border-radius:4px;padding:12px;font-size:14px;min-height:96px;color:#8C8A76;line-height:1.55">' + esc(placeholder) + '</div>' +
+      '</label>'
+    );
+  }
+
+  function fieldValue(root, name) {
+    var f = root.querySelector('[data-field="' + name + '"]');
+    if (!f) return '';
+    if (f.classList.contains('placeholder')) return '';
+    return f.textContent.trim();
+  }
+  function selectValue(root, name) {
+    var s = root.querySelector('[data-select][data-name="' + name + '"]');
+    return s ? s.getAttribute('data-value') : '';
+  }
+
+  function buildAddNoteModal(studentName) {
+    var body =
+      selectField('Type', 'Advising note (student-level)', ['Advising note (student-level)', 'Attempt remark', 'Checklist decision note'], 'type') +
+      selectField('Scope', 'Whole student record', ['Whole student record', 'Current term only', 'Specific course attempt'], 'scope') +
+      textField('Note', 'Write what you would want the next adviser to know…', 'note') +
+      '<div style="font-size:12px;color:#8C8A76;margin-top:4px">Saved entries cannot be edited. Not visible to the student.</div>';
+    var buttons =
+      '<button type="button" class="btns" data-close-modal style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;background:#FFFFFF;color:#16200C;border:1px solid #E1DBC6">Cancel</button>' +
+      '<button type="button" class="btnp" data-action="save-note-modal" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;background:#2F4A12;color:#FBF8EF;border:1px solid #2F4A12">Save note</button>';
+    return modalShell(ICON_NOTE, '#F2EDDC', '#2F4A12', 'Add a staff-only note' + (studentName ? ' · ' + esc(studentName) : ''), body, 'Audited as r.reyes@[university].edu.ph', buttons);
+  }
+
+  function buildRemarkModal(code, course) {
+    var body =
+      selectField('Remark type', 'Grade change', ['Grade change', 'INC contract signed', 'Prerequisite override note', 'Retake approval'], 'remark-type') +
+      textField('Remark', 'Describe the change and why it was made…', 'remark');
+    var buttons =
+      '<button type="button" class="btns" data-close-modal style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;background:#FFFFFF;color:#16200C;border:1px solid #E1DBC6">Cancel</button>' +
+      '<button type="button" class="btnp" data-action="save-remark-modal" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;background:#2F4A12;color:#FBF8EF;border:1px solid #2F4A12">Save remark</button>';
+    return modalShell(ICON_REMARK, '#FBF0D6', '#8A6206', 'Attempt remark · ' + esc(code || ''), body, esc(course || ''), buttons);
+  }
+
+  function buildReassignConfirmModal(count, fromName, toName) {
+    var body =
+      '<p style="font-size:14px;color:#6E6C58;line-height:1.62">You are about to transfer <b>' + count + ' advisee' + (count === 1 ? '' : 's') + '</b> from <b>' + esc(fromName) + '</b> to <b>' + esc(toName) + '</b>, effective the date shown. This is written in a single transaction; it cannot be partially applied.</p>' +
+      '<div style="background:#FBF8EF;border:1px solid #E1DBC6;border-radius:6px;padding:16px;margin-top:16px">' +
+        '<div class="kick" style="color:#8C8A76">This will</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;font-size:13px;color:#6E6C58">' +
+          '<div>End the outgoing assignment and start the incoming one with zero gap</div>' +
+          '<div>Write an immutable audit entry naming you as the initiator</div>' +
+          '<div>Preserve your read-only access to the transferred files</div>' +
+        '</div>' +
+      '</div>';
+    var buttons =
+      '<button type="button" class="btns" data-close-modal style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;background:#FFFFFF;color:#16200C;border:1px solid #E1DBC6">Cancel</button>' +
+      '<button type="button" class="btnp" data-action="confirm-reassignment" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;background:#2F4A12;color:#FBF8EF;border:1px solid #2F4A12">Confirm reassignment</button>';
+    return modalShell(ICON_REASSIGN, '#E7F0E2', '#2C6430', 'Confirm reassignment', body, 'Audited as r.reyes@[university].edu.ph', buttons);
+  }
+
+  var NOT_IN_PROTOTYPE = { 'Grades': 1, 'History': 1, 'Documents': 1 };
+  var pendingReassign = null;
+
+  function handleAction(action, el) {
+    switch (action) {
+      case 'export-roster':
+        showToast('Roster exported — 48 rows (mock action, no file in this prototype).');
+        break;
+      case 'paginate':
+        showToast('This prototype only ships one page of sample rows.');
+        break;
+      case 'toggle-more-filters':
+        showToast('Additional filters aren’t wired up in this prototype.');
+        break;
+      case 'print-checklists':
+        showToast('Preparing checklist PDFs… (not available in this prototype)');
+        break;
+      case 'not-in-prototype':
+        showToast((el.textContent || 'This view').trim() + ' isn’t included in this prototype.');
+        break;
+      case 'scroll-to-mapping-form': {
+        var panel = document.querySelector('.view.active [data-mapping-form]');
+        if (panel) {
+          panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          panel.style.transition = 'box-shadow .25s ease';
+          panel.style.boxShadow = '0 0 0 3px rgba(224,168,46,0.55)';
+          setTimeout(function () { panel.style.boxShadow = 'none'; }, 1200);
+        }
+        break;
+      }
+      case 'scroll-to-note-form': {
+        var np = document.querySelector('.view.active [data-note-form]');
+        if (np) {
+          np.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          np.style.transition = 'box-shadow .25s ease';
+          np.style.boxShadow = '0 0 0 3px rgba(224,168,46,0.55)';
+          setTimeout(function () { np.style.boxShadow = 'none'; }, 1200);
+        }
+        break;
+      }
+      case 'cancel-mapping': {
+        var form = el.closest('[data-mapping-form]');
+        if (form) {
+          form.querySelectorAll('[contenteditable]').forEach(function (f) { placeholderBlur(f); f.classList.contains('placeholder'); placeholderFocus(f); placeholderBlur(f); });
+        }
+        showToast('Mapping form cleared.');
+        break;
+      }
+      case 'record-mapping': {
+        var mform = el.closest('[data-mapping-form]');
+        var table = document.querySelector('.view.active [data-exceptions-table]');
+        if (mform && table) {
+          if (table.children.length === 1 && !table.children[0].hasAttribute('data-exception-card')) table.innerHTML = '';
+          var dest = selectValue(mform, 'dest') || 'GE ELEC 2';
+          var src = selectValue(mform, 'source') || 'PSYCH 10 General Psychology';
+          table.insertAdjacentHTML('afterbegin', buildExceptionCard('Elective mapping', src, dest.split(' —')[0], fmtNow().split(',')[0], 'R. Reyes'));
+        }
+        showToast('Mapping recorded and written to the audit log.');
+        break;
+      }
+      case 'scroll-to-equivalency-form': {
+        var epanel = document.querySelector('.view.active [data-equivalency-form]');
+        if (epanel) {
+          epanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          epanel.style.transition = 'box-shadow .25s ease';
+          epanel.style.boxShadow = '0 0 0 3px rgba(224,168,46,0.55)';
+          setTimeout(function () { epanel.style.boxShadow = 'none'; }, 1200);
+        }
+        break;
+      }
+      case 'cancel-equivalency': {
+        var eform = el.closest('[data-equivalency-form]');
+        if (eform) {
+          eform.querySelectorAll('[contenteditable]').forEach(function (f) { placeholderBlur(f); f.classList.contains('placeholder'); placeholderFocus(f); placeholderBlur(f); });
+        }
+        showToast('Equivalency decision form cleared.');
+        break;
+      }
+      case 'record-equivalency': {
+        var eqform = el.closest('[data-equivalency-form]');
+        var etable = document.querySelector('.view.active [data-exceptions-table]');
+        if (eqform && etable) {
+          if (etable.children.length === 1 && !etable.children[0].hasAttribute('data-exception-card')) etable.innerHTML = '';
+          var edecision = selectValue(eqform, 'decision-type') || 'Transfer equivalency';
+          var edest = selectValue(eqform, 'edest') || 'MATH 30 — Year 2 · 2nd Sem (3.0 units)';
+          var esrc = selectValue(eqform, 'esource') || 'MATH 31 Discrete Structures · 3.0 · passed 2.50';
+          etable.insertAdjacentHTML('afterbegin', buildExceptionCard(edecision, esrc, edest.split(' —')[0], fmtNow().split(',')[0], 'R. Reyes'));
+        }
+        showToast('Equivalency decision recorded and written to the audit log.');
+        break;
+      }
+      case 'run-simulation':
+        showToast('Simulation complete — carried/lost units above reflect the target curriculum.');
+        break;
+      case 'save-note': {
+        var page = document.querySelector('.view.active [data-note-form]');
+        var list = document.querySelector('.view.active [data-notes-list]');
+        if (page && list) {
+          var type = selectValue(page, 'type') || 'Advising note (student-level)';
+          var scope = selectValue(page, 'scope') || 'Whole student record';
+          var text = fieldValue(page, 'note');
+          if (!text) { showToast('Write a note before saving.'); break; }
+          var badge = /remark/i.test(type) ? { bg: '#FBF0D6', fg: '#B0761A', label: 'Attempt remark' } : { bg: '#F2EDDC', fg: '#2F4A12', label: 'Advising note' };
+          var entry = document.createElement('div');
+          entry.setAttribute('data-entry-type', /remark/i.test(type) ? 'remark' : 'note');
+          entry.setAttribute('data-entry-author', 'me');
+          entry.style.cssText = 'display:flex;gap:14px;padding:18px 20px;border-bottom:1px solid #EFEADB';
+          entry.innerHTML =
+            '<div style="width:34px;height:34px;border-radius:50%;background:#F2EDDC;color:#2F4A12;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;letter-spacing:0.02em">RR</div>' +
+            '<div style="flex-grow:1">' +
+              '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+                '<span style="font-size:13.5px;font-weight:600">Prof. Ramon Reyes</span>' +
+                '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 8px;border-radius:3px;background:' + badge.bg + ';color:' + badge.fg + ';font-size:12px;font-weight:600;letter-spacing:0.01em;white-space:nowrap">' + badge.label + '</span>' +
+                '<span style="font-size:12px;color:#8C8A76">' + fmtNow() + '</span>' +
+              '</div>' +
+              '<p style="font-size:13.5px;color:#6E6C58;line-height:1.62;margin-top:8px">' + esc(text) + '</p>' +
+              '<div style="font-size:12px;color:#8C8A76;margin-top:8px">Scope: ' + esc(scope) + '</div>' +
+            '</div>';
+          list.insertBefore(entry, list.firstChild);
+          page.querySelectorAll('[contenteditable]').forEach(function (f) { f.textContent = f.getAttribute('data-placeholder'); f.classList.add('placeholder'); f.style.color = '#8C8A76'; });
+          showToast('Note saved to the record.');
+        }
+        break;
+      }
+      case 'save-draft':
+        showToast('Draft saved. It will not appear elsewhere in this prototype.');
+        break;
+      case 'submit-attempt': {
+        var overlay = document.querySelector('.view.active [data-prereq-modal]');
+        if (overlay) { overlay.style.display = 'flex'; }
+        break;
+      }
+      case 'close-prereq-modal': {
+        var ov = document.querySelector('.view.active [data-prereq-modal]');
+        if (ov) ov.style.display = 'none';
+        break;
+      }
+      case 'continue-override': {
+        var ov2 = document.querySelector('.view.active [data-prereq-modal]');
+        if (ov2) ov2.style.display = 'none';
+        showToast('Attempt recorded with a prerequisite override.');
+        break;
+      }
+      case 'save-note-modal': {
+        var modal = document.getElementById('proto-modal-body');
+        var text2 = fieldValue(modal, 'note');
+        if (!text2) { showToast('Write a note before saving.'); break; }
+        var listEl = document.querySelector('.view.active [data-notes-list]');
+        if (listEl) {
+          var type2 = selectValue(modal, 'type') || 'Advising note (student-level)';
+          var badge2 = /remark/i.test(type2) ? { bg: '#FBF0D6', fg: '#B0761A', label: 'Attempt remark' } : { bg: '#F2EDDC', fg: '#2F4A12', label: 'Advising note' };
+          var e2 = document.createElement('div');
+          e2.style.cssText = 'padding:12px 0;border-top:1px solid #EFEADB';
+          e2.innerHTML =
+            '<div style="display:flex;justify-content:space-between;font-size:11.5px;color:#8C8A76"><span>R. Reyes</span><span>' + fmtNow() + '</span></div>' +
+            '<p style="font-size:13px;color:#6E6C58;margin-top:5px;line-height:1.55">' + esc(text2) + '</p>';
+          listEl.insertBefore(e2, listEl.firstChild);
+        }
+        closeModal();
+        showToast('Note saved to the record.');
+        break;
+      }
+      case 'save-remark-modal': {
+        closeModal();
+        showToast('Remark saved and written to the audit log.');
+        break;
+      }
+      case 'execute-reassignment': {
+        var badgeEl = document.querySelector('.view.active [data-reassign-count]');
+        var n = badgeEl ? (parseInt(badgeEl.textContent, 10) || 0) : 0;
+        if (n === 0) { showToast('Select at least one advisee to transfer.'); break; }
+        var incomingSel = document.querySelector('.view.active [data-select][data-name="incoming-adviser"]');
+        var toName = incomingSel ? incomingSel.getAttribute('data-value') : 'Prof. Lourdes Mendez';
+        pendingReassign = { count: n, from: 'Prof. Ramon Reyes', to: toName };
+        openModal(buildReassignConfirmModal(n, pendingReassign.from, toName));
+        break;
+      }
+      case 'confirm-reassignment': {
+        closeModal();
+        var msg = 'Reassignment executed and written to the audit log.';
+        if (pendingReassign) {
+          msg = pendingReassign.count + ' advisee' + (pendingReassign.count === 1 ? '' : 's') + ' transferred to ' + pendingReassign.to + '.';
+        }
+        pendingReassign = null;
+        showToast(msg);
+        go('adviser/advisees');
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('#proto-sitemap')) return;
+
+    var closeTrig = e.target.closest('[data-close-modal]');
+    if (closeTrig || e.target.id === 'proto-modal-overlay') { closeModal(); return; }
+
+    var openTrig = e.target.closest('[data-open-modal]');
+    if (openTrig) {
+      var kind = openTrig.getAttribute('data-open-modal');
+      if (kind === 'add-note') openModal(buildAddNoteModal(openTrig.getAttribute('data-student')));
+      else if (kind === 'remark') openModal(buildRemarkModal(openTrig.getAttribute('data-code'), openTrig.getAttribute('data-course')));
+      closeAllSelects(null);
+      return;
+    }
+
+    var actionTrig = e.target.closest('[data-action]');
+    if (actionTrig) { handleAction(actionTrig.getAttribute('data-action'), actionTrig); return; }
+
+    var cbTrig = e.target.closest('[data-checkbox]');
+    if (cbTrig) { toggleCheckbox(cbTrig); return; }
+
+    var pillTrig = e.target.closest('[data-pill]');
+    if (pillTrig) { selectPill(pillTrig); return; }
+
+    var optTrig = e.target.closest('.sel-opt');
+    if (optTrig) { pickOption(optTrig); return; }
+
+    var selLabel = e.target.closest('[data-select] .sel-label');
+    if (selLabel) { toggleSelect(selLabel.closest('[data-select]')); return; }
+
+    if (!e.target.closest('[data-select]')) closeAllSelects(null);
+
+    var gotoTrig = e.target.closest('[data-goto]');
+    if (gotoTrig) { go(gotoTrig.getAttribute('data-goto')); return; }
+
+    var logo = e.target.closest('img[alt="SAAIS"]');
+    if (logo) {
+      var portal = portalOf(currentSlug);
+      go(portal ? PORTAL_DASHBOARD[portal] : '');
+      return;
+    }
+
+    if (ROW_TARGETS.hasOwnProperty(currentSlug)) {
+      var row = e.target.closest('tr.row');
+      if (row) {
+        if (currentSlug === 'adviser/advisees') selectAdviseeFromRow(row);
+        go(ROW_TARGETS[currentSlug]);
+        return;
+      }
+    }
+
+    var node = e.target;
+    var hops = 0;
+    while (node && node.nodeType === 1 && hops < 6) {
+      var text = (node.textContent || '').replace(/\s+/g, ' ').trim();
+      if (text) {
+        if (NOT_IN_PROTOTYPE.hasOwnProperty(text) && node.classList && (node.classList.contains('navi') || node.parentElement && node.parentElement.style && node.parentElement.style.display === 'flex')) {
+          // fallthrough — let resolve() try first; only toast if unresolved
+        }
+        var dest = resolve(text, node.classList && node.classList.contains('navi'));
+        if (dest === 'ROLE_DEFAULT') { go(PORTAL_DASHBOARD[currentRole]); return; }
+        if (dest) { go(dest); return; }
+        if (NOT_IN_PROTOTYPE.hasOwnProperty(text)) { showToast(text + ' isn’t included in this prototype.'); return; }
+      }
+      node = node.parentElement;
+      hops++;
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    var inp = e.target.closest('[data-live-search]');
+    if (inp) filterRowsByText(inp);
+  });
+
+  document.addEventListener('focus', function (e) {
+    if (e.target.matches && e.target.matches('[contenteditable="true"]')) placeholderFocus(e.target);
+  }, true);
+  document.addEventListener('blur', function (e) {
+    if (e.target.matches && e.target.matches('[contenteditable="true"]')) placeholderBlur(e.target);
+  }, true);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeModal(); closeAllSelects(null); }
+  });
+
+  document.addEventListener('checkbox-change', function (e) {
+    if (!e.target.matches('[data-checkbox="reassign-row"]')) return;
+    var view = e.target.closest('.view');
+    if (!view) return;
+    var n = view.querySelectorAll('[data-checkbox="reassign-row"][data-checked="1"]').length;
+    var badge = view.querySelector('[data-reassign-count]');
+    if (badge) badge.textContent = n + ' advisee' + (n === 1 ? '' : 's') + ' selected';
+  });
+
+  document.addEventListener('select-change', function (e) {
+    var sel = e.target;
+    if (!sel.matches || !sel.matches('[data-select][data-name="incoming-adviser"]')) return;
+    var opt = sel.querySelector('.sel-opt.selected');
+    if (!opt) return;
+    var name = sel.getAttribute('data-value');
+    var initials = opt.getAttribute('data-initials') || '';
+    var count = opt.getAttribute('data-count') || '';
+    var avatar = sel.querySelector('[data-adviser-avatar]');
+    if (avatar) avatar.textContent = initials;
+    var nameEl = sel.querySelector('[data-adviser-name]');
+    if (nameEl) nameEl.textContent = name;
+    var countEl = sel.querySelector('[data-adviser-count]');
+    if (countEl) countEl.textContent = count + ' active advisees';
+    var view = sel.closest('.view');
+    var contDesc = view && view.querySelector('[data-continuity-incoming-desc]');
+    if (contDesc) contDesc.textContent = name + ' holds an active adviser role.';
+  });
+
+  document.addEventListener('pill-change', function (e) {
+    var pill = e.target;
+    var kind = pill.getAttribute('data-pill');
+    if (!kind) return;
+    var view = pill.closest('.view');
+    var table = view && view.querySelector('[data-filter-table]');
+    if (!table) return;
+    table.querySelectorAll('tbody tr').forEach(function (tr) {
+      var standing = (tr.getAttribute('data-standing') || '').toLowerCase();
+      var incCount = parseInt(tr.getAttribute('data-inc') || '0', 10);
+      var show = true;
+      if (kind === 'delinquent') show = standing === 'delinquent';
+      else if (kind === 'open-inc') show = incCount > 0;
+      else if (kind === 'historical') show = false;
+      tr.style.display = show ? '' : 'none';
+    });
+    if (kind === 'historical') showToast('Historical advisees are read-only and not included in this prototype’s sample data.');
+  });
+
+  document.addEventListener('checkbox-change', function (e) {
+    if (!e.target.matches('[data-checkbox="notes-filter"]')) return;
+    var view = e.target.closest('.view');
+    var list = view && view.querySelector('[data-notes-list]');
+    if (!list) return;
+    var state = {};
+    view.querySelectorAll('[data-checkbox="notes-filter"]').forEach(function (cb) {
+      state[cb.getAttribute('data-filter-key')] = cb.getAttribute('data-checked') === '1';
+    });
+    list.querySelectorAll(':scope > div').forEach(function (entry) {
+      var kind = entry.getAttribute('data-entry-type');
+      var mine = entry.getAttribute('data-entry-author') === 'me';
+      var visible = true;
+      if (kind === 'note' && state['advising-notes'] === false) visible = false;
+      if (kind === 'remark' && state['attempt-remarks'] === false) visible = false;
+      if (state['written-by-me']) visible = visible && mine;
+      if (state['previous-advisers'] === false && !mine) visible = false;
+      entry.style.display = visible ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('#proto-bar [data-role]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      currentRole = b.getAttribute('data-role');
+      go(PORTAL_DASHBOARD[currentRole]);
+    });
+  });
+  document.getElementById('proto-home').addEventListener('click', function () { go(''); });
+
+  var sitemap = document.getElementById('proto-sitemap');
+  document.getElementById('proto-map').addEventListener('click', function () { sitemap.classList.add('open'); });
+  sitemap.addEventListener('click', function (e) {
+    if (e.target === sitemap || e.target.classList.contains('sm-close')) { sitemap.classList.remove('open'); return; }
+    var goto = e.target.closest('[data-goto]');
+    if (goto) { sitemap.classList.remove('open'); go(goto.getAttribute('data-goto')); }
+  });
+
+  window.addEventListener('hashchange', render);
+  render();
+})();
+</script>
+</body>
+</html>
