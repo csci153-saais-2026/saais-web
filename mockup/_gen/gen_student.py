@@ -61,8 +61,16 @@ def term_card():
     body = table(["Code", "Course title", "Units", "Schedule", "Status"],
                  [[code(c), t, u, f'<span style="color: {MUTED}">{s}</span>', status(st)] for c, t, u, s, st in rows],
                  widths=["110px", "auto", "70px", "140px", "130px"])
-    return panel("Currently enrolled · AY 2025–2026, 1st Semester", body,
-                 actions=badge("16 units", MUTED, CREAM_DP, dot=False))
+    selector = (
+        '<div style="position:relative; display:flex; align-items:center">'
+        '<select data-student-enrollment-switch aria-label="Enrollment view" style="appearance:none; background:#FBF8EF; border:1px solid #D8D2C0; border-radius:6px; color:#16200C; font: inherit; font-size:12.5px; font-weight:600; padding:6px 30px 6px 10px; cursor:pointer;">'
+        '<option value="currently" selected>Currently Enrolled</option>'
+        '<option value="suggested">Suggested Enrollment</option>'
+        '</select><span aria-hidden="true" style="position:absolute; right:11px; width:7px; height:7px; border-right:1.5px solid #6E6C58; border-bottom:1.5px solid #6E6C58; transform:rotate(45deg) translateY(-2px); pointer-events:none"></span>'
+        '</div>'
+    )
+    return panel("AY 2025–2026, 1st Semester", body,
+                 actions=f'{selector}{badge("16 units", MUTED, CREAM_DP, dot=False)}')
 
 
 def alerts_card():
@@ -81,6 +89,23 @@ def alerts_card():
     return panel("Notices", out, actions=badge("3 new", CREAM, FOREST, dot=False))
 
 
+def quick_access_card():
+    links = [
+        ("check", "Curriculum checklist"),
+        ("chart", "Grades & GWA"),
+        ("clock", "Enrollment history"),
+        ("user", "My profile"),
+        ("mail", "Message adviser"),
+    ]
+    out = '<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">'
+    for icon, label in links:
+        out += (f'<button type="button" style="display: flex; align-items: center; gap: 9px; width: 100%; '
+                f'padding: 10px 11px; border: 1px solid {LINE}; border-radius: 5px; background: {CREAM}; '
+                f'color: {FOREST}; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600; '
+                f'text-align: left">{ico(icon, 16, FOREST)}<span>{label}</span></button>')
+    return panel("Quick access", out, pad="14px 16px 16px")
+
+
 DASH = shell("student", "Dashboard", ["Student portal", "Dashboard"], USER, INI,
              page_head("Good afternoon, Maria.",
                        "AY 2025–2026, 1st Semester · enrollment closes 30 September 2026",
@@ -92,7 +117,7 @@ DASH = shell("student", "Dashboard", ["Student portal", "Dashboard"], USER, INI,
              + '<div style="display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; '
                'margin-top: 18px">'
              + f'<div style="display: flex; flex-direction: column; gap: 18px">{term_card()}{progress_card()}</div>'
-             + f'<div style="display: flex; flex-direction: column; gap: 18px">{adviser_card()}{alerts_card()}</div>'
+                         + f'<div style="display: flex; flex-direction: column; gap: 18px">{quick_access_card()}{adviser_card()}{alerts_card()}</div>'
              + '</div>', h=1220)
 write("StudentDashboard", DASH)
 
