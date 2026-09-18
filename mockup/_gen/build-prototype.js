@@ -25,6 +25,8 @@ const ROUTES = {
   'adviser/advisees/detail': 'Adviser/AdviseeDetail.dc.html',
   'adviser/advisees/notes': 'Adviser/AdviseeNotes.dc.html',
   'adviser/advisees/checklist': 'Adviser/AdviseeChecklist.dc.html',
+  'adviser/advisees/grades': 'Adviser/AdviseeGrades.dc.html',
+  'adviser/advisees/history': 'Adviser/AdviseeHistory.dc.html',
   'adviser/reassignment': 'Adviser/AdviserReassign.dc.html',
 
   'admin/dashboard': 'Admin/AdminDashboard.dc.html',
@@ -57,6 +59,8 @@ const TITLES = {
   'adviser/advisees/detail': 'Adviser · Advisee overview',
   'adviser/advisees/notes': 'Adviser · Advisee notes',
   'adviser/advisees/checklist': 'Adviser · Advisee checklist',
+  'adviser/advisees/grades': 'Adviser · Advisee grades',
+  'adviser/advisees/history': 'Adviser · Advisee history',
   'adviser/reassignment': 'Adviser · Reassignment',
   'admin/dashboard': 'Admin · Dashboard',
   'admin/accounts': 'Admin · Accounts',
@@ -74,7 +78,7 @@ const TITLES = {
 const SITEMAP_GROUPS = [
   { label: 'Public site & auth', routes: ['', 'login', 'invite', 'docs'] },
   { label: 'Student portal', routes: ['student/dashboard', 'student/checklist', 'student/grades', 'student/history', 'student/profile'] },
-  { label: 'Adviser portal', routes: ['adviser/dashboard', 'adviser/advisees', 'adviser/advisees/detail', 'adviser/advisees/checklist', 'adviser/advisees/notes', 'adviser/enrollment/new', 'adviser/reassignment'] },
+  { label: 'Adviser portal', routes: ['adviser/dashboard', 'adviser/advisees', 'adviser/advisees/detail', 'adviser/advisees/checklist', 'adviser/advisees/grades', 'adviser/advisees/history', 'adviser/advisees/notes', 'adviser/enrollment/new', 'adviser/reassignment'] },
   { label: 'Admin portal', routes: ['admin/dashboard', 'admin/accounts', 'admin/programs', 'admin/curricula', 'admin/courses', 'admin/course-offerings', 'admin/audit-log'] },
   { label: 'Design system & mobile', routes: ['design-system', 'mobile/student-home', 'mobile/checklist', 'mobile/advisees'] },
 ];
@@ -127,3 +131,45 @@ const out = template
 
 fs.writeFileSync(path.join(ROOT, 'prototype.html'), out, 'utf8');
 console.log('Wrote prototype.html with', views.length, 'views.');
+
+// --- also emit one bundle per user-facing portal, so reviewing/editing a
+// single portal doesn't require opening the ~60k-line combined file. Each
+// split file is fully self-contained (own CSS + routing script); jumping to
+// a route owned by a different split file does a real page navigation
+// instead of a hash change.
+const SPLIT_GROUPS = [
+  { file: 'index.html', label: 'Public site & auth', routes: ['', 'login', 'invite', 'docs'] },
+  { file: 'student.html', label: 'Student portal', routes: ['student/dashboard', 'student/checklist', 'student/grades', 'student/history', 'student/profile'] },
+  { file: 'adviser.html', label: 'Adviser portal', routes: ['adviser/dashboard', 'adviser/advisees', 'adviser/advisees/detail', 'adviser/advisees/checklist', 'adviser/advisees/grades', 'adviser/advisees/history', 'adviser/advisees/notes', 'adviser/enrollment/new', 'adviser/reassignment'] },
+  { file: 'admin.html', label: 'Admin portal', routes: ['admin/dashboard', 'admin/accounts', 'admin/programs', 'admin/curricula', 'admin/courses', 'admin/course-offerings', 'admin/audit-log'] },
+  { file: 'mobile.html', label: 'Mobile views', routes: ['mobile/student-home', 'mobile/checklist', 'mobile/advisees'] },
+  { file: 'design-system.html', label: 'Design system sheet', routes: ['design-system'] },
+];
+
+const ROUTE_FILE = {};
+for (const g of SPLIT_GROUPS) for (const r of g.routes) ROUTE_FILE[r] = g.file;
+const ROUTE_FILE_JSON = JSON.stringify(ROUTE_FILE);
+
+const splitTemplate = fs.readFileSync(path.join(__dirname, 'split-shell-template.html'), 'utf8');
+const viewsBySlug = {};
+for (const v of views) viewsBySlug[v.slug] = v;
+
+for (const g of SPLIT_GROUPS) {
+  const groupViews = g.routes.map((r) => viewsBySlug[r]);
+  const groupScopedCss = groupViews.map(v => `.view[data-route="${v.slug}"] {\n${v.css}\n}`).join('\n\n');
+  const groupSections = groupViews.map(v =>
+    `<section class="view" id="${v.id}" data-route="${v.slug}" hidden>\n${v.html}\n</section>`
+  ).join('\n\n');
+
+  const splitOut = splitTemplate
+    .replace('/*__TITLE__*/', `SAAIS — ${g.label} (clickable prototype)`)
+    .replace('/*__FONTS_IMPORT__*/', GOOGLE_FONTS_IMPORT)
+    .replace('/*__SCOPED_CSS__*/', groupScopedCss)
+    .replace('<!--__SECTIONS__-->', groupSections)
+    .replace('<!--__SITEMAP__-->', sitemapHtml)
+    .replace('/*__ROUTE_FILE_JSON__*/', ROUTE_FILE_JSON)
+    .replace('/*__DEFAULT_ROUTE_JSON__*/', JSON.stringify(g.routes[0]));
+
+  fs.writeFileSync(path.join(ROOT, g.file), splitOut, 'utf8');
+  console.log('Wrote', g.file, 'with', groupViews.length, 'views.');
+}
