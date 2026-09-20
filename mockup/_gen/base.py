@@ -141,13 +141,12 @@ def ico_fill(name, size=20, color="currentColor"):
 
 
 # ---------------------------------------------------------------- atoms
-def badge(text, fg, bg, dot=True, attrs=""):
+def badge(text, fg, bg, dot=True):
     d = ('<span style="width: 6px; height: 6px; border-radius: 50%%; background: %s; '
          'flex-shrink: 0"></span>' % fg) if dot else ""
-    a = (" " + attrs) if attrs else ""
-    return ('<span%s style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; '
+    return ('<span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; '
             'border-radius: 3px; background: %s; color: %s; font-size: 12px; font-weight: 600; '
-            'letter-spacing: 0.01em; white-space: nowrap">%s%s</span>' % (a, bg, fg, d, text))
+            'letter-spacing: 0.01em; white-space: nowrap">%s%s</span>' % (bg, fg, d, text))
 
 
 STATUS = {
@@ -167,7 +166,7 @@ def status(key, label=None):
     return badge(label or txt, fg, bg)
 
 
-def btn(label, kind="primary", icon=None, size="md", attrs=""):
+def btn(label, kind="primary", icon=None, size="md"):
     pad = {"md": "9px 16px", "sm": "6px 12px", "lg": "13px 26px"}[size]
     fs = {"md": "14px", "sm": "13px", "lg": "15.5px"}[size]
     ic = (ico(icon, 16 if size != "lg" else 18) + " ") if icon else ""
@@ -183,10 +182,9 @@ def btn(label, kind="primary", icon=None, size="md", attrs=""):
     else:
         st = "background: %s; color: %s; border: 1px solid %s" % (SURFACE, INK, LINE)
         cls = "btns"
-    a = (" " + attrs) if attrs else ""
-    return ('<button class="%s"%s style="display: inline-flex; align-items: center; gap: 7px; '
-            'padding: %s; border-radius: 4px; font-family: inherit; font-size: %s; font-weight: 600; '
-            'cursor: pointer; %s">%s%s</button>' % (cls, a, pad, fs, st, ic, label))
+    return ('<button class="%s" style="display: inline-flex; align-items: center; gap: 7px; '
+            'padding: %s; border-radius: 8px; font-family: inherit; font-size: %s; font-weight: 600; '
+            'cursor: pointer; %s">%s%s</button>' % (cls, pad, fs, st, ic, label))
 
 
 def card(inner, pad="20px", extra=""):
@@ -222,52 +220,10 @@ def select(label, value, w="100%"):
             % (w, MUTED, label, SURFACE, LINE, value, ico("down", 16, MUTED_2)))
 
 
-def searchbar(placeholder, w="320px", live=None):
-    if live:
-        field = ('<input data-live-search="%s" placeholder="%s" style="border: none; outline: none; '
-                  'background: transparent; font-family: inherit; font-size: 14px; color: %s; flex-grow: 1; '
-                  'min-width: 0">' % (live, placeholder, INK))
-    else:
-        field = '<span>%s</span>' % placeholder
+def searchbar(placeholder, w="320px"):
     return ('<div style="display: flex; align-items: center; gap: 9px; width: %s; background: %s; '
             'border: 1px solid %s; border-radius: 4px; padding: 8px 12px; color: %s; font-size: 14px">'
-            '%s%s</div>' % (w, SURFACE, LINE, MUTED_2, ico("search", 17, MUTED_2), field))
-
-
-def iselect(label, value, options, name, w="100%"):
-    opts = "".join('<div class="sel-opt%s" data-value="%s">%s</div>'
-                    % (" selected" if o == value else "", o, o) for o in options)
-    return ('<label style="display: block; width: %s">'
-            '<div style="font-size: 12.5px; font-weight: 600; color: %s; margin-bottom: 6px">%s</div>'
-            '<div data-select data-name="%s" data-value="%s" style="background: %s; border: 1px solid %s; '
-            'border-radius: 4px; font-size: 14px">'
-            '<div class="sel-label" style="padding: 9px 12px; display: flex; align-items: center; '
-            'justify-content: space-between"><span>%s</span>%s</div>'
-            '<div class="sel-menu">%s</div></div></label>'
-            % (w, MUTED, label, name, value, SURFACE, LINE, value, ico("down", 16, MUTED_2), opts))
-
-
-def ifield(label, placeholder, name, min_h="96px"):
-    return ('<label style="display: block">'
-            '<div style="font-size: 12.5px; font-weight: 600; color: %s; margin-bottom: 6px">%s</div>'
-            '<div contenteditable="true" class="placeholder" data-field="%s" data-placeholder="%s" '
-            'style="background: %s; border: 1px solid %s; border-radius: 4px; padding: 12px; font-size: 14px; '
-            'min-height: %s; color: %s; line-height: 1.55">%s</div></label>'
-            % (MUTED, label, name, placeholder, SURFACE, LINE, min_h, MUTED_2, placeholder))
-
-
-def ipill(label, kind, on=False):
-    return ('<div data-pill="%s" style="padding: 7px 14px; border-radius: 4px; font-size: 13px; font-weight: '
-            '%s; background: %s; border: 1px solid %s; color: %s">%s</div>'
-            % (kind, "600" if on else "450", SURFACE if on else "transparent",
-               LINE if on else "transparent", INK if on else MUTED, label))
-
-
-def icheckbox(name, checked=False):
-    return ('<div data-checkbox="%s" data-checked="%s" style="width: 16px; height: 16px; border: 1px solid %s; '
-            'border-radius: 4px; background: %s; display: flex; align-items: center; justify-content: center">%s</div>'
-            % (name, "1" if checked else "0", LINE, FOREST if checked else SURFACE,
-               ico("check", 11, CREAM, 2.4) if checked else ""))
+            '%s<span>%s</span></div>' % (w, SURFACE, LINE, MUTED_2, ico("search", 17, MUTED_2), placeholder))
 
 
 def avatar(initials, size=34, bg=FOREST, fg=CREAM, fs=None):
@@ -283,28 +239,23 @@ def progress(pct, w="100%", h=8, color=FOREST, track=CREAM_DP):
             % (w, h, track, h // 2, pct, color, h // 2))
 
 
-def table(cols, rows, widths=None, align=None, row_attrs=None, table_attrs="", tbody_attrs=""):
-    """cols: list of header strings. rows: list of list of html cells.
-    row_attrs: optional list of extra HTML attribute strings, one per row."""
+def table(cols, rows, widths=None, align=None):
+    """cols: list of header strings. rows: list of list of html cells."""
     widths = widths or [None] * len(cols)
     align = align or ["left"] * len(cols)
-    row_attrs = row_attrs or [""] * len(rows)
     cg = "".join('<col style="width: %s">' % (w or "auto") for w in widths)
     th = "".join(
         '<th style="text-align: %s; padding: 10px 14px; font-size: 11.5px; font-weight: 600; '
-        'letter-spacing: 0.09em; text-transform: uppercase; color: %s; border-bottom: 1px solid %s; '
-        'white-space: nowrap">%s</th>' % (align[i], MUTED_2, LINE, c) for i, c in enumerate(cols))
+        'letter-spacing: 0.09em; text-transform: uppercase; color: %s; background: %s; border-bottom: 1px solid %s; '
+        'white-space: nowrap">%s</th>' % (align[i], MUTED_2, CREAM_DP, LINE, c) for i, c in enumerate(cols))
     body = []
-    for r, ra in zip(rows, row_attrs):
+    for r in rows:
         tds = "".join(
             '<td style="text-align: %s; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid %s; '
             'vertical-align: middle">%s</td>' % (align[i], LINE_SF, c) for i, c in enumerate(r))
-        a = (" " + ra) if ra else ""
-        body.append('<tr class="row"%s>%s</tr>' % (a, tds))
-    ta = (" " + table_attrs) if table_attrs else ""
-    tba = (" " + tbody_attrs) if tbody_attrs else ""
-    return ('<table%s><colgroup>%s</colgroup><thead><tr>%s</tr></thead><tbody%s>%s</tbody></table>'
-            % (ta, cg, th, tba, "".join(body)))
+        body.append('<tr class="row">%s</tr>' % tds)
+    return ('<table><colgroup>%s</colgroup><thead><tr>%s</tr></thead><tbody>%s</tbody></table>'
+            % (cg, th, "".join(body)))
 
 
 def panel(title, inner, actions="", pad="0", sub=""):
@@ -329,7 +280,7 @@ NAV = {
  "adviser": ("Adviser", [
     ("grid", "Dashboard", "/adviser/dashboard"),
     ("users", "Advisees", "/adviser/advisees"),
-    ("plus", "Record attempt", "/adviser/enrollment/new"),
+    ("plus", "Record enrollment", "/adviser/enrollment/new"),
     ("swap", "Reassignment", "/adviser/reassignment"),
  ]),
  "admin": ("Administrator", [
@@ -359,7 +310,7 @@ def sidebar(role, active, sub=None):
         out.append('<div class="navi" style="position: relative; display: flex; align-items: center; gap: 11px; '
                    'padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; %s">%s%s<span>%s</span></div>'
                    % (st, bar, ico(icon, 18, sw=1.55), name))
-        if on and sub:
+        if False and sub:  # Student tabs belong in the page, not global navigation.
             for s_name, s_on in sub:
                 col = "#F7E9C4" if s_on else "rgba(246,242,228,0.6)"
                 out.append('<div class="navi" style="padding: 6px 16px 6px 46px; font-size: 13px; color: %s; '
@@ -412,7 +363,7 @@ def page_head(title, sub="", actions=""):
 
 
 def shell(role, active, crumbs, user, initials, content, sub=None, right="", h=1180):
-    return ('<div style="display: flex; min-height: %dpx; background: %s">%s'
+    return ('<div style="display: flex; min-height: 100vh; --artboard-height: %dpx; background: %s">%s'
             '<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">%s'
             '<main style="padding: 30px 32px 40px; flex-grow: 1">%s</main></div></div>'
             % (h, CREAM, sidebar(role, active, sub), topbar(crumbs, user, initials, right), content))

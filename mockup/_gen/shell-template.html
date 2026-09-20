@@ -26,13 +26,13 @@ img[alt="SAAIS"] { cursor: pointer; }
   gap: 6px;
   background: #1D2F0A;
   border: 1px solid #2F4A12;
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 6px 8px 6px 14px;
-  box-shadow: 0 8px 24px rgba(15,20,5,0.35);
+  box-shadow: 0 24px 60px rgba(15,26,6,0.28);
   font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
 }
 #proto-bar .proto-label {
-  font-size: 11px;
+  font-size: 11.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(246,242,228,0.55);
@@ -44,16 +44,16 @@ img[alt="SAAIS"] { cursor: pointer; }
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 999px;
+  border-radius: 5px;
   padding: 7px 12px;
   border: 1px solid transparent;
   background: transparent;
   color: rgba(246,242,228,0.75);
 }
 #proto-bar button:hover { color: #FBF8EF; background: rgba(246,242,228,0.08); }
-#proto-bar button.active { background: #E0A82E; color: #3A2A05; }
-#proto-bar button#proto-map { background: rgba(224,168,46,0.16); color: #F7E9C4; }
-#proto-bar button#proto-map:hover { background: rgba(224,168,46,0.28); }
+#proto-bar button.active { background: #FBF8EF; color: #1D2F0A; }
+#proto-bar button#proto-map { background: rgba(246,242,228,0.10); color: #FBF8EF; }
+#proto-bar button#proto-map:hover { background: rgba(246,242,228,0.18); }
 #proto-bar .proto-sep { width: 1px; height: 20px; background: rgba(246,242,228,0.16); margin: 0 2px; }
 
 #proto-sitemap {
@@ -70,13 +70,14 @@ img[alt="SAAIS"] { cursor: pointer; }
 #proto-sitemap.open { display: flex; }
 #proto-sitemap .sm-panel {
   background: #FBF8EF;
-  border-radius: 10px;
+  border: 1px solid #E1DBC6;
+  border-radius: 6px;
   max-width: 880px;
   width: 100%;
   max-height: 84vh;
   overflow-y: auto;
   padding: 28px 30px 32px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+  box-shadow: 0 24px 60px rgba(15,26,6,0.28);
 }
 #proto-sitemap .sm-head {
   display: flex;
@@ -94,7 +95,7 @@ img[alt="SAAIS"] { cursor: pointer; }
   cursor: pointer;
   border: 1px solid #E1DBC6;
   background: #fff;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 6px 12px;
   font-family: inherit;
   font-size: 13px;
@@ -126,92 +127,6 @@ img[alt="SAAIS"] { cursor: pointer; }
 }
 .sm-item:hover { background: #EFEADB; color: #B0761A; }
 .sm-group { margin-bottom: 4px; }
-
-#student-message-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 10001;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(22,32,12,0.55);
-  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
-}
-#student-message-modal.open { display: flex; }
-#student-message-modal .message-panel {
-  width: min(560px, 100%);
-  background: #FBF8EF;
-  border: 1px solid #E1DBC6;
-  border-radius: 8px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
-  padding: 24px;
-}
-#student-message-modal .message-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-#student-message-modal .message-title {
-  color: #16200C;
-  font-family: 'Syne', 'Segoe UI', system-ui, sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-}
-#student-message-modal .message-subtitle {
-  color: #6E6C58;
-  font-size: 13px;
-  margin-top: 4px;
-}
-#student-message-modal .message-close {
-  border: 1px solid #E1DBC6;
-  border-radius: 5px;
-  background: #FFFFFF;
-  color: #16200C;
-  cursor: pointer;
-  font: inherit;
-  font-size: 18px;
-  line-height: 1;
-  padding: 5px 9px;
-}
-#student-message-modal label {
-  display: block;
-  color: #6E6C58;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-#student-message-modal input,
-#student-message-modal textarea {
-  width: 100%;
-  border: 1px solid #E1DBC6;
-  border-radius: 5px;
-  background: #FFFFFF;
-  color: #16200C;
-  font: inherit;
-  font-size: 14px;
-  padding: 10px 11px;
-}
-#student-message-modal textarea { min-height: 150px; resize: vertical; }
-#student-message-modal .message-field { margin-bottom: 14px; }
-#student-message-modal .message-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
-}
-#student-message-modal .message-actions button {
-  border-radius: 4px;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 14px;
-}
-#student-message-modal .message-cancel { background: #FFFFFF; border: 1px solid #E1DBC6; color: #16200C; }
-#student-message-modal .message-send { background: #2F4A12; border: 1px solid #2F4A12; color: #FBF8EF; }
 </style>
 </head>
 <body>
@@ -238,30 +153,6 @@ img[alt="SAAIS"] { cursor: pointer; }
       <!--__SITEMAP__-->
     </div>
   </div>
-</div>
-
-<div id="student-message-modal" aria-hidden="true">
-  <form class="message-panel" data-student-message-form>
-    <div class="message-head">
-      <div>
-        <div class="message-title">Message adviser</div>
-        <div class="message-subtitle">To Prof. Ramon Reyes · r.reyes@university.edu.ph</div>
-      </div>
-      <button type="button" class="message-close" data-student-message-close aria-label="Close">&times;</button>
-    </div>
-    <div class="message-field">
-      <label for="student-message-subject">Subject</label>
-      <input id="student-message-subject" name="subject" value="Checklist question" required>
-    </div>
-    <div class="message-field">
-      <label for="student-message-body">Message</label>
-      <textarea id="student-message-body" name="body" placeholder="Write your message to Prof. Reyes..." required></textarea>
-    </div>
-    <div class="message-actions">
-      <button type="button" class="message-cancel" data-student-message-close>Cancel</button>
-      <button type="submit" class="message-send">Open email</button>
-    </div>
-  </form>
 </div>
 
 <script>
@@ -291,21 +182,13 @@ img[alt="SAAIS"] { cursor: pointer; }
     'Curricula': 'admin/curricula',
     'Course catalog': 'admin/courses',
     'Terms & offerings': 'admin/course-offerings',
-    'Audit log': 'admin/audit-log',
-    'Open checklist': 'student/checklist',
-    'Download checklist PDF': 'ACTION_PRINT_CHECKLIST',
-    'Message adviser': 'ACTION_MESSAGE_ADVISER',
-    'Print': 'ACTION_PRINT_CHECKLIST',
-    'Export PDF': 'ACTION_PRINT_CHECKLIST'
+    'Audit log': 'admin/audit-log'
   };
 
   var PORTAL_DASHBOARD = { student: 'student/dashboard', adviser: 'adviser/dashboard', admin: 'admin/dashboard' };
 
   var VIEW_ACTIONS = {
     '': { 'Sign in': 'login', 'Request a walkthrough': 'login', 'Read the API contract': 'docs' },
-    'student/checklist': { 'Export PDF': 'ACTION_DOWNLOAD_PDF' },
-    'student/grades': { 'Official grade summary': 'ACTION_DOWNLOAD_PDF' },
-    'student/history': { 'Export CSV': 'ACTION_DOWNLOAD_CSV' },
     'login': { 'Sign in': 'ROLE_DEFAULT', 'Continue with Google': 'ROLE_DEFAULT' },
     'adviser/advisees/detail': { 'Checklist': 'adviser/advisees/checklist', 'Notes': 'adviser/advisees/notes' },
     'adviser/advisees/checklist': { 'Overview': 'adviser/advisees/detail', 'Notes': 'adviser/advisees/notes' },
@@ -332,64 +215,6 @@ img[alt="SAAIS"] { cursor: pointer; }
   function go(slug) {
     if (!routeSet.hasOwnProperty(slug)) slug = '';
     location.hash = '#/' + slug;
-  }
-
-  function downloadFile(filename, content, type) {
-    var blob = new Blob([content], { type: type });
-    var link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(link.href);
-  }
-
-  function downloadPdf(filename) {
-    var objects = [
-      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] '
-        + '/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
-      '4 0 obj\n<< /Length 76 >>\nstream\nBT /F1 18 Tf 72 720 Td '
-        + '(SAAIS Student Portal) Tj /F1 12 Tf 0 -28 Td (Official student record) Tj ET\nendstream\nendobj\n',
-      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n'
-    ];
-    var pdf = '%PDF-1.4\n';
-    var offsets = [0];
-    objects.forEach(function (object) {
-      offsets.push(pdf.length);
-      pdf += object;
-    });
-    var xref = pdf.length;
-    pdf += 'xref\n0 6\n0000000000 65535 f \n';
-    offsets.slice(1).forEach(function (offset) {
-      pdf += String(offset).padStart(10, '0') + ' 00000 n \n';
-    });
-    pdf += 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
-    downloadFile(filename, pdf, 'application/pdf');
-  }
-
-  function downloadCsv(filename) {
-    var table = document.querySelector('#view-student-history table');
-    if (!table) return;
-    var rows = Array.prototype.map.call(table.querySelectorAll('tr'), function (row) {
-      return Array.prototype.map.call(row.children, function (cell) {
-        return '"' + (cell.textContent || '').replace(/"/g, '""').replace(/\s+/g, ' ').trim() + '"';
-      }).join(',');
-    });
-    downloadFile(filename, rows.join('\r\n'), 'text/csv;charset=utf-8');
-  }
-
-  function setStudentMessageModal(open) {
-    var modal = document.getElementById('student-message-modal');
-    if (!modal) return;
-    modal.classList.toggle('open', open);
-    modal.setAttribute('aria-hidden', open ? 'false' : 'true');
-    if (open) {
-      var body = document.getElementById('student-message-body');
-      if (body) body.focus();
-    }
   }
 
   function render() {
@@ -421,11 +246,6 @@ img[alt="SAAIS"] { cursor: pointer; }
   }
 
   document.addEventListener('click', function (e) {
-    if (e.target.id === 'student-message-modal' || e.target.closest('[data-student-message-close]')) {
-      setStudentMessageModal(false);
-      return;
-    }
-
     var logo = e.target.closest('img[alt="SAAIS"]');
     if (logo) {
       var portal = portalOf(currentSlug);
@@ -445,42 +265,11 @@ img[alt="SAAIS"] { cursor: pointer; }
       if (text) {
         var dest = resolve(text, node.classList && node.classList.contains('navi'));
         if (dest === 'ROLE_DEFAULT') { go(PORTAL_DASHBOARD[currentRole]); return; }
-        if (dest === 'ACTION_PRINT_CHECKLIST') { window.print(); return; }
-        if (dest === 'ACTION_DOWNLOAD_PDF') {
-          downloadPdf(currentSlug === 'student/grades' ? 'saais-official-grade-summary.pdf' : 'saais-curriculum-checklist.pdf');
-          return;
-        }
-        if (dest === 'ACTION_DOWNLOAD_CSV') { downloadCsv('saais-enrollment-history.csv'); return; }
-        if (dest === 'ACTION_MESSAGE_ADVISER') {
-          if (currentSlug === 'student/dashboard') setStudentMessageModal(true);
-          return;
-        }
         if (dest) { go(dest); return; }
       }
       node = node.parentElement;
       hops++;
     }
-  });
-
-  document.addEventListener('submit', function (e) {
-    var form = e.target.closest('[data-student-message-form]');
-    if (!form) return;
-    e.preventDefault();
-    var subject = form.elements.subject.value.trim();
-    var body = form.elements.body.value.trim();
-    if (!subject || !body) return;
-    window.location.href = 'mailto:r.reyes@university.edu.ph?subject='
-      + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-    setStudentMessageModal(false);
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') setStudentMessageModal(false);
-  });
-
-  document.addEventListener('change', function (e) {
-    var selector = e.target.closest('[data-student-enrollment-switch]');
-    if (!selector || !document.getElementById('view-student-dashboard')) return;
   });
 
   document.querySelectorAll('#proto-bar [data-role]').forEach(function (b) {

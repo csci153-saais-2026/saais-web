@@ -108,7 +108,7 @@ DASH = shell("admin", "Dashboard", ["Administrator", "Dashboard"], USER, INI,
                              f'<span style="font-weight: 600">{v}</span></div>{progress(p, "100%", 7, c)}</div>'
                              for l, v, p, c in [("Students", "3,842", 96, FOREST),
                                                 ("Advisers", "126", 12, FOREST_SF),
-                                                ("Administrators", "7", 3, GOLD),
+                                                ("Administrators", "7", 3, FOREST_DP),
                                                 ("Pending invitations", "18", 5, MUTED_2)]) + '</div>')
              + note("Public self-registration is disabled system-wide. A Google sign-in with no matching pre-registered profile is rejected by the auth hook before a user row is created.", "gold", "lock")
              + '</div></div>', h=1300)
@@ -119,7 +119,7 @@ write("AdminDashboard", DASH)
 def role_chip(r):
     return {"student": badge("Student", ENR_FG, ENR_BG),
             "adviser": badge("Adviser", FOREST, CREAM_DP),
-            "admin": badge("Administrator", GOLD_DP, "#FBF0D6")}[r]
+            "admin": badge("Administrator", NEU_FG, NEU_BG)}[r]
 
 
 def acct(name, ini, email, role, dept, st, last):
