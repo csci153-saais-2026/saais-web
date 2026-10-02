@@ -376,3 +376,19 @@ table.data tbody tr.row-click:focus-within{background:var(--line-soft)}
 .app{display:block}
 .panel{break-inside:avoid}
 body{background:white}}
+
+.rec-check{width:34px}
+.rec-check input{margin:0}
+.chat-card .panel-body{padding:16px 20px;display:flex;flex-direction:column;gap:10px;max-height:300px;overflow-y:auto}
+.chat-msg{display:flex}
+.chat-msg.mine{justify-content:flex-end}
+.chat-msg p{max-width:82%;padding:9px 13px;border-radius:12px;font-size:13.5px;line-height:1.55;margin:0}
+.chat-msg.ai p{background:var(--cream-deep);color:var(--ink);border-radius:12px 12px 12px 3px}
+.chat-msg.mine p{background:var(--forest);color:var(--cream);border-radius:12px 12px 3px 12px}
+.chat-form{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--line-soft);margin:0}
+.chat-form input{flex:1;min-width:0;border:1px solid var(--line);border-radius:4px;padding:9px 12px;font-size:13.5px;background:var(--white)}
+.chat-form button{border-radius:50%;width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;min-height:0}
+.icon-btn{border:0;background:none;padding:6px;min-height:0;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.icon-btn:hover{background:var(--fail-bg);color:var(--fail)}
+.icon-btn.danger{color:var(--muted)}
+.icon-btn.danger:hover{color:var(--fail)}

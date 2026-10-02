@@ -25,6 +25,7 @@ const ROUTES = {
   'adviser/advisees/detail': 'Adviser/AdviseeDetail.dc.html',
   'adviser/advisees/notes': 'Adviser/AdviseeNotes.dc.html',
   'adviser/advisees/checklist': 'Adviser/AdviseeChecklist.dc.html',
+  'adviser/advisees/advising': 'Adviser/AdviseeAdvising.dc.html',
   'adviser/reassignment': 'Adviser/AdviserReassign.dc.html',
 
   'admin/dashboard': 'Admin/AdminDashboard.dc.html',
@@ -57,6 +58,7 @@ const TITLES = {
   'adviser/advisees/detail': 'Adviser · Advisee overview',
   'adviser/advisees/notes': 'Adviser · Advisee notes',
   'adviser/advisees/checklist': 'Adviser · Advisee checklist',
+  'adviser/advisees/advising': 'Adviser · Advisee advising',
   'adviser/reassignment': 'Adviser · Reassignment',
   'admin/dashboard': 'Admin · Dashboard',
   'admin/accounts': 'Admin · Accounts',
@@ -74,7 +76,7 @@ const TITLES = {
 const SITEMAP_GROUPS = [
   { label: 'Public site & auth', routes: ['', 'login', 'invite', 'docs'] },
   { label: 'Student portal', routes: ['student/dashboard', 'student/checklist', 'student/grades', 'student/history', 'student/profile'] },
-  { label: 'Adviser portal', routes: ['adviser/dashboard', 'adviser/advisees', 'adviser/advisees/detail', 'adviser/advisees/checklist', 'adviser/advisees/notes', 'adviser/enrollment/new', 'adviser/reassignment'] },
+  { label: 'Adviser portal', routes: ['adviser/dashboard', 'adviser/advisees', 'adviser/advisees/detail', 'adviser/advisees/advising', 'adviser/advisees/checklist', 'adviser/advisees/notes', 'adviser/enrollment/new', 'adviser/reassignment'] },
   { label: 'Admin portal', routes: ['admin/dashboard', 'admin/accounts', 'admin/programs', 'admin/curricula', 'admin/courses', 'admin/course-offerings', 'admin/audit-log'] },
   { label: 'Design system & mobile', routes: ['design-system', 'mobile/student-home', 'mobile/checklist', 'mobile/advisees'] },
 ];

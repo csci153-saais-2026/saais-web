@@ -182,7 +182,7 @@ def student_header(active_tab):
         f'<div style="padding: 12px 2px; margin-right: 26px; font-size: 14px; font-weight: '
         f'{"600" if t == active_tab else "450"}; color: {INK if t == active_tab else MUTED}; '
         f'border-bottom: 2px solid {FOREST if t == active_tab else "transparent"}">{t}</div>'
-        for t in ["Overview", "Checklist", "Grades", "History", "Notes", "Documents"])
+        for t in ["Overview", "Advising", "Checklist", "Grades", "History", "Notes", "Documents"])
     return (f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; '
             f'margin-bottom: 18px; overflow: hidden">'
             f'<div style="display: flex; align-items: flex-start; gap: 20px; padding: 22px 24px 18px">'
@@ -350,6 +350,102 @@ NOTES = shell("adviser", "Advisees", ["Adviser portal", "Advisees", "Bautista, M
                       f'{select("School term", "All terms")}</div>')
               + '</div></div>', sub=SUB("Notes"), h=1420)
 write("AdviseeNotes", NOTES)
+
+
+# ------------------------------------------------------------------ advising workspace
+def rec_row(checked, codev, title, units, reason, tag):
+    cb = (f'<div style="width: 15px; height: 15px; border: 1px solid {LINE}; border-radius: 3px; '
+          f'background: {FOREST if checked else SURFACE}; display: flex; align-items: center; '
+          f'justify-content: center">{ico("check", 11, CREAM, 2.4) if checked else ""}</div>')
+    return [cb, f'{code(codev)} <span style="margin-left: 6px">{title}</span>',
+            f'<span style="color: {MUTED}">{units}</span>',
+            f'<span style="color: {MUTED}; font-size: 12.5px">{reason}</span>', tag]
+
+
+def term_filter(value):
+    return (f'<div style="display: inline-flex; align-items: center; gap: 8px; background: {SURFACE}; '
+            f'border: 1px solid {LINE}; border-radius: 4px; padding: 7px 12px; font-size: 13px; '
+            f'white-space: nowrap">{ico("cal", 14, MUTED_2)}<span>{value}</span>{ico("down", 14, MUTED_2)}</div>')
+
+
+def chat_msg(text, mine=False):
+    if mine:
+        return (f'<div style="display: flex; justify-content: flex-end">'
+                f'<div style="max-width: 82%; background: {FOREST}; color: {CREAM}; padding: 10px 13px; '
+                f'border-radius: 10px 10px 2px 10px; font-size: 13.5px; line-height: 1.55">{text}</div></div>')
+    return (f'<div style="display: flex; gap: 9px; align-items: flex-start">'
+            f'<div style="width: 26px; height: 26px; border-radius: 50%; background: {FOREST}; color: {CREAM}; '
+            f'display: flex; align-items: center; justify-content: center; flex-shrink: 0">{ico("sparks", 14)}</div>'
+            f'<div style="max-width: 82%; background: {CREAM_DP}; color: {INK}; padding: 10px 13px; '
+            f'border-radius: 10px 10px 10px 2px; font-size: 13.5px; line-height: 1.55">{text}</div></div>')
+
+
+REC_CARD = panel(
+    "Course Recommendations",
+    f'<div style="padding: 0">' +
+    table(["", "Course", "Units", "Why recommended", "Term"], [
+        rec_row(True, "GE ELEC 2", "Open elective slot", "3.0",
+                "No prerequisite — slot has no attempt bound to it", badge("Elective", MUTED, CREAM_DP, dot=False)),
+        rec_row(True, "MAJ ELEC 1", "Major elective slot", "3.0",
+                "No prerequisite — satisfies a major elective requirement", badge("Elective", MUTED, CREAM_DP, dot=False)),
+        rec_row(False, "CS 134", "Information Management", "3.0",
+                "Prerequisite CS 110 passed", badge("By request", GOLD_DP, "#FBF0D6", dot=False)),
+        rec_row(False, "GE 6", "Art Appreciation (retake)", "3.0",
+                "No prerequisite — retake required after the AY 2024–25 failure", badge("Retake", FAIL_FG, FAIL_BG, dot=False)),
+    ], widths=["34px", "auto", "62px", "auto", "104px"]) +
+    f'</div><div style="padding: 16px 20px 18px">' +
+    note("Showing courses offered this <b>1st Semester</b> with prerequisites satisfied. <b>CS 132</b> is hidden "
+         "— its prerequisite <b>CS 121</b> is still in progress this term. <b>CS 133</b> is offered 2nd Semester only.",
+         "gold", "filter") +
+    flex(f'<span style="font-size: 12.5px; color: {MUTED_2}">2 selected</span>'
+         + '<div style="flex-grow: 1"></div>'
+         + btn("Add selected to plan", "primary", "plus", "sm"),
+         extra="margin-top: 14px") +
+    '</div>',
+    actions=term_filter("1st Semester"),
+    sub="Eligible next courses — prerequisites already cleared")
+
+NOTES_CARD = panel(
+    "Advising Notes",
+    note_entry("Prof. Ramon Reyes", "RR", "15 June 2026, 14:22", "Advising note", FOREST, CREAM_DP,
+               "Student is working weekday evenings at [Employer]. Agreed to cap the load at 16 units for "
+               "AY 2025–2026 until STAT 101 is cleared.")
+    + note_entry("Prof. Ramon Reyes", "RR", "12 March 2026, 09:05", "Attempt remark", GOLD_DP, "#FBF0D6",
+                 "Retake of CS 102 approved under grade replacement.",
+                 scope="Attempt · CS 102 · AY 2024–25, 1st Sem")
+    + f'<div style="padding: 13px 20px"><a href="#" style="font-size: 12.5px; font-weight: 600">View all 5 notes →</a></div>',
+    actions=btn("Add note", "secondary", "note", "sm"),
+    sub="Most recent · staff-only")
+
+CHAT_CARD = panel(
+    "Advising Assistant",
+    f'<div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">'
+    + chat_msg("What electives is Maria eligible for this semester?", mine=True)
+    + chat_msg("Based on her cleared prerequisites and the open slots on her checklist, she is eligible for "
+               "<b>GE ELEC 2</b> and <b>MAJ ELEC 1</b> this term. <b>CS 132</b> is not eligible yet — "
+               "<b>CS 121</b> is still in progress.")
+    + chat_msg("Good catch. Add GE ELEC 2 to her plan.", mine=True)
+    + chat_msg("Added to the recommendation list on the left. She will still need you to record the enrollment "
+               "once she is set.")
+    + '</div>'
+    + f'<div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; '
+      f'border-top: 1px solid {LINE_SF}; background: {CREAM}">'
+    + f'<div style="flex-grow: 1; background: {SURFACE}; border: 1px solid {LINE}; border-radius: 4px; '
+      f'padding: 9px 12px; font-size: 13.5px; color: {MUTED_2}">Ask about this advisee…</div>'
+    + f'<button style="width: 34px; height: 34px; border-radius: 50%; background: {FOREST}; color: {CREAM}; '
+      f'border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; '
+      f'flex-shrink: 0">{ico("right", 16)}</button></div>',
+    sub="Drafts suggestions from this record — always verify before acting")
+
+ADVISING = shell("adviser", "Advisees",
+                 ["Adviser portal", "Advisees", "Bautista, Maria Isabel L.", "Advising"], USER, INI,
+                 student_header("Advising")
+                 + '<div style="display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); '
+                   'gap: 18px; margin-top: 18px">'
+                 + REC_CARD
+                 + f'<div style="display: flex; flex-direction: column; gap: 18px">{NOTES_CARD}{CHAT_CARD}</div>'
+                 + '</div>', h=1380)
+write("AdviseeAdvising", ADVISING)
 
 
 # ------------------------------------------------------------------ manage checklist
