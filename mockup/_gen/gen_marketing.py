@@ -15,9 +15,11 @@ from base import *
 
 W = 1440
 MAXW = 1200
-R_CARD = "16px"
-R_TILE = "12px"
-R_PILL = "999px"
+# Design System radii: cards/panels 6px, inputs 4px, buttons 8px. No pills.
+R_CARD = "6px"
+R_TILE = "6px"
+R_PILL = "8px"
+R_INPUT = "4px"
 
 
 # ------------------------------------------------------------------ helpers
@@ -46,6 +48,8 @@ def pill(label, kind="primary", size="md", icon=None, after=None):
     isz = {"lg": 18, "md": 16, "sm": 15}[size]
     if kind == "gold":
         st, cls = f"background: {GOLD}; color: #3A2A05; border: 1px solid {GOLD}", "btnp"
+    elif kind == "cream":
+        st, cls = f"background: {CREAM}; color: {FOREST_DP}; border: 1px solid {CREAM}", "btns"
     elif kind == "primary":
         st, cls = f"background: {FOREST}; color: {CREAM}; border: 1px solid {FOREST}", "btnp"
     elif kind == "onDark":
@@ -104,7 +108,7 @@ def icon_tile(name, size=64, bg=CREAM_DP, fg=FOREST, isz=28):
 def brandmark(color=INK, mark=36, fs=21):
     return (f'<div style="display: flex; align-items: center; gap: 10px">'
             f'<img src="logo-mark.png" alt="" style="width: {mark}px; height: {mark}px; '
-            f'border-radius: 9px">'
+            f'border-radius: 8px">'
             f'<span class="dsp" style="font-size: {fs}px; color: {color}; '
             f'letter-spacing: 0.005em">SAAIS</span></div>')
 
@@ -134,7 +138,7 @@ def site_nav(on_dark=False):
             f'<div style="display: flex; align-items: center; gap: 40px">{brandmark(brand)}'
             f'<nav style="display: flex; align-items: center; gap: 26px">{items(NAV_LEFT)}</nav></div>'
             f'<div style="display: flex; align-items: center; gap: 26px">{items(NAV_RIGHT)}{signin}'
-            f'{pill("Request a walkthrough", "gold" if on_dark else "primary", "sm")}</div></header>')
+            f'{pill("Request a walkthrough", "cream" if on_dark else "primary", "sm")}</div></header>')
 
 
 # ------------------------------------------------------------------ hero
@@ -216,7 +220,7 @@ def hero():
             f'advising file with one system of record: every checklist slot, every retake, every '
             f'prerequisite override, and who approved it.</p>'
             f'<div style="display: flex; gap: 14px; margin-top: 36px; justify-content: center">'
-            f'{pill("Request a walkthrough", "gold", "lg")}'
+            f'{pill("Request a walkthrough", "cream", "lg")}'
             f'{pill("Read the API contract", "onDark", "lg", after="out")}</div>'
             f'<div style="display: flex; flex-wrap: wrap; gap: 14px 34px; margin-top: 40px; '
             f'justify-content: center">{marks}</div></div>')
@@ -278,7 +282,7 @@ def audiences():
 def platform_statement():
     return sect(
         wrap(f'<div style="text-align: center">'
-             f'<img src="logo-mark.png" alt="" style="width: 72px; height: 72px; border-radius: 18px">'
+             f'<img src="logo-mark.png" alt="" style="width: 72px; height: 72px; border-radius: 14px">'
              f'{h("SAAIS keeps the whole advising office working from one file — so a student is never "
                   "told two different things about the same requirement, and no decision has to be "
                   "reconstructed from memory.", 30, INK, mw=52, center=True, mt=30, lh="1.28", ls="-0.02em")}'
@@ -292,8 +296,8 @@ def feature_tabs():
     for label, on in tabs:
         col = INK if on else MUTED_2
         bar = (f'border-bottom: 2px solid {GOLD}' if on else 'border-bottom: 2px solid transparent')
-        tb += (f'<div style="padding: 12px 26px 13px; font-size: 15px; '
-               f'font-weight: {"600" if on else "450"}; color: {col}; {bar}">{label}</div>')
+        tb += (f'<button data-landing-tab="{label}" aria-pressed="{str(on).lower()}" style="background: transparent; border: 0; font-family: inherit; padding: 12px 26px 13px; font-size: 15px; '
+               f'font-weight: {"600" if on else "450"}; color: {col}; {bar}">{label}</button>')
     bullets = [("Versioned curricula",
                 "Students stay bound to the curriculum version they entered under."),
                ("Positional vs. calendar terms",
@@ -319,7 +323,7 @@ def feature_tabs():
                        size=40, mw=30)
              + f'<div style="display: flex; align-items: center; justify-content: center; gap: 8px; '
                f'margin-top: 40px; border-bottom: 1px solid {LINE}">{tb}</div>'
-             + f'<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); '
+             + f'<div id="landing-feature-panel" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); '
                f'gap: 64px; align-items: center; margin-top: 52px">{left}{visual_gwa()}</div>'),
         SURFACE, pad="0 56px 112px")
 
@@ -371,7 +375,7 @@ def visual_override():
 
 
 def integration_band():
-    frame = (f'<div style="background: {FOREST_DP}; border-radius: 22px; padding: 56px; '
+    frame = (f'<div style="background: {FOREST_DP}; border-radius: 6px; padding: 56px; '
              f'margin-top: 48px; position: relative; overflow: hidden">'
              f'<div style="position: absolute; right: -160px; bottom: -200px; width: 560px; '
              f'height: 560px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, '
@@ -393,7 +397,7 @@ def integration_band():
 def testimonial():
     return sect(
         wrap(f'<div style="text-align: center">'
-             f'<div style="color: {GOLD}; font-family: Georgia, \'Times New Roman\', serif; font-size: 64px; '
+             f'<div style="color: {GOLD_DP}; font-family: Syne, sans-serif; font-size: 64px; '
              f'line-height: 0.5; height: 32px">&ldquo;</div>'
              f'{h("[Placeholder quote — replace with a real pilot adviser.] The override dialog "
                   "changed the conversation. We stopped arguing about whether a student was allowed "
@@ -481,8 +485,8 @@ def lifecycle_tabs():
             st = f"background: {FOREST}; color: {CREAM}; border: 1px solid {FOREST}"
         else:
             st = f"background: {SURFACE}; color: {MUTED}; border: 1px solid {LINE}"
-        tb += (f'<div style="padding: 10px 22px; border-radius: {R_PILL}; font-size: 14px; '
-               f'font-weight: 600; {st}">{n}</div>')
+        tb += (f'<button data-landing-step="{n}" aria-pressed="{str(on).lower()}" style="font-family: inherit; padding: 10px 22px; border-radius: {R_PILL}; font-size: 14px; '
+               f'font-weight: 600; {st}">{n}</button>')
     active = next(s for s in steps if s[1])
     idx = steps.index(active) + 1
     writes = "".join(
@@ -490,7 +494,7 @@ def lifecycle_tabs():
         f'align-items: baseline; padding: 13px 0; border-top: 1px solid {LINE_SF}">'
         f'{code(a)}<div style="font-size: 13.5px; color: {MUTED}; line-height: 1.55">{b}</div></div>'
         for a, b in active[3])
-    panel = (f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: {R_CARD}; '
+    panel = (f'<div id="landing-step-panel" style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: {R_CARD}; '
              f'padding: 40px; margin-top: 36px; display: grid; '
              f'grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 56px; '
              f'align-items: start">'
@@ -591,7 +595,7 @@ def cta_band():
                     f'one adviser. You will see the checklist it produces and the audit entries it '
                     f'writes.</p>'
                     f'<div style="display: flex; justify-content: center; margin-top: 34px">'
-                    f'{pill("Request a walkthrough", "gold", "lg")}</div>'
+                    f'{pill("Request a walkthrough", "cream", "lg")}</div>'
                     f'<div style="font-size: 13px; color: rgba(246,242,228,0.55); margin-top: 16px">'
                     f'[advising@your-institution.edu.ph]</div></div>'),
         FOREST_DP, pad="128px 56px", extra="position: relative; overflow: hidden")
@@ -627,9 +631,9 @@ def footer():
             f'changes only — no marketing.</p>'
             f'<div style="display: flex; gap: 8px; margin-top: 16px">'
             f'<div style="flex-grow: 1; background: rgba(246,242,228,0.06); '
-            f'border: 1px solid rgba(246,242,228,0.16); border-radius: {R_PILL}; padding: 9px 16px; '
+            f'border: 1px solid rgba(246,242,228,0.16); border-radius: {R_INPUT}; padding: 9px 16px; '
             f'font-size: 13.5px; color: rgba(246,242,228,0.45)">you@[institution].edu.ph</div>'
-            f'{pill("Sign up", "gold", "sm")}</div>'
+            f'{pill("View release notes", "cream", "sm")}</div>'
             f'<div style="font-size: 12px; color: rgba(246,242,228,0.45); line-height: 1.55; '
             f'margin-top: 16px">Looking for your institution\'s sign-in? Accounts are provisioned '
             f'by an administrator — ask your adviser for the link.</div></div>')
@@ -672,7 +676,7 @@ def auth_shell(right_inner, quote_kick="Signing in", h=980):
             f'border-radius: 50%; background: radial-gradient(circle at 40% 40%, rgba(224,168,46,0.16), '
             f'rgba(224,168,46,0) 65%)"></div>'
             f'<div style="position: relative; display: flex; align-items: center; gap: 11px">'
-            f'<img src="logo-mark.png" alt="" style="width: 40px; height: 40px; border-radius: 10px">'
+            f'<img src="logo-mark.png" alt="" style="width: 40px; height: 40px; border-radius: 8px">'
             f'<span class="dsp" style="font-size: 23px; color: {CREAM}">SAAIS</span></div>'
             f'<div style="flex-grow: 1"></div>'
             f'<div style="position: relative"><div class="kick" style="color: {GOLD}">{quote_kick}</div>'
@@ -695,7 +699,7 @@ def login_form():
             f'If your email is not registered, ask your department administrator to provision it.</p>'
             f'<div class="btns" style="display: flex; align-items: center; justify-content: center; gap: 11px; '
             f'margin-top: 28px; padding: 12px; background: {SURFACE}; border: 1px solid {LINE}; '
-            f'border-radius: 5px; font-size: 14.5px; font-weight: 600">'
+            f'border-radius: 8px; font-size: 14.5px; font-weight: 600">'
             f'{ico_fill("google", 18, "#5F6368")}Continue with Google</div>'
             f'<div style="display: flex; align-items: center; gap: 14px; margin: 22px 0; color: {MUTED_2}; '
             f'font-size: 12px">'
@@ -711,7 +715,7 @@ def login_form():
             f'<a href="#" style="font-size: 13.5px; font-weight: 600">Forgot password?</a></div>'
             f'<div style="margin-top: 4px">'
             f'<button class="btnp" style="width: 100%; padding: 12px; background: {FOREST}; color: {CREAM}; '
-            f'border: none; border-radius: 5px; font-family: inherit; font-size: 15px; font-weight: 600; '
+            f'border: none; border-radius: 8px; font-family: inherit; font-size: 15px; font-weight: 600; '
             f'cursor: pointer">Sign in</button></div></div>'
             f'<div style="margin-top: 24px">'
             f'{note("Sign-in was rejected: <b>j.delacruz@gmail.com</b> is not a registered institutional profile. Contact an administrator.", "red", "alert")}</div>'
@@ -746,7 +750,7 @@ def invite_form():
             f'{field("Institutional email", "r.reyes@[university].edu.ph", "Fixed by the invitation — contact an administrator to change it.", disabled=True)}'
             f'{field("New password", "••••••••••••••")}'
             f'{field("Confirm new password", "••••••••••••••")}</div>'
-            f'<div style="margin-top: 18px; background: {SURFACE}; border: 1px solid {LINE}; border-radius: 5px; '
+            f'<div style="margin-top: 18px; background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; '
             f'padding: 14px 16px">'
             f'<div style="font-size: 12.5px; font-weight: 600; color: {MUTED}">Password requirements</div>'
             f'<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; '
@@ -758,7 +762,7 @@ def invite_form():
             f'</div></div>'
             f'<div style="margin-top: 20px">'
             f'<button class="btnp" style="width: 100%; padding: 12px; background: {FOREST}; color: {CREAM}; '
-            f'border: none; border-radius: 5px; font-family: inherit; font-size: 15px; font-weight: 600; '
+            f'border: none; border-radius: 8px; font-family: inherit; font-size: 15px; font-weight: 600; '
             f'cursor: pointer">Set password and continue</button></div>'
             f'<p style="font-size: 12.5px; color: {MUTED_2}; margin-top: 18px; text-align: center">'
             f'Wrong person? <a href="#">Decline this invitation</a></p></div>')
@@ -837,7 +841,7 @@ def docs_page():
             f'<h3 style="font-size: 15px; margin-top: 30px">Responses</h3>'
             f'<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px">' +
             "".join(f'<div style="display: flex; align-items: center; gap: 14px; padding: 11px 16px; '
-                    f'background: {SURFACE}; border: 1px solid {LINE}; border-radius: 5px">'
+                    f'background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px">'
                     f'{badge(c, fg, bg, dot=False)}<span style="font-size: 13.5px; color: {MUTED}">{d}</span></div>'
                     for c, d, fg, bg in [("201", "Attempt recorded.", PASS_FG, PASS_BG),
                                          ("409", "Strict prerequisite not satisfied and no override supplied.", INC_FG, INC_BG),

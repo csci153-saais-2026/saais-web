@@ -168,7 +168,7 @@ MW = 390
 
 def m_header(title, back=False):
     left = (ico("left", 22, INK) if back else
-            '<img src="logo-mark.png" alt="" style="width: 30px; height: 30px; border-radius: 7px">')
+            '<img src="logo-mark.png" alt="" style="width: 30px; height: 30px; border-radius: 8px">')
     return (f'<header style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; '
             f'background: {SURFACE}; border-bottom: 1px solid {LINE}; position: sticky; top: 0">'
             f'<div style="width: 44px; height: 44px; display: flex; align-items: center">{left}</div>'
@@ -200,7 +200,7 @@ def m_shell(header, body, tabbar, h=844):
 STU_TABS = [("grid", "Home"), ("check", "Checklist"), ("chart", "Grades"), ("clock", "History"), ("user", "Profile")]
 
 M_DASH_BODY = (
-    f'<div style="background: {FOREST_DP}; border-radius: 10px; padding: 18px; color: {CREAM}">'
+    f'<div style="background: {FOREST_DP}; border-radius: 6px; padding: 18px; color: {CREAM}">'
     f'<div class="kick" style="color: {GOLD}">Cumulative GWA</div>'
     f'<div style="display: flex; align-items: flex-end; justify-content: space-between; margin-top: 8px">'
     f'<div class="dsp" style="font-size: 42px">1.68</div>'
@@ -208,14 +208,14 @@ M_DASH_BODY = (
     f'61 of 156 units<br>Good standing</div></div>'
     f'<div style="margin-top: 14px">{progress(39, "100%", 6, GOLD, "rgba(246,242,228,0.2)")}</div></div>'
 
-    f'<div style="background: {INC_BG}; border: 1px solid #EBDCAE; border-radius: 8px; padding: 14px; '
+    f'<div style="background: {INC_BG}; border: 1px solid #EBDCAE; border-radius: 6px; padding: 14px; '
     f'margin-top: 14px; display: flex; gap: 11px">'
     f'{ico("clock", 19, INC_FG)}'
     f'<div><div style="font-size: 13.5px; font-weight: 600; color: {INC_FG}">STAT 101 INC lapses in 47 days</div>'
     f'<div style="font-size: 12.5px; color: {INC_FG}; opacity: 0.85; margin-top: 3px; line-height: 1.45">'
     f'Deadline 26 October 2026</div></div></div>'
 
-    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 8px; margin-top: 14px; '
+    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; margin-top: 14px; '
     f'overflow: hidden">'
     f'<div style="padding: 13px 16px; border-bottom: 1px solid {LINE}; display: flex; align-items: center; '
     f'justify-content: space-between"><span style="font-size: 14px; font-weight: 600">This term</span>'
@@ -233,7 +233,7 @@ M_DASH_BODY = (
     f'<div style="padding: 12px 16px; text-align: center; font-size: 13px; font-weight: 600; color: {FOREST}; '
     f'min-height: 44px">View all 5 courses</div></div>'
 
-    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 8px; padding: 14px 16px; '
+    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; padding: 14px 16px; '
     f'margin-top: 14px; display: flex; align-items: center; gap: 12px; min-height: 68px">'
     f'{avatar("RR", 42, CREAM_DP, FOREST)}'
     f'<div style="flex-grow: 1"><div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; '
@@ -261,21 +261,21 @@ def m_slot(c, t, u, st, grade, prov=""):
 
 M_CHK_BODY = (
     f'<div style="display: flex; gap: 8px; overflow: hidden; margin-bottom: 14px">' +
-    "".join(f'<div style="padding: 9px 14px; border-radius: 20px; font-size: 12.5px; font-weight: '
+    "".join(f'<div style="padding: 9px 14px; border-radius: 4px; font-size: 12.5px; font-weight: '
             f'{"600" if on else "450"}; white-space: nowrap; min-height: 40px; display: flex; '
             f'align-items: center; background: {FOREST if on else SURFACE}; '
             f'color: {CREAM if on else MUTED}; border: 1px solid {FOREST if on else LINE}">{t}</div>'
             for t, on in [("All", False), ("Year 1", False), ("Year 2", True), ("Year 3", False)]) +
     '</div>'
 
-    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 8px; padding: 16px; '
+    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; padding: 16px; '
     f'margin-bottom: 14px">'
     f'<div style="display: flex; align-items: center; justify-content: space-between">'
     f'<span style="font-size: 13.5px; font-weight: 600">Year 2 progress</span>'
     f'<span style="font-size: 12.5px; color: {MUTED_2}">15 of 36 units</span></div>'
     f'<div style="margin-top: 10px">{progress(42)}</div></div>'
 
-    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 8px; overflow: hidden">'
+    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; overflow: hidden">'
     f'<div style="padding: 12px 16px; background: {CREAM}; border-bottom: 1px solid {LINE}; display: flex; '
     f'align-items: center; justify-content: space-between">'
     f'<span style="font-size: 13.5px; font-weight: 600">Year 2 · First Semester</span>'
@@ -310,13 +310,13 @@ def m_advisee(name, sn, ini, prog, gwa, chips):
 M_ADV_BODY = (
     f'<div style="margin-bottom: 14px">{searchbar("Search advisees", "100%")}</div>'
     f'<div style="display: flex; gap: 8px; margin-bottom: 14px">' +
-    "".join(f'<div style="padding: 9px 14px; border-radius: 20px; font-size: 12.5px; font-weight: '
+    "".join(f'<div style="padding: 9px 14px; border-radius: 4px; font-size: 12.5px; font-weight: '
             f'{"600" if on else "450"}; min-height: 40px; display: flex; align-items: center; '
             f'white-space: nowrap; background: {FOREST if on else SURFACE}; color: {CREAM if on else MUTED}; '
             f'border: 1px solid {FOREST if on else LINE}">{t}</div>'
             for t, on in [("Active 48", True), ("Flagged 3", False), ("Open INC 5", False)]) +
     '</div>'
-    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 8px; overflow: hidden">'
+    f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; overflow: hidden">'
     + m_advisee("Cruz, Angelo P.", "2022-01188", "AC", "BSCS 3rd", "3.42",
                 status("failed", "Delinquent"))
     + m_advisee("Bautista, Maria Isabel L.", "2023-04412", "MB", "BSCS 2nd", "1.68",
@@ -335,7 +335,7 @@ write("MobileAdvisees", m_shell(
     f'<header style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: {SURFACE}; '
     f'border-bottom: 1px solid {LINE}">'
     f'<div style="width: 44px; height: 44px; display: flex; align-items: center">'
-    f'<img src="logo-mark.png" alt="" style="width: 30px; height: 30px; border-radius: 7px"></div>'
+    f'<img src="logo-mark.png" alt="" style="width: 30px; height: 30px; border-radius: 8px"></div>'
     f'<div style="flex-grow: 1; font-size: 16px; font-weight: 600">Advisees</div>'
     f'<div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; '
     f'color: {MUTED}">{ico("filter", 21)}</div>'
