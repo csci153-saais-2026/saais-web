@@ -67,6 +67,8 @@ paths:
                   status:
                     type: string
                     example: ok
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
         "500":
@@ -236,9 +238,7 @@ paths:
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: "#/components/schemas/StudentProfileUpdate"
-                - $ref: "#/components/schemas/AdminProfileUpdate"
+              $ref: "#/components/schemas/AdminProfileUpdate"
       responses:
         "200":
           description: Profile successfully updated.
@@ -258,6 +258,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -368,6 +370,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -476,6 +480,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -588,6 +594,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -697,6 +705,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -859,6 +869,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -971,6 +983,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1064,6 +1078,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1175,6 +1191,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1284,6 +1302,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
     delete:
@@ -1307,6 +1327,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1319,7 +1341,7 @@ paths:
         - Advising & Exceptions
       summary: Query adviser assignments
       operationId: listAdviserAssignments
-      description: Retrieve student-to-adviser longitudinal assignments.
+      description: "Retrieve student-to-adviser longitudinal assignments. RLS-scoped: students view their own assignments; advisers view assigned advisees; admins have full visibility."
       x-required-roles:
         - student
         - adviser
@@ -1418,6 +1440,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1427,7 +1451,7 @@ paths:
         - Advising & Exceptions
       summary: Query student curriculum assignments
       operationId: listStudentCurriculumAssignments
-      description: Retrieve student curriculum catalog assignments.
+      description: "Retrieve student curriculum catalog assignments. RLS-scoped: students view their own curriculum version assignments; advisers view assigned advisees; admins view all."
       x-required-roles:
         - student
         - adviser
@@ -1526,6 +1550,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1535,7 +1561,7 @@ paths:
         - Advising & Exceptions
       summary: Query student course enrollment attempts
       operationId: listAttempts
-      description: Retrieve student enrollment attempts, grades, completion states, and prerequisite overrides.
+      description: "Retrieve student enrollment attempts, grades, completion states, and prerequisite overrides. RLS-scoped: students view only their own attempts; advisers view attempts of assigned advisees; admins view all."
       x-required-roles:
         - student
         - adviser
@@ -1636,6 +1662,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1645,7 +1673,7 @@ paths:
         - Advising & Exceptions
       summary: Query elective checklist mappings
       operationId: listElectiveMappings
-      description: Retrieve mappings associating passed course attempts to open elective checklist slots.
+      description: "Retrieve mappings associating passed course attempts to open elective checklist slots. RLS-scoped: students view their own credited slots; advisers view assigned advisees; admins view all."
       x-required-roles:
         - student
         - adviser
@@ -1731,6 +1759,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1740,7 +1770,7 @@ paths:
         - Advising & Exceptions
       summary: Query course equivalency decisions
       operationId: listEquivalencyDecisions
-      description: Retrieve one-to-one transfer or discontinued course substitution decisions.
+      description: "Retrieve one-to-one transfer or discontinued course substitution decisions. RLS-scoped: students view their own approved substitutions; advisers view assigned advisees; admins view all."
       x-required-roles:
         - student
         - adviser
@@ -1841,6 +1871,8 @@ paths:
           $ref: "#/components/responses/403Forbidden"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1868,10 +1900,13 @@ components:
     selectQueryParam:
       name: select
       in: query
-      description: PostgREST projection string (e.g. `*,faculty(*)`)
+      description: PostgREST projection clause (restricted syntax to prevent excessive query nesting)
       required: false
       schema:
         type: string
+        maxLength: 200
+        pattern: '^[a-zA-Z0-9_\*,\.\(\):]+$'
+        example: "id,full_name,department(id,name)"
 
     orderQueryParam:
       name: order
@@ -2091,10 +2126,13 @@ components:
     nameQueryParam:
       name: name
       in: query
-      description: Filter by name
+      description: Filter by name equality or pattern matching
       required: false
       schema:
         type: string
+        maxLength: 100
+        pattern: '^(eq|ilike|like)\.[a-zA-Z0-9 _%.-]+$'
+        example: "ilike.%Computer Science%"
 
     codeQueryParam:
       name: code
@@ -2481,15 +2519,6 @@ components:
             - string
             - "null"
           format: uuid
-
-    StudentProfileUpdate:
-      type: object
-      description: Student self-service profile update schema, preventing mass assignment of privileges or affiliations.
-      properties:
-        full_name:
-          type: string
-          minLength: 2
-          maxLength: 150
 
     AdminProfileUpdate:
       type: object
@@ -3335,6 +3364,17 @@ components:
             - string
             - "null"
           example: null
+        prerequisite_override_by:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: Profile ID of the adviser/admin who authorized the override.
+        prerequisite_override_at:
+          type:
+            - string
+            - "null"
+          format: date-time
         units_attempted:
           type: number
           example: 3.00
@@ -3448,7 +3488,6 @@ components:
       required:
         - attempt_id
         - curriculum_term_course_id
-        - mapped_by
         - units_credited
         - justification
       properties:
@@ -3461,15 +3500,15 @@ components:
         curriculum_term_course_id:
           type: string
           format: uuid
-        mapped_by:
-          type: string
-          format: uuid
         units_credited:
           type: number
           minimum: 0.25
+          maximum: 12.00
+          example: 3.00
         justification:
           type: string
           minLength: 5
+          maxLength: 500
 
     EquivalencyDecision:
       type: object
@@ -3513,7 +3552,6 @@ components:
         - attempt_id
         - destination_curriculum_term_course_id
         - decision_type
-        - decided_by
         - units_credited
         - justification
       properties:
@@ -3528,15 +3566,15 @@ components:
           format: uuid
         decision_type:
           $ref: "#/components/schemas/DecisionType"
-        decided_by:
-          type: string
-          format: uuid
         units_credited:
           type: number
           minimum: 0.25
+          maximum: 12.00
+          example: 3.00
         justification:
           type: string
           minLength: 5
+          maxLength: 500
 
     EquivalencyDecisionUpdate:
       type: object

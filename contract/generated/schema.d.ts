@@ -381,7 +381,7 @@ export interface paths {
         };
         /**
          * Query adviser assignments
-         * @description Retrieve student-to-adviser longitudinal assignments.
+         * @description Retrieve student-to-adviser longitudinal assignments. RLS-scoped: students view their own assignments; advisers view assigned advisees; admins have full visibility.
          */
         get: operations["listAdviserAssignments"];
         put?: never;
@@ -409,7 +409,7 @@ export interface paths {
         };
         /**
          * Query student curriculum assignments
-         * @description Retrieve student curriculum catalog assignments.
+         * @description Retrieve student curriculum catalog assignments. RLS-scoped: students view their own curriculum version assignments; advisers view assigned advisees; admins view all.
          */
         get: operations["listStudentCurriculumAssignments"];
         put?: never;
@@ -437,7 +437,7 @@ export interface paths {
         };
         /**
          * Query student course enrollment attempts
-         * @description Retrieve student enrollment attempts, grades, completion states, and prerequisite overrides.
+         * @description Retrieve student enrollment attempts, grades, completion states, and prerequisite overrides. RLS-scoped: students view only their own attempts; advisers view attempts of assigned advisees; admins view all.
          */
         get: operations["listAttempts"];
         put?: never;
@@ -465,7 +465,7 @@ export interface paths {
         };
         /**
          * Query elective checklist mappings
-         * @description Retrieve mappings associating passed course attempts to open elective checklist slots.
+         * @description Retrieve mappings associating passed course attempts to open elective checklist slots. RLS-scoped: students view their own credited slots; advisers view assigned advisees; admins view all.
          */
         get: operations["listElectiveMappings"];
         put?: never;
@@ -493,7 +493,7 @@ export interface paths {
         };
         /**
          * Query course equivalency decisions
-         * @description Retrieve one-to-one transfer or discontinued course substitution decisions.
+         * @description Retrieve one-to-one transfer or discontinued course substitution decisions. RLS-scoped: students view their own approved substitutions; advisers view assigned advisees; admins view all.
          */
         get: operations["listEquivalencyDecisions"];
         put?: never;
@@ -653,10 +653,6 @@ export interface components {
             status: components["schemas"]["ProfileStatus"];
             /** Format: uuid */
             department_id?: string | null;
-        };
-        /** @description Student self-service profile update schema, preventing mass assignment of privileges or affiliations. */
-        StudentProfileUpdate: {
-            full_name?: string;
         };
         /** @description Administrator profile management schema. */
         AdminProfileUpdate: {
@@ -1035,6 +1031,13 @@ export interface components {
             prerequisite_override: boolean;
             /** @example null */
             prerequisite_override_reason?: string | null;
+            /**
+             * Format: uuid
+             * @description Profile ID of the adviser/admin who authorized the override.
+             */
+            prerequisite_override_by?: string | null;
+            /** Format: date-time */
+            prerequisite_override_at?: string | null;
             /** @example 3 */
             units_attempted: number;
             /** Format: date-time */
@@ -1093,8 +1096,7 @@ export interface components {
             attempt_id: string;
             /** Format: uuid */
             curriculum_term_course_id: string;
-            /** Format: uuid */
-            mapped_by: string;
+            /** @example 3 */
             units_credited: number;
             justification: string;
         };
@@ -1123,8 +1125,7 @@ export interface components {
             /** Format: uuid */
             destination_curriculum_term_course_id: string;
             decision_type: components["schemas"]["DecisionType"];
-            /** Format: uuid */
-            decided_by: string;
+            /** @example 3 */
             units_credited: number;
             justification: string;
         };
@@ -1240,7 +1241,7 @@ export interface components {
     parameters: {
         /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
         preferHeader: string;
-        /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+        /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
         selectQueryParam: string;
         /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
         orderQueryParam: string;
@@ -1288,7 +1289,7 @@ export interface components {
         courseOfferingIdQueryParam: string;
         /** @description Filter by student number (e.g. `eq.2023-04412`) */
         studentNumberQueryParam: string;
-        /** @description Filter by name */
+        /** @description Filter by name equality or pattern matching */
         nameQueryParam: string;
         /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS101`) */
         codeQueryParam: string;
@@ -1328,6 +1329,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
@@ -1404,7 +1406,7 @@ export interface operations {
                 department_id?: components["parameters"]["departmentIdQueryParam"];
                 /** @description Filter by student number (e.g. `eq.2023-04412`) */
                 student_number?: components["parameters"]["studentNumberQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -1481,7 +1483,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["StudentProfileUpdate"] | components["schemas"]["AdminProfileUpdate"];
+                "application/json": components["schemas"]["AdminProfileUpdate"];
             };
         };
         responses: {
@@ -1505,6 +1507,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1513,9 +1516,9 @@ export interface operations {
             query?: {
                 /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by name */
+                /** @description Filter by name equality or pattern matching */
                 name?: components["parameters"]["nameQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -1616,6 +1619,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1626,9 +1630,9 @@ export interface operations {
                 id?: components["parameters"]["idQueryParam"];
                 /** @description Filter by faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 faculty_id?: components["parameters"]["facultyIdQueryParam"];
-                /** @description Filter by name */
+                /** @description Filter by name equality or pattern matching */
                 name?: components["parameters"]["nameQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -1729,6 +1733,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1743,7 +1748,7 @@ export interface operations {
                 code?: components["parameters"]["codeQueryParam"];
                 /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -1844,6 +1849,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1858,7 +1864,7 @@ export interface operations {
                 version_label?: components["parameters"]["versionLabelQueryParam"];
                 /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -1959,6 +1965,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1969,7 +1976,7 @@ export interface operations {
                 id?: components["parameters"]["idQueryParam"];
                 /** @description Filter by curriculum version UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 curriculum_version_id?: components["parameters"]["curriculumVersionIdQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2040,7 +2047,7 @@ export interface operations {
                 curriculum_term_id?: components["parameters"]["curriculumTermIdQueryParam"];
                 /** @description Filter by course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 course_id?: components["parameters"]["courseIdQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2125,6 +2132,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2139,7 +2147,7 @@ export interface operations {
                 code?: components["parameters"]["codeQueryParam"];
                 /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2240,6 +2248,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2252,7 +2261,7 @@ export interface operations {
                 course_id?: components["parameters"]["courseIdQueryParam"];
                 /** @description Filter by prerequisite course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 prerequisite_course_id?: components["parameters"]["prerequisiteCourseIdQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2337,6 +2346,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2349,7 +2359,7 @@ export interface operations {
                 school_year?: components["parameters"]["schoolYearQueryParam"];
                 /** @description Filter by lock state (e.g. `eq.true`) */
                 is_locked?: components["parameters"]["isLockedQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2450,6 +2460,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2464,7 +2475,7 @@ export interface operations {
                 course_id?: components["parameters"]["courseIdQueryParam"];
                 /** @description Filter by by_request flag (e.g. `eq.true`) */
                 is_by_request?: components["parameters"]["isByRequestQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2549,6 +2560,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2591,6 +2603,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2603,7 +2616,7 @@ export interface operations {
                 adviser_id?: components["parameters"]["adviserIdQueryParam"];
                 /** @description Filter by student UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 student_id?: components["parameters"]["studentIdQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2704,6 +2717,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2716,7 +2730,7 @@ export interface operations {
                 student_id?: components["parameters"]["studentIdQueryParam"];
                 /** @description Filter by curriculum version UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 curriculum_version_id?: components["parameters"]["curriculumVersionIdQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2817,6 +2831,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2831,7 +2846,7 @@ export interface operations {
                 course_offering_id?: components["parameters"]["courseOfferingIdQueryParam"];
                 /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -2932,6 +2947,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2944,7 +2960,7 @@ export interface operations {
                 attempt_id?: components["parameters"]["attemptIdQueryParam"];
                 /** @description Filter by curriculum checklist slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 curriculum_term_course_id?: components["parameters"]["curriculumTermCourseIdQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -3029,6 +3045,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -3041,7 +3058,7 @@ export interface operations {
                 attempt_id?: components["parameters"]["attemptIdQueryParam"];
                 /** @description Filter by destination slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 destination_curriculum_term_course_id?: components["parameters"]["destinationCurriculumTermCourseIdQueryParam"];
-                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                /** @description PostgREST projection clause (restricted syntax to prevent excessive query nesting) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
@@ -3142,6 +3159,7 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
