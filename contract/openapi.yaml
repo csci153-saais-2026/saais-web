@@ -5,13 +5,19 @@ info:
   description: >
     Official OpenAPI 3.1 contract and single source of truth for the SAAIS application.
     Covers PostgREST data endpoints and Supabase Edge Function operations for authentication,
-    user profiles, and the academic catalog.
+    user profiles, organizational structures, academic catalog, advising assignments,
+    enrollment attempts, prerequisite overrides, elective mappings, and equivalencies.
   license:
     name: Proprietary
     url: https://github.com/csci153-saais-2026/saais-web/blob/main/LICENSE.md
 servers:
+  - url: https://api.saais.internal
+    description: Production Supabase Gateway (TLS 1.3 Strict Enforcement)
   - url: http://127.0.0.1:54321
-    description: Local Supabase Development
+    description: Local Supabase Development Sandbox (Development and Testing Only)
+
+security:
+  - bearerAuth: []
 
 tags:
   - name: System
@@ -28,21 +34,15 @@ tags:
     description: Master course catalog and prerequisite linkages
   - name: Terms & Offerings
     description: Calendar school terms, term locks, and course offerings
-
-x-tagGroups:
-  - name: General
-    tags:
-      - System
-      - Auth
-      - Profile
-  - name: Academic Catalog
-    tags:
-      - Faculty & Department
-      - Program & Curriculum
-      - Course Catalog
-      - Terms & Offerings
+  - name: Advising & Exceptions
+    description: >
+      Longitudinal adviser assignments, curriculum assignments, student enrollment attempts,
+      prerequisite overrides, elective slot mappings, and course equivalency decisions
 
 paths:
+  # ==========================================
+  # SYSTEM ENDPOINTS
+  # ==========================================
   /rest/v1/health:
     get:
       tags:
@@ -50,32 +50,42 @@ paths:
       summary: Health check probe
       operationId: getHealthStatus
       description: Returns health status of the PostgREST / Supabase layer.
-      security: []
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       responses:
         "200":
-          description: Service is healthy.
+          description: Service is healthy and responding.
           content:
             application/json:
               schema:
                 type: object
+                required:
+                  - status
                 properties:
                   status:
                     type: string
-                    example: "ok"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
+                    example: ok
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
 
+  # ==========================================
+  # AUTHENTICATION & ONBOARDING (EDGE FUNCTIONS)
+  # ==========================================
   /functions/v1/auth/invite:
     post:
       tags:
         - Auth
       summary: Send account invitation
       operationId: inviteUser
-      description: >
-        Admin operation to provision a pre-registered profile and send an email invitation token
-        for password creation. Required role: admin.
+      description: "Admin operation to provision a pre-registered profile and send an email invitation token for password creation. Required role: admin."
+      x-required-roles:
+        - admin
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -84,7 +94,7 @@ paths:
               $ref: "#/components/schemas/InviteRequest"
       responses:
         "200":
-          description: Invitation successfully sent and profile provisioned.
+          description: Invitation email dispatched successfully.
           content:
             application/json:
               schema:
@@ -106,9 +116,8 @@ paths:
         - Auth
       summary: Verify invitation token and set initial password
       operationId: verifyInviteToken
-      description: >
-        Redeems an invitation token provided via email link to set the user's initial password and
-        activate the user profile. Publicly callable with valid token.
+      description: Redeems an invitation token provided via email link to set the user's initial password and activate the user profile. Publicly callable with valid token.
+      x-required-roles: []
       security: []
       requestBody:
         required: true
@@ -118,7 +127,7 @@ paths:
               $ref: "#/components/schemas/VerifyInviteRequest"
       responses:
         "200":
-          description: Token verified and account activated.
+          description: Password set and profile activated successfully.
           content:
             application/json:
               schema:
@@ -127,9 +136,14 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "404":
           $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
 
+  # ==========================================
+  # PROFILE ENDPOINTS (PostgREST)
+  # ==========================================
   /rest/v1/profile:
     get:
       tags:
@@ -139,6 +153,10 @@ paths:
       description: >
         List or filter user profiles via PostgREST query parameters. Students can only select their own
         profile via RLS. Advisers can select assigned advisees. Admins have system-wide visibility.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/emailQueryParam"
@@ -163,6 +181,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -170,9 +190,9 @@ paths:
         - Profile
       summary: Create user profile
       operationId: createProfile
-      description: >
-        Directly provision a new profile record. Used by admins for manual account setup and batch CSV imports.
-        Required role: admin.
+      description: "Directly provision a new profile record. Used by admins for manual account setup and batch CSV imports. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -203,9 +223,11 @@ paths:
         - Profile
       summary: Update user profile
       operationId: updateProfile
-      description: >
-        Update an existing profile record identified by query filter (e.g. `id=eq.{uuid}`).
-        Students can update limited contact info; Admins can update roles, statuses, and department affiliations.
+      description: "Update an existing profile record identified by query filter (e.g. `id=eq.{uuid}`). Students can update limited contact info; Admins can update roles, statuses, and department affiliations."
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -214,7 +236,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProfileUpdate"
+              oneOf:
+                - $ref: "#/components/schemas/StudentProfileUpdate"
+                - $ref: "#/components/schemas/AdminProfileUpdate"
       responses:
         "200":
           description: Profile successfully updated.
@@ -225,7 +249,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Profile"
         "204":
-          description: Profile successfully updated without returning representation.
+          description: Updated without returning representation.
         "400":
           $ref: "#/components/responses/400BadRequest"
         "401":
@@ -237,21 +261,30 @@ paths:
         "500":
           $ref: "#/components/responses/500InternalError"
 
+  # ==========================================
+  # FACULTY & DEPARTMENT ENDPOINTS (PostgREST)
+  # ==========================================
   /rest/v1/faculty:
     get:
       tags:
         - Faculty & Department
-      summary: List faculties / colleges
+      summary: Query faculties / colleges
       operationId: listFaculties
-      description: Returns institutional faculties (academic divisions / colleges e.g. College of Computer Studies).
+      description: Retrieve list of university faculties (colleges/divisions).
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/nameQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
-          description: Array of faculty records.
+          description: Array of faculty divisions.
           content:
             application/json:
               schema:
@@ -262,6 +295,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -270,6 +305,8 @@ paths:
       summary: Create faculty
       operationId: createFaculty
       description: "Create a new faculty / college division. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -301,6 +338,8 @@ paths:
       summary: Update faculty
       operationId: updateFaculty
       description: "Update an existing faculty / college. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -327,6 +366,8 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -334,18 +375,24 @@ paths:
     get:
       tags:
         - Faculty & Department
-      summary: List academic departments
+      summary: Query academic departments
       operationId: listDepartments
-      description: Returns academic departments under faculties.
+      description: Retrieve academic departments linked to faculties.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/facultyIdQueryParam"
         - $ref: "#/components/parameters/nameQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
-          description: Array of department records.
+          description: Array of academic departments.
           content:
             application/json:
               schema:
@@ -356,14 +403,18 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
       tags:
         - Faculty & Department
-      summary: Create department
+      summary: Create academic department
       operationId: createDepartment
       description: "Create a new academic department under a faculty. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -392,9 +443,11 @@ paths:
     patch:
       tags:
         - Faculty & Department
-      summary: Update department
+      summary: Update academic department
       operationId: updateDepartment
       description: "Update an academic department. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -414,23 +467,32 @@ paths:
                 items:
                   $ref: "#/components/schemas/Department"
         "204":
-          description: Updated without representation.
+          description: Updated without returning representation.
         "400":
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
+  # ==========================================
+  # PROGRAM & CURRICULUM ENDPOINTS (PostgREST)
+  # ==========================================
   /rest/v1/program:
     get:
       tags:
         - Program & Curriculum
-      summary: List degree programs
+      summary: Query degree programs
       operationId: listPrograms
-      description: Returns degree programs (e.g. BSCS, BSIT) with faculty affiliation and status.
+      description: Retrieve degree programs with nominal duration and lifecycle status.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/facultyIdQueryParam"
@@ -438,6 +500,8 @@ paths:
         - $ref: "#/components/parameters/statusQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
           description: Array of degree programs.
@@ -451,6 +515,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -459,6 +525,8 @@ paths:
       summary: Create degree program
       operationId: createProgram
       description: "Create a new academic degree program. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -469,7 +537,7 @@ paths:
               $ref: "#/components/schemas/ProgramInsert"
       responses:
         "201":
-          description: Program successfully created.
+          description: Degree program successfully created.
           content:
             application/json:
               schema:
@@ -490,6 +558,8 @@ paths:
       summary: Update degree program
       operationId: updateProgram
       description: "Update degree program attributes or archive status. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -501,7 +571,7 @@ paths:
               $ref: "#/components/schemas/ProgramUpdate"
       responses:
         "200":
-          description: Program successfully updated.
+          description: Degree program successfully updated.
           content:
             application/json:
               schema:
@@ -516,6 +586,8 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -523,15 +595,22 @@ paths:
     get:
       tags:
         - Program & Curriculum
-      summary: List curriculum versions
+      summary: Query curriculum versions
       operationId: listCurriculumVersions
-      description: Returns curriculum versions for programs, including delinquency threshold and total units.
+      description: Retrieve versioned curriculum structures with total units and delinquency thresholds.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/programIdQueryParam"
+        - $ref: "#/components/parameters/versionLabelQueryParam"
         - $ref: "#/components/parameters/statusQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
           description: Array of curriculum versions.
@@ -545,6 +624,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -553,6 +634,8 @@ paths:
       summary: Create curriculum version
       operationId: createCurriculumVersion
       description: "Create a new versioned curriculum for a degree program. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -584,6 +667,8 @@ paths:
       summary: Update curriculum version
       operationId: updateCurriculumVersion
       description: "Update curriculum version settings, dates, threshold, or lifecycle status. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -610,6 +695,8 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -617,14 +704,20 @@ paths:
     get:
       tags:
         - Program & Curriculum
-      summary: List curriculum positional terms
+      summary: Query curriculum terms
       operationId: listCurriculumTerms
-      description: Returns the positional terms (year levels and term sequences) within a curriculum version.
+      description: Retrieve curriculum positional terms (year level and term sequence).
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/curriculumVersionIdQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
           description: Array of curriculum positional terms.
@@ -638,6 +731,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -646,6 +741,8 @@ paths:
       summary: Create curriculum term
       operationId: createCurriculumTerm
       description: "Add a positional term (year level and term sequence) to a curriculum version. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -676,15 +773,21 @@ paths:
     get:
       tags:
         - Program & Curriculum
-      summary: List curriculum term course slots
+      summary: Query curriculum term course slots
       operationId: listCurriculumTermCourses
-      description: Returns curriculum checklist slots (required courses and open elective slots).
+      description: Retrieve curriculum term slots, distinguishing required courses and named elective placeholders.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/curriculumTermIdQueryParam"
         - $ref: "#/components/parameters/courseIdQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
           description: Array of curriculum checklist slots.
@@ -698,14 +801,18 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
       tags:
         - Program & Curriculum
-      summary: Add slot to curriculum term
+      summary: Add course or elective slot to curriculum term
       operationId: createCurriculumTermCourse
       description: "Add a required course or elective slot into a curriculum positional term. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -716,7 +823,7 @@ paths:
               $ref: "#/components/schemas/CurriculumTermCourseInsert"
       responses:
         "201":
-          description: Slot successfully created.
+          description: Curriculum course slot successfully added.
           content:
             application/json:
               schema:
@@ -727,35 +834,48 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
         "500":
           $ref: "#/components/responses/500InternalError"
     delete:
       tags:
         - Program & Curriculum
-      summary: Remove slot from curriculum term
+      summary: Remove course or elective slot from curriculum term
       operationId: deleteCurriculumTermCourse
       description: "Remove a checklist slot from a curriculum term. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
       responses:
         "204":
-          description: Slot successfully deleted.
+          description: Curriculum slot successfully removed.
         "400":
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
+  # ==========================================
+  # COURSE CATALOG & PREREQUISITE ENDPOINTS
+  # ==========================================
   /rest/v1/course:
     get:
       tags:
         - Course Catalog
-      summary: List master catalog courses
+      summary: Query master course catalog
       operationId: listCourses
-      description: Returns master catalog courses with units, hours, repeatable types, and status.
+      description: Retrieve catalog courses with credit units, lecture/lab hours, and repeatable rules.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/departmentIdQueryParam"
@@ -767,7 +887,7 @@ paths:
         - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
-          description: Array of course records.
+          description: Array of courses.
           content:
             application/json:
               schema:
@@ -778,6 +898,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -786,6 +908,8 @@ paths:
       summary: Create course
       operationId: createCourse
       description: "Add a new course to the master catalog. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -817,6 +941,8 @@ paths:
       summary: Update course
       operationId: updateCourse
       description: "Update course attributes, hours, units, repeatable type, or active/discontinued status. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -843,6 +969,8 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -850,15 +978,21 @@ paths:
     get:
       tags:
         - Course Catalog
-      summary: List course prerequisites
+      summary: Query course prerequisites
       operationId: listPrerequisites
-      description: Returns prerequisite linkages between catalog courses with linkage type (strict, co_requisite, recommended).
+      description: Retrieve prerequisite rules (strict, co-requisite, recommended).
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/courseIdQueryParam"
         - $ref: "#/components/parameters/prerequisiteCourseIdQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
           description: Array of prerequisite linkages.
@@ -872,14 +1006,18 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
       tags:
         - Course Catalog
-      summary: Link prerequisite
+      summary: Link prerequisite to course
       operationId: createPrerequisite
       description: "Link a prerequisite to a course. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -908,35 +1046,49 @@ paths:
     delete:
       tags:
         - Course Catalog
-      summary: Remove prerequisite link
+      summary: Delete prerequisite linkage
       operationId: deletePrerequisite
       description: "Remove a prerequisite relationship between two courses. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
       responses:
         "204":
-          description: Prerequisite relationship deleted.
+          description: Prerequisite successfully deleted.
         "400":
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
+  # ==========================================
+  # TERMS & OFFERINGS ENDPOINTS
+  # ==========================================
   /rest/v1/school_term:
     get:
       tags:
         - Terms & Offerings
-      summary: List calendar school terms
+      summary: Query calendar school terms
       operationId: listSchoolTerms
-      description: Returns academic calendar school terms with year ranges, term types, and lock statuses.
+      description: Retrieve academic school terms with lock states and override flags.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/schoolYearQueryParam"
         - $ref: "#/components/parameters/isLockedQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
           description: Array of school terms.
@@ -950,6 +1102,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -958,6 +1112,8 @@ paths:
       summary: Create school term
       operationId: createSchoolTerm
       description: "Create a calendar academic school term. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -989,6 +1145,8 @@ paths:
       summary: Update school term
       operationId: updateSchoolTerm
       description: "Update school term settings, lock state, or override flags. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -1015,6 +1173,8 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
@@ -1022,9 +1182,13 @@ paths:
     get:
       tags:
         - Terms & Offerings
-      summary: List term course offerings
+      summary: Query course offerings
       operationId: listCourseOfferings
-      description: Returns active course offerings available in a calendar school term, including `is_by_request` accommodations.
+      description: Retrieve courses offered in a specific school term, including by-request accommodations.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/schoolTermIdQueryParam"
@@ -1032,6 +1196,8 @@ paths:
         - $ref: "#/components/parameters/isByRequestQueryParam"
         - $ref: "#/components/parameters/selectQueryParam"
         - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
       responses:
         "200":
           description: Array of course offerings.
@@ -1045,6 +1211,8 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "401":
           $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
         "500":
           $ref: "#/components/responses/500InternalError"
     post:
@@ -1053,6 +1221,8 @@ paths:
       summary: Create course offering
       operationId: createCourseOffering
       description: "Make a course available in a school term. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/preferHeader"
       requestBody:
@@ -1084,6 +1254,8 @@ paths:
       summary: Update course offering
       operationId: updateCourseOffering
       description: "Update offering flags (e.g. toggle by_request). Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
         - $ref: "#/components/parameters/preferHeader"
@@ -1110,6 +1282,8 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
     delete:
@@ -1118,6 +1292,8 @@ paths:
       summary: Delete course offering
       operationId: deleteCourseOffering
       description: "Remove a course offering from a school term. Required role: admin."
+      x-required-roles:
+        - admin
       parameters:
         - $ref: "#/components/parameters/idQueryParamRequired"
       responses:
@@ -1129,9 +1305,548 @@ paths:
           $ref: "#/components/responses/401Unauthorized"
         "403":
           $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
         "500":
           $ref: "#/components/responses/500InternalError"
 
+  # ==========================================
+  # ADVISING & EXCEPTIONS ENDPOINTS
+  # ==========================================
+  /rest/v1/adviser_assignment:
+    get:
+      tags:
+        - Advising & Exceptions
+      summary: Query adviser assignments
+      operationId: listAdviserAssignments
+      description: Retrieve student-to-adviser longitudinal assignments.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/adviserIdQueryParam"
+        - $ref: "#/components/parameters/studentIdQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of adviser assignments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdviserAssignment"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Advising & Exceptions
+      summary: Create adviser assignment
+      operationId: createAdviserAssignment
+      description: "Assign an adviser to a student. Required role: admin."
+      x-required-roles:
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdviserAssignmentInsert"
+      responses:
+        "201":
+          description: Adviser assignment successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdviserAssignment"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Advising & Exceptions
+      summary: Close or update adviser assignment
+      operationId: updateAdviserAssignment
+      description: "Update adviser assignment (e.g. set end_date for reassignment). Required role: admin."
+      x-required-roles:
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdviserAssignmentUpdate"
+      responses:
+        "200":
+          description: Assignment successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdviserAssignment"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/student_curriculum_assignment:
+    get:
+      tags:
+        - Advising & Exceptions
+      summary: Query student curriculum assignments
+      operationId: listStudentCurriculumAssignments
+      description: Retrieve student curriculum catalog assignments.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/studentIdQueryParam"
+        - $ref: "#/components/parameters/curriculumVersionIdQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of student curriculum assignments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentCurriculumAssignment"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Advising & Exceptions
+      summary: Assign student curriculum version
+      operationId: createStudentCurriculumAssignment
+      description: "Assign a curriculum version to a student. Required role: admin."
+      x-required-roles:
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentCurriculumAssignmentInsert"
+      responses:
+        "201":
+          description: Curriculum version assigned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentCurriculumAssignment"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Advising & Exceptions
+      summary: Close or update student curriculum assignment
+      operationId: updateStudentCurriculumAssignment
+      description: "Update curriculum assignment (e.g. set end_date for shift). Required role: admin."
+      x-required-roles:
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentCurriculumAssignmentUpdate"
+      responses:
+        "200":
+          description: Curriculum assignment successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentCurriculumAssignment"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/attempt:
+    get:
+      tags:
+        - Advising & Exceptions
+      summary: Query student course enrollment attempts
+      operationId: listAttempts
+      description: Retrieve student enrollment attempts, grades, completion states, and prerequisite overrides.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/studentIdQueryParam"
+        - $ref: "#/components/parameters/courseOfferingIdQueryParam"
+        - $ref: "#/components/parameters/statusQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of student attempts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attempt"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Advising & Exceptions
+      summary: Record student enrollment attempt
+      operationId: createAttempt
+      description: "Record a student enrollment attempt in a course offering, with optional prerequisite override clearance. Required role: admin."
+      x-required-roles:
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttemptInsert"
+      responses:
+        "201":
+          description: Attempt successfully recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attempt"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Advising & Exceptions
+      summary: Update attempt, grades, or prerequisite override
+      operationId: updateAttempt
+      description: "Update student attempt grades, INC deadlines, or grant prerequisite override clearance. Required role: adviser or admin."
+      x-required-roles:
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttemptUpdate"
+      responses:
+        "200":
+          description: Attempt successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attempt"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/elective_mapping:
+    get:
+      tags:
+        - Advising & Exceptions
+      summary: Query elective checklist mappings
+      operationId: listElectiveMappings
+      description: Retrieve mappings associating passed course attempts to open elective checklist slots.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/attemptIdQueryParam"
+        - $ref: "#/components/parameters/curriculumTermCourseIdQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of elective mappings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElectiveMapping"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Advising & Exceptions
+      summary: Map attempt to elective slot
+      operationId: createElectiveMapping
+      description: "Map an enrolled attempt to an elective checklist placeholder slot with justification. Required role: adviser or admin."
+      x-required-roles:
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElectiveMappingInsert"
+      responses:
+        "201":
+          description: Elective mapping successfully established.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectiveMapping"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    delete:
+      tags:
+        - Advising & Exceptions
+      summary: Remove elective mapping
+      operationId: deleteElectiveMapping
+      description: "Remove an elective slot mapping. Required role: adviser or admin."
+      x-required-roles:
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+      responses:
+        "204":
+          description: Elective mapping successfully deleted.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/equivalency_decision:
+    get:
+      tags:
+        - Advising & Exceptions
+      summary: Query course equivalency decisions
+      operationId: listEquivalencyDecisions
+      description: Retrieve one-to-one transfer or discontinued course substitution decisions.
+      x-required-roles:
+        - student
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/attemptIdQueryParam"
+        - $ref: "#/components/parameters/destinationCurriculumTermCourseIdQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of equivalency decisions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EquivalencyDecision"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Advising & Exceptions
+      summary: Record course equivalency decision
+      operationId: createEquivalencyDecision
+      description: "Record a formal equivalency decision mapping an attempt to a target checklist course. Required role: adviser or admin."
+      x-required-roles:
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquivalencyDecisionInsert"
+      responses:
+        "201":
+          description: Equivalency decision recorded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquivalencyDecision"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Advising & Exceptions
+      summary: Update equivalency decision
+      operationId: updateEquivalencyDecision
+      description: "Update units credited or justification on an equivalency decision. Required role: adviser or admin."
+      x-required-roles:
+        - adviser
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquivalencyDecisionUpdate"
+      responses:
+        "200":
+          description: Equivalency decision successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EquivalencyDecision"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+# ==========================================
+# COMPONENTS (SCHEMAS, RESPONSES, PARAMETERS)
+# ==========================================
 components:
   securitySchemes:
     bearerAuth:
@@ -1169,21 +1884,24 @@ components:
     limitQueryParam:
       name: limit
       in: query
-      description: Number of rows to return
+      description: Number of rows to return for DoS pagination mitigation
       required: false
       schema:
         type: integer
         minimum: 1
+        maximum: 1000
+        default: 20
         example: 20
 
     offsetQueryParam:
       name: offset
       in: query
-      description: Number of rows to skip
+      description: Number of rows to skip for DoS pagination mitigation
       required: false
       schema:
         type: integer
         minimum: 0
+        default: 0
         example: 0
 
     idQueryParam:
@@ -1193,6 +1911,8 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+        example: "eq.3fa85f64-5717-4562-b3fc-2c963f66afa6"
 
     idQueryParamRequired:
       name: id
@@ -1201,6 +1921,8 @@ components:
       required: true
       schema:
         type: string
+        pattern: '^eq\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+        example: "eq.3fa85f64-5717-4562-b3fc-2c963f66afa6"
 
     emailQueryParam:
       name: email
@@ -1209,6 +1931,8 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^eq\.[^@]+@[^@]+\.[^@]+$'
+        example: "eq.m.bautista@university.edu.ph"
 
     roleQueryParam:
       name: role
@@ -1217,38 +1941,43 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^eq\.(student|adviser|admin)$'
 
     statusQueryParam:
       name: status
       in: query
-      description: Filter by status value (e.g. `eq.active`)
+      description: Filter by status equality (e.g. `eq.active`)
       required: false
       schema:
         type: string
+        pattern: '^eq\.[a-z_]+$'
 
     departmentIdQueryParam:
       name: department_id
       in: query
-      description: Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      description: Filter by department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     facultyIdQueryParam:
       name: faculty_id
       in: query
-      description: Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      description: Filter by faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     programIdQueryParam:
       name: program_id
       in: query
-      description: Filter by parent program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      description: Filter by program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     curriculumVersionIdQueryParam:
       name: curriculum_version_id
@@ -1257,6 +1986,7 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     curriculumTermIdQueryParam:
       name: curriculum_term_id
@@ -1265,6 +1995,16 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+
+    curriculumTermCourseIdQueryParam:
+      name: curriculum_term_course_id
+      in: query
+      description: Filter by curriculum checklist slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     courseIdQueryParam:
       name: course_id
@@ -1273,6 +2013,7 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     prerequisiteCourseIdQueryParam:
       name: prerequisite_course_id
@@ -1281,6 +2022,7 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     schoolTermIdQueryParam:
       name: school_term_id
@@ -1289,6 +2031,52 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+
+    adviserIdQueryParam:
+      name: adviser_id
+      in: query
+      description: Filter by adviser UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+
+    studentIdQueryParam:
+      name: student_id
+      in: query
+      description: Filter by student UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+
+    attemptIdQueryParam:
+      name: attempt_id
+      in: query
+      description: Filter by attempt UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+
+    destinationCurriculumTermCourseIdQueryParam:
+      name: destination_curriculum_term_course_id
+      in: query
+      description: Filter by destination slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+
+    courseOfferingIdQueryParam:
+      name: course_offering_id
+      in: query
+      description: Filter by course offering UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+        pattern: '^(eq|neq|in)\.([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
     studentNumberQueryParam:
       name: student_number
@@ -1297,19 +2085,38 @@ components:
       required: false
       schema:
         type: string
-
-    codeQueryParam:
-      name: code
-      in: query
-      description: Filter by code (e.g. `eq.BSCS` or `eq.CS 101`)
-      required: false
-      schema:
-        type: string
+        pattern: '^eq\.\d{4}-\d{5}$'
+        example: "eq.2023-04412"
 
     nameQueryParam:
       name: name
       in: query
-      description: Filter by name (e.g. `eq.College of Computer Studies`)
+      description: Filter by name
+      required: false
+      schema:
+        type: string
+
+    codeQueryParam:
+      name: code
+      in: query
+      description: Filter by code (e.g. `eq.BSCS` or `eq.CS101`)
+      required: false
+      schema:
+        type: string
+        pattern: '^eq\.[A-Za-z0-9 _-]+$'
+
+    versionLabelQueryParam:
+      name: version_label
+      in: query
+      description: Filter by version label (e.g. `eq.2023-2024`)
+      required: false
+      schema:
+        type: string
+
+    schoolYearQueryParam:
+      name: school_year
+      in: query
+      description: Filter by school year (e.g. `eq.2025 - 2026`)
       required: false
       schema:
         type: string
@@ -1317,10 +2124,11 @@ components:
     isLockedQueryParam:
       name: is_locked
       in: query
-      description: Filter by lock state (e.g. `eq.false`)
+      description: Filter by lock state (e.g. `eq.true`)
       required: false
       schema:
         type: string
+        pattern: '^eq\.(true|false)$'
 
     isByRequestQueryParam:
       name: is_by_request
@@ -1329,51 +2137,85 @@ components:
       required: false
       schema:
         type: string
+        pattern: '^eq\.(true|false)$'
 
   responses:
     400BadRequest:
-      description: Bad request or validation failure
+      description: Invalid request parameters or payload violates integrity constraints.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            code: "23514"
+            message: "check constraint violation: units must be positive quarter steps"
+            details: "Failing row contains (units=-3)."
+            hint: "Ensure credit units are positive quarter steps (e.g. 1.00, 3.00)."
 
     401Unauthorized:
-      description: Authentication required or invalid JWT token
+      description: Missing or invalid Supabase JWT Bearer authentication token.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            code: "PGRST301"
+            message: "JWT expired or signature verification failed"
+            details: null
+            hint: "Refresh session token and pass Authorization: Bearer <token>"
 
     403Forbidden:
-      description: Access forbidden by Row Level Security or role policy
+      description: Access forbidden by Row Level Security (RLS) policies or insufficient role privilege.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            code: "42501"
+            message: "insufficient_privilege"
+            details: "Operation not permitted under active role permissions."
+            hint: "Check role privileges or assigned student relationships."
 
     404NotFound:
-      description: Resource not found
+      description: Target resource identified by query filter does not exist.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            code: "PGRST116"
+            message: "JSON object requested, multiple (or no) rows returned"
+            details: "The result contains 0 rows"
+            hint: "Verify UUID identifier."
 
     409Conflict:
-      description: Conflict with existing record or constraint violation
+      description: Conflict with existing unique constraint, natural key, or immutable state.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            code: "23505"
+            message: "duplicate key value violates unique constraint"
+            details: "Key (code)=(BSCS) already exists."
+            hint: "Provide unique identifier."
 
     500InternalError:
-      description: Internal system error
+      description: Internal PostgreSQL or Edge Function execution error.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            code: "XX000"
+            message: "Internal server error"
+            details: "Unexpected exception occurred during processing."
+            hint: null
 
   schemas:
+    # ------------------------------------------
+    # ERROR SCHEMA
+    # ------------------------------------------
     Error:
       type: object
       required:
@@ -1401,6 +2243,9 @@ components:
           description: Guidance on how to resolve the error
           example: null
 
+    # ------------------------------------------
+    # ENUMS
+    # ------------------------------------------
     RoleType:
       type: string
       enum:
@@ -1456,6 +2301,24 @@ components:
         - recommended
       description: Prerequisite linkage enforcement type
 
+    AttemptStatus:
+      type: string
+      enum:
+        - passed
+        - failed
+        - currently_enrolled
+        - inc
+        - dr
+        - na
+      description: Student enrollment attempt outcome
+
+    DecisionType:
+      type: string
+      enum:
+        - transfer_equivalency
+        - discontinued_course_equivalency
+      description: Course equivalency substitution category
+
     SchoolTermType:
       type: string
       enum:
@@ -1464,6 +2327,9 @@ components:
         - Summer
       description: Semester or summer academic session
 
+    # ------------------------------------------
+    # AUTH & ONBOARDING SCHEMAS
+    # ------------------------------------------
     InviteRequest:
       type: object
       required:
@@ -1479,6 +2345,8 @@ components:
           $ref: "#/components/schemas/RoleType"
         full_name:
           type: string
+          minLength: 2
+          maxLength: 150
           example: "Maria Isabel Bautista"
         department_id:
           type:
@@ -1489,6 +2357,7 @@ components:
           type:
             - string
             - "null"
+          pattern: '^\d{4}-\d{5}$'
           example: "2023-04412"
 
     InviteResponse:
@@ -1536,6 +2405,116 @@ components:
           type: string
           example: "Account successfully activated."
 
+    # ------------------------------------------
+    # PROFILE SCHEMAS
+    # ------------------------------------------
+    Profile:
+      type: object
+      required:
+        - id
+        - role
+        - email
+        - full_name
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/RoleType"
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        student_number:
+          type:
+            - string
+            - "null"
+          pattern: '^\d{4}-\d{5}$'
+        status:
+          $ref: "#/components/schemas/ProfileStatus"
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProfileInsert:
+      type: object
+      required:
+        - id
+        - role
+        - email
+        - full_name
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/RoleType"
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 150
+        student_number:
+          type:
+            - string
+            - "null"
+          pattern: '^\d{4}-\d{5}$'
+        status:
+          $ref: "#/components/schemas/ProfileStatus"
+          default: invited
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+
+    StudentProfileUpdate:
+      type: object
+      description: Student self-service profile update schema, preventing mass assignment of privileges or affiliations.
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 150
+
+    AdminProfileUpdate:
+      type: object
+      description: Administrator profile management schema.
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 150
+        status:
+          $ref: "#/components/schemas/ProfileStatus"
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        student_number:
+          type:
+            - string
+            - "null"
+          pattern: '^\d{4}-\d{5}$'
+
+    # ------------------------------------------
+    # FACULTY & DEPARTMENT SCHEMAS
+    # ------------------------------------------
     Faculty:
       type: object
       required:
@@ -1547,7 +2526,7 @@ components:
           format: uuid
         name:
           type: string
-          example: "College of Computer Studies"
+          example: "Faculty of Engineering & Computer Studies"
 
     FacultyInsert:
       type: object
@@ -1559,13 +2538,14 @@ components:
           format: uuid
         name:
           type: string
-          example: "College of Computer Studies"
+          minLength: 2
 
     FacultyUpdate:
       type: object
       properties:
         name:
           type: string
+          minLength: 2
 
     Department:
       type: object
@@ -1598,7 +2578,7 @@ components:
           format: uuid
         name:
           type: string
-          example: "Department of Computer Science"
+          minLength: 2
 
     DepartmentUpdate:
       type: object
@@ -1608,96 +2588,11 @@ components:
           format: uuid
         name:
           type: string
+          minLength: 2
 
-    Profile:
-      type: object
-      required:
-        - id
-        - email
-        - full_name
-        - role
-        - status
-        - created_at
-        - updated_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        email:
-          type: string
-          format: email
-          example: "m.bautista@university.edu.ph"
-        full_name:
-          type: string
-          example: "Maria Isabel Bautista"
-        role:
-          $ref: "#/components/schemas/RoleType"
-        status:
-          $ref: "#/components/schemas/ProfileStatus"
-        student_number:
-          type:
-            - string
-            - "null"
-          example: "2023-04412"
-        department_id:
-          type:
-            - string
-            - "null"
-          format: uuid
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    ProfileInsert:
-      type: object
-      required:
-        - id
-        - email
-        - full_name
-        - role
-      properties:
-        id:
-          type: string
-          format: uuid
-        email:
-          type: string
-          format: email
-        full_name:
-          type: string
-        role:
-          $ref: "#/components/schemas/RoleType"
-        status:
-          $ref: "#/components/schemas/ProfileStatus"
-        student_number:
-          type:
-            - string
-            - "null"
-        department_id:
-          type:
-            - string
-            - "null"
-          format: uuid
-
-    ProfileUpdate:
-      type: object
-      properties:
-        full_name:
-          type: string
-        status:
-          $ref: "#/components/schemas/ProfileStatus"
-        student_number:
-          type:
-            - string
-            - "null"
-        department_id:
-          type:
-            - string
-            - "null"
-          format: uuid
-
+    # ------------------------------------------
+    # PROGRAM & CURRICULUM SCHEMAS
+    # ------------------------------------------
     Program:
       type: object
       required:
@@ -1719,10 +2614,10 @@ components:
           example: "BSCS"
         name:
           type: string
-          example: "BS Computer Science"
+          example: "Bachelor of Science in Computer Science"
         nominal_duration:
           type: number
-          example: 4.0
+          example: 4.00
         status:
           $ref: "#/components/schemas/ProgramStatus"
 
@@ -1742,15 +2637,16 @@ components:
           format: uuid
         code:
           type: string
-          example: "BSCS"
+          minLength: 2
         name:
           type: string
-          example: "BS Computer Science"
+          minLength: 3
         nominal_duration:
           type: number
-          example: 4.0
+          minimum: 1
         status:
           $ref: "#/components/schemas/ProgramStatus"
+          default: active
 
     ProgramUpdate:
       type: object
@@ -1760,10 +2656,13 @@ components:
           format: uuid
         code:
           type: string
+          minLength: 2
         name:
           type: string
+          minLength: 3
         nominal_duration:
           type: number
+          minimum: 1
         status:
           $ref: "#/components/schemas/ProgramStatus"
 
@@ -1790,19 +2689,18 @@ components:
         effective_start:
           type: string
           format: date
-          example: "2023-06-01"
+          example: "2023-08-01"
         effective_end:
           type:
             - string
             - "null"
           format: date
-          example: null
         delinquency_threshold:
           type: number
-          example: 12.0
+          example: 24.00
         total_units:
           type: number
-          example: 156.0
+          example: 162.00
         status:
           $ref: "#/components/schemas/CurriculumVersionStatus"
 
@@ -1823,7 +2721,6 @@ components:
           format: uuid
         version_label:
           type: string
-          example: "2023-2024"
         effective_start:
           type: string
           format: date
@@ -1834,12 +2731,11 @@ components:
           format: date
         delinquency_threshold:
           type: number
-          example: 12.0
         total_units:
           type: number
-          example: 156.0
         status:
           $ref: "#/components/schemas/CurriculumVersionStatus"
+          default: draft
 
     CurriculumVersionUpdate:
       type: object
@@ -1937,7 +2833,7 @@ components:
           example: null
         nominal_units:
           type: number
-          example: 3.0
+          example: 3.00
 
     CurriculumTermCourseInsert:
       type: object
@@ -1959,6 +2855,7 @@ components:
           format: uuid
         is_elective_slot:
           type: boolean
+          default: false
         slot_label:
           type:
             - string
@@ -1966,6 +2863,9 @@ components:
         nominal_units:
           type: number
 
+    # ------------------------------------------
+    # COURSE & PREREQUISITE SCHEMAS
+    # ------------------------------------------
     Course:
       type: object
       required:
@@ -1990,16 +2890,16 @@ components:
           example: "CS 101"
         title:
           type: string
-          example: "Introduction to Computing"
+          example: "Introduction to Computer Science"
         lecture_hours:
           type: number
-          example: 3.0
+          example: 3.00
         lab_hours:
           type: number
-          example: 0.0
+          example: 0.00
         units:
           type: number
-          example: 3.0
+          example: 3.00
         status:
           $ref: "#/components/schemas/CourseStatus"
         repeatable_type:
@@ -2023,23 +2923,25 @@ components:
           format: uuid
         code:
           type: string
-          example: "CS 101"
+          minLength: 2
         title:
           type: string
-          example: "Introduction to Computing"
+          minLength: 3
         lecture_hours:
           type: number
-          example: 3.0
+          minimum: 0
         lab_hours:
           type: number
-          example: 0.0
+          minimum: 0
         units:
           type: number
-          example: 3.0
+          minimum: 0.25
         status:
           $ref: "#/components/schemas/CourseStatus"
+          default: active
         repeatable_type:
           $ref: "#/components/schemas/RepeatableType"
+          default: none
 
     CourseUpdate:
       type: object
@@ -2049,14 +2951,19 @@ components:
           format: uuid
         code:
           type: string
+          minLength: 2
         title:
           type: string
+          minLength: 3
         lecture_hours:
           type: number
+          minimum: 0
         lab_hours:
           type: number
+          minimum: 0
         units:
           type: number
+          minimum: 0.25
         status:
           $ref: "#/components/schemas/CourseStatus"
         repeatable_type:
@@ -2101,6 +3008,9 @@ components:
         type:
           $ref: "#/components/schemas/PrerequisiteType"
 
+    # ------------------------------------------
+    # SCHOOL TERM & OFFERINGS SCHEMAS
+    # ------------------------------------------
     SchoolTerm:
       type: object
       required:
@@ -2167,34 +3077,15 @@ components:
         override_flag:
           type: boolean
           default: false
-        override_actor_id:
-          type:
-            - string
-            - "null"
-          format: uuid
-        override_at:
-          type:
-            - string
-            - "null"
-          format: date-time
 
     SchoolTermUpdate:
       type: object
+      description: Lock state toggled by authorized administrators. Managed audit fields (override_actor_id, override_at) are stripped to mitigate mass assignment.
       properties:
         is_locked:
           type: boolean
         override_flag:
           type: boolean
-        override_actor_id:
-          type:
-            - string
-            - "null"
-          format: uuid
-        override_at:
-          type:
-            - string
-            - "null"
-          format: date-time
 
     CourseOffering:
       type: object
@@ -2242,5 +3133,417 @@ components:
         is_by_request:
           type: boolean
 
-security:
-  - bearerAuth: []
+    # ------------------------------------------
+    # ADVISING & EXCEPTIONS SCHEMAS
+    # ------------------------------------------
+    AdviserAssignment:
+      type: object
+      required:
+        - id
+        - adviser_id
+        - student_id
+        - start_date
+        - reason
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        adviser_id:
+          type: string
+          format: uuid
+        student_id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+          example: "2025-08-01"
+        end_date:
+          type:
+            - string
+            - "null"
+          format: date
+          example: null
+        reason:
+          type: string
+          example: "Initial curriculum intake assignment"
+        created_at:
+          type: string
+          format: date-time
+
+    AdviserAssignmentInsert:
+      type: object
+      required:
+        - adviser_id
+        - student_id
+        - start_date
+        - reason
+      properties:
+        id:
+          type: string
+          format: uuid
+        adviser_id:
+          type: string
+          format: uuid
+        student_id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type:
+            - string
+            - "null"
+          format: date
+        reason:
+          type: string
+          minLength: 3
+
+    AdviserAssignmentUpdate:
+      type: object
+      properties:
+        end_date:
+          type:
+            - string
+            - "null"
+          format: date
+        reason:
+          type: string
+          minLength: 3
+
+    StudentCurriculumAssignment:
+      type: object
+      required:
+        - id
+        - student_id
+        - curriculum_version_id
+        - start_date
+        - reason
+      properties:
+        id:
+          type: string
+          format: uuid
+        student_id:
+          type: string
+          format: uuid
+        curriculum_version_id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type:
+            - string
+            - "null"
+          format: date
+        reason:
+          type: string
+          example: "Matriculation admission"
+
+    StudentCurriculumAssignmentInsert:
+      type: object
+      required:
+        - student_id
+        - curriculum_version_id
+        - start_date
+        - reason
+      properties:
+        id:
+          type: string
+          format: uuid
+        student_id:
+          type: string
+          format: uuid
+        curriculum_version_id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type:
+            - string
+            - "null"
+          format: date
+        reason:
+          type: string
+          minLength: 3
+
+    StudentCurriculumAssignmentUpdate:
+      type: object
+      properties:
+        end_date:
+          type:
+            - string
+            - "null"
+          format: date
+        reason:
+          type: string
+          minLength: 3
+
+    Attempt:
+      type: object
+      required:
+        - id
+        - student_id
+        - course_offering_id
+        - status
+        - prerequisite_override
+        - units_attempted
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        student_id:
+          type: string
+          format: uuid
+        course_offering_id:
+          type: string
+          format: uuid
+        curriculum_term_course_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        status:
+          $ref: "#/components/schemas/AttemptStatus"
+        midterm_grade:
+          type:
+            - number
+            - "null"
+          example: 1.75
+        final_grade:
+          type:
+            - number
+            - "null"
+          example: 2.00
+        inc_deadline:
+          type:
+            - string
+            - "null"
+          format: date
+        prerequisite_override:
+          type: boolean
+          example: false
+        prerequisite_override_reason:
+          type:
+            - string
+            - "null"
+          example: null
+        units_attempted:
+          type: number
+          example: 3.00
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AttemptInsert:
+      type: object
+      required:
+        - student_id
+        - course_offering_id
+        - units_attempted
+      properties:
+        id:
+          type: string
+          format: uuid
+        student_id:
+          type: string
+          format: uuid
+        course_offering_id:
+          type: string
+          format: uuid
+        curriculum_term_course_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        status:
+          $ref: "#/components/schemas/AttemptStatus"
+          default: currently_enrolled
+        prerequisite_override:
+          type: boolean
+          default: false
+        prerequisite_override_reason:
+          type:
+            - string
+            - "null"
+        units_attempted:
+          type: number
+          minimum: 0.25
+
+    AttemptUpdate:
+      type: object
+      description: Record grades, incomplete resolution, or grant authorized prerequisite clearance.
+      properties:
+        status:
+          $ref: "#/components/schemas/AttemptStatus"
+        midterm_grade:
+          type:
+            - number
+            - "null"
+        final_grade:
+          type:
+            - number
+            - "null"
+        inc_deadline:
+          type:
+            - string
+            - "null"
+          format: date
+        prerequisite_override:
+          type: boolean
+        prerequisite_override_reason:
+          type:
+            - string
+            - "null"
+
+    ElectiveMapping:
+      type: object
+      required:
+        - id
+        - attempt_id
+        - curriculum_term_course_id
+        - mapped_by
+        - units_credited
+        - justification
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        attempt_id:
+          type: string
+          format: uuid
+        curriculum_term_course_id:
+          type: string
+          format: uuid
+        mapped_by:
+          type: string
+          format: uuid
+        units_credited:
+          type: number
+          example: 3.00
+        justification:
+          type: string
+          example: "Fulfills Professional Elective 1 track requirement"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ElectiveMappingInsert:
+      type: object
+      required:
+        - attempt_id
+        - curriculum_term_course_id
+        - mapped_by
+        - units_credited
+        - justification
+      properties:
+        id:
+          type: string
+          format: uuid
+        attempt_id:
+          type: string
+          format: uuid
+        curriculum_term_course_id:
+          type: string
+          format: uuid
+        mapped_by:
+          type: string
+          format: uuid
+        units_credited:
+          type: number
+          minimum: 0.25
+        justification:
+          type: string
+          minLength: 5
+
+    EquivalencyDecision:
+      type: object
+      required:
+        - id
+        - attempt_id
+        - destination_curriculum_term_course_id
+        - decision_type
+        - decided_by
+        - decided_at
+        - units_credited
+        - justification
+      properties:
+        id:
+          type: string
+          format: uuid
+        attempt_id:
+          type: string
+          format: uuid
+        destination_curriculum_term_course_id:
+          type: string
+          format: uuid
+        decision_type:
+          $ref: "#/components/schemas/DecisionType"
+        decided_by:
+          type: string
+          format: uuid
+        decided_at:
+          type: string
+          format: date-time
+        units_credited:
+          type: number
+          example: 3.00
+        justification:
+          type: string
+          example: "Discontinued CS 101 replaced by CS 110 with equivalent learning outcomes"
+
+    EquivalencyDecisionInsert:
+      type: object
+      required:
+        - attempt_id
+        - destination_curriculum_term_course_id
+        - decision_type
+        - decided_by
+        - units_credited
+        - justification
+      properties:
+        id:
+          type: string
+          format: uuid
+        attempt_id:
+          type: string
+          format: uuid
+        destination_curriculum_term_course_id:
+          type: string
+          format: uuid
+        decision_type:
+          $ref: "#/components/schemas/DecisionType"
+        decided_by:
+          type: string
+          format: uuid
+        units_credited:
+          type: number
+          minimum: 0.25
+        justification:
+          type: string
+          minLength: 5
+
+    EquivalencyDecisionUpdate:
+      type: object
+      properties:
+        units_credited:
+          type: number
+          minimum: 0.25
+        justification:
+          type: string
+          minLength: 5

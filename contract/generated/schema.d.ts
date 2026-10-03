@@ -100,8 +100,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List faculties / colleges
-         * @description Returns institutional faculties (academic divisions / colleges e.g. College of Computer Studies).
+         * Query faculties / colleges
+         * @description Retrieve list of university faculties (colleges/divisions).
          */
         get: operations["listFaculties"];
         put?: never;
@@ -128,13 +128,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List academic departments
-         * @description Returns academic departments under faculties.
+         * Query academic departments
+         * @description Retrieve academic departments linked to faculties.
          */
         get: operations["listDepartments"];
         put?: never;
         /**
-         * Create department
+         * Create academic department
          * @description Create a new academic department under a faculty. Required role: admin.
          */
         post: operations["createDepartment"];
@@ -142,7 +142,7 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update department
+         * Update academic department
          * @description Update an academic department. Required role: admin.
          */
         patch: operations["updateDepartment"];
@@ -156,8 +156,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List degree programs
-         * @description Returns degree programs (e.g. BSCS, BSIT) with faculty affiliation and status.
+         * Query degree programs
+         * @description Retrieve degree programs with nominal duration and lifecycle status.
          */
         get: operations["listPrograms"];
         put?: never;
@@ -184,8 +184,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List curriculum versions
-         * @description Returns curriculum versions for programs, including delinquency threshold and total units.
+         * Query curriculum versions
+         * @description Retrieve versioned curriculum structures with total units and delinquency thresholds.
          */
         get: operations["listCurriculumVersions"];
         put?: never;
@@ -212,8 +212,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List curriculum positional terms
-         * @description Returns the positional terms (year levels and term sequences) within a curriculum version.
+         * Query curriculum terms
+         * @description Retrieve curriculum positional terms (year level and term sequence).
          */
         get: operations["listCurriculumTerms"];
         put?: never;
@@ -236,18 +236,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List curriculum term course slots
-         * @description Returns curriculum checklist slots (required courses and open elective slots).
+         * Query curriculum term course slots
+         * @description Retrieve curriculum term slots, distinguishing required courses and named elective placeholders.
          */
         get: operations["listCurriculumTermCourses"];
         put?: never;
         /**
-         * Add slot to curriculum term
+         * Add course or elective slot to curriculum term
          * @description Add a required course or elective slot into a curriculum positional term. Required role: admin.
          */
         post: operations["createCurriculumTermCourse"];
         /**
-         * Remove slot from curriculum term
+         * Remove course or elective slot from curriculum term
          * @description Remove a checklist slot from a curriculum term. Required role: admin.
          */
         delete: operations["deleteCurriculumTermCourse"];
@@ -264,8 +264,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List master catalog courses
-         * @description Returns master catalog courses with units, hours, repeatable types, and status.
+         * Query master course catalog
+         * @description Retrieve catalog courses with credit units, lecture/lab hours, and repeatable rules.
          */
         get: operations["listCourses"];
         put?: never;
@@ -292,18 +292,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List course prerequisites
-         * @description Returns prerequisite linkages between catalog courses with linkage type (strict, co_requisite, recommended).
+         * Query course prerequisites
+         * @description Retrieve prerequisite rules (strict, co-requisite, recommended).
          */
         get: operations["listPrerequisites"];
         put?: never;
         /**
-         * Link prerequisite
+         * Link prerequisite to course
          * @description Link a prerequisite to a course. Required role: admin.
          */
         post: operations["createPrerequisite"];
         /**
-         * Remove prerequisite link
+         * Delete prerequisite linkage
          * @description Remove a prerequisite relationship between two courses. Required role: admin.
          */
         delete: operations["deletePrerequisite"];
@@ -320,8 +320,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List calendar school terms
-         * @description Returns academic calendar school terms with year ranges, term types, and lock statuses.
+         * Query calendar school terms
+         * @description Retrieve academic school terms with lock states and override flags.
          */
         get: operations["listSchoolTerms"];
         put?: never;
@@ -348,8 +348,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List term course offerings
-         * @description Returns active course offerings available in a calendar school term, including `is_by_request` accommodations.
+         * Query course offerings
+         * @description Retrieve courses offered in a specific school term, including by-request accommodations.
          */
         get: operations["listCourseOfferings"];
         put?: never;
@@ -370,6 +370,146 @@ export interface paths {
          * @description Update offering flags (e.g. toggle by_request). Required role: admin.
          */
         patch: operations["updateCourseOffering"];
+        trace?: never;
+    };
+    "/rest/v1/adviser_assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query adviser assignments
+         * @description Retrieve student-to-adviser longitudinal assignments.
+         */
+        get: operations["listAdviserAssignments"];
+        put?: never;
+        /**
+         * Create adviser assignment
+         * @description Assign an adviser to a student. Required role: admin.
+         */
+        post: operations["createAdviserAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Close or update adviser assignment
+         * @description Update adviser assignment (e.g. set end_date for reassignment). Required role: admin.
+         */
+        patch: operations["updateAdviserAssignment"];
+        trace?: never;
+    };
+    "/rest/v1/student_curriculum_assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query student curriculum assignments
+         * @description Retrieve student curriculum catalog assignments.
+         */
+        get: operations["listStudentCurriculumAssignments"];
+        put?: never;
+        /**
+         * Assign student curriculum version
+         * @description Assign a curriculum version to a student. Required role: admin.
+         */
+        post: operations["createStudentCurriculumAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Close or update student curriculum assignment
+         * @description Update curriculum assignment (e.g. set end_date for shift). Required role: admin.
+         */
+        patch: operations["updateStudentCurriculumAssignment"];
+        trace?: never;
+    };
+    "/rest/v1/attempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query student course enrollment attempts
+         * @description Retrieve student enrollment attempts, grades, completion states, and prerequisite overrides.
+         */
+        get: operations["listAttempts"];
+        put?: never;
+        /**
+         * Record student enrollment attempt
+         * @description Record a student enrollment attempt in a course offering, with optional prerequisite override clearance. Required role: admin.
+         */
+        post: operations["createAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update attempt, grades, or prerequisite override
+         * @description Update student attempt grades, INC deadlines, or grant prerequisite override clearance. Required role: adviser or admin.
+         */
+        patch: operations["updateAttempt"];
+        trace?: never;
+    };
+    "/rest/v1/elective_mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query elective checklist mappings
+         * @description Retrieve mappings associating passed course attempts to open elective checklist slots.
+         */
+        get: operations["listElectiveMappings"];
+        put?: never;
+        /**
+         * Map attempt to elective slot
+         * @description Map an enrolled attempt to an elective checklist placeholder slot with justification. Required role: adviser or admin.
+         */
+        post: operations["createElectiveMapping"];
+        /**
+         * Remove elective mapping
+         * @description Remove an elective slot mapping. Required role: adviser or admin.
+         */
+        delete: operations["deleteElectiveMapping"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/equivalency_decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query course equivalency decisions
+         * @description Retrieve one-to-one transfer or discontinued course substitution decisions.
+         */
+        get: operations["listEquivalencyDecisions"];
+        put?: never;
+        /**
+         * Record course equivalency decision
+         * @description Record a formal equivalency decision mapping an attempt to a target checklist course. Required role: adviser or admin.
+         */
+        post: operations["createEquivalencyDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update equivalency decision
+         * @description Update units credited or justification on an equivalency decision. Required role: adviser or admin.
+         */
+        patch: operations["updateEquivalencyDecision"];
         trace?: never;
     };
 }
@@ -434,6 +574,16 @@ export interface components {
          */
         PrerequisiteType: "strict" | "co_requisite" | "recommended";
         /**
+         * @description Student enrollment attempt outcome
+         * @enum {string}
+         */
+        AttemptStatus: "passed" | "failed" | "currently_enrolled" | "inc" | "dr" | "na";
+        /**
+         * @description Course equivalency substitution category
+         * @enum {string}
+         */
+        DecisionType: "transfer_equivalency" | "discontinued_course_equivalency";
+        /**
          * @description Semester or summer academic session
          * @enum {string}
          */
@@ -475,16 +625,56 @@ export interface components {
             /** @example Account successfully activated. */
             message: string;
         };
+        Profile: {
+            /** Format: uuid */
+            id: string;
+            role: components["schemas"]["RoleType"];
+            /** Format: email */
+            email: string;
+            full_name: string;
+            student_number?: string | null;
+            status: components["schemas"]["ProfileStatus"];
+            /** Format: uuid */
+            department_id?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ProfileInsert: {
+            /** Format: uuid */
+            id: string;
+            role: components["schemas"]["RoleType"];
+            /** Format: email */
+            email: string;
+            full_name: string;
+            student_number?: string | null;
+            /** @default invited */
+            status: components["schemas"]["ProfileStatus"];
+            /** Format: uuid */
+            department_id?: string | null;
+        };
+        /** @description Student self-service profile update schema, preventing mass assignment of privileges or affiliations. */
+        StudentProfileUpdate: {
+            full_name?: string;
+        };
+        /** @description Administrator profile management schema. */
+        AdminProfileUpdate: {
+            full_name?: string;
+            status?: components["schemas"]["ProfileStatus"];
+            /** Format: uuid */
+            department_id?: string | null;
+            student_number?: string | null;
+        };
         Faculty: {
             /** Format: uuid */
             id: string;
-            /** @example College of Computer Studies */
+            /** @example Faculty of Engineering & Computer Studies */
             name: string;
         };
         FacultyInsert: {
             /** Format: uuid */
             id?: string;
-            /** @example College of Computer Studies */
             name: string;
         };
         FacultyUpdate: {
@@ -503,53 +693,12 @@ export interface components {
             id?: string;
             /** Format: uuid */
             faculty_id: string;
-            /** @example Department of Computer Science */
             name: string;
         };
         DepartmentUpdate: {
             /** Format: uuid */
             faculty_id?: string;
             name?: string;
-        };
-        Profile: {
-            /** Format: uuid */
-            id: string;
-            /**
-             * Format: email
-             * @example m.bautista@university.edu.ph
-             */
-            email: string;
-            /** @example Maria Isabel Bautista */
-            full_name: string;
-            role: components["schemas"]["RoleType"];
-            status: components["schemas"]["ProfileStatus"];
-            /** @example 2023-04412 */
-            student_number?: string | null;
-            /** Format: uuid */
-            department_id?: string | null;
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-        };
-        ProfileInsert: {
-            /** Format: uuid */
-            id: string;
-            /** Format: email */
-            email: string;
-            full_name: string;
-            role: components["schemas"]["RoleType"];
-            status?: components["schemas"]["ProfileStatus"];
-            student_number?: string | null;
-            /** Format: uuid */
-            department_id?: string | null;
-        };
-        ProfileUpdate: {
-            full_name?: string;
-            status?: components["schemas"]["ProfileStatus"];
-            student_number?: string | null;
-            /** Format: uuid */
-            department_id?: string | null;
         };
         Program: {
             /** Format: uuid */
@@ -558,7 +707,7 @@ export interface components {
             faculty_id: string;
             /** @example BSCS */
             code: string;
-            /** @example BS Computer Science */
+            /** @example Bachelor of Science in Computer Science */
             name: string;
             /** @example 4 */
             nominal_duration: number;
@@ -569,13 +718,11 @@ export interface components {
             id?: string;
             /** Format: uuid */
             faculty_id: string;
-            /** @example BSCS */
             code: string;
-            /** @example BS Computer Science */
             name: string;
-            /** @example 4 */
             nominal_duration: number;
-            status?: components["schemas"]["ProgramStatus"];
+            /** @default active */
+            status: components["schemas"]["ProgramStatus"];
         };
         ProgramUpdate: {
             /** Format: uuid */
@@ -594,17 +741,14 @@ export interface components {
             version_label: string;
             /**
              * Format: date
-             * @example 2023-06-01
+             * @example 2023-08-01
              */
             effective_start: string;
-            /**
-             * Format: date
-             * @example null
-             */
+            /** Format: date */
             effective_end?: string | null;
-            /** @example 12 */
+            /** @example 24 */
             delinquency_threshold: number;
-            /** @example 156 */
+            /** @example 162 */
             total_units: number;
             status: components["schemas"]["CurriculumVersionStatus"];
         };
@@ -613,17 +757,15 @@ export interface components {
             id?: string;
             /** Format: uuid */
             program_id: string;
-            /** @example 2023-2024 */
             version_label: string;
             /** Format: date */
             effective_start: string;
             /** Format: date */
             effective_end?: string | null;
-            /** @example 12 */
             delinquency_threshold: number;
-            /** @example 156 */
             total_units: number;
-            status?: components["schemas"]["CurriculumVersionStatus"];
+            /** @default draft */
+            status: components["schemas"]["CurriculumVersionStatus"];
         };
         CurriculumVersionUpdate: {
             version_label?: string;
@@ -674,6 +816,7 @@ export interface components {
             curriculum_term_id: string;
             /** Format: uuid */
             course_id?: string | null;
+            /** @default false */
             is_elective_slot: boolean;
             slot_label?: string | null;
             nominal_units: number;
@@ -685,7 +828,7 @@ export interface components {
             department_id: string;
             /** @example CS 101 */
             code: string;
-            /** @example Introduction to Computing */
+            /** @example Introduction to Computer Science */
             title: string;
             /** @example 3 */
             lecture_hours: number;
@@ -701,18 +844,15 @@ export interface components {
             id?: string;
             /** Format: uuid */
             department_id: string;
-            /** @example CS 101 */
             code: string;
-            /** @example Introduction to Computing */
             title: string;
-            /** @example 3 */
             lecture_hours: number;
-            /** @example 0 */
             lab_hours: number;
-            /** @example 3 */
             units: number;
-            status?: components["schemas"]["CourseStatus"];
-            repeatable_type?: components["schemas"]["RepeatableType"];
+            /** @default active */
+            status: components["schemas"]["CourseStatus"];
+            /** @default none */
+            repeatable_type: components["schemas"]["RepeatableType"];
         };
         CourseUpdate: {
             /** Format: uuid */
@@ -774,18 +914,11 @@ export interface components {
             is_locked: boolean;
             /** @default false */
             override_flag: boolean;
-            /** Format: uuid */
-            override_actor_id?: string | null;
-            /** Format: date-time */
-            override_at?: string | null;
         };
+        /** @description Lock state toggled by authorized administrators. Managed audit fields (override_actor_id, override_at) are stripped to mitigate mass assignment. */
         SchoolTermUpdate: {
             is_locked?: boolean;
             override_flag?: boolean;
-            /** Format: uuid */
-            override_actor_id?: string | null;
-            /** Format: date-time */
-            override_at?: string | null;
         };
         CourseOffering: {
             /** Format: uuid */
@@ -810,59 +943,296 @@ export interface components {
         CourseOfferingUpdate: {
             is_by_request?: boolean;
         };
+        AdviserAssignment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            adviser_id: string;
+            /** Format: uuid */
+            student_id: string;
+            /**
+             * Format: date
+             * @example 2025-08-01
+             */
+            start_date: string;
+            /**
+             * Format: date
+             * @example null
+             */
+            end_date?: string | null;
+            /** @example Initial curriculum intake assignment */
+            reason: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdviserAssignmentInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            adviser_id: string;
+            /** Format: uuid */
+            student_id: string;
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date?: string | null;
+            reason: string;
+        };
+        AdviserAssignmentUpdate: {
+            /** Format: date */
+            end_date?: string | null;
+            reason?: string;
+        };
+        StudentCurriculumAssignment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            student_id: string;
+            /** Format: uuid */
+            curriculum_version_id: string;
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date?: string | null;
+            /** @example Matriculation admission */
+            reason: string;
+        };
+        StudentCurriculumAssignmentInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            student_id: string;
+            /** Format: uuid */
+            curriculum_version_id: string;
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date?: string | null;
+            reason: string;
+        };
+        StudentCurriculumAssignmentUpdate: {
+            /** Format: date */
+            end_date?: string | null;
+            reason?: string;
+        };
+        Attempt: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            student_id: string;
+            /** Format: uuid */
+            course_offering_id: string;
+            /** Format: uuid */
+            curriculum_term_course_id?: string | null;
+            status: components["schemas"]["AttemptStatus"];
+            /** @example 1.75 */
+            midterm_grade?: number | null;
+            /** @example 2 */
+            final_grade?: number | null;
+            /** Format: date */
+            inc_deadline?: string | null;
+            /** @example false */
+            prerequisite_override: boolean;
+            /** @example null */
+            prerequisite_override_reason?: string | null;
+            /** @example 3 */
+            units_attempted: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AttemptInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            student_id: string;
+            /** Format: uuid */
+            course_offering_id: string;
+            /** Format: uuid */
+            curriculum_term_course_id?: string | null;
+            /** @default currently_enrolled */
+            status: components["schemas"]["AttemptStatus"];
+            /** @default false */
+            prerequisite_override: boolean;
+            prerequisite_override_reason?: string | null;
+            units_attempted: number;
+        };
+        /** @description Record grades, incomplete resolution, or grant authorized prerequisite clearance. */
+        AttemptUpdate: {
+            status?: components["schemas"]["AttemptStatus"];
+            midterm_grade?: number | null;
+            final_grade?: number | null;
+            /** Format: date */
+            inc_deadline?: string | null;
+            prerequisite_override?: boolean;
+            prerequisite_override_reason?: string | null;
+        };
+        ElectiveMapping: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            curriculum_term_course_id: string;
+            /** Format: uuid */
+            mapped_by: string;
+            /** @example 3 */
+            units_credited: number;
+            /** @example Fulfills Professional Elective 1 track requirement */
+            justification: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ElectiveMappingInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            curriculum_term_course_id: string;
+            /** Format: uuid */
+            mapped_by: string;
+            units_credited: number;
+            justification: string;
+        };
+        EquivalencyDecision: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            destination_curriculum_term_course_id: string;
+            decision_type: components["schemas"]["DecisionType"];
+            /** Format: uuid */
+            decided_by: string;
+            /** Format: date-time */
+            decided_at: string;
+            /** @example 3 */
+            units_credited: number;
+            /** @example Discontinued CS 101 replaced by CS 110 with equivalent learning outcomes */
+            justification: string;
+        };
+        EquivalencyDecisionInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            destination_curriculum_term_course_id: string;
+            decision_type: components["schemas"]["DecisionType"];
+            /** Format: uuid */
+            decided_by: string;
+            units_credited: number;
+            justification: string;
+        };
+        EquivalencyDecisionUpdate: {
+            units_credited?: number;
+            justification?: string;
+        };
     };
     responses: {
-        /** @description Bad request or validation failure */
+        /** @description Invalid request parameters or payload violates integrity constraints. */
         "400BadRequest": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
+                /**
+                 * @example {
+                 *       "code": "23514",
+                 *       "message": "check constraint violation: units must be positive quarter steps",
+                 *       "details": "Failing row contains (units=-3).",
+                 *       "hint": "Ensure credit units are positive quarter steps (e.g. 1.00, 3.00)."
+                 *     }
+                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Authentication required or invalid JWT token */
+        /** @description Missing or invalid Supabase JWT Bearer authentication token. */
         "401Unauthorized": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
+                /**
+                 * @example {
+                 *       "code": "PGRST301",
+                 *       "message": "JWT expired or signature verification failed",
+                 *       "details": null,
+                 *       "hint": "Refresh session token and pass Authorization: Bearer <token>"
+                 *     }
+                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Access forbidden by Row Level Security or role policy */
+        /** @description Access forbidden by Row Level Security (RLS) policies or insufficient role privilege. */
         "403Forbidden": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
+                /**
+                 * @example {
+                 *       "code": "42501",
+                 *       "message": "insufficient_privilege",
+                 *       "details": "Operation not permitted under active role permissions.",
+                 *       "hint": "Check role privileges or assigned student relationships."
+                 *     }
+                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Resource not found */
+        /** @description Target resource identified by query filter does not exist. */
         "404NotFound": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
+                /**
+                 * @example {
+                 *       "code": "PGRST116",
+                 *       "message": "JSON object requested, multiple (or no) rows returned",
+                 *       "details": "The result contains 0 rows",
+                 *       "hint": "Verify UUID identifier."
+                 *     }
+                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Conflict with existing record or constraint violation */
+        /** @description Conflict with existing unique constraint, natural key, or immutable state. */
         "409Conflict": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
+                /**
+                 * @example {
+                 *       "code": "23505",
+                 *       "message": "duplicate key value violates unique constraint",
+                 *       "details": "Key (code)=(BSCS) already exists.",
+                 *       "hint": "Provide unique identifier."
+                 *     }
+                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Internal system error */
+        /** @description Internal PostgreSQL or Edge Function execution error. */
         "500InternalError": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
+                /**
+                 * @example {
+                 *       "code": "XX000",
+                 *       "message": "Internal server error",
+                 *       "details": "Unexpected exception occurred during processing.",
+                 *       "hint": null
+                 *     }
+                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
@@ -874,9 +1244,9 @@ export interface components {
         selectQueryParam: string;
         /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
         orderQueryParam: string;
-        /** @description Number of rows to return */
+        /** @description Number of rows to return for DoS pagination mitigation */
         limitQueryParam: number;
-        /** @description Number of rows to skip */
+        /** @description Number of rows to skip for DoS pagination mitigation */
         offsetQueryParam: number;
         /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         idQueryParam: string;
@@ -886,31 +1256,47 @@ export interface components {
         emailQueryParam: string;
         /** @description Filter by role (e.g. `eq.student`) */
         roleQueryParam: string;
-        /** @description Filter by status value (e.g. `eq.active`) */
+        /** @description Filter by status equality (e.g. `eq.active`) */
         statusQueryParam: string;
-        /** @description Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        /** @description Filter by department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         departmentIdQueryParam: string;
-        /** @description Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        /** @description Filter by faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         facultyIdQueryParam: string;
-        /** @description Filter by parent program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        /** @description Filter by program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         programIdQueryParam: string;
         /** @description Filter by curriculum version UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         curriculumVersionIdQueryParam: string;
         /** @description Filter by curriculum term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         curriculumTermIdQueryParam: string;
+        /** @description Filter by curriculum checklist slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        curriculumTermCourseIdQueryParam: string;
         /** @description Filter by course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         courseIdQueryParam: string;
         /** @description Filter by prerequisite course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         prerequisiteCourseIdQueryParam: string;
         /** @description Filter by school term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
         schoolTermIdQueryParam: string;
+        /** @description Filter by adviser UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        adviserIdQueryParam: string;
+        /** @description Filter by student UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        studentIdQueryParam: string;
+        /** @description Filter by attempt UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        attemptIdQueryParam: string;
+        /** @description Filter by destination slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        destinationCurriculumTermCourseIdQueryParam: string;
+        /** @description Filter by course offering UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        courseOfferingIdQueryParam: string;
         /** @description Filter by student number (e.g. `eq.2023-04412`) */
         studentNumberQueryParam: string;
-        /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS 101`) */
-        codeQueryParam: string;
-        /** @description Filter by name (e.g. `eq.College of Computer Studies`) */
+        /** @description Filter by name */
         nameQueryParam: string;
-        /** @description Filter by lock state (e.g. `eq.false`) */
+        /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS101`) */
+        codeQueryParam: string;
+        /** @description Filter by version label (e.g. `eq.2023-2024`) */
+        versionLabelQueryParam: string;
+        /** @description Filter by school year (e.g. `eq.2025 - 2026`) */
+        schoolYearQueryParam: string;
+        /** @description Filter by lock state (e.g. `eq.true`) */
         isLockedQueryParam: string;
         /** @description Filter by by_request flag (e.g. `eq.true`) */
         isByRequestQueryParam: string;
@@ -930,7 +1316,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Service is healthy. */
+            /** @description Service is healthy and responding. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -938,11 +1324,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @example ok */
-                        status?: string;
+                        status: string;
                     };
                 };
             };
-            400: components["responses"]["400BadRequest"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -959,7 +1345,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Invitation successfully sent and profile provisioned. */
+            /** @description Invitation email dispatched successfully. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -988,7 +1374,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Token verified and account activated. */
+            /** @description Password set and profile activated successfully. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -999,6 +1385,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1011,9 +1398,9 @@ export interface operations {
                 email?: components["parameters"]["emailQueryParam"];
                 /** @description Filter by role (e.g. `eq.student`) */
                 role?: components["parameters"]["roleQueryParam"];
-                /** @description Filter by status value (e.g. `eq.active`) */
+                /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
-                /** @description Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                /** @description Filter by department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 department_id?: components["parameters"]["departmentIdQueryParam"];
                 /** @description Filter by student number (e.g. `eq.2023-04412`) */
                 student_number?: components["parameters"]["studentNumberQueryParam"];
@@ -1021,9 +1408,9 @@ export interface operations {
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
-                /** @description Number of rows to return */
+                /** @description Number of rows to return for DoS pagination mitigation */
                 limit?: components["parameters"]["limitQueryParam"];
-                /** @description Number of rows to skip */
+                /** @description Number of rows to skip for DoS pagination mitigation */
                 offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
@@ -1043,6 +1430,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1093,7 +1481,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProfileUpdate"];
+                "application/json": components["schemas"]["StudentProfileUpdate"] | components["schemas"]["AdminProfileUpdate"];
             };
         };
         responses: {
@@ -1106,7 +1494,7 @@ export interface operations {
                     "application/json": components["schemas"]["Profile"][];
                 };
             };
-            /** @description Profile successfully updated without returning representation. */
+            /** @description Updated without returning representation. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -1125,12 +1513,16 @@ export interface operations {
             query?: {
                 /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by name (e.g. `eq.College of Computer Studies`) */
+                /** @description Filter by name */
                 name?: components["parameters"]["nameQueryParam"];
                 /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1138,7 +1530,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of faculty records. */
+            /** @description Array of faculty divisions. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1149,6 +1541,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1222,6 +1615,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1230,14 +1624,18 @@ export interface operations {
             query?: {
                 /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                /** @description Filter by faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 faculty_id?: components["parameters"]["facultyIdQueryParam"];
-                /** @description Filter by name (e.g. `eq.College of Computer Studies`) */
+                /** @description Filter by name */
                 name?: components["parameters"]["nameQueryParam"];
                 /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1245,7 +1643,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of department records. */
+            /** @description Array of academic departments. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1256,6 +1654,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1319,7 +1718,7 @@ export interface operations {
                     "application/json": components["schemas"]["Department"][];
                 };
             };
-            /** @description Updated without representation. */
+            /** @description Updated without returning representation. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -1329,6 +1728,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1337,16 +1737,20 @@ export interface operations {
             query?: {
                 /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                /** @description Filter by faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 faculty_id?: components["parameters"]["facultyIdQueryParam"];
-                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS 101`) */
+                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS101`) */
                 code?: components["parameters"]["codeQueryParam"];
-                /** @description Filter by status value (e.g. `eq.active`) */
+                /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
                 /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1365,6 +1769,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1384,7 +1789,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Program successfully created. */
+            /** @description Degree program successfully created. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1419,7 +1824,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Program successfully updated. */
+            /** @description Degree program successfully updated. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1438,6 +1843,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1446,14 +1852,20 @@ export interface operations {
             query?: {
                 /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by parent program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                /** @description Filter by program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 program_id?: components["parameters"]["programIdQueryParam"];
-                /** @description Filter by status value (e.g. `eq.active`) */
+                /** @description Filter by version label (e.g. `eq.2023-2024`) */
+                version_label?: components["parameters"]["versionLabelQueryParam"];
+                /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
                 /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1472,6 +1884,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1545,6 +1958,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1559,6 +1973,10 @@ export interface operations {
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1577,6 +1995,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1625,6 +2044,10 @@ export interface operations {
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1643,6 +2066,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1662,7 +2086,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Slot successfully created. */
+            /** @description Curriculum course slot successfully added. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1674,6 +2098,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1689,7 +2114,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Slot successfully deleted. */
+            /** @description Curriculum slot successfully removed. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -1699,6 +2124,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1707,19 +2133,19 @@ export interface operations {
             query?: {
                 /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                /** @description Filter by department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 department_id?: components["parameters"]["departmentIdQueryParam"];
-                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS 101`) */
+                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS101`) */
                 code?: components["parameters"]["codeQueryParam"];
-                /** @description Filter by status value (e.g. `eq.active`) */
+                /** @description Filter by status equality (e.g. `eq.active`) */
                 status?: components["parameters"]["statusQueryParam"];
                 /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
-                /** @description Number of rows to return */
+                /** @description Number of rows to return for DoS pagination mitigation */
                 limit?: components["parameters"]["limitQueryParam"];
-                /** @description Number of rows to skip */
+                /** @description Number of rows to skip for DoS pagination mitigation */
                 offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
@@ -1728,7 +2154,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of course records. */
+            /** @description Array of courses. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1739,6 +2165,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1812,6 +2239,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1828,6 +2256,10 @@ export interface operations {
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1846,6 +2278,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1893,7 +2326,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Prerequisite relationship deleted. */
+            /** @description Prerequisite successfully deleted. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -1903,6 +2336,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -1911,12 +2345,18 @@ export interface operations {
             query?: {
                 /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by lock state (e.g. `eq.false`) */
+                /** @description Filter by school year (e.g. `eq.2025 - 2026`) */
+                school_year?: components["parameters"]["schoolYearQueryParam"];
+                /** @description Filter by lock state (e.g. `eq.true`) */
                 is_locked?: components["parameters"]["isLockedQueryParam"];
                 /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -1935,6 +2375,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2008,6 +2449,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2026,6 +2468,10 @@ export interface operations {
                 select?: components["parameters"]["selectQueryParam"];
                 /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
                 order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
             };
             header?: never;
             path?: never;
@@ -2044,6 +2490,7 @@ export interface operations {
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2101,6 +2548,7 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
@@ -2142,6 +2590,558 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listAdviserAssignments: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by adviser UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                adviser_id?: components["parameters"]["adviserIdQueryParam"];
+                /** @description Filter by student UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of adviser assignments. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdviserAssignment"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createAdviserAssignment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdviserAssignmentInsert"];
+            };
+        };
+        responses: {
+            /** @description Adviser assignment successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdviserAssignment"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateAdviserAssignment: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdviserAssignmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Assignment successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdviserAssignment"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listStudentCurriculumAssignments: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by student UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Filter by curriculum version UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                curriculum_version_id?: components["parameters"]["curriculumVersionIdQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of student curriculum assignments. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentCurriculumAssignment"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createStudentCurriculumAssignment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudentCurriculumAssignmentInsert"];
+            };
+        };
+        responses: {
+            /** @description Curriculum version assigned successfully. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentCurriculumAssignment"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateStudentCurriculumAssignment: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudentCurriculumAssignmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Curriculum assignment successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentCurriculumAssignment"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listAttempts: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by student UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Filter by course offering UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                course_offering_id?: components["parameters"]["courseOfferingIdQueryParam"];
+                /** @description Filter by status equality (e.g. `eq.active`) */
+                status?: components["parameters"]["statusQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of student attempts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attempt"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createAttempt: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttemptInsert"];
+            };
+        };
+        responses: {
+            /** @description Attempt successfully recorded. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attempt"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateAttempt: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttemptUpdate"];
+            };
+        };
+        responses: {
+            /** @description Attempt successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attempt"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listElectiveMappings: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by attempt UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                attempt_id?: components["parameters"]["attemptIdQueryParam"];
+                /** @description Filter by curriculum checklist slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                curriculum_term_course_id?: components["parameters"]["curriculumTermCourseIdQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of elective mappings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectiveMapping"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createElectiveMapping: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ElectiveMappingInsert"];
+            };
+        };
+        responses: {
+            /** @description Elective mapping successfully established. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectiveMapping"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteElectiveMapping: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Elective mapping successfully deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listEquivalencyDecisions: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by attempt UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                attempt_id?: components["parameters"]["attemptIdQueryParam"];
+                /** @description Filter by destination slot UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                destination_curriculum_term_course_id?: components["parameters"]["destinationCurriculumTermCourseIdQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return for DoS pagination mitigation */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of equivalency decisions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquivalencyDecision"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createEquivalencyDecision: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EquivalencyDecisionInsert"];
+            };
+        };
+        responses: {
+            /** @description Equivalency decision recorded successfully. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquivalencyDecision"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateEquivalencyDecision: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EquivalencyDecisionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Equivalency decision successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquivalencyDecision"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             500: components["responses"]["500InternalError"];
         };
     };
