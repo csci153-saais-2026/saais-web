@@ -3,20 +3,54 @@ info:
   title: Student Academic Advising Information System (SAAIS) API
   version: 0.1.0
   description: >
-    Official OpenAPI contract and single source of truth for the SAAIS application.
-    Covers PostgREST data endpoints and Supabase Edge Function operations.
+    Official OpenAPI 3.1 contract and single source of truth for the SAAIS application.
+    Covers PostgREST data endpoints and Supabase Edge Function operations for authentication,
+    user profiles, and the academic catalog.
   license:
     name: Proprietary
     url: https://github.com/csci153-saais-2026/saais-web/blob/main/LICENSE.md
 servers:
   - url: http://127.0.0.1:54321
     description: Local Supabase Development
+
+tags:
+  - name: System
+    description: System health and diagnostic endpoints
+  - name: Auth
+    description: User authentication, invitation provisioning, and password setup
+  - name: Profile
+    description: User profiles and institutional role accounts
+  - name: Faculty & Department
+    description: Academic divisions (Faculties/Colleges) and subordinate academic departments
+  - name: Program & Curriculum
+    description: Degree programs, versioned curricula, positional terms, and checklist slots
+  - name: Course Catalog
+    description: Master course catalog and prerequisite linkages
+  - name: Terms & Offerings
+    description: Calendar school terms, term locks, and course offerings
+
+x-tagGroups:
+  - name: General
+    tags:
+      - System
+      - Auth
+      - Profile
+  - name: Academic Catalog
+    tags:
+      - Faculty & Department
+      - Program & Curriculum
+      - Course Catalog
+      - Terms & Offerings
+
 paths:
   /rest/v1/health:
     get:
+      tags:
+        - System
       summary: Health check probe
       operationId: getHealthStatus
       description: Returns health status of the PostgREST / Supabase layer.
+      security: []
       responses:
         "200":
           description: Service is healthy.
@@ -32,6 +66,1072 @@ paths:
           $ref: "#/components/responses/400BadRequest"
         "500":
           $ref: "#/components/responses/500InternalError"
+
+  /functions/v1/auth/invite:
+    post:
+      tags:
+        - Auth
+      summary: Send account invitation
+      operationId: inviteUser
+      description: >
+        Admin operation to provision a pre-registered profile and send an email invitation token
+        for password creation. Required role: admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteRequest"
+      responses:
+        "200":
+          description: Invitation successfully sent and profile provisioned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /functions/v1/auth/verify-invite:
+    post:
+      tags:
+        - Auth
+      summary: Verify invitation token and set initial password
+      operationId: verifyInviteToken
+      description: >
+        Redeems an invitation token provided via email link to set the user's initial password and
+        activate the user profile. Publicly callable with valid token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyInviteRequest"
+      responses:
+        "200":
+          description: Token verified and account activated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyInviteResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/profile:
+    get:
+      tags:
+        - Profile
+      summary: Query user profiles
+      operationId: listProfiles
+      description: >
+        List or filter user profiles via PostgREST query parameters. Students can only select their own
+        profile via RLS. Advisers can select assigned advisees. Admins have system-wide visibility.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/emailQueryParam"
+        - $ref: "#/components/parameters/roleQueryParam"
+        - $ref: "#/components/parameters/statusQueryParam"
+        - $ref: "#/components/parameters/departmentIdQueryParam"
+        - $ref: "#/components/parameters/studentNumberQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of matching profile records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Profile
+      summary: Create user profile
+      operationId: createProfile
+      description: >
+        Directly provision a new profile record. Used by admins for manual account setup and batch CSV imports.
+        Required role: admin.
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInsert"
+      responses:
+        "201":
+          description: Profile successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Profile
+      summary: Update user profile
+      operationId: updateProfile
+      description: >
+        Update an existing profile record identified by query filter (e.g. `id=eq.{uuid}`).
+        Students can update limited contact info; Admins can update roles, statuses, and department affiliations.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Profile successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+        "204":
+          description: Profile successfully updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/faculty:
+    get:
+      tags:
+        - Faculty & Department
+      summary: List faculties / colleges
+      operationId: listFaculties
+      description: Returns institutional faculties (academic divisions / colleges e.g. College of Computer Studies).
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/nameQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of faculty records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Faculty"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Faculty & Department
+      summary: Create faculty
+      operationId: createFaculty
+      description: "Create a new faculty / college division. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FacultyInsert"
+      responses:
+        "201":
+          description: Faculty successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Faculty"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Faculty & Department
+      summary: Update faculty
+      operationId: updateFaculty
+      description: "Update an existing faculty / college. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FacultyUpdate"
+      responses:
+        "200":
+          description: Faculty successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Faculty"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/department:
+    get:
+      tags:
+        - Faculty & Department
+      summary: List academic departments
+      operationId: listDepartments
+      description: Returns academic departments under faculties.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/facultyIdQueryParam"
+        - $ref: "#/components/parameters/nameQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of department records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Faculty & Department
+      summary: Create department
+      operationId: createDepartment
+      description: "Create a new academic department under a faculty. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInsert"
+      responses:
+        "201":
+          description: Department successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Faculty & Department
+      summary: Update department
+      operationId: updateDepartment
+      description: "Update an academic department. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentUpdate"
+      responses:
+        "200":
+          description: Department successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+        "204":
+          description: Updated without representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/program:
+    get:
+      tags:
+        - Program & Curriculum
+      summary: List degree programs
+      operationId: listPrograms
+      description: Returns degree programs (e.g. BSCS, BSIT) with faculty affiliation and status.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/facultyIdQueryParam"
+        - $ref: "#/components/parameters/codeQueryParam"
+        - $ref: "#/components/parameters/statusQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of degree programs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Program"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Program & Curriculum
+      summary: Create degree program
+      operationId: createProgram
+      description: "Create a new academic degree program. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgramInsert"
+      responses:
+        "201":
+          description: Program successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Program & Curriculum
+      summary: Update degree program
+      operationId: updateProgram
+      description: "Update degree program attributes or archive status. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgramUpdate"
+      responses:
+        "200":
+          description: Program successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Program"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/curriculum_version:
+    get:
+      tags:
+        - Program & Curriculum
+      summary: List curriculum versions
+      operationId: listCurriculumVersions
+      description: Returns curriculum versions for programs, including delinquency threshold and total units.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/programIdQueryParam"
+        - $ref: "#/components/parameters/statusQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of curriculum versions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CurriculumVersion"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Program & Curriculum
+      summary: Create curriculum version
+      operationId: createCurriculumVersion
+      description: "Create a new versioned curriculum for a degree program. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurriculumVersionInsert"
+      responses:
+        "201":
+          description: Curriculum version successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurriculumVersion"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Program & Curriculum
+      summary: Update curriculum version
+      operationId: updateCurriculumVersion
+      description: "Update curriculum version settings, dates, threshold, or lifecycle status. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurriculumVersionUpdate"
+      responses:
+        "200":
+          description: Curriculum version successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CurriculumVersion"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/curriculum_term:
+    get:
+      tags:
+        - Program & Curriculum
+      summary: List curriculum positional terms
+      operationId: listCurriculumTerms
+      description: Returns the positional terms (year levels and term sequences) within a curriculum version.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/curriculumVersionIdQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of curriculum positional terms.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CurriculumTerm"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Program & Curriculum
+      summary: Create curriculum term
+      operationId: createCurriculumTerm
+      description: "Add a positional term (year level and term sequence) to a curriculum version. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurriculumTermInsert"
+      responses:
+        "201":
+          description: Curriculum term successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurriculumTerm"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/curriculum_term_course:
+    get:
+      tags:
+        - Program & Curriculum
+      summary: List curriculum term course slots
+      operationId: listCurriculumTermCourses
+      description: Returns curriculum checklist slots (required courses and open elective slots).
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/curriculumTermIdQueryParam"
+        - $ref: "#/components/parameters/courseIdQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of curriculum checklist slots.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CurriculumTermCourse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Program & Curriculum
+      summary: Add slot to curriculum term
+      operationId: createCurriculumTermCourse
+      description: "Add a required course or elective slot into a curriculum positional term. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurriculumTermCourseInsert"
+      responses:
+        "201":
+          description: Slot successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurriculumTermCourse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    delete:
+      tags:
+        - Program & Curriculum
+      summary: Remove slot from curriculum term
+      operationId: deleteCurriculumTermCourse
+      description: "Remove a checklist slot from a curriculum term. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+      responses:
+        "204":
+          description: Slot successfully deleted.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/course:
+    get:
+      tags:
+        - Course Catalog
+      summary: List master catalog courses
+      operationId: listCourses
+      description: Returns master catalog courses with units, hours, repeatable types, and status.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/departmentIdQueryParam"
+        - $ref: "#/components/parameters/codeQueryParam"
+        - $ref: "#/components/parameters/statusQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of course records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Course Catalog
+      summary: Create course
+      operationId: createCourse
+      description: "Add a new course to the master catalog. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseInsert"
+      responses:
+        "201":
+          description: Course successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Course Catalog
+      summary: Update course
+      operationId: updateCourse
+      description: "Update course attributes, hours, units, repeatable type, or active/discontinued status. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseUpdate"
+      responses:
+        "200":
+          description: Course successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/prerequisite:
+    get:
+      tags:
+        - Course Catalog
+      summary: List course prerequisites
+      operationId: listPrerequisites
+      description: Returns prerequisite linkages between catalog courses with linkage type (strict, co_requisite, recommended).
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/courseIdQueryParam"
+        - $ref: "#/components/parameters/prerequisiteCourseIdQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of prerequisite linkages.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prerequisite"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Course Catalog
+      summary: Link prerequisite
+      operationId: createPrerequisite
+      description: "Link a prerequisite to a course. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrerequisiteInsert"
+      responses:
+        "201":
+          description: Prerequisite successfully linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prerequisite"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    delete:
+      tags:
+        - Course Catalog
+      summary: Remove prerequisite link
+      operationId: deletePrerequisite
+      description: "Remove a prerequisite relationship between two courses. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+      responses:
+        "204":
+          description: Prerequisite relationship deleted.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/school_term:
+    get:
+      tags:
+        - Terms & Offerings
+      summary: List calendar school terms
+      operationId: listSchoolTerms
+      description: Returns academic calendar school terms with year ranges, term types, and lock statuses.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/isLockedQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of school terms.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SchoolTerm"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Terms & Offerings
+      summary: Create school term
+      operationId: createSchoolTerm
+      description: "Create a calendar academic school term. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolTermInsert"
+      responses:
+        "201":
+          description: School term successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolTerm"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Terms & Offerings
+      summary: Update school term
+      operationId: updateSchoolTerm
+      description: "Update school term settings, lock state, or override flags. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolTermUpdate"
+      responses:
+        "200":
+          description: School term successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SchoolTerm"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
+  /rest/v1/course_offering:
+    get:
+      tags:
+        - Terms & Offerings
+      summary: List term course offerings
+      operationId: listCourseOfferings
+      description: Returns active course offerings available in a calendar school term, including `is_by_request` accommodations.
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/schoolTermIdQueryParam"
+        - $ref: "#/components/parameters/courseIdQueryParam"
+        - $ref: "#/components/parameters/isByRequestQueryParam"
+        - $ref: "#/components/parameters/selectQueryParam"
+        - $ref: "#/components/parameters/orderQueryParam"
+      responses:
+        "200":
+          description: Array of course offerings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseOffering"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    post:
+      tags:
+        - Terms & Offerings
+      summary: Create course offering
+      operationId: createCourseOffering
+      description: "Make a course available in a school term. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseOfferingInsert"
+      responses:
+        "201":
+          description: Offering successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseOffering"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    patch:
+      tags:
+        - Terms & Offerings
+      summary: Update course offering
+      operationId: updateCourseOffering
+      description: "Update offering flags (e.g. toggle by_request). Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+        - $ref: "#/components/parameters/preferHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseOfferingUpdate"
+      responses:
+        "200":
+          description: Offering successfully updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseOffering"
+        "204":
+          description: Updated without returning representation.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+    delete:
+      tags:
+        - Terms & Offerings
+      summary: Delete course offering
+      operationId: deleteCourseOffering
+      description: "Remove a course offering from a school term. Required role: admin."
+      parameters:
+        - $ref: "#/components/parameters/idQueryParamRequired"
+      responses:
+        "204":
+          description: Offering successfully deleted.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -39,6 +1139,197 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Supabase Auth JWT Token
+
+  parameters:
+    preferHeader:
+      name: Prefer
+      in: header
+      description: PostgREST preference header (e.g. `return=representation` or `return=minimal`)
+      required: false
+      schema:
+        type: string
+        example: "return=representation"
+
+    selectQueryParam:
+      name: select
+      in: query
+      description: PostgREST projection string (e.g. `*,faculty(*)`)
+      required: false
+      schema:
+        type: string
+
+    orderQueryParam:
+      name: order
+      in: query
+      description: PostgREST ordering clause (e.g. `created_at.desc`)
+      required: false
+      schema:
+        type: string
+
+    limitQueryParam:
+      name: limit
+      in: query
+      description: Number of rows to return
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        example: 20
+
+    offsetQueryParam:
+      name: offset
+      in: query
+      description: Number of rows to skip
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        example: 0
+
+    idQueryParam:
+      name: id
+      in: query
+      description: Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    idQueryParamRequired:
+      name: id
+      in: query
+      description: Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: true
+      schema:
+        type: string
+
+    emailQueryParam:
+      name: email
+      in: query
+      description: Filter by email equality (e.g. `eq.student@university.edu.ph`)
+      required: false
+      schema:
+        type: string
+
+    roleQueryParam:
+      name: role
+      in: query
+      description: Filter by role (e.g. `eq.student`)
+      required: false
+      schema:
+        type: string
+
+    statusQueryParam:
+      name: status
+      in: query
+      description: Filter by status value (e.g. `eq.active`)
+      required: false
+      schema:
+        type: string
+
+    departmentIdQueryParam:
+      name: department_id
+      in: query
+      description: Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    facultyIdQueryParam:
+      name: faculty_id
+      in: query
+      description: Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    programIdQueryParam:
+      name: program_id
+      in: query
+      description: Filter by parent program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    curriculumVersionIdQueryParam:
+      name: curriculum_version_id
+      in: query
+      description: Filter by curriculum version UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    curriculumTermIdQueryParam:
+      name: curriculum_term_id
+      in: query
+      description: Filter by curriculum term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    courseIdQueryParam:
+      name: course_id
+      in: query
+      description: Filter by course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    prerequisiteCourseIdQueryParam:
+      name: prerequisite_course_id
+      in: query
+      description: Filter by prerequisite course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    schoolTermIdQueryParam:
+      name: school_term_id
+      in: query
+      description: Filter by school term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`)
+      required: false
+      schema:
+        type: string
+
+    studentNumberQueryParam:
+      name: student_number
+      in: query
+      description: Filter by student number (e.g. `eq.2023-04412`)
+      required: false
+      schema:
+        type: string
+
+    codeQueryParam:
+      name: code
+      in: query
+      description: Filter by code (e.g. `eq.BSCS` or `eq.CS 101`)
+      required: false
+      schema:
+        type: string
+
+    nameQueryParam:
+      name: name
+      in: query
+      description: Filter by name (e.g. `eq.College of Computer Studies`)
+      required: false
+      schema:
+        type: string
+
+    isLockedQueryParam:
+      name: is_locked
+      in: query
+      description: Filter by lock state (e.g. `eq.false`)
+      required: false
+      schema:
+        type: string
+
+    isByRequestQueryParam:
+      name: is_by_request
+      in: query
+      description: Filter by by_request flag (e.g. `eq.true`)
+      required: false
+      schema:
+        type: string
+
   responses:
     400BadRequest:
       description: Bad request or validation failure
@@ -46,12 +1337,42 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+
+    401Unauthorized:
+      description: Authentication required or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    403Forbidden:
+      description: Access forbidden by Row Level Security or role policy
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    404NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    409Conflict:
+      description: Conflict with existing record or constraint violation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
     500InternalError:
       description: Internal system error
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+
   schemas:
     Error:
       type: object
@@ -62,12 +1383,864 @@ components:
         code:
           type: string
           description: PostgREST or Edge Function error code
+          example: "23505"
         message:
           type: string
           description: Human-readable error message
+          example: "duplicate key value violates unique constraint"
         details:
-          type: ["string", "null"]
+          type:
+            - string
+            - "null"
+          description: Detailed explanation of the error
+          example: "Key (code)=(BSCS) already exists."
         hint:
-          type: ["string", "null"]
+          type:
+            - string
+            - "null"
+          description: Guidance on how to resolve the error
+          example: null
+
+    RoleType:
+      type: string
+      enum:
+        - student
+        - adviser
+        - admin
+      description: User role within SAAIS
+
+    ProfileStatus:
+      type: string
+      enum:
+        - invited
+        - active
+        - disabled
+      description: Account status
+
+    ProgramStatus:
+      type: string
+      enum:
+        - active
+        - archived
+      description: Program status
+
+    CurriculumVersionStatus:
+      type: string
+      enum:
+        - draft
+        - active
+        - teach_out
+        - closed
+      description: Curriculum version lifecycle status
+
+    CourseStatus:
+      type: string
+      enum:
+        - active
+        - discontinued
+      description: Course catalog offering status
+
+    RepeatableType:
+      type: string
+      enum:
+        - none
+        - grade_replacement
+        - additional_credit
+      description: Course retake credit rule
+
+    PrerequisiteType:
+      type: string
+      enum:
+        - strict
+        - co_requisite
+        - recommended
+      description: Prerequisite linkage enforcement type
+
+    SchoolTermType:
+      type: string
+      enum:
+        - 1st Semester
+        - 2nd Semester
+        - Summer
+      description: Semester or summer academic session
+
+    InviteRequest:
+      type: object
+      required:
+        - email
+        - role
+        - full_name
+      properties:
+        email:
+          type: string
+          format: email
+          example: "m.bautista@university.edu.ph"
+        role:
+          $ref: "#/components/schemas/RoleType"
+        full_name:
+          type: string
+          example: "Maria Isabel Bautista"
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        student_number:
+          type:
+            - string
+            - "null"
+          example: "2023-04412"
+
+    InviteResponse:
+      type: object
+      required:
+        - success
+        - message
+        - profile_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Invitation email dispatched successfully."
+        profile_id:
+          type: string
+          format: uuid
+
+    VerifyInviteRequest:
+      type: object
+      required:
+        - token
+        - password
+      properties:
+        token:
+          type: string
+          description: Unique invitation verification token received via email
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: Initial account password
+
+    VerifyInviteResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Account successfully activated."
+
+    Faculty:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "College of Computer Studies"
+
+    FacultyInsert:
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "College of Computer Studies"
+
+    FacultyUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+
+    Department:
+      type: object
+      required:
+        - id
+        - faculty_id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        faculty_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Department of Computer Science"
+
+    DepartmentInsert:
+      type: object
+      required:
+        - faculty_id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        faculty_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Department of Computer Science"
+
+    DepartmentUpdate:
+      type: object
+      properties:
+        faculty_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    Profile:
+      type: object
+      required:
+        - id
+        - email
+        - full_name
+        - role
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          example: "m.bautista@university.edu.ph"
+        full_name:
+          type: string
+          example: "Maria Isabel Bautista"
+        role:
+          $ref: "#/components/schemas/RoleType"
+        status:
+          $ref: "#/components/schemas/ProfileStatus"
+        student_number:
+          type:
+            - string
+            - "null"
+          example: "2023-04412"
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProfileInsert:
+      type: object
+      required:
+        - id
+        - email
+        - full_name
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          $ref: "#/components/schemas/RoleType"
+        status:
+          $ref: "#/components/schemas/ProfileStatus"
+        student_number:
+          type:
+            - string
+            - "null"
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+
+    ProfileUpdate:
+      type: object
+      properties:
+        full_name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProfileStatus"
+        student_number:
+          type:
+            - string
+            - "null"
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+
+    Program:
+      type: object
+      required:
+        - id
+        - faculty_id
+        - code
+        - name
+        - nominal_duration
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        faculty_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "BSCS"
+        name:
+          type: string
+          example: "BS Computer Science"
+        nominal_duration:
+          type: number
+          example: 4.0
+        status:
+          $ref: "#/components/schemas/ProgramStatus"
+
+    ProgramInsert:
+      type: object
+      required:
+        - faculty_id
+        - code
+        - name
+        - nominal_duration
+      properties:
+        id:
+          type: string
+          format: uuid
+        faculty_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "BSCS"
+        name:
+          type: string
+          example: "BS Computer Science"
+        nominal_duration:
+          type: number
+          example: 4.0
+        status:
+          $ref: "#/components/schemas/ProgramStatus"
+
+    ProgramUpdate:
+      type: object
+      properties:
+        faculty_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        nominal_duration:
+          type: number
+        status:
+          $ref: "#/components/schemas/ProgramStatus"
+
+    CurriculumVersion:
+      type: object
+      required:
+        - id
+        - program_id
+        - version_label
+        - effective_start
+        - delinquency_threshold
+        - total_units
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        program_id:
+          type: string
+          format: uuid
+        version_label:
+          type: string
+          example: "2023-2024"
+        effective_start:
+          type: string
+          format: date
+          example: "2023-06-01"
+        effective_end:
+          type:
+            - string
+            - "null"
+          format: date
+          example: null
+        delinquency_threshold:
+          type: number
+          example: 12.0
+        total_units:
+          type: number
+          example: 156.0
+        status:
+          $ref: "#/components/schemas/CurriculumVersionStatus"
+
+    CurriculumVersionInsert:
+      type: object
+      required:
+        - program_id
+        - version_label
+        - effective_start
+        - delinquency_threshold
+        - total_units
+      properties:
+        id:
+          type: string
+          format: uuid
+        program_id:
+          type: string
+          format: uuid
+        version_label:
+          type: string
+          example: "2023-2024"
+        effective_start:
+          type: string
+          format: date
+        effective_end:
+          type:
+            - string
+            - "null"
+          format: date
+        delinquency_threshold:
+          type: number
+          example: 12.0
+        total_units:
+          type: number
+          example: 156.0
+        status:
+          $ref: "#/components/schemas/CurriculumVersionStatus"
+
+    CurriculumVersionUpdate:
+      type: object
+      properties:
+        version_label:
+          type: string
+        effective_start:
+          type: string
+          format: date
+        effective_end:
+          type:
+            - string
+            - "null"
+          format: date
+        delinquency_threshold:
+          type: number
+        total_units:
+          type: number
+        status:
+          $ref: "#/components/schemas/CurriculumVersionStatus"
+
+    CurriculumTerm:
+      type: object
+      required:
+        - id
+        - curriculum_version_id
+        - year_level
+        - term_sequence
+      properties:
+        id:
+          type: string
+          format: uuid
+        curriculum_version_id:
+          type: string
+          format: uuid
+        year_level:
+          type: integer
+          minimum: 1
+          maximum: 8
+          example: 1
+        term_sequence:
+          type: integer
+          minimum: 1
+          maximum: 3
+          example: 1
+
+    CurriculumTermInsert:
+      type: object
+      required:
+        - curriculum_version_id
+        - year_level
+        - term_sequence
+      properties:
+        id:
+          type: string
+          format: uuid
+        curriculum_version_id:
+          type: string
+          format: uuid
+        year_level:
+          type: integer
+          minimum: 1
+          maximum: 8
+        term_sequence:
+          type: integer
+          minimum: 1
+          maximum: 3
+
+    CurriculumTermCourse:
+      type: object
+      required:
+        - id
+        - curriculum_term_id
+        - is_elective_slot
+        - nominal_units
+      properties:
+        id:
+          type: string
+          format: uuid
+        curriculum_term_id:
+          type: string
+          format: uuid
+        course_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        is_elective_slot:
+          type: boolean
+          example: false
+        slot_label:
+          type:
+            - string
+            - "null"
+          example: null
+        nominal_units:
+          type: number
+          example: 3.0
+
+    CurriculumTermCourseInsert:
+      type: object
+      required:
+        - curriculum_term_id
+        - is_elective_slot
+        - nominal_units
+      properties:
+        id:
+          type: string
+          format: uuid
+        curriculum_term_id:
+          type: string
+          format: uuid
+        course_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        is_elective_slot:
+          type: boolean
+        slot_label:
+          type:
+            - string
+            - "null"
+        nominal_units:
+          type: number
+
+    Course:
+      type: object
+      required:
+        - id
+        - department_id
+        - code
+        - title
+        - lecture_hours
+        - lab_hours
+        - units
+        - status
+        - repeatable_type
+      properties:
+        id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "CS 101"
+        title:
+          type: string
+          example: "Introduction to Computing"
+        lecture_hours:
+          type: number
+          example: 3.0
+        lab_hours:
+          type: number
+          example: 0.0
+        units:
+          type: number
+          example: 3.0
+        status:
+          $ref: "#/components/schemas/CourseStatus"
+        repeatable_type:
+          $ref: "#/components/schemas/RepeatableType"
+
+    CourseInsert:
+      type: object
+      required:
+        - department_id
+        - code
+        - title
+        - lecture_hours
+        - lab_hours
+        - units
+      properties:
+        id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "CS 101"
+        title:
+          type: string
+          example: "Introduction to Computing"
+        lecture_hours:
+          type: number
+          example: 3.0
+        lab_hours:
+          type: number
+          example: 0.0
+        units:
+          type: number
+          example: 3.0
+        status:
+          $ref: "#/components/schemas/CourseStatus"
+        repeatable_type:
+          $ref: "#/components/schemas/RepeatableType"
+
+    CourseUpdate:
+      type: object
+      properties:
+        department_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        title:
+          type: string
+        lecture_hours:
+          type: number
+        lab_hours:
+          type: number
+        units:
+          type: number
+        status:
+          $ref: "#/components/schemas/CourseStatus"
+        repeatable_type:
+          $ref: "#/components/schemas/RepeatableType"
+
+    Prerequisite:
+      type: object
+      required:
+        - id
+        - course_id
+        - prerequisite_course_id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        prerequisite_course_id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/PrerequisiteType"
+
+    PrerequisiteInsert:
+      type: object
+      required:
+        - course_id
+        - prerequisite_course_id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        prerequisite_course_id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/PrerequisiteType"
+
+    SchoolTerm:
+      type: object
+      required:
+        - id
+        - start_year
+        - end_year
+        - term_type
+        - school_year
+        - is_locked
+        - override_flag
+      properties:
+        id:
+          type: string
+          format: uuid
+        start_year:
+          type: integer
+          example: 2025
+        end_year:
+          type: integer
+          example: 2026
+        term_type:
+          $ref: "#/components/schemas/SchoolTermType"
+        school_year:
+          type: string
+          example: "2025 - 2026"
+        is_locked:
+          type: boolean
+          example: false
+        override_flag:
+          type: boolean
+          example: false
+        override_actor_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        override_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+
+    SchoolTermInsert:
+      type: object
+      required:
+        - start_year
+        - end_year
+        - term_type
+      properties:
+        id:
+          type: string
+          format: uuid
+        start_year:
+          type: integer
+          example: 2025
+        end_year:
+          type: integer
+          example: 2026
+        term_type:
+          $ref: "#/components/schemas/SchoolTermType"
+        is_locked:
+          type: boolean
+          default: false
+        override_flag:
+          type: boolean
+          default: false
+        override_actor_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        override_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+
+    SchoolTermUpdate:
+      type: object
+      properties:
+        is_locked:
+          type: boolean
+        override_flag:
+          type: boolean
+        override_actor_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        override_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+
+    CourseOffering:
+      type: object
+      required:
+        - id
+        - school_term_id
+        - course_id
+        - is_by_request
+      properties:
+        id:
+          type: string
+          format: uuid
+        school_term_id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        is_by_request:
+          type: boolean
+          example: false
+
+    CourseOfferingInsert:
+      type: object
+      required:
+        - school_term_id
+        - course_id
+      properties:
+        id:
+          type: string
+          format: uuid
+        school_term_id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        is_by_request:
+          type: boolean
+          default: false
+
+    CourseOfferingUpdate:
+      type: object
+      properties:
+        is_by_request:
+          type: boolean
+
 security:
   - bearerAuth: []

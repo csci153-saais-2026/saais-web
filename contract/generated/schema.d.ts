@@ -24,22 +24,832 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/functions/v1/auth/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send account invitation
+         * @description Admin operation to provision a pre-registered profile and send an email invitation token for password creation. Required role: admin.
+         */
+        post: operations["inviteUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/auth/verify-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify invitation token and set initial password
+         * @description Redeems an invitation token provided via email link to set the user's initial password and activate the user profile. Publicly callable with valid token.
+         */
+        post: operations["verifyInviteToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query user profiles
+         * @description List or filter user profiles via PostgREST query parameters. Students can only select their own profile via RLS. Advisers can select assigned advisees. Admins have system-wide visibility.
+         */
+        get: operations["listProfiles"];
+        put?: never;
+        /**
+         * Create user profile
+         * @description Directly provision a new profile record. Used by admins for manual account setup and batch CSV imports. Required role: admin.
+         */
+        post: operations["createProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update user profile
+         * @description Update an existing profile record identified by query filter (e.g. `id=eq.{uuid}`). Students can update limited contact info; Admins can update roles, statuses, and department affiliations.
+         */
+        patch: operations["updateProfile"];
+        trace?: never;
+    };
+    "/rest/v1/faculty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List faculties / colleges
+         * @description Returns institutional faculties (academic divisions / colleges e.g. College of Computer Studies).
+         */
+        get: operations["listFaculties"];
+        put?: never;
+        /**
+         * Create faculty
+         * @description Create a new faculty / college division. Required role: admin.
+         */
+        post: operations["createFaculty"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update faculty
+         * @description Update an existing faculty / college. Required role: admin.
+         */
+        patch: operations["updateFaculty"];
+        trace?: never;
+    };
+    "/rest/v1/department": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List academic departments
+         * @description Returns academic departments under faculties.
+         */
+        get: operations["listDepartments"];
+        put?: never;
+        /**
+         * Create department
+         * @description Create a new academic department under a faculty. Required role: admin.
+         */
+        post: operations["createDepartment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update department
+         * @description Update an academic department. Required role: admin.
+         */
+        patch: operations["updateDepartment"];
+        trace?: never;
+    };
+    "/rest/v1/program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List degree programs
+         * @description Returns degree programs (e.g. BSCS, BSIT) with faculty affiliation and status.
+         */
+        get: operations["listPrograms"];
+        put?: never;
+        /**
+         * Create degree program
+         * @description Create a new academic degree program. Required role: admin.
+         */
+        post: operations["createProgram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update degree program
+         * @description Update degree program attributes or archive status. Required role: admin.
+         */
+        patch: operations["updateProgram"];
+        trace?: never;
+    };
+    "/rest/v1/curriculum_version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List curriculum versions
+         * @description Returns curriculum versions for programs, including delinquency threshold and total units.
+         */
+        get: operations["listCurriculumVersions"];
+        put?: never;
+        /**
+         * Create curriculum version
+         * @description Create a new versioned curriculum for a degree program. Required role: admin.
+         */
+        post: operations["createCurriculumVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update curriculum version
+         * @description Update curriculum version settings, dates, threshold, or lifecycle status. Required role: admin.
+         */
+        patch: operations["updateCurriculumVersion"];
+        trace?: never;
+    };
+    "/rest/v1/curriculum_term": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List curriculum positional terms
+         * @description Returns the positional terms (year levels and term sequences) within a curriculum version.
+         */
+        get: operations["listCurriculumTerms"];
+        put?: never;
+        /**
+         * Create curriculum term
+         * @description Add a positional term (year level and term sequence) to a curriculum version. Required role: admin.
+         */
+        post: operations["createCurriculumTerm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/curriculum_term_course": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List curriculum term course slots
+         * @description Returns curriculum checklist slots (required courses and open elective slots).
+         */
+        get: operations["listCurriculumTermCourses"];
+        put?: never;
+        /**
+         * Add slot to curriculum term
+         * @description Add a required course or elective slot into a curriculum positional term. Required role: admin.
+         */
+        post: operations["createCurriculumTermCourse"];
+        /**
+         * Remove slot from curriculum term
+         * @description Remove a checklist slot from a curriculum term. Required role: admin.
+         */
+        delete: operations["deleteCurriculumTermCourse"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/course": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List master catalog courses
+         * @description Returns master catalog courses with units, hours, repeatable types, and status.
+         */
+        get: operations["listCourses"];
+        put?: never;
+        /**
+         * Create course
+         * @description Add a new course to the master catalog. Required role: admin.
+         */
+        post: operations["createCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update course
+         * @description Update course attributes, hours, units, repeatable type, or active/discontinued status. Required role: admin.
+         */
+        patch: operations["updateCourse"];
+        trace?: never;
+    };
+    "/rest/v1/prerequisite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List course prerequisites
+         * @description Returns prerequisite linkages between catalog courses with linkage type (strict, co_requisite, recommended).
+         */
+        get: operations["listPrerequisites"];
+        put?: never;
+        /**
+         * Link prerequisite
+         * @description Link a prerequisite to a course. Required role: admin.
+         */
+        post: operations["createPrerequisite"];
+        /**
+         * Remove prerequisite link
+         * @description Remove a prerequisite relationship between two courses. Required role: admin.
+         */
+        delete: operations["deletePrerequisite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/school_term": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List calendar school terms
+         * @description Returns academic calendar school terms with year ranges, term types, and lock statuses.
+         */
+        get: operations["listSchoolTerms"];
+        put?: never;
+        /**
+         * Create school term
+         * @description Create a calendar academic school term. Required role: admin.
+         */
+        post: operations["createSchoolTerm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update school term
+         * @description Update school term settings, lock state, or override flags. Required role: admin.
+         */
+        patch: operations["updateSchoolTerm"];
+        trace?: never;
+    };
+    "/rest/v1/course_offering": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List term course offerings
+         * @description Returns active course offerings available in a calendar school term, including `is_by_request` accommodations.
+         */
+        get: operations["listCourseOfferings"];
+        put?: never;
+        /**
+         * Create course offering
+         * @description Make a course available in a school term. Required role: admin.
+         */
+        post: operations["createCourseOffering"];
+        /**
+         * Delete course offering
+         * @description Remove a course offering from a school term. Required role: admin.
+         */
+        delete: operations["deleteCourseOffering"];
+        options?: never;
+        head?: never;
+        /**
+         * Update course offering
+         * @description Update offering flags (e.g. toggle by_request). Required role: admin.
+         */
+        patch: operations["updateCourseOffering"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         Error: {
-            /** @description PostgREST or Edge Function error code */
+            /**
+             * @description PostgREST or Edge Function error code
+             * @example 23505
+             */
             code: string;
-            /** @description Human-readable error message */
+            /**
+             * @description Human-readable error message
+             * @example duplicate key value violates unique constraint
+             */
             message: string;
+            /**
+             * @description Detailed explanation of the error
+             * @example Key (code)=(BSCS) already exists.
+             */
             details?: string | null;
+            /**
+             * @description Guidance on how to resolve the error
+             * @example null
+             */
             hint?: string | null;
+        };
+        /**
+         * @description User role within SAAIS
+         * @enum {string}
+         */
+        RoleType: "student" | "adviser" | "admin";
+        /**
+         * @description Account status
+         * @enum {string}
+         */
+        ProfileStatus: "invited" | "active" | "disabled";
+        /**
+         * @description Program status
+         * @enum {string}
+         */
+        ProgramStatus: "active" | "archived";
+        /**
+         * @description Curriculum version lifecycle status
+         * @enum {string}
+         */
+        CurriculumVersionStatus: "draft" | "active" | "teach_out" | "closed";
+        /**
+         * @description Course catalog offering status
+         * @enum {string}
+         */
+        CourseStatus: "active" | "discontinued";
+        /**
+         * @description Course retake credit rule
+         * @enum {string}
+         */
+        RepeatableType: "none" | "grade_replacement" | "additional_credit";
+        /**
+         * @description Prerequisite linkage enforcement type
+         * @enum {string}
+         */
+        PrerequisiteType: "strict" | "co_requisite" | "recommended";
+        /**
+         * @description Semester or summer academic session
+         * @enum {string}
+         */
+        SchoolTermType: "1st Semester" | "2nd Semester" | "Summer";
+        InviteRequest: {
+            /**
+             * Format: email
+             * @example m.bautista@university.edu.ph
+             */
+            email: string;
+            role: components["schemas"]["RoleType"];
+            /** @example Maria Isabel Bautista */
+            full_name: string;
+            /** Format: uuid */
+            department_id?: string | null;
+            /** @example 2023-04412 */
+            student_number?: string | null;
+        };
+        InviteResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example Invitation email dispatched successfully. */
+            message: string;
+            /** Format: uuid */
+            profile_id: string;
+        };
+        VerifyInviteRequest: {
+            /** @description Unique invitation verification token received via email */
+            token: string;
+            /**
+             * Format: password
+             * @description Initial account password
+             */
+            password: string;
+        };
+        VerifyInviteResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example Account successfully activated. */
+            message: string;
+        };
+        Faculty: {
+            /** Format: uuid */
+            id: string;
+            /** @example College of Computer Studies */
+            name: string;
+        };
+        FacultyInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** @example College of Computer Studies */
+            name: string;
+        };
+        FacultyUpdate: {
+            name?: string;
+        };
+        Department: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            faculty_id: string;
+            /** @example Department of Computer Science */
+            name: string;
+        };
+        DepartmentInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            faculty_id: string;
+            /** @example Department of Computer Science */
+            name: string;
+        };
+        DepartmentUpdate: {
+            /** Format: uuid */
+            faculty_id?: string;
+            name?: string;
+        };
+        Profile: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: email
+             * @example m.bautista@university.edu.ph
+             */
+            email: string;
+            /** @example Maria Isabel Bautista */
+            full_name: string;
+            role: components["schemas"]["RoleType"];
+            status: components["schemas"]["ProfileStatus"];
+            /** @example 2023-04412 */
+            student_number?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ProfileInsert: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            full_name: string;
+            role: components["schemas"]["RoleType"];
+            status?: components["schemas"]["ProfileStatus"];
+            student_number?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+        };
+        ProfileUpdate: {
+            full_name?: string;
+            status?: components["schemas"]["ProfileStatus"];
+            student_number?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+        };
+        Program: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            faculty_id: string;
+            /** @example BSCS */
+            code: string;
+            /** @example BS Computer Science */
+            name: string;
+            /** @example 4 */
+            nominal_duration: number;
+            status: components["schemas"]["ProgramStatus"];
+        };
+        ProgramInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            faculty_id: string;
+            /** @example BSCS */
+            code: string;
+            /** @example BS Computer Science */
+            name: string;
+            /** @example 4 */
+            nominal_duration: number;
+            status?: components["schemas"]["ProgramStatus"];
+        };
+        ProgramUpdate: {
+            /** Format: uuid */
+            faculty_id?: string;
+            code?: string;
+            name?: string;
+            nominal_duration?: number;
+            status?: components["schemas"]["ProgramStatus"];
+        };
+        CurriculumVersion: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            program_id: string;
+            /** @example 2023-2024 */
+            version_label: string;
+            /**
+             * Format: date
+             * @example 2023-06-01
+             */
+            effective_start: string;
+            /**
+             * Format: date
+             * @example null
+             */
+            effective_end?: string | null;
+            /** @example 12 */
+            delinquency_threshold: number;
+            /** @example 156 */
+            total_units: number;
+            status: components["schemas"]["CurriculumVersionStatus"];
+        };
+        CurriculumVersionInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            program_id: string;
+            /** @example 2023-2024 */
+            version_label: string;
+            /** Format: date */
+            effective_start: string;
+            /** Format: date */
+            effective_end?: string | null;
+            /** @example 12 */
+            delinquency_threshold: number;
+            /** @example 156 */
+            total_units: number;
+            status?: components["schemas"]["CurriculumVersionStatus"];
+        };
+        CurriculumVersionUpdate: {
+            version_label?: string;
+            /** Format: date */
+            effective_start?: string;
+            /** Format: date */
+            effective_end?: string | null;
+            delinquency_threshold?: number;
+            total_units?: number;
+            status?: components["schemas"]["CurriculumVersionStatus"];
+        };
+        CurriculumTerm: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            curriculum_version_id: string;
+            /** @example 1 */
+            year_level: number;
+            /** @example 1 */
+            term_sequence: number;
+        };
+        CurriculumTermInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            curriculum_version_id: string;
+            year_level: number;
+            term_sequence: number;
+        };
+        CurriculumTermCourse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            curriculum_term_id: string;
+            /** Format: uuid */
+            course_id?: string | null;
+            /** @example false */
+            is_elective_slot: boolean;
+            /** @example null */
+            slot_label?: string | null;
+            /** @example 3 */
+            nominal_units: number;
+        };
+        CurriculumTermCourseInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            curriculum_term_id: string;
+            /** Format: uuid */
+            course_id?: string | null;
+            is_elective_slot: boolean;
+            slot_label?: string | null;
+            nominal_units: number;
+        };
+        Course: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            department_id: string;
+            /** @example CS 101 */
+            code: string;
+            /** @example Introduction to Computing */
+            title: string;
+            /** @example 3 */
+            lecture_hours: number;
+            /** @example 0 */
+            lab_hours: number;
+            /** @example 3 */
+            units: number;
+            status: components["schemas"]["CourseStatus"];
+            repeatable_type: components["schemas"]["RepeatableType"];
+        };
+        CourseInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            department_id: string;
+            /** @example CS 101 */
+            code: string;
+            /** @example Introduction to Computing */
+            title: string;
+            /** @example 3 */
+            lecture_hours: number;
+            /** @example 0 */
+            lab_hours: number;
+            /** @example 3 */
+            units: number;
+            status?: components["schemas"]["CourseStatus"];
+            repeatable_type?: components["schemas"]["RepeatableType"];
+        };
+        CourseUpdate: {
+            /** Format: uuid */
+            department_id?: string;
+            code?: string;
+            title?: string;
+            lecture_hours?: number;
+            lab_hours?: number;
+            units?: number;
+            status?: components["schemas"]["CourseStatus"];
+            repeatable_type?: components["schemas"]["RepeatableType"];
+        };
+        Prerequisite: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            course_id: string;
+            /** Format: uuid */
+            prerequisite_course_id: string;
+            type: components["schemas"]["PrerequisiteType"];
+        };
+        PrerequisiteInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            course_id: string;
+            /** Format: uuid */
+            prerequisite_course_id: string;
+            type: components["schemas"]["PrerequisiteType"];
+        };
+        SchoolTerm: {
+            /** Format: uuid */
+            id: string;
+            /** @example 2025 */
+            start_year: number;
+            /** @example 2026 */
+            end_year: number;
+            term_type: components["schemas"]["SchoolTermType"];
+            /** @example 2025 - 2026 */
+            school_year: string;
+            /** @example false */
+            is_locked: boolean;
+            /** @example false */
+            override_flag: boolean;
+            /** Format: uuid */
+            override_actor_id?: string | null;
+            /** Format: date-time */
+            override_at?: string | null;
+        };
+        SchoolTermInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** @example 2025 */
+            start_year: number;
+            /** @example 2026 */
+            end_year: number;
+            term_type: components["schemas"]["SchoolTermType"];
+            /** @default false */
+            is_locked: boolean;
+            /** @default false */
+            override_flag: boolean;
+            /** Format: uuid */
+            override_actor_id?: string | null;
+            /** Format: date-time */
+            override_at?: string | null;
+        };
+        SchoolTermUpdate: {
+            is_locked?: boolean;
+            override_flag?: boolean;
+            /** Format: uuid */
+            override_actor_id?: string | null;
+            /** Format: date-time */
+            override_at?: string | null;
+        };
+        CourseOffering: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            school_term_id: string;
+            /** Format: uuid */
+            course_id: string;
+            /** @example false */
+            is_by_request: boolean;
+        };
+        CourseOfferingInsert: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            school_term_id: string;
+            /** Format: uuid */
+            course_id: string;
+            /** @default false */
+            is_by_request: boolean;
+        };
+        CourseOfferingUpdate: {
+            is_by_request?: boolean;
         };
     };
     responses: {
         /** @description Bad request or validation failure */
         "400BadRequest": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Authentication required or invalid JWT token */
+        "401Unauthorized": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Access forbidden by Row Level Security or role policy */
+        "403Forbidden": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Resource not found */
+        "404NotFound": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Conflict with existing record or constraint violation */
+        "409Conflict": {
             headers: {
                 [name: string]: unknown;
             };
@@ -57,7 +867,54 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+        preferHeader: string;
+        /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+        selectQueryParam: string;
+        /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+        orderQueryParam: string;
+        /** @description Number of rows to return */
+        limitQueryParam: number;
+        /** @description Number of rows to skip */
+        offsetQueryParam: number;
+        /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        idQueryParam: string;
+        /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        idQueryParamRequired: string;
+        /** @description Filter by email equality (e.g. `eq.student@university.edu.ph`) */
+        emailQueryParam: string;
+        /** @description Filter by role (e.g. `eq.student`) */
+        roleQueryParam: string;
+        /** @description Filter by status value (e.g. `eq.active`) */
+        statusQueryParam: string;
+        /** @description Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        departmentIdQueryParam: string;
+        /** @description Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        facultyIdQueryParam: string;
+        /** @description Filter by parent program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        programIdQueryParam: string;
+        /** @description Filter by curriculum version UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        curriculumVersionIdQueryParam: string;
+        /** @description Filter by curriculum term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        curriculumTermIdQueryParam: string;
+        /** @description Filter by course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        courseIdQueryParam: string;
+        /** @description Filter by prerequisite course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        prerequisiteCourseIdQueryParam: string;
+        /** @description Filter by school term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+        schoolTermIdQueryParam: string;
+        /** @description Filter by student number (e.g. `eq.2023-04412`) */
+        studentNumberQueryParam: string;
+        /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS 101`) */
+        codeQueryParam: string;
+        /** @description Filter by name (e.g. `eq.College of Computer Studies`) */
+        nameQueryParam: string;
+        /** @description Filter by lock state (e.g. `eq.false`) */
+        isLockedQueryParam: string;
+        /** @description Filter by by_request flag (e.g. `eq.true`) */
+        isByRequestQueryParam: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -86,6 +943,1205 @@ export interface operations {
                 };
             };
             400: components["responses"]["400BadRequest"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    inviteUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Invitation successfully sent and profile provisioned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    verifyInviteToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Token verified and account activated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyInviteResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            404: components["responses"]["404NotFound"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listProfiles: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by email equality (e.g. `eq.student@university.edu.ph`) */
+                email?: components["parameters"]["emailQueryParam"];
+                /** @description Filter by role (e.g. `eq.student`) */
+                role?: components["parameters"]["roleQueryParam"];
+                /** @description Filter by status value (e.g. `eq.active`) */
+                status?: components["parameters"]["statusQueryParam"];
+                /** @description Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                department_id?: components["parameters"]["departmentIdQueryParam"];
+                /** @description Filter by student number (e.g. `eq.2023-04412`) */
+                student_number?: components["parameters"]["studentNumberQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of matching profile records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileInsert"];
+            };
+        };
+        responses: {
+            /** @description Profile successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateProfile: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Profile successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"][];
+                };
+            };
+            /** @description Profile successfully updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listFaculties: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by name (e.g. `eq.College of Computer Studies`) */
+                name?: components["parameters"]["nameQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of faculty records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Faculty"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createFaculty: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FacultyInsert"];
+            };
+        };
+        responses: {
+            /** @description Faculty successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Faculty"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateFaculty: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FacultyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Faculty successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Faculty"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listDepartments: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                faculty_id?: components["parameters"]["facultyIdQueryParam"];
+                /** @description Filter by name (e.g. `eq.College of Computer Studies`) */
+                name?: components["parameters"]["nameQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of department records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Department"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createDepartment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentInsert"];
+            };
+        };
+        responses: {
+            /** @description Department successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Department"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateDepartment: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Department successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Department"][];
+                };
+            };
+            /** @description Updated without representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listPrograms: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by parent faculty UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                faculty_id?: components["parameters"]["facultyIdQueryParam"];
+                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS 101`) */
+                code?: components["parameters"]["codeQueryParam"];
+                /** @description Filter by status value (e.g. `eq.active`) */
+                status?: components["parameters"]["statusQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of degree programs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Program"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createProgram: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramInsert"];
+            };
+        };
+        responses: {
+            /** @description Program successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Program"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateProgram: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramUpdate"];
+            };
+        };
+        responses: {
+            /** @description Program successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Program"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listCurriculumVersions: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by parent program UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                program_id?: components["parameters"]["programIdQueryParam"];
+                /** @description Filter by status value (e.g. `eq.active`) */
+                status?: components["parameters"]["statusQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of curriculum versions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumVersion"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createCurriculumVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumVersionInsert"];
+            };
+        };
+        responses: {
+            /** @description Curriculum version successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumVersion"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateCurriculumVersion: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumVersionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Curriculum version successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumVersion"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listCurriculumTerms: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by curriculum version UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                curriculum_version_id?: components["parameters"]["curriculumVersionIdQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of curriculum positional terms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTerm"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createCurriculumTerm: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumTermInsert"];
+            };
+        };
+        responses: {
+            /** @description Curriculum term successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTerm"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listCurriculumTermCourses: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by curriculum term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                curriculum_term_id?: components["parameters"]["curriculumTermIdQueryParam"];
+                /** @description Filter by course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                course_id?: components["parameters"]["courseIdQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of curriculum checklist slots. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTermCourse"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createCurriculumTermCourse: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumTermCourseInsert"];
+            };
+        };
+        responses: {
+            /** @description Slot successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTermCourse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteCurriculumTermCourse: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Slot successfully deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listCourses: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by affiliated department UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                department_id?: components["parameters"]["departmentIdQueryParam"];
+                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS 101`) */
+                code?: components["parameters"]["codeQueryParam"];
+                /** @description Filter by status value (e.g. `eq.active`) */
+                status?: components["parameters"]["statusQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+                /** @description Number of rows to return */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of course records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createCourse: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseInsert"];
+            };
+        };
+        responses: {
+            /** @description Course successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateCourse: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Course successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listPrerequisites: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                course_id?: components["parameters"]["courseIdQueryParam"];
+                /** @description Filter by prerequisite course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                prerequisite_course_id?: components["parameters"]["prerequisiteCourseIdQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of prerequisite linkages. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prerequisite"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createPrerequisite: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrerequisiteInsert"];
+            };
+        };
+        responses: {
+            /** @description Prerequisite successfully linked. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prerequisite"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deletePrerequisite: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prerequisite relationship deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listSchoolTerms: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by lock state (e.g. `eq.false`) */
+                is_locked?: components["parameters"]["isLockedQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of school terms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolTerm"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createSchoolTerm: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolTermInsert"];
+            };
+        };
+        responses: {
+            /** @description School term successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolTerm"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateSchoolTerm: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolTermUpdate"];
+            };
+        };
+        responses: {
+            /** @description School term successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolTerm"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listCourseOfferings: {
+        parameters: {
+            query?: {
+                /** @description Filter by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by school term UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                school_term_id?: components["parameters"]["schoolTermIdQueryParam"];
+                /** @description Filter by course UUID (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                course_id?: components["parameters"]["courseIdQueryParam"];
+                /** @description Filter by by_request flag (e.g. `eq.true`) */
+                is_by_request?: components["parameters"]["isByRequestQueryParam"];
+                /** @description PostgREST projection string (e.g. `*,faculty(*)`) */
+                select?: components["parameters"]["selectQueryParam"];
+                /** @description PostgREST ordering clause (e.g. `created_at.desc`) */
+                order?: components["parameters"]["orderQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of course offerings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseOffering"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createCourseOffering: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseOfferingInsert"];
+            };
+        };
+        responses: {
+            /** @description Offering successfully created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseOffering"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteCourseOffering: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offering successfully deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateCourseOffering: {
+        parameters: {
+            query: {
+                /** @description Filter targeting specific row by UUID equality (e.g. `eq.3fa85f64-5717-4562-b3fc-2c963f66afa6`) */
+                id: components["parameters"]["idQueryParamRequired"];
+            };
+            header?: {
+                /** @description PostgREST preference header (e.g. `return=representation` or `return=minimal`) */
+                Prefer?: components["parameters"]["preferHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseOfferingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Offering successfully updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseOffering"][];
+                };
+            };
+            /** @description Updated without returning representation. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             500: components["responses"]["500InternalError"];
         };
     };
