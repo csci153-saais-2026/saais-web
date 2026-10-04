@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Student Academic Advising Information System (SAAIS) API
-  version: 0.2.0
+  version: 0.2.1
   description: >-
     Target SAAIS API contract: read-only PostgREST projections and authenticated transactional Edge
     Function writes. The confirmed SRS governs business rules. This specification and its
@@ -9,7 +9,10 @@ info:
     guards: those must be enforced by the gateway, RLS and verified server operations before
     deployment. Supabase Auth handles hosted sessions and password/Google flows; this contract
     describes application provisioning and academic operations. Scheduled INC cache maintenance is
-    service-only internal database work, not a SPA operation.
+    service-only internal database work, not a SPA operation. Email/password and Google OAuth, PKCE
+    callbacks, session refresh and logout are Supabase-managed SDK flows, not custom application
+    endpoints. See x-supabase-auth-integration and contract/SUPABASE-AUTH.md for the client/gateway
+    integration contract.
   license:
     name: Proprietary
     url: https://github.com/csci153-saais-2026/saais-web/blob/main/LICENSE.md
@@ -25,7 +28,8 @@ servers:
   - url: http://127.0.0.1:54321
     description: Loopback-only local Supabase sandbox. HTTP is permitted only for local development.
 security:
-  - bearerAuth: []
+  - supabaseProjectKey: []
+    bearerAuth: []
 tags:
   - name: System
     description: System health and diagnostic endpoints
@@ -55,11 +59,15 @@ paths:
       operationId: inviteUser
       description: >-
         Admin operation to provision a pre-registered profile and send an email invitation token for
-        password creation. Required role: admin.
+        password creation. Required role: admin. Privileged server code provisions the Supabase Auth
+        identity and application profile/assignments; the SPA never calls Auth admin APIs or
+        receives server credentials. Compensating recovery coordinates Auth/email side effects with
+        database provisioning. An application invitation does not constitute a signed-in session.
       x-required-roles:
         - admin
       security:
-        - bearerAuth: []
+        - supabaseProjectKey: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
@@ -93,10 +101,17 @@ paths:
       summary: Verify invitation token and set initial password
       operationId: verifyInviteToken
       description: >-
-        Redeems an invitation token provided via email link to set the user's initial password and
-        activate the user profile. Publicly callable with valid token.
+        Application invitation redemption: accepts the single-use expiring application token from
+        the invitation email, sets the initial password in Supabase Auth through privileged server
+        code and activates the provisioned profile. Requires the public project apikey but no
+        Authorization/user session. This is not Supabase /auth/v1/verify, a Google callback or a
+        login endpoint. The handler must validate the token before any privileged work and must be
+        deployable without a gateway user-JWT requirement. Future gateway/handler configuration is
+        required; this contract does not apply it. Success returns activation acknowledgement, not
+        an access/refresh token; use the Supabase SDK to sign in afterward.
       x-required-roles: []
-      security: []
+      security:
+        - supabaseProjectKey: []
       requestBody:
         required: true
         content:
@@ -112,6 +127,8 @@ paths:
                 $ref: "#/components/schemas/VerifyInviteResponse"
         "400":
           $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
         "404":
           $ref: "#/components/responses/404NotFound"
         "409":
@@ -4863,7 +4880,21 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Supabase Auth JWT Token
+      description: >-
+        Supabase Auth user session access JWT in Authorization: Bearer <access_token>, obtained and
+        refreshed by @supabase/supabase-js. Not the publishable/anon project key, refresh token,
+        Google provider token or invitation token. Server verifies the JWT using the configured
+        project issuer/signing keys and checks active profile/role/assignment; a valid JWT alone
+        does not grant application access.
+    supabaseProjectKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: >-
+        Supabase project publishable key (or legacy anon key where supported), identifying the
+        public application. This is not a user identity or permission grant. Never send a
+        secret/service-role key from the SPA. Protected operations ALSO require the user session JWT
+        in Authorization; both schemes belong to the same security requirement (AND).
   parameters:
     limitQueryParam:
       name: limit
@@ -5200,11 +5231,16 @@ components:
             details: Failing row contains (units=-3).
             hint: Ensure credit units are positive quarter steps (e.g. 1.00, 3.00).
     401Unauthorized:
-      description: Missing or invalid Supabase JWT Bearer authentication token.
+      description: >-
+        Missing/invalid project apikey or missing, invalid or expired user session JWT on protected
+        operations. Invitation redemption does not require a user JWT. Gateway rejections may have a
+        different error shape than application/PostgREST responses.
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            anyOf:
+              - $ref: "#/components/schemas/Error"
+              - $ref: "#/components/schemas/SupabaseGatewayAuthError"
           example:
             code: PGRST301
             message: JWT expired or signature verification failed
@@ -5411,6 +5447,10 @@ components:
           maxLength: 2048
           writeOnly: true
           pattern: \S
+          description: >-
+            Opaque application invitation token, not a user JWT, OAuth authorization code, refresh
+            token or Supabase token_hash. Validate expiry and single-use redemption server-side;
+            never log the token or password.
         password:
           type: string
           format: password
@@ -5432,6 +5472,9 @@ components:
         message:
           type: string
           example: Account successfully activated.
+      description: >-
+        Application activation acknowledgement only. Does not create a browser Supabase session or
+        contain Auth access/refresh tokens.
     Profile:
       type: object
       required:
@@ -7614,6 +7657,34 @@ components:
         - is_elective_slot
         - nominal_units
         - course_id
+    SupabaseGatewayAuthError:
+      type: object
+      description: >-
+        Upstream Supabase gateway/authentication rejection, which need not have the
+        application/PostgREST error shape. Consumers must tolerate additional provider fields and
+        must not depend on message text for authorization.
+      properties:
+        message:
+          type: string
+        error:
+          type: string
+        error_description:
+          type: string
+        code:
+          type:
+            - string
+            - integer
+      anyOf:
+        - required:
+            - message
+          properties:
+            message:
+              type: string
+        - required:
+            - error
+          properties:
+            error:
+              type: string
 x-saais-invariants:
   roles:
     - student
@@ -7642,3 +7713,58 @@ x-resource-controls:
     - Atomic, bounded writes with consistent lock order; no service-role key in SPA
   default_page_size: 20
   max_page_size: 1000
+x-supabase-auth-integration:
+  provider: Supabase Auth
+  client_sdk: "@supabase/supabase-js"
+  ownership: >-
+    Supabase-managed /auth/v1/* endpoints are consumed through the SDK; not duplicated as
+    application operations.
+  email_password:
+    sdk_method: auth.signInWithPassword
+    signup_policy: Admin-provisioned accounts only; no public self-registration.
+  google_oauth:
+    sdk_method: auth.signInWithOAuth
+    provider: google
+    flow_type: pkce
+    callback_route: /auth/callback
+    callback_handling: >-
+      Configure flowType=pkce explicitly. Exchange the returned code using
+      auth.exchangeCodeForSession (or configured SDK URL detection), exactly once; do not run both.
+      No browser client secret. Provider and redirect allowlist setup is future work.
+    provider_callback: >-
+      https://<project-ref>.supabase.co/auth/v1/callback (registered with Google); distinct from the
+      SPA redirect target.
+    email_policy: >-
+      Verified Google email must exactly match the admin-provisioned profile email; enforce
+      eligibility/linking server-side, including already-existing identities.
+  sessions:
+    owner: Supabase SDK
+    refresh: >-
+      Use the current refreshed user access token per application request; never cache one JWT
+      forever.
+    state: >-
+      Use auth.onAuthStateChange for browser session updates; server independently
+      authenticates/authorizes.
+    logout: auth.signOut
+    password_recovery: >-
+      auth.resetPasswordForEmail and auth.updateUser after a valid recovery session; not custom
+      application endpoints.
+  headers:
+    apikey: Public project publishable key (legacy anon key where supported).
+    Authorization: Bearer <current Supabase user access_token> for protected application operations only.
+  authorization:
+    identity: >-
+      Verified Supabase JWT subject maps to the provisioned profile ID; never trust client-supplied
+      email/role or user-editable user_metadata.
+    active_account: >-
+      Require active provisioned profile on protected requests, including existing users after
+      role/status changes.
+    creation_hook: >-
+      A before-user-created hook can restrict new identity creation; it does not govern subsequent
+      logins or replace account-status/RLS checks.
+    organization: >-
+      Application role and current/historical assignment remain server-enforced separately from
+      PostgreSQL authenticated role.
+  deployment_boundary: >-
+    Specification only: no Supabase project/provider/hook/grant/Edge Function configuration or
+    implementation is changed.

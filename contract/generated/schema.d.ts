@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Send account invitation
-         * @description Admin operation to provision a pre-registered profile and send an email invitation token for password creation. Required role: admin.
+         * @description Admin operation to provision a pre-registered profile and send an email invitation token for password creation. Required role: admin. Privileged server code provisions the Supabase Auth identity and application profile/assignments; the SPA never calls Auth admin APIs or receives server credentials. Compensating recovery coordinates Auth/email side effects with database provisioning. An application invitation does not constitute a signed-in session.
          */
         post: operations["inviteUser"];
         delete?: never;
@@ -35,7 +35,7 @@ export interface paths {
         put?: never;
         /**
          * Verify invitation token and set initial password
-         * @description Redeems an invitation token provided via email link to set the user's initial password and activate the user profile. Publicly callable with valid token.
+         * @description Application invitation redemption: accepts the single-use expiring application token from the invitation email, sets the initial password in Supabase Auth through privileged server code and activates the provisioned profile. Requires the public project apikey but no Authorization/user session. This is not Supabase /auth/v1/verify, a Google callback or a login endpoint. The handler must validate the token before any privileged work and must be deployable without a gateway user-JWT requirement. Future gateway/handler configuration is required; this contract does not apply it. Success returns activation acknowledgement, not an access/refresh token; use the Supabase SDK to sign in afterward.
          */
         post: operations["verifyInviteToken"];
         delete?: never;
@@ -1521,10 +1521,12 @@ export interface components {
             profile_id: string;
         };
         VerifyInviteRequest: {
+            /** @description Opaque application invitation token, not a user JWT, OAuth authorization code, refresh token or Supabase token_hash. Validate expiry and single-use redemption server-side; never log the token or password. */
             token: string;
             /** Format: password */
             password: string;
         };
+        /** @description Application activation acknowledgement only. Does not create a browser Supabase session or contain Auth access/refresh tokens. */
         VerifyInviteResponse: {
             /** @example true */
             success: boolean;
@@ -2310,6 +2312,17 @@ export interface components {
             slot_label?: null;
             nominal_units: number;
         };
+        /** @description Upstream Supabase gateway/authentication rejection, which need not have the application/PostgREST error shape. Consumers must tolerate additional provider fields and must not depend on message text for authorization. */
+        SupabaseGatewayAuthError: {
+            message?: string;
+            error?: string;
+            error_description?: string;
+            code?: string | number;
+        } | {
+            message: string;
+        } | {
+            error: string;
+        };
     };
     responses: {
         /** @description Invalid request parameters or payload violates integrity constraints. */
@@ -2329,7 +2342,7 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Missing or invalid Supabase JWT Bearer authentication token. */
+        /** @description Missing/invalid project apikey or missing, invalid or expired user session JWT on protected operations. Invitation redemption does not require a user JWT. Gateway rejections may have a different error shape than application/PostgREST responses. */
         "401Unauthorized": {
             headers: {
                 [name: string]: unknown;
@@ -2343,7 +2356,7 @@ export interface components {
                  *       "hint": "Refresh session token and pass Authorization: Bearer <token>"
                  *     }
                  */
-                "application/json": components["schemas"]["Error"];
+                "application/json": components["schemas"]["Error"] | components["schemas"]["SupabaseGatewayAuthError"];
             };
         };
         /** @description Access forbidden by Row Level Security (RLS) policies or insufficient role privilege. */
@@ -2547,6 +2560,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
             404: components["responses"]["404NotFound"];
             409: components["responses"]["409Conflict"];
             429: components["responses"]["429TooManyRequests"];

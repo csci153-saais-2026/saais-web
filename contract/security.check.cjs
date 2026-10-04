@@ -41,13 +41,38 @@ test('authenticated operations specify roles, scope and failure responses', () =
   for (const { route, operation } of operations) {
     assert.ok(operation['x-access-scope'], route);
     assert.ok(operation.responses['429'], route);
-    if (operation.security?.length === 0) continue;
+    const security = operation.security ?? spec.security;
+    if (!security.some(requirement => Object.hasOwn(requirement, 'bearerAuth'))) continue;
     assert.ok(operation['x-required-roles']?.length, route);
     for (const role of operation['x-required-roles']) {
       assert.ok(['student', 'adviser', 'admin'].includes(role), route);
     }
     assert.ok(operation.responses['403'], route);
   }
+});
+
+test('Supabase project key and user JWT are AND requirements with a pre-login invitation exception', () => {
+  const projectKey = spec.components.securitySchemes.supabaseProjectKey;
+  assert.equal(projectKey.type, 'apiKey');
+  assert.equal(projectKey.in, 'header');
+  assert.equal(projectKey.name, 'apikey');
+  assert.deepEqual(spec.security, [{ supabaseProjectKey: [], bearerAuth: [] }]);
+  for (const { route, operation } of operations) {
+    const security = operation.security ?? spec.security;
+    if (route === '/functions/v1/auth/verify-invite') {
+      assert.deepEqual(security, [{ supabaseProjectKey: [] }]);
+      assert.deepEqual(operation['x-required-roles'], []);
+      assert.ok(operation.responses['401']);
+    } else {
+      assert.deepEqual(security, [{ supabaseProjectKey: [], bearerAuth: [] }], route);
+    }
+    assert.ok(!route.startsWith('/auth/v1/'), 'Managed Auth paths must stay SDK-owned');
+  }
+  assert.equal(spec['x-supabase-auth-integration'].google_oauth.flow_type, 'pkce');
+  assert.ok(!Object.hasOwn(schemas.VerifyInviteResponse.properties, 'access_token'));
+  assert.ok(!Object.hasOwn(schemas.VerifyInviteResponse.properties, 'refresh_token'));
+  const errors = spec.components.responses['401Unauthorized'].content['application/json'].schema.anyOf;
+  assert.ok(errors.some(error => error.$ref.endsWith('/SupabaseGatewayAuthError')));
 });
 
 test('write bodies reject extra properties and client-controlled audit fields', () => {

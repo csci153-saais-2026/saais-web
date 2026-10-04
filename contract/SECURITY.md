@@ -2,6 +2,8 @@
 
 The 0.2.0 contract reconciles the supplied Gemini review of 0.1.0 with the finalized advising workflow. It is a target API specification, not an implementation or evidence that a deployed Supabase project is secure.
 
+The 0.2.1 revision adds the Supabase project `apikey` alongside the user bearer JWT, preserves pre-login invitation redemption, and documents SDK-managed email/password and Google PKCE authentication in [SUPABASE-AUTH.md](SUPABASE-AUTH.md). It also accommodates upstream gateway authentication errors. No Supabase configuration is applied.
+
 | Finding | Contract correction |
 | --- | --- |
 | Client-supplied term override audit fields | A separate admin override operation accepts only `enabled`; the authenticated actor and timestamp are server-derived. |
