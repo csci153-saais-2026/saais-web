@@ -14,7 +14,8 @@
     "contract:gen": "openapi-typescript contract/openapi.yaml -o contract/generated/schema.d.ts",
     "contract:check": "npm run contract:gen && git diff --exit-code contract/generated",
     "contract:docs": "redocly build-docs contract/openapi.yaml --config contract/redocly.yaml -o docs/openapi/index.html",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "contract:security": "node --test contract/security.check.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

@@ -41,6 +41,14 @@ jobs:
             2. **Role-Based Authorization Clarity**: Ensure endpoints indicate which roles (student, adviser, admin) have access.
             3. **SAAIS Invariant Protections**: Verify operations handling sensitive transactions (adviser reassignment, prerequisite override, elective mapping, equivalency) have appropriate schemas and error shapes.
 
+            Treat x-saais-invariants as the confirmed business rules, not gaps to replace with new workflows.
+            In particular: students are read-only; prerequisite clearance corrects the original failed grade
+            without an approval queue; equivalencies are student-specific, not global course mappings.
+            Inspect the complete current contract before claiming endpoints, pagination or role metadata are absent.
+            x-required-roles and validation bounds document requirements but do not prove runtime enforcement.
+            Distinguish contract defects from implementation checks that cannot be verified from OpenAPI alone.
+            For read-only PostgREST collections, hidden/missing rows may return 200 []; do not demand a 404 for them.
+
             Provide an actionable, structured markdown audit with:
             - 🛡️ **Security Summary (Score /100)**
             - ⚠️ **Potential Flaws / Missing Schemas**
