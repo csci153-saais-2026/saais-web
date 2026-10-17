@@ -20,11 +20,11 @@ SAAIS manages the entire academic advising lifecycle:
 
 ### 1.2 Target User Roles & Permissions
 
-| Role                     | Key Capabilities & Boundaries                                                                                                                                                                                                                                                                                                                                                                                                  |
-| :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Student**              | <ul><li>View assigned curriculum checklist and completion progress.</li><li>View term-by-term grades, units earned, term GWA, and cumulative GWA.</li><li>View historical enrollment attempts and assigned academic adviser.</li><li>_Cannot view staff-only notes, attempt remarks, or audit logs._</li></ul>                                                                                                                 |
-| **Academic Adviser**     | <ul><li>Manage assigned advisees and view historical advisees.</li><li>Record new enrollment attempts with prerequisite verification and override prompt.</li><li>Execute elective course mappings and transfer/discontinued-course equivalency decisions.</li><li>Add dated, append-only advising notes and per-attempt remarks (staff-only).</li><li>Initiate zero-gap adviser reassignments.</li></ul>                      |
-| **System Administrator** | <ul><li>Provision and manage user accounts and assign roles (no public self-registration).</li><li>Manage degree programs, curriculum versions, and delinquency thresholds.</li><li>Maintain the master course catalog, prerequisite linkages, and repeatable rules.</li><li>Configure school terms, course offerings (including `by_request` flags), and term locks.</li><li>Access the immutable system audit log.</li></ul> |
+| Role                     | Key Capabilities & Boundaries                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Student**              | <ul><li>View assigned curriculum checklist and completion progress.</li><li>View term-by-term grades, units earned, term GWA, and cumulative GWA.</li><li>View historical enrollment attempts and assigned academic adviser.</li><li>_Cannot view staff-only notes, attempt remarks, or audit logs._</li></ul>                                                                                                                                                                                                                               |
+| **Academic Adviser**     | <ul><li>Navigate comprehensive Advisee 360 records across 7 dedicated subnavigation tabs: Overview, Advising, Checklist, Grades, History, Notes, and Documents.</li><li>Utilize the Advising Workspace to review term-filtered Course Recommendations (cleared prerequisites and open slots) and interact with the AI Advising Assistant preview.</li><li>Manage assigned advisees and view historical advisees.</li><li>Record new enrollment attempts with prerequisite verification and override prompt.</li><li>Execute elective course mappings and transfer/discontinued-course equivalency decisions.</li><li>Add dated, append-only advising notes and per-attempt remarks (staff-only).</li><li>Initiate zero-gap adviser reassignments.</li></ul> |
+| **System Administrator** | <ul><li>Manage academic organizational hierarchy: Faculties (displayed as Colleges) and Departments. Associate user accounts and courses with departments, and degree programs with faculties.</li><li>Provision and manage user accounts and assign roles (no public self-registration).</li><li>Manage degree programs, curriculum versions, and delinquency thresholds.</li><li>Maintain the master course catalog, prerequisite linkages, and repeatable rules.</li><li>Configure school terms, course offerings (including `by_request` flags), and term locks.</li><li>Access the immutable system audit log.</li></ul> |
 
 ---
 
@@ -45,9 +45,9 @@ flowchart LR
 - **Goal**: Establish the contract-first architecture, database schema, authentication with server-side pre-registration whitelist, and administrator catalog management.
 - **Key Deliverables**:
   1. Hand-authored OpenAPI 3.1 contract (`contract/openapi.yaml`) with Redocly linting and `openapi-typescript` client generation.
-  2. PostgreSQL schema migrations with Row Level Security (RLS) policies for `Profile`, `Program`, `CurriculumVersion`, `CurriculumTerm`, `Course`, `Prerequisite`, `SchoolTerm`, and `CourseOffering`.
+  2. PostgreSQL schema migrations with Row Level Security (RLS) policies for `Faculty`, `Department`, `Profile`, `Program`, `CurriculumVersion`, `CurriculumTerm`, `Course`, `Prerequisite`, `SchoolTerm`, and `CourseOffering`.
   3. Supabase Auth integration with an Auth Hook enforcing that sign-ins (Email or Google OAuth) strictly match pre-registered administrator-created profiles.
-  4. Admin Portal: CRUD for Programs, Curricula, Course Catalog, and School Terms / Offerings.
+  4. Admin Portal: CRUD for Faculties (Colleges), Departments, Programs, Curricula, Course Catalog (department-linked), and School Terms / Offerings.
 
 ### Phase 2: Core Advising Workflows & Student Portal
 
@@ -56,7 +56,7 @@ flowchart LR
   1. Adviser-Student assignment with database-enforced zero-gap continuity (`AdviserAssignment` table + `reassignAdviser` Edge Function).
   2. Enrollment attempt recording (`Attempt` table + `recordEnrollmentAttempt` Edge Function) with soft prerequisite warnings and Continue/Cancel override auditing.
   3. Student Portal: Dashboard (Adviser, GWA, Delinquency status), interactive Curriculum Checklist view, and Term Grades history.
-  4. Adviser Portal: Advisee roster search/filtering and comprehensive student 360-degree academic view.
+  4. Adviser Portal: Advisee roster search/filtering and comprehensive student 360-degree academic view structured into 7 dedicated subnavigation tabs: Overview, Advising, Checklist, Grades, History, Notes, and Documents. Core Advising Workspace featuring dynamic Course Recommendations (prerequisite-cleared eligible courses) and the contextual AI Advising Assistant chat interface preview.
 
 ### Phase 3: Academic Exceptions, INC Lapses & Documentation
 
@@ -83,9 +83,9 @@ flowchart LR
 - **Goal**: Next-generation visual and predictive features.
 - **Key Deliverables**:
   1. Interactive Prerequisite Visual DAG (Directed Acyclic Graph) flowchart.
-  2. "What-If" Curriculum Shift & Degree Audit Simulator.
+  2. "What-If" Curriculum Shift & Degree Audit Simulator (previewed as a read-only client-side simulator on the Checklist tab without persistent database mutations).
   3. Graduation Clearance & Deficiency Checker.
-  4. AI-Powered Advising Assistant (RAG via Model Context Protocol / MCP).
+  4. AI-Powered Advising Assistant (RAG via Model Context Protocol / MCP, previewed in the Advising Workspace with grounded context retrieval and strict read-only advisory boundaries).
 
 ---
 
@@ -93,17 +93,23 @@ flowchart LR
 
 ### 3.1 Authentication & User Provisioning
 
-1. **Admin-Only Provisioning**: Public self-registration is strictly disabled. Admins create user profiles specifying role (`student`, `adviser`, `admin`) and institutional email.
+1. **Admin-Only Provisioning**: Public self-registration is strictly disabled. Admins create user profiles specifying role (`student`, `adviser`, `admin`), institutional email, and assigned `department_id` (academic department for advisers, program department for students, administrative unit for admins).
 2. **Server-Side SSO Whitelisting**: Google OAuth sign-in is validated server-side via a Supabase Auth Hook (`before user created`). If the incoming Google email does not match a pre-registered `Profile.email`, authentication is immediately rejected.
 3. **Session Management**: Client session is managed via `SessionContext` subscribing to `supabase.auth.onAuthStateChange`, populating `{ session, profile, role }` across route guards.
 
-### 3.2 Academic Structure & Course Catalog
+### 3.2 Academic Structure, Organizational Hierarchy & Course Catalog
 
-1. **Programs & Versioned Curricula**: A `Program` has one or more `CurriculumVersion` records with designated effective dates and distinct `delinquency_threshold` (failed units limit).
-2. **Positional Terms vs. Calendar School Terms**:
+1. **Academic Organizational Hierarchy**:
+   - **Faculties (Colleges)**: Top-level academic division modeled by the `Faculty` entity (`faculty`, `name` unique). Displayed in administrative views and program selectors as "College" or "Faculty" (e.g., Faculty of Computer Studies, Faculty of Arts and Sciences).
+   - **Departments**: Academic departments modeled by the `Department` entity (`department`, `name` unique within faculty, `faculty_id` FK). Subordinate to a parent Faculty (e.g., Department of Computer Science, Department of Information Technology).
+   - **Program Ownership**: Each degree `Program` belongs to exactly one `Faculty` via `faculty_id`.
+   - **Course Administration**: Master catalog `Course` records are owned and administered by an academic `Department` via `department_id`.
+   - **User Profile Assignment**: Each `Profile` references an academic or administrative `Department` via `department_id` to establish organizational affiliation.
+2. **Programs & Versioned Curricula**: A `Program` has one or more `CurriculumVersion` records with designated effective dates, `version_label`, `total_units`, and distinct `delinquency_threshold` (failed units limit).
+3. **Positional Terms vs. Calendar School Terms**:
    - `CurriculumTerm`: Positional slot (e.g., Year 1, Term 1) within a curriculum version.
    - `SchoolTerm`: Actual academic calendar term (e.g., Academic Year 2025–2026, 1st Semester). Includes `is_locked` and `override_flag` states.
-3. **Course Attributes & Repeatable Types**:
+4. **Course Attributes & Repeatable Types**:
    - Courses define lecture hours, lab hours, units, and status (`active` or `discontinued`).
    - `repeatable_type`:
      - `none` / `grade_replacement`: Only the **most recent Passed attempt** counts toward earned units and cumulative GWA. A later failure never reverts an already-passed course.
@@ -153,6 +159,26 @@ flowchart LR
 1. **Advising Notes (`AdvisingNote`)**: Dated, append-only, student-level notes recorded by advisers or admins.
 2. **Attempt Remarks (`AttemptRemark`)**: Scoped to specific attempts or empty checklist slots.
 3. **Privacy Barrier**: Notes and remarks are strictly staff-only (advisers and admins) and are inaccessible to students via RLS.
+
+### 3.8 Advisee 360 Architecture & Advising Workspace
+
+1. **7 Canonical Subnavigation Tabs**:
+   The Advisee 360 interface (`/adviser/advisees/:id`) provides a comprehensive academic console structured across 7 dedicated subnavigation tabs:
+   - **Overview**: Centralized student summary dashboard displaying 4 primary KPI cards (Cumulative GWA, Failed units vs. delinquency threshold, Slots satisfied out of curriculum total, and Current enrolled term units load), active term enrollments table, chronological timeline of academic milestones/exceptions, staff notes preview card, and gap-free adviser assignment history.
+   - **Advising**: The dedicated interactive Advising Workspace featuring:
+     - **Course Recommendations Engine**: Term-filtered eligible courses where all strict prerequisites have been cleared (passed or overridden) that fulfill open curriculum checklist slots or mandatory retakes. Each row displays course code, title, units, recommendation rationale ("Why recommended"), and status tag (`Elective`, `By request`, `Retake`). Courses with unsatisfied or in-progress strict prerequisites or courses not scheduled in the active term offering are automatically excluded. Provides multi-selection and "Add selected to plan" action.
+     - **AI Advising Assistant**: Contextual chat interface grounded in the student's academic records, checklist progress, and cleared prerequisites. Displays a permanent verification banner: *"Drafts suggestions from this record — always verify before acting"*. Operates strictly as a read-only advisory copilot in v1 without performing autonomous database modifications.
+     - **Advising Notes Summary**: Quick-reference card showing recent staff-only advising notes with direct link to the full Notes repository.
+   - **Checklist**: Structured grid of curriculum slot requirements across year levels and terms (completed, currently enrolled, unfulfilled), exception authoring modals (New Elective Mapping, New Equivalency Decision), and the **Curriculum Shift Preview** simulator.
+   - **Grades**: Longitudinal term-by-term grade sheets detailing discrete grades ($1.00$–$5.00$), units earned, term GWA, cumulative GWA progression, and open INC compliance deadlines.
+   - **History**: Full chronological audit of all course attempts across terms, tracking retakes under repeatable rules (`none`, `grade_replacement`, `additional_credit`), dropped courses (`dr`), and unfulfilled attempts.
+   - **Notes**: Staff-only, append-only repository of dated advising notes and attempt remarks with multi-attribute filtering (note type, author, term) and immutable entry composer.
+   - **Documents**: Advisee file repository providing subnavigation access to exported advising artifacts, unofficial transcripts, signed grade summaries, and official clearance slips.
+
+2. **Curriculum Shift Preview Simulator**:
+   - Embedded as a dedicated analytical panel in the Checklist tab (`/adviser/advisees/:id/checklist`).
+   - Allows an adviser or student to select an alternate target curriculum version and dynamically calculates: Carried units, Lost units, and Projected GWA.
+   - **Read-Only Invariant**: Formally documented and displayed with a permanent notice (*"Phase 5 preview — the simulator does not write anything"*). All calculations execute purely in-memory (or via read-only analytical queries) without generating persistent draft tables, database mutations, or program reassignments.
 
 ---
 
@@ -257,8 +283,8 @@ Based on industry advising benchmarks and modern academic workflows, the followi
 
 ### 6.2 "What-If" Curriculum Shift & Degree Audit Simulator
 
-- **Description**: Allows an adviser or student to simulate shifting to a different program or newer curriculum version.
-- **Benefit**: Computes which passed courses map over, which courses would be lost, the new projected GWA, and remaining terms to graduate before executing a formal transfer.
+- **Description**: Allows an adviser or student to simulate shifting to a different program or newer curriculum version via the embedded read-only simulator panel on the Checklist tab.
+- **Benefit**: Computes which passed courses map over, which courses would be lost, the new projected GWA, and remaining terms to graduate in-memory before executing a formal transfer, without writing any speculative database records.
 
 ### 6.3 Graduation Clearance & Deficiency Audit Engine
 
@@ -298,6 +324,8 @@ Based on industry advising benchmarks and modern academic workflows, the followi
 
 ### Key Contract Endpoints
 
+- `GET /rest/v1/faculty`: List institutional faculties / colleges.
+- `GET /rest/v1/department`: List academic departments filtered by parent faculty.
 - `POST /functions/v1/enrollment-attempts` (`recordEnrollmentAttempt`): Soft-check prerequisite evaluation with override auditing.
 - `POST /functions/v1/adviser-reassignment` (`reassignAdviser`): Atomic zero-gap adviser transition.
 - `POST /functions/v1/equivalency-decisions` (`applyEquivalencyDecision`): Slot remapping for transfers and discontinued courses.
@@ -306,4 +334,4 @@ Based on industry advising benchmarks and modern academic workflows, the followi
 
 ### Core Database Entities
 
-`Profile`, `AdviserAssignment`, `Program`, `CurriculumVersion`, `CurriculumTerm`, `Course`, `Prerequisite`, `CurriculumTermCourse`, `StudentCurriculumAssignment`, `ElectiveMapping`, `EquivalencyDecision`, `SchoolTerm`, `CourseOffering`, `Attempt`, `INCResolution`, `AdvisingNote`, `AttemptRemark`, `AuditLogEntry`.
+`Faculty`, `Department`, `Profile`, `AdviserAssignment`, `Program`, `CurriculumVersion`, `CurriculumTerm`, `Course`, `Prerequisite`, `CurriculumTermCourse`, `StudentCurriculumAssignment`, `SchoolTerm`, `CourseOffering`, `Attempt`, `ElectiveMapping`, `EquivalencyDecision`, `INCResolution`, `AdvisingNote`, `AttemptRemark`, `AuditLogEntry`.

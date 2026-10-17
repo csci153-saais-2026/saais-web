@@ -29,3 +29,6 @@ coverage
 .env.*.local
 .supabase/local
 supabase/.temp
+
+# Agent and temporary teamwork metadata
+.agents/
