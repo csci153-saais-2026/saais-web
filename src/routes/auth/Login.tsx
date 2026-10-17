@@ -1,25 +1,126 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Alert } from '../../components/ui/alert'
+import { useSession } from '../../hooks/useSession'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase/client'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [keepSignedIn, setKeepSignedIn] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const err = params.get('error_description') || params.get('error')
+    if (err) {
+      return err.includes('whitelist') || err.includes('not provisioned') || err.includes('registered')
+        ? 'Sign-in was rejected: Your institutional email is not pre-registered. Please contact your department administrator for access.'
+        : err
+    }
+    return null
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { session, role, setDevRole } = useSession()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (session && role) {
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname
+      if (from) {
+        navigate(from, { replace: true })
+      } else if (role === 'admin') {
+        navigate('/admin', { replace: true })
+      } else if (role === 'adviser') {
+        navigate('/adviser', { replace: true })
+      } else {
+        navigate('/student', { replace: true })
+      }
+    }
+  }, [session, role, navigate, location])
+
+  const handleGoogleSignIn = async () => {
+    setErrorMessage(null)
+    setIsSubmitting(true)
+
+    try {
+      if (!isSupabaseConfigured) {
+        setErrorMessage(
+          'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not set. Use the Dev Role Switcher at the bottom right to test roles locally.'
+        )
+        setIsSubmitting(false)
+        return
+      }
+
+      const redirectTo = `${window.location.origin}/auth/callback`
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
+        },
+      })
+
+      if (error) {
+        setErrorMessage(error.message)
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to initiate Google sign-in.'
+      setErrorMessage(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage(null)
+
     if (!email.includes('@') || !email.endsWith('.edu.ph')) {
       setErrorMessage(
         `Sign-in was rejected: ${email || 'Provided email'} is not a registered institutional profile. Contact an administrator.`
       )
       return
     }
-    setErrorMessage(null)
-    console.log('Logging in with:', { email, password, keepSignedIn })
+
+    setIsSubmitting(true)
+
+    try {
+      if (!isSupabaseConfigured) {
+        if (email.includes('admin')) {
+          setDevRole('admin')
+        } else if (email.includes('adviser')) {
+          setDevRole('adviser')
+        } else {
+          setDevRole('student')
+        }
+        return
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        if (error.message.toLowerCase().includes('invalid login credentials')) {
+          setErrorMessage('Invalid institutional credentials. Please verify your email and password or contact an administrator.')
+        } else {
+          setErrorMessage(error.message)
+        }
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred during sign in.'
+      setErrorMessage(message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -98,15 +199,21 @@ export default function Login() {
                 <path d="M13.5 3H7a1.5 1.5 0 00-1.5 1.5v15A1.5 1.5 0 007 21h10a1.5 1.5 0 001.5-1.5V8z" />
                 <path d="M13.5 3v5H18.5" />
               </svg>
-              <span>Every sign-in and role change is written to the audit log.</span>
+              <span>Permissions are resolved from institutional role, not email claims.</span>
             </div>
           </div>
         </div>
+
+        <div className="grow" />
+
+        <div className="text-[12px] text-[rgba(246,242,228,0.4)]">
+          SAAIS — Smart Academic Advising and Information System
+        </div>
       </aside>
 
-      <main className="grow flex items-center justify-center p-6 sm:p-14">
+      <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-16">
         <div className="w-full max-w-[420px]">
-          <div className="lg:hidden flex items-center gap-[10px] mb-8">
+          <div className="flex lg:hidden items-center gap-2 mb-8">
             <img src="/logo-mark.png" alt="SAAIS Logo" className="w-8 h-8 rounded-md" />
             <span className="dsp text-[20px] text-[#1D2F0A]">SAAIS</span>
           </div>
@@ -119,8 +226,9 @@ export default function Login() {
           <Button
             type="button"
             variant="secondary"
-            className="w-full flex items-center justify-center gap-[11px] mt-7"
-            onClick={() => console.log('Google Auth clicked')}
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-[11px] mt-7 cursor-pointer"
+            onClick={handleGoogleSignIn}
           >
             <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] shrink-0" fill="#5F6368">
               <path d="M21 12.2c0-.7-.06-1.36-.18-2H12v3.8h5.05a4.32 4.32 0 01-1.87 2.83v2.35h3.02C19.96 17.5 21 15.1 21 12.2z" />
@@ -180,9 +288,10 @@ export default function Login() {
             <Button
               type="submit"
               variant="primary"
-              className="w-full mt-1"
+              disabled={isSubmitting}
+              className="w-full mt-1 cursor-pointer"
             >
-              Sign in
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
 
