@@ -25,6 +25,9 @@ coverage
 *.sw?
 
 # Supabase & Local Env
+.env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 .supabase/local
