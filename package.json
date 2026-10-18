@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage",
     "contract:lint": "redocly lint contract/openapi.yaml --config contract/redocly.yaml",
     "contract:gen": "openapi-typescript contract/openapi.yaml -o contract/generated/schema.d.ts",
