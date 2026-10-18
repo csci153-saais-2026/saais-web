@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@redocly/cli": "^2.51.2",
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/react": "^16.2.0",
