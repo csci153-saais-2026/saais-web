@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
     "contract:lint": "redocly lint contract/openapi.yaml --config contract/redocly.yaml",
     "contract:gen": "openapi-typescript contract/openapi.yaml -o contract/generated/schema.d.ts",
     "contract:check": "npm run contract:gen && git diff --exit-code contract/generated",
