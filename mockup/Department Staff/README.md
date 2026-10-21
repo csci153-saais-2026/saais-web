@@ -1,11 +1,12 @@
 # Department Staff static design
 
-Open `index.html` in this folder. The sidebar links these five pages:
+Open `index.html` in this folder. The sidebar links these six pages:
 
 - Students: name/ID search, curriculum/adviser filters, spreadsheet import and illustrative ID validation.
 - Adviser assignments: student selection, bulk reassignment preview, Since and Previous adviser columns.
 - Academic terms: open/closed semesters, term details, add-term and close-encoding previews.
-- Curricula: all active versions, including older versions with enrolled students, plus student counts and opened subjects with prerequisite types and co-requisites. The “Read only” label is omitted. Existing versions cannot be edited; creation and rename controls are omitted.
+- Curricula: "Shape the path to graduation." A version selector with Edit/Delete version, four stat cards (required units, delinquency threshold, effective date, status) and one panel per curriculum term with its courses and slots. Versions, terms and courses/slots can be added, edited and deleted in memory only; nothing persists.
+- Course catalog: "One catalog. Many academic paths." Search plus status, faculty and department filters over a course table (units, status). Courses can be added, edited and deleted, and prerequisites/co-requisites assigned, in memory only.
 - Accounts and roles: the SystemAdmin Accounts and roles layout, scoped to the department. The People table shows names, VSU email addresses, and multiple role badges. Add account opens a full-name/VSU-email form with role checkboxes and illustrative validation.
 
 These files use the local `../DesignSystem.dc.html` palette, typefaces, and component shapes. Design alignment changes are confined to the Department Staff and Department Head folders.

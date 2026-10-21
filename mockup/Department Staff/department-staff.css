@@ -127,3 +127,17 @@ table.cards td:has(>strong){display:block;text-align:left}table.cards td:has(>st
 }
 @media(max-width:450px){.stats{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}.page-heading>.actions{width:100%}.page-heading>.actions>.btn{max-width:100%}.route{flex-wrap:wrap}}
 @media print{.sidebar,.topbar,.btn,.toolbar,.sample-caption,dialog,.toast,.nav-backdrop{display:none!important}.shell{display:block}main{padding:0}.panel,.stat{break-inside:avoid}body{background:white}}
+
+.stats.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cu-bar{border:0;padding:0 0 22px;gap:12px}.cu-bar label{flex:0 1 280px;min-width:220px}.cu-spacer{flex:1}
+.head-actions,.row-actions{display:flex;gap:8px;flex-wrap:wrap}.head-actions .btn{padding:9px 16px;font-size:14px}
+.empty-row{padding:24px 20px;text-align:center;color:var(--muted)}
+body[data-page="Curricula"] .panel{margin-bottom:22px}
+@media(max-width:1100px){.stats.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.stats.four{grid-template-columns:1fr}.cu-spacer{display:none}}
+.stats.four .stat strong{font-size:30px}
+
+.cc-bar{border:0;padding:0 0 22px;gap:16px;align-items:flex-end}.cc-bar label{flex:0 1 220px;min-width:170px}.cc-bar .cc-search{flex:1 1 260px}
+.cc-pre-list{display:grid;gap:8px;max-height:46vh;overflow:auto}.cc-pre-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border:1px solid var(--line);border-radius:4px}
+.cc-pre-row label{display:flex;align-items:center;gap:10px;font-size:13.5px;cursor:pointer;flex:1;min-width:0}.cc-pre-row select{width:auto;min-width:140px}
+body[data-page="CourseCatalog"] .panel{margin-bottom:22px}body[data-page="CourseCatalog"] dialog{width:min(600px,calc(100% - 32px))}

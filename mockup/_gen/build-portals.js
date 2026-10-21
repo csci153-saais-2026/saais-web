@@ -19,7 +19,7 @@ function screenKey(role,file){
  let name=file.replace(/(?:\.dc)?\.html$/,'');
  if(role.id==='student')return name==='Student'?'workspace':kebab(name.replace(/^Student/,''));
  if(role.id==='adviser')return name==='Adviser'?'workspace':name.startsWith('Advisee')?'advisees/'+kebab(name.slice(7)):kebab(name.replace(/^Adviser/,''));
- if(role.id==='system-admin')return ({SystemAdmin:'workspace',AdminStudentDirectory:'students',AdminAccountsRoles:'accounts',AdminAuditLog:'audit-log',AdminSettings:'settings',AdminChangePassword:'change-password'})[name];
+ if(role.id==='system-admin')return ({SystemAdmin:'workspace',AdminStudentDirectory:'students',AdminAccountsRoles:'accounts',AdminFacultyDepartments:'faculty-departments',AdminPrograms:'programs',AdminAuditLog:'audit-log',AdminSettings:'settings',AdminChangePassword:'change-password'})[name];
  if(role.prefix)name=name.slice(role.prefix.length);
  if(name==='Adviser')return 'adviser/workspace';
  if(name.startsWith('Advisee'))return 'adviser/advisees/'+kebab(name.slice(7));

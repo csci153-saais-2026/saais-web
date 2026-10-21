@@ -286,6 +286,11 @@ window.SAAIS_PORTALS={
       "title": "Change password | Department Staff | SAAIS",
       "role": "department-staff"
     },
+    "department-staff/course-catalog": {
+      "file": "Department Staff/CourseCatalog.dc.html",
+      "title": "Course catalog · Department Staff · SAAIS",
+      "role": "department-staff"
+    },
     "department-staff/curricula": {
       "file": "Department Staff/Curricula.dc.html",
       "title": "Curricula · Department Staff · SAAIS",
@@ -309,6 +314,16 @@ window.SAAIS_PORTALS={
     "system-admin/change-password": {
       "file": "SystemAdmin/AdminChangePassword.dc.html",
       "title": "Change password · SAAIS",
+      "role": "system-admin"
+    },
+    "system-admin/faculty-departments": {
+      "file": "SystemAdmin/AdminFacultyDepartments.dc.html",
+      "title": "Faculty & departments · SAAIS",
+      "role": "system-admin"
+    },
+    "system-admin/programs": {
+      "file": "SystemAdmin/AdminPrograms.dc.html",
+      "title": "Programs · SAAIS",
       "role": "system-admin"
     },
     "system-admin/settings": {
