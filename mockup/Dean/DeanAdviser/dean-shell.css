@@ -15,3 +15,6 @@ button.dean-role-switch:hover{border-color:#2F4A12;background:#FBF8EF}
 .sidebar .nav-link{display:flex;align-items:center;gap:11px}
 .sidebar .nav-link svg{width:18px;height:18px;flex:0 0 18px}
 .dean-profile button:focus-visible,.dean-profile a:focus-visible,button.dean-role-switch:focus-visible{outline:2px solid #E0A82E;outline-offset:3px}
+
+/* Match the adviser navigation grouping inside the Dean portal. */
+.dean-nav-section,nav>.kick{padding:14px 16px 7px;color:rgba(246,242,228,.55);font-size:10.5px;letter-spacing:.11em}
