@@ -1,5 +1,7 @@
 # Department Head static design
 
+The Dean DH sidebar groups navigation into collapsible **Adviser**, **Department Head**, and **Dean** sections. The current page's role starts expanded. Icons and spacing match the Dean Adviser portal, and the upper-right workspace switch is removed. `navigation.cjs` keeps generated management navigation consistent with these sections.
+
 Open `index.html` in this folder to start. All ten pages are linked from the Department Head sidebar and can also be opened individually as `*.dc.html` files.
 
 The pages follow the palette, typography, components, and spacing of `../DesignSystem.dc.html`. Only Department Head files are included; the existing runtime and other role pages are untouched.

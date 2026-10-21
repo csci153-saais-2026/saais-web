@@ -9,12 +9,30 @@
 .dean-profile-popup[hidden]{display:none!important}
 .dean-profile-popup a,.dean-profile-popup button{box-sizing:border-box;width:100%;display:flex;align-items:center;gap:10px;padding:9px 12px;border:0;border-radius:5px;color:#16200C;background:#FFF;font:500 14px/1.5 'IBM Plex Sans','Segoe UI',sans-serif;text-decoration:none;text-align:left;cursor:pointer;min-height:39px}
 .dean-profile-popup svg{width:18px;height:18px;flex-shrink:0}.dean-profile-popup a:hover,.dean-profile-popup button:hover{background:#EFEADB}
-button.dean-role-switch{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;padding:8px 14px;min-height:38px;border:1px solid #E1DBC6;border-radius:6px;background:#FFF;color:#16200C;font:600 13.5px/20px 'IBM Plex Sans','Segoe UI',sans-serif;cursor:pointer;white-space:nowrap}
-button.dean-role-switch:hover{border-color:#2F4A12;background:#FBF8EF}
-.dean-workspace-switch{position:fixed;top:14px;right:28px;z-index:20}
 .sidebar .nav-link{display:flex;align-items:center;gap:11px}
 .sidebar .nav-link svg{width:18px;height:18px;flex:0 0 18px}
-.dean-profile button:focus-visible,.dean-profile a:focus-visible,button.dean-role-switch:focus-visible{outline:2px solid #E0A82E;outline-offset:3px}
+.dean-profile button:focus-visible,.dean-profile a:focus-visible{outline:2px solid #E0A82E;outline-offset:3px}
 
-/* Adviser navigation grouping in the Dean department head workspace. */
-.dean-nav-section,nav>.kick{padding:14px 16px 7px;color:rgba(246,242,228,.55);font-size:10.5px;letter-spacing:.11em}
+/* Match the Department Head portal's role disclosures and link alignment. */
+.dean-dh-sidebar { box-sizing:border-box; width:250px; flex-shrink:0; padding:22px 12px 18px; position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto; background:#1D2F0A; color:#FBF8EF; }
+.dean-dh-sidebar > a, .dean-dh-sidebar > .rule { flex-shrink:0; }
+.dean-dh-sidebar .dean-role-navigation { display:flex; flex-direction:column; flex-shrink:0; gap:2px; padding-bottom:20px; }
+.dean-role-navigation .dean-role-section { flex-shrink:0; }
+.dean-role-navigation .dean-role-section + .dean-role-section { margin-top:12px; }
+.dean-role-navigation .dean-role-label { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:14px 16px 9px 17px; border-radius:5px; color:rgba(246,242,228,.55); font:700 10.5px/1.5 'IBM Plex Sans','Segoe UI',sans-serif; letter-spacing:.11em; text-transform:uppercase; list-style:none; cursor:pointer; }
+.dean-role-label::-webkit-details-marker { display:none; }
+.dean-role-label::after { content:""; width:7px; height:7px; flex-shrink:0; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(-45deg); transition:transform .15s; }
+.dean-role-section[open] > .dean-role-label::after { transform:rotate(45deg); }
+.dean-role-navigation .dean-role-label:hover { background:rgba(224,168,46,.10); color:#FBF8EF; }
+.dean-role-label:focus-visible { outline:2px solid #E0A82E; outline-offset:2px; }
+.dean-role-navigation .dean-role-links { display:flex; flex-direction:column; gap:2px; }
+.dean-role-navigation .dean-role-links > a { position:relative; display:flex; align-items:center; gap:11px; flex-shrink:0; padding:9px 16px 9px 17px; border-radius:5px; color:rgba(246,242,228,.72); font:450 14px/1.55 'IBM Plex Sans','Segoe UI',sans-serif; text-decoration:none; }
+.dean-role-navigation .dean-role-links > a > svg { display:block; width:18px; height:18px; flex:0 0 18px; margin:0; }
+.dean-role-navigation .dean-role-links > a > span:not([data-bar]) { min-width:0; line-height:1.55; }
+.dean-role-navigation .dean-role-links > a:hover { background:rgba(224,168,46,.10)!important; color:#FBF8EF!important; }
+.dean-role-navigation .dean-role-links > a.active { background:rgba(224,168,46,.16); color:#F7E9C4; font-weight:600; }
+@media(max-width:800px) {
+ .dean-dh-sidebar.sidebar { width:250px; padding:22px 12px 18px; }
+ .dean-dh-sidebar.sidebar .brand span { font-size:inherit; }
+ .dean-dh-sidebar .dean-role-links > a { min-height:44px; }
+}

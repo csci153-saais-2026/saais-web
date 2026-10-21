@@ -73,7 +73,7 @@
       else if (sidebar.classList.contains('open')) setDrawer(false);
     }
     if (event.key === 'Tab' && mobile.matches && sidebar.classList.contains('open') && !modal.open) {
-      const focusable = [...sidebar.querySelectorAll('a[href],button')].filter(el => !el.closest('[hidden]'));
+      const focusable = [...sidebar.querySelectorAll('a[href],button,summary')].filter(el => el.getClientRects().length);
       const first = focusable[0], last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) { last.focus(); event.preventDefault(); }
       else if (!event.shiftKey && document.activeElement === last) { first.focus(); event.preventDefault(); }
