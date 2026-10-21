@@ -1,0 +1,79 @@
+/* Shared application measurements from DesignSystem.dc.html. */
+.portal-page { margin:0; background:#FBF8EF; color:#16200C; font:400 15px/1.55 'IBM Plex Sans','Segoe UI',sans-serif; font-variant-numeric:tabular-nums; }
+.portal-sidebar { box-sizing:border-box!important; width:250px!important; flex:0 0 250px!important; padding:22px 12px 18px!important; position:sticky!important; top:0; align-self:flex-start; height:100vh!important; height:100dvh!important; overflow:hidden!important; background:#1D2F0A!important; display:flex!important; flex-direction:column; }
+.portal-sidebar > :not(nav) { flex-shrink:0!important; }
+.portal-sidebar > nav { flex:1 1 0!important; min-height:0!important; overflow-y:auto!important; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgba(246,242,228,.3) transparent; }
+.portal-sidebar .portal-sidebar-footer { flex:0 0 auto!important; position:relative; z-index:1; background:#1D2F0A; }
+.portal-sidebar nav a { display:flex!important; align-items:center!important; gap:11px!important; padding:9px 16px 9px 17px!important; border-radius:5px!important; font-size:14px!important; line-height:1.55!important; }
+.portal-sidebar nav a > svg { display:block; width:18px!important; height:18px!important; flex:0 0 18px!important; margin:0!important; }
+.portal-page svg[stroke] { stroke-width:1.6!important; }
+.portal-sidebar :is(summary,.student-nav-label,.adviser-nav-label,.staff-nav-label,.admin-nav-label) { padding:14px 16px 9px 17px!important; font:600 11.5px/1.5 'IBM Plex Sans','Segoe UI',sans-serif!important; letter-spacing:.14em!important; text-transform:uppercase; color:rgba(246,242,228,.55)!important; }
+.portal-sidebar .brand span { font-size:inherit!important; }
+.portal-topbar { box-sizing:border-box; height:62px!important; min-height:62px!important; padding:0 32px!important; background:#FFF; display:flex; align-items:center; flex-shrink:0; }
+.portal-topbar :is(.actions,.breadcrumb,#crumb) { min-width:0; flex-wrap:wrap; }
+.portal-main { box-sizing:border-box; width:100%!important; max-width:none!important; margin:0!important; padding:30px 32px 40px!important; min-width:0; }
+.portal-main h1 { font:700 30px/1.15 'Syne','Segoe UI',sans-serif!important; letter-spacing:-.01em!important; }
+.portal-main :is(.panel,.card,.stat,.version) { border-radius:6px!important; }
+.portal-main :is(.panel,.card) { margin-bottom:18px!important; }
+.portal-main :is(.stack,.split,.columns,.stats,.form-grid) { gap:18px; }
+.portal-main :is(.stack,.split,.columns) > :is(.panel,.card) { margin-bottom:0!important; }
+.portal-main :is(.panel-head,.card-head) { padding:16px 20px!important; }
+.portal-main :is(.panel h2,.panel h3,.card h2,.card h3) { font:600 16px/1.4 'IBM Plex Sans','Segoe UI',sans-serif!important; }
+.portal-main :is(.btn,.button,.btnp,.btns,.outline,button:not(.text-btn,.row-link,.icon-btn,.su-eye,[data-toggle-pw],[data-toggle-password],[data-roster])) { border-radius:8px!important; padding:9px 16px!important; font-size:14px!important; font-weight:600; line-height:1.4!important; }
+.portal-main table :is(.btn,.button,.btnp,.btns,.outline,button:not(.text-btn,.row-link,.icon-btn)) { padding:6px 12px!important; font-size:13px!important; }
+.portal-main :is(input:not([type=checkbox],[type=radio]),select,textarea) { border-radius:4px!important; font-size:14px!important; }
+.portal-main td { font-size:13.5px!important; line-height:1.5!important; padding-top:11px!important; padding-bottom:11px!important; }
+.portal-page :focus-visible { outline:2px solid #2F4A12; outline-offset:2px; }
+.portal-sidebar :focus-visible { outline-color:#E0A82E; }
+.portal-sidebar :is(.user-menu-list,.dean-profile-popup,#me-menu) { border:1px solid #E1DBC6!important; border-radius:8px!important; padding:6px!important; background:#FFF!important; box-shadow:0 12px 32px rgba(22,32,12,.28)!important; }
+.portal-sidebar :is(.user-menu-list,.dean-profile-popup,#me-menu) :is(a,button) { display:flex!important; align-items:center!important; gap:10px!important; padding:9px 12px!important; border-radius:5px!important; font:500 14px/1.5 'IBM Plex Sans','Segoe UI',sans-serif!important; }
+.portal-sidebar :is(.user-trigger,.dean-profile-trigger,#me-btn) { display:flex!important; align-items:center!important; gap:11px!important; padding:9px 10px!important; border-radius:8px!important; }
+.portal-sidebar .adviser-account { position:relative; margin-top:6px; flex-shrink:0; }
+.portal-sidebar .adviser-account-popup { position:absolute; left:0; right:0; bottom:calc(100% + 6px); z-index:50; }
+.portal-sidebar .adviser-account .adviser-account-popup [role=menuitem] { width:100%; box-sizing:border-box; border:0; background:#FFF; color:#16200C; text-decoration:none; text-align:left; cursor:pointer; }
+.portal-sidebar .adviser-account .adviser-account-popup [role=menuitem]:hover { background:#EFEADB!important; }
+.portal-sidebar .adviser-account .adviser-account-popup .account-signout { color:#9E2E1C!important; }
+.portal-sidebar .adviser-account-popup svg { width:17px!important; height:17px!important; flex:0 0 17px; }
+.portal-sidebar .account-menu-divider { height:1px; border:0; background:#EFEADB; margin:4px 2px; }
+.portal-sidebar .adviser-account-trigger { width:100%; border:1px solid transparent; background:transparent; text-align:left; color:#FBF8EF; cursor:pointer; }
+.portal-sidebar .adviser-account-trigger > :is(.user-name,.dean-profile-name) { min-width:0; flex:1; line-height:1.25; }
+.portal-sidebar .adviser-account-trigger :is(.user-name b,.dean-profile-name strong) { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13.5px; font-weight:600; }
+.portal-sidebar .adviser-account-trigger :is(.user-name small,.dean-profile-name small) { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; margin:0; font-size:11.5px; color:rgba(246,242,228,.55); }
+.portal-sidebar .adviser-account-trigger > svg { width:15px!important; height:15px!important; flex:0 0 15px; color:rgba(246,242,228,.55); transition:transform .15s; }
+.portal-sidebar .adviser-account-trigger[aria-expanded=true] > svg { transform:rotate(180deg); }
+.portal-page :is(.mobile-menu,.adviser-menu-toggle,.adviser-menu-close,.adviser-nav-backdrop,.nav-backdrop) { display:none!important; }
+.portal-page .portal-menu-open,.portal-page .portal-menu-close,.portal-page .portal-backdrop { display:none!important; }
+.portal-topbar [data-portal-header-start] { display:flex; align-items:center; gap:0; min-width:0; }
+.portal-topbar .student-header-notification { display:flex; align-items:center; color:#8C8A76; flex-shrink:0; }
+.portal-topbar .student-header-notification svg { width:19px; height:19px; }
+.portal-topbar .portal-notifications { position:relative; display:flex; align-items:center; margin-left:auto; flex-shrink:0; }
+.portal-topbar .portal-notification-toggle { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; min-height:44px; padding:0; border:1px solid transparent; border-radius:8px; color:#8C8A76; background:transparent; cursor:pointer; }
+.portal-topbar .portal-notification-toggle svg { display:block; width:19px; height:19px; margin:0; }
+.portal-topbar .portal-notification-toggle:hover,.portal-topbar .portal-notification-toggle[aria-expanded=true] { color:#2F4A12; background:#FBF8EF; border-color:#E1DBC6; }
+.portal-topbar .portal-notification-popover { position:absolute; top:calc(100% + 8px); right:0; z-index:2000; box-sizing:border-box; width:320px; max-width:calc(100vw - 32px); padding:20px; border:1px solid #E1DBC6; border-radius:6px; background:#FFF; color:#16200C; box-shadow:0 8px 24px rgba(22,32,12,.15); text-align:left; }
+.portal-notification-popover[hidden] { display:none!important; }
+.portal-topbar .portal-notification-popover h2 { margin:0 0 12px; font:600 16px/1.4 'IBM Plex Sans','Segoe UI',sans-serif; }
+.portal-topbar .portal-notification-popover p { margin:0; color:#6E6C58; font:400 14px/1.55 'IBM Plex Sans','Segoe UI',sans-serif; }
+@media(max-width:768px) {
+ .portal-sidebar { display:none!important; position:fixed!important; inset:0 auto 0 0!important; z-index:9500; }
+ .portal-sidebar.portal-open { display:flex!important; box-shadow:10px 0 40px rgba(22,32,12,.2); }
+ .portal-page .portal-menu-open,.portal-page .portal-menu-close { display:inline-flex!important; align-items:center; justify-content:center; min-height:44px; padding:9px 12px; border:1px solid #E1DBC6; border-radius:8px; background:#FFF; color:#16200C; font:600 14px/1.4 'IBM Plex Sans','Segoe UI',sans-serif; cursor:pointer; }
+ .portal-menu-open { margin-right:12px; flex-shrink:0; }
+ .portal-menu-close { margin-bottom:20px; flex-shrink:0; }
+ .portal-page .portal-backdrop:not([hidden]) { display:block!important; position:fixed; inset:0; width:100%; height:100%; border:0; border-radius:0; background:rgba(22,32,12,.35); z-index:9400; }
+ .portal-topbar { padding:0 16px!important; height:auto!important; }
+ .portal-main { padding:24px 16px 40px!important; }
+ .portal-main h1 { font-size:26px!important; }
+ .portal-main :is(.page-heading,.portal-heading,.split,.columns) { display:flex!important; flex-direction:column; gap:16px; }
+ .portal-main :is(.page-heading,.portal-heading,.split,.columns) > * { width:100%; min-width:0; }
+ .portal-main :is(.stats,.form-grid,.version-cards) { grid-template-columns:1fr!important; }
+ .portal-main [style*="grid-template-columns"] { grid-template-columns:minmax(0,1fr)!important; }
+ .portal-page :is(button,a.button,a.btn,input:not([type=checkbox],[type=radio]),select,summary),.portal-sidebar nav a { min-height:44px; }
+ .portal-main table.portal-table thead { display:none; }
+ .portal-main table.portal-table,.portal-main table.portal-table tbody,.portal-main table.portal-table tr,.portal-main table.portal-table td { display:block!important; width:100%!important; }
+ .portal-main table.portal-table tr { padding:10px 16px; border-top:1px solid #EFEADB; }
+ .portal-main table.portal-table td { display:flex!important; justify-content:space-between; align-items:center; gap:16px; padding:5px 0!important; border:0; text-align:right; }
+ .portal-main table.portal-table td::before { content:attr(data-label); text-align:left; color:#8C8A76; font-size:11.5px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; }
+}
+@media(prefers-reduced-motion:reduce) { .portal-page * { scroll-behavior:auto!important; transition:none!important; } }
+@media print { .portal-sidebar,.portal-topbar,.portal-menu-open,.portal-backdrop { display:none!important; } .portal-main { padding:0!important; } }
