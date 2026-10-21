@@ -1,6 +1,8 @@
 # Department Head static design
 
-Open `index.html` in this folder to start. All ten pages are linked from the Department Head sidebar and can also be opened individually as `*.dc.html` files.
+Open `index.html` in this folder to start at the adviser dashboard. The sidebar groups Dashboard, Advisees, Encode grades, Import grades, and Grade flags under **Adviser**, followed by the ten existing management pages under **Department Head**. All screens stay in this folder, including adviser student details and Change password.
+
+Select either role heading to expand or collapse its navigation links. The current page's role starts expanded and the other role starts collapsed. Native disclosure controls support mouse and keyboard navigation.
 
 The pages follow the palette, typography, components, and spacing of `../DesignSystem.dc.html`. Only Department Head files are included; the existing runtime and other role pages are untouched.
 
@@ -10,7 +12,7 @@ These are static HTML designs with fictional records. JavaScript provides presen
 
 The sample academic snapshot is 15 August 2025, independent of today's date. Counts illustrate a larger department; table samples and report drill-down samples are explicitly labeled.
 
-`build-pages.cjs` generates the ten HTML pages and local entry point. To update generated markup, edit that file and run `node "Department Head/build-pages.cjs"` from the project root. CSS and interaction previews live in `department-head.css` and `department-head.js`.
+`build-pages.cjs` generates the ten management pages, copies and adapts the thirteen adviser screens from `../Adviser`, and writes the local entry point. Run `node "mockup/Department Head/build-pages.cjs"` from the project root after editing the generator or adviser source pages. The copied screens omit `support.js` so they remain in the Department Head workspace. `department-navigation.css` styles the role labels and links across both page types; `adviser-navigation.js` adds mobile navigation to the adviser screens. Management page styles and interactions live in `department-head.css` and `department-head.js`.
 
 Settings markup comes from `settings-layout.html`. `audit-settings.css` and `audit-settings.js` provide the matching Audit / Settings layout in both Department Head and SystemAdmin. Audit filters search the acting person and affected student independently. The threshold card spans the full width; Email and Backups occupy equal-height columns below it.
 
