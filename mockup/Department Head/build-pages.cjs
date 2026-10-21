@@ -121,7 +121,7 @@ for (const file of adviserFiles) {
  html = html.replace('<script src="../support.js"></script>', '<link rel="stylesheet" href="department-navigation.css"><script src="adviser-navigation.js" defer></script>');
  html = html.replace(/<aside style=/, '<aside class="head-adviser-sidebar" id="head-navigation" style=');
  html = html.replace(/<nav aria-label="Academic adviser"([^>]*)>([\s\S]*?)<\/nav>/, (_, attrs, links) =>
-  '<nav class="role-navigation" aria-label="Department Head workspace"' + attrs + '>' + roleSection('Adviser', links, true) + roleSection('Department Head', departmentLinks(''), false) + '</nav>');
+  '<nav class="role-navigation" aria-label="Department Head workspace"' + attrs + '>' + roleSection('Adviser', links.replace(/<div class="adviser-nav-label"[^>]*>Adviser<\/div>/, ''), true) + roleSection('Department Head', departmentLinks(''), false) + '</nav>');
  html = html.replaceAll('Adviser portal', 'Department Head portal')
   .replaceAll('Prof. Ramon Reyes', 'Dr. Andrea Dela Cruz')
   .replaceAll('Faculty of Computer Studies', 'Department Head \u00b7 DCST')

@@ -759,7 +759,7 @@ def shell(active, main_html):
         '<div><div class="dsp" style="font-size: 19px; color: #FBF8EF; letter-spacing: 0.01em">SAAIS</div>'
         '<div style="font-size: 10.5px; letter-spacing: 0.11em; text-transform: uppercase; color: rgba(246,242,228,0.55); font-weight: 600">Adviser portal</div></div></a>'
         '<div style="height: 1px; background: rgba(246,242,228,0.14); margin: 0 6px 16px"></div>'
-        f'<nav aria-label="Academic adviser" style="display: flex; flex-direction: column; gap: 2px">{nav(active)}</nav>'
+        f'<nav aria-label="Academic adviser" style="display: flex; flex-direction: column; gap: 2px"><div class="adviser-nav-label" style="padding:14px 16px 9px 17px; color:rgba(246,242,228,.55); font-size:10.5px; font-weight:700; line-height:1.5; letter-spacing:.11em; text-transform:uppercase">Adviser</div>{nav(active)}</nav>'
         '<div style="flex-grow: 1"></div><div style="height: 1px; background: rgba(246,242,228,0.14); margin: 16px 6px 10px"></div>'
         f'<a class="navi" href="../Docs.dc.html" style="display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 13.5px; color: rgba(246,242,228,0.72); margin-bottom: 6px">{ico(P_BOOK)}<span>Help &amp; documentation</span></a>'
         '<div id="me" style="position: relative">'
