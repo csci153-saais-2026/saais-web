@@ -1,0 +1,17 @@
+/* Shared Dean profile and header controls, independent of page styles. */
+.dean-profile{position:relative;margin-top:6px;flex-shrink:0;font-family:'IBM Plex Sans','Segoe UI',sans-serif}
+.dean-profile-trigger{box-sizing:border-box;width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:#FBF8EF;text-align:left;font:inherit;cursor:pointer}
+.dean-profile-trigger:hover,.dean-profile-trigger[aria-expanded=true]{background:rgba(224,168,46,.10);border-color:rgba(246,242,228,.14)}
+.dean-profile-avatar{width:34px;height:34px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#E0A82E;color:#3A2A05;font-size:13.6px;font-weight:600;letter-spacing:.02em}
+.dean-profile-name{min-width:0;flex:1;line-height:1.25}.dean-profile-name strong{display:block;font-size:13.5px;font-weight:600}.dean-profile-name small{display:block;margin-top:3px;font-size:11.5px;color:rgba(246,242,228,.55)}
+.dean-profile-trigger>svg{width:15px;height:15px;flex-shrink:0;color:rgba(246,242,228,.55)}
+.dean-profile-popup{position:absolute;left:0;right:0;bottom:calc(100% + 6px);z-index:50;display:grid;gap:2px;padding:6px;background:#FFF;border:1px solid #E1DBC6;border-radius:8px;box-shadow:0 12px 32px rgba(22,32,12,.28)}
+.dean-profile-popup[hidden]{display:none!important}
+.dean-profile-popup a,.dean-profile-popup button{box-sizing:border-box;width:100%;display:flex;align-items:center;gap:10px;padding:9px 12px;border:0;border-radius:5px;color:#16200C;background:#FFF;font:500 14px/1.5 'IBM Plex Sans','Segoe UI',sans-serif;text-decoration:none;text-align:left;cursor:pointer;min-height:39px}
+.dean-profile-popup svg{width:18px;height:18px;flex-shrink:0}.dean-profile-popup a:hover,.dean-profile-popup button:hover{background:#EFEADB}
+button.dean-role-switch{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;padding:8px 14px;min-height:38px;border:1px solid #E1DBC6;border-radius:6px;background:#FFF;color:#16200C;font:600 13.5px/20px 'IBM Plex Sans','Segoe UI',sans-serif;cursor:pointer;white-space:nowrap}
+button.dean-role-switch:hover{border-color:#2F4A12;background:#FBF8EF}
+.dean-workspace-switch{position:fixed;top:14px;right:28px;z-index:20}
+.sidebar .nav-link{display:flex;align-items:center;gap:11px}
+.sidebar .nav-link svg{width:18px;height:18px;flex:0 0 18px}
+.dean-profile button:focus-visible,.dean-profile a:focus-visible,button.dean-role-switch:focus-visible{outline:2px solid #E0A82E;outline-offset:3px}
