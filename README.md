@@ -44,18 +44,18 @@ Three roles are supported:
 
 ## 2. Project Team
 
-| Role        | Name                          | GitHub Username   |
-| ----------- | ----------------------------- | ----------------- |
-| Team Leader | Lelis, Nietzchan Jake         | `@JakeNLelis`     |
-| Member      | Bucol, Matthew Gerald A.      | `@Matt-cant-code` |
-| Member      | Concoles, Cyril Jade M.       | `@con-cyse`       |
-| Member      | Coting, Eulo Rod M.           | `@eking0723`      |
-| Member      | Dumilon, John Earl Patrick G. | `@Htaruo`         |
-| Member      | Flores, Raniel John B.        | `@username`       |
-| Member      | Montera, Mhac Alester         | `@mteraaa`        |
-| Member      | Polo, Marco Antonio P.        | `@Ryuuu00`        |
-| Member      | Sta. Agata, Jerome Daniel S.  | `@staagatajd`     |
-| Member      | Tan, Ron Nicolas              | `@username`       |
+| Role        | Name                          | GitHub Username          |
+| ----------- | ----------------------------- | ------------------------ |
+| Team Leader | Lelis, Nietzchan Jake         | `@JakeNLelis`            |
+| Member      | Bucol, Matthew Gerald A.      | `@Matt-cant-code`        |
+| Member      | Concoles, Cyril Jade M.       | `@con-cyse`              |
+| Member      | Coting, Eulo Rod M.           | `@eking0723`             |
+| Member      | Dumilon, John Earl Patrick G. | `@Htaruo`                |
+| Member      | Flores, Raniel John B.        | `@floresranieljohn-a11y` |
+| Member      | Montera, Mhac Alester         | `@mteraaa`               |
+| Member      | Polo, Marco Antonio P.        | `@Ryuuu00`               |
+| Member      | Sta. Agata, Jerome Daniel S.  | `@staagatajd`            |
+| Member      | Tan, Ron Nicolas              | `@NorCubess`             |
 
 ---
 
