@@ -178,8 +178,9 @@ function ccDialog(key,trigger){
   const others=S.C.filter((_,k)=>k!==i);
   return ['Prerequisites · '+c.code,`<p class="account-dialog-intro">Choose the courses a student must take first, or alongside, <strong>${esc(c.code)}</strong>. Different course codes never imply equivalence.</p><div class="cc-pre-list">${others.map(o=>{const p=c.pre.find(x=>x.code===o.code);return `<div class="cc-pre-row"><label><input type="checkbox" name="cc-pre" value="${esc(o.code)}"${p?' checked':''}><span><b>${esc(o.code)}</b> ${esc(o.title)}</span></label><select aria-label="Type for ${esc(o.code)}" data-pre-type="${esc(o.code)}">${['Prerequisite','Co-requisite'].map(t=>`<option${p&&p.type===t?' selected':''}>${t}</option>`).join('')}</select></div>`;}).join('')}</div>`,'Save prerequisites'];
  }
- const x=c||{code:'',title:'',units:3,fac:Object.keys(ccOrg)[0],dep:ccOrg[Object.keys(ccOrg)[0]][0],status:'Active'};
- return [c?'Edit course':'New course',form(cuField('cc-code','Course code',x.code)+cuField('cc-title','Course title',x.title)+cuField('cc-units','Units',x.units)+cuSelect('cc-cfac','Faculty',Object.keys(ccOrg),x.fac)+cuSelect('cc-cdep','Department',ccOrg[x.fac],x.dep)+cuSelect('cc-cstatus','Status',['Active','Inactive'],x.status)),c?'Save changes':'Add course'];
+ const x=c||{code:'',title:'',units:3,fac:Object.keys(ccOrg)[0],dep:ccOrg[Object.keys(ccOrg)[0]][0],status:'Active',kind:'Non-Elective'};
+ const radio=['Non-Elective','Elective'].map(k=>`<label style="display:inline-flex;align-items:center;gap:8px;margin-right:22px"><input type="radio" name="cc-kind" value="${k}"${(x.kind||'Non-Elective')===k?' checked':''}><span>${k}</span></label>`).join('');
+ return [c?'Edit course':'New course',form(cuField('cc-code','Course code',x.code)+cuField('cc-title','Course title',x.title)+cuField('cc-units','Units',x.units)+cuSelect('cc-cfac','Faculty',Object.keys(ccOrg),x.fac)+cuSelect('cc-cdep','Department',ccOrg[x.fac],x.dep)+cuSelect('cc-cstatus','Status',['Active','Inactive'],x.status)+`<fieldset class="wide" style="border:0;padding:0;margin:0"><legend style="font-size:13px;font-weight:600;margin-bottom:8px;padding:0">Course type</legend>${radio}</fieldset>`),c?'Save changes':'Add course'];
 }
 function ccConfirm(key){
  const S=ccState,{i}=S.ctx,err=$('.account-error',dialog),fail=m=>{err.textContent=m;err.hidden=false;return false;},val=id=>$('#'+id,dialog).value.trim();
@@ -189,7 +190,7 @@ function ccConfirm(key){
   S.C[i].pre=$$('input[name="cc-pre"]:checked',dialog).map(b=>({code:b.value,type:$(`[data-pre-type="${b.value}"]`,dialog).value}));
   return done('Prerequisites saved for '+S.C[i].code+'.');
  }
- const d={code:val('cc-code'),title:val('cc-title'),units:val('cc-units'),fac:val('cc-cfac'),dep:val('cc-cdep'),status:val('cc-cstatus')};
+ const d={code:val('cc-code'),title:val('cc-title'),units:val('cc-units'),fac:val('cc-cfac'),dep:val('cc-cdep'),status:val('cc-cstatus'),kind:($('input[name="cc-kind"]:checked',dialog)||{}).value||'Non-Elective'};
  if(!d.code)return fail('Enter the course code, for example CSIT 100.');
  if(!d.title)return fail('Enter the course title.');
  if(d.units===''||isNaN(+d.units)||+d.units<0)return fail('Units must be zero or more.');
@@ -198,10 +199,10 @@ function ccConfirm(key){
  if(i===null)S.C.push(Object.assign(d,{pre:[]}));else Object.assign(S.C[i],d);
  return done(d.code+' was saved.');
 }
+dialog.addEventListener('change',e=>{if(e.target.id==='cc-cfac'){$('#cc-cdep',dialog).innerHTML=ccOrg[e.target.value].map(x=>`<option>${x}</option>`).join('');}});
 if($('#cc-body')){
  ccFilterInit();
  ['#cc-q','#cc-status','#cc-dep'].forEach(s=>$(s).addEventListener('input',ccRender));
  $('#cc-fac').addEventListener('change',()=>{ccDepOptions();ccRender();});
- dialog.addEventListener('change',e=>{if(e.target.id==='cc-cfac'){$('#cc-cdep',dialog).innerHTML=ccOrg[e.target.value].map(x=>`<option>${x}</option>`).join('');}});
  ccRender();
 }
