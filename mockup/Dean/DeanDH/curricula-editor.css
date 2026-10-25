@@ -1,0 +1,8 @@
+.stats.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cu-bar{border:0;padding:0 0 22px;gap:12px}.cu-bar label{flex:0 1 280px;min-width:220px}.cu-spacer{flex:1}
+.head-actions,.row-actions{display:flex;gap:8px;flex-wrap:wrap}.head-actions .btn{padding:9px 16px;font-size:14px}
+.empty-row{padding:24px 20px;text-align:center;color:var(--muted)}
+body[data-page="Curricula"] .panel{margin-bottom:22px}
+.stats.four .stat strong{font-size:30px}
+@media(max-width:1100px){.stats.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.stats.four{grid-template-columns:1fr}.cu-spacer{display:none}}

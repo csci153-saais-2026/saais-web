@@ -9,11 +9,11 @@ function toast(message){const el=$('.toast');el.textContent=message;el.hidden=fa
 function esc(s){const el=document.createElement('span');el.textContent=s;return el.innerHTML;}
 /* Curricula: in-memory editing of versions, terms and courses/slots (nothing persists) */
 const cuState={cur:0,ctx:null,V:[
- {prog:'BSCS',year:'2023–2024',units:147,thr:12,from:'2023-06-01',status:'active',terms:[
+ {prog:'BSCS',year:'2023–2024',units:147,enrolled:286,from:'2023-06-01',status:'active',terms:[
   {year:1,sem:'Semester 1',rows:[['CSIT 100 — Introduction to Computing',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course'],['CSci 180 — Pre-calculus for CS',3,'Required course'],['Comm 11 — Purposive Communication',3,'Required course'],['Entr 11 — Entrepreneurial Mind',3,'Required course'],['ITec 11 — Living in the IT Era',3,'Required course'],['PE 1 — Physical Fitness',2,'Required course']]},
   {year:1,sem:'Semester 2',rows:[['CSIT 102 — Data Structures',4,'Required course'],['CSci 181 — Discrete Mathematics',3,'Required course'],['Math 11 — Calculus 1',3,'Required course'],['GE elective',3,'GE slot']]}]},
- {prog:'BSCS',year:'2019–2020',units:150,thr:12,from:'2019-06-01',status:'retired',terms:[{year:1,sem:'Semester 1',rows:[['CSIT 100 — Introduction to Computing',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]},
- {prog:'BSIT',year:'2023–2024',units:148,thr:12,from:'2023-06-01',status:'active',terms:[{year:1,sem:'Semester 1',rows:[['ITec 11 — Living in the IT Era',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]}
+ {prog:'BSCS',year:'2019–2020',units:150,enrolled:142,from:'2019-06-01',status:'retired',terms:[{year:1,sem:'Semester 1',rows:[['CSIT 100 — Introduction to Computing',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]},
+ {prog:'BSIT',year:'2023–2024',units:148,enrolled:184,from:'2023-06-01',status:'active',terms:[{year:1,sem:'Semester 1',rows:[['ITec 11 — Living in the IT Era',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]}
 ]};
 const cuLabel=v=>v.prog+' · '+v.year;
 const cuFmt=d=>{if(!d)return '—';const p=d.split('-');return +p[2]+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1]+' '+p[0];};
@@ -25,7 +25,7 @@ function cuRender(){
  const none=!V.length;['cu-edit-version','cu-del-version','cu-add-term'].forEach(k=>{const b=$(`[data-dialog="${k}"]`);b.disabled=none;b.style.opacity=none?'.5':'';});
  if(none){$('#cu-stats').innerHTML='';root.innerHTML='<p class="empty">No curriculum versions yet. Use Add version to create one.</p>';return;}
  cuState.cur=Math.min(cuState.cur,V.length-1);sel.value=cuState.cur;const v=V[cuState.cur];
- $('#cu-stats').innerHTML=[['Required units',v.units,'Full degree requirement'],['Delinquency threshold',v.thr,'Failed units per term'],['Effective from',cuFmt(v.from),'Version effectivity'],['Status',v.status,'Curriculum lifecycle']].map(([l,n,s])=>`<article class="stat"><span class="label">${l}</span><strong>${esc(String(n))}</strong><small>${s}</small></article>`).join('');
+ $('#cu-stats').innerHTML=[['Required units',v.units,'Full degree requirement'],['Enrolled students',v.enrolled,'Students on this curriculum'],['Effective from',cuFmt(v.from),'Version effectivity'],['Status',v.status,'Curriculum lifecycle']].map(([l,n,s])=>`<article class="stat"><span class="label">${l}</span><strong>${esc(String(n))}</strong><small>${s}</small></article>`).join('');
  root.innerHTML=v.terms.length?v.terms.map((t,ti)=>{
   const rows=t.rows.length?t.rows.map((r,ri)=>`<tr><td data-label="Course / slot">${esc(r[0])}</td><td data-label="Required units">${r[1]}</td><td data-label="Type">${esc(r[2])}</td><td data-label="Actions"><div class="row-actions"><button type="button" class="btn" data-dialog="cu-edit-slot" data-t="${ti}" data-r="${ri}">Edit</button><button type="button" class="btn" data-dialog="cu-del-slot" data-t="${ti}" data-r="${ri}">Delete</button></div></td></tr>`).join(''):'<tr><td colspan="4" class="empty-row">No courses in this term yet.</td></tr>';
   return `<section class="panel"><header class="panel-head"><div><h2>Year ${t.year} · ${esc(t.sem)}</h2><p>Positional curriculum term; not a calendar school term.</p></div><div class="head-actions"><button type="button" class="btn" data-dialog="cu-add-slot" data-t="${ti}">Add course / slot</button><button type="button" class="btn" data-dialog="cu-edit-term" data-t="${ti}">Edit term</button><button type="button" class="btn" data-dialog="cu-del-term" data-t="${ti}">Delete term</button></div></header><div class="table-wrap"><table class="data cards"><thead><tr><th scope="col">Course / slot</th><th scope="col">Required units</th><th scope="col">Type</th><th scope="col">Actions</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
@@ -33,12 +33,12 @@ function cuRender(){
 }
 function cuDialog(key,trigger){
  const S=cuState,v=S.V[S.cur],t=+trigger.dataset.t,r=trigger.dataset.r===undefined?null:+trigger.dataset.r;S.ctx={key,t,r};
- const verForm=x=>form(cuSelect('cu-prog','Program',['BSCS','BSIT'],x.prog)+cuField('cu-year','Academic year',x.year)+cuField('cu-units','Required units',x.units)+cuField('cu-thr','Delinquency threshold (failed units per term)',x.thr)+cuField('cu-from','Effective from',x.from,'date')+cuSelect('cu-status','Status',['active','draft','retired'],x.status));
+ const verForm=x=>form(cuSelect('cu-prog','Program',['BSCS','BSIT'],x.prog)+cuField('cu-year','Academic year',x.year)+cuField('cu-units','Required units',x.units)+cuField('cu-from','Effective from',x.from,'date')+cuSelect('cu-status','Status',['active','draft','retired'],x.status));
  const termForm=x=>form(cuSelect('cu-tyear','Year level',['1','2','3','4','5'],String(x.year))+cuSelect('cu-tsem','Term',['Semester 1','Semester 2','Midyear'],x.sem));
  const slotForm=x=>`<div class="form-grid">${cuField('cu-sname','Course / slot',x[0]).replace('<label>','<label class="wide">')}${cuField('cu-sunits','Required units',x[1])}${cuSelect('cu-stype','Type',['Required course','Elective slot','GE slot'],x[2])}</div>`;
  const del=html=>['Delete record',`<p>${html}</p>`,'Delete'];
  switch(key){
-  case 'cu-add-version':return ['Add version',verForm({prog:'BSCS',year:'',units:147,thr:12,from:'',status:'draft'}),'Add version'];
+  case 'cu-add-version':return ['Add version',verForm({prog:'BSCS',year:'',units:147,from:'',status:'draft'}),'Add version'];
   case 'cu-edit-version':return ['Edit version',verForm(v),'Save changes'];
   case 'cu-del-version':return del(`Delete <strong>${esc(cuLabel(v))}</strong> and all of its terms? This can’t be undone.`);
   case 'cu-add-term':return ['Add term',termForm({year:1,sem:'Semester 1'}),'Add term'];
@@ -56,13 +56,13 @@ function cuConfirm(key){
  if(key==='cu-del-term'){S.V[S.cur].terms.splice(t,1);return done('The term was deleted.');}
  if(key==='cu-del-slot'){S.V[S.cur].terms[t].rows.splice(r,1);return done('The course was removed.');}
  if(key==='cu-add-version'||key==='cu-edit-version'){
-  const d={prog:val('cu-prog'),year:val('cu-year'),units:+val('cu-units'),thr:+val('cu-thr'),from:val('cu-from'),status:val('cu-status')};
+  const d={prog:val('cu-prog'),year:val('cu-year'),units:+val('cu-units'),from:val('cu-from'),status:val('cu-status')};
   if(!d.year)return fail('Enter the academic year, for example 2023–2024.');
-  if(!(d.units>0)||!(d.thr>0))return fail('Required units and the delinquency threshold must be positive numbers.');
+  if(!(d.units>0))return fail('Required units must be a positive number.');
   if(!d.from)return fail('Choose the date this version takes effect.');
   const cur=key==='cu-edit-version'?S.V[S.cur]:null;
   if(S.V.some(v=>v!==cur&&v.prog===d.prog&&v.year===d.year))return fail(d.prog+' · '+d.year+' already exists.');
-  if(cur)Object.assign(cur,d);else{d.terms=[];S.V.push(d);S.cur=S.V.length-1;}
+  if(cur)Object.assign(cur,d);else{d.terms=[];d.enrolled=0;S.V.push(d);S.cur=S.V.length-1;}
   return done(cuLabel(S.V[S.cur])+' was saved.');
  }
  if(key==='cu-add-term'||key==='cu-edit-term'){
