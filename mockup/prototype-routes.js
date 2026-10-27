@@ -138,7 +138,7 @@ window.SAAIS_PORTALS={
     },
     "adviser/encode-grades": {
       "file": "Adviser/AdviserEncodeGrades.dc.html",
-      "title": "Encode grades · SAAIS",
+      "title": "Record grades · SAAIS",
       "role": "adviser"
     },
     "adviser/grade-flags": {
@@ -213,7 +213,7 @@ window.SAAIS_PORTALS={
     },
     "department-head/adviser/encode-grades": {
       "file": "Department Head/AdviserEncodeGrades.dc.html",
-      "title": "Encode grades · SAAIS",
+      "title": "Record grades · SAAIS",
       "role": "department-head"
     },
     "department-head/adviser/grade-flags": {
@@ -393,7 +393,7 @@ window.SAAIS_PORTALS={
     },
     "dean-adviser/adviser/encode-grades": {
       "file": "Dean/DeanAdviser/DeanAdviserEncodeGrades.dc.html",
-      "title": "Encode grades · SAAIS",
+      "title": "Record grades · SAAIS",
       "role": "dean-adviser"
     },
     "dean-adviser/adviser/grade-flags": {
@@ -483,7 +483,7 @@ window.SAAIS_PORTALS={
     },
     "dean-dh/adviser/encode-grades": {
       "file": "Dean/DeanDH/DHAdviserEncodeGrades.dc.html",
-      "title": "Encode grades · SAAIS",
+      "title": "Record grades · SAAIS",
       "role": "dean-dh"
     },
     "dean-dh/adviser/grade-flags": {
