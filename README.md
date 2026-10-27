@@ -267,7 +267,7 @@ supabase/
 
 - Seven planned roles: Student, Adviser, Department Head, Department Staff, Dean, Department Head + Dean, and System Administrator. A person with more than one appointment receives the corresponding role access; Department Head + Dean combines those appointments.
 - Accounts are **admin-provisioned only** — no public self-signup. Users may sign in with email/password or Google. Initial passwords are set through an invitation; password recovery is available. Google sign-in succeeds only when the authenticated Google email exactly matches the pre-registered institutional email. Mismatches are rejected.
-- This role set extends the current three-role SRS and API contract. FR-AUTH-01, the contract role metadata, and generated API documentation will follow in the linked specification revision.
+- This role set extends the current three-role SRS and API contract. FR-AUTH-01, the attempt-level instructor field, the contract role metadata, and generated API documentation will follow in the linked specification revision.
 - An adviser can have 1+ advisees; a student has exactly 1 active adviser at all times — **zero-gap continuity is required**. Reassignment is atomic: the new assignment's start date coincides with the prior assignment's end date, enforced within a single transaction/trigger so a student is never left without an active adviser.
 - Adviser-to-student assignments retain full dated history.
 - Department Heads and Department Staff manage department-level student and academic workflows; System Administrators manage system-wide accounts, programs, faculties, departments, curricula, courses, and offerings.
@@ -317,7 +317,7 @@ supabase/
 - A school term can be locked after grades finalize; edits outside an override process are blocked. Override _workflow_ is out of scope — only lock state plus an override flag/timestamp/actor are modeled.
 - A course is offered in a term via a course-offering record (not assumed available every term).
 - A course-offering can be flagged by-request (for discontinued courses still needed under an older curriculum).
-- Section/instructor/schedule detail is out of scope.
+- Course-offering section and schedule details are out of scope. The grade-entry workflow records an instructor per attempt; this does not model instructor assignment or scheduling.
 
 ### Enrollment & Attempts
 
@@ -499,6 +499,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `student_id` | uuid, FK → Profile, not null | |
 | `course_offering_id` | uuid, FK → CourseOffering, not null | natural key: (student, course_offering) |
 | `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, nullable | the checklist slot this attempt directly fulfills, if any |
+| `instructor` | text, nullable | instructor name recorded for this attempt; does not represent course-offering scheduling |
 | `status` | enum(`passed`,`failed`,`currently_enrolled`,`inc`,`dr`,`na`) | |
 | `midterm_grade`, `final_grade` | numeric, nullable | discrete 0.25 increments, 1.00–5.00 |
 | `inc_deadline` | date, nullable | set when `status = inc`; default 1 year from term incurred |
@@ -730,7 +731,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 ## 11. Out of Scope
 
 - Thesis advising.
-- Section/instructor/schedule-level offering detail.
+- Section and schedule-level offering detail or instructor scheduling. An instructor name may be recorded per attempt.
 - Term-lock override workflow mechanics (state only, not process).
 - Adviser advisee-capacity limits.
 - Public self-service account registration.
