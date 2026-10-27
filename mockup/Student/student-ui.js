@@ -10,7 +10,11 @@
     { date: '14 Aug 2026', text: 'Reviewed the CS Elective 1 mapping and explained how it appears in the curriculum checklist.' }
   ];
   var REASONS = ['Incorrect grade', 'Missing grade', 'Wrong course credited', 'Other'];
-  var FLAGS = [];
+  /* Flags persist in localStorage so advisers see them and the student sees the outcome. */
+  var FLAG_KEY = 'saais-grade-flags';
+  function loadFlags() { try { return JSON.parse(localStorage.getItem(FLAG_KEY)) || []; } catch (e) { return window.__suFlags || []; } }
+  function saveFlags() { window.__suFlags = FLAGS; try { localStorage.setItem(FLAG_KEY, JSON.stringify(FLAGS)); } catch (e) {} }
+  var FLAGS = loadFlags();
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function today() { return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
@@ -87,7 +91,7 @@
   /* ---------- grade flags ---------- */
   var current = null;
   function rowInfo(btn) { return { code: btn.dataset.code, title: btn.dataset.title, grade: btn.dataset.grade }; }
-  function isOpen(code) { return FLAGS.some(function (f) { return f.code === code; }); }
+  function isOpen(code) { return FLAGS.some(function (f) { return f.code === code && f.status === 'open'; }); }
 
   function openFlagForm(btn) {
     current = rowInfo(btn);
@@ -100,14 +104,25 @@
     showDialog('Flag a grade', body);
   }
 
+  function flagBadge(f) {
+    return f.status === 'fixed' ? '<span class="badge passed">Corrected</span>' : f.status === 'rejected' ? '<span class="badge failed">Rejected</span>' : '<span class="badge inc">Under review</span>';
+  }
+  function outcome(f) {
+    if (f.status === 'fixed') return '<p><strong>Adviser:</strong> grade corrected to ' + esc(f.newGrade) + (f.response ? ' · ' + esc(f.response) : '') + '</p>';
+    if (f.status === 'rejected') return '<p><strong>Adviser:</strong> ' + esc(f.response || 'The recorded grade stands.') + '</p>';
+    return '';
+  }
+
   function openFlagList() {
+    FLAGS = loadFlags();
     var body = FLAGS.length ? '<div class="su-list">' + FLAGS.map(function (f) {
-      return '<div class="activity-row"><div><strong>' + esc(f.code) + ' · ' + esc(f.title) + '</strong><p>' + esc(f.reason) + ' · recorded grade ' + esc(f.grade) + '</p><p>' + esc(f.details) + '</p><p>Filed ' + esc(f.filed) + '</p></div><span class="badge inc">Under review</span></div>';
+      return '<div class="activity-row"><div><strong>' + esc(f.code) + ' · ' + esc(f.title) + '</strong><p>' + esc(f.reason) + ' · recorded grade ' + esc(f.grade) + '</p><p>' + esc(f.details) + '</p><p>Filed ' + esc(f.filed) + '</p>' + outcome(f) + '</div>' + flagBadge(f) + '</div>';
     }).join('') + '</div>' : '<div class="empty">No grade flags yet.</div>';
     showDialog('Grade flags', body);
   }
 
   function markFlagged() {
+    FLAGS = loadFlags();
     document.querySelectorAll('[data-flag]').forEach(function (b) {
       var on = isOpen(b.dataset.code);
       b.classList.toggle('su-flagged', on);
@@ -278,7 +293,10 @@
     if (!e.target.matches('[data-su-flagform]')) return;
     e.preventDefault();
     var f = e.target;
-    FLAGS.unshift({ code: current.code, title: current.title, grade: current.grade, reason: f.reason.value, details: f.details.value.trim(), filed: today() });
+    var nm = document.querySelector('.user-name b'), id = document.querySelector('.user-name small');
+    FLAGS = loadFlags();
+    FLAGS.unshift({ id: 'sf' + Date.now(), status: 'open', studentName: nm ? nm.textContent.trim() : 'Student', studentId: id ? id.textContent.trim() : '', code: current.code, title: current.title, grade: current.grade, reason: f.reason.value, details: f.details.value.trim(), filed: today() });
+    saveFlags();
     markFlagged();
     dlg.close();
   });
@@ -331,6 +349,7 @@
   }
 
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
+  window.addEventListener('storage', function (e) { if (e.key === FLAG_KEY) markFlagged(); });
   function init() { initCollapsible(); addToggleButtons(); markFlagged(); initPassword(); applyPhoto(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
