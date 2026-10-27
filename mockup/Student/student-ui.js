@@ -23,6 +23,8 @@
     '.su-collapsible.collapsed>.panel-head{border-bottom:0}',
     '.su-collapsible.collapsed .su-chev{transform:rotate(-90deg)}',
     '.su-flagcol{width:1%;white-space:nowrap}',
+    '.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:56px}',
+    '@media(max-width:900px){.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:0}}',
     '.app .data button.su-flagged{background:#FBF0D6;border-color:#EBDCAE;color:#8A6206}',
     '.su-list .note-row:last-child{border-bottom:0}',
     '.su-toggle-row{display:flex;justify-content:flex-end;margin-bottom:12px}',
