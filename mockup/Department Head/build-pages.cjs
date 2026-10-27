@@ -100,7 +100,7 @@ Object.assign(shapes, {
 const adviserPages = [
  ['AdviserDashboard','Dashboard','dashboard'],
  ['AdviserAdvisees','Advisees','users'],
- ['AdviserEncodeGrades','Record grades','encode'],
+ ['AdviserEncodeGrades','Encode grades','encode'],
  ['AdviserImportGrades','Import grades','upload'],
  ['AdviserGradeFlags','Grade flags','flag']
 ];
