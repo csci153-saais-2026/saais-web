@@ -30,19 +30,15 @@ Copyright © 2026 Jomari Joseph A. Barrera. All rights reserved. See [LICENSE.md
 
 ## 1. Overview
 
-SAAIS will provide a production-grade academic advising system for curriculum checklist tracking, enrollment attempts, grade history, adviser-student assignments, and advising documentation. It is designed to give students, advisers, and academic administrators a shared, auditable source of information and coordinated workflows.
+SAAIS centralizes academic advising workflows: curriculum checklist tracking, enrollment attempt records, grade history, adviser-student assignment history, and advising documentation (notes/remarks). It replaces manual, paper- or spreadsheet-based advising records with a single structured, auditable source of truth.
 
 **Project repository:** [Repository URL](https://github.com/csci153-saais-2026/saais-web)
 
-The system is planned to support seven roles:
+Three roles are supported:
 
-- **Student** — views the dashboard, curriculum checklist, grades, enrollment history, and profile.
-- **Adviser** — reviews advisees and records grades, advising notes, imports, and grade flags.
-- **Department Head** — handles adviser workflows alongside department students, terms, curricula, transfers, equivalencies, reports, and audit review.
-- **Department Staff** — manages students, adviser assignments, terms, curricula, the course catalogue, and department accounts.
-- **System Admin** — manages students, accounts and roles, faculties and departments, programs, settings, and the audit log.
-- **Dean Adviser** — reviews dean-level students, reports, audit activity, and adviser workflows.
-- **Dean DH** — combines dean-level department management and adviser views, including curricula, terms, assignments, transfers, reports, and audit review.
+- **Student** — views own checklist, grades, GWA, and enrollment history.
+- **Academic Adviser** — manages advisees, records enrollment attempts, notes, elective mappings, and equivalency decisions.
+- **System Administrator** — manages accounts, programs, curricula, courses, and course offerings.
 
 ---
 
@@ -556,50 +552,50 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 
 ## 8. UI/UX Sitemap & Features
 
-The production application will provide the following role-based workflows. Route names and access rules will be finalized during implementation; authorization will be enforced by the backend as described in §9.
+Client-side routes, resolved by React Router; parameters use `:param` syntax.
 
 ### Public / Auth
 
-| Route                                  | Purpose                                                                                                  |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/login`                               | Email/password or institution-approved Google sign-in                                                   |
-| `/invite/:token`                       | Set an initial password from an administrator-issued invitation                                          |
-| `/forgot-password`, `/reset-password` | Recover account access                                                                                   |
-| `/docs`                                | Browse the API contract, with access controlled by the deployment environment                            |
+| Route                                 | Purpose                                                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `/login`                              | Email/password or "Sign in with Google" (must match registered email)                                   |
+| `/invite/:token`                      | Set initial password from an admin-issued invite                                                        |
+| `/forgot-password`, `/reset-password` | Password recovery                                                                                       |
+| `/docs`                               | Redoc view of `contract/openapi.yaml`; open in development, authenticated-only in deployed environments |
 
 ### Student Portal
 
-| Page                 | Features                                                                                 |
-| -------------------- | ---------------------------------------------------------------------------------------- |
-| Student dashboard    | Advising status, current curriculum, academic summary, and links to records                |
-| Curriculum checklist | Required courses and elective slots by curriculum term                                    |
-| Grades and history   | Term-by-term grades, GWA, and recorded enrollment history                                 |
-| Profile              | Student account and contact details                                                      |
+| Route                         | Features                                                                                                    |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `/student/dashboard`          | Current adviser, cumulative GWA, delinquency flag, quick links                                              |
+| `/student/checklist`          | Curriculum checklist — status per slot (direct / equivalency / discontinued-equivalency / elective mapping) |
+| `/student/grades`             | Term-by-term grades, term & cumulative GWA                                                                  |
+| `/student/enrollment-history` | All attempts across terms                                                                                   |
+| `/student/profile`            | Account/contact info                                                                                        |
 
 ### Adviser Portal
 
-| Page                         | Features                                                                 |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| Adviser dashboard and roster | Advisee overview, search, and student records                                     |
-| Advisee detail               | Checklist, curriculum, grades, enrollment history, and advising notes              |
-| Encode grades                | Record grades and enrollment attempts for advisees                                 |
-| Import grades                | Validate and review grade imports before applying them                            |
-| Grade flags                  | Review student grade and completion flags                                         |
+| Route                             | Features                                                                |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `/adviser/dashboard`              | Advisee list, delinquency flags, INC-deadline alerts                    |
+| `/adviser/advisees`               | Search/filter current & past advisees                                   |
+| `/adviser/advisees/:id`           | Full student view: checklist, grades, history, notes                    |
+| `/adviser/advisees/:id/notes`     | Add/view advising notes & attempt remarks                               |
+| `/adviser/advisees/:id/checklist` | Manage elective mappings & equivalency decisions                        |
+| `/adviser/enrollment/new`         | Record an enrollment attempt (prerequisite warning prompt on soft-fail) |
+| `/adviser/reassignment`           | Initiate adviser reassignment (gap-free enforced)                       |
 
-### Department and Dean Portals
+### Admin Portal
 
-| Role view                    | Features                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Department Head              | Adviser and student workflows; curricula, terms, assignments, transfers, equivalencies, reports, settings, and audit log |
-| Department Staff             | Students, adviser assignments, terms, curricula, course catalogue, and department accounts and roles               |
-| System Admin                 | Student directory, accounts and roles, faculties and departments, programs, settings, and audit log                |
-| Dean Adviser and Dean DH     | Dean-level student, adviser, department, report, curriculum, term, and audit workflows                             |
-
-### Curriculum and Course Catalogue
-
-Department Head and Department Staff will be able to review curriculum versions with required units, enrolled-student counts, effective dates, and status. Their curriculum workflows will support adding and editing versions, terms, and course or elective slots.
-
-The New Course workflow will collect the course code, title, units, faculty, department, curriculum, term, and course type. Saving a course will associate it with the selected curriculum term and make it available in the course catalogue. These changes will be persisted by the production data layer.
+| Route                     | Features                                                       |
+| ------------------------- | -------------------------------------------------------------- |
+| `/admin/dashboard`        | System-wide stats                                              |
+| `/admin/accounts`         | Provision/manage accounts & roles, send invites                |
+| `/admin/programs`         | CRUD programs                                                  |
+| `/admin/curricula`        | CRUD curriculum versions, terms, delinquency thresholds        |
+| `/admin/courses`          | CRUD courses, prerequisites, repeatable flags                  |
+| `/admin/course-offerings` | Manage school terms, offerings, by-request flags, term locking |
+| `/admin/audit-log`        | Read-only audit trail viewer                                   |
 
 ## 9. Design Details
 
