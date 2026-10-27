@@ -12276,7 +12276,7 @@
               )
               .join(
                 "",
-              )}</div><div class="actions" style="margin-top:22px">${button("Add curriculum term", "new-curriculum-term", true)}</div><p class="muted" style="margin-top:18px">The sample curriculum is an excerpt. Add terms and requirements to demonstrate curriculum management.</p>`
+              )}</div><div class="actions" style="margin-top:22px">${button("Add curriculum term", "new-curriculum-term", true)}${button("New course", "new-curriculum-course", false)}</div><p class="muted" style="margin-top:18px">The sample curriculum is an excerpt. Add terms and requirements to demonstrate curriculum management.</p>`
           );
         }
         function courses() {
@@ -12686,6 +12686,7 @@
             "curriculum-term": "curriculumTerms",
             slot: "slots",
             course: "courses",
+            "curriculum-course": "courses",
             term: "terms",
             offering: "offerings",
             prerequisite: "prerequisites",
@@ -12861,7 +12862,7 @@
                 true,
                 'min="0.25" step="0.25"',
               );
-          if (kind === "course")
+          if (kind === "course" || kind === "curriculum-course")
             fields =
               field("code", "Course code", x.code) +
               field("title", "Course title", x.title) +
@@ -12906,6 +12907,29 @@
                 "Repeat policy",
                 ["none", "grade_replacement", "additional_credit"],
                 x.repeatable_type || "none",
+              );
+          if (kind === "curriculum-course")
+            fields +=
+              select(
+                "curriculum_version_id",
+                "Curriculum",
+                opts(
+                  "curricula",
+                  (c) =>
+                    `${M.find("programs", c.program_id)?.code} · ${c.version_label}`,
+                ),
+                selectedCurriculum,
+              ) +
+              select(
+                "term_key",
+                "Term",
+                [1, 2, 3, 4].flatMap((y) =>
+                  [1, 2, 3].map((q) => [
+                    `${y}-${q}`,
+                    `Year ${y} · Semester ${q}`,
+                  ]),
+                ),
+                "1-1",
               );
           if (kind === "term") {
             const sy = x.start_year || new Date(M.today).getFullYear(),
@@ -13781,7 +13805,7 @@
           )
             throw Error("Program code and name must both be unique.");
           if (
-            kind === "course" &&
+            (kind === "course" || kind === "curriculum-course") &&
             M.db.courses.some(
               (p) =>
                 p.id !== id && p.code.toLowerCase() === x.code.toLowerCase(),
@@ -13933,6 +13957,44 @@
               )
             )
               throw Error("That prerequisite is already linked.");
+          }
+          if (kind === "curriculum-course") {
+            // The new course goes into the Course Catalogue and into the chosen curriculum term.
+            const { curriculum_version_id: cv, term_key, ...course } = x;
+            const [yr, seq] = term_key.split("-").map(Number);
+            M.db.courses.push(course);
+            let term = M.db.curriculumTerms.find(
+              (t) =>
+                t.curriculum_version_id === cv &&
+                t.year_level === yr &&
+                t.term_sequence === seq,
+            );
+            if (!term) {
+              term = {
+                id: M.uid(),
+                curriculum_version_id: cv,
+                year_level: yr,
+                term_sequence: seq,
+              };
+              M.db.curriculumTerms.push(term);
+              M.db.curriculumTerms.sort(
+                (a, b) =>
+                  a.year_level - b.year_level ||
+                  a.term_sequence - b.term_sequence,
+              );
+            }
+            M.db.slots.push({
+              id: M.uid(),
+              curriculum_term_id: term.id,
+              course_id: course.id,
+              is_elective_slot: false,
+              slot_label: "",
+              nominal_units: course.units,
+            });
+            audit("course.created", "course", course.id, null, course);
+            close();
+            persist("Course added to the curriculum and the Course Catalogue.");
+            return;
           }
           if (id) Object.assign(M.find(tn, id), x);
           else M.db[tn].push(x);

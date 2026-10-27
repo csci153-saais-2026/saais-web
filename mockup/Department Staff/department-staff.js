@@ -73,6 +73,9 @@ const cuState={cur:0,ctx:null,V:[
  {prog:'BSCS',year:'2019–2020',units:150,enrolled:142,from:'2019-06-01',status:'retired',terms:[{year:1,sem:'Semester 1',rows:[['CSIT 100 — Introduction to Computing',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]},
  {prog:'BSIT',year:'2023–2024',units:148,enrolled:184,from:'2023-06-01',status:'active',terms:[{year:1,sem:'Semester 1',rows:[['ITec 11 — Living in the IT Era',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]}
 ]};
+const cuKey='saais.curricula';let cuStored=false;
+try{const s=JSON.parse(localStorage.getItem(cuKey));if(Array.isArray(s)){cuState.V=s;cuStored=true;}}catch(e){}
+const cuSave=()=>{try{localStorage.setItem(cuKey,JSON.stringify(cuState.V));}catch(e){}};
 const cuLabel=v=>v.prog+' · '+v.year;
 const cuFmt=d=>{if(!d)return '—';const p=d.split('-');return +p[2]+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1]+' '+p[0];};
 const cuField=(id,label,value='',type='text')=>`<label><span>${label}</span><input id="${id}" type="${type}" value="${esc(String(value))}"></label>`;
@@ -109,7 +112,7 @@ function cuDialog(key,trigger){
 }
 function cuConfirm(key){
  const S=cuState,{t,r}=S.ctx,err=$('.account-error',dialog),fail=m=>{err.textContent=m;err.hidden=false;return false;},val=id=>$('#'+id,dialog).value.trim();
- const done=m=>{cuRender();toast(m);return true;};
+ const done=m=>{cuSave();cuRender();toast(m);return true;};
  if(key==='cu-del-version'){const v=S.V.splice(S.cur,1)[0];S.cur=0;return done(cuLabel(v)+' was deleted.');}
  if(key==='cu-del-term'){S.V[S.cur].terms.splice(t,1);return done('The term was deleted.');}
  if(key==='cu-del-slot'){S.V[S.cur].terms[t].rows.splice(r,1);return done('The course was removed.');}
@@ -157,6 +160,22 @@ const ccState={ctx:null,C:[
  ccC('CSci 120','Legacy Programming Elective',3,3,0,'none','Faculty of Computer Studies','Computer Science','Inactive')
 ]};
 ccState.C[8].pre=[{code:'CSIT 101',type:'Prerequisite'}];
+/* New course on a Curricula page: choose the curriculum and term, and the course joins that curriculum and the catalog.
+   Added courses are kept in localStorage so the Course Catalogue page shows them too. */
+const ncKey='saais.newCourses',ncTerms=[1,2,3,4,5].flatMap(y=>['Semester 1','Semester 2','Midyear'].map(m=>'Year '+y+' · '+m));
+const ncLoad=()=>{try{return JSON.parse(localStorage.getItem(ncKey))||[];}catch(e){return [];}};
+const ncStore=n=>{try{localStorage.setItem(ncKey,JSON.stringify(ncLoad().concat(n)));}catch(e){}};
+function ncFields(){
+ if(!$('#cu-version')||!cuState.V.length)return '';
+ return cuSelect('cc-ccur','Curriculum',cuState.V.map(cuLabel),cuLabel(cuState.V[cuState.cur]))+cuSelect('cc-cterm','Term',ncTerms,'Year 1 · Semester 1');
+}
+function ncAttach(n){
+ const v=cuState.V.find(x=>cuLabel(x)===n.cur);if(!v)return;
+ const m=/^Year (\d) · (.+)$/.exec(n.term),y=+m[1],sem=m[2],name=n.course.code+' — '+n.course.title;
+ let t=v.terms.find(x=>x.year===y&&x.sem===sem);
+ if(!t){t={year:y,sem,rows:[]};v.terms.push(t);const order=['Semester 1','Semester 2','Midyear'];v.terms.sort((a,b)=>a.year-b.year||order.indexOf(a.sem)-order.indexOf(b.sem));}
+ if(!t.rows.some(r=>r[0]===name))t.rows.push([name,n.course.units,n.course.kind==='Elective'?'Elective slot':'Required course']);
+}
 function ccFilterInit(){
  const f=$('#cc-fac');f.innerHTML=['All faculties',...Object.keys(ccOrg)].map(x=>`<option>${x}</option>`).join('');ccDepOptions();
 }
@@ -180,7 +199,7 @@ function ccDialog(key,trigger){
  }
  const x=c||{code:'',title:'',units:3,fac:Object.keys(ccOrg)[0],dep:ccOrg[Object.keys(ccOrg)[0]][0],status:'Active',kind:'Non-Elective'};
  const radio=['Non-Elective','Elective'].map(k=>`<label style="display:inline-flex;align-items:center;gap:8px;margin-right:22px"><input type="radio" name="cc-kind" value="${k}"${(x.kind||'Non-Elective')===k?' checked':''}><span>${k}</span></label>`).join('');
- return [c?'Edit course':'New course',form(cuField('cc-code','Course code',x.code)+cuField('cc-title','Course title',x.title)+cuField('cc-units','Units',x.units)+cuSelect('cc-cfac','Faculty',Object.keys(ccOrg),x.fac)+cuSelect('cc-cdep','Department',ccOrg[x.fac],x.dep)+cuSelect('cc-cstatus','Status',['Active','Inactive'],x.status)+`<fieldset class="wide" style="border:0;padding:0;margin:0"><legend style="font-size:13px;font-weight:600;margin-bottom:8px;padding:0">Course type</legend>${radio}</fieldset>`),c?'Save changes':'Add course'];
+ return [c?'Edit course':'New course',form(cuField('cc-code','Course code',x.code)+cuField('cc-title','Course title',x.title)+cuField('cc-units','Units',x.units)+cuSelect('cc-cfac','Faculty',Object.keys(ccOrg),x.fac)+cuSelect('cc-cdep','Department',ccOrg[x.fac],x.dep)+cuSelect('cc-cstatus','Status',['Active','Inactive'],x.status)+(c?'':ncFields())+`<fieldset class="wide" style="border:0;padding:0;margin:0"><legend style="font-size:13px;font-weight:600;margin-bottom:8px;padding:0">Course type</legend>${radio}</fieldset>`),c?'Save changes':'Add course'];
 }
 function ccConfirm(key){
  const S=ccState,{i}=S.ctx,err=$('.account-error',dialog),fail=m=>{err.textContent=m;err.hidden=false;return false;},val=id=>$('#'+id,dialog).value.trim();
@@ -197,6 +216,12 @@ function ccConfirm(key){
  if(S.C.some((c,k)=>k!==i&&c.code.toLowerCase()===d.code.toLowerCase()))return fail(d.code+' already exists. Course codes must be unique.');
  d.units=+d.units;
  if(i===null)S.C.push(Object.assign(d,{pre:[]}));else Object.assign(S.C[i],d);
+ const curSel=$('#cc-ccur',dialog);
+ if(i===null&&curSel){
+  const n={course:d,cur:curSel.value,term:$('#cc-cterm',dialog).value};
+  ncAttach(n);ncStore(n);cuSave();cuState.cur=cuState.V.findIndex(x=>cuLabel(x)===n.cur);cuRender();
+  return done(d.code+' was added to '+n.cur+', '+n.term+', and the Course Catalogue.');
+ }
  return done(d.code+' was saved.');
 }
 dialog.addEventListener('change',e=>{if(e.target.id==='cc-cfac'){$('#cc-cdep',dialog).innerHTML=ccOrg[e.target.value].map(x=>`<option>${x}</option>`).join('');}});
@@ -206,3 +231,9 @@ if($('#cc-body')){
  $('#cc-fac').addEventListener('change',()=>{ccDepOptions();ccRender();});
  ccRender();
 }
+ncLoad().forEach(n=>{
+ if(!ccState.C.some(c=>c.code.toLowerCase()===n.course.code.toLowerCase()))ccState.C.push(Object.assign({},n.course,{pre:[]}));
+ if(!cuStored)ncAttach(n);
+});
+if($('#cu-version'))cuRender();
+if($('#cc-body'))ccRender();

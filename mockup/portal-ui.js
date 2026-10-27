@@ -82,11 +82,17 @@
    });
    staffAccount.addEventListener('focusout',e=>{if(!staffAccount.contains(e.relatedTarget)&&!popup.hidden)trigger.click();});
   }
-  const tables=root=>root.querySelectorAll('table').forEach(table=>{
+  const labelTable=table=>{
    table.classList.add('portal-table');const headings=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim()||'Actions');
    table.querySelectorAll('tbody tr').forEach(row=>[...row.cells].forEach((cell,i)=>{cell.dataset.label ||= headings[i]||'Actions';}));
-  });
-  tables(document);new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)tables(node.matches('table')?node.parentElement:node);}).observe(document.body,{childList:true,subtree:true});
+  };
+  // A node added later may be a table, a container of tables, or a row/cell inside an existing table.
+  const tables=root=>{
+   const found=new Set(root.querySelectorAll('table')),owner=root.closest?.('table');
+   if(owner)found.add(owner);
+   found.forEach(labelTable);
+  };
+  tables(document);new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)tables(node);}).observe(document.body,{childList:true,subtree:true});
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
  // The prototype embeds these exact role files. Links update its address and history.

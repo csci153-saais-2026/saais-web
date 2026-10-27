@@ -15,6 +15,21 @@ const cuState={cur:0,ctx:null,V:[
  {prog:'BSCS',year:'2019–2020',units:150,enrolled:142,from:'2019-06-01',status:'retired',terms:[{year:1,sem:'Semester 1',rows:[['CSIT 100 — Introduction to Computing',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]},
  {prog:'BSIT',year:'2023–2024',units:148,enrolled:184,from:'2023-06-01',status:'active',terms:[{year:1,sem:'Semester 1',rows:[['ITec 11 — Living in the IT Era',3,'Required course'],['CSIT 101 — Fundamentals of Programming',4,'Required course']]}]}
 ]};
+/* New course: joins the chosen curriculum term and is stored for the Course Catalogue (localStorage, shared with Department Staff). */
+const ncKey='saais.newCourses',ncOrg={'Faculty of Computer Studies':['Computer Science','Information Technology'],'Faculty of Arts and Sciences':['Mathematics and Statistics','Psychology','General Education'],'University Administration':['Office of the Registrar']};
+const ncTerms=[1,2,3,4,5].flatMap(y=>['Semester 1','Semester 2','Midyear'].map(m=>'Year '+y+' · '+m));
+const ncLoad=()=>{try{return JSON.parse(localStorage.getItem(ncKey))||[];}catch(e){return [];}};
+const ncStore=n=>{try{localStorage.setItem(ncKey,JSON.stringify(ncLoad().concat(n)));}catch(e){}};
+function ncAttach(n){
+ const v=cuState.V.find(x=>cuLabel(x)===n.cur);if(!v)return;
+ const m=/^Year (\d) · (.+)$/.exec(n.term),y=+m[1],sem=m[2],name=n.course.code+' — '+n.course.title;
+ let t=v.terms.find(x=>x.year===y&&x.sem===sem);
+ if(!t){t={year:y,sem,rows:[]};v.terms.push(t);const order=['Semester 1','Semester 2','Midyear'];v.terms.sort((a,b)=>a.year-b.year||order.indexOf(a.sem)-order.indexOf(b.sem));}
+ if(!t.rows.some(r=>r[0]===name))t.rows.push([name,n.course.units,n.course.kind==='Elective'?'Elective slot':'Required course']);
+}
+const cuKey='saais.curricula';let cuStored=false;
+try{const s=JSON.parse(localStorage.getItem(cuKey));if(Array.isArray(s)){cuState.V=s;cuStored=true;}}catch(e){}
+const cuSave=()=>{try{localStorage.setItem(cuKey,JSON.stringify(cuState.V));}catch(e){}};
 const cuLabel=v=>v.prog+' · '+v.year;
 const cuFmt=d=>{if(!d)return '—';const p=d.split('-');return +p[2]+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1]+' '+p[0];};
 const cuField=(id,label,value='',type='text')=>`<label><span>${label}</span><input id="${id}" type="${type}" value="${esc(String(value))}"></label>`;
@@ -22,7 +37,7 @@ const cuSelect=(id,label,items,value)=>`<label><span>${label}</span><select id="
 function cuRender(){
  const root=$('#cu-terms');if(!root)return;const {V}=cuState,sel=$('#cu-version');
  sel.innerHTML=V.map((v,i)=>`<option value="${i}">${esc(cuLabel(v))}</option>`).join('');
- const none=!V.length;['cu-edit-version','cu-del-version','cu-add-term'].forEach(k=>{const b=$(`[data-dialog="${k}"]`);b.disabled=none;b.style.opacity=none?'.5':'';});
+ const none=!V.length;['cu-edit-version','cu-del-version','cu-add-term','cu-new-course'].forEach(k=>{const b=$(`[data-dialog="${k}"]`);b.disabled=none;b.style.opacity=none?'.5':'';});
  if(none){$('#cu-stats').innerHTML='';root.innerHTML='<p class="empty">No curriculum versions yet. Use Add version to create one.</p>';return;}
  cuState.cur=Math.min(cuState.cur,V.length-1);sel.value=cuState.cur;const v=V[cuState.cur];
  $('#cu-stats').innerHTML=[['Required units',v.units,'Full degree requirement'],['Enrolled students',v.enrolled,'Students on this curriculum'],['Effective from',cuFmt(v.from),'Version effectivity'],['Status',v.status,'Curriculum lifecycle']].map(([l,n,s])=>`<article class="stat"><span class="label">${l}</span><strong>${esc(String(n))}</strong><small>${s}</small></article>`).join('');
@@ -44,6 +59,10 @@ function cuDialog(key,trigger){
   case 'cu-add-term':return ['Add term',termForm({year:1,sem:'Semester 1'}),'Add term'];
   case 'cu-edit-term':return ['Edit term',termForm(v.terms[t]),'Save changes'];
   case 'cu-del-term':return del(`Delete <strong>Year ${v.terms[t].year} · ${esc(v.terms[t].sem)}</strong> and its ${v.terms[t].rows.length} course(s)?`);
+  case 'cu-new-course':{
+   const fac=Object.keys(ncOrg)[0];
+   return ['New course',form(cuField('nc-code','Course code','')+cuField('nc-title','Course title','')+cuField('nc-units','Units',3)+cuSelect('nc-fac','Faculty',Object.keys(ncOrg),fac)+cuSelect('nc-dep','Department',ncOrg[fac],ncOrg[fac][0])+cuSelect('nc-cur','Curriculum',cuState.V.map(cuLabel),cuLabel(v))+cuSelect('nc-term','Term',ncTerms,'Year 1 · Semester 1')+cuSelect('nc-kind','Course type',['Non-Elective','Elective'],'Non-Elective')),'Add course'];
+  }
   case 'cu-add-slot':return ['Add course / slot',slotForm(['',3,'Required course']),'Add'];
   case 'cu-edit-slot':return ['Edit course / slot',slotForm(v.terms[t].rows[r]),'Save changes'];
   case 'cu-del-slot':return del(`Delete <strong>${esc(v.terms[t].rows[r][0])}</strong> from Year ${v.terms[t].year} · ${esc(v.terms[t].sem)}?`);
@@ -51,7 +70,18 @@ function cuDialog(key,trigger){
 }
 function cuConfirm(key){
  const S=cuState,{t,r}=S.ctx,err=$('.account-error',dialog),fail=m=>{err.textContent=m;err.hidden=false;return false;},val=id=>$('#'+id,dialog).value.trim();
- const done=m=>{cuRender();toast(m);return true;};
+ const done=m=>{cuSave();cuRender();toast(m);return true;};
+ if(key==='cu-new-course'){
+  const code=val('nc-code'),title=val('nc-title'),units=val('nc-units');
+  if(!code)return fail('Enter the course code, for example CSIT 100.');
+  if(!title)return fail('Enter the course title.');
+  if(units===''||isNaN(+units)||+units<0)return fail('Units must be zero or more.');
+  const n={course:{code,title,units:+units,fac:val('nc-fac'),dep:val('nc-dep'),status:'Active',kind:val('nc-kind')},cur:val('nc-cur'),term:val('nc-term')};
+  const taken=ncLoad().some(x=>x.course.code.toLowerCase()===code.toLowerCase())||S.V.some(x=>x.terms.some(tt=>tt.rows.some(rr=>rr[0].toLowerCase().startsWith(code.toLowerCase()+' —'))));
+  if(taken)return fail(code+' already exists. Course codes must be unique.');
+  ncAttach(n);ncStore(n);S.cur=S.V.findIndex(x=>cuLabel(x)===n.cur);
+  return done(code+' was added to '+n.cur+', '+n.term+', and the Course Catalogue.');
+ }
  if(key==='cu-del-version'){const v=S.V.splice(S.cur,1)[0];S.cur=0;return done(cuLabel(v)+' was deleted.');}
  if(key==='cu-del-term'){S.V[S.cur].terms.splice(t,1);return done('The term was deleted.');}
  if(key==='cu-del-slot'){S.V[S.cur].terms[t].rows.splice(r,1);return done('The course was removed.');}
@@ -79,7 +109,13 @@ function cuConfirm(key){
  if(key==='cu-edit-slot')rows[r]=row;else rows.push(row);
  return done(n+' was saved.');
 }
-if($('#cu-version')){$('#cu-version').addEventListener('change',e=>{cuState.cur=+e.target.value;cuRender();});cuRender();}
+if($('#cu-version')){
+ $('#cu-version').addEventListener('change',e=>{cuState.cur=+e.target.value;cuRender();});
+ const addTerm=$('[data-dialog="cu-add-term"]');
+ if(addTerm){const b=document.createElement('button');b.type='button';b.className=addTerm.className;b.dataset.dialog='cu-new-course';b.textContent='New course';addTerm.after(b);}
+ if(!cuStored)ncLoad().forEach(ncAttach);cuRender();
+}
+dialog.addEventListener('change',e=>{if(e.target.id==='nc-fac')$('#nc-dep',dialog).innerHTML=ncOrg[e.target.value].map(x=>`<option>${x}</option>`).join('');});
 function openCu(trigger){
  const key=trigger.dataset.dialog,spec=cuDialog(key,trigger);if(!spec)return;
  $('#dialog-title').textContent=spec[0];

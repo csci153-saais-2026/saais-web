@@ -44,8 +44,12 @@ for(const role of roles){
 const aliases={
  'student/enrollment-history':'student/history','student/settings':'student/change-password',
  'adviser/advisees/detail':'adviser/advisees/checklist','adviser/enrollment/new':'adviser/encode-grades','adviser/advisees/record-grades':'adviser/encode-grades',
- 'admin/dashboard':'system-admin/students','admin/accounts':'system-admin/accounts','admin/audit-log':'system-admin/audit-log','admin/settings':'system-admin/settings'
+ 'admin/dashboard':'system-admin/students','admin/accounts':'system-admin/accounts','admin/audit-log':'system-admin/audit-log','admin/settings':'system-admin/settings',
+ 'admin/programs':'system-admin/programs','admin/faculties':'system-admin/faculty-departments','admin/curricula':'department-staff/curricula',
+ 'admin/courses':'department-staff/course-catalog','admin/course-offerings':'department-staff/academic-terms',
+ 'adviser/enrollment':'adviser/encode-grades','adviser/reassignment':'department-staff/adviser-assignments'
 };
+for(const [from,to] of Object.entries(aliases))if(!routes[to])throw Error('Alias '+from+' targets missing route '+to);
 for(const role of roles)if(!routes[role.home])throw Error('Missing home '+role.home);
 fs.writeFileSync(path.join(ROOT,'prototype-routes.js'),'window.SAAIS_PORTALS='+JSON.stringify({roles,routes,aliases},null,2)+';\n');
 const styles=[],sections=[];

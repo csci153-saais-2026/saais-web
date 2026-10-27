@@ -561,6 +561,13 @@ window.SAAIS_PORTALS={
     "admin/dashboard": "system-admin/students",
     "admin/accounts": "system-admin/accounts",
     "admin/audit-log": "system-admin/audit-log",
-    "admin/settings": "system-admin/settings"
+    "admin/settings": "system-admin/settings",
+    "admin/programs": "system-admin/programs",
+    "admin/faculties": "system-admin/faculty-departments",
+    "admin/curricula": "department-staff/curricula",
+    "admin/courses": "department-staff/course-catalog",
+    "admin/course-offerings": "department-staff/academic-terms",
+    "adviser/enrollment": "adviser/encode-grades",
+    "adviser/reassignment": "department-staff/adviser-assignments"
   }
 };
