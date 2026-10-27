@@ -1,6 +1,6 @@
 # Department Head static design
 
-Open `index.html` in this folder to start at the adviser dashboard. The sidebar groups Dashboard, Advisees, Encode grades, Import grades, and Grade flags under **Adviser**, followed by the ten existing management pages under **Department Head**. All screens stay in this folder, including adviser student details and Change password.
+Open `index.html` in this folder to start at the adviser dashboard. The sidebar groups Dashboard, Advisees, Record grades, Import grades, and Grade flags under **Adviser**, followed by the ten existing management pages under **Department Head**. All screens stay in this folder, including adviser student details and Change password.
 
 Select either role heading to expand or collapse its navigation links. The current page's role starts expanded and the other role starts collapsed. Native disclosure controls support mouse and keyboard navigation.
 
