@@ -94,6 +94,24 @@
   };
   tables(document);new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)tables(node);}).observe(document.body,{childList:true,subtree:true});
  }
+ // Unit-weighted GWA beside each curriculum-checklist semester heading (graded courses only).
+ function termGwa(){
+  document.querySelectorAll('section[data-term-panel]').forEach(panel=>{
+   const header=panel.querySelector('header');
+   if(!header||header.querySelector('[data-term-gwa]'))return;
+   let points=0,units=0;
+   panel.querySelectorAll('tbody tr').forEach(row=>{
+    const cells=row.children,grade=cells[3]?.textContent.match(/grade\s+(\d+(?:\.\d+)?)/),unit=cells[1]?.textContent.match(/\d+(?:\.\d+)?\s*\/\s*(\d+(?:\.\d+)?)/);
+    if(!grade||!unit)return;
+    points+=+grade[1]*+unit[1];units+=+unit[1];
+   });
+   const gwa=document.createElement('div');gwa.setAttribute('data-term-gwa','');
+   gwa.style.cssText='margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;flex-shrink:0';
+   gwa.innerHTML='<small style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8C8A76">Semester GWA</small><b style="font:700 18px Syne,sans-serif;color:#2F4A12">'+(units?(points/units).toFixed(2):'—')+'</b>';
+   header.insertBefore(gwa,header.querySelector('button'));
+  });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',termGwa);else termGwa();
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
  // The prototype embeds these exact role files. Links update its address and history.
  if(window.parent!==window && (new URLSearchParams(location.search).has('prototype')||window.frameElement?.id==='portal-frame')){
