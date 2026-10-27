@@ -30,6 +30,9 @@
     '.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:56px}',
     '@media(max-width:900px){.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:0}}',
     '.app .data button.su-flagged{background:#FBF0D6;border-color:#EBDCAE;color:#8A6206}',
+    '.su-fixes{margin:8px 0 0;padding-left:18px;color:#6E6C58;font-size:13.5px;display:grid;gap:6px}',
+    '.dialog-content h3{font-size:15.5px;margin:20px 0 6px}',
+    '.dialog-content>p{margin:0 0 10px}',
     '.su-list .note-row:last-child{border-bottom:0}',
     '.su-toggle-row{display:flex;justify-content:flex-end;margin-bottom:12px}',
     '.side #me-menu a:hover{background:#EFEADB}',
@@ -110,6 +113,18 @@
       b.classList.toggle('su-flagged', on);
       b.textContent = on ? 'Flagged' : 'Flag Grade';
     });
+  }
+
+  /* ---------- course info ---------- */
+  var BADGE = { Passed: 'passed', INC: 'inc', Enrolled: 'currently_enrolled', Failed: 'failed' };
+  function openCourseInfo(btn) {
+    var i = JSON.parse(btn.dataset.info), st = i.status[0];
+    var attempts = i.rows.length
+      ? '<div class="table-scroll"><table class="data"><thead><tr>' + ['Term', 'Midterm', 'Final', 'Completion', 'Instructor'].map(function (h) { return '<th scope="col">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        i.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>'
+      : '<div class="empty">No attempts recorded yet.</div>';
+    var fixes = i.fixes.length ? '<ul class="su-fixes">' + i.fixes.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' : '<p>No grade fixes recorded.</p>';
+    showDialog(i.title, '<p>' + esc(i.meta) + '</p><p>Status: <span class="badge ' + (BADGE[st] || 'na') + '">' + esc(st) + '</span></p>' + attempts + '<h3>Grade fix history</h3>' + fixes);
   }
 
   /* ---------- checklist: collapsible panels + status filter ---------- */
@@ -244,6 +259,8 @@
     if (t.closest('[data-grade-flags]')) return openFlagList();
     var dl = t.closest('[data-download-checklist]');
     if (dl) return downloadChecklist(dl.closest('main'));
+    var ci = t.closest('[data-info]');
+    if (ci) return openCourseInfo(ci);
     var fb = t.closest('[data-flag]');
     if (fb) return isOpen(fb.dataset.code) ? openFlagList() : openFlagForm(fb);
     if (t.closest('#me-btn')) { setMenu(document.getElementById('me-menu').hidden); return; }
