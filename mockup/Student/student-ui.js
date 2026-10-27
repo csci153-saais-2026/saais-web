@@ -23,6 +23,10 @@
     '.su-collapsible.collapsed>.panel-head{border-bottom:0}',
     '.su-collapsible.collapsed .su-chev{transform:rotate(-90deg)}',
     '.su-flagcol{width:1%;white-space:nowrap}',
+    '.su-headend{display:flex;align-items:center;gap:18px;margin-left:auto}',
+    '.su-sgwa{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}',
+    '.su-sgwa small{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8C8A76}',
+    '.su-sgwa b{font:700 18px \"Syne\",sans-serif;color:#2F4A12}',
     '.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:56px}',
     '@media(max-width:900px){.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:0}}',
     '.app .data button.su-flagged{background:#FBF0D6;border-color:#EBDCAE;color:#8A6206}',
@@ -110,13 +114,22 @@
 
   /* ---------- checklist: collapsible panels + status filter ---------- */
   var chevron = '<span class="su-chev" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
+  function semGwa(sec) {
+    var pts = 0, units = 0;
+    sec.querySelectorAll('tbody tr').forEach(function (tr) {
+      var c = tr.children, g = (c[3] && c[3].textContent.match(/grade\s+(\d+(?:\.\d+)?)/)) || null, u = c[1] && c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+      if (!g || !u) return;
+      pts += +g[1] * +u[2]; units += +u[2];
+    });
+    return '<div class="su-sgwa"><small>Semester GWA</small><b>' + (units ? (pts / units).toFixed(2) : '—') + '</b></div>';
+  }
   function initCollapsible() {
     document.querySelectorAll('main section.panel').forEach(function (s) {
       var head = s.children[0], body = s.children[1];
       if (!head || !body || !body.classList.contains('table-scroll') || !body.querySelector('[data-flag], td') || s.classList.contains('su-collapsible')) return;
       if (!s.closest('[data-pg="checklist"], [data-pg="grades"], [data-su-collapse]')) return;
       s.classList.add('su-collapsible');
-      head.insertAdjacentHTML('beforeend', chevron);
+      head.insertAdjacentHTML('beforeend', '<div class="su-headend">' + (s.querySelector('td[data-label="Requirement"]') ? semGwa(s) : '') + chevron + '</div>');
       head.setAttribute('aria-expanded', 'true');
     });
   }
