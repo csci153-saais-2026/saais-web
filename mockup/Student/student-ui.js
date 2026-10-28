@@ -135,11 +135,11 @@
   function openCourseInfo(btn) {
     var i = JSON.parse(btn.dataset.info), st = i.status[0];
     var attempts = i.rows.length
-      ? '<div class="table-scroll"><table class="data"><thead><tr>' + ['Term', 'Midterm', 'Final', 'Completion', 'Instructor'].map(function (h) { return '<th scope="col">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
-        i.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>'
+      ? '<div class="table-scroll"><table class="data"><thead><tr>' + ['Attempt', 'Term', 'Midterm', 'Final', 'Completion', 'Instructor', 'Result'].map(function (h) { return '<th scope="col">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        i.rows.map(function (r, n) { var f = r[2], res = f === '5.00' ? 'Failed' : f === 'INC' ? 'INC' : /^\d/.test(f) ? 'Passed' : 'Enrolled'; return '<tr>' + [String(n + 1)].concat(r).map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '<td><span class="badge ' + BADGE[res] + '">' + res + '</span></td></tr>'; }).join('') + '</tbody></table></div>'
       : '<div class="empty">No attempts recorded yet.</div>';
     var fixes = i.fixes.length ? '<ul class="su-fixes">' + i.fixes.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' : '<p>No grade fixes recorded.</p>';
-    showDialog(i.title, '<p>' + esc(i.meta) + '</p><p>Status: <span class="badge ' + (BADGE[st] || 'na') + '">' + esc(st) + '</span></p>' + attempts + '<h3>Grade fix history</h3>' + fixes);
+    showDialog(i.title, '<p>' + esc(i.meta) + '</p><p>Status: <span class="badge ' + (BADGE[st] || 'na') + '">' + esc(st) + '</span> &middot; ' + i.rows.length + (i.rows.length === 1 ? ' attempt' : ' attempts') + '</p>' + attempts + '<h3>Grade fix history</h3>' + fixes);
   }
 
   /* ---------- checklist: collapsible panels + status filter ---------- */
