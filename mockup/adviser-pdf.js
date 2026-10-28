@@ -13,7 +13,7 @@
     };
     scope.querySelectorAll('.kick').forEach(kick => {
       const card = kick.parentElement;
-      if (visible(card) && card.querySelector('.dsp')) report.stats.push({ label: label(kick), value: label(card.querySelector('.dsp')), note: label(card.lastElementChild) });
+      if (visible(card) && card.querySelector('.dsp')) report.stats.push({ label: label(kick), value: label(card.querySelector('.dsp')), note: label(card.lastElementChild).replace(/ · View list$/, '') });
     });
     scope.querySelectorAll('section').forEach(panel => {
       if (!visible(panel)) return;
