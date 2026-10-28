@@ -145,13 +145,16 @@
   /* ---------- checklist: collapsible panels + status filter ---------- */
   var chevron = '<span class="su-chev" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
   function semGwa(sec) {
-    var pts = 0, units = 0;
+    var pts = 0, units = 0, passed = 0, total = 0;
+    function n(x) { return String(+x.toFixed(2)); }
     sec.querySelectorAll('tbody tr').forEach(function (tr) {
-      var c = tr.children, g = (c[3] && c[3].textContent.match(/grade\s+(\d+(?:\.\d+)?)/)) || null, u = c[1] && c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+      var c = tr.children, ru = c[1] && c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+      if (ru) { total += +ru[2]; if (c[2] && c[2].textContent.trim() === 'Passed') passed += +ru[2]; }
+      var g = (c[3] && c[3].textContent.match(/grade\s+(\d+(?:\.\d+)?)/)) || null, u = c[1] && c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
       if (!g || !u) return;
       pts += +g[1] * +u[2]; units += +u[2];
     });
-    return '<div class="su-sgwa"><small>Semester GWA</small><b>' + (units ? (pts / units).toFixed(2) : '—') + '</b></div>';
+    return '<div class="su-sgwa"><small>Passed units</small><b>' + n(passed) + '/' + n(total) + '</b></div><div class="su-sgwa"><small>Total units</small><b>' + n(total) + '</b></div><div class="su-sgwa"><small>Semester GWA</small><b>' + (units ? (pts / units).toFixed(2) : '—') + '</b></div>';
   }
   function initCollapsible() {
     document.querySelectorAll('main section.panel').forEach(function (s) {

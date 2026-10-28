@@ -99,16 +99,21 @@
   document.querySelectorAll('section[data-term-panel]').forEach(panel=>{
    const header=panel.querySelector('header');
    if(!header||header.querySelector('[data-term-gwa]'))return;
-   let points=0,units=0;
+   let points=0,units=0,passed=0,total=0;
    panel.querySelectorAll('tbody tr').forEach(row=>{
-    const cells=row.children,grade=cells[3]?.textContent.match(/grade\s+(\d+(?:\.\d+)?)/),unit=cells[1]?.textContent.match(/\d+(?:\.\d+)?\s*\/\s*(\d+(?:\.\d+)?)/);
+    const cells=row.children,req=cells[1]?.textContent.match(/\d+(?:\.\d+)?\s*\/\s*(\d+(?:\.\d+)?)/);
+    if(req){total+=+req[1];if(cells[2]?.textContent.trim()==='Passed')passed+=+req[1];}
+    const grade=cells[3]?.textContent.match(/grade\s+(\d+(?:\.\d+)?)/),unit=cells[1]?.textContent.match(/\d+(?:\.\d+)?\s*\/\s*(\d+(?:\.\d+)?)/);
     if(!grade||!unit)return;
     points+=+grade[1]*+unit[1];units+=+unit[1];
    });
+   const num=n=>String(+n.toFixed(2));
+   const wrap=document.createElement('div');wrap.style.cssText='margin-left:auto;display:flex;align-items:center;gap:22px;flex-shrink:0';
+   const stat=(label,value)=>'<div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.2"><small style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8C8A76">'+label+'</small><b style="font:700 18px Syne,sans-serif;color:#2F4A12">'+value+'</b></div>';
    const gwa=document.createElement('div');gwa.setAttribute('data-term-gwa','');
-   gwa.style.cssText='margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;flex-shrink:0';
+   gwa.style.cssText='display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;flex-shrink:0';
    gwa.innerHTML='<small style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8C8A76">Semester GWA</small><b style="font:700 18px Syne,sans-serif;color:#2F4A12">'+(units?(points/units).toFixed(2):'—')+'</b>';
-   header.insertBefore(gwa,header.querySelector('button'));
+   wrap.innerHTML=stat('Passed units',num(passed)+'/'+num(total))+stat('Total units',num(total));wrap.appendChild(gwa);header.insertBefore(wrap,header.querySelector('button'));
   });
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',termGwa);else termGwa();
