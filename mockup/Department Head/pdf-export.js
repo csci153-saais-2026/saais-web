@@ -25,7 +25,7 @@
     function newPage() {
       commands = []; pages.push(commands);
       rect(0, 0, width, 7, '.184 .290 .071');
-      text('SAAIS  /  DEPARTMENT HEAD  /  DCST', margin, 32, 9, true, '.431 .424 .345');
+      text(report.crumb || 'SAAIS  /  DEPARTMENT HEAD  /  DCST', margin, 32, 9, true, '.431 .424 .345');
       text(report.title, margin, 62, 23, true);
       text(report.subtitle || 'Department of Computer Science and Technology', margin, 82, 10, false, '.431 .424 .345');
       y = 110;
@@ -63,7 +63,7 @@
     }
     pages.forEach((page, i) => {
       commands = page;
-      text('Fictional sample records | Academic snapshot: 15 August 2025', margin, height - 22, 8, false, '.431 .424 .345');
+      text(report.footer || 'Fictional sample records | Academic snapshot: 15 August 2025', margin, height - 22, 8, false, '.431 .424 .345');
       text(`Page ${i + 1} of ${pages.length}`, width - 100, height - 22, 8, false, '.431 .424 .345');
     });
     const objects = [null, '<< /Type /Catalog /Pages 2 0 R >>', '', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'];
