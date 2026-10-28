@@ -199,8 +199,30 @@
       stats: [{ label: 'Units earned', value: earned + ' of ' + req }],
       sections: sections
     };
+    savePdf(report, 'SAAIS-curriculum-checklist.pdf');
+  }
+
+  function downloadGrades(main) {
+    var nm = document.querySelector('.user-name b'), id = document.querySelector('.user-name small');
+    var sections = [].slice.call(main.querySelectorAll('section.panel')).filter(function (s) { return s.querySelector('tbody tr'); }).map(function (s) {
+      var rows = [].slice.call(s.querySelectorAll('tbody tr')).map(function (tr) {
+        var c = tr.children;
+        return [c[0].querySelector('strong').textContent, c[0].querySelector('.course-title').textContent, c[1].textContent.trim(), c[2].textContent.trim(), c[3].textContent.trim(), c[4].textContent.trim()];
+      });
+      return { title: s.querySelector('h2').textContent.trim() + ' | ' + s.querySelector('h2 + p').textContent.trim(), headers: ['Code', 'Title', 'Units', 'Midterm', 'Final / completion', 'Status'], rows: rows };
+    });
+    savePdf({
+      title: 'Grade summary',
+      subtitle: 'BS Computer Science | ' + (nm ? nm.textContent.trim() : '') + ' | ' + (id ? id.textContent.trim() : '') + ' | Curriculum 2023-2024',
+      crumb: 'SAAIS  /  STUDENT  /  DCST',
+      footer: 'Not an official record | Generated ' + today(),
+      stats: [], sections: sections
+    }, 'SAAIS-grade-summary.pdf');
+  }
+
+  function savePdf(report, name) {
     var url = URL.createObjectURL(new Blob([window.DepartmentPDF.create(report)], { type: 'application/pdf' }));
-    var a = document.createElement('a'); a.href = url; a.download = 'SAAIS-curriculum-checklist.pdf';
+    var a = document.createElement('a'); a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
   }
 
@@ -268,6 +290,8 @@
     if (t.closest('[data-grade-flags]')) return openFlagList();
     var dl = t.closest('[data-download-checklist]');
     if (dl) return downloadChecklist(dl.closest('main'));
+    var gs = t.closest('[data-action="print"]');
+    if (gs) return downloadGrades(gs.closest('main'));
     var ci = t.closest('[data-info]');
     if (ci) return openCourseInfo(ci);
     var fb = t.closest('[data-flag]');
