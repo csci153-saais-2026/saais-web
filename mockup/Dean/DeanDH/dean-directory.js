@@ -13,6 +13,17 @@
     ['Ivan Torres', '23-1-01412', 'DCST', 'BSCS 2018–2024', 'Prof. Jun Villa'],
     ['Joy Ramos', '25-1-00188', 'DCST', 'BSCS 2025–present', 'Dr. Paz Villanueva']
   ];
+  // The department's own students (the ones the Head and Staff manage) are part of the faculty directory too, with whatever adviser they have now.
+  const deptStudents = [
+    ['Ana Marie Santos', '24-1-00124', 'BSCS 2024', 'Dr. Elena Reyes'], ['Luis Miguel Cruz', '23-1-00218', 'BSCS 2021', 'Prof. Marco Villanueva'],
+    ['Sofia Isabel Garcia', '24-1-00316', 'BSIT 2024', 'Prof. Patricia Lim'], ['Gabriel Mendoza', '22-1-00145', 'BSCS 2021', 'Dr. Elena Reyes'],
+    ['Isabella Ramos', '25-1-00087', 'BSCS 2024', 'Prof. Marco Villanueva'], ['Daniel Flores', '23-1-00256', 'BSIT 2024', 'Prof. Patricia Lim'],
+    ['Camille Torres', '24-1-00192', 'BSCS 2024', 'Dr. Elena Reyes'], ['Rafael Navarro', '24-1-00204', 'BSCS 2024', 'Prof. Marco Villanueva']
+  ];
+  try {
+    const assign = (JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}).assign || {};
+    deptStudents.forEach(s => students.push([s[0], s[1], 'DCST', s[2], assign[s[1]] ? assign[s[1]].adviser : s[3]]));
+  } catch (_) {}
   // Students imported by the Department Head or Staff join the faculty directory.
   try { ((JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}).students || []).forEach(s => students.push([s.name, s.id, 'DCST', s.curriculum, s.adviser])); } catch (_) {}
   const seed = [

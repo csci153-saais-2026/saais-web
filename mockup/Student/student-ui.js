@@ -17,8 +17,9 @@
 
   var ADVISER = 'Prof. Ramon Reyes';
   var NOTES = [
-    { date: '17 Sep 2026', text: 'Discussed a manageable course load. Review the CSci 102 (Discrete Structures I) completion requirements before the October deadline.' },
-    { date: '14 Aug 2026', text: 'Reviewed the CS Elective 1 mapping and explained how it appears in the curriculum checklist.' }
+    { author: 'Prof. Ramon Reyes', date: '17 Sept 2026', text: 'Discussed a manageable course load. Review the CSci 102 (Discrete Structures I) completion requirements before the October deadline.' },
+    { author: 'Prof. Ramon Reyes', date: '14 Aug 2026', text: 'Reviewed the CS Elective 1 mapping and explained how it appears in the curriculum checklist.' },
+    { author: 'Prof. Ramon Reyes', date: '2 Mar 2026', text: 'Accepted Envi 11 as equivalent for the discontinued ScTS 11a. Student informed in person.' }
   ];
   var REASONS = ['Incorrect grade', 'Missing grade', 'Wrong course credited', 'Other'];
   /* Flags persist in localStorage so advisers see them and the student sees the outcome. */
@@ -92,10 +93,28 @@
   }
 
   /* ---------- advising notes ---------- */
+  /* The student reads the notes the adviser actually wrote: active notes on the adviser's Notes tab and Advising tab. Archived notes are hidden. */
+  function adviserNotes() {
+    var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
+    if (UI['notes-list'] == null && UI['note-list'] == null) return NOTES;
+    var out = [];
+    function read(html, active) {
+      var doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
+      [].slice.call(doc.querySelectorAll('article')).forEach(function (a) {
+        if (active && a.dataset.state && a.dataset.state !== 'active') return;
+        var p = a.querySelector('p'), strong = a.querySelector('strong'), date = a.querySelector('[data-date]') || a.querySelector('span');
+        if (p) out.push({ author: strong ? strong.textContent.trim() : ADVISER, date: date ? date.textContent.trim() : '', text: p.textContent.trim() });
+      });
+    }
+    if (UI['notes-list'] != null) read(UI['notes-list'], true); else out = out.concat(NOTES);
+    if (UI['note-list'] != null) read(UI['note-list'], false);
+    return out;
+  }
   function openNotes() {
-    var rows = NOTES.map(function (n) {
-      return '<div class="note-row"><p>' + esc(n.text) + '</p><div class="note-meta"><strong>' + esc(ADVISER) + '</strong> · ' + esc(n.date) + '</div></div>';
-    }).join('');
+    var list = adviserNotes();
+    var rows = list.length ? list.map(function (n) {
+      return '<div class="note-row"><p>' + esc(n.text) + '</p><div class="note-meta"><strong>' + esc(n.author || ADVISER) + '</strong> · ' + esc(n.date) + '</div></div>';
+    }).join('') : '<div class="empty">No advising notes right now.</div>';
     showDialog('Advising notes', '<div class="su-list">' + rows + '</div>');
   }
 
@@ -360,6 +379,55 @@
     }
   }
 
+
+  /* ---------- standing tiles (dashboard + checklist) ---------- */
+  function tile(label) {
+    return [].slice.call(document.querySelectorAll('.stat')).filter(function (t) { var l = t.querySelector('.stat-label'); return l && l.textContent.trim() === label; })[0];
+  }
+  function setTile(label, value, note) {
+    var t = tile(label); if (!t) return;
+    if (value != null) t.querySelector('.stat-value').textContent = value;
+    if (note != null) t.querySelector('.stat-note').textContent = note;
+  }
+  function applyMetrics() {
+    if (!window.SAAIS_METRICS) return;
+    var m = window.SAAIS_METRICS.maria();
+    /* dashboard */
+    setTile('Cumulative GWA', m.gwa, m.counted + ' counted units');
+    setTile('Units earned', String(m.earned), 'of ' + m.total + ' required units');
+    setTile('Academic standing', m.flagged ? 'Flagged' : 'Good', '12 failed units per term triggers a flag');
+    setTile('Open INC', String(m.openInc), m.openInc ? 'Review completion deadlines' : 'No incomplete grades');
+    /* checklist */
+    setTile('Counted units', String(m.counted));
+    setTile('Year standing', m.yearStanding, m.earned + ' of ' + m.total + ' units earned');
+    setTile('Deficiencies', String(m.defCount), m.defCount ? m.defNote : 'No open deficiencies');
+    /* degree progress */
+    var pr = document.querySelector('.progress-row');
+    if (pr) {
+      var sp = pr.querySelectorAll('.progress-label span'); sp[0].textContent = m.earned + ' units earned'; sp[1].textContent = Math.round(m.pct) + '% of ' + m.total + ' units';
+      pr.querySelector('.progress-track span').style.width = m.pct + '%';
+    }
+    /* "Keep on your radar" */
+    var radar = [].slice.call(document.querySelectorAll('section.panel')).filter(function (p) { var h = p.querySelector('h2'); return h && /Keep on your radar/.test(h.textContent); })[0];
+    if (radar) {
+      var inc = m.deficiencies.filter(function (d) { return d.kind === 'Unresolved INC'; });
+      radar.querySelector('h2 + p').textContent = inc.length ? inc.length + ' incomplete course' + (inc.length === 1 ? '' : 's') + ' to review' : 'Nothing needs your attention';
+      var rows = radar.querySelectorAll('.activity-row');
+      if (!inc.length) { rows.forEach(function (r) { r.remove(); }); if (!radar.querySelector('.empty')) radar.insertAdjacentHTML('beforeend', '<div class="empty">No incomplete grades. Nice work.</div>'); }
+      else if (rows[0] && inc[0].code !== 'CSci 102') rows[0].querySelector('strong').textContent = inc[0].code + ' · Completion due';
+    }
+    /* Course recommendations come from the adviser's term plan */
+    var rec = [].slice.call(document.querySelectorAll('section.panel')).filter(function (p) { var h = p.querySelector('h2'); return h && /Course Recommendations/.test(h.textContent); })[0];
+    if (rec) {
+      var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
+      var items = UI.planItems || [];
+      if (items.length) {
+        var empty = rec.querySelector('.empty'); if (empty) empty.remove();
+        rec.insertAdjacentHTML('beforeend', '<div class="su-list">' + items.map(function (i) { return '<div class="activity-row"><div><strong>' + esc(i.code) + (i.title ? ' · ' + esc(i.title) : '') + '</strong><p>' + esc(i.term) + ' · suggested by ' + ADVISER + '</p></div><span class="badge currently_enrolled">Suggested</span></div>'; }).join('') + '</div>');
+      }
+    }
+  }
+
   /* ---------- assignment and curriculum history ---------- */
   function histTable(heads, rows) {
     return '<div class="table-scroll"><table class="data"><thead><tr>' + heads.map(function (h) { return '<th scope="col">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
@@ -468,6 +536,6 @@
 
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
   window.addEventListener('storage', function (e) { if (e.key === FLAG_KEY) markFlagged(); });
-  function init() { applyEncoded(); initCollapsible(); addToggleButtons(); markFlagged(); initPassword(); applyPhoto(); }
+  function init() { applyEncoded(); applyMetrics(); initCollapsible(); addToggleButtons(); markFlagged(); initPassword(); applyPhoto(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

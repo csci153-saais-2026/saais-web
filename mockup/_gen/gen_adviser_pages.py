@@ -408,7 +408,7 @@ def overview():
                     sub="Keep the student record up to date.")
     note = panel("Latest advising note",
                  '<p style="font-size: 13.5px; color: #6E6C58">Discussed a manageable course load. Review the CSci 102 (Discrete Structures I) completion requirements before the October deadline.</p>',
-                 sub="Staff-only information.")
+                 sub="Notes the student can read.")
     curhist = dialog("dlg-curhist", "Curriculum assignment history", "Every curriculum this student has followed.",
                      table(["Curriculum", "Start", "End", "Reason"],
                            [f'<tr>{td("BS Computer Science · 2023–2024")}{td("1 Jun 2023")}{td(badge("Current", "green"))}{td("Initial assignment")}</tr>']), "")
@@ -449,12 +449,12 @@ def advising():
                  + msg("plan-msg", "14px") + '</div>',
                  sub='<span id="plan-term-label">2025 - 2026 · 2nd Semester</span>', right=f'<div style="min-width: 190px">{term}</div>', pad="0")
     note_form = ('<form id="note-form" novalidate style="padding: 18px 20px 20px">'
-                 + textarea("Write an advising note", "note-body", 'placeholder="Staff-only. Write what the next adviser should know."')
+                 + textarea("Write an advising note", "note-body", 'placeholder="Visible to the student. Write what they and the next adviser should know."')
                  + msg("note-msg", "12px")
                  + f'<div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px">{btn_ghost("Cancel", attrs="data-reset")}'
                  + btn_primary("Save note", typ="submit") + '</div></form>')
     notes = panel("Advising notes", f'<div id="note-list">{"".join(note_row(*n) for n in NOTES)}</div>' + note_form,
-                  sub="Recent notes · staff-only", pad="0")
+                  sub="Recent notes · visible to the student", pad="0")
     chat = panel("Advising assistant",
                  '<div id="chat-log" style="display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; max-height: 300px; overflow-y: auto">'
                  + chat_msg("What should Maria take next term?", True)

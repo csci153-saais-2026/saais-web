@@ -20,6 +20,6 @@ If `localStorage` is blocked, the screens fall back to in-memory state for that 
 
 ## Not connected
 
-- Encode grades only covers four advisees (Ana, Ben, Dino, Maria). Maria's grades and resolved INC flow into the Student portal; the others have no Student pages.
-- XLSX and XLS imports cannot be read; use CSV.
-- The older combined pages (for example `Adviser.dc.html`) share the saving code but not every newer screen.
+- Encode grades covers four advisees (Ana, Ben, Dino, Maria). Only Maria has a Student portal, so only her grades, GWA, units, year standing, deficiencies, standing and resolved INC flow into the Student pages, the advisee pages, the roster and the adviser dashboards (`saais-metrics.js`).
+- Student imports read `.xlsx` and `.csv`. Old binary `.xls` files are rejected with a message.
+- The five combined workspace pages (`Adviser.dc.html`, the Head, Dean and Dean-Head copies, and `SystemAdmin.dc.html`) were brought level with the standalone pages and tested screen by screen.

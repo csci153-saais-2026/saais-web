@@ -221,9 +221,42 @@
     row.push(cell.trim()); if (row.some(Boolean)) rows.push(row);
     return rows;
   };
+  /* Read a .xlsx (a zip of XML files) without any library: find the entries in the zip directory, inflate them with the browser's DecompressionStream. */
+  const inflate = async bytes => { const ds = new DecompressionStream('deflate-raw'); const w = ds.writable.getWriter(); w.write(bytes); w.close(); return new Uint8Array(await new Response(ds.readable).arrayBuffer()); };
+  const unzip = async buf => {
+    const v = new DataView(buf), u8 = new Uint8Array(buf), files = {};
+    let end = -1; for (let i = u8.length - 22; i >= 0; i--) if (v.getUint32(i, true) === 0x06054b50) { end = i; break; }
+    if (end < 0) throw Error('not a zip');
+    let p = v.getUint32(end + 16, true);
+    for (let n = v.getUint16(end + 10, true); n > 0; n--) {
+      const method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true), nlen = v.getUint16(p + 28, true), elen = v.getUint16(p + 30, true), clen = v.getUint16(p + 32, true), off = v.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nlen));
+      const lh = off + 30 + v.getUint16(off + 26, true) + v.getUint16(off + 28, true), data = u8.subarray(lh, lh + csize);
+      files[name] = async () => new TextDecoder().decode(method === 0 ? data : await inflate(data));
+      p += 46 + nlen + elen + clen;
+    }
+    return files;
+  };
+  const colNo = ref => { let n = 0; for (const ch of ref.replace(/\d+/g, '')) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+  const readXlsx = async file => {
+    const zip = await unzip(await file.arrayBuffer());
+    const parse = async name => zip[name] ? new DOMParser().parseFromString(await zip[name](), 'application/xml') : null;
+    const sst = await parse('xl/sharedStrings.xml'), strings = sst ? [...sst.getElementsByTagName('si')].map(si => [...si.getElementsByTagName('t')].map(t => t.textContent).join('')) : [];
+    const sheetName = Object.keys(zip).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()[0];
+    const sheet = await parse(sheetName), rows = [];
+    [...sheet.getElementsByTagName('row')].forEach(r => {
+      const cells = [];
+      [...r.getElementsByTagName('c')].forEach(c => {
+        const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0], is = c.getElementsByTagName('is')[0];
+        cells[colNo(c.getAttribute('r'))] = t === 's' && v ? strings[+v.textContent] : t === 'inlineStr' && is ? [...is.getElementsByTagName('t')].map(x => x.textContent).join('') : v ? v.textContent : '';
+      });
+      if (cells.some(Boolean)) rows.push(Array.from(cells, x => (x || '').trim()));
+    });
+    return rows;
+  };
   let parsedImport = null;
-  const validateImport = text => {
-    const rows = parseCsv(text); if (!rows.length) return null;
+  const validateImport = (text, preRows) => {
+    const rows = preRows || parseCsv(text); if (!rows.length) return null;
     const head = rows[0].map(h => h.toLowerCase()), hasHead = head.some(h => /name|id|email/.test(h));
     const idx = (re, fallback) => { const i = head.findIndex(h => re.test(h)); return hasHead && i >= 0 ? i : fallback; };
     const col = { name: idx(/name/, 0), id: idx(/\bid\b|student id|number/, 1), email: idx(/email/, 2), curriculum: idx(/curricul/, 3), adviser: idx(/advis/, 4) };
@@ -249,26 +282,25 @@
     if (!file || file.dataset.wired) return;
     file.dataset.wired = '1';
     const h3 = $$('h3', box).find(h => /Validation preview/.test(h.textContent)), holder = h3 && h3.parentElement;
-    if (holder) holder.innerHTML = '<h3>Validation preview</h3><p class="field-help" data-import-state>Choose a CSV file to see which rows are ready to import.</p>';
-    const cap = $('.caption', box); if (cap) cap.textContent = 'XLSX and XLS cannot be read in this prototype. Save the sheet as CSV (columns: name, student ID, email, curriculum, adviser).';
+    if (holder) holder.innerHTML = '<h3>Validation preview</h3><p class="field-help" data-import-state>Choose an .xlsx or CSV file to see which rows are ready to import.</p>';
+    const cap = $('.caption', box); if (cap) cap.textContent = 'Columns: student name, student ID, school email, curriculum, adviser. Choose an .xlsx or CSV file.';
     $('#dialog-confirm').textContent = 'Import valid rows';
     file.addEventListener('change', () => {
       const f = file.files[0], state = $('[data-import-state]', box); parsedImport = null;
       if (!f) return;
-      if (!/\.csv$/i.test(f.name)) { state.textContent = 'That file type cannot be read here. Save it as CSV and try again.'; return; }
-      const rd = new FileReader();
-      rd.onload = () => {
-        const res = validateImport(String(rd.result));
+      const show = res => {
         if (!res) { state.textContent = 'The file is empty.'; return; }
         parsedImport = res;
         const table = `<div class="table-wrap"><table><thead><tr><th scope="col">Row</th><th scope="col">Student ID</th><th scope="col">Result</th></tr></thead><tbody>${res.out.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('')}</tbody></table></div>`;
         holder.innerHTML = `<h3>Validation preview</h3><p class="field-help" data-import-state>${res.good.length} ready, ${res.out.length - res.good.length} rejected. Nothing is saved until you import.</p>` + table;
       };
-      rd.readAsText(f);
+      if (/\.csv$/i.test(f.name)) { const rd = new FileReader(); rd.onload = () => show(validateImport(String(rd.result))); rd.readAsText(f); }
+      else if (/\.xlsx$/i.test(f.name)) readXlsx(f).then(rows => show(validateImport('', rows))).catch(() => { state.textContent = 'That workbook could not be read. Check it is a valid .xlsx file, or save it as CSV.'; });
+      else state.textContent = /\.xls$/i.test(f.name) ? 'Older .xls workbooks cannot be read. Save the sheet as .xlsx or CSV and try again.' : 'That file type cannot be read. Use .xlsx or CSV.';
     });
   };
   const importStudents = () => {
-    if (!parsedImport || !parsedImport.good.length) return say('Choose a CSV file with at least one valid row first.');
+    if (!parsedImport || !parsedImport.good.length) return say('Choose an .xlsx or CSV file with at least one valid row first.');
     S.students = (S.students || []).concat(parsedImport.good); save();
     audit('Change', '', `Imported ${parsedImport.good.length} student record${parsedImport.good.length === 1 ? '' : 's'} from a spreadsheet`);
     const n = parsedImport.good.length, bad = parsedImport.out.length - n;

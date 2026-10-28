@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Import grades · SAAIS</title>
   <link rel="stylesheet" href="department-navigation.css"><script src="adviser-navigation.js" defer></script>
-<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script></head>
+<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script></head>
 <body>
 <x-dc>
 <helmet>
@@ -58,7 +58,8 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
   try { UI = JSON.parse(localStorage.getItem(KEY_UI)) || {}; } catch (e) { UI = window.__saaisUI || {}; }
   var saveUI = function () { window.__saaisUI = UI; try { localStorage.setItem(KEY_UI, JSON.stringify(UI)); } catch (e) {} };
   var SIDS = { ana: '23-1-01234', ben: '23-1-01301', dino: '24-1-02011', maria: '2023-04412' };
-  var audit = function (action, student, details, sid, label) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Prof. Ramon Reyes', action, student, details, sid, label); };
+  var ME = (function () { var b = document.getElementById('me-btn') || document.querySelector('.dean-profile-trigger, [aria-haspopup=menu]'); if (!b) return 'Prof. Ramon Reyes'; var m = b.innerText.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return m.filter(function (x) { return /^(Dr\.|Prof\.)/.test(x); })[0] || 'Prof. Ramon Reyes'; })();
+  var audit = function (action, student, details, sid, label) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add(ME, action, student, details, sid, label); };
   var keep = function (id, after) {
     var el = $(id); if (!el) return;
     if (UI[id] != null) { el.innerHTML = UI[id]; if (after) after(); }
@@ -159,6 +160,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       var picked = $$('.plan-pick:checked').map(function (c) { return c.value; });
       if (!picked.length) return say($('plan-msg'), 'no', 'Select at least one course to add to the plan.');
       (UI.plan = UI.plan || {})[$('plan-term').value] = ((UI.plan || {})[$('plan-term').value] || []).concat(picked); saveUI();
+      (UI.planItems = UI.planItems || []).push.apply(UI.planItems, $$('.plan-pick:checked').map(function (c) { var lab = (c.closest('label') || c.parentNode).textContent.replace('In plan', '').trim(); return { code: c.value, title: lab.replace(c.value, '').trim(), term: $('plan-term').options[$('plan-term').selectedIndex].text }; })); saveUI();
       audit('Change', 'Maria Isabel Bautista', 'Added to the ' + $('plan-term').options[$('plan-term').selectedIndex].text + ' plan: ' + picked.join(', '), '2023-04412', 'Updated term plan');
       say($('plan-msg'), 'ok', 'Added to Maria\'s plan: <b>' + esc(picked.join(', ')) + '</b>.');
       $$('.plan-pick:checked').forEach(function (c) { c.checked = false; }); applyPlan();
@@ -173,8 +175,8 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     a.innerHTML = '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12.5px;color:#8C8A76"><strong style="color:#16200C">Dr. Andrea Dela Cruz</strong><span>' + today() + '</span></div>' +
       '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
     $('note-list').insertBefore(a, $('note-list').firstChild);
-    audit('Change', 'Maria Isabel Bautista', 'Saved an adviser-only note', '2023-04412', 'Added note');
-    this.reset(); say($('note-msg'), 'ok', 'Note saved. It is visible to advisers only.');
+    audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '2023-04412', 'Added note');
+    this.reset(); say($('note-msg'), 'ok', 'Note saved. The student can read it.');
   });
   if ($('chat-form')) $('chat-form').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -251,21 +253,21 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       tr.querySelector('[data-fin]').textContent = (+fin).toFixed(2);
       tr.querySelector('[data-st]').innerHTML = +fin <= 3 ? badge('Passed', 'green') : badge('Failed', 'red');
     };
-    var gkey = function (tr) { var b = tr.querySelector('[data-grade]') || tr.querySelector('[data-resolve]'); return b ? b.dataset.course : ''; };
-    $$('[data-grade],[data-resolve]').forEach(function (b) {
+    var gkey = function (tr) { var b = tr.querySelector('button[data-grade]') || tr.querySelector('button[data-resolve]'); return b ? b.dataset.course : ''; };
+    $$('button[data-grade],button[data-resolve]').forEach(function (b) {
       var g = (UI.grades || {})[b.dataset.course], tr = b.closest('tr');
       if (!g || tr._gdone) return; tr._gdone = true;
       if (g.fin) setResult(tr, g.fin, g.mid); else if (g.mid) tr.querySelector('[data-mid]').textContent = (+g.mid).toFixed(2);
       if (g.inc) { var r = tr.querySelector('[data-resolve]'); if (r) { r.disabled = true; r.style.opacity = '0.55'; r.style.cursor = 'default'; r.textContent = 'Resolved'; } }
     });
-    $$('[data-grade]').forEach(function (b) {
+    $$('button[data-grade]').forEach(function (b) {
       b.addEventListener('click', function () {
         row = b.closest('tr'); var d = openDlg('dlg-grade', b);
         d.querySelector('[data-dlg-sub]').textContent = b.dataset.course + ' · Maria Isabel Bautista';
         ['gr-mid', 'gr-fin', 'gr-reason'].forEach(function (id) { $(id).value = ''; });
       });
     });
-    $$('[data-resolve]').forEach(function (b) {
+    $$('button[data-resolve]').forEach(function (b) {
       b.addEventListener('click', function () {
         row = b.closest('tr'); var d = openDlg('dlg-inc', b);
         d.querySelector('[data-dlg-sub]').textContent = b.dataset.course + ' · Maria Isabel Bautista';
@@ -459,7 +461,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       $$('[data-count]').forEach(function (c) { c.textContent = items.filter(function (n) { return n.dataset.state === c.dataset.count; }).length; });
       var e = document.querySelector('[data-notes-empty]');
       e.hidden = shown > 0; e.textContent = view === 'active' ? 'No active notes. Select Write a note to add one.' : 'No archived notes.';
-      $('notes-sub').textContent = (view === 'active' ? 'Active' : 'Archived') + ' notes · staff-only';
+      $('notes-sub').textContent = (view === 'active' ? 'Active' : 'Archived') + ' notes · visible to the student';
       setTabs();
     };
     $$('[data-notes-tab]').forEach(function (b) { b.addEventListener('click', function () { view = b.dataset.notesTab; refresh(); }); });
@@ -480,9 +482,9 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       a.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:12.5px;color:#8C8A76"><div><strong style="color:#16200C;font-size:13.5px">Dr. Andrea Dela Cruz</strong> · <span data-date>' + today() + '</span></div><div data-note-actions>' + actionBtn('archive') + '</div></div>' +
         '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
       $('notes-list').insertBefore(a, $('notes-list').firstChild);
-      audit('Change', 'Maria Isabel Bautista', 'Saved an adviser-only note', '2023-04412', 'Added note');
+      audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '2023-04412', 'Added note');
       $('nt-body').value = ''; this.closest('dialog').close();
-      view = 'active'; refresh(); say($('nt-done'), 'ok', 'Note saved. It is visible to advisers only.');
+      view = 'active'; refresh(); say($('nt-done'), 'ok', 'Note saved. The student can read it.');
     });
   }
 

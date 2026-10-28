@@ -10857,7 +10857,7 @@
           ],
           Advise: [
             "See the whole student journey.",
-            "Bring checklists, grades, enrollment history and staff-only notes into one advising conversation.",
+            "Bring checklists, grades, enrollment history and advising notes into one advising conversation.",
             "adviser/advisees",
           ],
           Record: [
@@ -12479,7 +12479,7 @@
               "SAAIS · Student Academic Advising Information System",
               link("Open demo", "login", true),
             ) +
-            `<div class="stack">${panel("Try a complete advising workflow", "All changes stay in this browser.", `<div class="panel-body"><ol style="line-height:2"><li>Choose Adviser in the presentation bar.</li><li>Open Maria’s record, review the checklist and recorded exceptions.</li><li>Record CS 132 enrollment; review the prerequisite warning and cancel or continue.</li><li>Open History to see the enrollment. Add a staff-only note.</li><li>Choose Admin and inspect the new audit entry.</li></ol><p class="muted">Demo sign-in uses the pre-provisioned accounts shown on the sign-in screen. No credentials are sent anywhere. A student view never displays advising notes or remarks.</p></div>`)}${panel(
+            `<div class="stack">${panel("Try a complete advising workflow", "All changes stay in this browser.", `<div class="panel-body"><ol style="line-height:2"><li>Choose Adviser in the presentation bar.</li><li>Open Maria’s record, review the checklist and recorded exceptions.</li><li>Record CS 132 enrollment; review the prerequisite warning and cancel or continue.</li><li>Open History to see the enrollment. Add an advising note.</li><li>Choose Admin and inspect the new audit entry.</li></ol><p class="muted">Demo sign-in uses the pre-provisioned accounts shown on the sign-in screen. No credentials are sent anywhere. A student view never displays advising notes or remarks.</p></div>`)}${panel(
               "API contract preview",
               "The real product uses an OpenAPI contract and Redoc.",
               `<div class="panel-body"><p class="muted">No contract/openapi.yaml was supplied in this mockup folder. This is a route and operation preview, not a live Redoc bundle.</p>${table(
@@ -13356,7 +13356,7 @@
                   item,
                 );
                 close();
-                persist("Staff-only " + kind + " saved.");
+                persist((kind === "note" ? "Advising note" : "Staff-only remark") + " saved.");
                 return;
               }
               if (kind === "enrollment") {
