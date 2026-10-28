@@ -181,36 +181,27 @@
 
   /* ---------- compact checklist download ---------- */
   function downloadChecklist(main) {
-    var secs = [].slice.call(main.querySelectorAll('section.su-collapsible'));
     var earned = 0, req = 0;
-    var blocks = secs.map(function (s) {
+    var sections = [].slice.call(main.querySelectorAll('section.su-collapsible')).map(function (s) {
       var rows = [].slice.call(s.querySelectorAll('tbody tr')).map(function (tr) {
         var c = tr.children, u = c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/) || [0, 0, 0];
         earned += +u[1]; req += +u[2];
-        var b = c[2].textContent.trim(), g = (c[3].textContent.match(/grade\s+([\d.]+)/) || [])[1] || '';
-        var ab = { 'Passed': 'P', 'Enrolled': 'E', 'INC': 'INC', 'Failed': 'F', 'Not taken': '' }[b];
-        return '<tr><td class="c">' + esc(c[0].querySelector('strong').textContent) + '</td><td>' + esc(c[0].querySelector('.course-title').textContent) + '</td><td class="n">' + esc(u[2]) + '</td><td class="n">' + esc(g) + '</td><td class="s s' + esc(ab || '') + '">' + esc(ab === undefined ? b : ab) + '</td></tr>';
-      }).join('');
-      return '<div class="blk"><div class="bh"><b>' + esc(s.querySelector('h2').textContent.trim()) + '</b></div><table>' + rows + '</table></div>';
-    }).join('');
+        return [c[0].querySelector('strong').textContent, c[0].querySelector('.course-title').textContent, u[2], (c[3].textContent.match(/grade\s+([\d.]+)/) || [])[1] || '', c[2].textContent.trim()];
+      });
+      return { title: s.querySelector('h2').textContent.trim(), headers: ['Code', 'Title', 'Units', 'Grade', 'Status'], rows: rows };
+    });
     var nm = document.querySelector('.user-name b'), id = document.querySelector('.user-name small');
-    var doc = '<!doctype html><html><head><meta charset="utf-8"><title>Curriculum checklist</title><style>' +
-      '@page{size:A4;margin:10mm}body{font:8.5pt/1.25 "Segoe UI",Arial,sans-serif;color:#111;margin:0}' +
-      'h1{font-size:13pt;margin:0}.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5pt solid #2F4A12;padding-bottom:4pt;margin-bottom:6pt}' +
-      '.meta{font-size:8pt;color:#333;text-align:right}.cols{columns:2;column-gap:10pt}' +
-      '.blk{break-inside:avoid;margin-bottom:6pt}.bh{background:#E8EEDD;padding:1.5pt 4pt;font-size:8pt}' +
-      'table{width:100%;border-collapse:collapse}td{padding:1pt 4pt;border-bottom:.4pt solid #ccc;vertical-align:top}' +
-      '.c{white-space:nowrap;font-weight:600;font-size:7.5pt;width:16%}.n{text-align:right;white-space:nowrap;width:8%}.s{text-align:center;width:8%;font-weight:700}' +
-      '.sF{color:#9E2E1C}.sINC{color:#8A6206}.sP{color:#2C6430}.sE{color:#2A4C6B}.foot{font-size:7pt;color:#555;margin-top:4pt}</style></head><body>' +
-      '<div class="top"><div><h1>Curriculum checklist &middot; BS Computer Science</h1><div style="font-size:8pt">' + esc(nm ? nm.textContent : '') + ' &middot; ' + esc(id ? id.textContent : '') + ' &middot; Curriculum 2023&ndash;2024</div></div>' +
-      '<div class="meta">' + earned + ' of ' + req + ' units earned<br>Generated ' + today() + '</div></div>' +
-      '<div class="cols">' + blocks + '</div>' +
-      '<div class="foot">P passed &middot; E enrolled &middot; INC incomplete &middot; F failed &middot; blank = not yet taken. Columns: code, title, units, grade, status.</div></body></html>';
-    var fr = document.createElement('iframe');
-    fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(fr);
-    fr.onload = function () { fr.contentWindow.focus(); fr.contentWindow.print(); setTimeout(function () { fr.remove(); }, 2000); };
-    fr.srcdoc = doc;
+    var report = {
+      title: 'Curriculum checklist',
+      subtitle: 'BS Computer Science | ' + (nm ? nm.textContent.trim() : '') + ' | ' + (id ? id.textContent.trim() : '') + ' | Curriculum 2023-2024',
+      crumb: 'SAAIS  /  STUDENT  /  DCST',
+      footer: 'Not an official record | Generated ' + today(),
+      stats: [{ label: 'Units earned', value: earned + ' of ' + req }],
+      sections: sections
+    };
+    var url = URL.createObjectURL(new Blob([window.DepartmentPDF.create(report)], { type: 'application/pdf' }));
+    var a = document.createElement('a'); a.href = url; a.download = 'SAAIS-curriculum-checklist.pdf';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
   }
 
   /* ---------- profile menu (same pattern as Adviser / SystemAdmin) ---------- */
