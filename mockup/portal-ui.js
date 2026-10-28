@@ -1,5 +1,17 @@
 /* Shared shell behavior. Each role retains its existing page interactions. */
 (() => {
+ /* Demo data: open any page with ?reset-demo to clear everything saved in this browser (saais-* keys), then reload without the flag. */
+ try {
+   if (/[?&]reset-demo(?:[=&]|$)/.test(location.search)) {
+     Object.keys(localStorage).filter(function (k) { return /^saais[-.]/.test(k); }).forEach(function (k) { localStorage.removeItem(k); });
+     location.replace(location.pathname + location.search.replace(/[?&]reset-demo(=[^&]*)?/, '').replace(/^&/, '?') + location.hash);
+   }
+ } catch (e) {}
+ /* Signing out (any link to the login page) ends the prototype session, including "Keep me signed in". */
+ document.addEventListener('click', e => {
+  if (!e.target.closest('a[href$="Login.dc.html"]')) return;
+  try { sessionStorage.removeItem('saais-session'); localStorage.removeItem('saais-session-keep'); } catch (_) {}
+ }, true);
  function init() {
   const sidebar=document.querySelector('aside');
   if(!sidebar || document.body.classList.contains('portal-page')) return;
@@ -120,12 +132,12 @@
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
  // The prototype embeds these exact role files. Links update its address and history.
  if(window.parent!==window && (new URLSearchParams(location.search).has('prototype')||window.frameElement?.id==='portal-frame')){
-  window.addEventListener('hashchange',()=>window.parent.postMessage({type:'saais:open',url:location.href},location.origin==='null'?'*':location.origin));
+  window.addEventListener('hashchange',()=>window.parent.postMessage({type:'saais:open',url:location.href},(location.origin==='null'||location.protocol==='file:')?'*':location.origin));
   document.addEventListener('click',event=>{
    const a=event.target.closest('a[href]');if(!a||event.defaultPrevented||event.ctrlKey||event.metaKey||event.shiftKey||a.download||a.target==='_blank')return;
    const raw=a.getAttribute('href');if(!raw||raw.startsWith('#')||/^(mailto:|tel:)/.test(raw))return;
    const url=new URL(a.href);if(url.origin!==location.origin)return;
-   event.preventDefault();event.stopImmediatePropagation();url.searchParams.delete('prototype');window.parent.postMessage({type:'saais:open',url:url.href},location.origin==='null'?'*':location.origin);
+   event.preventDefault();event.stopImmediatePropagation();url.searchParams.delete('prototype');window.parent.postMessage({type:'saais:open',url:url.href},(location.origin==='null'||location.protocol==='file:')?'*':location.origin);
   },true);
  }
 })();

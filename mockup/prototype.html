@@ -11139,7 +11139,7 @@
           facultyName(M.find("departments", id)?.faculty_id);
         let session;
         try {
-          session = JSON.parse(sessionStorage.getItem("saais-session"));
+          session = JSON.parse(sessionStorage.getItem("saais-session")) || JSON.parse(localStorage.getItem("saais-session-keep"));
         } catch {}
         let route = "",
           student = "s1",
@@ -11171,7 +11171,7 @@
                 a.adviser_id === current().id &&
                 !a.end_date,
             ));
-        function setSession(id) {
+        function setSession(id, keep) {
           session = {
             session: "local-demo",
             profile: id,
@@ -11180,6 +11180,8 @@
           };
           try {
             sessionStorage.setItem("saais-session", JSON.stringify(session));
+            if (keep) localStorage.setItem("saais-session-keep", JSON.stringify(session));
+            else localStorage.removeItem("saais-session-keep");
           } catch {}
         }
         function go(to) {
@@ -12508,7 +12510,7 @@
           const recovery = mode === "forgot-password",
             reset = mode === "reset-password",
             invite = mode === "invite";
-          return `<div class="auth-page"><section class="auth-story"><a class="brand" href="#/"><img src="logo-mark.png" alt=""><span><b class="dsp">SAAIS</b></span></a><div><h1>A clearer path.<br>A supported journey.</h1><p>Connect every course, conversation and academic decision in one advising workspace.</p></div><p>Student Academic Advising Information System<br>Forest, gold, and a future in view.</p></section><section class="auth-form"><h2>${recovery ? "Reset your password." : reset ? "Choose a new password." : invite ? "You’re invited." : "Welcome back."}</h2><p class="muted">${recovery ? "Enter your provisioned email to preview the recovery flow." : reset || invite ? "Set a password for your provisioned demo account." : "Sign in with your institution-provisioned account."}</p>${form(recovery ? "forgot" : reset || invite ? "password" : "login", field("email", "Institutional email", invite ? dialogContext.inviteEmail || "maria.bautista@example.edu.ph" : "", "email") + (!recovery ? field("password", "Password", "", "password", true, 'minlength="8" autocomplete="current-password"') : "") + (reset || invite ? field("confirm", "Confirm password", "", "password", true, 'minlength="8"') : ""), recovery ? "Preview recovery link" : reset || invite ? "Set password" : "Sign in")}${!recovery && !reset && !invite ? `<div class="actions">${button("Continue with Google", "google")}</div><p style="margin-top:20px"><a href="#/forgot-password">Forgot password?</a></p><div class="demo-accounts"><p class="muted">Presentation access · no real credentials needed.<br>Choose a provisioned account to fill the form. Demo password: <strong>Demo2026!</strong></p>${["student", "adviser", "admin"].map((r) => button(r[0].toUpperCase() + r.slice(1), "fill-login", false, `data-role="${r}"`)).join("")}</div>` : link("Back to sign in", "login")}<p class="muted" style="margin-top:24px">Accounts are created by an administrator. Contact your institution if you need access.</p></section></div>`;
+          return `<div class="auth-page"><section class="auth-story"><a class="brand" href="#/"><img src="logo-mark.png" alt=""><span><b class="dsp">SAAIS</b></span></a><div><h1>A clearer path.<br>A supported journey.</h1><p>Connect every course, conversation and academic decision in one advising workspace.</p></div><p>Student Academic Advising Information System<br>Forest, gold, and a future in view.</p></section><section class="auth-form"><h2>${recovery ? "Reset your password." : reset ? "Choose a new password." : invite ? "You’re invited." : "Welcome back."}</h2><p class="muted">${recovery ? "Enter your provisioned email to preview the recovery flow." : reset || invite ? "Set a password for your provisioned demo account." : "Sign in with your institution-provisioned account."}</p>${form(recovery ? "forgot" : reset || invite ? "password" : "login", field("email", "Institutional email", invite ? dialogContext.inviteEmail || "maria.bautista@example.edu.ph" : "", "email") + (!recovery ? field("password", "Password", "", "password", true, 'minlength="8" autocomplete="current-password"') : "") + (!recovery && !reset && !invite ? `<label class="keep-signed-in" style="display:flex;align-items:center;gap:8px;font-size:14px;margin:4px 0 14px"><input type="checkbox" name="keep" style="width:auto"> Keep me signed in</label>` : "") + (reset || invite ? field("confirm", "Confirm password", "", "password", true, 'minlength="8"') : ""), recovery ? "Preview recovery link" : reset || invite ? "Set password" : "Sign in")}${!recovery && !reset && !invite ? `<div class="actions">${button("Continue with Google", "google")}</div><p style="margin-top:20px"><a href="#/forgot-password">Forgot password?</a></p><div class="demo-accounts"><p class="muted">Presentation access · no real credentials needed.<br>Choose a provisioned account to fill the form. Demo password: <strong>Demo2026!</strong></p>${["student", "adviser", "admin"].map((r) => button(r[0].toUpperCase() + r.slice(1), "fill-login", false, `data-role="${r}"`)).join("")}</div>` : link("Back to sign in", "login")}<p class="muted" style="margin-top:24px">Accounts are created by an administrator. Contact your institution if you need access.</p></section></div>`;
         }
         function render() {
           let slug = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
@@ -13266,7 +13268,7 @@
                   throw Error(
                     "Account or demo password not recognized. Use a provisioned demo account or contact an administrator.",
                   );
-                setSession(u.id);
+                setSession(u.id, d.keep === "on");
                 go(u.role + "/dashboard");
                 return;
               }
@@ -14326,6 +14328,7 @@
               if (act === "signout") {
                 session = null;
                 sessionStorage.removeItem("saais-session");
+                localStorage.removeItem("saais-session-keep");
                 go("login");
                 return;
               }

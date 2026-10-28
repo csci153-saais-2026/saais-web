@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Settings · SAAIS</title>
   <script src="../support.js"></script>
-<link rel="stylesheet" href="audit-settings.css"><script src="audit-settings.js" defer></script><link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script></head>
+<link rel="stylesheet" href="audit-settings.css"><script src="audit-settings.js" defer></script><link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script></head>
 <body>
 <x-dc>
 <helmet>
@@ -60,6 +60,20 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       ICON[kind] + '</svg><div>' + text + '</div></div>';
     el.hidden = false;
   }
+
+  /* Saved state: System Admin changes persist in this browser (localStorage). */
+  var KEY_ADM = 'saais-admin-ui-v1', ADM = {};
+  try { ADM = JSON.parse(localStorage.getItem(KEY_ADM)) || {}; } catch (e) { ADM = window.__saaisAdm || {}; }
+  var audAdm = function (details) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('System administrator', 'Change', '', details); };
+  var saveADM = function () { window.__saaisAdm = ADM; try { localStorage.setItem(KEY_ADM, JSON.stringify(ADM)); } catch (e) {} };
+  var keepAdm = function (id) {
+    var el = document.getElementById(id); if (!el) return;
+    if (ADM[id] != null) el.innerHTML = ADM[id];
+    new MutationObserver(function () { ADM[id] = el.innerHTML; saveADM(); }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+  };
+  var SETK = 'saais-settings-v1', SET = {};
+  try { SET = JSON.parse(localStorage.getItem(SETK)) || {}; } catch (e) { SET = window.__saaisSettings || {}; }
+  var saveSET = function () { window.__saaisSettings = SET; try { localStorage.setItem(SETK, JSON.stringify(SET)); } catch (e) {} };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
   function filterRows(body, test) {
     var n = 0;
@@ -68,6 +82,21 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     return n;
   }
 
+  /* Students imported by the Department Head / Staff appear in the directory too. */
+  if ($('stu-body')) {
+    var impStu = []; try { impStu = (JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}).students || []; } catch (e) {}
+    var stpl = $('stu-body').querySelector('tr.row');
+    impStu.forEach(function (s) {
+      if (!stpl) return;
+      var tr = stpl.cloneNode(true), c = tr.children, n = 2025 - (2000 + +s.id.slice(0, 2)) + 1;
+      c[0].querySelector('a').textContent = s.name; c[1].querySelector('.mono').textContent = s.id; c[2].textContent = s.curriculum;
+      c[3].textContent = n <= 1 ? '1st Year' : n === 2 ? '2nd Year' : n === 3 ? '3rd Year' : '4th Year';
+      c[4].querySelector('.mono').textContent = '—'; c[5].firstElementChild.textContent = '0'; c[6].firstElementChild.textContent = '0';
+      tr.dataset.q = (s.name + ' ' + s.id).toLowerCase();
+      var empty = $('stu-body').querySelector('[data-empty]'); if (empty) $('stu-body').insertBefore(tr, empty); else $('stu-body').appendChild(tr);
+    });
+    if ($('stu-count') && impStu.length) $('stu-count').textContent = $('stu-body').querySelectorAll('tr.row').length;
+  }
   /* Student directory search */
   if ($('stu-q')) $('stu-q').addEventListener('input', function () {
     var q = this.value.trim().toLowerCase();
@@ -101,23 +130,39 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
     dlg.addEventListener('close', function () { $('acct-add').focus(); });
     var TONE = { amber: ['#FBF0D6', '#8A6206'], green: ['#E7F0E2', '#2C6430'], blue: ['#E4EDF4', '#2A4C6B'], neutral: ['#ECE8DA', '#5C5A4C'] };
+    /* One list of accounts for the prototype: Staff provisioning and Admin both write to it, and both portals read it back. */
+    var ACC_KEY = 'saais-accounts-v1';
+    var accLoad = function () { try { return JSON.parse(localStorage.getItem(ACC_KEY)) || []; } catch (e) { return window.__saaisAcc || []; } };
+    var accSave = function (list) { window.__saaisAcc = list; try { localStorage.setItem(ACC_KEY, JSON.stringify(list)); } catch (e) {} };
+    var acctRow = function (a) {
+      var ini = a.name.replace(/\b(Dr|Prof)\.?\s+/g, '').split(/\s+/); ini = (ini[0][0] + ini[ini.length - 1][0]).toUpperCase();
+      var chips = a.roles.map(function (r) { var t = TONE[r.tone] || TONE.neutral;
+        return '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 8px;border-radius:3px;background:' + t[0] + ';color:' + t[1] +
+          ';font-size:12px;font-weight:600;letter-spacing:0.01em;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:' + t[1] + ';flex-shrink:0"></span>' + esc(r.value) + '</span>'; }).join('');
+      var cell = 'padding:11px 14px;font-size:13.5px;border-bottom:1px solid #EFEADB;vertical-align:middle';
+      var tr = document.createElement('tr'); tr.className = 'row'; tr.dataset.email = a.email;
+      tr.innerHTML = '<td style="' + cell + '"><div style="display:flex;align-items:center;gap:11px"><div style="width:32px;height:32px;border-radius:50%;background:#F2EDDC;color:#2F4A12;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;letter-spacing:0.02em">' + esc(ini) + '</div><div style="font-size:13.5px;font-weight:600">' + esc(a.name) + '</div></div></td>' +
+        '<td style="' + cell + '"><span class="mono" style="font-size:13px">' + esc(a.email) + '</span></td><td style="' + cell + '"><div style="font-size:13.5px;font-weight:600">' + esc(a.dep) + '</div><div style="font-size:12.5px;color:#6E6C58">' + esc(a.fac) + (a.prog ? ' · ' + esc(a.prog) : '') + '</div></td><td style="' + cell + '"><div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></td>';
+      return tr;
+    };
+    var renderAccounts = function () {
+      var have = {}; Array.prototype.forEach.call($('acct-body').children, function (r) { var m = r.querySelector('.mono'); if (m) have[m.textContent.trim().toLowerCase()] = 1; });
+      accLoad().forEach(function (a) { if (!have[a.email.toLowerCase()]) $('acct-body').appendChild(acctRow(a)); });
+      $('acct-count').textContent = $('acct-body').children.length;
+    };
+    renderAccounts();
     $('acct-save').addEventListener('click', function () {
       var name = $('acct-name').value.trim(), email = $('acct-email').value.trim().toLowerCase();
       var roles = Array.prototype.filter.call(document.querySelectorAll('input[name=acct-role]'), function (c) { return c.checked; });
       if (!name) return say($('acct-msg'), 'no', 'Enter the person\'s full name.');
       if (!/^[^\s@]+@vsu\.edu\.ph$/.test(email)) return say($('acct-msg'), 'no', 'Use a VSU address ending in <b>@vsu.edu.ph</b>. Google sign-in is limited to that domain.');
       if (!roles.length) return say($('acct-msg'), 'no', 'Pick at least one role.');
-      var ini = name.replace(/\b(Dr|Prof)\.?\s+/g, '').split(/\s+/); ini = (ini[0][0] + ini[ini.length - 1][0]).toUpperCase();
-      var chips = roles.map(function (c) { var t = TONE[c.dataset.tone];
-        return '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 8px;border-radius:3px;background:' + t[0] + ';color:' + t[1] +
-          ';font-size:12px;font-weight:600;letter-spacing:0.01em;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:' + t[1] + ';flex-shrink:0"></span>' + esc(c.value) + '</span>'; }).join('');
-      var cell = 'padding:11px 14px;font-size:13.5px;border-bottom:1px solid #EFEADB;vertical-align:middle';
-      var tr = document.createElement('tr'); tr.className = 'row';
-      tr.innerHTML = '<td style="' + cell + '"><div style="display:flex;align-items:center;gap:11px"><div style="width:32px;height:32px;border-radius:50%;background:#F2EDDC;color:#2F4A12;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;letter-spacing:0.02em">' + esc(ini) + '</div><div style="font-size:13.5px;font-weight:600">' + esc(name) + '</div></div></td>' +
-        '<td style="' + cell + '"><span class="mono" style="font-size:13px">' + esc(email) + '</span></td><td style="' + cell + '"><div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></td>';
-      $('acct-body').appendChild(tr);
+      var entry = { name: name, email: email, fac: fac, dep: dep, prog: isStu ? prog : '', roles: roles.map(function (c) { return { value: c.value, tone: c.dataset.tone }; }) };
+      var list = accLoad(); list.push(entry); accSave(list);
+      $('acct-body').appendChild(acctRow(entry));
       $('acct-count').textContent = $('acct-body').children.length;
       close();
+      audAdm('Added account ' + email);
       say($('acct-done'), 'ok', esc(name) + ' was added. They can sign in as <b>' + esc(email) + '</b>.');
     });
   }
@@ -134,16 +179,21 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
   }
 
   /* Settings */
+  if ($('th-warn') && SET.th) { ['th-warn', 'th-prob', 'th-dism'].forEach(function (id, i) { if (SET.th[i] != null) $(id).value = SET.th[i]; }); }
+  if ($('em-from') && SET.email) $('em-from').value = SET.email;
+  if ($('bk-text') && SET.backup) { var bb = $('bk-banner'); bb.style.background = '#E7F0E2'; bb.style.borderColor = '#CBDDC2'; bb.style.color = '#2C6430'; $('bk-text').innerHTML = 'Last backup: <b>' + SET.backup + '</b>. Every closed encoding period is covered.'; if ($('bk-record')) { $('bk-record').disabled = true; $('bk-record').style.opacity = '0.55'; $('bk-record').textContent = 'Backup recorded'; } }
   if ($('th-save')) $('th-save').addEventListener('click', function () {
     var w = +$('th-warn').value, p = +$('th-prob').value, d = +$('th-dism').value;
     var bad = [w, p, d].some(function (v) { return isNaN(v) || v < 0 || v > 100 || $('th-warn').value === '' || $('th-prob').value === '' || $('th-dism').value === ''; });
     if (bad) return say($('th-msg'), 'no', 'Each threshold must be a whole percentage from 0 to 100.');
     if (!(w < p && p < d)) return say($('th-msg'), 'no', 'Thresholds must rise in order: warning &lt; probation &lt; dismissal.');
+    SET.th = [w, p, d]; saveSET(); audAdm('Changed scholastic standing thresholds to ' + w + '% / ' + p + '% / ' + d + '%');
     say($('th-msg'), 'ok', 'Saved. Warning from ' + w + '%, probation from ' + p + '%, dismissal from ' + d + '%. Standing is recomputed on the next grade change.');
   });
   if ($('em-save')) $('em-save').addEventListener('click', function () {
     var v = $('em-from').value.trim();
     if (!/^[^\s@]+@vsu\.edu\.ph$/.test(v)) return say($('em-msg'), 'no', 'The sender must be a VSU address ending in <b>@vsu.edu.ph</b>.');
+    SET.email = v; saveSET(); audAdm('Changed the sender address to ' + v);
     say($('em-msg'), 'ok', 'Saved. New notifications will be sent from <b>' + esc(v) + '</b>.');
   });
   if ($('bk-record')) $('bk-record').addEventListener('click', function () {
@@ -151,6 +201,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     b.style.background = '#E7F0E2'; b.style.borderColor = '#CBDDC2'; b.style.color = '#2C6430';
     b.querySelector('svg').innerHTML = ICON.ok;
     $('bk-text').innerHTML = 'Last backup: <b>' + d + '</b>. Every closed encoding period is covered.';
+    SET.backup = d; saveSET(); audAdm('Recorded a completed backup (' + d + ')');
     this.disabled = true; this.style.opacity = '0.55'; this.style.cursor = 'default'; this.textContent = 'Backup recorded today';
   });
 

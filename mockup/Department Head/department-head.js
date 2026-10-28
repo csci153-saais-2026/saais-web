@@ -1,5 +1,5 @@
 'use strict';
-// Presentation interactions only. No records are written, uploaded, or persisted.
+// Dialog and filter interactions. Reassignments, terms, transfer decisions, equivalencies, credits, imports and settings are saved by portal-actions.js / audit-settings.js.
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const dialog = $('#preview-dialog');
@@ -7,7 +7,7 @@ const field = (name,value='',type='text') => `<label><span>${name}</span><input 
 const select = (name,options) => `<label><span>${name}</span><select>${options.map(s=>`<option>${s}</option>`).join('')}</select></label>`;
 const reason = name => `<label class="wide"><span>${name}</span><textarea placeholder="Enter a reason for this decision"></textarea></label>`;
 const form = content => `<div class="form-grid">${content}</div>`;
-const disclaimer = '<p class="caption">Static design preview. No records will be changed or submitted.</p>';
+const disclaimer = '';
 const sampleTable = (heads,rows) => `<div class="table-wrap"><table><thead><tr>${heads.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 const cohorts={2025:[['Isabella Ramos','25-1-00087','1.75'],['Paolo Aquino','25-1-00103','2.00'],['Mia Castillo','25-1-00128','2.01']],2024:[['Ana Marie Santos','24-1-00124','1.50'],['Camille Torres','24-1-00192','1.75'],['Rafael Navarro','24-1-00204','2.00']],2023:[['Luis Miguel Cruz','23-1-00218','1.75'],['Nathan Uy','23-1-00140','1.90'],['Clara Rivera','23-1-00288','2.02']],2022:[['Gabriel Mendoza','22-1-00145','2.00'],['Joaquin Reyes','22-1-00090','2.12'],['Bea Salazar','22-1-00215','2.00']]};
 // Populate each fictional cohort so the drill-down includes its full displayed count.

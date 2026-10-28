@@ -1,12 +1,12 @@
 'use strict';
-// Static presentation only: no network requests, storage, or record mutations.
+// Dialog and filter interactions. Reassignments, terms, imports and accounts are saved by portal-actions.js.
 const $=(s,root=document)=>root.querySelector(s);
 const $$=(s,root=document)=>[...root.querySelectorAll(s)];
 const dialog=$('#preview-dialog');
 const field=(name,value='',type='text')=>`<label><span>${name}</span><input type="${type}" value="${value}"></label>`;
 const select=(name,items,attrs='')=>`<label ${attrs}><span>${name}</span><select>${items.map(s=>`<option>${s}</option>`).join('')}</select></label>`;
 const form=content=>`<div class="form-grid">${content}</div>`;
-const note='<p class="caption">Static design preview. No records are saved, uploaded, or submitted.</p>';
+const note='';
 const advisers=['Dr. Elena Reyes','Prof. Marco Villanueva','Prof. Patricia Lim'];
 const roles=['Department Head','Adviser','Department staff','Dean','Student','Admin'];
 const reason=label=>`<label class="wide"><span>${label}</span><textarea placeholder="Enter a reason"></textarea></label>`;
@@ -160,6 +160,8 @@ const ccState={ctx:null,C:[
  ccC('CSci 120','Legacy Programming Elective',3,3,0,'none','Faculty of Computer Studies','Computer Science','Inactive')
 ]};
 ccState.C[8].pre=[{code:'CSIT 101',type:'Prerequisite'}];
+const ccKey='saais.courseCatalog';try{const stored=JSON.parse(localStorage.getItem(ccKey));if(Array.isArray(stored)&&stored.length)ccState.C=stored;}catch(e){}
+const ccSave=()=>{try{localStorage.setItem(ccKey,JSON.stringify(ccState.C));}catch(e){}};
 /* New course on a Curricula page: choose the curriculum and term, and the course joins that curriculum and the catalog.
    Added courses are kept in localStorage so the Course Catalogue page shows them too. */
 const ncKey='saais.newCourses',ncTerms=[1,2,3,4,5].flatMap(y=>['Semester 1','Semester 2','Midyear'].map(m=>'Year '+y+' · '+m));
@@ -203,7 +205,7 @@ function ccDialog(key,trigger){
 }
 function ccConfirm(key){
  const S=ccState,{i}=S.ctx,err=$('.account-error',dialog),fail=m=>{err.textContent=m;err.hidden=false;return false;},val=id=>$('#'+id,dialog).value.trim();
- const done=m=>{ccRender();toast(m);return true;};
+ const done=m=>{ccSave();ccRender();toast(m);return true;};
  if(key==='cc-del'){const c=S.C.splice(i,1)[0];S.C.forEach(o=>o.pre=o.pre.filter(p=>p.code!==c.code));return done(c.code+' was deleted.');}
  if(key==='cc-pre'){
   S.C[i].pre=$$('input[name="cc-pre"]:checked',dialog).map(b=>({code:b.value,type:$(`[data-pre-type="${b.value}"]`,dialog).value}));

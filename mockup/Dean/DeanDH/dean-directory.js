@@ -13,6 +13,8 @@
     ['Ivan Torres', '23-1-01412', 'DCST', 'BSCS 2018–2024', 'Prof. Jun Villa'],
     ['Joy Ramos', '25-1-00188', 'DCST', 'BSCS 2025–present', 'Dr. Paz Villanueva']
   ];
+  // Students imported by the Department Head or Staff join the faculty directory.
+  try { ((JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}).students || []).forEach(s => students.push([s.name, s.id, 'DCST', s.curriculum, s.adviser])); } catch (_) {}
   const seed = [
     ['16 Oct 2026 09:14', 'Prof. Mara Reyes', 'View', 'Ana Reyes', 'Opened checklist'],
     ['14 Oct 2026 16:02', 'Prof. Mara Reyes', 'Change', 'Ana Reyes', 'CSci 25 final: 2.25 → 2.50'],
@@ -106,7 +108,8 @@
     const audit = document.getElementById('audit-rows');
     if (audit) {
       const update = () => {
-        const rows = readAudit().filter(row =>
+        const saved = window.SAAIS_AUDIT ? window.SAAIS_AUDIT.entries().filter(e => e.action === 'View' || e.action === 'Change').map(e => { const t = window.SAAIS_AUDIT.stamp(e.ts); return [t.date + ' ' + t.time24, e.who, e.action, e.student ? (e.sid ? e.sid + ' · ' : '') + e.student : '—', e.details]; }) : [];
+        const rows = saved.concat(readAudit()).filter(row =>
           row[1].toLowerCase().includes(value('audit-person').toLowerCase()) &&
           row[3].toLowerCase().includes(value('audit-student').toLowerCase()) &&
           (!value('audit-action') || row[2] === value('audit-action')) &&

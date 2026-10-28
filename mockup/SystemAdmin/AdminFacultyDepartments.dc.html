@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Faculty &amp; departments · SAAIS</title>
   <script src="../support.js"></script>
-<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script></head>
+<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script></head>
 <body>
 <x-dc>
 <helmet>
@@ -60,6 +60,20 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       ICON[kind] + '</svg><div>' + text + '</div></div>';
     el.hidden = false;
   }
+
+  /* Saved state: System Admin changes persist in this browser (localStorage). */
+  var KEY_ADM = 'saais-admin-ui-v1', ADM = {};
+  try { ADM = JSON.parse(localStorage.getItem(KEY_ADM)) || {}; } catch (e) { ADM = window.__saaisAdm || {}; }
+  var audAdm = function (details) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('System administrator', 'Change', '', details); };
+  var saveADM = function () { window.__saaisAdm = ADM; try { localStorage.setItem(KEY_ADM, JSON.stringify(ADM)); } catch (e) {} };
+  var keepAdm = function (id) {
+    var el = document.getElementById(id); if (!el) return;
+    if (ADM[id] != null) el.innerHTML = ADM[id];
+    new MutationObserver(function () { ADM[id] = el.innerHTML; saveADM(); }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+  };
+  var SETK = 'saais-settings-v1', SET = {};
+  try { SET = JSON.parse(localStorage.getItem(SETK)) || {}; } catch (e) { SET = window.__saaisSettings || {}; }
+  var saveSET = function () { window.__saaisSettings = SET; try { localStorage.setItem(SETK, JSON.stringify(SET)); } catch (e) {} };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
   /* Wire a dialog: open buttons, close buttons, backdrop click, focus return */
   function wire(dlg, opener) {
@@ -74,6 +88,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     return '<div style="display:flex;gap:8px"><button type="button" class="btns" data-edit style="' + SMALLBTN + '">Edit</button><button type="button" class="btns" data-del style="' + SMALLBTN + '">Delete</button></div>';
   }
 
+  keepAdm('fac-body'); keepAdm('dep-body'); keepAdm('fac-count'); keepAdm('dep-count');
   var facBody = $('fac-body'), depBody = $('dep-body'), mode = null, editing = null, pending = null;
   var facDlg = $('fac-modal'), depDlg = $('dep-modal'), delDlg = $('del-modal');
   var closeFac = wire(facDlg), closeDep = wire(depDlg), closeDel = wire(delDlg);

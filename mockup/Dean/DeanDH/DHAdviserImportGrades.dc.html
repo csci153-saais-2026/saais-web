@@ -6,7 +6,7 @@
   <title>Import grades · SAAIS</title>
   <script src="dean-shell.js" defer></script>
   <link rel="stylesheet" href="dean-shell.css">
-<link rel="stylesheet" href="../../portal-ui.css"><script src="../../portal-ui.js" defer></script></head>
+<link rel="stylesheet" href="../../portal-ui.css"><script src="../../portal-ui.js" defer></script><script src="../../saais-audit.js"></script></head>
 <body>
 <x-dc>
 <helmet>
@@ -53,6 +53,18 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  /* Saved state: adviser-portal actions persist in this browser (localStorage) so they survive reloads and carry across pages and portals. */
+  var KEY_UI = 'saais-adviser-ui-v1', UI = {};
+  try { UI = JSON.parse(localStorage.getItem(KEY_UI)) || {}; } catch (e) { UI = window.__saaisUI || {}; }
+  var saveUI = function () { window.__saaisUI = UI; try { localStorage.setItem(KEY_UI, JSON.stringify(UI)); } catch (e) {} };
+  var SIDS = { ana: '23-1-01234', ben: '23-1-01301', dino: '24-1-02011', maria: '2023-04412' };
+  var audit = function (action, student, details, sid, label) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Prof. Ramon Reyes', action, student, details, sid, label); };
+  var keep = function (id, after) {
+    var el = $(id); if (!el) return;
+    if (UI[id] != null) { el.innerHTML = UI[id]; if (after) after(); }
+    new MutationObserver(function () { UI[id] = el.innerHTML; saveUI(); }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+  };
   var ICON = {
     ok: '<path d="M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
     no: '<path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5M12 17h.01"/>',
@@ -132,13 +144,28 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     var count = function () { var n = $$('.plan-pick:checked').length; $('plan-count').textContent = n + ' selected'; return n; };
     $$('.plan-pick').forEach(function (c) { c.addEventListener('change', count); });
     $('plan-term').addEventListener('change', function () { $('plan-term-label').textContent = '2025 - 2026 · ' + this.options[this.selectedIndex].text; });
+    var applyPlan = function () {
+      var term = $('plan-term').value, inPlan = (UI.plan || {})[term] || [];
+      $$('.plan-pick').forEach(function (c) {
+        var on = inPlan.indexOf(c.value) > -1, lab = c.closest('label') || c.parentNode, tag = lab.querySelector('[data-inplan]');
+        c.disabled = on; if (on) c.checked = false;
+        if (on && !tag) lab.insertAdjacentHTML('beforeend', ' <span data-inplan style="margin-left:8px;padding:1px 8px;border-radius:3px;background:#E7F0E2;color:#2C6430;font-size:12px;font-weight:600">In plan</span>');
+        if (!on && tag) tag.remove();
+      });
+      count();
+    };
+    applyPlan();
+    $('plan-term').addEventListener('change', applyPlan);
     $('plan-add').addEventListener('click', function () {
       var picked = $$('.plan-pick:checked').map(function (c) { return c.value; });
       if (!picked.length) return say($('plan-msg'), 'no', 'Select at least one course to add to the plan.');
+      (UI.plan = UI.plan || {})[$('plan-term').value] = ((UI.plan || {})[$('plan-term').value] || []).concat(picked); saveUI();
+      audit('Change', 'Maria Isabel Bautista', 'Added to the ' + $('plan-term').options[$('plan-term').selectedIndex].text + ' plan: ' + picked.join(', '), '2023-04412', 'Updated term plan');
       say($('plan-msg'), 'ok', 'Added to Maria\'s plan: <b>' + esc(picked.join(', ')) + '</b>.');
-      $$('.plan-pick:checked').forEach(function (c) { c.checked = false; }); count();
+      $$('.plan-pick:checked').forEach(function (c) { c.checked = false; }); applyPlan();
     });
   }
+  keep('note-list');
   if ($('note-form')) $('note-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var v = $('note-body').value.trim();
@@ -147,6 +174,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     a.innerHTML = '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12.5px;color:#8C8A76"><strong style="color:#16200C">Prof. Ramon Reyes</strong><span>' + today() + '</span></div>' +
       '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
     $('note-list').insertBefore(a, $('note-list').firstChild);
+    audit('Change', 'Maria Isabel Bautista', 'Saved an adviser-only note', '2023-04412', 'Added note');
     this.reset(); say($('note-msg'), 'ok', 'Note saved. It is visible to advisers only.');
   });
   if ($('chat-form')) $('chat-form').addEventListener('submit', function (e) {
@@ -224,6 +252,13 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       tr.querySelector('[data-fin]').textContent = (+fin).toFixed(2);
       tr.querySelector('[data-st]').innerHTML = +fin <= 3 ? badge('Passed', 'green') : badge('Failed', 'red');
     };
+    var gkey = function (tr) { var b = tr.querySelector('[data-grade]') || tr.querySelector('[data-resolve]'); return b ? b.dataset.course : ''; };
+    $$('[data-grade],[data-resolve]').forEach(function (b) {
+      var g = (UI.grades || {})[b.dataset.course], tr = b.closest('tr');
+      if (!g || tr._gdone) return; tr._gdone = true;
+      if (g.fin) setResult(tr, g.fin, g.mid); else if (g.mid) tr.querySelector('[data-mid]').textContent = (+g.mid).toFixed(2);
+      if (g.inc) { var r = tr.querySelector('[data-resolve]'); if (r) { r.disabled = true; r.style.opacity = '0.55'; r.style.cursor = 'default'; r.textContent = 'Resolved'; } }
+    });
     $$('[data-grade]').forEach(function (b) {
       b.addEventListener('click', function () {
         row = b.closest('tr'); var d = openDlg('dlg-grade', b);
@@ -244,6 +279,8 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       if ((m !== '' && !grade(m)) || (f !== '' && !grade(f))) return say($('gr-msg'), 'no', 'Grades run from 1.00 to 5.00 in 0.25 steps.');
       if (!$('gr-reason').value.trim()) return say($('gr-msg'), 'no', 'Give a reason. Every grade change is audited.');
       if (f !== '') setResult(row, f, m); else row.querySelector('[data-mid]').textContent = (+m).toFixed(2);
+      (UI.grades = UI.grades || {})[gkey(row)] = { mid: m, fin: f }; saveUI();
+      audit('Change', 'Maria Isabel Bautista', 'Corrected ' + gkey(row) + (f !== '' ? ' final to ' + (+f).toFixed(2) : ' midterm to ' + (+m).toFixed(2)) + ' (' + $('gr-reason').value.trim() + ')', '2023-04412', 'Corrected grade');
       this.closest('dialog').close();
       say($('gr-done'), 'ok', 'Grade recorded for <b>' + esc(row.querySelector('div').textContent) + '</b>. GWA is recomputed on save.');
     });
@@ -251,6 +288,8 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       var g = $('inc-grade').value;
       if (!grade(g)) return say($('inc-msg'), 'no', 'Completion grades run from 1.00 to 5.00 in 0.25 steps.');
       if (!$('inc-reason').value.trim()) return say($('inc-msg'), 'no', 'Give a reason for the completion.');
+      (UI.grades = UI.grades || {})[gkey(row)] = { fin: g, inc: true }; saveUI();
+      audit('Change', 'Maria Isabel Bautista', 'Resolved the INC in ' + gkey(row) + ' with a completion grade of ' + (+g).toFixed(2) + ' (' + $('inc-reason').value.trim() + ')', '2023-04412', 'Resolved INC');
       setResult(row, g); var b = row.querySelector('[data-resolve]'); b.disabled = true; b.style.opacity = '0.55'; b.style.cursor = 'default'; b.textContent = 'Resolved';
       this.closest('dialog').close();
       say($('gr-done'), 'ok', 'INC resolved for <b>' + esc(row.querySelector('div').textContent) + '</b> with a completion grade of ' + (+g).toFixed(2) + '. The original attempt is preserved.');
@@ -269,6 +308,23 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       dino: { t1: [['CSci 31', '', 'Prof. Santos', '2.25', '', ''], ['CSci 32', '', 'Prof. Reyes', 'DR', 'DR', 'Dropped after midterm'], ['CSci 33', '', 'Prof. Villa', '2.50', '', '']],
               t0: [['CSci 21', '', 'Prof. Santos', '2.00', '2.25', ''], ['CSci 22', '', 'Prof. Reyes', '2.25', '2.50', '']] }
     };
+    NAMES.maria = 'Maria Isabel Bautista';
+    DATA.maria = {
+      t1: [['CSIT 103', 'Data Structures and Algorithms', 'Prof. Villa', '', '', ''], ['CSIT 104', 'Information Management', 'Prof. Tan', '', '', ''], ['CSIT 105', 'Applications Development and Emerging Technologies', 'Prof. Santos', '', '', ''],
+           ['CSci 103', 'Discrete Structures II', 'Prof. Reyes', '', '', ''], ['CSci 122', 'Human Computer Interaction', 'Prof. Villa', '', '', ''], ['CSci 182', 'Integral Calculus for CS', 'Prof. Santos', '', '', ''],
+           ['ScSc 13', 'The Contemporary World', 'Prof. Tan', '', '', ''], ['PhEd 13', 'PATHFit 3', 'Prof. Santos', '', '', '']],
+      t0: [['CSci 102', 'Discrete Structures I', 'Prof. Santos', '2.00', 'INC', 'Final project not yet submitted']]
+    };
+    if (UI.enc) Object.keys(UI.enc).forEach(function (a) { Object.keys(UI.enc[a]).forEach(function (t) { if (DATA[a]) DATA[a][t] = UI.enc[a][t]; }); });
+    if (UI.imports && UI.imports.length) {
+      UI.imports.forEach(function (r) {
+        var rows = DATA[r.adv] && DATA[r.adv].t1; if (!rows) return;
+        var row = rows.filter(function (x) { return x[0] === r.course; })[0];
+        if (!row) { row = [r.course, '', r.instructor || '', '', '', '']; rows.push(row); }
+        if (r.instructor) row[2] = r.instructor; row[3] = r.midterm || ''; row[4] = r.final || '';
+      });
+      UI.imports = []; UI.enc = JSON.parse(JSON.stringify(DATA)); saveUI();
+    }
     var cur = { adv: 'ana', term: 't1' }, cell = 'padding:10px 14px;border-bottom:1px solid #EFEADB;vertical-align:middle';
     var opts = function (list, v) { return list.map(function (g) { return '<option value="' + g + '"' + (g === v ? ' selected' : '') + '>' + (g || '—') + '</option>'; }).join(''); };
     var rowHtml = function (r) {
@@ -311,14 +367,16 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
         if (!rows[i][0]) return say($('enc-msg'), 'no', 'Row ' + (i + 1) + ' has no course. Enter a course code or remove the row.');
         if (rows[i][4] === 'DR' && rows[i][3] !== 'DR') return say($('enc-msg'), 'no', '<b>' + esc(rows[i][0]) + '</b>: a final grade of DR needs a DR midterm.');
       }
+      UI.enc = JSON.parse(JSON.stringify(DATA)); saveUI();
       var graded = rows.filter(function (r) { return r[3] || r[4]; }).length;
+      audit('Change', NAMES[cur.adv], 'Saved ' + graded + ' graded course' + (graded === 1 ? '' : 's') + ' for ' + $('enc-term').options[$('enc-term').selectedIndex].text, SIDS[cur.adv], 'Saved grades');
       say($('enc-msg'), 'ok', 'Saved ' + graded + ' graded course' + (graded === 1 ? '' : 's') + ' for <b>' + esc(NAMES[cur.adv]) + '</b> · ' + esc($('enc-term').options[$('enc-term').selectedIndex].text) + '. GWA is recomputed on save.');
     });
   }
 
   /* Import grades */
   if ($('imp-file')) {
-    var STUDENTS = { '23-1-01234': 'Ana Reyes', '23-1-01301': 'Ben Lopez', '24-1-02011': 'Dino Castillo' };
+    var STUDENTS = { '23-1-01234': 'Ana Reyes', '23-1-01301': 'Ben Lopez', '24-1-02011': 'Dino Castillo', '2023-04412': 'Maria Isabel Bautista' };
     var COURSES = ['CSci 21', 'CSci 22', 'CSci 31', 'CSci 32', 'CSci 33', 'CSci 34', 'CSci 51', 'Math 12', 'CS Elective 1', 'CS Elective 2', 'CS Elective 3'];
     var GRADES = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '5.00', 'INC', 'DR'];
     var parsed = null;
@@ -377,7 +435,10 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     $('imp-cancel').addEventListener('click', function () { parsed = null; $('imp-panel').hidden = true; $('imp-msg').hidden = true; });
     $('imp-save').addEventListener('click', function () {
       if (!parsed || !parsed.good.length) return;
-      var n = parsed.good.length; parsed = null; $('imp-panel').hidden = true;
+      var n = parsed.good.length, KEYS = { '23-1-01234': 'ana', '23-1-01301': 'ben', '24-1-02011': 'dino', '2023-04412': 'maria' };
+      UI.imports = (UI.imports || []).concat(parsed.good.map(function (r) { return { adv: KEYS[r.student_number], course: r.course, instructor: r.instructor || '', midterm: r.midterm == null ? '' : String(r.midterm), final: r.final == null ? '' : String(r.final) }; })); saveUI();
+      audit('Change', '', 'Imported ' + n + ' grade row' + (n === 1 ? '' : 's') + ' from a JSON file', '', 'Imported grades');
+      parsed = null; $('imp-panel').hidden = true;
       say($('imp-msg'), 'ok', 'Saved ' + n + ' grade row' + (n === 1 ? '' : 's') + '. GWA is recomputed for the affected advisees and the import is in the audit log.');
     });
     $('imp-template').addEventListener('click', function () {
@@ -410,14 +471,17 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       var b = e.target.closest('[data-note-act]'); if (!b) return;
       var n = b.closest('[data-note]'), to = b.dataset.noteAct === 'archive' ? 'archived' : 'active';
       n.dataset.state = to; n.querySelector('[data-note-actions]').innerHTML = actionBtn(to === 'active' ? 'archive' : 'restore');
+      audit('Change', 'Maria Isabel Bautista', (to === 'archived' ? 'Archived' : 'Restored') + ' an adviser note', '2023-04412', to === 'archived' ? 'Archived note' : 'Restored note');
       refresh(); say($('nt-done'), 'ok', to === 'archived' ? 'Note archived. Find it under Archived.' : 'Note restored to Active.');
     });
+    keep('notes-list', refresh);
     document.querySelector('[data-save=note]').addEventListener('click', function () {
       var v = $('nt-body').value.trim(); if (!v) return say($('nt-msg'), 'no', 'Write the note before saving.');
       var a = document.createElement('article'); a.setAttribute('data-note', ''); a.dataset.state = 'active'; a.style.cssText = 'padding:16px 20px;border-bottom:1px solid #EFEADB';
       a.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:12.5px;color:#8C8A76"><div><strong style="color:#16200C;font-size:13.5px">Prof. Ramon Reyes</strong> · <span data-date>' + today() + '</span></div><div data-note-actions>' + actionBtn('archive') + '</div></div>' +
         '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
       $('notes-list').insertBefore(a, $('notes-list').firstChild);
+      audit('Change', 'Maria Isabel Bautista', 'Saved an adviser-only note', '2023-04412', 'Added note');
       $('nt-body').value = ''; this.closest('dialog').close();
       view = 'active'; refresh(); say($('nt-done'), 'ok', 'Note saved. It is visible to advisers only.');
     });
@@ -428,16 +492,30 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     var shift = JSON.parse($('shift-cv').dataset.shift);
     $('shift-cv').addEventListener('change', function () { var s = shift[this.value]; $('shift-c').textContent = s[0]; $('shift-l').textContent = s[1]; $('shift-g').textContent = s[2]; });
   }
+  keep('cur-body');
+  (function () {
+    var M = {}; try { M = JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}; } catch (e) {}
+    (UI.endorsed || []).forEach(function (en) {
+      var d = (M.transfers || {})[en.id]; if (!d) return;
+      var tr = $$('#cur-body tr').filter(function (r) { return r.dataset.eid === en.id; })[0];
+      if (!tr || tr.dataset.decided) return;
+      tr.dataset.decided = d.decision; tr.dataset.pending = '';
+      var td = tr.children; td[1].textContent = d.date;
+      td[3].innerHTML = badge(d.decision === 'approved' ? 'Approved' : 'Rejected', d.decision === 'approved' ? 'green' : 'red') + ' <span style="margin-left:6px">' + esc(d.reason || 'Decision recorded by the Department Head.') + '</span>';
+    });
+  })();
   if ($('cur-form')) $('cur-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var to = $('cur-to').value, reason = $('cur-reason').value.trim();
     if (!reason) return say($('cur-msg'), 'no', 'Give a reason for the transfer.');
     if ($$('#cur-body tr').some(function (tr) { return tr.dataset.pending === to; })) return say($('cur-msg'), 'no', 'A transfer to <b>' + esc(to) + '</b> is already waiting for approval.');
     var c = 'padding:11px 14px;font-size:13.5px;border-bottom:1px solid #EFEADB;vertical-align:middle';
-    var tr = document.createElement('tr'); tr.className = 'row'; tr.dataset.pending = to;
+    var tr = document.createElement('tr'); tr.className = 'row'; tr.dataset.pending = to; var eid = 'xf' + Date.now(); tr.dataset.eid = eid;
     tr.innerHTML = '<td style="' + c + '">' + esc(to) + '</td><td style="' + c + '">Pending</td><td style="' + c + '">—</td><td style="' + c + '">' + badge('Pending approval', 'amber') +
       ' <span style="margin-left:6px">Endorsed by Prof. Ramon Reyes, ' + today() + '. ' + esc(reason) + '</span></td>';
     $('cur-body').appendChild(tr);
+    (UI.endorsed = UI.endorsed || []).push({ id: eid, student: 'Maria Isabel Bautista', sid: '2023-04412', from: 'BSCS 2025–present', to: to, reason: reason, adviser: 'Prof. Ramon Reyes', date: today() }); saveUI();
+    audit('Change', 'Maria Isabel Bautista', 'Endorsed a curriculum transfer to ' + to + ' (' + reason + ')', '2023-04412', 'Endorsed transfer');
     this.reset(); say($('cur-msg'), 'ok', 'Transfer to <b>' + esc(to) + '</b> endorsed. It is with the Department Head for approval.');
   });
 
@@ -489,11 +567,13 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     document.querySelector('[data-save=fix]').addEventListener('click', function () {
       if (!$('fix-grade').value) return say($('fix-msg'), 'no', 'Choose the corrected grade.');
       if (!$('fix-reason').value.trim()) return say($('fix-msg'), 'no', 'Give a reason. Every grade change is audited.');
+      audit('Change', fRow.dataset.name, 'Corrected ' + fRow.dataset.course + ' to ' + $('fix-grade').value + ' after a grade flag (' + $('fix-reason').value.trim() + ')', '', 'Fixed grade flag');
       closeRow(fRow, 'Fixed', 'green'); this.closest('dialog').close();
       say($('flag-done'), 'ok', 'Grade corrected to <b>' + esc($('fix-grade').value) + '</b> for ' + esc(fRow.dataset.name) + ' · ' + esc(fRow.dataset.course) + '. The student is notified.');
     });
     document.querySelector('[data-save=reject]').addEventListener('click', function () {
       if (!$('rej-reason').value.trim()) return say($('rej-msg'), 'no', 'Explain why the recorded grade stands.');
+      audit('Change', fRow.dataset.name, 'Rejected the grade flag on ' + fRow.dataset.course + ' (' + $('rej-reason').value.trim() + ')', '', 'Rejected grade flag');
       closeRow(fRow, 'Rejected', 'red'); this.closest('dialog').close();
       say($('flag-done'), 'ok', 'Flag rejected. Your reply was sent to ' + esc(fRow.dataset.name) + '.');
     });

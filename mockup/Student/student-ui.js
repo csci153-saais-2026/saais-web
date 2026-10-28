@@ -3,6 +3,17 @@
 (function () {
   if (window.__studentUi) return;
   window.__studentUi = true;
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('a[href$="Login.dc.html"]')) return;
+    try { sessionStorage.removeItem('saais-session'); localStorage.removeItem('saais-session-keep'); } catch (_) {}
+  }, true);
+  /* Demo data: open any page with ?reset-demo to clear everything saved in this browser (saais-* keys), then reload without the flag. */
+  try {
+    if (/[?&]reset-demo(?:[=&]|$)/.test(location.search)) {
+      Object.keys(localStorage).filter(function (k) { return /^saais[-.]/.test(k); }).forEach(function (k) { localStorage.removeItem(k); });
+      location.replace(location.pathname + location.search.replace(/[?&]reset-demo(=[^&]*)?/, '').replace(/^&/, '?') + location.hash);
+    }
+  } catch (e) {}
 
   var ADVISER = 'Prof. Ramon Reyes';
   var NOTES = [
@@ -128,6 +139,14 @@
       b.classList.toggle('su-flagged', on);
       b.textContent = on ? 'Flagged' : 'Flag Grade';
     });
+    /* A corrected flag updates the grade shown in the Grades table. */
+    FLAGS.forEach(function (f) {
+      if (f.status !== 'fixed' || !f.newGrade) return;
+      var b = document.querySelector('[data-flag][data-code="' + f.code + '"]'), tr = b && b.closest('tr');
+      if (!tr || tr.cells.length < 6) return;
+      tr.cells[3].textContent = f.newGrade;
+      tr.cells[4].innerHTML = parseFloat(f.newGrade) <= 3 ? '<span class="badge passed">Passed</span>' : '<span class="badge failed">Failed</span>';
+    });
   }
 
   /* ---------- course info ---------- */
@@ -190,7 +209,7 @@
       });
       return { title: s.querySelector('h2').textContent.trim(), headers: ['Code', 'Title', 'Units', 'Grade', 'Status'], rows: rows };
     });
-    var nm = document.querySelector('.user-name b'), id = document.querySelector('.user-name small');
+    var nm = document.querySelector('#me-btn > div:nth-child(2) > div:first-child'), id = document.querySelector('#me-btn > div:nth-child(2) > div:last-child');
     var report = {
       title: 'Curriculum checklist',
       subtitle: 'BS Computer Science | ' + (nm ? nm.textContent.trim() : '') + ' | ' + (id ? id.textContent.trim() : '') + ' | Curriculum 2023-2024',
@@ -199,11 +218,12 @@
       stats: [{ label: 'Units earned', value: earned + ' of ' + req }],
       sections: sections
     };
+    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '2023-04412', 'Downloaded checklist');
     savePdf(report, 'SAAIS-curriculum-checklist.pdf');
   }
 
   function downloadGrades(main) {
-    var nm = document.querySelector('.user-name b'), id = document.querySelector('.user-name small');
+    var nm = document.querySelector('#me-btn > div:nth-child(2) > div:first-child'), id = document.querySelector('#me-btn > div:nth-child(2) > div:last-child');
     var sections = [].slice.call(main.querySelectorAll('section.panel')).filter(function (s) { return s.querySelector('tbody tr'); }).map(function (s) {
       var rows = [].slice.call(s.querySelectorAll('tbody tr')).map(function (tr) {
         var c = tr.children;
@@ -218,6 +238,7 @@
       footer: 'Not an official record | Generated ' + today(),
       stats: [], sections: sections
     }, 'SAAIS-grade-summary.pdf');
+    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '2023-04412', 'Downloaded grade summary');
   }
 
   function savePdf(report, name) {
@@ -282,11 +303,89 @@
     r.readAsDataURL(f);
   }
 
+  /* ---------- adviser decisions that reach the student ---------- */
+  function readAdv() { try { return JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { return window.__saaisUI || {}; } }
+  function readMgmt() { try { return JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}; } catch (e) { return window.__saaisMgmt || {}; } }
+  function statusOf(fin, mid) {
+    if (fin === 'INC') return ['inc', 'INC'];
+    if (fin === 'DR' || mid === 'DR') return ['na', 'Dropped'];
+    if (/^\d(\.\d+)?$/.test(fin)) return parseFloat(fin) <= 3 ? ['passed', 'Passed'] : ['failed', 'Failed'];
+    return null;
+  }
+  /* Grades the adviser encoded or resolved for this student show up in the Grades and Checklist pages. */
+  function applyEncoded() {
+    var UI = readAdv(), enc = UI.enc && UI.enc.maria && UI.enc.maria.t1 || [], resolved = (UI.resolved || []).filter(function (r) { return r.adv === 'maria'; });
+    var done = {};
+    enc.forEach(function (r) { done[r[0]] = { mid: r[3], fin: r[4] }; });
+    resolved.forEach(function (r) { done[r.course] = { mid: '', fin: r.grade }; });
+    Object.keys(done).forEach(function (code) {
+      var g = done[code], st = statusOf(g.fin, g.mid), badge = st ? '<span class="badge ' + st[0] + '">' + st[1] + '</span>' : null;
+      /* Grades page */
+      var fb = document.querySelector('[data-flag][data-code="' + code + '"]'), tr = fb && fb.closest('tr');
+      if (tr && tr.cells.length >= 6) {
+        if (g.mid) tr.cells[2].textContent = g.mid;
+        if (g.fin) tr.cells[3].textContent = g.fin;
+        if (badge) tr.cells[4].innerHTML = badge;
+        fb.dataset.grade = g.fin || (g.mid ? 'mid ' + g.mid : 'No grade yet');
+      }
+      /* Checklist page */
+      [].slice.call(document.querySelectorAll('td[data-label="Requirement"] strong')).forEach(function (el) {
+        if (el.textContent.trim() !== code) return;
+        var row = el.closest('tr'), cells = row.children, units = cells[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+        if (!st) return;
+        if (st[0] === 'passed' && units) cells[1].textContent = units[2] + ' / ' + units[2];
+        cells[2].innerHTML = badge;
+        if (g.fin && /^\d/.test(g.fin)) { var sub = cells[3].querySelector('.course-title'); if (sub) sub.textContent = sub.textContent.replace(/grade\s+\S+$/, 'grade ' + g.fin); }
+        var btn = row.querySelector('[data-info]');
+        if (btn) {
+          try {
+            var info = JSON.parse(btn.dataset.info), last = info.rows[info.rows.length - 1];
+            if (last) { if (g.mid) last[1] = g.mid; if (g.fin) last[2] = g.fin; }
+            info.status = [st[1], st[0] === 'passed' ? 'green' : st[0] === 'failed' ? 'red' : st[0] === 'inc' ? 'amber' : 'neutral'];
+            btn.dataset.info = JSON.stringify(info);
+          } catch (e) {}
+        }
+      });
+    });
+    /* Term summary on the Grades page */
+    var panel = document.querySelector('main[data-su-collapse] section.panel');
+    if (panel && Object.keys(done).length && panel.querySelector('td [data-flag]')) {
+      var pts = 0, units = 0, failed = 0;
+      [].slice.call(panel.querySelectorAll('tbody tr')).forEach(function (row) {
+        var u = parseFloat(row.cells[1].textContent), f = row.cells[3].textContent.trim();
+        if (/^\d(\.\d+)?$/.test(f)) { pts += parseFloat(f) * u; units += u; if (parseFloat(f) > 3) failed += u; }
+      });
+      var sub = panel.querySelector('h2 + p');
+      if (sub && units) sub.textContent = sub.textContent.replace(/Term GWA\s+\S+/, 'Term GWA ' + (pts / units).toFixed(2)).replace(/\d+ failed units/, failed + ' failed units');
+    }
+  }
+
+  /* ---------- assignment and curriculum history ---------- */
+  function histTable(heads, rows) {
+    return '<div class="table-scroll"><table class="data"><thead><tr>' + heads.map(function (h) { return '<th scope="col">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+  }
+  function openAssignmentHistory() {
+    showDialog('Assignment history', '<p>Every adviser assigned to you, newest first. Past assignments stay on record.</p>' +
+      histTable(['Adviser', 'From', 'To', 'Note'], [['Prof. Ramon Reyes', '12 Jun 2024', 'Present', 'Current adviser'], ['Prof. Lourdes Mendez', '28 Aug 2023', '12 Jun 2024', 'Handed over to Prof. Reyes']]));
+  }
+  function openCurriculumHistory() {
+    var rows = [['BSCS 2018–2024', '1st Sem 2023–2024', 'Midyear 2025', 'Initial assignment'], ['BSCS 2025–present', '1st Sem 2025–2026', 'Present', 'Transfer approved by Dr. Leo Santos, 30 Jul 2025']];
+    var mg = readMgmt(), dec = mg.transfers || {};
+    (readAdv().endorsed || []).forEach(function (en) {
+      var d = dec[en.id];
+      rows.push([en.to, en.date, d ? (d.decision === 'approved' ? 'Present' : 'Not applied') : 'Pending', d ? (d.decision === 'approved' ? 'Transfer approved' : 'Transfer rejected') + ' · ' + d.date + (d.reason ? ' · ' + d.reason : '') : 'Endorsed by ' + en.adviser + ', waiting for the Department Head']);
+    });
+    showDialog('Curriculum history', '<p>The curriculum versions you have followed, and any transfer in progress.</p>' + histTable(['Curriculum', 'From', 'To', 'Note'], rows));
+  }
+
   /* ---------- wiring ---------- */
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (t.closest('[data-su-close]')) { if (dlg) dlg.close(); return; }
     if (t.closest('[data-advising-notes]')) return openNotes();
+    if (t.closest('[data-action="assignment-history"]')) return openAssignmentHistory();
+    if (t.closest('[data-action="curriculum-history"]')) return openCurriculumHistory();
     if (t.closest('[data-grade-flags]')) return openFlagList();
     var dl = t.closest('[data-download-checklist]');
     if (dl) return downloadChecklist(dl.closest('main'));
@@ -311,10 +410,11 @@
     if (!e.target.matches('[data-su-flagform]')) return;
     e.preventDefault();
     var f = e.target;
-    var nm = document.querySelector('.user-name b'), id = document.querySelector('.user-name small');
+    var nm = document.querySelector('#me-btn > div:nth-child(2) > div:first-child'), id = document.querySelector('#me-btn > div:nth-child(2) > div:last-child');
     FLAGS = loadFlags();
     FLAGS.unshift({ id: 'sf' + Date.now(), status: 'open', studentName: nm ? nm.textContent.trim() : 'Student', studentId: id ? id.textContent.trim() : '', code: current.code, title: current.title, grade: current.grade, reason: f.reason.value, details: f.details.value.trim(), filed: today() });
     saveFlags();
+    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'Change', 'Maria Isabel Bautista', 'Filed a grade flag on ' + current.code + ' (' + f.reason.value + ')', '2023-04412');
     markFlagged();
     dlg.close();
   });
@@ -368,6 +468,6 @@
 
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
   window.addEventListener('storage', function (e) { if (e.key === FLAG_KEY) markFlagged(); });
-  function init() { initCollapsible(); addToggleButtons(); markFlagged(); initPassword(); applyPhoto(); }
+  function init() { applyEncoded(); initCollapsible(); addToggleButtons(); markFlagged(); initPassword(); applyPhoto(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

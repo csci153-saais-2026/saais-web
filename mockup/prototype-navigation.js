@@ -41,10 +41,10 @@
   if(event.target===map||event.target.closest('[data-map-close]'))map.close();
  },true);
  window.addEventListener('message',event=>{
-  if(event.source!==frame.contentWindow||event.origin!==location.origin||event.data?.type!=='saais:open')return;
-  const url=new URL(event.data.url,location.href);if(url.origin!==location.origin)return;
+  const fileMode=location.protocol==='file:';if(event.source!==frame.contentWindow||(!fileMode&&event.origin!==location.origin)||event.data?.type!=='saais:open')return;
+  const url=new URL(event.data.url,location.href);if(fileMode?url.protocol!=='file:':url.origin!==location.origin)return;
   const path=decodeURIComponent(url.pathname),route=fileRoutes.get(path);
   if(route){url.searchParams.delete('prototype');if(url.hash)url.searchParams.set('_view',url.hash.slice(1));go(route+(url.search?'?'+url.searchParams.toString():''));}
-  else {const publicScreen=publicRoute(path);if(publicScreen!==null)go(publicScreen);}
+  else {const publicScreen=publicRoute(path);if(publicScreen==='login'){try{sessionStorage.removeItem('saais-session');localStorage.removeItem('saais-session-keep');}catch(_){}go('login');location.reload();}else if(publicScreen!==null)go(publicScreen);}
  });
 })();
