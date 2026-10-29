@@ -183,7 +183,7 @@ def btn(label, kind="primary", icon=None, size="md"):
         st = "background: %s; color: %s; border: 1px solid %s" % (SURFACE, INK, LINE)
         cls = "btns"
     return ('<button class="%s" style="display: inline-flex; align-items: center; gap: 7px; '
-            'padding: %s; border-radius: 4px; font-family: inherit; font-size: %s; font-weight: 600; '
+            'padding: %s; border-radius: 8px; font-family: inherit; font-size: %s; font-weight: 600; '
             'cursor: pointer; %s">%s%s</button>' % (cls, pad, fs, st, ic, label))
 
 
@@ -246,8 +246,8 @@ def table(cols, rows, widths=None, align=None):
     cg = "".join('<col style="width: %s">' % (w or "auto") for w in widths)
     th = "".join(
         '<th style="text-align: %s; padding: 10px 14px; font-size: 11.5px; font-weight: 600; '
-        'letter-spacing: 0.09em; text-transform: uppercase; color: %s; border-bottom: 1px solid %s; '
-        'white-space: nowrap">%s</th>' % (align[i], MUTED_2, LINE, c) for i, c in enumerate(cols))
+        'letter-spacing: 0.09em; text-transform: uppercase; color: %s; background: %s; border-bottom: 1px solid %s; '
+        'white-space: nowrap">%s</th>' % (align[i], MUTED_2, CREAM_DP, LINE, c) for i, c in enumerate(cols))
     body = []
     for r in rows:
         tds = "".join(
@@ -280,7 +280,7 @@ NAV = {
  "adviser": ("Adviser", [
     ("grid", "Dashboard", "/adviser/dashboard"),
     ("users", "Advisees", "/adviser/advisees"),
-    ("plus", "Record attempt", "/adviser/enrollment/new"),
+    ("plus", "Record enrollment", "/adviser/enrollment/new"),
     ("swap", "Reassignment", "/adviser/reassignment"),
  ]),
  "admin": ("Administrator", [
@@ -310,7 +310,7 @@ def sidebar(role, active, sub=None):
         out.append('<div class="navi" style="position: relative; display: flex; align-items: center; gap: 11px; '
                    'padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; %s">%s%s<span>%s</span></div>'
                    % (st, bar, ico(icon, 18, sw=1.55), name))
-        if on and sub:
+        if False and sub:  # Student tabs belong in the page, not global navigation.
             for s_name, s_on in sub:
                 col = "#F7E9C4" if s_on else "rgba(246,242,228,0.6)"
                 out.append('<div class="navi" style="padding: 6px 16px 6px 46px; font-size: 13px; color: %s; '
@@ -363,7 +363,7 @@ def page_head(title, sub="", actions=""):
 
 
 def shell(role, active, crumbs, user, initials, content, sub=None, right="", h=1180):
-    return ('<div style="display: flex; min-height: %dpx; background: %s">%s'
+    return ('<div style="display: flex; min-height: 100vh; --artboard-height: %dpx; background: %s">%s'
             '<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">%s'
             '<main style="padding: 30px 32px 40px; flex-grow: 1">%s</main></div></div>'
             % (h, CREAM, sidebar(role, active, sub), topbar(crumbs, user, initials, right), content))

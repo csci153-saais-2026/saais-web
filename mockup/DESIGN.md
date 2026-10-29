@@ -1,5 +1,7 @@
 # DESIGN.md — SAAIS landing page
 
+> **`DesignSystem.dc.html` is the authority.** Where this file's radii, button shapes or gold usage disagree with it, the sheet wins: cards/panels 6px, inputs and chips 4px, buttons 8px (no pills), gold only on "Continue with override", the active indicator and exception provenance. Landing buttons on dark grounds are cream, not gold.
+
 The design system as shipped on `Main.dc.html`, composed against **stellic.com** as the reference.
 
 Everything structural came from that reference. The **colour scheme did not** — the SAAIS palette is
@@ -39,7 +41,7 @@ was regenerated, not just the landing page.
 | One oversized impact number | `big_number()` — a single 104px numeral over a 3-up of supporting figures |
 | Trust / compliance badge row | `trust_badges()` — three cards, icon tile + title + one line |
 | Newsletter column in the footer | `footer()` — "Release notes" signup plus a "looking for your sign-in?" note |
-| Large radii, generous rhythm | 16px cards, 999px buttons, 112px section padding |
+| Generous rhythm | 112px section padding. Radii follow `DesignSystem.dc.html`: 6px cards, 4px inputs, 8px buttons |
 | Photo-backed closing CTA | Replaced with the gold radial glow — see §8 |
 
 ### Deliberately not taken
@@ -180,7 +182,7 @@ still loads or references Newsreader.
 - **The SAAIS wordmark uses `.dsp`, so it is Syne too**, including in this page's nav and footer —
   there is no longer a serif/sans split between the logotype and the headings around it.
 - The `&ldquo;` glyph opening the testimonial is a decorative quotation mark, not a heading — it
-  stays on a plain `Georgia, 'Times New Roman', serif` stack for contrast against the Syne body copy.
+  is set in Syne like every other display glyph, in `GOLD_DP`.
 
 Syne is a display face: it reads flat below 600 weight, so nothing in the set sets it lighter than
 that. Import only the weights actually used — `500` (blockquote), `600`/`700` (most headings),
@@ -253,7 +255,9 @@ continuous white expanse by design — the statement is the tab section's overli
 
 | Radius | Applied to |
 |---|---|
-| 999px | All buttons and pills, the newsletter input, the footer social circles |
+| 8px | All buttons and tab pills (Design System button radius) |
+| 4px | The newsletter input |
+| 50% | Avatars and footer social circles |
 | 22px | The integration frame around the override dialog |
 | 18px | The statement logo mark |
 | 16px | Cards, panels, product screenshots |

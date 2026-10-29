@@ -91,7 +91,7 @@ def load_chart():
 DASH = shell("adviser", "Dashboard", ["Adviser portal", "Dashboard"], USER, INI,
              page_head("Advising dashboard",
                        "AY 2025–2026, 1st Semester · enrolment window closes 30 September 2026",
-                       btn("Record enrollment attempt", "primary", "plus", "sm"))
+                       btn("Record enrollment", "primary", "plus", "sm"))
              + grid(4, kpi("Active advisees", "48", "assigned to you", FOREST, "23 historical advisees on file")
                     + kpi("Delinquency flags", "3", "at or past threshold", FAIL_FG, "Requires a documented plan")
                     + kpi("INC deadlines &lt; 60 days", "5", "across 4 advisees", INC_FG, "Earliest: 21 September")
@@ -100,13 +100,13 @@ DASH = shell("adviser", "Dashboard", ["Adviser portal", "Dashboard"], USER, INI,
                'margin-top: 18px">'
              + f'<div style="display: flex; flex-direction: column; gap: 18px">{attention_list()}{recent_activity()}</div>'
              + f'<div style="display: flex; flex-direction: column; gap: 18px">{load_chart()}'
-             + card(f'<div class="kick" style="color: {MUTED_2}">Quick actions</div>'
+             + card(f'<div class="kick" style="color: {MUTED_2}">Quick Access</div>'
                     f'<div style="display: flex; flex-direction: column; gap: 9px; margin-top: 14px">' +
                     "".join(f'<div class="row" style="display: flex; align-items: center; gap: 11px; '
                             f'padding: 11px 13px; border: 1px solid {LINE}; border-radius: 5px; font-size: 13.5px">'
                             f'<span style="color: {FOREST}">{ico(i, 18)}</span>{t}'
                             f'<span style="flex-grow: 1"></span>{ico("right", 15, MUTED_2)}</div>'
-                            for i, t in [("plus", "Record an enrollment attempt"),
+                            for i, t in [("plus", "Record enrollment"),
                                          ("note", "Write an advising note"),
                                          ("node", "Map a course to an elective slot"),
                                          ("swap", "Initiate an adviser reassignment"),
@@ -182,7 +182,7 @@ def student_header(active_tab):
         f'<div style="padding: 12px 2px; margin-right: 26px; font-size: 14px; font-weight: '
         f'{"600" if t == active_tab else "450"}; color: {INK if t == active_tab else MUTED}; '
         f'border-bottom: 2px solid {FOREST if t == active_tab else "transparent"}">{t}</div>'
-        for t in ["Overview", "Checklist", "Grades", "History", "Notes", "Documents"])
+        for t in ["Overview", "Advising", "Checklist", "Grades", "History", "Notes", "Documents"])
     return (f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; '
             f'margin-bottom: 18px; overflow: hidden">'
             f'<div style="display: flex; align-items: flex-start; gap: 20px; padding: 22px 24px 18px">'
@@ -208,7 +208,7 @@ def student_header(active_tab):
             f'<div style="display: flex">{tabs}</div>'
             f'<div style="display: flex; gap: 8px; padding: 8px 0">'
             f'{btn("Add note", "secondary", "note", "sm")}'
-            f'{btn("Record attempt", "primary", "plus", "sm")}</div></div></div>')
+            f'{btn("Record enrollment", "primary", "plus", "sm")}</div></div></div>')
 
 
 def timeline():
@@ -251,7 +251,7 @@ DETAIL = shell("adviser", "Advisees", ["Adviser portal", "Advisees", "Bautista, 
                            [code("PE 3"), "Team Sports", "2.0", "PE3-F", status("enrolled"),
                             f'<a href="#" style="font-size: 12.5px; font-weight: 600">Remark</a>'],
                        ], widths=["100px", "auto", "62px", "100px", "132px", "84px"]),
-                       actions=btn("Record attempt", "secondary", "plus", "sm"))
+                       actions=btn("Record enrollment", "secondary", "plus", "sm"))
                + timeline() + '</div>'
                + f'<div style="display: flex; flex-direction: column; gap: 18px">'
                + note("<b>STAT 101</b> INC lapses in 47 days (26 October 2026). After the deadline it is evaluated as 5.00 and moves the student to 6 failed units.", "gold", "clock")
@@ -352,6 +352,102 @@ NOTES = shell("adviser", "Advisees", ["Adviser portal", "Advisees", "Bautista, M
 write("AdviseeNotes", NOTES)
 
 
+# ------------------------------------------------------------------ advising workspace
+def rec_row(checked, codev, title, units, reason, tag):
+    cb = (f'<div style="width: 15px; height: 15px; border: 1px solid {LINE}; border-radius: 3px; '
+          f'background: {FOREST if checked else SURFACE}; display: flex; align-items: center; '
+          f'justify-content: center">{ico("check", 11, CREAM, 2.4) if checked else ""}</div>')
+    return [cb, f'{code(codev)} <span style="margin-left: 6px">{title}</span>',
+            f'<span style="color: {MUTED}">{units}</span>',
+            f'<span style="color: {MUTED}; font-size: 12.5px">{reason}</span>', tag]
+
+
+def term_filter(value):
+    return (f'<div style="display: inline-flex; align-items: center; gap: 8px; background: {SURFACE}; '
+            f'border: 1px solid {LINE}; border-radius: 4px; padding: 7px 12px; font-size: 13px; '
+            f'white-space: nowrap">{ico("cal", 14, MUTED_2)}<span>{value}</span>{ico("down", 14, MUTED_2)}</div>')
+
+
+def chat_msg(text, mine=False):
+    if mine:
+        return (f'<div style="display: flex; justify-content: flex-end">'
+                f'<div style="max-width: 82%; background: {FOREST}; color: {CREAM}; padding: 10px 13px; '
+                f'border-radius: 10px 10px 2px 10px; font-size: 13.5px; line-height: 1.55">{text}</div></div>')
+    return (f'<div style="display: flex; gap: 9px; align-items: flex-start">'
+            f'<div style="width: 26px; height: 26px; border-radius: 50%; background: {FOREST}; color: {CREAM}; '
+            f'display: flex; align-items: center; justify-content: center; flex-shrink: 0">{ico("sparks", 14)}</div>'
+            f'<div style="max-width: 82%; background: {CREAM_DP}; color: {INK}; padding: 10px 13px; '
+            f'border-radius: 10px 10px 10px 2px; font-size: 13.5px; line-height: 1.55">{text}</div></div>')
+
+
+REC_CARD = panel(
+    "Course Recommendations",
+    f'<div style="padding: 0">' +
+    table(["", "Course", "Units", "Why recommended", "Term"], [
+        rec_row(True, "GE ELEC 2", "Open elective slot", "3.0",
+                "No prerequisite — slot has no attempt bound to it", badge("Elective", MUTED, CREAM_DP, dot=False)),
+        rec_row(True, "MAJ ELEC 1", "Major elective slot", "3.0",
+                "No prerequisite — satisfies a major elective requirement", badge("Elective", MUTED, CREAM_DP, dot=False)),
+        rec_row(False, "CS 134", "Information Management", "3.0",
+                "Prerequisite CS 110 passed", badge("By request", GOLD_DP, "#FBF0D6", dot=False)),
+        rec_row(False, "GE 6", "Art Appreciation (retake)", "3.0",
+                "No prerequisite — retake required after the AY 2024–25 failure", badge("Retake", FAIL_FG, FAIL_BG, dot=False)),
+    ], widths=["34px", "auto", "62px", "auto", "104px"]) +
+    f'</div><div style="padding: 16px 20px 18px">' +
+    note("Showing courses offered this <b>1st Semester</b> with prerequisites satisfied. <b>CS 132</b> is hidden "
+         "— its prerequisite <b>CS 121</b> is still in progress this term. <b>CS 133</b> is offered 2nd Semester only.",
+         "gold", "filter") +
+    flex(f'<span style="font-size: 12.5px; color: {MUTED_2}">2 selected</span>'
+         + '<div style="flex-grow: 1"></div>'
+         + btn("Add selected to plan", "primary", "plus", "sm"),
+         extra="margin-top: 14px") +
+    '</div>',
+    actions=term_filter("1st Semester"),
+    sub="Eligible next courses — prerequisites already cleared")
+
+NOTES_CARD = panel(
+    "Advising Notes",
+    note_entry("Prof. Ramon Reyes", "RR", "15 June 2026, 14:22", "Advising note", FOREST, CREAM_DP,
+               "Student is working weekday evenings at [Employer]. Agreed to cap the load at 16 units for "
+               "AY 2025–2026 until STAT 101 is cleared.")
+    + note_entry("Prof. Ramon Reyes", "RR", "12 March 2026, 09:05", "Attempt remark", GOLD_DP, "#FBF0D6",
+                 "Retake of CS 102 approved under grade replacement.",
+                 scope="Attempt · CS 102 · AY 2024–25, 1st Sem")
+    + f'<div style="padding: 13px 20px"><a href="#" style="font-size: 12.5px; font-weight: 600">View all 5 notes →</a></div>',
+    actions=btn("Add note", "secondary", "note", "sm"),
+    sub="Most recent · staff-only")
+
+CHAT_CARD = panel(
+    "Advising Assistant",
+    f'<div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">'
+    + chat_msg("What electives is Maria eligible for this semester?", mine=True)
+    + chat_msg("Based on her cleared prerequisites and the open slots on her checklist, she is eligible for "
+               "<b>GE ELEC 2</b> and <b>MAJ ELEC 1</b> this term. <b>CS 132</b> is not eligible yet — "
+               "<b>CS 121</b> is still in progress.")
+    + chat_msg("Good catch. Add GE ELEC 2 to her plan.", mine=True)
+    + chat_msg("Added to the recommendation list on the left. She will still need you to record the enrollment "
+               "once she is set.")
+    + '</div>'
+    + f'<div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; '
+      f'border-top: 1px solid {LINE_SF}; background: {CREAM}">'
+    + f'<div style="flex-grow: 1; background: {SURFACE}; border: 1px solid {LINE}; border-radius: 4px; '
+      f'padding: 9px 12px; font-size: 13.5px; color: {MUTED_2}">Ask about this advisee…</div>'
+    + f'<button style="width: 34px; height: 34px; border-radius: 50%; background: {FOREST}; color: {CREAM}; '
+      f'border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; '
+      f'flex-shrink: 0">{ico("right", 16)}</button></div>',
+    sub="Drafts suggestions from this record — always verify before acting")
+
+ADVISING = shell("adviser", "Advisees",
+                 ["Adviser portal", "Advisees", "Bautista, Maria Isabel L.", "Advising"], USER, INI,
+                 student_header("Advising")
+                 + '<div style="display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); '
+                   'gap: 18px; margin-top: 18px">'
+                 + REC_CARD
+                 + f'<div style="display: flex; flex-direction: column; gap: 18px">{NOTES_CARD}{CHAT_CARD}</div>'
+                 + '</div>', h=1380)
+write("AdviseeAdvising", ADVISING)
+
+
 # ------------------------------------------------------------------ manage checklist
 def slot_row(codev, title, units, st, fill, action):
     return [code(codev), f'<div><div>{title}</div>'
@@ -376,9 +472,9 @@ MANAGE = shell("adviser", "Advisees", ["Adviser portal", "Advisees", "Bautista, 
                + panel("Open slots · Year 2 and beyond",
                        table(["Slot", "Requirement", "Units", "Status", "Action"], [
                            slot_row("GE ELEC 2", "Open elective slot", "3.0", "open", "No attempt bound to this slot", LINK("Map a course")),
-                           slot_row("CS 132", "Design and Analysis of Algorithms", "3.0", "open", "Prerequisite CS 121 in progress", LINK("Record attempt")),
-                           slot_row("CS 133", "Computer Organization", "3.0", "open", "Offered 2nd semester only", LINK("Record attempt")),
-                           slot_row("CS 134", "Information Management", "3.0", "open", "By-request offering this term", LINK("Record attempt")),
+                           slot_row("CS 132", "Design and Analysis of Algorithms", "3.0", "open", "Prerequisite CS 121 in progress", LINK("Record enrollment")),
+                           slot_row("CS 133", "Computer Organization", "3.0", "open", "Offered 2nd semester only", LINK("Record enrollment")),
+                           slot_row("CS 134", "Information Management", "3.0", "open", "By-request offering this term", LINK("Record enrollment")),
                            slot_row("GE 6", "Art Appreciation", "3.0", "failed", "Failed AY 2024–25, 2nd Sem · retake required", LINK("Record retake")),
                            slot_row("MAJ ELEC 1", "Major elective slot", "3.0", "open", "No attempt bound to this slot", LINK("Map a course")),
                        ], widths=["112px", "auto", "62px", "134px", "124px"]),
@@ -396,7 +492,7 @@ MANAGE = shell("adviser", "Advisees", ["Adviser portal", "Advisees", "Bautista, 
                             f'{code("ENG 1")} Year 1 · 1st Sem', "20 Nov 2023", "L. Mendez"],
                        ], widths=["190px", "auto", "220px", "110px", "94px"]),
                        actions=badge("3 exceptions on file", MUTED, CREAM_DP, dot=False),
-                       sub="Recorded decisions cannot be edited — supersede them with a new decision.")
+                       sub="Edit or revoke a decision with a reason. Every change is retained in the audit history.")
                + '</div>'
                + f'<div style="display: flex; flex-direction: column; gap: 18px">'
                + panel("New elective mapping",
@@ -441,7 +537,7 @@ def prereq_row(c, t, kind, ok):
 def override_dialog():
     return (f'<div style="position: absolute; inset: 0; background: rgba(15,26,6,0.55); display: flex; '
             f'align-items: center; justify-content: center; padding: 40px">'
-            f'<div style="width: 620px; background: {SURFACE}; border-radius: 10px; overflow: hidden; '
+            f'<div style="width: 620px; background: {SURFACE}; border-radius: 6px; overflow: hidden; '
             f'box-shadow: 0 30px 80px rgba(15,26,6,0.4)">'
             f'<div style="padding: 26px 28px 22px">'
             f'<div style="display: flex; align-items: center; gap: 12px">'
@@ -475,8 +571,8 @@ def override_dialog():
             f'{btn("Continue with override", "gold")}</div></div></div></div>')
 
 
-RECORD_BODY = (page_head("Record an enrollment attempt",
-                         "Attempts bind a student to a specific course offering. Prerequisites are checked, "
+RECORD_BODY = (page_head("Record enrollment",
+                         "Record a course enrollment for advising and grade history. This does not register a student with the registrar. Prerequisites are checked, "
                          "not enforced.")
                + '<div style="display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px">'
                + f'<div style="display: flex; flex-direction: column; gap: 18px">'
@@ -520,7 +616,7 @@ RECORD_BODY = (page_head("Record an enrollment attempt",
                                             ("Resulting load", "19 units")]) +
                        f'<div style="margin-top: 16px">{note("This term has <b>5 attempts</b> already recorded for this student. 19 units exceeds the 18-unit advisory cap for regular students.", "gold", "flag")}</div>'
                        f'<div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px">'
-                       f'{btn("Save as draft", "secondary", size="sm")}{btn("Record attempt", "primary", size="sm")}</div></div>')
+                       f'{btn("Save as draft", "secondary", size="sm")}{btn("Record enrollment", "primary", size="sm")}</div></div>')
                + panel("Recently recorded",
                        f'<div style="padding: 6px 0">' +
                        "".join(f'<div style="display: flex; align-items: center; gap: 12px; padding: 11px 20px; '
@@ -534,9 +630,9 @@ RECORD_BODY = (page_head("Record an enrollment attempt",
                + '</div></div>')
 
 RECORD = (f'<div style="position: relative">'
-          + shell("adviser", "Record attempt", ["Adviser portal", "Record enrollment attempt"], USER, INI,
+          + shell("adviser", "Record enrollment", ["Adviser portal", "Record enrollment"], USER, INI,
                   RECORD_BODY, h=1180)
-          + override_dialog() + '</div>')
+          + "" + '</div>')
 write("RecordAttempt", RECORD)
 
 

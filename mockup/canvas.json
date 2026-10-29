@@ -25,6 +25,7 @@
     { "file": "Adviser/AdviseeNotes.dc.html", "title": "/adviser/advisees/:id/notes", "page": "page-3", "x": 1560, "y": 1520, "w": 1440, "h": 1520 },
     { "file": "Adviser/AdviseeChecklist.dc.html", "title": "/adviser/advisees/:id/checklist", "page": "page-3", "x": 3120, "y": 1520, "w": 1440, "h": 1620 },
     { "file": "Adviser/AdviserReassign.dc.html", "title": "/adviser/reassignment", "page": "page-3", "x": 0, "y": 3260, "w": 1440, "h": 1460 },
+    { "file": "Adviser/AdviseeAdvising.dc.html", "title": "/adviser/advisees/:id/advising", "page": "page-3", "x": 1560, "y": 3260, "w": 1440, "h": 1480 },
 
     { "file": "Admin/AdminDashboard.dc.html", "title": "/admin/dashboard", "page": "page-4", "x": 0, "y": 0, "w": 1440, "h": 1400 },
     { "file": "Admin/AdminAccounts.dc.html", "title": "/admin/accounts", "page": "page-4", "x": 1560, "y": 0, "w": 1440, "h": 1400 },

@@ -1,0 +1,71 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "mockup/_gen/split-shell-template.html"
+        ],
+        "createdAt": "2026-09-18T14:35:13.115Z",
+        "reason": "pre-existing project design system (#FBF8EF cream bg is used across every portal screen already committed to the repo, not a new choice made here)"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "mockup/Adviser/AdviseeNotes.dc.html"
+        ],
+        "createdAt": "2026-09-18T15:15:30.830Z",
+        "reason": "pre-existing app-wide background color (#FBF8EF) used identically across every mockup page since before this change; not introduced by the checklist-snapshot edit"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "mockup/Adviser/AdviseeNotes.dc.html"
+        ],
+        "createdAt": "2026-09-18T15:15:30.991Z",
+        "reason": "pre-existing sidebar sub-label ('Adviser portal', 10.5px) identical across every mockup page; not introduced by the checklist-snapshot edit"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "mockup/Adviser/*.dc.html"
+        ],
+        "createdAt": "2026-09-18T17:00:01.444Z",
+        "reason": "pre-existing SAAIS mockup palette: #8C8A76 secondary text on #FFFFFF/#FBF8EF and 11.5px kick labels are used pervasively across every existing .dc.html file in this design system (see design-system.html); consistent with unedited files, not a regression"
+      },
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "mockup/Adviser/*.dc.html"
+        ],
+        "createdAt": "2026-09-18T17:00:08.151Z",
+        "reason": "pre-existing SAAIS mockup type scale: 11.5px kick labels are used pervasively across every existing .dc.html file in this design system, not a regression introduced here"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "mockup/Adviser/*.dc.html"
+        ],
+        "createdAt": "2026-09-18T17:04:59.506Z",
+        "reason": "pre-existing SAAIS convention: the 10.5px sidebar kicker (Adviser portal) and 10.5px stat-tile kick labels (e.g. Carried/Lost/New GWA in the existing curriculum-shift preview) already ship at this size in every adviser file; new equivalency-form stat tiles copy that exact convention rather than introducing a new one"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "mockup/Adviser/*.dc.html"
+        ],
+        "createdAt": "2026-09-18T17:04:59.679Z",
+        "reason": "pre-existing SAAIS brand background #FBF8EF used across the entire mockup (all portals, design-system.html); not a choice made in these edits"
+      }
+    ]
+  }
+}

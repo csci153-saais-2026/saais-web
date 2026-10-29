@@ -30,6 +30,9 @@ jobs:
       - name: Lint API Contract (Redocly)
         run: npm run contract:lint
 
+      - name: Verify Contract Security Boundaries
+        run: npm run contract:security
+
       - name: Verify Contract Freshness
         run: npm run contract:check
 
