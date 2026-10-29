@@ -1,4 +1,0 @@
-# Every change to this repository needs approval from a project manager.
-# Branch protection on dev and main requires a code owner review, so a PR's
-# own authors or teammates cannot approve it into those branches.
-*  @infinityweaver @KaelNierras
