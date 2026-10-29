@@ -1,172 +1,111 @@
-@import "@fontsource-variable/syne";
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-sans/600.css";
-@import "@fontsource/ibm-plex-sans/700.css";
-@import "@fontsource/ibm-plex-mono/500.css";
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
-
-/* SAAIS tokens: forest, gold, cream. Values from the prototype design sheet. */
 :root {
-  --background: #fbf8ef;
-  --foreground: #16200c;
-  --card: #ffffff;
-  --card-foreground: #16200c;
-  --popover: #ffffff;
-  --popover-foreground: #16200c;
-  --primary: #2f4a12;
-  --primary-foreground: #fbf8ef;
-  --secondary: #f2eddc;
-  --secondary-foreground: #16200c;
-  --muted: #f2eddc;
-  --muted-foreground: #6e6c58;
-  --accent: #efeadb;
-  --accent-foreground: #16200c;
-  --destructive: #9e2e1c;
-  --border: #e1dbc6;
-  --input: #e1dbc6;
-  --ring: #2f4a12;
-  --chart-1: #2f4a12;
-  --chart-2: #4a6b22;
-  --chart-3: #e0a82e;
-  --chart-4: #9e2e1c;
-  --chart-5: #8a6206;
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  /* Cards/panels 6px; inputs and chips 4px; buttons 8px (no pills). */
-  --radius: 0.375rem;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
 
-  --sidebar: #1d2f0a;
-  --sidebar-foreground: #fbf8ef;
-  --sidebar-primary: #e0a82e;
-  --sidebar-primary-foreground: #3a2a05;
-  --sidebar-accent: rgb(224 168 46 / 0.16);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(246 242 228 / 0.15);
-  --sidebar-ring: #e0a82e;
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
-  /* Brand tokens that have no shadcn slot. Gold is rationed. */
-  --forest-deep: #1d2f0a;
-  --forest-soft: #4a6b22;
-  --gold: #e0a82e;
-  --gold-deep: #b0761a;
-  --cream-deep: #f2eddc;
-  --line-soft: #efeadb;
-  --muted-2: #8c8a76;
-
-  /* Status pairs (foreground / background). */
-  --status-pass: #2c6430;
-  --status-pass-bg: #e7f0e2;
-  --status-fail: #9e2e1c;
-  --status-fail-bg: #fae7e1;
-  --status-inc: #8a6206;
-  --status-inc-bg: #fbf0d6;
-  --status-enrolled: #2a4c6b;
-  --status-enrolled-bg: #e4edf4;
-  --status-neutral: #5c5a4c;
-  --status-neutral-bg: #ece8da;
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
 }
 
-@theme inline {
-  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --font-heading: "Syne Variable", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --code-bg: #1f2028;
+    --accent: #c084fc;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-border: rgba(192, 132, 252, 0.5);
+    --social-bg: rgba(47, 48, 58, 0.5);
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  }
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-
-  --color-forest-deep: var(--forest-deep);
-  --color-forest-soft: var(--forest-soft);
-  --color-gold: var(--gold);
-  --color-gold-deep: var(--gold-deep);
-  --color-cream-deep: var(--cream-deep);
-  --color-line-soft: var(--line-soft);
-  --color-muted-2: var(--muted-2);
-  --color-status-pass: var(--status-pass);
-  --color-status-pass-bg: var(--status-pass-bg);
-  --color-status-fail: var(--status-fail);
-  --color-status-fail-bg: var(--status-fail-bg);
-  --color-status-inc: var(--status-inc);
-  --color-status-inc-bg: var(--status-inc-bg);
-  --color-status-enrolled: var(--status-enrolled);
-  --color-status-enrolled-bg: var(--status-enrolled-bg);
-  --color-status-neutral: var(--status-neutral);
-  --color-status-neutral-bg: var(--status-neutral-bg);
-
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 8px;
+  #social .button-icon {
+    filter: invert(1) brightness(2);
+  }
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
+#root {
+  width: 1126px;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  border-inline: 1px solid var(--border);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
   }
-  html {
-    font-family: var(--font-sans);
+}
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
   }
-  body {
-    @apply bg-background text-foreground;
-    margin: 0;
-    font-size: 15px;
-    line-height: 1.55;
-    font-variant-numeric: tabular-nums;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-  }
-  h1,
-  h2,
-  h3 {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  /* Stroke weight used by the prototype icon family. */
-  svg.lucide {
-    stroke-width: 1.6;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      scroll-behavior: auto !important;
-      transition: none !important;
-      animation: none !important;
-    }
-  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
 }
