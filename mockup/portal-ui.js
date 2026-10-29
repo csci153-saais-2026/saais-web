@@ -12,6 +12,65 @@
   if (!e.target.closest('a[href$="Login.dc.html"]')) return;
   try { sessionStorage.removeItem('saais-session'); localStorage.removeItem('saais-session-keep'); } catch (_) {}
  }, true);
+ /* Notifications: shared sample data and read state. The bell popover shows the latest few; Notifications.html lists them all.
+    Read state persists per browser (saais-notifications-v1). In production these come from the notifications service. */
+ const NOTIF_BASE = (document.currentScript && document.currentScript.src) || location.href;
+ const NOTIF_DATA = {
+  student: [
+   ['st1', 'Your adviser added an advising note', 'Prof. Ramon Reyes wrote a note about your 2nd Semester plan.', '2 hours ago', 'Student/StudentDashboard.html', 'note'],
+   ['st2', 'Grade flag resolved', 'Your flag on CSci 102 was reviewed and the grade was corrected.', 'Yesterday', 'Student/StudentGrades.html', 'grade'],
+   ['st3', 'Midterm grades posted', 'Midterm grades for 1st Semester 2026-2027 are now in your record.', '3 days ago', 'Student/StudentGrades.html', 'grade'],
+   ['st4', 'INC deadline reminder', 'Your INC in CSci 102 must be completed within 30 days.', '5 days ago', 'Student/StudentGrades.html', 'alert']
+  ],
+  adviser: [
+   ['ad1', 'New grade flag from an advisee', 'Maria Isabel Bautista flagged her grade in CSci 102.', '1 hour ago', 'Adviser/AdviserGradeFlags.dc.html', 'flag'],
+   ['ad2', 'Grade import saved', '22 rows were saved from grades-2026-1st-sem.json. 2 rows were rejected.', 'Yesterday', 'Adviser/AdviserImportGrades.dc.html', 'import'],
+   ['ad3', 'INC deadline in 14 days', 'Ben Lopez has a pending INC in CSci 22.', '2 days ago', 'Adviser/AdviserEncodeGrades.dc.html', 'alert'],
+   ['ad4', 'Advisee added to your list', 'Dino Castillo was assigned to you by the Department Head.', '6 days ago', 'Adviser/AdviserAdvisees.dc.html', 'person']
+  ],
+  head: [
+   ['hd1', 'Curriculum transfer awaiting review', 'An adviser endorsed a request to move a student to BSCS 2025-present.', '3 hours ago', 'Department Head/CurriculumTransfers.dc.html', 'transfer'],
+   ['hd2', 'Students without an adviser', '2 students in your department have no active adviser.', 'Yesterday', 'Department Head/AdviserAssignments.dc.html', 'person'],
+   ['hd3', 'Grade encoding period closes soon', 'The 1st Semester encoding period closes in 7 days.', '4 days ago', 'Department Head/AcademicTerms.dc.html', 'alert']
+  ],
+  dean: [
+   ['dn1', 'Faculty report ready', 'The 1st Semester faculty report is ready for review.', '2 hours ago', 'dean:Reports', 'report'],
+   ['dn2', 'Department report updated', 'DCST updated its department report.', '2 days ago', 'dean:Reports', 'report']
+  ],
+  admin: [
+   ['am1', 'Invitation accepted', 'A newly provisioned adviser set their password.', '1 hour ago', 'SystemAdmin/AdminAccountsRoles.dc.html', 'person'],
+   ['am2', 'Invitation expiring', '3 invitations expire in 2 days.', 'Yesterday', 'SystemAdmin/AdminAccountsRoles.dc.html', 'alert']
+  ],
+  staff: [
+   ['sf1', 'Adviser reassignment pending', '4 students are waiting for an adviser.', '5 hours ago', 'Department Staff/AdviserAssignments.dc.html', 'person'],
+   ['sf2', 'Course catalog change logged', 'A course was added to the catalog.', '3 days ago', 'Department Staff/CourseCatalog.dc.html', 'report']
+  ]
+ };
+ /* 'dean:Name' resolves to the Dean folder the user is in (DeanDH files are DHDean*, DeanAdviser files Dean*). */
+ const notifPath = h => /^dean:/.test(h) ? (/\/Dean\/DeanDH\//.test(decodeURIComponent(location.pathname)) ? 'Dean/DeanDH/DHDean' : 'Dean/DeanAdviser/Dean') + h.slice(5) + '.dc.html' : h;
+ const NOTIF_KEY = 'saais-notifications-v1';
+ const notifRole = () => {
+  const p = decodeURIComponent(location.pathname), q = /[?&]role=([a-z]+)/.exec(location.search);
+  if (q && NOTIF_DATA[q[1]]) return q[1];
+  return /\/Student\//.test(p) ? 'student' : /\/Department Staff\//.test(p) ? 'staff' : /\/Department Head\//.test(p) ? 'head' : /\/Dean\//.test(p) ? 'dean' : /\/SystemAdmin\//.test(p) ? 'admin' : 'adviser';
+ };
+ const notifRead = () => { try { return JSON.parse(localStorage.getItem(NOTIF_KEY)) || {}; } catch (_) { return {}; } };
+ const notifWrite = r => { try { localStorage.setItem(NOTIF_KEY, JSON.stringify(r)); } catch (_) {} };
+ window.SAAIS_NOTIFS = {
+  role: notifRole,
+  list: role => (NOTIF_DATA[role || notifRole()] || []).map(n => ({ id: n[0], title: n[1], body: n[2], when: n[3], href: n[4] ? new URL(notifPath(n[4]), new URL('./', NOTIF_BASE)).href : '', kind: n[5], read: !!notifRead()[n[0]] })),
+  unread() { return this.list().filter(n => !n.read).length; },
+  markRead(id) { const r = notifRead(); r[id] = 1; notifWrite(r); window.dispatchEvent(new Event('saais-notifications')); },
+  markAll() { const r = notifRead(); this.list().forEach(n => { r[n.id] = 1; }); notifWrite(r); window.dispatchEvent(new Event('saais-notifications')); },
+  /* The Notifications page lives in the signed-in portal, so the link goes to that portal's own copy. */
+  allUrl() {
+   const p = decodeURIComponent(location.pathname);
+   const file = /\/Student\//.test(p) ? 'Student/StudentNotifications.html' : /\/Department Staff\//.test(p) ? 'Department Staff/Notifications.dc.html' : /\/Department Head\//.test(p) ? 'Department Head/Notifications.dc.html' :
+    /\/Dean\/DeanDH\//.test(p) ? 'Dean/DeanDH/DHAdviserNotifications.dc.html' : /\/Dean\/DeanAdviser\//.test(p) ? 'Dean/DeanAdviser/DeanAdviserNotifications.dc.html' :
+    /\/SystemAdmin\//.test(p) ? 'SystemAdmin/AdminNotifications.dc.html' : 'Adviser/AdviserNotifications.dc.html';
+   return new URL(file, new URL('./', NOTIF_BASE)).href;
+  }
+ };
  function init() {
   const sidebar=document.querySelector('aside');
   if(!sidebar || document.body.classList.contains('portal-page')) return;
@@ -46,9 +105,22 @@
    toggle.querySelector('svg').setAttribute('aria-hidden','true');
    const popover=document.createElement('section');popover.id='portal-notifications';popover.className='portal-notification-popover';popover.hidden=true;
    popover.setAttribute('aria-labelledby','portal-notifications-title');
-   popover.innerHTML='<h2 id="portal-notifications-title">Notifications</h2><p>No new notifications.</p>';
+   const N=window.SAAIS_NOTIFS,badge=document.createElement('span');badge.className='portal-notification-badge';badge.hidden=true;toggle.append(badge);
+   const render=()=>{
+    const all=N.list(),unread=all.filter(n=>!n.read).length,esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    badge.textContent=unread>9?'9+':String(unread);badge.hidden=!unread;
+    toggle.setAttribute('aria-label','Notifications'+(unread?', '+unread+' unread':''));
+    popover.innerHTML='<div class="portal-notification-head"><h2 id="portal-notifications-title">Notifications</h2>'+(unread?'<button type="button" data-mark-all>Mark all as read</button>':'')+'</div>'+
+     (all.length?'<ul class="portal-notification-list">'+all.slice(0,4).map(n=>'<li><a class="portal-notification-item'+(n.read?'':' is-unread')+'" href="'+esc(n.href||N.allUrl())+'" data-id="'+esc(n.id)+'"><span class="portal-notification-dot" aria-hidden="true"></span><span><strong>'+esc(n.title)+'</strong><small>'+esc(n.when)+'</small></span></a></li>').join('')+'</ul>':'<p>No new notifications.</p>')+
+     '<a class="portal-notification-all" href="'+esc(N.allUrl())+'">See all notifications</a>';
+   };
+   render();window.addEventListener('saais-notifications',render);
    notifications.replaceChildren(toggle,popover);if(!notifications.parentElement)header.append(notifications);
-   const setNotifications=open=>{popover.hidden=!open;toggle.setAttribute('aria-expanded',String(open));};
+   const setNotifications=open=>{if(open)render();popover.hidden=!open;toggle.setAttribute('aria-expanded',String(open));};
+   popover.addEventListener('click',event=>{
+    if(event.target.closest('[data-mark-all]')){N.markAll();render();return;}
+    const item=event.target.closest('.portal-notification-item');if(item)N.markRead(item.dataset.id);
+   });
    toggle.addEventListener('click',()=>setNotifications(popover.hidden));
    document.addEventListener('click',event=>{if(!notifications.contains(event.target))setNotifications(false);});
    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!popover.hidden){setNotifications(false);toggle.focus();}});

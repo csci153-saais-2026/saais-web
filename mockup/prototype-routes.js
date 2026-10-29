@@ -51,6 +51,41 @@ window.SAAIS_PORTALS={
     }
   ],
   "routes": {
+    "student/notifications": {
+      "file": "Student/StudentNotifications.html",
+      "title": "Notifications · SAAIS",
+      "role": "student"
+    },
+    "adviser/notifications": {
+      "file": "Adviser/AdviserNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "adviser"
+    },
+    "department-head/notifications": {
+      "file": "Department Head/Notifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "department-head"
+    },
+    "department-staff/notifications": {
+      "file": "Department Staff/Notifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "department-staff"
+    },
+    "system-admin/notifications": {
+      "file": "SystemAdmin/AdminNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "system-admin"
+    },
+    "dean-adviser/notifications": {
+      "file": "Dean/DeanAdviser/DeanAdviserNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "dean-adviser"
+    },
+    "dean-dh/notifications": {
+      "file": "Dean/DeanDH/DHAdviserNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "dean-dh"
+    },
     "student/workspace": {
       "file": "Student/Student.html",
       "title": "Student portal · SAAIS",

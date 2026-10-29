@@ -77,3 +77,24 @@
 }
 @media(prefers-reduced-motion:reduce) { .portal-page * { scroll-behavior:auto!important; transition:none!important; } }
 @media print { .portal-sidebar,.portal-topbar,.portal-menu-open,.portal-backdrop { display:none!important; } .portal-main { padding:0!important; } }
+
+.portal-topbar .portal-notification-toggle { position:relative; }
+.portal-notification-badge { position:absolute; top:4px; right:3px; min-width:16px; height:16px; padding:0 4px; box-sizing:border-box; border-radius:8px; background:#9E2E1C; color:#fff; font:600 10.5px/16px 'IBM Plex Sans','Segoe UI',sans-serif; text-align:center; }
+.portal-notification-badge[hidden] { display:none!important; }
+.portal-topbar .portal-notification-popover { width:360px; padding:0; }
+.portal-notification-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px 10px; }
+.portal-topbar .portal-notification-head h2 { margin:0; }
+.portal-notification-head button { border:0; background:none; padding:4px 0; color:#2F4A12; font:600 12.5px 'IBM Plex Sans','Segoe UI',sans-serif; cursor:pointer; }
+.portal-notification-head button:hover { text-decoration:underline; }
+.portal-notification-list { list-style:none; margin:0; padding:0; border-top:1px solid #EFEADB; }
+.portal-notification-list li + li { border-top:1px solid #EFEADB; }
+.portal-notification-item { display:flex; align-items:flex-start; gap:10px; padding:11px 18px; color:#16200C; text-decoration:none; }
+.portal-notification-item:hover { background:#F7F3E6; }
+.portal-notification-item strong { display:block; font:500 13.5px/1.4 'IBM Plex Sans','Segoe UI',sans-serif; }
+.portal-notification-item.is-unread strong { font-weight:600; }
+.portal-notification-item small { display:block; margin-top:2px; color:#8C8A76; font:400 12px/1.4 'IBM Plex Sans','Segoe UI',sans-serif; }
+.portal-notification-dot { flex-shrink:0; width:8px; height:8px; margin-top:6px; border-radius:50%; background:transparent; }
+.portal-notification-item.is-unread .portal-notification-dot { background:#E0A82E; }
+.portal-notification-all { display:block; padding:12px 18px; border-top:1px solid #EFEADB; color:#2F4A12; font:600 13.5px 'IBM Plex Sans','Segoe UI',sans-serif; text-align:center; text-decoration:none; }
+.portal-notification-all:hover { background:#F7F3E6; }
+.portal-topbar .portal-notification-popover > p { padding:4px 18px 16px; }
