@@ -388,6 +388,36 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
                    ['CSci 33', 'Computer Organization and Architecture'], ['CSci 34', 'Operating Systems'], ['Math 12', 'Calculus II']];
     var ELECTIVES = [['CSci 51', 'Web Systems and Technologies'], ['CSci 52', 'Mobile Application Development'], ['CSci 53', 'Machine Learning Fundamentals'],
                      ['CSci 54', 'Computer Graphics'], ['CSci 55', 'Information Assurance and Security']];
+    /* Prerequisite override: adding a course whose prerequisites are not yet passed asks Continue / Cancel */
+    var PREREQ = { 'CSci 22': ['CSci 21'], 'CSci 31': ['CSci 22'], 'CSci 32': ['CSci 22'], 'CSci 33': ['CSci 31'], 'CSci 34': ['CSci 33'],
+                   'CSci 51': ['CSci 31'], 'CSci 52': ['CSci 31'], 'CSci 53': ['CSci 32'], 'CSci 54': ['CSci 31'], 'CSci 55': ['CSci 34'] };
+    var OVR = {}, preDlg = null, preGo = null;
+    var codeOf = function (r) { return /^CS Elective/.test(r[0]) ? (r[1] || '').split(' ').slice(0, 2).join(' ') : r[0]; };
+    var passedCodes = function () {
+      capture();
+      var done = {};
+      Object.keys(DATA[cur.adv]).forEach(function (t) { DATA[cur.adv][t].forEach(function (r) { var f = parseFloat(r[4]); if (r[4] && !isNaN(f) && f <= 3) done[codeOf(r)] = 1; }); });
+      return done;
+    };
+    var askPrereq = function (course, missing, go) {
+      if (!preDlg) {
+        preDlg = document.createElement('dialog');
+        preDlg.setAttribute('aria-labelledby', 'pre-title');
+        preDlg.style.cssText = 'width:min(520px,calc(100% - 32px));border:1px solid #E1DBC6;border-radius:6px;padding:0;color:#16200C;background:#fff;box-shadow:0 24px 80px rgba(22,32,12,.22)';
+        preDlg.innerHTML =
+          '<div style="padding:22px 24px 14px"><h2 id="pre-title" class="dsp" style="font-size:22px">Prerequisite not met</h2>' +
+          '<p id="pre-text" style="font-size:14px;color:#6E6C58;margin-top:10px;line-height:1.6"></p></div>' +
+          '<div style="padding:16px 24px;border-top:1px solid #EFEADB;display:flex;justify-content:flex-end;gap:12px">' +
+            '<button type="button" id="pre-cancel" class="btns" style="border-radius:8px;font-family:inherit;font-weight:600;cursor:pointer;padding:10px 20px;font-size:14px;background:#fff;color:#16200C;border:1px solid #E1DBC6">Cancel</button>' +
+            '<button type="button" id="pre-ok" style="border-radius:8px;font-family:inherit;font-weight:600;cursor:pointer;padding:10px 20px;font-size:14px;background:#E0A82E;color:#3A2A05;border:1px solid #E0A82E">Continue with override</button></div>';
+        document.body.appendChild(preDlg);
+        $('pre-cancel').addEventListener('click', function () { preGo = null; preDlg.close(); });
+        $('pre-ok').addEventListener('click', function () { var g = preGo; preGo = null; preDlg.close(); if (g) g(); });
+      }
+      preGo = go;
+      $('pre-text').innerHTML = '<b>' + esc(course) + '</b> requires <b>' + esc(missing.join(', ')) + '</b>, which ' + (missing.length === 1 ? 'has' : 'have') + ' not been passed yet for ' + esc(NAMES[cur.adv]) + '. Continue to add it anyway as a prerequisite override, or cancel to choose another course.';
+      preDlg.showModal();
+    };
     var addDlg = null, rowCss = 'display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px;border:1px solid #E1DBC6;border-radius:6px;transition:background .12s,border-color .12s';
     var lblCss = 'display:flex;align-items:center;gap:14px;font-size:14.5px;cursor:pointer;flex:1;min-width:0';
     var addDialog = function () {
@@ -436,10 +466,17 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
           if (!pick) { err.textContent = 'Choose an elective course for ' + r.value + '.'; err.hidden = false; return; }
           c = r.value; s = pick;
         } else { c = r.value; s = r.dataset.title; }
-        $('enc-body').insertAdjacentHTML('beforeend', rowHtml([c, s, '', '', '', '']));
-        addDlg.close();
-        $('enc-body').lastChild.querySelector('.enc-ins').focus();
-        say($('enc-msg'), 'ok', '<b>' + esc(c) + '</b> added. Enter its grades, then save.');
+        var key = r.dataset.elective ? s.split(' ').slice(0, 2).join(' ') : c, done = passedCodes(),
+            miss = (PREREQ[key] || []).filter(function (p) { return !done[p]; });
+        var finish = function (over) {
+          $('enc-body').insertAdjacentHTML('beforeend', rowHtml([c, s, '', '', '', '']));
+          if (over) OVR[cur.adv + '|' + cur.term + '|' + c] = miss.join(', ');
+          addDlg.close();
+          $('enc-body').lastChild.querySelector('.enc-ins').focus();
+          say($('enc-msg'), over ? 'warn' : 'ok', '<b>' + esc(c) + '</b> added' + (over ? ' with a prerequisite override (' + esc(miss.join(', ')) + ' not passed)' : '') + '. Enter its grades, then save.');
+        };
+        if (miss.length) return askPrereq(c, miss, function () { finish(true); });
+        finish(false);
       });
       return addDlg;
     };
@@ -484,7 +521,8 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       }
       UI.enc = JSON.parse(JSON.stringify(DATA)); saveUI();
       var graded = rows.filter(function (r) { return r[3] || r[4]; }).length;
-      audit('Change', NAMES[cur.adv], 'Saved ' + graded + ' graded course' + (graded === 1 ? '' : 's') + ' for ' + $('enc-term').options[$('enc-term').selectedIndex].text, SIDS[cur.adv], 'Saved grades');
+      var ovr = rows.filter(function (r) { return OVR[cur.adv + '|' + cur.term + '|' + r[0]]; }).map(function (r) { return r[0] + ' (' + OVR[cur.adv + '|' + cur.term + '|' + r[0]] + ' not passed)'; });
+      audit('Change', NAMES[cur.adv], 'Saved ' + graded + ' graded course' + (graded === 1 ? '' : 's') + ' for ' + $('enc-term').options[$('enc-term').selectedIndex].text + (ovr.length ? '; prerequisite override: ' + ovr.join(', ') : ''), SIDS[cur.adv], 'Saved grades');
       say($('enc-msg'), 'ok', 'Saved ' + graded + ' graded course' + (graded === 1 ? '' : 's') + ' for <b>' + esc(NAMES[cur.adv]) + '</b> · ' + esc($('enc-term').options[$('enc-term').selectedIndex].text) + '. GWA is recomputed on save.');
     });
   }
