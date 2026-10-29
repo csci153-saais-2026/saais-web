@@ -41,20 +41,18 @@
   download.addEventListener('click', function () {
     var text = function (el) { return (el ? el.textContent : '').trim().replace(/\s+/g, ' '); };
     var name = select.value, d = DEPTS[name];
-    var report = {
+    var ctx = window.DepartmentPDF.context('dean', { dept: name === 'All departments' ? '' : name, footerPrefix: 'Fictional sample records | Reference date: 28 October 2026' });
+    var report = Object.assign({
       title: 'Faculty reports',
-      subtitle: 'Faculty of Computing | ' + name + ' | read-only',
-      crumb: 'SAAIS  /  DEAN  /  FACULTY OF COMPUTING',
-      footer: 'Fictional sample records | Reference date: 28 October 2026',
+      subtitle: name + ' | read-only',
       stats: [].slice.call(main.querySelectorAll('.stat')).map(function (s) { return { label: text(s.querySelector('.stat-label')), value: text(s.querySelector('.stat-value')) }; }),
       sections: [
         { title: text(main.querySelector('.card-head h2')), headers: ['Grade range', 'Share of final grades'], rows: [].slice.call(main.querySelectorAll('.bar-row')).map(function (r) { return [text(r.firstElementChild), text(r.querySelector('.pct'))]; }) },
         { title: 'GWA by batch and curriculum version', headers: ['Batch', 'Curriculum', 'Students', 'Mean GWA'], rows: d.rows.map(function (r) { return [r[0], r[1], String(r[2]), r[3]]; }) }
       ]
-    };
-    var url = URL.createObjectURL(new Blob([window.DepartmentPDF.create(report)], { type: 'application/pdf' }));
-    var a = document.createElement('a'); a.href = url; a.download = 'SAAIS-faculty-reports' + (name === 'All departments' ? '' : '-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '.pdf';
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Dr. Paz Villanueva', 'View', '', 'Exported faculty report (' + name + ') as PDF');
+    }, ctx);
+    window.DepartmentPDF.preview(report, 'SAAIS-faculty-reports' + (name === 'All departments' ? '' : '-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '.pdf', function () {
+      if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Dr. Paz Villanueva', 'View', '', 'Exported faculty report (' + name + ') as PDF');
+    });
   });
 })();

@@ -218,6 +218,16 @@
   }
 
   /* ---------- compact checklist download ---------- */
+  /* Letterhead and signatories follow the student's department and assigned adviser (see DepartmentPDF.context). */
+  function studentContext(nm, id) {
+    var sid = id ? id.textContent.trim() : '';
+    var pdf = window.DepartmentPDF.context('student', { studentId: sid, footerPrefix: 'Not an official record' });
+    return { sid: sid, pdf: pdf, adviser: pdf.signatories[0].name };
+  }
+  function studentInfo(nm, id, ctx) {
+    return [['Name', nm ? nm.textContent.trim() : ''], ['Student no.', ctx.sid], ['Program', 'BS Computer Science'], ['Curriculum', '2023-2024'], ['Adviser', ctx.adviser || '-']];
+  }
+
   function downloadChecklist(main) {
     var earned = 0, req = 0;
     var sections = [].slice.call(main.querySelectorAll('section.su-collapsible')).map(function (s) {
@@ -229,16 +239,14 @@
       return { title: s.querySelector('h2').textContent.trim(), headers: ['Code', 'Title', 'Units', 'Grade', 'Status'], rows: rows };
     });
     var nm = document.querySelector('#me-btn > div:nth-child(2) > div:first-child'), id = document.querySelector('#me-btn > div:nth-child(2) > div:last-child');
-    var report = {
-      title: 'Curriculum checklist',
-      subtitle: 'BS Computer Science | ' + (nm ? nm.textContent.trim() : '') + ' | ' + (id ? id.textContent.trim() : '') + ' | Curriculum 2023-2024',
-      crumb: 'SAAIS  /  STUDENT  /  DCST',
-      footer: 'Not an official record | Generated ' + today(),
+    var ctx = studentContext(nm, id);
+    var report = Object.assign({
+      title: 'Program checklist',
+      info: studentInfo(nm, id, ctx),
       stats: [{ label: 'Units earned', value: earned + ' of ' + req }],
       sections: sections
-    };
-    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '2023-04412', 'Downloaded checklist');
-    savePdf(report, 'SAAIS-curriculum-checklist.pdf');
+    }, ctx.pdf);
+    savePdf(report, 'SAAIS-curriculum-checklist.pdf', function () { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '2023-04412', 'Downloaded checklist'); });
   }
 
   function downloadGrades(main) {
@@ -250,21 +258,17 @@
       });
       return { title: s.querySelector('h2').textContent.trim() + ' | ' + s.querySelector('h2 + p').textContent.trim(), headers: ['Code', 'Title', 'Units', 'Midterm', 'Final / completion', 'Status'], rows: rows };
     });
-    savePdf({
+    var ctx = studentContext(nm, id);
+    savePdf(Object.assign({
       title: 'Grade summary',
-      subtitle: 'BS Computer Science | ' + (nm ? nm.textContent.trim() : '') + ' | ' + (id ? id.textContent.trim() : '') + ' | Curriculum 2023-2024',
-      crumb: 'SAAIS  /  STUDENT  /  DCST',
-      footer: 'Not an official record | Generated ' + today(),
+      info: studentInfo(nm, id, ctx),
       stats: [], sections: sections
-    }, 'SAAIS-grade-summary.pdf');
-    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '2023-04412', 'Downloaded grade summary');
+    }, ctx.pdf), 'SAAIS-grade-summary.pdf', function () {
+      if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '2023-04412', 'Downloaded grade summary');
+    });
   }
 
-  function savePdf(report, name) {
-    var url = URL.createObjectURL(new Blob([window.DepartmentPDF.create(report)], { type: 'application/pdf' }));
-    var a = document.createElement('a'); a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-  }
+  function savePdf(report, name, onDownload) { window.DepartmentPDF.preview(report, name, onDownload); }
 
   /* ---------- profile menu (same pattern as Adviser / SystemAdmin) ---------- */
   function setMenu(on) {

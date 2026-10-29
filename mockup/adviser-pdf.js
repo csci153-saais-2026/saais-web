@@ -4,13 +4,11 @@
   const label = el => (el?.innerText || el?.textContent || '').trim().replace(/\s+/g, ' ');
   function download(btn) {
     const scope = btn.closest('[data-view]') || btn.closest('main'), visible = el => !el.closest('[hidden]');
-    const report = {
+    const report = Object.assign({
       title: label(scope.querySelector('h1')),
       subtitle: 'Adviser dashboard | ' + label(scope.querySelector('h1 + p')),
-      crumb: 'SAAIS  /  ADVISER  /  DCST',
-      footer: 'Fictional sample records | Reference date: 19 September 2026',
       stats: [], sections: []
-    };
+    }, root.DepartmentPDF.context('adviser', { footerPrefix: 'Fictional sample records | Reference date: 19 September 2026' }));
     scope.querySelectorAll('.kick').forEach(kick => {
       const card = kick.parentElement;
       if (visible(card) && card.querySelector('.dsp')) report.stats.push({ label: label(kick), value: label(card.querySelector('.dsp')), note: label(card.lastElementChild).replace(/ · View list$/, '') });
@@ -26,9 +24,7 @@
         report.sections.push({ title: title + (term ? ' - ' + label(term) : ''), headers: ['Grade range', 'Share of final grades'], rows: [...dist].map(r => [label(r.firstElementChild), label(r.querySelector('[data-pct]'))]) });
       }
     });
-    const url = URL.createObjectURL(new Blob([root.DepartmentPDF.create(report)], { type: 'application/pdf' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'SAAIS-adviser-' + report.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.pdf';
-    document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+    root.DepartmentPDF.preview(report, 'SAAIS-adviser-' + report.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.pdf');
   }
   root.AdviserPDF = { download };
 })(window);
