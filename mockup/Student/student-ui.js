@@ -1,0 +1,545 @@
+/* Student portal behaviour shared by Student.html and the Student*.html pages:
+   advising-notes modal, collapsible checklist tables, grade flagging, compact checklist download. */
+(function () {
+  if (window.__studentUi) return;
+  window.__studentUi = true;
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('a[href$="Login.dc.html"]')) return;
+    try { sessionStorage.removeItem('saais-session'); localStorage.removeItem('saais-session-keep'); } catch (_) {}
+  }, true);
+  /* Demo data: open any page with ?reset-demo to clear everything saved in this browser (saais-* keys), then reload without the flag. */
+  try {
+    if (/[?&]reset-demo(?:[=&]|$)/.test(location.search)) {
+      Object.keys(localStorage).filter(function (k) { return /^saais[-.]/.test(k); }).forEach(function (k) { localStorage.removeItem(k); });
+      location.replace(location.pathname + location.search.replace(/[?&]reset-demo(=[^&]*)?/, '').replace(/^&/, '?') + location.hash);
+    }
+  } catch (e) {}
+
+  var ADVISER = 'Prof. Ramon Reyes';
+  var NOTES = [
+    { author: 'Prof. Ramon Reyes', date: '17 Sept 2026', text: 'Discussed a manageable course load. Review the CSci 102 (Discrete Structures I) completion requirements before the October deadline.' },
+    { author: 'Prof. Ramon Reyes', date: '14 Aug 2026', text: 'Reviewed the CS Elective 1 mapping and explained how it appears in the curriculum checklist.' },
+    { author: 'Prof. Ramon Reyes', date: '2 Mar 2026', text: 'Accepted Envi 11 as equivalent for the discontinued ScTS 11a. Student informed in person.' }
+  ];
+  var REASONS = ['Incorrect grade', 'Missing grade', 'Wrong course credited', 'Other'];
+  /* Flags persist in localStorage so advisers see them and the student sees the outcome. */
+  var FLAG_KEY = 'saais-grade-flags';
+  function loadFlags() { try { return JSON.parse(localStorage.getItem(FLAG_KEY)) || []; } catch (e) { return window.__suFlags || []; } }
+  function saveFlags() { window.__suFlags = FLAGS; try { localStorage.setItem(FLAG_KEY, JSON.stringify(FLAGS)); } catch (e) {} }
+  var FLAGS = loadFlags();
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function today() { return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+
+  var css = [
+    '.su-chev{display:inline-flex;align-items:center;color:#8C8A76;transition:transform .15s;flex-shrink:0}',
+    '.su-collapsible>.panel-head{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;gap:12px}',
+    '.su-collapsible>.panel-head:hover{background:#F6F1E0}',
+    '.su-collapsible.collapsed>.table-scroll{display:none}',
+    '.su-collapsible.collapsed>.panel-head{border-bottom:0}',
+    '.su-collapsible.collapsed .su-chev{transform:rotate(-90deg)}',
+    '.su-flagcol{width:1%;white-space:nowrap}',
+    '.su-headend{display:flex;align-items:center;gap:18px;margin-left:auto}',
+    '.su-sgwa{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}',
+    '.su-sgwa small{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8C8A76}',
+    '.su-sgwa b{font:700 18px \"Syne\",sans-serif;color:#2F4A12}',
+    '.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:56px}',
+    '@media(max-width:900px){.app .data th.su-flagcol,.app .data td.su-flagcol{padding-right:0}}',
+    '.app .data button.su-flagged{background:#FBF0D6;border-color:#EBDCAE;color:#8A6206}',
+    '.su-fixes{margin:8px 0 0;padding-left:18px;color:#6E6C58;font-size:13.5px;display:grid;gap:6px}',
+    '.dialog-content h3{font-size:15.5px;margin:20px 0 6px}',
+    '.dialog-content>p{margin:0 0 10px}',
+    '.su-list .note-row:last-child{border-bottom:0}',
+    '.su-toggle-row{display:flex;justify-content:flex-end;margin-bottom:12px}',
+    '.side #me-menu a:hover{background:#EFEADB}',
+    '.side #me-btn:hover{background:rgba(224,168,46,0.10) !important}',
+    '.su-photo{display:flex;align-items:center;gap:20px}',
+    '.su-photo-av{width:96px;height:96px;border-radius:50%;background:#E0A82E;color:#3A2A05;display:flex;align-items:center;justify-content:center;font:700 32px "Syne",sans-serif;flex-shrink:0;background-size:cover;background-position:center}',
+    '.su-photo-btns{display:flex;gap:10px;flex-wrap:wrap}',
+    '.su-pad{padding:6px 24px 20px}',
+    '.su-pwgrid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,360px);gap:18px;align-items:start}',
+    '@media(max-width:1100px){.su-pwgrid{grid-template-columns:minmax(0,1fr)}}',
+    '.su-pw{position:relative;display:block;margin-top:6px}',
+    '.su-pw input{width:100%;padding-right:44px}',
+    '.app button.su-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:34px;height:34px;padding:0;border:0;background:transparent;color:#8C8A76;border-radius:4px}',
+    '.app button.su-eye:hover{background:transparent;border:0;color:#16200C}',
+    '.su-hr{border:0;border-top:1px solid #EFEADB;margin:20px 0}',
+    '.su-stack{display:grid;gap:18px}',
+    '.su-rules{list-style:none;margin:18px 0 0;padding:14px 16px;background:#FBF8EF;border:1px solid #EFEADB;border-radius:5px;display:grid;gap:8px}',
+    '.su-rules li{display:flex;align-items:center;gap:9px;font-size:13px;color:#6E6C58}',
+    '.su-rules [data-mark]{width:18px;height:18px;border-radius:50%;border:1.5px solid #E1DBC6;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}',
+    '.su-actions{display:flex;gap:10px;margin-top:20px}',
+    '.su-side{display:grid;gap:14px}',
+    '.su-note{display:flex;align-items:flex-start;gap:11px;border-radius:5px;padding:13px 16px;font-size:13.5px;line-height:1.5}',
+    '.su-gold{background:#FCF4E0;border:1px solid #EBDCAE;color:#7A5406}',
+    '.su-green{background:#E7F0E2;border:1px solid #CBDDC2;color:#2C6430}'
+  ].join('\n');
+  var st = document.createElement('style');
+  st.textContent = css;
+  document.head.appendChild(st);
+
+  /* ---------- dialog (reuses the app's .dialog look) ---------- */
+  var dlg;
+  function showDialog(title, body) {
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.className = 'dialog';
+      document.body.appendChild(dlg);
+      dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+    }
+    dlg.innerHTML = '<header class="dialog-head"><h2>' + esc(title) + '</h2><button type="button" data-su-close>Close</button></header><div class="dialog-content">' + body + '</div>';
+    dlg.setAttribute('aria-label', title);
+    if (!dlg.open) dlg.showModal();
+  }
+
+  /* ---------- advising notes ---------- */
+  /* The student reads the notes the adviser actually wrote: active notes on the adviser's Notes tab and Advising tab. Archived notes are hidden. */
+  function adviserNotes() {
+    var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
+    if (UI['notes-list'] == null && UI['note-list'] == null) return NOTES;
+    var out = [];
+    function read(html, active) {
+      var doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
+      [].slice.call(doc.querySelectorAll('article')).forEach(function (a) {
+        if (active && a.dataset.state && a.dataset.state !== 'active') return;
+        var p = a.querySelector('p'), strong = a.querySelector('strong'), date = a.querySelector('[data-date]') || a.querySelector('span');
+        if (p) out.push({ author: strong ? strong.textContent.trim() : ADVISER, date: date ? date.textContent.trim() : '', text: p.textContent.trim() });
+      });
+    }
+    if (UI['notes-list'] != null) read(UI['notes-list'], true); else out = out.concat(NOTES);
+    if (UI['note-list'] != null) read(UI['note-list'], false);
+    return out;
+  }
+  function openNotes() {
+    var list = adviserNotes();
+    var rows = list.length ? list.map(function (n) {
+      return '<div class="note-row"><p>' + esc(n.text) + '</p><div class="note-meta"><strong>' + esc(n.author || ADVISER) + '</strong> · ' + esc(n.date) + '</div></div>';
+    }).join('') : '<div class="empty">No advising notes right now.</div>';
+    showDialog('Advising notes', '<div class="su-list">' + rows + '</div>');
+  }
+
+  /* ---------- grade flags ---------- */
+  var current = null;
+  function rowInfo(btn) { return { code: btn.dataset.code, title: btn.dataset.title, grade: btn.dataset.grade }; }
+  function isOpen(code) { return FLAGS.some(function (f) { return f.code === code && f.status === 'open'; }); }
+
+  function openFlagForm(btn) {
+    current = rowInfo(btn);
+    var body = '<form data-su-flagform><div class="form-grid">' +
+      '<label class="field">Course<input type="text" value="' + esc(current.code + ' · ' + current.title) + '" disabled></label>' +
+      '<label class="field">Recorded grade<input type="text" value="' + esc(current.grade) + '" disabled></label>' +
+      '<label class="field wide">Reason<select name="reason">' + REASONS.map(function (r) { return '<option>' + r + '</option>'; }).join('') + '</select></label>' +
+      '<label class="field wide">Details<textarea name="details" required></textarea></label></div>' +
+      '<div class="form-footer"><button type="button" data-su-close>Cancel</button><button type="submit" class="primary">Submit flag</button></div></form>';
+    showDialog('Flag a grade', body);
+  }
+
+  function flagBadge(f) {
+    return f.status === 'fixed' ? '<span class="badge passed">Corrected</span>' : f.status === 'rejected' ? '<span class="badge failed">Rejected</span>' : '<span class="badge inc">Under review</span>';
+  }
+  function outcome(f) {
+    if (f.status === 'fixed') return '<p><strong>Adviser:</strong> grade corrected to ' + esc(f.newGrade) + (f.response ? ' · ' + esc(f.response) : '') + '</p>';
+    if (f.status === 'rejected') return '<p><strong>Adviser:</strong> ' + esc(f.response || 'The recorded grade stands.') + '</p>';
+    return '';
+  }
+
+  function openFlagList() {
+    FLAGS = loadFlags();
+    var body = FLAGS.length ? '<div class="su-list">' + FLAGS.map(function (f) {
+      return '<div class="activity-row"><div><strong>' + esc(f.code) + ' · ' + esc(f.title) + '</strong><p>' + esc(f.reason) + ' · recorded grade ' + esc(f.grade) + '</p><p>' + esc(f.details) + '</p><p>Filed ' + esc(f.filed) + '</p>' + outcome(f) + '</div>' + flagBadge(f) + '</div>';
+    }).join('') + '</div>' : '<div class="empty">No grade flags yet.</div>';
+    showDialog('Grade flags', body);
+  }
+
+  function markFlagged() {
+    FLAGS = loadFlags();
+    document.querySelectorAll('[data-flag]').forEach(function (b) {
+      var on = isOpen(b.dataset.code);
+      b.classList.toggle('su-flagged', on);
+      b.textContent = on ? 'Flagged' : 'Flag Grade';
+    });
+    /* A corrected flag updates the grade shown in the Grades table. */
+    FLAGS.forEach(function (f) {
+      if (f.status !== 'fixed' || !f.newGrade) return;
+      var b = document.querySelector('[data-flag][data-code="' + f.code + '"]'), tr = b && b.closest('tr');
+      if (!tr || tr.cells.length < 6) return;
+      tr.cells[3].textContent = f.newGrade;
+      tr.cells[4].innerHTML = parseFloat(f.newGrade) <= 3 ? '<span class="badge passed">Passed</span>' : '<span class="badge failed">Failed</span>';
+    });
+  }
+
+  /* ---------- course info ---------- */
+  var BADGE = { Passed: 'passed', INC: 'inc', Enrolled: 'currently_enrolled', Failed: 'failed' };
+  function openCourseInfo(btn) {
+    var i = JSON.parse(btn.dataset.info), st = i.status[0];
+    var attempts = i.rows.length
+      ? '<div class="table-scroll"><table class="data"><thead><tr>' + ['Attempt', 'Term', 'Midterm', 'Final', 'Completion', 'Instructor', 'Result'].map(function (h) { return '<th scope="col">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        i.rows.map(function (r, n) { var f = r[2], res = f === '5.00' ? 'Failed' : f === 'INC' ? 'INC' : /^\d/.test(f) ? 'Passed' : 'Enrolled'; return '<tr>' + [String(n + 1)].concat(r).map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '<td><span class="badge ' + BADGE[res] + '">' + res + '</span></td></tr>'; }).join('') + '</tbody></table></div>'
+      : '<div class="empty">No attempts recorded yet.</div>';
+    var fixes = i.fixes.length ? '<ul class="su-fixes">' + i.fixes.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' : '<p>No grade fixes recorded.</p>';
+    showDialog(i.title, '<p>' + esc(i.meta) + '</p><p>Status: <span class="badge ' + (BADGE[st] || 'na') + '">' + esc(st) + '</span> &middot; ' + i.rows.length + (i.rows.length === 1 ? ' attempt' : ' attempts') + '</p>' + attempts + '<h3>Grade fix history</h3>' + fixes);
+  }
+
+  /* ---------- checklist: collapsible panels + status filter ---------- */
+  var chevron = '<span class="su-chev" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
+  function semGwa(sec) {
+    var pts = 0, units = 0, passed = 0, total = 0;
+    function n(x) { return String(+x.toFixed(2)); }
+    sec.querySelectorAll('tbody tr').forEach(function (tr) {
+      var c = tr.children, ru = c[1] && c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+      if (ru) { total += +ru[2]; if (c[2] && c[2].textContent.trim() === 'Passed') passed += +ru[2]; }
+      var g = (c[3] && c[3].textContent.match(/grade\s+(\d+(?:\.\d+)?)/)) || null, u = c[1] && c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+      if (!g || !u) return;
+      pts += +g[1] * +u[2]; units += +u[2];
+    });
+    return '<div class="su-sgwa"><small>Passed units</small><b>' + n(passed) + '/' + n(total) + '</b></div><div class="su-sgwa"><small>Total units</small><b>' + n(total) + '</b></div><div class="su-sgwa"><small>Semester GWA</small><b>' + (units ? (pts / units).toFixed(2) : '—') + '</b></div>';
+  }
+  function initCollapsible() {
+    document.querySelectorAll('main section.panel').forEach(function (s) {
+      var head = s.children[0], body = s.children[1];
+      if (!head || !body || !body.classList.contains('table-scroll') || !body.querySelector('[data-flag], td') || s.classList.contains('su-collapsible')) return;
+      if (!s.closest('[data-pg="checklist"], [data-pg="grades"], [data-su-collapse]')) return;
+      s.classList.add('su-collapsible');
+      head.insertAdjacentHTML('beforeend', '<div class="su-headend">' + (s.querySelector('td[data-label="Requirement"]') ? semGwa(s) : '') + chevron + '</div>');
+      head.setAttribute('aria-expanded', 'true');
+    });
+  }
+  function applyFilter(sel) {
+    var v = sel.value, scope = sel.closest('main');
+    scope.querySelectorAll('section.su-collapsible').forEach(function (s) {
+      var any = false;
+      s.querySelectorAll('tbody tr').forEach(function (tr) {
+        var b = tr.querySelector('.badge'), c = b ? b.className.replace('badge', '').trim() : '';
+        var show = v === 'all' || (v === 'open' && c === 'na') || (v === 'passed' && c === 'passed') || c === v;
+        tr.hidden = !show; if (show) any = true;
+      });
+      s.hidden = !any;
+    });
+  }
+
+  /* ---------- compact checklist download ---------- */
+  /* Letterhead and signatories follow the student's department and assigned adviser (see DepartmentPDF.context). */
+  function studentContext(nm, id) {
+    var sid = id ? id.textContent.trim() : '';
+    var pdf = window.DepartmentPDF.context('student', { studentId: sid, footerPrefix: 'Not an official record' });
+    return { sid: sid, pdf: pdf, adviser: pdf.signatories[0].name };
+  }
+  function studentInfo(nm, id, ctx) {
+    return [['Name', nm ? nm.textContent.trim() : ''], ['Student no.', ctx.sid], ['Program', 'BS Computer Science'], ['Curriculum', '2023-2024'], ['Adviser', ctx.adviser || '-']];
+  }
+
+  function downloadChecklist(main) {
+    var earned = 0, req = 0;
+    var sections = [].slice.call(main.querySelectorAll('section.su-collapsible')).map(function (s) {
+      var rows = [].slice.call(s.querySelectorAll('tbody tr')).map(function (tr) {
+        var c = tr.children, u = c[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/) || [0, 0, 0];
+        earned += +u[1]; req += +u[2];
+        return [c[0].querySelector('strong').textContent, c[0].querySelector('.course-title').textContent, u[2], (c[3].textContent.match(/grade\s+([\d.]+)/) || [])[1] || '', c[2].textContent.trim()];
+      });
+      return { title: s.querySelector('h2').textContent.trim(), headers: ['Code', 'Title', 'Units', 'Grade', 'Status'], rows: rows };
+    });
+    var nm = document.querySelector('#me-btn > div:nth-child(2) > div:first-child'), id = document.querySelector('#me-btn > div:nth-child(2) > div:last-child');
+    var ctx = studentContext(nm, id);
+    var report = Object.assign({
+      title: 'Program checklist',
+      info: studentInfo(nm, id, ctx),
+      stats: [{ label: 'Units earned', value: earned + ' of ' + req }],
+      sections: sections
+    }, ctx.pdf);
+    savePdf(report, 'SAAIS-curriculum-checklist.pdf', function () { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '2023-04412', 'Downloaded checklist'); });
+  }
+
+  function downloadGrades(main) {
+    var nm = document.querySelector('#me-btn > div:nth-child(2) > div:first-child'), id = document.querySelector('#me-btn > div:nth-child(2) > div:last-child');
+    var sections = [].slice.call(main.querySelectorAll('section.panel')).filter(function (s) { return s.querySelector('tbody tr'); }).map(function (s) {
+      var rows = [].slice.call(s.querySelectorAll('tbody tr')).map(function (tr) {
+        var c = tr.children;
+        return [c[0].querySelector('strong').textContent, c[0].querySelector('.course-title').textContent, c[1].textContent.trim(), c[2].textContent.trim(), c[3].textContent.trim(), c[4].textContent.trim()];
+      });
+      return { title: s.querySelector('h2').textContent.trim() + ' | ' + s.querySelector('h2 + p').textContent.trim(), headers: ['Code', 'Title', 'Units', 'Midterm', 'Final / completion', 'Status'], rows: rows };
+    });
+    var ctx = studentContext(nm, id);
+    savePdf(Object.assign({
+      title: 'Grade summary',
+      info: studentInfo(nm, id, ctx),
+      stats: [], sections: sections
+    }, ctx.pdf), 'SAAIS-grade-summary.pdf', function () {
+      if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '2023-04412', 'Downloaded grade summary');
+    });
+  }
+
+  function savePdf(report, name, onDownload) { window.DepartmentPDF.preview(report, name, onDownload); }
+
+  /* ---------- profile menu (same pattern as Adviser / SystemAdmin) ---------- */
+  function setMenu(on) {
+    var m = document.getElementById('me-menu'); if (!m) return;
+    m.hidden = !on; document.getElementById('me-btn').setAttribute('aria-expanded', on);
+    document.getElementById('me-chev').style.transform = on ? 'rotate(180deg)' : '';
+  }
+
+  /* ---------- collapse all / expand all ---------- */
+  function panels(main) { return [].slice.call(main.querySelectorAll('section.su-collapsible')).filter(function (s) { return !s.hidden; }); }
+  function syncToggle(main) {
+    var b = main && main.querySelector('[data-su-toggleall]'); if (!b) return;
+    var ps = panels(main), allClosed = ps.length && ps.every(function (s) { return s.classList.contains('collapsed'); });
+    b.textContent = allClosed ? 'Expand all' : 'Collapse all';
+  }
+  function toggleAll(main) {
+    var ps = panels(main), close = !ps.every(function (s) { return s.classList.contains('collapsed'); });
+    ps.forEach(function (s) { s.classList.toggle('collapsed', close); s.children[0].setAttribute('aria-expanded', String(!close)); });
+    syncToggle(main);
+  }
+  function addToggleButtons() {
+    document.querySelectorAll('main').forEach(function (main) {
+      if (main.querySelector('[data-su-toggleall]') || !main.querySelector('section.su-collapsible')) return;
+      var html = '<button type="button" data-su-toggleall>Collapse all</button>', bar = main.querySelector('.toolbar');
+      if (bar) bar.insertAdjacentHTML('beforeend', '<div class="toolbar-actions">' + html + '</div>');
+      else main.querySelector('section.su-collapsible').parentElement.insertAdjacentHTML('afterbegin', '<div class="su-toggle-row">' + html + '</div>');
+    });
+  }
+
+  /* ---------- profile photo ---------- */
+  var PHOTO_KEY = 'saais-student-photo';
+  function getPhoto() { try { return localStorage.getItem(PHOTO_KEY); } catch (e) { return window.__suPhoto || null; } }
+  function setPhoto(v) { window.__suPhoto = v; try { if (v) localStorage.setItem(PHOTO_KEY, v); else localStorage.removeItem(PHOTO_KEY); } catch (e) {} }
+  function applyPhoto() {
+    var p = getPhoto(), els = [].slice.call(document.querySelectorAll('[data-avatar-lg]'));
+    var side = document.querySelector('#me-btn > div:first-child'); if (side) els.push(side);
+    els.forEach(function (el) {
+      if (!el.dataset.ini) el.dataset.ini = el.textContent.trim();
+      el.style.backgroundImage = p ? 'url("' + p + '")' : '';
+      el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center';
+      el.textContent = p ? '' : el.dataset.ini;
+    });
+    document.querySelectorAll('[data-photo-remove]').forEach(function (b) { b.hidden = !p; });
+  }
+  function photoMsg(t, bad) {
+    document.querySelectorAll('[data-photo-msg]').forEach(function (m) { m.textContent = t; m.style.color = bad ? '#9E2E1C' : ''; });
+  }
+  function handlePhoto(input) {
+    var f = input.files && input.files[0]; input.value = '';
+    if (!f) return;
+    if (!/^image\/(png|jpeg)$/.test(f.type)) return photoMsg('Choose a JPG or PNG image.', true);
+    if (f.size > 2 * 1024 * 1024) return photoMsg('That image is over 2 MB. Choose a smaller one.', true);
+    var r = new FileReader();
+    r.onload = function () { setPhoto(r.result); applyPhoto(); photoMsg('Photo updated.'); };
+    r.readAsDataURL(f);
+  }
+
+  /* ---------- adviser decisions that reach the student ---------- */
+  function readAdv() { try { return JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { return window.__saaisUI || {}; } }
+  function readMgmt() { try { return JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}; } catch (e) { return window.__saaisMgmt || {}; } }
+  function statusOf(fin, mid) {
+    if (fin === 'INC') return ['inc', 'INC'];
+    if (fin === 'DR' || mid === 'DR') return ['na', 'Dropped'];
+    if (/^\d(\.\d+)?$/.test(fin)) return parseFloat(fin) <= 3 ? ['passed', 'Passed'] : ['failed', 'Failed'];
+    return null;
+  }
+  /* Grades the adviser encoded or resolved for this student show up in the Grades and Checklist pages. */
+  function applyEncoded() {
+    var UI = readAdv(), enc = UI.enc && UI.enc.maria && UI.enc.maria.t1 || [], resolved = (UI.resolved || []).filter(function (r) { return r.adv === 'maria'; });
+    var done = {};
+    enc.forEach(function (r) { done[r[0]] = { mid: r[3], fin: r[4] }; });
+    resolved.forEach(function (r) { done[r.course] = { mid: '', fin: r.grade }; });
+    Object.keys(done).forEach(function (code) {
+      var g = done[code], st = statusOf(g.fin, g.mid), badge = st ? '<span class="badge ' + st[0] + '">' + st[1] + '</span>' : null;
+      /* Grades page */
+      var fb = document.querySelector('[data-flag][data-code="' + code + '"]'), tr = fb && fb.closest('tr');
+      if (tr && tr.cells.length >= 6) {
+        if (g.mid) tr.cells[2].textContent = g.mid;
+        if (g.fin) tr.cells[3].textContent = g.fin;
+        if (badge) tr.cells[4].innerHTML = badge;
+        fb.dataset.grade = g.fin || (g.mid ? 'mid ' + g.mid : 'No grade yet');
+      }
+      /* Checklist page */
+      [].slice.call(document.querySelectorAll('td[data-label="Requirement"] strong')).forEach(function (el) {
+        if (el.textContent.trim() !== code) return;
+        var row = el.closest('tr'), cells = row.children, units = cells[1].textContent.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+        if (!st) return;
+        if (st[0] === 'passed' && units) cells[1].textContent = units[2] + ' / ' + units[2];
+        cells[2].innerHTML = badge;
+        if (g.fin && /^\d/.test(g.fin)) { var sub = cells[3].querySelector('.course-title'); if (sub) sub.textContent = sub.textContent.replace(/grade\s+\S+$/, 'grade ' + g.fin); }
+        var btn = row.querySelector('[data-info]');
+        if (btn) {
+          try {
+            var info = JSON.parse(btn.dataset.info), last = info.rows[info.rows.length - 1];
+            if (last) { if (g.mid) last[1] = g.mid; if (g.fin) last[2] = g.fin; }
+            info.status = [st[1], st[0] === 'passed' ? 'green' : st[0] === 'failed' ? 'red' : st[0] === 'inc' ? 'amber' : 'neutral'];
+            btn.dataset.info = JSON.stringify(info);
+          } catch (e) {}
+        }
+      });
+    });
+    /* Term summary on the Grades page */
+    var panel = document.querySelector('main[data-su-collapse] section.panel');
+    if (panel && Object.keys(done).length && panel.querySelector('td [data-flag]')) {
+      var pts = 0, units = 0, failed = 0;
+      [].slice.call(panel.querySelectorAll('tbody tr')).forEach(function (row) {
+        var u = parseFloat(row.cells[1].textContent), f = row.cells[3].textContent.trim();
+        if (/^\d(\.\d+)?$/.test(f)) { pts += parseFloat(f) * u; units += u; if (parseFloat(f) > 3) failed += u; }
+      });
+      var sub = panel.querySelector('h2 + p');
+      if (sub && units) sub.textContent = sub.textContent.replace(/Term GWA\s+\S+/, 'Term GWA ' + (pts / units).toFixed(2)).replace(/\d+ failed units/, failed + ' failed units');
+    }
+  }
+
+
+  /* ---------- standing tiles (dashboard + checklist) ---------- */
+  function tile(label) {
+    return [].slice.call(document.querySelectorAll('.stat')).filter(function (t) { var l = t.querySelector('.stat-label'); return l && l.textContent.trim() === label; })[0];
+  }
+  function setTile(label, value, note) {
+    var t = tile(label); if (!t) return;
+    if (value != null) t.querySelector('.stat-value').textContent = value;
+    if (note != null) t.querySelector('.stat-note').textContent = note;
+  }
+  function applyMetrics() {
+    if (!window.SAAIS_METRICS) return;
+    var m = window.SAAIS_METRICS.maria();
+    /* dashboard */
+    setTile('Cumulative GWA', m.gwa, m.counted + ' counted units');
+    setTile('Units earned', String(m.earned), 'of ' + m.total + ' required units');
+    setTile('Academic standing', m.flagged ? 'Flagged' : 'Good', '12 failed units per term triggers a flag');
+    setTile('Open INC', String(m.openInc), m.openInc ? 'Review completion deadlines' : 'No incomplete grades');
+    /* checklist */
+    setTile('Counted units', String(m.counted));
+    setTile('Year standing', m.yearStanding, m.earned + ' of ' + m.total + ' units earned');
+    setTile('Deficiencies', String(m.defCount), m.defCount ? m.defNote : 'No open deficiencies');
+    /* degree progress */
+    var pr = document.querySelector('.progress-row');
+    if (pr) {
+      var sp = pr.querySelectorAll('.progress-label span'); sp[0].textContent = m.earned + ' units earned'; sp[1].textContent = Math.round(m.pct) + '% of ' + m.total + ' units';
+      pr.querySelector('.progress-track span').style.width = m.pct + '%';
+    }
+    /* "Keep on your radar" */
+    var radar = [].slice.call(document.querySelectorAll('section.panel')).filter(function (p) { var h = p.querySelector('h2'); return h && /Keep on your radar/.test(h.textContent); })[0];
+    if (radar) {
+      var inc = m.deficiencies.filter(function (d) { return d.kind === 'Unresolved INC'; });
+      radar.querySelector('h2 + p').textContent = inc.length ? inc.length + ' incomplete course' + (inc.length === 1 ? '' : 's') + ' to review' : 'Nothing needs your attention';
+      var rows = radar.querySelectorAll('.activity-row');
+      if (!inc.length) { rows.forEach(function (r) { r.remove(); }); if (!radar.querySelector('.empty')) radar.insertAdjacentHTML('beforeend', '<div class="empty">No incomplete grades. Nice work.</div>'); }
+      else if (rows[0] && inc[0].code !== 'CSci 102') rows[0].querySelector('strong').textContent = inc[0].code + ' · Completion due';
+    }
+    /* Course recommendations come from the adviser's term plan */
+    var rec = [].slice.call(document.querySelectorAll('section.panel')).filter(function (p) { var h = p.querySelector('h2'); return h && /Course Recommendations/.test(h.textContent); })[0];
+    if (rec) {
+      var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
+      var items = UI.planItems || [];
+      if (items.length) {
+        var empty = rec.querySelector('.empty'); if (empty) empty.remove();
+        rec.insertAdjacentHTML('beforeend', '<div class="su-list">' + items.map(function (i) { return '<div class="activity-row"><div><strong>' + esc(i.code) + (i.title ? ' · ' + esc(i.title) : '') + '</strong><p>' + esc(i.term) + ' · suggested by ' + ADVISER + '</p></div><span class="badge currently_enrolled">Suggested</span></div>'; }).join('') + '</div>');
+      }
+    }
+  }
+
+  /* ---------- assignment and curriculum history ---------- */
+  function histTable(heads, rows) {
+    return '<div class="table-scroll"><table class="data"><thead><tr>' + heads.map(function (h) { return '<th scope="col">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+  }
+  function openAssignmentHistory() {
+    showDialog('Assignment history', '<p>Every adviser assigned to you, newest first. Past assignments stay on record.</p>' +
+      histTable(['Adviser', 'From', 'To', 'Note'], [['Prof. Ramon Reyes', '12 Jun 2024', 'Present', 'Current adviser'], ['Prof. Lourdes Mendez', '28 Aug 2023', '12 Jun 2024', 'Handed over to Prof. Reyes']]));
+  }
+  function openCurriculumHistory() {
+    var rows = [['BSCS 2018–2024', '1st Sem 2023–2024', 'Midyear 2025', 'Initial assignment'], ['BSCS 2025–present', '1st Sem 2025–2026', 'Present', 'Transfer approved by Dr. Leo Santos, 30 Jul 2025']];
+    var mg = readMgmt(), dec = mg.transfers || {};
+    (readAdv().endorsed || []).forEach(function (en) {
+      var d = dec[en.id];
+      rows.push([en.to, en.date, d ? (d.decision === 'approved' ? 'Present' : 'Not applied') : 'Pending', d ? (d.decision === 'approved' ? 'Transfer approved' : 'Transfer rejected') + ' · ' + d.date + (d.reason ? ' · ' + d.reason : '') : 'Endorsed by ' + en.adviser + ', waiting for the Department Head']);
+    });
+    showDialog('Curriculum history', '<p>The curriculum versions you have followed, and any transfer in progress.</p>' + histTable(['Curriculum', 'From', 'To', 'Note'], rows));
+  }
+
+  /* ---------- wiring ---------- */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.closest('[data-su-close]')) { if (dlg) dlg.close(); return; }
+    if (t.closest('[data-advising-notes]')) return openNotes();
+    if (t.closest('[data-action="assignment-history"]')) return openAssignmentHistory();
+    if (t.closest('[data-action="curriculum-history"]')) return openCurriculumHistory();
+    if (t.closest('[data-grade-flags]')) return openFlagList();
+    var dl = t.closest('[data-download-checklist]');
+    if (dl) return downloadChecklist(dl.closest('main'));
+    var gs = t.closest('[data-action="print"]');
+    if (gs) return downloadGrades(gs.closest('main'));
+    var ci = t.closest('[data-info]');
+    if (ci) return openCourseInfo(ci);
+    var fb = t.closest('[data-flag]');
+    if (fb) return isOpen(fb.dataset.code) ? openFlagList() : openFlagForm(fb);
+    if (t.closest('#me-btn')) { setMenu(document.getElementById('me-menu').hidden); return; }
+    if (!t.closest('#me') || t.closest('#me-menu a')) setMenu(false);
+    if (t.closest('[data-photo-pick]')) { t.closest('.su-photo').querySelector('[data-photo-input]').click(); return; }
+    if (t.closest('[data-photo-remove]')) { setPhoto(null); applyPhoto(); photoMsg('Photo removed.'); return; }
+    var ta = t.closest('[data-su-toggleall]');
+    if (ta) { toggleAll(ta.closest('main')); return; }
+    var mn = t.closest('[data-action="menu"]');
+    if (mn) { var sd = document.querySelector('.side'); sd.classList.toggle('open'); mn.setAttribute('aria-expanded', String(sd.classList.contains('open'))); return; }
+    var h = t.closest('.su-collapsible > .panel-head');
+    if (h) { var c = h.parentElement.classList.toggle('collapsed'); h.setAttribute('aria-expanded', String(!c)); syncToggle(h.closest('main')); }
+  });
+  document.addEventListener('submit', function (e) {
+    if (!e.target.matches('[data-su-flagform]')) return;
+    e.preventDefault();
+    var f = e.target;
+    var nm = document.querySelector('#me-btn > div:nth-child(2) > div:first-child'), id = document.querySelector('#me-btn > div:nth-child(2) > div:last-child');
+    FLAGS = loadFlags();
+    FLAGS.unshift({ id: 'sf' + Date.now(), status: 'open', studentName: nm ? nm.textContent.trim() : 'Student', studentId: id ? id.textContent.trim() : '', code: current.code, title: current.title, grade: current.grade, reason: f.reason.value, details: f.details.value.trim(), filed: today() });
+    saveFlags();
+    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'Change', 'Maria Isabel Bautista', 'Filed a grade flag on ' + current.code + ' (' + f.reason.value + ')', '2023-04412');
+    markFlagged();
+    dlg.close();
+  });
+  document.addEventListener('change', function (e) {
+    if (e.target.matches('[data-photo-input]')) return handlePhoto(e.target); if (e.target.name === 'checklist-filter') { applyFilter(e.target); syncToggle(e.target.closest('main')); } });
+
+
+  /* ---------- change password ---------- */
+  function initPassword() {
+    var $ = function (id) { return document.getElementById(id); };
+    if (!$('pw-form')) return;
+    var EYE = '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>';
+    document.querySelectorAll('[data-reveal]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = $(b.dataset.reveal), on = f.type === 'password';
+        f.type = on ? 'text' : 'password';
+        b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', on ? 'Hide password' : 'Show password');
+        b.querySelector('svg').innerHTML = on ? EYE + '<path d="M4 4l16 16"/>' : EYE;
+      });
+    });
+    document.querySelectorAll('[data-back]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (document.querySelector('.pg')) location.hash = '#/dashboard'; else location.href = 'StudentDashboard.html';
+      });
+    });
+    function rules() {
+      var c = $('pw-cur').value, n = $('pw-new').value, a = $('pw-again').value;
+      var r = { len: n.length >= 12, mix: /[A-Za-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
+      Object.keys(r).forEach(function (k) {
+        var li = document.querySelector('[data-rule="' + k + '"]'), m = li.querySelector('[data-mark]');
+        m.style.background = r[k] ? '#2C6430' : 'transparent'; m.style.borderColor = r[k] ? '#2C6430' : '#E1DBC6';
+        li.style.color = r[k] ? '#2C6430' : '#6E6C58';
+      });
+      return r;
+    }
+    ['pw-cur', 'pw-new', 'pw-again'].forEach(function (id) { $(id).addEventListener('input', rules); });
+    function say(kind, text) {
+      var ok = kind === 'ok', c = ok ? ['#E7F0E2', '#CBDDC2', '#2C6430', 'M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6zM9 12l2.2 2.2L15.5 10'] : ['#FAE7E1', '#EFCFC5', '#9E2E1C', 'M12 3.5l9.5 16.5H2.5zM12 9.5v4.5M12 17h.01'];
+      $('pw-msg').innerHTML = '<div role="status" class="su-note" style="margin-top:18px;background:' + c[0] + ';border:1px solid ' + c[1] + ';color:' + c[2] + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="' + c[3] + '"/></svg><div>' + text + '</div></div>';
+      $('pw-msg').hidden = false;
+    }
+    $('pw-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var r = rules();
+      if (!$('pw-cur').value) { say('no', 'Enter your current password.'); return $('pw-cur').focus(); }
+      if (!(r.len && r.mix && r.diff && r.match)) return say('no', "The new password doesn't meet every requirement below yet.");
+      ['pw-cur', 'pw-new', 'pw-again'].forEach(function (id) { $(id).value = ''; }); rules();
+      say('ok', 'Password updated. Your other devices have been signed out.');
+    });
+  }
+
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
+  window.addEventListener('storage', function (e) { if (e.key === FLAG_KEY) markFlagged(); });
+  function init() { applyEncoded(); applyMetrics(); initCollapsible(); addToggleButtons(); markFlagged(); initPassword(); applyPhoto(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();

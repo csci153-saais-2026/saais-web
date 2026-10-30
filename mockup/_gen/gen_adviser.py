@@ -255,7 +255,7 @@ DETAIL = shell("adviser", "Advisees", ["Adviser portal", "Advisees", "Bautista, 
                + timeline() + '</div>'
                + f'<div style="display: flex; flex-direction: column; gap: 18px">'
                + note("<b>STAT 101</b> INC lapses in 47 days (26 October 2026). After the deadline it is evaluated as 5.00 and moves the student to 6 failed units.", "gold", "clock")
-               + panel("Staff-only notes",
+               + panel("Advising notes",
                        f'<div style="padding: 16px 20px">'
                        f'<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px">'
                        f'{badge("Not visible to the student", FAIL_FG, FAIL_BG)}</div>' +
@@ -299,7 +299,7 @@ def note_entry(author, ini, date, tag, tagfg, tagbg, body, scope=""):
 
 NOTES = shell("adviser", "Advisees", ["Adviser portal", "Advisees", "Bautista, Maria Isabel L.", "Notes"], USER, INI,
               student_header("Notes")
-              + note("Advising notes and attempt remarks are <b>staff-only</b> and append-only. A student session can never retrieve them — the restriction is a row-level security policy, not a UI condition. Entries cannot be edited or deleted once saved.", "gold", "shield")
+              + note("Advising notes are <b>visible to the student</b>; attempt remarks stay <b>staff-only</b>. Both are append-only, and remarks are protected by a row-level security policy, not a UI condition. Entries cannot be edited or deleted once saved.", "gold", "shield")
               + '<div style="display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 18px; '
                 'margin-top: 18px">'
               + panel("Advising notes",
@@ -415,7 +415,7 @@ NOTES_CARD = panel(
                  scope="Attempt · CS 102 · AY 2024–25, 1st Sem")
     + f'<div style="padding: 13px 20px"><a href="#" style="font-size: 12.5px; font-weight: 600">View all 5 notes →</a></div>',
     actions=btn("Add note", "secondary", "note", "sm"),
-    sub="Most recent · staff-only")
+    sub="Most recent · visible to the student")
 
 CHAT_CARD = panel(
     "Advising Assistant",

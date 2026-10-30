@@ -1,0 +1,306 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accounts and roles · SAAIS</title>
+  <script src="../support.js"></script>
+<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script></head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #FBF8EF;
+  color: #16200C;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+p { margin: 0; }
+a { color: #2F4A12; text-decoration: none; }
+a:hover { color: #B0761A; }
+table { border-collapse: collapse; width: 100%; }
+.dsp { font-family: 'Syne', 'Segoe UI', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; }
+.mono { font-family: 'IBM Plex Mono', 'Consolas', monospace; font-variant-ligatures: none; }
+.kick { font-size: 11.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.row:hover { background: #EFEADB; }
+.navi:hover { background: rgba(224,168,46,0.10); }
+.btnp:hover { background: #1D2F0A; }
+.btns:hover { border-color: #2F4A12; }
+.fld { width: 100%; background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 4px; padding: 9px 12px; font-family: inherit; font-size: 14px; color: #16200C; line-height: 1.4; }
+.fld::placeholder { color: #8C8A76; }
+.fld:hover { border-color: #C9C1A6; }
+a:focus-visible, button:focus-visible, .fld:focus-visible, input[type=checkbox]:focus-visible { outline: 2px solid #2F4A12; outline-offset: 2px; }
+.fld:focus { border-color: #2F4A12; }
+[hidden] { display: none !important; }
+dialog::backdrop { background: rgba(22,32,12,0.45); }
+  </style>
+</helmet>
+<div style="display: flex; min-height: 100vh; background: #FBF8EF"><aside style="width: 250px; flex-shrink: 0; background: #1D2F0A; display: flex; flex-direction: column; padding: 22px 12px 18px; position: sticky; top: 0; height: 100vh; align-self: flex-start"><div style="display: flex; align-items: center; gap: 11px; padding: 0 6px 20px"><img src="../logo-mark.png" alt="SAAIS" style="width: 34px; height: 34px; border-radius: 8px"><div><div class="dsp" style="font-size: 19px; color: #FBF8EF; letter-spacing: 0.01em">SAAIS</div><div style="font-size: 10.5px; letter-spacing: 0.11em; text-transform: uppercase; color: rgba(246,242,228,0.55); font-weight: 600">System admin portal</div></div></div><div style="height: 1px; background: rgba(246,242,228,0.14); margin: 0 6px 16px"></div><nav aria-label="System administrator" style="display: flex; flex-direction: column; gap: 2px"><div class="admin-nav-label" style="padding:14px 16px 9px 17px; color:rgba(246,242,228,.55); font-size:10.5px; font-weight:700; line-height:1.5; letter-spacing:.11em; text-transform:uppercase">System Admin</div><a class="navi" href="AdminStudentDirectory.dc.html" data-nav="students" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><circle cx="9" cy="8" r="3.6"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.2a3.6 3.6 0 010 5.6M17.5 20a6.6 6.6 0 00-2.2-4.9"/></svg><span>Student directory</span></a><a class="navi" href="AdminAccountsRoles.dc.html" data-nav="accounts" aria-current="page" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: rgba(224,168,46,0.16); color: #F7E9C4; font-weight: 600"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0115 0"/></svg><span>Accounts and roles</span></a><a class="navi" href="AdminFacultyDepartments.dc.html" data-nav="faculty" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M5.5 20.5V9.5L12 4l6.5 5.5v11"/><path d="M9.5 20.5v-5h5v5M9.5 11.5h.01M14.5 11.5h.01"/></svg><span>Faculty &amp; departments</span></a><a class="navi" href="AdminPrograms.dc.html" data-nav="programs" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M12 4.5L2.5 9.5 12 14.5l9.5-5z"/><path d="M6 12v4.5c1.6 1.5 3.6 2.2 6 2.2s4.4-.7 6-2.2V12"/><path d="M21.5 9.5V15"/></svg><span>Programs</span></a><a class="navi" href="AdminAuditLog.dc.html" data-nav="audit" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg><span>Audit log</span></a><a class="navi" href="AdminSettings.dc.html" data-nav="settings" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v2.4M12 19v2.4M21.4 12H19M5 12H2.6M18.6 5.4l-1.7 1.7M7.1 16.9l-1.7 1.7M18.6 18.6l-1.7-1.7M7.1 7.1L5.4 5.4"/></svg><span>Settings</span></a></nav><div style="flex-grow: 1"></div><div style="height: 1px; background: rgba(246,242,228,0.14); margin: 16px 6px 14px"></div><div id="me" style="position: relative"><div id="me-menu" role="menu" hidden style="position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 6px; box-shadow: 0 8px 24px rgba(22,32,12,0.22)"><a role="menuitem" class="row" href="AdminChangePassword.dc.html" data-pw-link style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; color: #16200C"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><rect x="4.5" y="10" width="15" height="10.5" rx="1.6"/><path d="M8 10V7a4 4 0 018 0v3"/></svg><span>Change password</span></a><div style="height: 1px; background: #EFEADB; margin: 4px 2px"></div><a role="menuitem" class="row" href="../Login.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; color: #9E2E1C"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M9 21H5a1 1 0 01-1-1V4a1 1 0 011-1h4"/><path d="M15.5 16.5L20 12l-4.5-4.5M20 12H9"/></svg><span>Sign out</span></a></div><button type="button" id="me-btn" class="navi" aria-haspopup="menu" aria-expanded="false" aria-controls="me-menu" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 5px; border: 0; background: transparent; font-family: inherit; text-align: left; cursor: pointer"><div style="width: 34px; height: 34px; border-radius: 50%; background: #F2EDDC; color: #1D2F0A; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; letter-spacing: 0.02em">SA</div><div style="min-width: 0; flex-grow: 1"><div style="font-size: 13.5px; font-weight: 600; line-height: 1.25; color: #FBF8EF">System administrator</div><div style="font-size: 11.5px; color: rgba(246,242,228,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">All departments</div></div><span id="me-chev" style="display: flex; transition: transform 0.15s"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="rgba(246,242,228,0.55)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button></div></aside><div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0"><header style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 32px; height: 62px; background: #FFFFFF; border-bottom: 1px solid #E1DBC6; flex-shrink: 0"><div style="display: flex; align-items: center; gap: 9px; font-size: 13.5px"><span style="color: #8C8A76; font-weight: 450">System administrator</span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#E1DBC6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg><span id="crumb" style="color: #16200C; font-weight: 600">Accounts and roles</span></div><div style="display: flex; align-items: center; gap: 16px"><div style="color: #8C8A76"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M18 15V10a6 6 0 10-12 0v5l-1.8 3h15.6z"/><path d="M9.8 21h4.4"/></svg></div></div></header><main style="padding: 30px 32px 40px; flex-grow: 1"><div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px"><div><h1 class="dsp" style="font-size: 30px">Accounts and roles</h1><p style="font-size: 14.5px; color: #6E6C58; margin-top: 6px; max-width: 640px">All departments</p></div><div style="display: flex; gap: 10px; flex-shrink: 0; align-items: center"><button type="button" class="btnp" id="acct-add" aria-haspopup="dialog" aria-controls="acct-modal" style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: #2F4A12; color: #FBF8EF; border: 1px solid #2F4A12"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add account</button></div></div><dialog id="acct-modal" aria-labelledby="acct-modal-title" style="width: min(600px, calc(100vw - 32px)); padding: 0; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; color: #16200C; box-shadow: 0 24px 60px rgba(22,32,12,0.28)"><header style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 16px; border-bottom: 1px solid #EFEADB"><div><h2 id="acct-modal-title" class="dsp" style="font-size: 22px">Add account</h2><p style="font-size: 13px; color: #6E6C58; margin-top: 5px">Pre-register a VSU account and assign its roles.</p></div><button type="button" id="acct-x" aria-label="Close" class="btns" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #6E6C58; cursor: pointer; flex-shrink: 0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><div style="padding: 20px"><div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px"><label for="acct-name" style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Full name</div><input class="fld" id="acct-name" type="text" value="" placeholder="e.g. Prof. Jun Bautista" autocomplete="off"></label><label for="acct-email" style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">VSU email</div><input class="fld" id="acct-email" type="email" value="" placeholder="name@vsu.edu.ph" autocomplete="off"></label></div><div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px"><label for="acct-fac" style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Faculty</div><select class="fld" id="acct-fac"></select></label><label for="acct-dep" style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Department</div><select class="fld" id="acct-dep"></select></label></div><fieldset style="border: 0; padding: 0; margin: 18px 0 0"><legend style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px; padding: 0">Roles</legend><div style="display: flex; gap: 10px; flex-wrap: wrap"><label style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid #E1DBC6; border-radius: 4px; font-size: 13.5px; cursor: pointer; background: #FFFFFF"><input type="checkbox" name="acct-role" value="Department Head" data-tone="amber" style="accent-color: #2F4A12; width: 15px; height: 15px; margin: 0">Department Head</label><label style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid #E1DBC6; border-radius: 4px; font-size: 13.5px; cursor: pointer; background: #FFFFFF"><input type="checkbox" name="acct-role" value="Adviser" data-tone="green" style="accent-color: #2F4A12; width: 15px; height: 15px; margin: 0">Adviser</label><label style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid #E1DBC6; border-radius: 4px; font-size: 13.5px; cursor: pointer; background: #FFFFFF"><input type="checkbox" name="acct-role" value="Department staff" data-tone="blue" style="accent-color: #2F4A12; width: 15px; height: 15px; margin: 0">Department staff</label><label style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid #E1DBC6; border-radius: 4px; font-size: 13.5px; cursor: pointer; background: #FFFFFF"><input type="checkbox" name="acct-role" value="Dean" data-tone="neutral" style="accent-color: #2F4A12; width: 15px; height: 15px; margin: 0">Dean</label><label style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid #E1DBC6; border-radius: 4px; font-size: 13.5px; cursor: pointer; background: #FFFFFF"><input type="checkbox" name="acct-role" value="Student" data-tone="neutral" style="accent-color: #2F4A12; width: 15px; height: 15px; margin: 0">Student</label><label style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid #E1DBC6; border-radius: 4px; font-size: 13.5px; cursor: pointer; background: #FFFFFF"><input type="checkbox" name="acct-role" value="Admin" data-tone="neutral" style="accent-color: #2F4A12; width: 15px; height: 15px; margin: 0">Admin</label></div></fieldset><div id="acct-prog-wrap" style="margin-top: 18px" hidden><label for="acct-prog" style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Program</div><select class="fld" id="acct-prog"></select></label></div><p style="font-size: 12.5px; color: #8C8A76; margin-top: 12px">They sign in with Google using this address. Sign-ins from any other address are rejected.</p><div id="acct-msg" style="margin-top: 14px" hidden></div></div><footer style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; background: #FBF8EF; border-top: 1px solid #EFEADB"><button type="button" class="btns" id=acct-cancel style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: transparent; color: #2F4A12; border: 1px solid transparent">Cancel</button><button type="button" class="btnp" id=acct-save style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: #2F4A12; color: #FBF8EF; border: 1px solid #2F4A12">Add account</button></footer></dialog><div id="acct-done" style="margin-bottom: 18px" hidden></div><section style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden"><header style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #EFEADB"><div><h3 style="font-size: 15.5px">People</h3></div><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #F2EDDC; color: #6E6C58; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span id="acct-count">4</span> accounts</span></header><div style="padding: 0"><table><colgroup><col style="width: 24%"><col style="width: 26%"><col style="width: 24%"><col></colgroup><thead><tr><th scope="col" style="text-align: left; padding: 10px 14px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8C8A76; background: #F2EDDC; border-bottom: 1px solid #E1DBC6; white-space: nowrap">Name</th><th scope="col" style="text-align: left; padding: 10px 14px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8C8A76; background: #F2EDDC; border-bottom: 1px solid #E1DBC6; white-space: nowrap">VSU email</th><th scope="col" style="text-align: left; padding: 10px 14px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8C8A76; background: #F2EDDC; border-bottom: 1px solid #E1DBC6; white-space: nowrap">Faculty / department</th><th scope="col" style="text-align: left; padding: 10px 14px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8C8A76; background: #F2EDDC; border-bottom: 1px solid #E1DBC6; white-space: nowrap">Roles</th></tr></thead><tbody id="acct-body"><tr class="row"><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; align-items: center; gap: 11px"><div style="width: 32px; height: 32px; border-radius: 50%; background: #F2EDDC; color: #2F4A12; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; letter-spacing: 0.02em">LS</div><div style="font-size: 13.5px; font-weight: 600">Dr. Leo Santos</div></div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span class="mono" style="font-size: 13px">leo.santos@vsu.edu.ph</span></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="font-size: 13.5px; font-weight: 600">Computer Science</div><div style="font-size: 12.5px; color: #6E6C58">Faculty of Computer Studies</div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #FBF0D6; color: #8A6206; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #8A6206; flex-shrink: 0"></span>Department Head</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #E7F0E2; color: #2C6430; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2C6430; flex-shrink: 0"></span>Adviser</span></div></td></tr><tr class="row"><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; align-items: center; gap: 11px"><div style="width: 32px; height: 32px; border-radius: 50%; background: #F2EDDC; color: #2F4A12; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; letter-spacing: 0.02em">MR</div><div style="font-size: 13.5px; font-weight: 600">Prof. Mara Reyes</div></div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span class="mono" style="font-size: 13px">mara.reyes@vsu.edu.ph</span></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="font-size: 13.5px; font-weight: 600">Computer Science</div><div style="font-size: 12.5px; color: #6E6C58">Faculty of Computer Studies</div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #E7F0E2; color: #2C6430; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2C6430; flex-shrink: 0"></span>Adviser</span></div></td></tr><tr class="row"><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; align-items: center; gap: 11px"><div style="width: 32px; height: 32px; border-radius: 50%; background: #F2EDDC; color: #2F4A12; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; letter-spacing: 0.02em">RC</div><div style="font-size: 13.5px; font-weight: 600">Rina Cruz</div></div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span class="mono" style="font-size: 13px">rina.cruz@vsu.edu.ph</span></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="font-size: 13.5px; font-weight: 600">Computer Science</div><div style="font-size: 12.5px; color: #6E6C58">Faculty of Computer Studies</div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #E4EDF4; color: #2A4C6B; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2A4C6B; flex-shrink: 0"></span>Department staff</span></div></td></tr><tr class="row"><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; align-items: center; gap: 11px"><div style="width: 32px; height: 32px; border-radius: 50%; background: #F2EDDC; color: #2F4A12; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; letter-spacing: 0.02em">PV</div><div style="font-size: 13.5px; font-weight: 600">Dr. Paz Villanueva</div></div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><span class="mono" style="font-size: 13px">paz.villanueva@vsu.edu.ph</span></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="font-size: 13.5px; font-weight: 600">Computer Science</div><div style="font-size: 12.5px; color: #6E6C58">Faculty of Computer Studies</div></td><td style="text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid #EFEADB; vertical-align: middle"><div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #ECE8DA; color: #5C5A4C; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #5C5A4C; flex-shrink: 0"></span>Dean</span></div></td></tr></tbody></table></div></section></main></div></div>
+</x-dc>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var ICON = {
+    ok: '<path d="M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+    no: '<path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5M12 17h.01"/>'
+  };
+  var C = { ok: ['#E7F0E2', '#CBDDC2', '#2C6430'], no: ['#FAE7E1', '#EFCFC5', '#9E2E1C'] };
+  function say(el, kind, text) {
+    var c = C[kind];
+    el.innerHTML = '<div role="status" style="display:flex;align-items:flex-start;gap:11px;background:' + c[0] + ';border:1px solid ' + c[1] +
+      ';border-radius:5px;padding:13px 16px;color:' + c[2] + ';font-size:13.5px;line-height:1.5"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' +
+      ICON[kind] + '</svg><div>' + text + '</div></div>';
+    el.hidden = false;
+  }
+
+  /* Saved state: System Admin changes persist in this browser (localStorage). */
+  var KEY_ADM = 'saais-admin-ui-v1', ADM = {};
+  try { ADM = JSON.parse(localStorage.getItem(KEY_ADM)) || {}; } catch (e) { ADM = window.__saaisAdm || {}; }
+  var audAdm = function (details) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('System administrator', 'Change', '', details); };
+  var saveADM = function () { window.__saaisAdm = ADM; try { localStorage.setItem(KEY_ADM, JSON.stringify(ADM)); } catch (e) {} };
+  var keepAdm = function (id) {
+    var el = document.getElementById(id); if (!el) return;
+    if (ADM[id] != null) el.innerHTML = ADM[id];
+    new MutationObserver(function () { ADM[id] = el.innerHTML; saveADM(); }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+  };
+  var SETK = 'saais-settings-v1', SET = {};
+  try { SET = JSON.parse(localStorage.getItem(SETK)) || {}; } catch (e) { SET = window.__saaisSettings || {}; }
+  var saveSET = function () { window.__saaisSettings = SET; try { localStorage.setItem(SETK, JSON.stringify(SET)); } catch (e) {} };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
+  function filterRows(body, test) {
+    var n = 0;
+    body.querySelectorAll('tr.row').forEach(function (tr) { var on = test(tr); tr.hidden = !on; if (on) n++; });
+    body.querySelector('[data-empty]').hidden = n > 0;
+    return n;
+  }
+
+  /* Students imported by the Department Head / Staff appear in the directory too. */
+  if ($('stu-body')) {
+    var impStu = []; try { impStu = (JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}).students || []; } catch (e) {}
+    var stpl = $('stu-body').querySelector('tr.row');
+    impStu.forEach(function (s) {
+      if (!stpl) return;
+      var tr = stpl.cloneNode(true), c = tr.children, n = 2025 - (2000 + +s.id.slice(0, 2)) + 1;
+      c[0].querySelector('a').textContent = s.name; c[1].querySelector('.mono').textContent = s.id; c[2].textContent = s.curriculum;
+      c[3].textContent = n <= 1 ? '1st Year' : n === 2 ? '2nd Year' : n === 3 ? '3rd Year' : '4th Year';
+      c[4].querySelector('.mono').textContent = '—'; c[5].firstElementChild.textContent = '0'; c[6].firstElementChild.textContent = '0';
+      tr.dataset.q = (s.name + ' ' + s.id).toLowerCase();
+      var empty = $('stu-body').querySelector('[data-empty]'); if (empty) $('stu-body').insertBefore(tr, empty); else $('stu-body').appendChild(tr);
+    });
+    if ($('stu-count') && impStu.length) $('stu-count').textContent = $('stu-body').querySelectorAll('tr.row').length;
+  }
+  /* Student directory search */
+  if ($('stu-q')) $('stu-q').addEventListener('input', function () {
+    var q = this.value.trim().toLowerCase();
+    $('stu-count').textContent = filterRows($('stu-body'), function (tr) { return !q || tr.dataset.q.indexOf(q) > -1; });
+  });
+
+  /* Audit log filters */
+  if ($('aud-body')) {
+    var run = function () {
+      var p = $('aud-person').value.trim().toLowerCase(), s = $('aud-student').value.trim().toLowerCase(),
+          a = $('aud-action').value, f = $('aud-from').value;
+      $('aud-count').textContent = filterRows($('aud-body'), function (tr) {
+        return (!p || tr.dataset.who.indexOf(p) > -1) && (!s || tr.dataset.student.indexOf(s) > -1) &&
+               (!a || tr.dataset.action === a) && (!f || tr.dataset.date >= f);
+      });
+    };
+    ['aud-person', 'aud-student', 'aud-action', 'aud-from'].forEach(function (id) { $(id).addEventListener('input', run); $(id).addEventListener('change', run); });
+  }
+
+  /* Accounts: add account (modal) */
+  if ($('acct-add')) {
+    var dlg = $('acct-modal');
+    var reset = function () {
+      $('acct-name').value = ''; $('acct-email').value = ''; $('acct-msg').hidden = true;
+      document.querySelectorAll('input[name=acct-role]').forEach(function (c) { c.checked = false; });
+      fillFac(); syncProg();
+    };
+    var ORG = {
+      'Faculty of Computer Studies': { deps: ['Computer Science', 'Information Technology'], progs: ['BSCS · BS Computer Science', 'BSIT · BS Information Technology'] },
+      'Faculty of Arts and Sciences': { deps: ['Mathematics and Statistics', 'Psychology', 'General Education'], progs: [] },
+      'University Administration': { deps: ['Office of the Registrar'], progs: [] }
+    };
+    var opts = function (list, empty) { return list.length ? list.map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') : '<option value="">' + empty + '</option>'; };
+    var fillFac = function () {
+      $('acct-fac').innerHTML = opts(Object.keys(ORG)); fillDep();
+    };
+    var fillDep = function () {
+      var o = ORG[$('acct-fac').value];
+      $('acct-dep').innerHTML = opts(o.deps, 'No departments'); $('acct-prog').innerHTML = opts(o.progs, 'No programs in this faculty');
+    };
+    var syncProg = function () {
+      var stu = Array.prototype.some.call(document.querySelectorAll('input[name=acct-role]'), function (c) { return c.value === 'Student' && c.checked; });
+      $('acct-prog-wrap').hidden = !stu;
+    };
+    $('acct-fac').addEventListener('change', fillDep);
+    document.querySelectorAll('input[name=acct-role]').forEach(function (c) { c.addEventListener('change', syncProg); });
+    fillFac();
+    var close = function () { dlg.close(); };
+    $('acct-add').addEventListener('click', function () { reset(); dlg.showModal(); $('acct-name').focus(); });
+    $('acct-cancel').addEventListener('click', close);
+    $('acct-x').addEventListener('click', close);
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+    dlg.addEventListener('close', function () { $('acct-add').focus(); });
+    var TONE = { amber: ['#FBF0D6', '#8A6206'], green: ['#E7F0E2', '#2C6430'], blue: ['#E4EDF4', '#2A4C6B'], neutral: ['#ECE8DA', '#5C5A4C'] };
+    /* One list of accounts for the prototype: Staff provisioning and Admin both write to it, and both portals read it back. */
+    var ACC_KEY = 'saais-accounts-v1';
+    var accLoad = function () { try { return JSON.parse(localStorage.getItem(ACC_KEY)) || []; } catch (e) { return window.__saaisAcc || []; } };
+    var accSave = function (list) { window.__saaisAcc = list; try { localStorage.setItem(ACC_KEY, JSON.stringify(list)); } catch (e) {} };
+    var acctRow = function (a) {
+      var ini = a.name.replace(/\b(Dr|Prof)\.?\s+/g, '').split(/\s+/); ini = (ini[0][0] + ini[ini.length - 1][0]).toUpperCase();
+      var chips = a.roles.map(function (r) { var t = TONE[r.tone] || TONE.neutral;
+        return '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 8px;border-radius:3px;background:' + t[0] + ';color:' + t[1] +
+          ';font-size:12px;font-weight:600;letter-spacing:0.01em;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:' + t[1] + ';flex-shrink:0"></span>' + esc(r.value) + '</span>'; }).join('');
+      var cell = 'padding:11px 14px;font-size:13.5px;border-bottom:1px solid #EFEADB;vertical-align:middle';
+      var tr = document.createElement('tr'); tr.className = 'row'; tr.dataset.email = a.email;
+      tr.innerHTML = '<td style="' + cell + '"><div style="display:flex;align-items:center;gap:11px"><div style="width:32px;height:32px;border-radius:50%;background:#F2EDDC;color:#2F4A12;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;letter-spacing:0.02em">' + esc(ini) + '</div><div style="font-size:13.5px;font-weight:600">' + esc(a.name) + '</div></div></td>' +
+        '<td style="' + cell + '"><span class="mono" style="font-size:13px">' + esc(a.email) + '</span></td><td style="' + cell + '"><div style="font-size:13.5px;font-weight:600">' + esc(a.dep) + '</div><div style="font-size:12.5px;color:#6E6C58">' + esc(a.fac) + (a.prog ? ' · ' + esc(a.prog) : '') + '</div></td><td style="' + cell + '"><div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></td>';
+      return tr;
+    };
+    var renderAccounts = function () {
+      var have = {}; Array.prototype.forEach.call($('acct-body').children, function (r) { var m = r.querySelector('.mono'); if (m) have[m.textContent.trim().toLowerCase()] = 1; });
+      accLoad().forEach(function (a) { if (!have[a.email.toLowerCase()]) $('acct-body').appendChild(acctRow(a)); });
+      $('acct-count').textContent = $('acct-body').children.length;
+    };
+    renderAccounts();
+    $('acct-save').addEventListener('click', function () {
+      var name = $('acct-name').value.trim(), email = $('acct-email').value.trim().toLowerCase();
+      var roles = Array.prototype.filter.call(document.querySelectorAll('input[name=acct-role]'), function (c) { return c.checked; });
+      if (!name) return say($('acct-msg'), 'no', 'Enter the person\'s full name.');
+      if (!/^[^\s@]+@vsu\.edu\.ph$/.test(email)) return say($('acct-msg'), 'no', 'Use a VSU address ending in <b>@vsu.edu.ph</b>. Google sign-in is limited to that domain.');
+      if (!roles.length) return say($('acct-msg'), 'no', 'Pick at least one role.');
+      var isStu = roles.some(function (c) { return c.value === 'Student'; });
+      var fac = $('acct-fac').value, dep = $('acct-dep').value, prog = $('acct-prog').value;
+      if (!dep) return say($('acct-msg'), 'no', 'Pick a department. Add one under Faculty &amp; departments first if the faculty has none.');
+      if (isStu && !prog) return say($('acct-msg'), 'no', 'Pick a program for the student.');
+      var entry = { name: name, email: email, fac: fac, dep: dep, prog: isStu ? prog : '', roles: roles.map(function (c) { return { value: c.value, tone: c.dataset.tone }; }) };
+      var list = accLoad(); list.push(entry); accSave(list);
+      $('acct-body').appendChild(acctRow(entry));
+      $('acct-count').textContent = $('acct-body').children.length;
+      close();
+      audAdm('Added account ' + email);
+      say($('acct-done'), 'ok', esc(name) + ' was added. They can sign in as <b>' + esc(email) + '</b>.');
+    });
+  }
+
+  /* Profile menu (sidebar) */
+  if ($('me-btn')) {
+    var setMenu = function (on) {
+      $('me-menu').hidden = !on; $('me-btn').setAttribute('aria-expanded', on);
+      $('me-chev').style.transform = on ? 'rotate(180deg)' : '';
+    };
+    $('me-btn').addEventListener('click', function (e) { e.stopPropagation(); setMenu($('me-menu').hidden); });
+    document.addEventListener('click', function (e) { if (!$('me').contains(e.target)) setMenu(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('me-menu').hidden) { setMenu(false); $('me-btn').focus(); } });
+  }
+
+  /* Settings */
+  if ($('th-warn') && SET.th) { ['th-warn', 'th-prob', 'th-dism'].forEach(function (id, i) { if (SET.th[i] != null) $(id).value = SET.th[i]; }); }
+  if ($('em-from') && SET.email) $('em-from').value = SET.email;
+  if ($('bk-text') && SET.backup) { var bb = $('bk-banner'); bb.style.background = '#E7F0E2'; bb.style.borderColor = '#CBDDC2'; bb.style.color = '#2C6430'; $('bk-text').innerHTML = 'Last backup: <b>' + SET.backup + '</b>. Every closed encoding period is covered.'; if ($('bk-record')) { $('bk-record').disabled = true; $('bk-record').style.opacity = '0.55'; $('bk-record').textContent = 'Backup recorded'; } }
+  if ($('th-save')) $('th-save').addEventListener('click', function () {
+    var w = +$('th-warn').value, p = +$('th-prob').value, d = +$('th-dism').value;
+    var bad = [w, p, d].some(function (v) { return isNaN(v) || v < 0 || v > 100 || $('th-warn').value === '' || $('th-prob').value === '' || $('th-dism').value === ''; });
+    if (bad) return say($('th-msg'), 'no', 'Each threshold must be a whole percentage from 0 to 100.');
+    if (!(w < p && p < d)) return say($('th-msg'), 'no', 'Thresholds must rise in order: warning &lt; probation &lt; dismissal.');
+    SET.th = [w, p, d]; saveSET(); audAdm('Changed scholastic standing thresholds to ' + w + '% / ' + p + '% / ' + d + '%');
+    say($('th-msg'), 'ok', 'Saved. Warning from ' + w + '%, probation from ' + p + '%, dismissal from ' + d + '%. Standing is recomputed on the next grade change.');
+  });
+  if ($('em-save')) $('em-save').addEventListener('click', function () {
+    var v = $('em-from').value.trim();
+    if (!/^[^\s@]+@vsu\.edu\.ph$/.test(v)) return say($('em-msg'), 'no', 'The sender must be a VSU address ending in <b>@vsu.edu.ph</b>.');
+    SET.email = v; saveSET(); audAdm('Changed the sender address to ' + v);
+    say($('em-msg'), 'ok', 'Saved. New notifications will be sent from <b>' + esc(v) + '</b>.');
+  });
+  if ($('bk-record')) $('bk-record').addEventListener('click', function () {
+    var b = $('bk-banner'), d = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    b.style.background = '#E7F0E2'; b.style.borderColor = '#CBDDC2'; b.style.color = '#2C6430';
+    b.querySelector('svg').innerHTML = ICON.ok;
+    $('bk-text').innerHTML = 'Last backup: <b>' + d + '</b>. Every closed encoding period is covered.';
+    SET.backup = d; saveSET(); audAdm('Recorded a completed backup (' + d + ')');
+    this.disabled = true; this.style.opacity = '0.55'; this.style.cursor = 'default'; this.textContent = 'Backup recorded today';
+  });
+
+  /* SystemAdmin: hash navigation between the four pages */
+  var views = document.querySelectorAll('[data-view]');
+  if (views.length > 1) {
+    var LABEL = {}; document.querySelectorAll('[data-nav]').forEach(function (a) { LABEL[a.dataset.nav] = a.textContent; }); LABEL.password = 'Change password';
+    var show = function () {
+      var key = (location.hash || '').slice(1); if (!LABEL[key]) key = 'students';
+      views.forEach(function (v) { v.hidden = v.dataset.view !== key; });
+      document.querySelectorAll('[data-nav]').forEach(function (a) {
+        var on = a.dataset.nav === key;
+        a.style.background = on ? 'rgba(224,168,46,0.16)' : 'transparent';
+        a.style.color = on ? '#F7E9C4' : 'rgba(246,242,228,0.72)';
+        a.style.fontWeight = on ? '600' : '450';
+        a.querySelector('[data-bar]').hidden = !on;
+        if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+      $('crumb').textContent = LABEL[key];
+      document.title = LABEL[key] + ' · SAAIS';
+      if ($('me-menu')) $('me-menu').hidden = true, $('me-btn').setAttribute('aria-expanded', false), $('me-chev').style.transform = '';
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', show); show();
+  }
+})();
+</script><script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  if (!$('pw-form')) return;
+  var EYE = '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>';
+  var EYE_OFF = EYE + '<path d="M4 4l16 16"/>';
+  document.querySelectorAll('[data-reveal]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var f = $(b.dataset.reveal), on = f.type === 'password';
+      f.type = on ? 'text' : 'password';
+      b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', on ? 'Hide password' : 'Show password');
+      b.querySelector('svg').innerHTML = on ? EYE_OFF : EYE;
+    });
+  });
+  document.querySelectorAll('[data-back]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (document.querySelector('[data-view]')) location.hash = 'students';
+      else if (document.referrer && history.length > 1) history.back();
+      else location.href = 'AdminStudentDirectory.dc.html';
+    });
+  });
+  function rules() {
+    var c = $('pw-cur').value, n = $('pw-new').value, a = $('pw-again').value;
+    var r = { len: n.length >= 12, mix: /[A-Za-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
+    Object.keys(r).forEach(function (k) {
+      var li = document.querySelector('[data-rule="' + k + '"]'), m = li.querySelector('[data-mark]');
+      m.style.background = r[k] ? '#2C6430' : 'transparent'; m.style.borderColor = r[k] ? '#2C6430' : '#E1DBC6';
+      li.style.color = r[k] ? '#2C6430' : '#6E6C58';
+    });
+    return r;
+  }
+  ['pw-cur', 'pw-new', 'pw-again'].forEach(function (id) { $(id).addEventListener('input', rules); });
+  function say(kind, text) {
+    var c = kind === 'ok' ? ['#E7F0E2', '#CBDDC2', '#2C6430', '<path d="M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>']
+                          : ['#FAE7E1', '#EFCFC5', '#9E2E1C', '<path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5M12 17h.01"/>'];
+    $('pw-msg').innerHTML = '<div role="status" style="display:flex;align-items:flex-start;gap:11px;background:' + c[0] + ';border:1px solid ' + c[1] + ';border-radius:5px;padding:13px 16px;color:' + c[2] +
+      ';font-size:13.5px;line-height:1.5"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' + c[3] + '</svg><div>' + text + '</div></div>';
+    $('pw-msg').hidden = false;
+  }
+  $('pw-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var r = rules();
+    if (!$('pw-cur').value) { say('no', 'Enter your current password.'); return $('pw-cur').focus(); }
+    if (!(r.len && r.mix && r.diff && r.match)) return say('no', 'The new password doesn\'t meet every requirement below yet.');
+    ['pw-cur', 'pw-new', 'pw-again'].forEach(function (id) { $(id).value = ''; }); rules();
+    say('ok', 'Password updated. Your other devices have been signed out.');
+  });
+})();
+</script>
+</body>
+</html>

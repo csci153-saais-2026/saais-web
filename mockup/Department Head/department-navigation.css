@@ -1,0 +1,28 @@
+/* Role grouping shared by department management and adviser screens. */
+.role-navigation { display:flex; flex-direction:column; flex-shrink:0; gap:2px; padding-bottom:20px; }
+.role-navigation .role-nav-section { flex-shrink:0; }
+.role-navigation .role-nav-section + .role-nav-section { margin-top:12px; }
+.role-navigation .role-nav-label { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:14px 16px 9px 17px; border-radius:5px; color:rgba(246,242,228,.55); font-size:10.5px; font-weight:700; line-height:1.5; letter-spacing:.11em; text-transform:uppercase; list-style:none; cursor:pointer; }
+.role-navigation .role-nav-label::-webkit-details-marker { display:none; }
+.role-navigation .role-nav-label::after { content:""; width:7px; height:7px; flex-shrink:0; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(-45deg); transition:transform .15s; }
+.role-navigation .role-nav-section[open] > .role-nav-label::after { transform:rotate(45deg); }
+.role-navigation .role-nav-label:hover { background:rgba(224,168,46,.10); color:#FBF8EF; }
+.role-navigation .role-nav-label:focus-visible { outline:2px solid #E0A82E; outline-offset:2px; }
+.role-navigation .role-nav-links { display:flex; flex-direction:column; gap:2px; }
+.role-navigation .role-nav-links > a { flex-shrink:0; }
+.role-navigation .role-link { position:relative; display:flex; align-items:center; gap:11px; padding:9px 16px 9px 17px; border-radius:5px; color:rgba(246,242,228,.72); font-size:14px; font-weight:450; text-decoration:none; }
+.role-navigation .role-link:hover { background:rgba(224,168,46,.10); color:#FBF8EF; }
+.role-navigation .role-link svg { width:18px; height:18px; flex:0 0 18px; }
+.head-adviser-sidebar > a:first-child, .head-adviser-sidebar > nav, .head-adviser-sidebar > #me { flex-shrink:0; }
+.head-adviser-sidebar :focus-visible { outline:2px solid #E0A82E; outline-offset:3px; }
+.adviser-menu-toggle, .adviser-menu-close, .adviser-nav-backdrop { display:none; }
+@media (max-width:768px) {
+ .head-adviser-sidebar { display:none!important; }
+ .head-adviser-sidebar.open { display:flex!important; position:fixed!important; inset:0 auto 0 0; z-index:9500; width:250px!important; box-shadow:10px 0 40px rgba(22,32,12,.2); }
+ .adviser-menu-toggle, .adviser-menu-close { display:inline-flex; align-items:center; justify-content:center; padding:9px 12px; min-height:44px; border:1px solid #E1DBC6; border-radius:6px; background:#FFF; color:#16200C; font:600 14px 'IBM Plex Sans','Segoe UI',sans-serif; cursor:pointer; }
+ .adviser-menu-close { margin-bottom:20px; }
+ .adviser-menu-toggle { margin-right:10px; }
+ .adviser-nav-backdrop:not([hidden]) { display:block; position:fixed; inset:0; z-index:9400; width:100%; height:100%; border:0; background:rgba(22,32,12,.35); }
+ .head-adviser-sidebar .role-navigation a { min-height:44px; }
+}
+@media print { .head-adviser-sidebar, .adviser-menu-toggle, .adviser-nav-backdrop { display:none!important; } }
