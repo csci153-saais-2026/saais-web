@@ -1,6 +1,6 @@
 # Student Academic Advising Information System (SAAIS)
 
-A web-based academic advising system supporting three roles — **Student**, **Academic Adviser**, and **System Administrator** — for managing curriculum checklists, enrollment attempts, grades, adviser assignments, and advising documentation. Responsive across desktop and mobile.
+A web-based academic advising system planned for six assignable role types and seven role experiences — **Student**, **Adviser**, **Department Head**, **Department Staff**, **Dean**, a combined **Department Head + Dean** experience, and **System Administrator** — for managing curriculum checklists, enrollment attempts, grades, adviser assignments, and advising documentation. Responsive across desktop and mobile.
 
 **Project Managers:** Jomari Joseph A. Barrera · Kyle Anthony Nierras
 
@@ -30,15 +30,21 @@ Copyright © 2026 Jomari Joseph A. Barrera. All rights reserved. See [LICENSE.md
 
 ## 1. Overview
 
-SAAIS centralizes academic advising workflows: curriculum checklist tracking, enrollment attempt records, grade history, adviser-student assignment history, and advising documentation (notes/remarks). It replaces manual, paper- or spreadsheet-based advising records with a single structured, auditable source of truth.
+SAAIS will provide a production-grade academic advising system for curriculum checklist tracking, enrollment attempts, grade history, adviser-student assignments, and advising documentation. It is designed to give students, advisers, and academic administrators a shared, auditable source of information and coordinated workflows.
 
 **Project repository:** [Repository URL](https://github.com/csci153-saais-2026/saais-web)
 
-Three roles are supported:
+The planned production system supports six assignable role types and seven role experiences. A person with both Department Head and Dean appointments sees the combined Department Head + Dean experience; that combination is not a separate role type.
 
-- **Student** — views own checklist, grades, GWA, and enrollment history.
-- **Academic Adviser** — manages advisees, records enrollment attempts, notes, elective mappings, and equivalency decisions.
-- **System Administrator** — manages accounts, programs, curricula, courses, and course offerings.
+- **Student** — views the dashboard, advising notes, curriculum checklist, grades, enrollment history, and profile.
+- **Adviser** — reviews advisees and records grades, advising notes, imports, and grade flags.
+- **Department Head** — handles adviser workflows alongside department students, terms, curricula, transfers, equivalencies, reports, and audit review.
+- **Department Staff** — manages students, adviser assignments, terms, curricula, the course catalogue, and department accounts.
+- **Dean** — reviews faculty-level students, reports, and audit activity.
+- **Department Head + Dean experience** — combines the corresponding Department Head, Dean, and Adviser workflows when a person holds both appointments.
+- **System Administrator** — manages students, accounts and roles, faculties and departments, programs, settings, and the audit log.
+
+The role expansion is a planned production requirement. The current three-role SRS and API contract remain unchanged until a separate SRS/OpenAPI revision is reviewed; this README records the intended direction and does not revise those specifications.
 
 ---
 
@@ -67,7 +73,7 @@ Three roles are supported:
 | Language                     | TypeScript                                                                                                                        |
 | Routing                      | React Router (data router)                                                                                                        |
 | Server state / data fetching | TanStack Query                                                                                                                    |
-| Client state                 | React Context + `useReducer` — session/role, active advisee, and UI preferences; no third-party global store                      |
+| Client state                 | React Context + `useReducer` — session/role assignments, active advisee, and UI preferences; no third-party global store            |
 | Forms                        | React Hook Form + Zod resolver                                                                                                    |
 | Styling                      | Tailwind CSS + shadcn/ui                                                                                                          |
 | Backend                      | Supabase — PostgreSQL with Row Level Security, Auth                                                                               |
@@ -172,7 +178,7 @@ npm run contract:docs     # build the static Redoc bundle
 - A prerequisite chain covering all three types (strict, co-requisite, recommended), including at least one course of each `repeatable_type` (`none`, `grade_replacement`, `additional_credit`).
 - At least one `by_request` CourseOffering for a discontinued course, and one locked SchoolTerm with an active `override_flag`.
 - Sample students covering: a lapsed INC (past its compliance deadline, unresolved), a `prerequisite_override` attempt, an active ElectiveMapping, a transfer EquivalencyDecision, a student above the curriculum's delinquency threshold, and an AdviserAssignment history with at least one reassignment (to exercise gap-free continuity).
-- At least one Profile per role (`student`, `adviser`, `admin`), and one student with staff-only AdvisingNote/AttemptRemark entries.
+- At least one RoleAssignment for each assignable role type (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`), plus one profile with both Department Head and Dean assignments. Include one student-visible AdvisingNote and a separate staff-only AttemptRemark to exercise their different access rules.
 
 ### Pushing to a Remote/Staging Project
 
@@ -226,15 +232,19 @@ src/
   App.tsx              # router + provider composition
   routes/
     auth/              # login, invite-accept, password reset
-    student/           # student portal routes
-    adviser/           # adviser portal routes
-    admin/             # admin portal routes
+    student/             # Student portal routes
+    adviser/             # Adviser portal routes
+    department-head/     # Department Head portal routes
+    department-staff/    # Department Staff portal routes
+    dean/                # Dean portal routes
+    department-head-dean/ # Combined view for profiles with both role assignments
+    admin/               # System Administrator portal routes
     docs/              # in-app Redoc viewer (auth-gated outside development)
   components/
     ui/                # shared primitives (buttons, modals, tables, badges)
     features/          # feature-specific components (checklist, enrollment form, etc.)
   context/             # React Context providers (see §9 State Management)
-    SessionContext.tsx     # session, profile, role — the app-wide auth source of truth
+    SessionContext.tsx     # session, profile, role assignments — the app-wide auth source of truth
     AdviseeContext.tsx     # the advisee currently being worked on, shared across adviser screens
     PreferencesContext.tsx # theme, table density, persisted UI preferences
   lib/
@@ -255,12 +265,20 @@ supabase/
 
 ### Users & Roles
 
-- Three roles: student, academic adviser, system administrator.
-- Accounts are **admin-provisioned only** — no public self-signup. An admin creates a profile with an institutional email and role; the user then sets a password via invite, or signs in with Google **only if the authenticated Google email exactly matches the pre-registered email**. Mismatches are rejected.
+- Six assignable role types: Student, Adviser, Department Head, Department Staff, Dean, and System Administrator. A profile may have multiple scoped role assignments. Department Head + Dean is the combined experience for a profile with both assignments, not a separate role value.
+- Accounts are **admin-provisioned only** — no public self-signup. Users may sign in with email/password or Google. Initial passwords are set through an invitation; password recovery is available. Google sign-in succeeds only when the authenticated Google email exactly matches the pre-registered institutional email. Mismatches are rejected.
+- Only System Administrators assign roles. Department Heads and Department Staff may manage accounts within their authorized department scope, but cannot grant or change role assignments. Users cannot assign roles to themselves.
+- This planned role set extends the current three-role SRS and API contract. Until a separate SRS/OpenAPI revision is reviewed, FR-AUTH-01, organizational scope, the attempt-level instructor field, and role-assignment metadata remain unchanged in those specifications. This README records the intended production direction under [#19, Task 6](https://github.com/csci153-saais-2026/saais-web/issues/19); it does not revise the SRS or API contract.
 - An adviser can have 1+ advisees; a student has exactly 1 active adviser at all times — **zero-gap continuity is required**. Reassignment is atomic: the new assignment's start date coincides with the prior assignment's end date, enforced within a single transaction/trigger so a student is never left without an active adviser.
 - Adviser-to-student assignments retain full dated history.
-- Admins manage accounts, programs, curricula, courses, and offerings, but are not assigned advisees.
+- Department Heads and Department Staff manage department-level student and academic workflows. System Administrators manage accounts and roles, programs, faculties, and departments. Department Heads manage curricula and academic terms; Department Staff manage the department course catalogue and offerings.
+- Deans have read-only faculty-level student, report, and audit access. A profile with both Department Head and Dean appointments receives the corresponding Adviser, department, and faculty-level access through the combined experience.
 - Thesis advising is out of scope.
+
+### Organizational Scope
+
+- A Faculty (College) contains one or more Departments; each Department belongs to exactly one Faculty, and each Program belongs to exactly one Department.
+- Students receive their Department and Faculty scope through their Program. Adviser and administrative role assignments carry the department or faculty scope needed for their authorized workflows.
 
 ### Program & Curriculum
 
@@ -305,7 +323,7 @@ supabase/
 - A school term can be locked after grades finalize; edits outside an override process are blocked. Override _workflow_ is out of scope — only lock state plus an override flag/timestamp/actor are modeled.
 - A course is offered in a term via a course-offering record (not assumed available every term).
 - A course-offering can be flagged by-request (for discontinued courses still needed under an older curriculum).
-- Section/instructor/schedule detail is out of scope.
+- Course-offering section and schedule details are out of scope. The grade-entry workflow records an instructor per attempt; this does not model instructor assignment or scheduling.
 
 ### Enrollment & Attempts
 
@@ -326,7 +344,7 @@ supabase/
 ### Advising & Documentation
 
 - Advisers record dated, append-only, free-text general notes per student.
-- Notes and attempt-level remarks are **staff-only** (adviser + admin) — not visible to the student.
+- Advising notes are visible to the student they concern and authorized staff. Attempt-level remarks are staff-only (adviser + admin).
 - The checklist collates all remarks across every attempt of a course, ordered by term.
 - A remark can attach to a checklist slot with no attempt yet.
 
@@ -341,11 +359,16 @@ supabase/
 
 ### Entity Glossary
 
+The following workflow records are described in §8 but are not yet part of this core schema sketch: grade flags, curriculum-transfer approvals, outside-credit records, course-level equivalence rules, grade-import batches, scholastic-standing thresholds, sender-email settings, backup records, notifications, note-archival metadata, and audit events for sensitive record views. Their production entities, permissions, and operations are deferred to the separate SRS/OpenAPI revision required by [#19, Task 6](https://github.com/csci153-saais-2026/saais-web/issues/19). The `delinquency_threshold` on `CurriculumVersion` is already modeled; scholastic standing thresholds are a separate deferred setting.
+
 | Entity                      | Purpose                                                                                                                                                           |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profile                     | Base identity (linked 1:1 to `auth.users.id`), role, contact info                                                                                                 |
+| Profile                     | Base identity (linked 1:1 to `auth.users.id`) and contact information                                                                                            |
+| RoleAssignment              | A role granted to a Profile, with its Faculty or Department scope                                                                                                |
+| Faculty                     | College/faculty organizational unit                                                                                                                              |
+| Department                  | Organizational unit within one Faculty                                                                                                                           |
 | AdviserAssignment           | Dated, gap-free history of adviser↔student pairing                                                                                                                |
-| Program                     | Degree program                                                                                                                                                    |
+| Program                     | Degree program within one Department                                                                                                                             |
 | CurriculumVersion           | Versioned curriculum under a program, with effectivity period                                                                                                     |
 | CurriculumTerm              | Positional term slot within a curriculum version                                                                                                                  |
 | Course                      | Course catalog entry                                                                                                                                              |
@@ -358,7 +381,7 @@ supabase/
 | CourseOffering              | Course-in-a-term record, by-request flag                                                                                                                          |
 | Attempt                     | Enrollment attempt tied to a course-offering; optional FK to the checklist slot (CurriculumTermCourse) it directly fulfills; carries a prerequisite-override flag |
 | INCResolution               | Completion grade record for a resolved INC (does not apply to lapsed/unresolved INCs, which are handled purely at GWA-calculation time)                           |
-| AdvisingNote                | Append-only general note (staff-only visibility)                                                                                                                  |
+| AdvisingNote                | Append-only general note (visible to the student it concerns and authorized staff)                                                                               |
 | AttemptRemark               | Note scoped to an attempt or empty slot (staff-only)                                                                                                              |
 | AuditLogEntry               | Immutable change record                                                                                                                                           |
 
@@ -370,10 +393,32 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | equals `auth.users.id` |
-| `role` | enum(`student`,`adviser`,`admin`) | not null; admin-set only, never self-editable |
-| `email` | text, unique, not null | must match Google account exactly for SSO sign-in |
+| `email` | text, unique, not null | Google sign-in must match this provisioned institutional email exactly |
 | `full_name` | text, not null | |
 | `created_at`, `updated_at` | timestamptz | |
+
+**RoleAssignment**
+| Field | Type | Notes |
+|---|---|---|
+| `id` | uuid, PK | |
+| `profile_id` | uuid, FK → Profile, not null | one profile may hold multiple assignments |
+| `role` | enum(`student`,`adviser`,`department_head`,`department_staff`,`dean`,`admin`) | assigned by a System Administrator; never self-editable |
+| `faculty_id` | uuid, FK → Faculty, nullable | required for faculty-scoped assignments |
+| `department_id` | uuid, FK → Department, nullable | required for department-scoped assignments; must belong to the assigned Faculty where both are set |
+| `created_at` | timestamptz, not null | |
+
+**Faculty**
+| Field | Type | Notes |
+|---|---|---|
+| `id` | uuid, PK | |
+| `name` | text, not null | Institution's College/Faculty name |
+
+**Department**
+| Field | Type | Notes |
+|---|---|---|
+| `id` | uuid, PK | |
+| `faculty_id` | uuid, FK → Faculty, not null | each Department belongs to exactly one Faculty |
+| `name` | text, not null | |
 
 **AdviserAssignment**
 | Field | Type | Notes |
@@ -389,6 +434,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
+| `department_id` | uuid, FK → Department, not null | each Program belongs to one Department; its Faculty is derived through that Department |
 | `code`, `name` | text, unique, not null | |
 
 **CurriculumVersion**
@@ -413,6 +459,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `code` | text, unique, not null | never assumed equivalent across different codes |
 | `title` | text, not null | |
 | `lecture_hours`, `lab_hours`, `units` | numeric, not null | |
+| `department_id` | uuid, FK → Department, not null | owning Department; Faculty is derived through Department |
 | `status` | enum(`active`,`discontinued`) | |
 | `repeatable_type` | enum(`none`,`grade_replacement`,`additional_credit`) | drives the units/GWA counting rule in §6 |
 
@@ -487,6 +534,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `student_id` | uuid, FK → Profile, not null | |
 | `course_offering_id` | uuid, FK → CourseOffering, not null | natural key: (student, course_offering) |
 | `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, nullable | the checklist slot this attempt directly fulfills, if any |
+| `instructor` | text, nullable | instructor name recorded for this attempt; does not represent course-offering scheduling |
 | `status` | enum(`passed`,`failed`,`currently_enrolled`,`inc`,`dr`,`na`) | |
 | `midterm_grade`, `final_grade` | numeric, nullable | discrete 0.25 increments, 1.00–5.00 |
 | `inc_deadline` | date, nullable | set when `status = inc`; default 1 year from term incurred |
@@ -507,7 +555,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `id` | uuid, PK | |
 | `student_id` | uuid, FK → Profile, not null | |
 | `authored_by` | uuid, FK → Profile (adviser/admin), not null | |
-| `body_text` | text, not null | append-only; staff-only visibility |
+| `body_text` | text, not null | append-only; visible to the student it concerns and authorized staff |
 | `created_at` | timestamptz, not null | |
 
 **AttemptRemark**
@@ -517,7 +565,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `attempt_id` | uuid, FK → Attempt, nullable | nullable to allow a remark on an empty checklist slot |
 | `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, nullable | used when `attempt_id` is null |
 | `authored_by` | uuid, FK → Profile (adviser/admin), not null | |
-| `body_text` | text, not null | staff-only visibility |
+| `body_text` | text, not null | visible to the student it concerns and authorized staff |
 | `created_at` | timestamptz, not null | |
 
 **AuditLogEntry**
@@ -537,6 +585,11 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | Entity A             | Relationship                 | Entity B                                             | Cardinality                                           |
 | -------------------- | ---------------------------- | ---------------------------------------------------- | ----------------------------------------------------- |
 | Adviser              | advises (dated, gap-free)    | Student                                              | 1 : many; student has exactly 1 active adviser always |
+| Faculty              | contains                     | Department                                           | 1 : many                                              |
+| Department           | contains                     | Program                                              | 1 : many                                              |
+| Department           | owns                         | Course                                               | 1 : many                                              |
+| Profile              | has                          | RoleAssignment                                       | 1 : many                                              |
+| RoleAssignment       | scoped to                    | Faculty / Department                                 | many : 0 or 1 each                                   |
 | Program              | has                          | CurriculumVersion                                    | 1 : many                                              |
 | CurriculumVersion    | contains                     | CurriculumTerm                                       | 1 : many                                              |
 | CurriculumTerm       | contains                     | Course                                               | many : many                                           |
@@ -552,50 +605,58 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 
 ## 8. UI/UX Sitemap & Features
 
-Client-side routes, resolved by React Router; parameters use `:param` syntax.
+The production application will provide the following role-based workflows. These concrete paths define the planned client route structure; authorization will be enforced by the backend as described in §9.
 
 ### Public / Auth
 
-| Route                                 | Purpose                                                                                                 |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `/login`                              | Email/password or "Sign in with Google" (must match registered email)                                   |
-| `/invite/:token`                      | Set initial password from an admin-issued invite                                                        |
-| `/forgot-password`, `/reset-password` | Password recovery                                                                                       |
-| `/docs`                               | Redoc view of `contract/openapi.yaml`; open in development, authenticated-only in deployed environments |
+| Route                                  | Purpose                                                                                                  |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/login`                              | Email/password or Google sign-in for provisioned accounts; Google email must match the institutional profile |
+| `/invite/:token`                      | Set an initial password from an administrator-issued invitation                                           |
+| `/forgot-password`, `/reset-password` | Recover account access                                                                                    |
+| `/docs`                               | Browse the API contract, with access controlled by the deployment environment                             |
 
 ### Student Portal
 
-| Route                         | Features                                                                                                    |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `/student/dashboard`          | Current adviser, cumulative GWA, delinquency flag, quick links                                              |
-| `/student/checklist`          | Curriculum checklist — status per slot (direct / equivalency / discontinued-equivalency / elective mapping) |
-| `/student/grades`             | Term-by-term grades, term & cumulative GWA                                                                  |
-| `/student/enrollment-history` | All attempts across terms                                                                                   |
-| `/student/profile`            | Account/contact info                                                                                        |
+| Route                         | Features                                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/student/dashboard`          | Current adviser, cumulative GWA, delinquency status, INC-deadline alerts, and links to academic records                   |
+| `/student/checklist`           | Required courses and elective slots by term; each slot shows direct, transfer-equivalency, discontinued-equivalency, or elective-mapping status |
+| `/student/grades`              | Term-by-term grades, term GWA, cumulative GWA, and grade status                                                           |
+| `/student/enrollment-history`  | All enrollment attempts across terms                                                                                      |
+| `/student/grade-flags`         | Submit and track questions about recorded grades                                                                          |
+| `/student/profile`             | Student account and contact details                                                                                       |
 
 ### Adviser Portal
 
-| Route                             | Features                                                                |
-| --------------------------------- | ----------------------------------------------------------------------- |
-| `/adviser/dashboard`              | Advisee list, delinquency flags, INC-deadline alerts                    |
-| `/adviser/advisees`               | Search/filter current & past advisees                                   |
-| `/adviser/advisees/:id`           | Full student view: checklist, grades, history, notes                    |
-| `/adviser/advisees/:id/notes`     | Add/view advising notes & attempt remarks                               |
-| `/adviser/advisees/:id/checklist` | Manage elective mappings & equivalency decisions                        |
-| `/adviser/enrollment/new`         | Record an enrollment attempt (prerequisite warning prompt on soft-fail) |
-| `/adviser/reassignment`           | Initiate adviser reassignment (gap-free enforced)                       |
+| Route                             | Features                                                                                          |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `/adviser/dashboard`              | Advisee list, delinquency alerts, and INC-deadline alerts                                         |
+| `/adviser/advisees`               | Search and filter current and past advisees                                                       |
+| `/adviser/advisees/:id`           | Student checklist, curriculum, grades, history, and advising notes                                |
+| `/adviser/advisees/:id/notes`     | Add and view advising notes and attempt remarks                                                   |
+| `/adviser/advisees/:id/checklist` | Review per-slot status and manage elective mappings and equivalency decisions                    |
+| `/adviser/enrollment/new`         | Record an attempt; an unsatisfied strict prerequisite triggers a soft warning with Continue/Cancel |
+| `/adviser/encode-grades`          | Record grades for advisees                                                                       |
+| `/adviser/import-grades`          | Validate and review grade imports before applying them                                           |
+| `/adviser/grade-flags`            | Review and resolve student grade flags                                                           |
+| `/adviser/reassignment`           | Reassign an adviser while preserving gap-free assignment history                                 |
 
-### Admin Portal
+### Department and Dean Portals
 
-| Route                     | Features                                                       |
-| ------------------------- | -------------------------------------------------------------- |
-| `/admin/dashboard`        | System-wide stats                                              |
-| `/admin/accounts`         | Provision/manage accounts & roles, send invites                |
-| `/admin/programs`         | CRUD programs                                                  |
-| `/admin/curricula`        | CRUD curriculum versions, terms, delinquency thresholds        |
-| `/admin/courses`          | CRUD courses, prerequisites, repeatable flags                  |
-| `/admin/course-offerings` | Manage school terms, offerings, by-request flags, term locking |
-| `/admin/audit-log`        | Read-only audit trail viewer                                   |
+| Route group                            | Features                                                                                                                   |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `/department-head/*`                   | Department students, adviser assignments, terms, curricula, transfers, equivalencies, outside credits, reports, settings, and audit log |
+| `/department-head-dean/*`              | Combined Adviser, Department Head, and Dean workflows for a person with both appointments                                 |
+| `/department-staff/*`                  | Students, adviser assignments, terms, curricula, course catalogue, and department accounts and roles                      |
+| `/dean/*`                              | Read-only faculty student directory, reports, and audit log                                                               |
+| `/admin/*`                             | Student directory, accounts and roles, faculties and departments, programs, settings, and audit log; opens on the Student directory |
+
+### Curriculum and Course Catalogue
+
+Department Heads and Department Staff will be able to review curriculum versions with required units, enrolled-student counts, effective dates, and status. Their curriculum workflows will support adding and editing versions, terms, and course or elective slots.
+
+The New Course workflow will collect the course code, title, lecture hours, lab hours, units, owning department, and repeatable type (`none`, `grade_replacement`, or `additional_credit`). Creating a catalog course does not place it in a curriculum. A separate curriculum workflow adds the course to a selected curriculum term as a `CurriculumTermCourse`; a catalog course can be used in more than one curriculum.
 
 ## 9. Design Details
 
@@ -614,7 +675,7 @@ There is no application server of our own. Anything that would previously have j
 
 **Layout and versioning.** Supabase fixes the path prefixes (`/rest/v1`, `/functions/v1`), so the contract carries its own semver in `info.version`. A breaking change (removing a field, tightening a type, changing an operation's meaning) requires a major bump plus a migration note in the PR description; additive changes are minor.
 
-**Operations.** Every operation has a stable `operationId` in camelCase (`listAdviseeAttempts`, `recordEnrollmentAttempt`, `reassignAdviser`), which is what the generated client's method names derive from. Operations are grouped by portal with `x-tagGroups` (Student / Adviser / Admin / Auth), so Redoc's sidebar mirrors the app's structure.
+**Operations.** Every operation has a stable `operationId` in camelCase (`listAdviseeAttempts`, `recordEnrollmentAttempt`, `reassignAdviser`), which is what the generated client's method names derive from. The planned `x-tagGroups` organize Student, Adviser, Department Head, Department Staff, Dean, the combined Department Head + Dean experience, System Administrator, and Auth workflows. The combined experience is not a separate role type. The current OpenAPI tag groups and role metadata will be updated in a separate specification revision; until then, the current contract remains unchanged.
 
 **Auth.** One `bearerAuth` security scheme (the Supabase JWT) is declared globally. The handful of unauthenticated operations opt out explicitly with `security: []`. The contract also documents, per operation, _which role can succeed_ — RLS is the enforcement, but an undocumented 403 is a contract bug.
 
@@ -637,17 +698,21 @@ There is no application server of our own. Anything that would previously have j
 
 ### Auth & Session Flow
 
-Supabase Auth handles both email/password and Google OAuth through the `supabase-js` browser client, with the session persisted in browser storage and refreshed automatically. `SessionContext` subscribes to `onAuthStateChange`, resolves the signed-in user's `profiles` row once, and exposes `{ session, profile, role, status }` to the whole tree; route guards and the API client both read from it rather than re-fetching.
+Supabase Auth handles both email/password and Google OAuth through the `supabase-js` browser client, with the session persisted in browser storage and refreshed automatically. `SessionContext` subscribes to `onAuthStateChange`, resolves the signed-in user's profile and role assignments once, and exposes `{ session, profile, roleAssignments, status }` to the whole tree; route guards and the API client both read from it rather than re-fetching.
 
-There is no self-service registration. **The institutional-email match is enforced server-side, not in the SPA**: a Supabase Auth hook (`before user created`) rejects any sign-in whose Google email has no exactly-matching pre-registered `profiles.email`. This placement matters — a React bundle can be modified by whoever runs it, so a client-side email comparison would be advisory only. The client's job is limited to rendering the resulting rejection message ("contact an administrator").
+There is no self-service registration. A server-side Supabase Auth hook rejects creation of a new identity unless its email exactly matches a pre-registered institutional `profiles.email`, for both email/password and Google sign-in. The hook must allow invitation acceptance and password recovery for existing profiles. The SPA only renders the resulting rejection message ("contact an administrator"); it does not enforce identity matching.
 
 ### Data Access & RLS
 
-RLS policies key off `profiles.role` plus relationship tables:
+The target access model keys off `RoleAssignment`, organizational scope, and relationship tables. A separate SRS/API revision will define the full operation-level permissions and matching RLS policies; until then, this README does not change the current contract.
 
-- **Student**: SELECT only own records.
-- **Adviser**: SELECT/INSERT/UPDATE only for currently (and, read-only, historically) assigned advisees, via `AdviserAssignment`.
-- **Admin**: full access to management tables (programs, curricula, courses, offerings, accounts); notes/remarks remain staff-scoped (adviser + admin), never student-visible.
+- **Student**: read their own academic records and advising notes; attempt-level remarks remain staff-only.
+- **Adviser**: manage currently assigned advisees and retain read-only access to historical advisees through `AdviserAssignment`.
+- **Department Head**: manage department-level student and academic workflows, including curriculum and transfer decisions.
+- **Department Staff**: manage department-scoped student, term, curriculum, course-catalogue, and account workflows.
+- **Dean**: read-only faculty-level student, report, and audit views.
+- **Department Head + Dean experience**: receive the corresponding Adviser, Department Head, and Dean access through their separate role assignments.
+- **System Administrator**: manage accounts and roles, programs, faculties, and departments. Department Heads manage curricula and academic terms; Department Staff manage the course catalogue and offerings. Advising notes are visible to the student and authorized staff; attempt remarks remain staff-only.
 
 ### GWA Caching & Time-Based Recompute
 
@@ -675,7 +740,7 @@ Three tiers, kept deliberately separate:
 
 - **Server state — TanStack Query.** Everything that lives in Postgres: checklists, grades, advisee lists, audit entries. Query keys are derived from the contract's `operationId` plus its parameters, so cache invalidation after a mutation is mechanical rather than guesswork. Nothing fetched from the server is copied into Context.
 - **Client state — React Context.** Cross-cutting state that isn't server data and would otherwise be prop-drilled through most of the tree:
-  - `SessionContext` — session, `profile`, and `role`, populated once from `onAuthStateChange`. Route guards, the API client's auth header, and every role-conditional render read from here. This is the app's single auth source of truth.
+  - `SessionContext` — session, `profile`, and `roleAssignments`, populated once from `onAuthStateChange`. Route guards, the API client's auth header, and every role-conditional render read from here. This is the app's single auth source of truth.
   - `AdviseeContext` — the advisee currently being worked on, shared by the checklist, grades, notes, and enrollment screens under `/adviser/advisees/:id` so they don't each re-resolve it.
   - `PreferencesContext` — theme, table density, and similar persisted UI preferences.
     Each provider is its own file with a `use…()` hook that throws when consumed outside its provider, and each holds a narrow value; a single app-wide "store" context is deliberately avoided, since it would re-render the whole tree on any change. Providers whose value is an object memoize it, and those with non-trivial transitions use `useReducer` rather than a scatter of `useState` setters.
@@ -704,7 +769,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 ## 11. Out of Scope
 
 - Thesis advising.
-- Section/instructor/schedule-level offering detail.
+- Section and schedule-level offering detail or instructor scheduling. An instructor name may be recorded per attempt.
 - Term-lock override workflow mechanics (state only, not process).
 - Adviser advisee-capacity limits.
 - Public self-service account registration.
@@ -715,9 +780,9 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 2. **Prerequisite enforcement** — soft warning with Continue/Cancel prompt; override is audited.
 3. **INC lapse** — status stays `INC` permanently; GWA computation and the delinquency flag both treat a lapsed INC as 5.00/failed-units, evaluated at calculation time (not a stored status change). Cached GWA values need a scheduled deadline check to stay correct (§9).
 4. Equivalency/mapping slots use the original attempt's grade/units and don't re-trigger GWA recompute.
-5. Notes/remarks are staff-only, never student-visible.
+5. **Advising-note access (B9)** — notes are visible to the student they concern and authorized staff. Attempt-level remarks remain staff-only.
 6. Attempt natural key is (student, course-offering); an optional FK links an attempt to the specific checklist slot it directly fulfills.
-7. Accounts are admin-provisioned only; Google SSO requires an exact email match to the pre-registered profile, enforced by a Supabase Auth hook rather than a client-side check, since a React bundle cannot enforce anything against whoever runs it.
+7. The six assignable role types and matching API role metadata will be documented in a separate SRS/OpenAPI revision. Until that revision is reviewed, the current three-role SRS and API contract remain unchanged.
 8. Tech stack confirmed: React (Vite SPA), TypeScript, React Router, TanStack Query, React Context for client state, Tailwind CSS + shadcn/ui, Zod, Supabase (Postgres/RLS/Auth/Edge Functions), Vitest/RTL + Playwright, GitHub Actions, Vercel (static) + hosted Supabase.
 9. All project management (Issues, Milestones, PRs, reviews, CI) happens on GitHub — see §13.
 10. License: All Rights Reserved, owned by Jomari Joseph A. Barrera, with an explicit contributor-assignment clause for project contributions — see §15 and [LICENSE.md](./LICENSE.md).
@@ -725,6 +790,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 12. Data Privacy Act (RA 10173) compliance applies to this system's grade, enrollment, and advising-note data — see §15.9.
 13. **Contract-first backend boundary** — there is no application server; Supabase is the backend, and the frontend/backend interface is `contract/openapi.yaml` (OpenAPI 3.1), documented with Redoc. The frontend may only call operations declared there, and calls through a client generated from it. The auto-generated PostgREST spec is treated as a drift-detection input, never as the contract itself — see §3 and §9.
 14. **Server-side logic placement** — anything that needs a secret, a privileged write, or a multi-statement transaction is a Supabase Edge Function and a documented contract operation; plain reads and single-row writes go directly to PostgREST under RLS — see §9.
+15. **Sign-in decision (A4)** — administrator-provisioned accounts support both email/password and Google sign-in. Initial password setup uses an invitation; password recovery remains available. New identities must match a pre-registered institutional email, enforced server-side for both methods; existing-profile invitation acceptance and password recovery remain available. This deliberately retains both sign-in methods instead of adopting the reference's Google-only flow.
 
 ## 13. Project Management & Contributing
 
@@ -799,20 +865,20 @@ On merge to `main`, a separate deploy workflow applies pending migrations to sta
 
 Copyright © 2026 Jomari Joseph A. Barrera. All rights reserved.
 
-### 14.1 Ownership
+### 15.1 Ownership
 
-This software, including its source code, database schema, documentation, and associated design materials (collectively, the "Work"), is the intellectual property of Jomari Joseph A. Barrera ("the Owner"). The Work is developed under the Owner's direction by the project team. Any code, documentation, designs, test assets, or other materials contributed to the Work are project contributions and are assigned to the Owner as set out in Section 14.3.
+This software, including its source code, database schema, documentation, and associated design materials (collectively, the "Work"), is the intellectual property of Jomari Joseph A. Barrera ("the Owner"). The Work is developed under the Owner's direction by the project team. Any code, documentation, designs, test assets, or other materials contributed to the Work are project contributions and are assigned to the Owner as set out in Section 15.3.
 
-### 14.2 Grant of Rights
+### 15.2 Grant of Rights
 
 No rights are granted to any person or entity to use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Work, in whole or in part, except:
 
 (a) as expressly and separately authorized in writing by the Owner; or
-(b) as necessary for an authorized Contributor (as defined in Section 14.3) to perform assigned project work under the Owner's direction.
+(b) as necessary for an authorized Contributor (as defined in Section 15.3) to perform assigned project work under the Owner's direction.
 
 If this repository or any part of the Work is made visible to the public or to external parties, such access is provided, if at all, for viewing purposes only. No license to reuse, redistribute, or create derivative works is granted by that access.
 
-### 14.3 Contributors
+### 15.3 Contributors
 
 "Contributor" means any developer, QA engineer, designer, project manager, or other authorized project team member who submits code, documentation, test assets, designs, or other materials to the Work.
 
@@ -820,29 +886,29 @@ By contributing, a Contributor:
 
 (a) assigns to the Owner all right, title, and interest in and to their contribution, to the fullest extent permitted by law, or, where such assignment is not legally permitted, grants the Owner a perpetual, irrevocable, worldwide, royalty-free license to use, reproduce, modify, and incorporate the contribution into the Work without restriction;
 (b) retains the right to identify their participation in the project for personal portfolio or resume purposes, but may not distribute, publish, or otherwise reuse the Work's source code itself without the Owner's separate written permission;
-(c) acknowledges that this assignment is made in connection with project work, without expectation of compensation, royalty, or ongoing rights beyond the attribution described in Section 14.4.
+(c) acknowledges that this assignment is made in connection with project work, without expectation of compensation, royalty, or ongoing rights beyond the attribution described in Section 15.4.
 
-### 14.4 Attribution
+### 15.4 Attribution
 
 The Owner may, at their discretion, credit Contributors for their work. Attribution does not confer any ownership, licensing, or distribution rights on a Contributor.
 
-### 14.5 Relationship to Applicable Agreements
+### 15.5 Relationship to Applicable Agreements
 
 This license states the Owner's claim of ownership and the terms on which the Owner makes the Work available. It does not attempt to override, and remains subject to, any applicable employment, contractor, client, or intellectual-property agreement. Where such an agreement conflicts with this license, that agreement shall govern to the extent required by law.
 
-### 14.6 No Warranty
+### 15.6 No Warranty
 
 THE WORK IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE WORK OR ITS USE.
 
-### 14.7 Governing Law
+### 15.7 Governing Law
 
 This license is governed by and construed in accordance with the laws of the Republic of the Philippines.
 
-### 14.8 Contact
+### 15.8 Contact
 
 For permission requests or licensing inquiries, contact Jomari Joseph A. Barrera.
 
-### 14.9 Data Privacy Notice
+### 15.9 Data Privacy Notice
 
 This system processes personal information about students — including grades, enrollment history, and advising notes — as part of its core function. Its handling of that data should be reviewed against the Philippines' Data Privacy Act of 2012 (RA 10173) and any applicable organizational data-privacy policy before any deployment involving real student data. This document does not constitute legal advice; independent legal/compliance review is recommended.
 
