@@ -178,7 +178,7 @@ npm run contract:docs     # build the static Redoc bundle
 - 1–2 sample Programs, each with a CurriculumVersion carrying its own `delinquency_threshold`.
 - A prerequisite chain covering all three types (strict, co-requisite, recommended), including at least one course of each `repeatable_type` (`none`, `grade_replacement`, `additional_credit`).
 - At least one `by_request` CourseOffering for a discontinued course, and one locked SchoolTerm with an active `override_flag`.
-- Sample students covering: a lapsed INC (past its compliance deadline, unresolved), an audited prerequisite-grade correction, an active ElectiveMapping, a transfer EquivalencyDecision, a student above the curriculum's delinquency threshold, and an AdviserAssignment history with at least one reassignment (to exercise gap-free continuity).
+- Sample students covering: a lapsed INC (past its compliance deadline, unresolved), an audited prerequisite enrollment override, an active ElectiveMapping, a transfer EquivalencyDecision, a student above the curriculum's delinquency threshold, and an AdviserAssignment history with at least one reassignment (to exercise gap-free continuity).
 - At least one RoleAssignment for each assignable role type (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`), plus one profile with both Department Head and Dean assignments. Include one student-visible AdvisingNote and a separate staff-only AttemptRemark to exercise their different access rules.
 
 ### Pushing to a Remote/Staging Project
@@ -305,7 +305,7 @@ rules/                 # Vite React best practices and development rules
 - Attributes: code, title, lecture hours, lab hours, units, status (active/discontinued), 0+ prerequisites.
 - Course codes are never assumed equivalent across different codes.
 - Prerequisite types: strict, co-requisite, recommended (advisory only).
-- **Prerequisite enforcement**: if a strict prerequisite is not satisfied, the adviser sees the missing prerequisite and a path to Grades. The dependent enrollment cannot be recorded until the prerequisite is cleared. An authorized adviser may correct a failed prerequisite's original final grade to a passing grade with a reason; the correction is audited and updates GWA and downstream clearance.
+- **Prerequisite enforcement**: if a strict prerequisite is not satisfied, the adviser sees the missing prerequisite and can choose **Continue with override** or **Cancel**. Continuing requires a reason and records the override and audit entry with the attempt; cancelling records nothing. The override does not change the prerequisite grade or mark it as passed. An authorized grade correction is a separate action.
 - `repeatable_type` distinguishes how a repeated course affects GWA/units: `none` (course cannot be retaken once passed), `grade_replacement` (only the applicable attempt per the rule in [Enrollment & Attempts](#enrollment--attempts) counts), or `additional_credit` (each passed attempt counts independently — see below).
 - A curriculum term slot can be an elective slot, not tied to one fixed code.
 
@@ -360,7 +360,7 @@ rules/                 # Vite React best practices and development rules
 
 ### Audit & Integrity
 
-- Audit trail for grade/record changes: INC completions, grade corrections, equivalency approvals, elective mapping changes, and prerequisite-grade corrections.
+- Audit trail for grade/record changes: INC completions, grade corrections, equivalency approvals, elective mapping changes, and prerequisite enrollment overrides.
 - Each entry: actor, timestamp, entity/record, field(s), old value, new value, optional reason.
 - The audit log is append-only/immutable at the DB level.
 - Structured records are the single source of truth; exports are read-only.
@@ -564,6 +564,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `status` | enum(`passed`,`failed`,`currently_enrolled`,`inc`,`dr`,`na`) | |
 | `midterm_grade`, `final_grade` | numeric, nullable | discrete 0.25 increments, 1.00–5.00 |
 | `inc_deadline` | date, nullable | set when `status = inc`; defaults to one calendar year after the term's actual end date |
+| `prerequisite_override` | boolean, not null, default false | true when the adviser continued after an unmet strict-prerequisite warning |
 | `prerequisite_grade_override` | boolean, not null, default false | identifies an audited correction to the original prerequisite attempt |
 | `created_at`, `updated_at` | timestamptz | |
 
@@ -671,7 +672,7 @@ The production application will provide the following role-based workflows. Thes
 | `/adviser/advisees/:id/record-grades` | Direct grade encoding with instructor per attempt and grade completion                        |
 | `/adviser/advisees/:id/history`   | Longitudinal enrollment attempts, gap-free adviser assignment history, and student audit trail    |
 | `/adviser/advisees/:id/notes`     | Full dated, append-only general advising notes (visible to student & staff) and attempt remarks (staff-only) |
-| `/adviser/enrollment/new`         | Record an attempt; an unsatisfied strict prerequisite displays the missing requirement and a path to Grades |
+| `/adviser/enrollment/new`         | Record an attempt; an unmet strict prerequisite offers Continue with override or Cancel, with a reason required to continue |
 | `/adviser/import-grades`          | Validate and review grade imports from CSV before applying them                                   |
 | `/adviser/grade-flags`            | Review and resolve student-submitted grade questions                                              |
 | `/adviser/reassignment`           | Reassign advisees to another adviser while strictly preserving zero-gap assignment continuity    |
@@ -705,7 +706,7 @@ The New Course workflow will collect the course code, title, lecture hours, lab 
 A React SPA talks to Supabase over HTTP, and only through operations declared in `contract/openapi.yaml`. Read-heavy views (checklist, grades, dashboards) are TanStack Query reads against PostgREST endpoints, where RLS decides what the caller may see. Writes fall into two classes:
 
 - **Simple, single-row writes** (advising notes, profile edits) go straight to PostgREST; RLS and DB constraints are the whole enforcement story.
-- **Writes with invariants the client cannot be trusted to uphold** — prerequisite-grade corrections with their audit records, adviser reassignment's zero-gap transaction, and equivalency decisions — go through an Edge Function, so the rule lives on the server side of the contract.
+- **Writes with invariants the client cannot be trusted to uphold** — enrollment overrides and prerequisite-grade corrections with their audit records, adviser reassignment's zero-gap transaction, and equivalency decisions — go through an Edge Function, so the rule lives on the server side of the contract.
 
 There is no application server of our own. Anything that would previously have justified one (a secret, a privileged write, a multi-statement transaction) is an Edge Function, and every Edge Function is a documented operation in the contract.
 
@@ -725,7 +726,7 @@ There is no application server of our own. Anything that would previously have j
 
 | Operation                  | Endpoint                                   | Why it can't be a plain PostgREST write                                                                                              |
 | -------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `recordEnrollmentAttempt`  | `POST /functions/v1/enrollment-attempts`   | Checks prerequisites before recording an attempt; directs the adviser to Grades when a strict prerequisite is unmet                  |
+| `recordEnrollmentAttempt`  | `POST /functions/v1/enrollment-attempts`   | Checks prerequisites; an authorized override records the attempt, reason, and audit entry together                                    |
 | `reassignAdviser`          | `POST /functions/v1/adviser-reassignment`  | Closes the outgoing assignment and opens the incoming one in one transaction, so zero-gap continuity can never be violated mid-write |
 | `applyEquivalencyDecision` | `POST /functions/v1/equivalency-decisions` | Writes the decision and remaps the affected checklist slot atomically                                                                |
 | `recomputeLapsedIncGwa`    | `POST /functions/v1/recompute-lapsed-inc`  | Scheduled (not user-facing); invoked by `pg_cron` with the service role to invalidate GWA caches whose INC deadline has newly passed |
@@ -791,7 +792,7 @@ No third-party global state library is used; Query plus Context covers both tier
 
 Zod schemas in `src/lib/validation` mirror the contract's request bodies and back the React Hook Form resolvers, so a payload rejected by the server is normally caught before it is sent. They are a UX affordance, not the enforcement layer — RLS, DB constraints, and Edge Function checks are.
 
-The generated client normalizes every failure into the contract's single `Error` shape, so components handle one error type whether it came from PostgREST or an Edge Function. When a strict prerequisite is unmet, the adviser is directed to Grades. Correcting a failed prerequisite requires a passing replacement final grade and a reason; the server updates the original attempt and audit record together and recomputes affected academic results.
+The generated client normalizes every failure into the contract's single `Error` shape, so components handle one error type whether it came from PostgREST or an Edge Function. When a strict prerequisite is unmet, the adviser can cancel or continue with a required reason. The server rechecks authorization and records the override and audit entry with the attempt. Correcting the prerequisite grade is a separate action.
 
 ### Migration & Naming Conventions
 
@@ -816,7 +817,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 ## 12. Assumptions & Decisions Log
 
 1. **Adviser gap tolerance** — zero-gap continuity required; enforced by a DB-level constraint/trigger, not application discipline alone.
-2. **Prerequisite enforcement** — an unmet strict prerequisite prevents recording the dependent enrollment. A failed prerequisite may be corrected in Grades with a passing replacement grade and an audited reason.
+2. **Prerequisite enforcement** — an unmet strict prerequisite prompts Continue with override or Cancel. Continuing requires a reason and an audit entry; cancelling makes no enrollment write.
 3. **INC lapse** — status stays `INC` permanently; GWA computation and the delinquency flag both treat a lapsed INC as 5.00/failed-units, evaluated at calculation time (not a stored status change). Cached GWA values need a scheduled deadline check to stay correct (§9).
 4. Equivalency/mapping slots use the original attempt's grade/units and don't re-trigger GWA recompute.
 5. **Advising-note access (B9)** — notes are visible to the student they concern and authorized staff. Attempt-level remarks remain staff-only.
@@ -860,7 +861,7 @@ Project contributions are documented through commits, pull requests, issue histo
 
 ### Test Cases as Issues
 
-End-to-end test cases are raised as GitHub Issues by Quality Assurance in coordination with the Project Manager. Each test-case issue specifies the scenario, steps, and expected result (e.g., "Adviser attempts to enroll a student without a satisfied strict prerequisite — show the missing requirement and a path to Grades"). A developer or QA engineer implements the corresponding Playwright test referencing the issue number, and the PR that adds it must close that issue.
+End-to-end test cases are raised as GitHub Issues by Quality Assurance in coordination with the Project Manager. Each test-case issue specifies the scenario, steps, and expected result (e.g., "An unmet strict prerequisite shows Continue with override and Cancel; continuing requires a reason, and cancelling makes no enrollment write"). A developer or QA engineer implements the corresponding Playwright test referencing the issue number, and the PR that adds it must close that issue.
 
 ### Milestones
 
