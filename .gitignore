@@ -32,3 +32,7 @@ supabase/.temp
 
 # Agent and temporary teamwork metadata
 .agents/
+
+# Design tool cache
+.impeccable/
+.planning/

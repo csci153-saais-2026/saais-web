@@ -227,22 +227,30 @@ contract/
   openapi.yaml         # THE contract — single source of truth for every callable endpoint
   redocly.yaml         # lint ruleset + Redoc theme config
   generated/           # openapi-typescript output (committed, CI-verified fresh, never hand-edited)
+mockup/                # Single source of truth interactive prototype & reference UI
+  prototype.html       # Consolidated interactive prototype across all user portals & workflows
+  assets/              # Mockup runtime logic (app.js, model.js) and styles
+  DESIGN.md            # Visual design tokens, color palette, typography, and UI specs
+  RUNTIME.md           # Prototype runtime architecture and instructions
+docs/
+  openapi/             # Static Redoc interactive API documentation bundle (index.html)
+  meeting-minutes/     # Official team meeting minutes
 src/
   main.tsx             # app entry; mounts providers
   App.tsx              # router + provider composition
   routes/
     auth/              # login, invite-accept, password reset
-    student/             # Student portal routes
-    adviser/             # Adviser portal routes
-    department-head/     # Department Head portal routes
-    department-staff/    # Department Staff portal routes
-    dean/                # Dean portal routes
+    student/           # Student portal routes
+    adviser/           # Adviser portal routes
+    department-head/   # Department Head portal routes
+    department-staff/  # Department Staff portal routes
+    dean/              # Dean portal routes
     department-head-dean/ # Combined view for profiles with both role assignments
-    admin/               # System Administrator portal routes
+    admin/             # System Administrator portal routes
     docs/              # in-app Redoc viewer (auth-gated outside development)
   components/
     ui/                # shared primitives (buttons, modals, tables, badges)
-    features/          # feature-specific components (checklist, enrollment form, etc.)
+    features/          # feature-specific components (checklist, advisee tabs, enrollment modal)
   context/             # React Context providers (see §9 State Management)
     SessionContext.tsx     # session, profile, role assignments — the app-wide auth source of truth
     AdviseeContext.tsx     # the advisee currently being worked on, shared across adviser screens
@@ -253,12 +261,14 @@ src/
     validation/        # Zod schemas mirroring the contract's request bodies
   hooks/               # TanStack Query hooks, one per contract operation
 supabase/
-  migrations/          # SQL migration files
+  migrations/          # SQL migration files in topological order
   functions/           # Edge Functions — each one an operation in contract/openapi.yaml
-  seed.sql             # local/dev seed data
+  seed.sql             # local/dev synthetic seed data
+public/                # static public assets (logos, seals, favicon)
+rules/                 # Vite React best practices and development rules
 .github/
   workflows/           # GitHub Actions CI pipelines
-  ISSUE_TEMPLATE/       # bug report / test-case issue templates
+  ISSUE_TEMPLATE/      # bug report, task, and test-case issue templates
 ```
 
 ## 6. Domain Rules & Business Logic
@@ -390,6 +400,7 @@ The following workflow records are described in §8 but are not yet part of this
 This is a lightweight starting point for migration authoring, not final DDL — types, constraints, and indexes should be refined during actual schema implementation.
 
 **Profile**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | equals `auth.users.id` |
@@ -398,6 +409,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `created_at`, `updated_at` | timestamptz | |
 
 **RoleAssignment**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -408,12 +420,14 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `created_at` | timestamptz, not null | |
 
 **Faculty**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
 | `name` | text, not null | Institution's College/Faculty name |
 
 **Department**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -421,6 +435,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `name` | text, not null | |
 
 **AdviserAssignment**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -431,6 +446,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `created_at` | timestamptz | |
 
 **Program**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -438,6 +454,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `code`, `name` | text, unique, not null | |
 
 **CurriculumVersion**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -446,6 +463,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `delinquency_threshold` | numeric, not null | curriculum-specific failed-units threshold |
 
 **CurriculumTerm**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -453,6 +471,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `year_level`, `term_sequence` | int, not null | positional ordering within the curriculum |
 
 **Course**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -464,6 +483,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `repeatable_type` | enum(`none`,`grade_replacement`,`additional_credit`) | drives the units/GWA counting rule in §6 |
 
 **Prerequisite**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -481,6 +501,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `nominal_units` | numeric, not null | used to detect a units mismatch against an ElectiveMapping's actual course |
 
 **StudentCurriculumAssignment**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -491,6 +512,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `reason` | text, nullable | e.g. "transfer", "shift" |
 
 **ElectiveMapping**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -500,6 +522,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `created_at`, `updated_at` | timestamptz | reversible/revisable; changes audited |
 
 **EquivalencyDecision**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -510,6 +533,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `decided_at` | timestamptz, not null | revocable/editable, audited |
 
 **SchoolTerm**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -520,6 +544,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `override_at` | timestamptz, nullable | override _process_ is out of scope — state only |
 
 **CourseOffering**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -528,6 +553,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `is_by_request` | boolean, not null, default false | for discontinued courses still needed under an older curriculum |
 
 **Attempt**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -542,6 +568,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `created_at`, `updated_at` | timestamptz | |
 
 **INCResolution**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -550,6 +577,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `resolved_at` | timestamptz, not null | |
 
 **AdvisingNote**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -559,16 +587,18 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `created_at` | timestamptz, not null | |
 
 **AttemptRemark**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
 | `attempt_id` | uuid, FK → Attempt, nullable | nullable to allow a remark on an empty checklist slot |
 | `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, nullable | used when `attempt_id` is null |
 | `authored_by` | uuid, FK → Profile (adviser/admin), not null | |
-| `body_text` | text, not null | visible to the student it concerns and authorized staff |
+| `body_text` | text, not null | append-only; staff-only (adviser and administrators; hidden from students) |
 | `created_at` | timestamptz, not null | |
 
 **AuditLogEntry**
+
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | |
@@ -631,26 +661,37 @@ The production application will provide the following role-based workflows. Thes
 
 | Route                             | Features                                                                                          |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `/adviser/dashboard`              | Advisee list, delinquency alerts, and INC-deadline alerts                                         |
-| `/adviser/advisees`               | Search and filter current and past advisees                                                       |
-| `/adviser/advisees/:id`           | Student checklist, curriculum, grades, history, and advising notes                                |
-| `/adviser/advisees/:id/notes`     | Add and view advising notes and attempt remarks                                                   |
-| `/adviser/advisees/:id/checklist` | Review per-slot status and manage elective mappings and equivalency decisions                    |
-| `/adviser/enrollment/new`         | Record an attempt; an unsatisfied strict prerequisite triggers a soft warning with Continue/Cancel |
-| `/adviser/encode-grades`          | Record grades for advisees                                                                       |
-| `/adviser/import-grades`          | Validate and review grade imports before applying them                                           |
-| `/adviser/grade-flags`            | Review and resolve student grade flags                                                           |
-| `/adviser/reassignment`           | Reassign an adviser while preserving gap-free assignment history                                 |
+| `/adviser/dashboard`              | Advisee roster summary, delinquency alerts, INC-deadline alerts, and quick actions               |
+| `/adviser/advisees`               | Search and filter current and past advisees by name, ID, and standing                              |
+| `/adviser/advisees/:id`           | Student 360 workspace: Overview, Advising, Checklist, Grades, Record grades, and History           |
+| `/adviser/advisees/:id/overview`  | Student summary profile, program assignment, academic standing, and contact info                  |
+| `/adviser/advisees/:id/advising`  | Dual-pane advising workspace: Course recommendations (with plan addition & retake prioritization), recent notes, and grounded AI assistant preview |
+| `/adviser/advisees/:id/checklist` | Interactive curriculum checklist with per-slot status, satisfaction sources, read-only Curriculum Shift simulator, and PDF export |
+| `/adviser/advisees/:id/grades`    | Term-by-term grade records, midterm & final grades, term GWAs, and cumulative GWA                 |
+| `/adviser/advisees/:id/record-grades` | Direct grade encoding with instructor per attempt and grade completion                        |
+| `/adviser/advisees/:id/history`   | Longitudinal enrollment attempts, gap-free adviser assignment history, and student audit trail    |
+| `/adviser/advisees/:id/notes`     | Full dated, append-only general advising notes (visible to student & staff) and attempt remarks (staff-only) |
+| `/adviser/enrollment/new`         | Record an attempt; an unsatisfied strict prerequisite triggers a soft warning modal with Continue/Cancel |
+| `/adviser/import-grades`          | Validate and review grade imports from CSV before applying them                                   |
+| `/adviser/grade-flags`            | Review and resolve student-submitted grade questions                                              |
+| `/adviser/reassignment`           | Reassign advisees to another adviser while strictly preserving zero-gap assignment continuity    |
 
-### Department and Dean Portals
+### Department, Dean, and Admin Portals
 
 | Route group                            | Features                                                                                                                   |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `/department-head/*`                   | Department students, adviser assignments, terms, curricula, transfers, equivalencies, outside credits, reports, settings, and audit log |
-| `/department-head-dean/*`              | Combined Adviser, Department Head, and Dean workflows for a person with both appointments                                 |
-| `/department-staff/*`                  | Students, adviser assignments, terms, curricula, course catalogue, and department accounts and roles                      |
-| `/dean/*`                              | Read-only faculty student directory, reports, and audit log                                                               |
-| `/admin/*`                             | Student directory, accounts and roles, faculties and departments, programs, settings, and audit log; opens on the Student directory |
+| `/department-head/*`                   | Department students, adviser assignments, academic terms, curricula, transfers, equivalencies, outside credits, reports, and department audit log |
+| `/department-head-dean/*`              | Combined Adviser, Department Head, and Dean workflows for a user holding joint appointments                                |
+| `/department-staff/*`                  | Department students, adviser assignments, terms, curricula, department course catalogue, and department accounts (view-only role assignments) |
+| `/dean/*`                              | Read-only faculty-wide student directory, college statistics, and faculty audit log                                        |
+| `/admin/dashboard`                     | System overview, key statistics, and quick navigation (opens on the Student directory)                                    |
+| `/admin/accounts`                      | User account provisioning, institutional email verification, status toggling, and role assignments                        |
+| `/admin/faculties`                     | Faculty (College) and subordinate Department hierarchy management                                                          |
+| `/admin/programs`                      | Master degree programs with department/college associations and active status                                              |
+| `/admin/curricula`                     | Versioned degree curricula, required units, delinquency thresholds, curriculum terms, and slot mappings                   |
+| `/admin/courses`                       | Master course catalog: codes, lecture/lab hours, units, repeatable types, and multi-tier prerequisites                     |
+| `/admin/course-offerings`              | Academic school terms (with actual end dates & lock controls) and term course offerings (including by-request offerings)   |
+| `/admin/audit-log`                     | System-wide immutable audit trail with actor, action, date-range filtering, and export                                     |
 
 ### Curriculum and Course Catalogue
 
@@ -825,7 +866,7 @@ End-to-end test cases are raised as GitHub Issues by Quality Assurance in coordi
 
 ### Milestones
 
-Milestones group issues by development phase/sprint (e.g., "Enrollment & Attempts," "Adviser Reassignment"). Every issue should be assigned to a milestone before work starts.
+Milestones group issues by development phase: M1 Planning & Design, M2 Contract & Mock, M3 Backend, M4 Frontend (on mock), and M5 Integration & Deployment. Every issue must be assigned to an active milestone before work begins.
 
 ### Branching & Pull Requests
 
