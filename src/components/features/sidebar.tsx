@@ -2,43 +2,86 @@ import { BookOpenIcon, ChevronDownIcon, LogOutIcon, type LucideIcon } from "luci
 import { Link, NavLink } from "react-router"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { BrandMark } from "@/components/ui/brand-mark"
-import { Kicker } from "@/components/ui/kicker"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar"
 
-export type NavItem = { label: string; to: string; icon: LucideIcon }
-export type NavSection = { label: string; items: NavItem[] }
+export type NavItem = {
+  label: string
+  to: string
+  icon: LucideIcon
+  /** Match the path exactly (e.g. dashboards), instead of also matching child routes. */
+  end?: boolean
+}
+
+export type NavSection = {
+  label: string
+  items: NavItem[]
+  /** Render the section label as an expandable header (e.g. ADVISER / DEPARTMENT HEAD groups). */
+  collapsible?: boolean
+  defaultOpen?: boolean
+}
 
 export type SidebarUser = { name: string; subtitle: string; initials: string }
 
-function SidebarNav({ sections, onNavigate }: { sections: NavSection[]; onNavigate?: () => void }) {
+function NavItems({ items }: { items: NavItem[] }) {
+  const { setOpenMobile } = useSidebar()
   return (
-    <nav aria-label="Main navigation" className="flex-1 overflow-y-auto">
-      {sections.map((section) => (
-        <div key={section.label}>
-          <Kicker className="block px-4 pt-3.5 pb-2.5 text-sidebar-foreground/60">{section.label}</Kicker>
-          <ul className="grid gap-0.5">
-            {section.items.map(({ label, to, icon: Icon }) => (
-              <li key={to}>
-                <NavLink
-                  to={to}
-                  onClick={onNavigate}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 rounded-[5px] border-l-[3px] border-transparent px-3.5 py-2.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-gold",
-                      isActive && "border-sidebar-primary bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
-                    )
-                  }
-                >
-                  <Icon className="size-[18px] shrink-0" aria-hidden />
-                  {label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
+    <SidebarMenu className="gap-0.5">
+      {items.map(({ label, to, icon: Icon, end }) => (
+        <SidebarMenuItem key={to}>
+          {/* NavLink sets aria-current="page" on the active route, which the menu button styles. */}
+          <SidebarMenuButton asChild>
+            <NavLink to={to} end={end} onClick={() => setOpenMobile(false)}>
+              <Icon aria-hidden />
+              <span>{label}</span>
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       ))}
-    </nav>
+    </SidebarMenu>
+  )
+}
+
+function NavGroup({ section }: { section: NavSection }) {
+  if (!section.collapsible) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <NavItems items={section.items} />
+        </SidebarGroupContent>
+      </SidebarGroup>
+    )
+  }
+  return (
+    <Collapsible defaultOpen={section.defaultOpen} className="group/collapsible">
+      <SidebarGroup>
+        <SidebarGroupLabel asChild>
+          <CollapsibleTrigger className="w-full justify-between">
+            {section.label}
+            <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]/collapsible:rotate-180" aria-hidden />
+          </CollapsibleTrigger>
+        </SidebarGroupLabel>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <NavItems items={section.items} />
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
   )
 }
 
@@ -68,10 +111,7 @@ function AccountMenu({
       </PopoverTrigger>
       <PopoverContent side="top" align="start" className="w-56 gap-0 p-1.5">
         {profileHref && (
-          <Link
-            to={profileHref}
-            className="flex items-center gap-2.5 rounded-[5px] px-3 py-2.5 text-sm font-medium hover:bg-accent"
-          >
+          <Link to={profileHref} className="flex items-center gap-2.5 rounded-[5px] px-3 py-2.5 text-sm font-medium hover:bg-accent">
             My profile
           </Link>
         )}
@@ -88,16 +128,17 @@ function AccountMenu({
   )
 }
 
-/** The fixed 250px forest sidebar: brand, nav sections, help link, account menu. */
-function Sidebar({
+/**
+ * Role-portal sidebar built on the shadcn Sidebar: fixed 250px on desktop, Sheet drawer on mobile.
+ * Must be rendered inside <SidebarProvider> (AppShell does this).
+ */
+function AppSidebar({
   portalLabel,
   sections,
   user,
   helpHref = "/docs",
   profileHref,
   onSignOut,
-  onNavigate,
-  className,
 }: {
   portalLabel: string
   sections: NavSection[]
@@ -105,31 +146,35 @@ function Sidebar({
   helpHref?: string
   profileHref?: string
   onSignOut: () => void
-  onNavigate?: () => void
-  className?: string
 }) {
+  const { setOpenMobile } = useSidebar()
   return (
-    <aside
-      className={cn(
-        "flex h-dvh w-sidebar shrink-0 flex-col gap-3 bg-sidebar px-3 pt-5.5 pb-4 text-sidebar-foreground",
-        className
-      )}
-    >
-      <Link to="/" className="mb-1 border-b border-sidebar-border px-2 pb-4">
-        <BrandMark caption={portalLabel} />
-      </Link>
-      <SidebarNav sections={sections} onNavigate={onNavigate} />
-      <div className="border-t border-sidebar-border pt-3">
-        <Link
-          to={helpHref}
-          className="mb-1 flex items-center gap-3 rounded-[5px] px-3.5 py-2.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent"
-        >
-          <BookOpenIcon className="size-[18px]" aria-hidden /> Help &amp; documentation
+    <Sidebar collapsible="offcanvas" className="border-sidebar-border">
+      <SidebarHeader className="px-5 pt-5.5 pb-4">
+        <Link to="/" onClick={() => setOpenMobile(false)} className="border-b border-sidebar-border pb-4 text-sidebar-foreground hover:text-sidebar-foreground">
+          <BrandMark caption={portalLabel} />
         </Link>
+      </SidebarHeader>
+      <SidebarContent className="px-3">
+        {sections.map((section) => (
+          <NavGroup key={section.label} section={section} />
+        ))}
+      </SidebarContent>
+      <SidebarFooter className="gap-1 border-t border-sidebar-border px-3 pt-3 pb-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link to={helpHref} onClick={() => setOpenMobile(false)}>
+                <BookOpenIcon aria-hidden />
+                <span>Help &amp; documentation</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <AccountMenu user={user} profileHref={profileHref} onSignOut={onSignOut} />
-      </div>
-    </aside>
+      </SidebarFooter>
+    </Sidebar>
   )
 }
 
-export { Sidebar, SidebarNav, AccountMenu }
+export { AppSidebar }

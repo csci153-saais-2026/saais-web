@@ -36,7 +36,7 @@ function DataTablePanel<T>({
 }) {
   return (
     <Panel title={title} description={description} action={action} flush>
-      <Table className="stack-table">
+     <Table className="stack-table">
         <TableHeader className="bg-secondary">
           <TableRow>
             {columns.map((c) => (
