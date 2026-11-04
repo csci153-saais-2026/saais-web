@@ -68,6 +68,35 @@
   --status-enrolled-bg: #e4edf4;
   --status-neutral: #5c5a4c;
   --status-neutral-bg: #ece8da;
+
+  /* Gold pairing: the single override button uses dark brown text on gold. */
+  --gold-foreground: #3a2a05;
+
+  /* Inline notices: advisory (gold), confirmed (green), blocked (red). */
+  --notice-advisory: #7a5406;
+  --notice-advisory-bg: #fcf4e0;
+  --notice-advisory-border: #ebdcae;
+  --notice-success: #2c6430;
+  --notice-success-bg: #e7f0e2;
+  --notice-success-border: #cbddc2;
+  --notice-danger: #9e2e1c;
+  --notice-danger-bg: #fae7e1;
+  --notice-danger-border: #efcfc5;
+
+  /* Link on cream and row hover. */
+  --link: #2f4a12;
+  --link-hover: #b0761a;
+  --row-hover: #efeadb;
+
+  /* Layout and density (Layout and density sheet). */
+  --sidebar-width: 250px;
+  --topbar-height: 62px;
+  --content-gutter: 32px;
+  --content-gutter-sm: 16px;
+  --content-pad-top: 30px;
+  --content-pad-bottom: 40px;
+  --grid-gap: 18px;
+  --table-row-pad: 11px;
 }
 
 @theme inline {
@@ -124,6 +153,55 @@
   --color-status-enrolled-bg: var(--status-enrolled-bg);
   --color-status-neutral: var(--status-neutral);
   --color-status-neutral-bg: var(--status-neutral-bg);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-notice-advisory: var(--notice-advisory);
+  --color-notice-advisory-bg: var(--notice-advisory-bg);
+  --color-notice-advisory-border: var(--notice-advisory-border);
+  --color-notice-success: var(--notice-success);
+  --color-notice-success-bg: var(--notice-success-bg);
+  --color-notice-success-border: var(--notice-success-border);
+  --color-notice-danger: var(--notice-danger);
+  --color-notice-danger-bg: var(--notice-danger-bg);
+  --color-notice-danger-border: var(--notice-danger-border);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-row-hover: var(--row-hover);
+
+  /* Type scale. Syne = display voice, IBM Plex Sans = data, Plex Mono = codes and grades. */
+  --text-display-xl: 56px;
+  --text-display-xl--line-height: 1.08;
+  --text-display-xl--letter-spacing: -0.01em;
+  --text-display-l: 38px;
+  --text-display-l--line-height: 1.1;
+  --text-display-l--letter-spacing: -0.01em;
+  --text-display-m: 30px;
+  --text-display-m--line-height: 1.15;
+  --text-display-m--letter-spacing: -0.01em;
+  --text-heading: 16px;
+  --text-heading--line-height: 1.4;
+  --text-body: 15px;
+  --text-body--line-height: 1.55;
+  --text-cell: 13.5px;
+  --text-cell--line-height: 1.5;
+  --text-code: 14px;
+  --text-code--line-height: 1.5;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.5;
+  --text-kicker: 11.5px;
+  --text-kicker--line-height: 1.5;
+  --text-kicker--letter-spacing: 0.14em;
+  --text-kicker--font-weight: 600;
+  --tracking-kicker: 0.14em;
+
+  /* Spacing tokens: w-sidebar, h-topbar, px-gutter, gap-grid, py-row ... */
+  --spacing-sidebar: var(--sidebar-width);
+  --spacing-topbar: var(--topbar-height);
+  --spacing-gutter: var(--content-gutter);
+  --spacing-gutter-sm: var(--content-gutter-sm);
+  --spacing-grid: var(--grid-gap);
+  --spacing-row: var(--table-row-pad);
+
+  --breakpoint-md: 768px;
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -147,12 +225,42 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
+  /* Display voice: Syne 700. h1 = Display / M (30px), tightens at the 768px breakpoint. */
   h1,
-  h2,
-  h3 {
+  h2 {
     font-family: var(--font-heading);
     font-weight: 700;
     letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  h1 {
+    font-size: 30px;
+  }
+  /* Heading: IBM Plex Sans 600 16/1.4. */
+  h3,
+  h4 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 1.4;
+    letter-spacing: -0.011em;
+  }
+  a {
+    color: var(--link);
+  }
+  a:hover {
+    color: var(--link-hover);
+  }
+  code,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+  }
+  @media (max-width: 767px) {
+    h1 {
+      font-size: 26px;
+    }
   }
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -169,4 +277,48 @@
       animation: none !important;
     }
   }
+}
+
+/* Tables with .stack-table become stacked cards below the 768px breakpoint. */
+@media (max-width: 767px) {
+  table.stack-table thead {
+    display: none;
+  }
+  table.stack-table,
+  table.stack-table tbody,
+  table.stack-table tr,
+  table.stack-table td {
+    display: block;
+    width: 100%;
+  }
+  table.stack-table tr {
+    padding: 10px 16px;
+    border-top: 1px solid var(--line-soft);
+  }
+  table.stack-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 5px 0;
+    text-align: right;
+  }
+  table.stack-table td::before {
+    content: attr(data-label);
+    color: var(--muted-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+}
+
+@layer components {
+  /* .display-* mirror the design sheet's Syne display styles. */
+  .display-xl { @apply font-heading text-display-xl font-bold; }
+  .display-l { @apply font-heading text-display-l font-bold; }
+  .display-m { @apply font-heading text-display-m font-bold; }
+  .kicker { @apply text-kicker font-semibold uppercase; letter-spacing: var(--tracking-kicker); }
+  .mono { @apply font-mono text-code font-medium; font-variant-ligatures: none; }
 }
