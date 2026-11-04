@@ -53,7 +53,6 @@ function SignInForm({
           type="email"
           required
           autoComplete="username"
-          className="h-11 bg-card"
         />
       </FormField>
       <FormField label="Password" htmlFor="password">
@@ -63,7 +62,6 @@ function SignInForm({
           type="password"
           required
           autoComplete="current-password"
-          className="h-11 bg-card"
         />
       </FormField>
       <div className="flex items-center justify-between text-sm">
@@ -81,7 +79,7 @@ function SignInForm({
           Forgot password?
         </Link>
       </div>
-      <Button type="submit" size="lg" className="h-11 w-full font-semibold">
+      <Button type="submit" className="w-full">
         Sign in
       </Button>
       <div className="flex items-center gap-3 text-xs text-muted-2">
@@ -90,17 +88,13 @@ function SignInForm({
       <Button
         type="button"
         variant="outline"
-        size="lg"
-        className="h-11 w-full bg-card font-semibold"
+        className="w-full"
         onClick={onGoogle}
       >
         Continue with Google
       </Button>
       {error && (
-        <Alert
-          variant="destructive"
-          className="border-status-fail/30 bg-status-fail-bg"
-        >
+        <Alert variant="destructive">
           <AlertIcon />
           <AlertDescription>{error}</AlertDescription>
         </Alert>

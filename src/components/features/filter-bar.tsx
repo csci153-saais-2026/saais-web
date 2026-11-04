@@ -49,7 +49,7 @@ function FilterBar({
       </FormField>
       <FormField label={filterLabel} htmlFor="filter-select" className="md:w-56">
         <Select value={filter} onValueChange={onFilterChange}>
-          <SelectTrigger id="filter-select" className="h-10 w-full bg-card">
+          <SelectTrigger id="filter-select" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

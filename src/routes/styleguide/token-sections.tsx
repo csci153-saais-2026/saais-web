@@ -287,6 +287,13 @@ const typeRows = [
   },
 ];
 
+const a11y = [
+  ["Contrast", "All badge text clears 4.5:1 on its own ground."],
+  ["Focus ring", "2px forest outline, 2px offset, on every interactive element."],
+  ["Hit target", "44px minimum on touch surfaces."],
+  ["Screen readers", "Status is announced as text, not as a color name."],
+] as const
+
 const spacing = [
   { name: "Sidebar", value: "250px", bar: "w-sidebar", note: "w-sidebar" },
   { name: "Topbar height", value: "62px", bar: "w-topbar", note: "h-topbar" },
@@ -298,6 +305,9 @@ const spacing = [
   },
   { name: "Grid gap", value: "16–18px", bar: "w-grid", note: "gap-grid" },
   { name: "Table row", value: "11px vertical", bar: "w-row", note: "py-row" },
+  { name: "Card radius", value: "6px", bar: "w-1.5", note: "rounded-md · 4px on inputs and chips" },
+  { name: "Hit target", value: "44px", bar: "w-11", note: "minimum on touch surfaces" },
+  { name: "Breakpoint", value: "768px", bar: "w-1.5", note: "tables stack into cards; nav becomes a drawer" },
 ];
 
 const radii = [
@@ -369,6 +379,14 @@ bg-background  bg-card  bg-secondary  border-border  text-muted-foreground`}</Co
                   {p.token}[-bg|-border]
                 </small>
               </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {a11y.map(([title, body]) => (
+            <div key={title} className="rounded-md border border-border bg-card p-4">
+              <b className="block text-[13px] font-semibold">{title}</b>
+              <p className="mt-1 text-xs text-muted-foreground">{body}</p>
             </div>
           ))}
         </div>

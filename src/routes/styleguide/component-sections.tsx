@@ -4,6 +4,7 @@ import {
   BellIcon,
   CheckIcon,
   ClockIcon,
+  DownloadIcon,
   GridIcon,
   PlusIcon,
   ShieldIcon,
@@ -153,10 +154,10 @@ function ButtonSection() {
         <div>
           <Caption>Variants</Caption>
           <div className="flex flex-wrap items-center gap-3">
-            <Button>Record attempt</Button>
-            <Button variant="outline">Export PDF</Button>
+            <Button><PlusIcon /> Record attempt</Button>
+            <Button variant="outline"><DownloadIcon /> Export PDF</Button>
             <Button variant="secondary">Secondary</Button>
-            <Button variant="ghost">Ghost</Button>
+            <Button variant="ghost">Cancel</Button>
             <Button variant="destructive">Delete</Button>
             <Button variant="link">Link</Button>
             <Button className="bg-gold text-gold-foreground hover:bg-gold/90">
@@ -193,7 +194,7 @@ function StatusSection() {
     <Section
       id="status-badge"
       title="Status badge"
-      description="Each badge pairs a dot with a text word, so color is never the only channel. INC and INC lapsed are deliberately distinct."
+      description="Each badge pairs a dot with a text word, so color is never the only channel. INC and INC lapsed are deliberately distinct: a lapsed INC keeps the status it was given and is only evaluated as 5.00."
     >
       <Specimen className="flex flex-wrap gap-2.5">
         {statuses.map((s) => (
@@ -360,31 +361,28 @@ function NoticeSection() {
       description="Three tones: advisory (an exception to read), confirmed (the invariant held) and blocked (refused by a policy or a lock)."
     >
       <div className="grid gap-4 lg:grid-cols-3">
-        <Alert className="border-notice-advisory-border bg-notice-advisory-bg text-notice-advisory">
+        <Alert variant="advisory">
           <AlertIcon />
-          <AlertDescription className="text-notice-advisory">
+          <AlertDescription>
             Advisory: an exception the adviser should read before continuing.
           </AlertDescription>
         </Alert>
-        <Alert className="border-notice-success-border bg-notice-success-bg text-notice-success">
+        <Alert variant="success">
           <ShieldIcon />
-          <AlertDescription className="text-notice-success">
+          <AlertDescription>
             Confirmed: the invariant held and the write is safe.
           </AlertDescription>
         </Alert>
-        <Alert
-          variant="destructive"
-          className="border-notice-danger-border bg-notice-danger-bg"
-        >
+        <Alert variant="destructive">
           <AlertIcon />
           <AlertDescription>
             Blocked: the request was refused by a policy or a lock.
           </AlertDescription>
         </Alert>
       </div>
-      <Code>{`<Alert variant="destructive" className="border-notice-danger-border bg-notice-danger-bg">
-  <AlertIcon /><AlertDescription>Blocked: …</AlertDescription>
-</Alert>`}</Code>
+      <Code>{`<Alert variant="advisory"><AlertIcon /><AlertDescription>Advisory: …</AlertDescription></Alert>
+<Alert variant="success"><ShieldIcon /><AlertDescription>Confirmed: …</AlertDescription></Alert>
+<Alert variant="destructive"><AlertIcon /><AlertDescription>Blocked: …</AlertDescription></Alert>`}</Code>
     </Section>
   );
 }

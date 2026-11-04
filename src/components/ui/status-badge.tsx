@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils"
 
 /** Status vocabulary from the design system: every badge pairs a dot with a text label. */
 const statusBadgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-semibold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current before:content-['']",
+  "inline-flex w-fit shrink-0 items-center gap-1.5 rounded-[3px] py-0.5 pr-[9px] pl-2 text-xs font-semibold tracking-[0.01em] whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current before:content-['']",
   {
     variants: {
       status: {
         passed: "bg-status-pass-bg text-status-pass",
         failed: "bg-status-fail-bg text-status-fail",
         inc: "bg-status-inc-bg text-status-inc",
-        "inc-lapsed": "bg-status-fail-bg text-status-inc",
+        "inc-lapsed": "bg-status-fail-bg text-status-fail",
         enrolled: "bg-status-enrolled-bg text-status-enrolled",
         dropped: "bg-status-neutral-bg text-status-neutral",
         "no-attendance": "bg-status-neutral-bg text-status-neutral",

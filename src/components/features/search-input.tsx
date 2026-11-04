@@ -8,7 +8,7 @@ function SearchInput({ className, ...props }: React.ComponentProps<"input">) {
   return (
     <div className={cn("relative", className)}>
       <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-2" />
-      <Input type="search" className="h-10 bg-card pl-9" {...props} />
+      <Input type="search" className="pl-9" {...props} />
     </div>
   )
 }
