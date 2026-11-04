@@ -1,5 +1,5 @@
 import * as React from "react"
-import { MenuIcon } from "lucide-react"
+import { MenuIcon } from "@/components/icons"
 import { Link } from "react-router"
 import {
   Breadcrumb,

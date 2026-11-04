@@ -266,10 +266,6 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
-  /* Stroke weight used by the prototype icon family. */
-  svg.lucide {
-    stroke-width: 1.6;
-  }
   @media (prefers-reduced-motion: reduce) {
     * {
       scroll-behavior: auto !important;

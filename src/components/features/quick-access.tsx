@@ -1,4 +1,4 @@
-import { ChevronRightIcon } from "lucide-react"
+import { ChevronRightIcon } from "@/components/icons"
 import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Kicker } from "@/components/ui/kicker"

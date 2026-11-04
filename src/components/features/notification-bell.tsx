@@ -1,4 +1,4 @@
-import { BellIcon } from "lucide-react"
+import { BellIcon } from "@/components/icons"
 import { Link } from "react-router"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"

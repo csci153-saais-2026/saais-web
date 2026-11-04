@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router";
-import { TriangleAlertIcon } from "lucide-react";
+import { AlertIcon } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -101,7 +101,7 @@ function SignInForm({
           variant="destructive"
           className="border-status-fail/30 bg-status-fail-bg"
         >
-          <TriangleAlertIcon />
+          <AlertIcon />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

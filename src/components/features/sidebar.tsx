@@ -1,4 +1,4 @@
-import { BookOpenIcon, ChevronDownIcon, LogOutIcon, type LucideIcon } from "lucide-react"
+import { BookIcon, ChevronDownIcon, LogoutIcon, type IconComponent } from "@/components/icons"
 import { Link, NavLink } from "react-router"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { BrandMark } from "@/components/ui/brand-mark"
@@ -21,7 +21,7 @@ import {
 export type NavItem = {
   label: string
   to: string
-  icon: LucideIcon
+  icon: IconComponent
   /** Match the path exactly (e.g. dashboards), instead of also matching child routes. */
   end?: boolean
 }
@@ -121,7 +121,7 @@ function AccountMenu({
           onClick={onSignOut}
           className="flex w-full items-center gap-2.5 rounded-[5px] px-3 py-2.5 text-left text-sm font-medium text-destructive hover:bg-accent"
         >
-          <LogOutIcon className="size-4" /> Sign out
+          <LogoutIcon className="size-4" /> Sign out
         </button>
       </PopoverContent>
     </Popover>
@@ -165,7 +165,7 @@ function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <Link to={helpHref} onClick={() => setOpenMobile(false)}>
-                <BookOpenIcon aria-hidden />
+                <BookIcon aria-hidden />
                 <span>Help &amp; documentation</span>
               </Link>
             </SidebarMenuButton>
