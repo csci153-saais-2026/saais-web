@@ -101,10 +101,11 @@ const statuses: Status[] = [
   "inc",
   "inc-lapsed",
   "enrolled",
-  "dropped",
-  "no-attendance",
+  "dr",
+  "na",
   "not-taken",
   "good",
+  "delinquent",
   "flagged",
   "active",
   "current",
@@ -129,7 +130,7 @@ const advisees = [
     no: "22-1-01188",
     program: "BS Computer Science",
     gwa: "4.50",
-    standing: "flagged" as Status,
+    standing: "delinquent" as Status,
     def: "CSIT 101, CSci 104",
   },
   {
@@ -194,7 +195,7 @@ function StatusSection() {
     <Section
       id="status-badge"
       title="Status badge"
-      description="Each badge pairs a dot with a text word, so color is never the only channel. INC and INC lapsed are deliberately distinct: a lapsed INC keeps the status it was given and is only evaluated as 5.00."
+      description="Each badge pairs a text word with a leading mark (a dot, or a flag glyph for Delinquent and Flagged), so color is never the only channel. INC and INC lapsed are deliberately distinct: a lapsed INC keeps the status it was given and is only evaluated as 5.00."
     >
       <Specimen className="flex flex-wrap gap-2.5">
         {statuses.map((s) => (
@@ -203,7 +204,10 @@ function StatusSection() {
       </Specimen>
       <Code>{`import { StatusBadge } from "@/components/ui/status-badge"
 <StatusBadge status="passed" />
-<StatusBadge status="inc-lapsed" />`}</Code>
+<StatusBadge status="inc-lapsed" />
+<StatusBadge status="dr" />          // Dropped
+<StatusBadge status="na" />          // No attendance
+<StatusBadge status="delinquent" />  // flag glyph + "Delinquent"`}</Code>
     </Section>
   );
 }
@@ -478,7 +482,7 @@ function TableSection() {
       description="Cream header row with kicker-style captions, 11px row padding and hairline rules. Below 768px rows stack into labelled cards."
     >
       <Specimen flush cream>
-        <Table>
+        <Table responsive>
           <TableHeader className="bg-secondary">
             <TableRow>
               {["Student", "Program", "GWA", "Standing"].map((h) => (
@@ -494,15 +498,15 @@ function TableSection() {
           <TableBody>
             {advisees.map((a) => (
               <TableRow key={a.id}>
-                <TableCell>
+                <TableCell label="Student">
                   <b className="block font-semibold">{a.name}</b>
                   <span className="font-mono text-xs text-muted-foreground">
                     {a.no}
                   </span>
                 </TableCell>
-                <TableCell>{a.program}</TableCell>
-                <TableCell className="font-mono">{a.gwa}</TableCell>
-                <TableCell>
+                <TableCell label="Program">{a.program}</TableCell>
+                <TableCell label="GWA" className="font-mono">{a.gwa}</TableCell>
+                <TableCell label="Standing">
                   <StatusBadge status={a.standing} />
                 </TableCell>
               </TableRow>
@@ -539,7 +543,11 @@ function TableSection() {
           footer="Sample records for presentation"
         />
       </Specimen>
-      <Code>{`<DataTablePanel title="Advisees" columns={cols} rows={rows} rowKey={(r) => r.id} />`}</Code>
+      <Code>{`<Table responsive>          // stacks into labelled cards below 768px
+  <TableBody><TableRow><TableCell label="Student">…</TableCell></TableRow></TableBody>
+</Table>
+
+<DataTablePanel title="Advisees" columns={cols} rows={rows} rowKey={(r) => r.id} />`}</Code>
     </Section>
   );
 }

@@ -13,7 +13,7 @@ export type Column<T> = {
 
 /**
  * Panel wrapping an edge-to-edge data table with cream header row. Below 768px each row
- * becomes a stacked card with data-label captions (see index.css `.stack-table`).
+ * becomes a stacked card (see the `responsive` prop on ui/table).
  */
 function DataTablePanel<T>({
   title,
@@ -36,7 +36,7 @@ function DataTablePanel<T>({
 }) {
   return (
     <Panel title={title} description={description} action={action} flush>
-     <Table className="stack-table">
+     <Table responsive>
         <TableHeader className="bg-secondary">
           <TableRow>
             {columns.map((c) => (
@@ -58,7 +58,7 @@ function DataTablePanel<T>({
               {columns.map((c) => (
                 <TableCell
                   key={c.header}
-                  data-label={c.header}
+                  label={c.header}
                   className={cn("py-2.5 text-[13.5px]", c.numeric && "text-right font-mono", c.className)}
                 >
                   {c.cell(row)}

@@ -17,16 +17,18 @@ const ui: Doc[] = [
     name: "StatusBadge",
     file: "ui/status-badge.tsx",
     live: "status-badge",
-    summary: "Status chip with a dot and a text label. Use it for every pass/fail/standing display; never show status by color alone.",
+    summary: "Status chip: text label plus a leading mark (dot, or a flag for delinquent/flagged). Use it for every pass/fail/standing display; never show status by color alone.",
     props: [
-      ["status", "Status", "passed · failed · inc · inc-lapsed · enrolled · dropped · no-attendance · not-taken · good · flagged · active · current · archived · invited · disabled"],
+      ["status", "Status", "passed · failed · inc · inc-lapsed · enrolled · dr · na · not-taken · good · delinquent · flagged · active · current · archived · invited · disabled"],
       ["children", "ReactNode", "Optional. Overrides the default label for the status."],
     ],
     example: `import { StatusBadge } from "@/components/ui/status-badge"
 
 <StatusBadge status="passed" />
 <StatusBadge status="inc-lapsed" />
-<StatusBadge status="good">Good standing</StatusBadge>`,
+<StatusBadge status="dr" />          // Dropped
+<StatusBadge status="na" />          // No attendance
+<StatusBadge status="delinquent" />  // flag glyph + "Delinquent"`,
   },
   {
     name: "Kicker",
@@ -49,6 +51,25 @@ const ui: Doc[] = [
     example: `import { BrandMark } from "@/components/ui/brand-mark"
 
 <BrandMark caption="Adviser portal" />`,
+  },
+  {
+    name: "Table (responsive)",
+    file: "ui/table.tsx",
+    live: "table",
+    summary: "Cream-headed data table. Pass responsive to stack each row into a labelled card below 768px; give every TableCell a label for its caption.",
+    props: [
+      ["responsive", "boolean", "On Table. Adds the stacking behavior (default false)."],
+      ["label", "string", "On TableCell. Column caption shown in the stacked card."],
+    ],
+    example: `<Table responsive>
+  <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>GWA</TableHead></TableRow></TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell label="Student">Maria Isabel Bautista</TableCell>
+      <TableCell label="GWA" className="font-mono">1.58</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>`,
   },
   {
     name: "Dialog",
