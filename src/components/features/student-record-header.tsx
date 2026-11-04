@@ -53,12 +53,12 @@ function RecordTabs({
 }) {
   return (
     <Tabs value={value} onValueChange={onValueChange} className="mb-6">
-      <TabsList variant="line" className="h-auto w-full justify-start gap-6 overflow-x-auto border-b border-border p-0">
+      <TabsList variant="line" className="h-auto group-data-horizontal/tabs:h-auto w-full justify-start gap-6 overflow-x-auto border-b border-border p-0">
         {tabs.map((t) => (
           <TabsTrigger
             key={t.value}
             value={t.value}
-            className="h-auto rounded-none border-0 border-b-2 border-transparent px-0 pt-2 pb-3 text-muted-foreground data-[state=active]:border-gold data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none"
+            className="h-auto flex-none rounded-none border-0 px-0 pt-2 pb-3 text-muted-foreground after:bg-gold group-data-horizontal/tabs:after:bottom-0 data-[state=active]:after:opacity-100 data-[state=active]:font-semibold data-[state=active]:text-foreground"
           >
             {t.label}
           </TabsTrigger>

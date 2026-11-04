@@ -9,7 +9,7 @@ function QuickAccess({ links }: { links: { label: string; to: string }[] }) {
     <section aria-label="Quick Access" className="mb-6 flex flex-wrap items-center gap-2.5">
       <Kicker className="mr-1">Quick access</Kicker>
       {links.map((l) => (
-        <Button key={l.to} asChild variant="outline" className="bg-card font-semibold">
+        <Button key={`${l.to}-${l.label}`} asChild variant="outline" className="bg-card font-semibold">
           <Link to={l.to}>
             {l.label}
             <ChevronRightIcon />

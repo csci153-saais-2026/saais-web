@@ -19,7 +19,7 @@ function FormField({
   className?: string
 }) {
   return (
-    <div className={cn("grid gap-1.5", className)}>
+    <div className={cn("grid content-start gap-1.5", className)}>
       <Label htmlFor={htmlFor} className="text-[13px] font-semibold text-muted-foreground">
         {label}
       </Label>
