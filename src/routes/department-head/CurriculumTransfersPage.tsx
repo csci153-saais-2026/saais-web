@@ -181,7 +181,7 @@ export default function CurriculumTransfersPage() {
             </div>
           </Panel>
 
-          <Alert className="bg-[#FCF4E0] border-[#EBDCAE] text-[#7A5406]">
+          <Alert className="bg-notice-advisory-bg border-notice-advisory-border text-notice-advisory">
             <AlertDescription className="text-xs md:text-sm">
               Requests originate from the student's adviser. Approved transfers use the equivalencies defined for the curriculum pair.
             </AlertDescription>

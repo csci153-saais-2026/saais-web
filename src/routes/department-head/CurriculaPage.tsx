@@ -120,7 +120,8 @@ export default function CurriculaPage() {
                 "group relative flex flex-col justify-between rounded-md border border-line bg-card p-5 transition-all cursor-pointer shadow-none",
                 isSelected
                   ? "border-primary ring-1 ring-primary shadow-xs"
-                  : "hover:border-primary/50"
+                  : "hover:border-primary/50",
+                ver.isCurrent && "border-t-[3px] border-t-primary"
               )}
             >
               <div>

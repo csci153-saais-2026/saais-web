@@ -4,7 +4,7 @@ import { StatGrid } from "@/components/features/stat-tile"
 import { Panel } from "@/components/features/panel"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { PlusIcon } from "@/components/icons"
 import {
   Dialog,
@@ -139,9 +139,9 @@ export default function OutsideCreditsPage() {
                   </small>
                 </TableCell>
                 <TableCell label="Type" className="text-right">
-                  <Badge variant={c.entryType === "Transferee" ? "secondary" : "outline"}>
+                  <StatusBadge status={c.entryType === "Transferee" ? "enrolled" : "not-taken"}>
                     {c.entryType}
-                  </Badge>
+                  </StatusBadge>
                 </TableCell>
               </TableRow>
             ))}

@@ -73,7 +73,7 @@ export default function EquivalencePage() {
         }
       />
 
-      <Alert className="bg-[#FCF4E0] border-[#EBDCAE] text-[#7A5406]">
+      <Alert className="bg-notice-advisory-bg border-notice-advisory-border text-notice-advisory">
         <AlertDescription className="text-xs md:text-sm">
           Equivalencies apply to a curriculum pair, one course to one course. A credited course satisfies its mapped requirement; credit is counted once.
         </AlertDescription>
