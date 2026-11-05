@@ -77,9 +77,14 @@ function StatusBadge({
       {...props}
     >
       {flagStatuses.has(key) ? (
-        <FlagIcon />
+        <FlagIcon data-slot="status-mark" data-mark="flag" />
       ) : (
-        <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
+        <span
+          aria-hidden
+          data-slot="status-mark"
+          data-mark="dot"
+          className="size-1.5 shrink-0 rounded-full bg-current"
+        />
       )}
       {children ?? statusLabels[key]}
     </span>
