@@ -409,7 +409,7 @@ const sections = [{
     summary: "Split-screen sign-in page: forest story panel plus the form (email, password, Sign in, OR, Continue with Google).",
     props: [
       ["AuthLayout", "kicker, headline, bullets: { icon; text }[], children", "Left panel copy; children is the form."],
-      ["SignInForm", "onSubmit({ email, password, keep }), onGoogle?, error?, forgotHref?", "error shows a red rejection banner."],
+      ["SignInForm", "onSubmit({ email, password, keep }) => void | Promise, onGoogle?, error?, forgotHref? (default /forgot-password)", "Validates with react-hook-form + zod (signInSchema in sign-in-schema.ts): onSubmit only runs with a non-empty, well-formed email and a password, and the button is disabled while a returned Promise runs. Pass credential or account errors from the auth call through error, which shows a red rejection banner."],
     ],
     example: `<AuthLayout kicker="Signing in" headline="The advising file, exactly as your role may see it."
   bullets={[{ icon: <ShieldIcon className="size-4" />, text: "Accounts are provisioned by an administrator." }]}>

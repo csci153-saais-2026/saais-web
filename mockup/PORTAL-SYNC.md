@@ -18,5 +18,7 @@ Keep them in sync:
 - Shared UI belongs in `src/components/ui` (standalone) or `src/components/features` (composed). Prototype helpers such as `badge()`, `panel()`, `stats()`, `table()` and `shell()` map to `StatusBadge`, `Panel`, `StatGrid`, `Table`/`DataTablePanel` and `AppShell`.
 - Prototype status classes map to `StatusBadge` statuses: `.passed`, `.failed`, `.inc`, `.delinquent`, `.currently_enrolled`, `.active`, `.disabled`, `.invited`; DR and NA use the neutral style. Every status keeps a text label.
 - `/styleguide` renders the production tokens and components with their props. Update it in the same change as any component.
-- Run `npm run typecheck`, `npm run lint` and `npm run build` before merging; they must pass.
+- Icons come from `@/components/icons`, never `lucide-react`. `components.json` still says `"iconLibrary": "lucide"` because shadcn only accepts its built-in libraries, so every `npx shadcn add` brings lucide imports back. After adding a component, replace those imports with the matching SAAIS icon and confirm `grep -rn lucide-react src` returns nothing.
+- Status and responsive-table behavior is covered by `src/components/ui/*.test.tsx`. Keep those tests passing when changing `StatusBadge` or `Table`, and add a case for any new status.
+- Run `npm test`, `npm run typecheck`, `npm run lint` and `npm run build` before merging; they must pass.
 
