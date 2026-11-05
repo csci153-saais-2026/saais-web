@@ -468,7 +468,7 @@ def lifecycle_tabs():
         ("Provision", False, "Admin creates the profile and role. Google sign-in is rejected "
          "server-side unless the email is pre-registered.", []),
         ("Advise", False, "The adviser opens the advisee's 360 view: checklist, grades, history, "
-         "staff-only notes.", []),
+         "advising notes.", []),
         ("Record", True, "An attempt is bound to a course offering. Strict prerequisites soft-check; "
          "the adviser may continue, and the continuation is what gets written.",
          [("attempt", "one row, bound to an offering in an unlocked school term"),
