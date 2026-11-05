@@ -193,19 +193,19 @@ The implementation strictly reuses the pre-built, production-tested components m
 
 ## 6. Implementation Status Tracker
 
-| Screen / Feature | Assigned To | Status | Notes |
+| Screen / Feature | Assigned To | Status | Implementation Details |
 |---|---|---|---|
-| **DH Portal Shell & Routing** | Jerome (Me) | **In Progress** | `AppShell` configuration, routes setup in `App.tsx` |
-| **Curriculum Transfers** | Jerome (Me) | **In Progress** | Tabs, stats, review modal with approve/reject |
-| **Curricula & Offerings** | Jerome (Me) | **In Progress** | Version cards, offerings table, new version & rename modals |
-| **Equivalence** | Jerome (Me) | **In Progress** | Curriculum pair selectors, equivalency table, add modal |
-| **Outside Credits** | Jerome (Me) | **In Progress** | Stats, outside credits table, credit course modal |
-| **Academic Terms** | Jerome (Me) | **In Progress** | Term table, add term modal, term details modal, close encoding modal |
-| **Students Directory** | Matt (Partner) | **Reserved** | Placeholder route provided for navigation integrity |
-| **Adviser Assignments** | Matt (Partner) | **Reserved** | Placeholder route provided for navigation integrity |
-| **Department Reports** | Matt (Partner) | **Reserved** | Placeholder route provided for navigation integrity |
-| **Audit Log** | Matt (Partner) | **Reserved** | Placeholder route provided for navigation integrity |
-| **Settings** | Matt (Partner) | **Reserved** | Placeholder route provided for navigation integrity |
+| **DH Portal Shell & Routing** | Jerome (Me) | **Completed** | `DepartmentHeadLayout.tsx`, breadcrumbs, dual-role nav in `App.tsx` |
+| **Curriculum Transfers** | Jerome (Me) | **Completed** | `CurriculumTransfersPage.tsx`: Tabs, stats, review modal with approve/reject |
+| **Curricula & Offerings** | Jerome (Me) | **Completed** | `CurriculaPage.tsx`: Version cards, offerings table, new version & rename modals |
+| **Equivalence** | Jerome (Me) | **Completed** | `EquivalencePage.tsx`: Curriculum pair selectors, equivalency table, add modal |
+| **Outside Credits** | Jerome (Me) | **Completed** | `OutsideCreditsPage.tsx`: Stats, outside credits table, credit course modal |
+| **Academic Terms** | Jerome (Me) | **Completed** | `AcademicTermsPage.tsx`: Term table, add term modal, term details modal, close encoding modal |
+| **Students Directory** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 6) |
+| **Adviser Assignments** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 7) |
+| **Department Reports** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 8) |
+| **Audit Log** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 9) |
+| **Settings** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 10) |
 
 ---
 
@@ -215,3 +215,25 @@ The implementation strictly reuses the pre-built, production-tested components m
 2. **Design Fidelity**: Spacing (32px gutter, 16px below breakpoint), typography (Syne display headings, IBM Plex Sans body, IBM Plex Mono numeric values), color scheme (Forest `#2F4A12`, Cream `#FBF8EF`, Gold `#E0A82E`), and borders (6px panels, 4px inputs, 8px buttons) strictly mirror `mockup/DesignSystem.dc.html`.
 3. **Graceful Partner Route Navigation**: Routes assigned to Developer 2 are configured with structured placeholder views within the Department Head layout, ensuring navigation links work smoothly during development and testing without 404 errors.
 4. **PDF Export Action**: The "Export PDF" buttons trigger a clean user-feedback toast and client-side printable view, preserving the prototype's export action without requiring external backend PDF generators.
+
+---
+
+## 8. Commit Log & Build Verification
+
+### Completed Commits
+
+| Commit Hash | Conventional Message | Scope |
+|---|---|---|
+| `2e264f4` | `docs(department-head): document frontend work division` | Coordination documentation and work division plan |
+| `5ab5508` | `feat(department-head): add department head mock datasets and domain types` | Static mock models, data types, and initial records |
+| `0f24dc9` | `feat(department-head): implement portal layout and role navigation shell` | Layout shell, router integration, partner placeholders |
+| `24a10fd` | `feat(department-head): implement curriculum transfers review and decision UI` | Screen 1: Transfers, tabs, review dialog, approve/reject |
+| `794e00e` | `feat(department-head): implement curricula versions and opened subjects page` | Screen 2: Version cards, offerings table, create/rename modals |
+| `2980dce` | `feat(department-head): implement course equivalence mapping page` | Screen 3: Pair filtering, equivalency matrix, add modal |
+| `636c470` | `feat(department-head): implement outside credits recognition page` | Screen 4: Credits stats, outside credit table, credit modal |
+| `31cc6ec` | `feat(department-head): implement academic terms and grade encoding management page` | Screen 5: Active term stats, term table, closure modal, PDF export |
+
+### Verification Results
+- **TypeScript Typecheck (`tsc -b`)**: Passed with 0 errors.
+- **Production Build (`vite build`)**: Passed in 1.50s; all route chunks properly code-split.
+- **Unit Test Suite (`vitest run`)**: 3 test files passed, 41 unit tests passed.
