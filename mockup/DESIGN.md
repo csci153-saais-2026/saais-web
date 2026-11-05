@@ -1,6 +1,44 @@
-# DESIGN.md — SAAIS landing page
+# DESIGN.md — SAAIS design system and landing page
 
 > **`DesignSystem.dc.html` is the authority.** Where this file's radii, button shapes or gold usage disagree with it, the sheet wins: cards/panels 6px, inputs and chips 4px, buttons 8px (no pills), gold only on "Continue with override", the active indicator and exception provenance. Landing buttons on dark grounds are cream, not gold.
+
+## Production design system (`src/`)
+
+The prototype's visual rules now ship as the production design system in the React app.
+`DesignSystem.dc.html` remains the authority; `src/` mirrors it. Open **`/styleguide`** in the running app
+(`npm run dev`, then `http://localhost:5173/styleguide`) to see every token and shared component rendered from the real
+source, with props and usage examples.
+
+| Concern | Where it lives |
+|---|---|
+| Tokens (colors, type scale, spacing, radii, notices) | `src/index.css`: CSS variables plus Tailwind `@theme` utilities |
+| Base components (standalone) | `src/components/ui/` |
+| Composed components | `src/components/features/` |
+| Icons | `src/components/icons/` (generated from `src/assets/icons/*.svg`, 24px grid, 1.6 stroke) |
+| Style guide | `src/routes/styleguide/` (lazy-loaded `/styleguide` route) |
+
+**Theme.** Forest `#2F4A12` / forest deep `#1D2F0A`, gold `#E0A82E`, cream `#FBF8EF`; no new hex values beyond
+`DesignSystem.dc.html`. Gold is rationed: the one "Continue with override" button, the active-nav edge, unread dots and the
+tab underline.
+
+**Typography.** Syne 700 for display and page titles (`text-display-xl/l/m`), IBM Plex Sans for UI and data
+(`text-heading`, `text-body`, `text-cell`, `text-caption`, `text-kicker`), IBM Plex Mono for codes and grades. Numerals
+are tabular everywhere.
+
+**Shape and layout.** Cards and panels 6px, inputs and chips 4px, buttons 8px, notices 5px; no pills on controls. Sidebar
+250px, topbar 62px, content gutter 32px (16px below the breakpoint), grid gap 16 to 18px, table row padding 11px.
+**Breakpoint 768px:** the sidebar becomes a Sheet drawer and `Table responsive` stacks rows into labelled cards.
+
+**Status vocabulary.** `StatusBadge` covers Passed, Failed, INC, INC lapsed, DR, NA, Enrolled, Not taken, Good standing,
+Delinquent and Flagged, plus account states (Active, Current, Archived, Invited, Disabled). Status is never conveyed by
+color alone: each badge has a text label and a leading mark (a dot, or a flag glyph for Delinquent and Flagged). INC and
+INC lapsed are deliberately distinct: a lapsed INC keeps its status and is only evaluated as 5.00.
+
+**Rules for changes.** Change a token in `src/index.css`, not at the call site; add or change a shared component in
+`src/components/ui` or `features` and document it on `/styleguide`. New shadcn components must have their `cn` import
+pointed at `@/lib/utils` and their icons swapped to `@/components/icons`.
+
+---
 
 The design system as shipped on `Main.dc.html`, composed against **stellic.com** as the reference.
 

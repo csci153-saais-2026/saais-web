@@ -3,7 +3,15 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * `responsive` stacks each row into a labelled card below 768px (see `.stack-table` in
+ * index.css). Give every TableCell a `label` so the card shows its column caption.
+ */
+function Table({
+  className,
+  responsive = false,
+  ...props
+}: React.ComponentProps<"table"> & { responsive?: boolean }) {
   return (
     <div
       data-slot="table-container"
@@ -11,7 +19,11 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn(
+          "w-full caption-bottom text-sm",
+          responsive && "stack-table",
+          className
+        )}
         {...props}
       />
     </div>
@@ -56,7 +68,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b transition-colors hover:bg-accent has-aria-expanded:bg-accent data-[state=selected]:bg-muted",
         className
       )}
       {...props}
@@ -77,10 +89,15 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   )
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+function TableCell({
+  className,
+  label,
+  ...props
+}: React.ComponentProps<"td"> & { label?: string }) {
   return (
     <td
       data-slot="table-cell"
+      data-label={label}
       className={cn(
         "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className
