@@ -22,6 +22,7 @@ info:
     url: https://github.com/csci153-saais-2026/saais-web/blob/main/LICENSE.md
 servers:
   - url: https://{project_ref}.supabase.co
+    x-internal: false
     description: >-
       Hosted Supabase HTTPS gateway; configure the real project reference. Production requests
       require HTTPS; no specific TLS version is assumed.
@@ -30,6 +31,7 @@ servers:
         default: your-project-ref
         description: Deployment Supabase project reference.
   - url: http://127.0.0.1:54321
+    x-internal: true
     description: Loopback-only local Supabase sandbox. HTTP is permitted only for local development.
 security:
   - supabaseProjectKey: []
@@ -7499,7 +7501,9 @@ components:
         refreshed by @supabase/supabase-js. Not the publishable/anon project key, refresh token,
         Google provider token or invitation token. Server verifies the JWT using the configured
         project issuer/signing keys and checks active profile/role/assignment; a valid JWT alone
-        does not grant application access.
+        does not grant application access. Implementations must follow JWT best current practices
+        (RFC8725): verify the signature with an explicit algorithm allowlist, and validate the
+        issuer, audience and expiry claims.
     supabaseProjectKey:
       type: apiKey
       in: header

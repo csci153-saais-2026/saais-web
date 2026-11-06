@@ -1,0 +1,23 @@
+extends:
+  - "@stoplight/spectral-owasp-ruleset"
+
+# Free, deterministic OWASP API Security Top 10 (2023) static analysis of contract/openapi.yaml.
+#
+# The rules switched off below produce several hundred findings on response schemas and gateway
+# behaviour that an OpenAPI document cannot enforce. Request-body/query bounds, closed schemas,
+# role metadata, 401/403/429 coverage and student write allowlists are already asserted by
+# contract/security.check.cjs; runtime enforcement is listed in contract/SECURITY.md.
+rules:
+  # Per-field limits on server-generated RESPONSE schemas are not an attack surface (API4 is
+  # enforced on requests via bounded pagination, closed bodies and maxItems in security.check.cjs).
+  owasp:api4:2023-string-limit: off
+  owasp:api4:2023-string-restricted: off
+  owasp:api4:2023-integer-format: off
+  owasp:api4:2023-integer-limit: off
+  # Rate limiting and CORS headers are applied by the Supabase gateway, not declared per operation.
+  # 429 responses are required on every operation by contract/security.check.cjs.
+  owasp:api4:2023-rate-limit: off
+  owasp:api8:2023-define-cors-origin: off
+  # Local Supabase sandbox server (http://127.0.0.1:54321, x-internal: true) is loopback-only.
+  # Production requests require HTTPS as documented in servers[0].
+  owasp:api8:2023-no-server-http: off

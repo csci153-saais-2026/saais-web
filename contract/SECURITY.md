@@ -9,7 +9,7 @@ The 0.3.0 revision reconciles the contract with the finalized SRS and full-stack
 | Finding | Contract correction |
 | --- | --- |
 | Client-supplied term override audit fields | A separate admin override operation accepts only `enabled`; the authenticated actor and timestamp are server-derived. |
-| Shared profile mutation permissions | Account updates are admin-only, with closed request schemas. Students have strictly read-only access. |
+| Shared profile mutation permissions | Account updates are admin-only, with closed request schemas. Students cannot author, archive or edit advising notes and have no raw table writes; their only writes are the allowlisted self-service actions (raising grade flags, updating/removing their own profile photo, marking notifications read, and logging read/export events). |
 | Missing role and assignment boundaries | Every operation specifies `x-required-roles` and an access scope. Current-adviser writes and historical-adviser reads are distinct requirements. |
 | Unbounded collection reads | Collection reads declare bounded pagination; table reads allowlist flat projections and ordering. Gateway enforcement remains mandatory. |
 | Loose operator filters | UUID filters use `eq.UUID`, `neq.UUID`, or `in.(UUID,...)`, with at most 50 IDs. Operator-prefixed strings are not plain UUIDs. |
