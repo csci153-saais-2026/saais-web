@@ -38,7 +38,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: ${{ github.workspace }}
-        run: npm ci --package-lock=true
+        run: |
+          pwd
+          ls -l package.json package-lock.json
+          npm config get package-lock
+          npm ci --package-lock=true
 
       - name: Lint API Contract (Redocly)
         run: npm run contract:lint
