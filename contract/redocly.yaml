@@ -2,9 +2,13 @@ apis:
   saais@v1:
     root: ./openapi.yaml
 
-theme:
-  openapi:
-    theme:
-      colors:
-        primary:
-          main: "#1e40af"
+extends:
+  - recommended
+
+rules:
+  operation-operationId: error
+  no-identical-paths: error
+  no-ambiguous-paths: error
+  operation-summary: error
+  info-license: off
+  info-contact: off

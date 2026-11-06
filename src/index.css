@@ -1,111 +1,320 @@
+@import "@fontsource-variable/syne";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* SAAIS tokens: forest, gold, cream. Values from the prototype design sheet. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --background: #fbf8ef;
+  --foreground: #16200c;
+  --card: #ffffff;
+  --card-foreground: #16200c;
+  --popover: #ffffff;
+  --popover-foreground: #16200c;
+  --primary: #2f4a12;
+  --primary-foreground: #fbf8ef;
+  --secondary: #f2eddc;
+  --secondary-foreground: #16200c;
+  --muted: #f2eddc;
+  --muted-foreground: #6e6c58;
+  --accent: #efeadb;
+  --accent-foreground: #16200c;
+  --destructive: #9e2e1c;
+  --border: #e1dbc6;
+  --input: #e1dbc6;
+  --ring: #2f4a12;
+  --chart-1: #2f4a12;
+  --chart-2: #4a6b22;
+  --chart-3: #e0a82e;
+  --chart-4: #9e2e1c;
+  --chart-5: #8a6206;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Cards/panels 6px; inputs and chips 4px; buttons 8px (no pills). */
+  --radius: 0.375rem;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --sidebar: #1d2f0a;
+  --sidebar-foreground: #fbf8ef;
+  --sidebar-primary: #e0a82e;
+  --sidebar-primary-foreground: #3a2a05;
+  --sidebar-accent: rgb(224 168 46 / 0.16);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(246 242 228 / 0.15);
+  --sidebar-ring: #e0a82e;
 
-  @media (max-width: 1024px) {
+  /* Brand tokens that have no shadcn slot. Gold is rationed. */
+  --forest-deep: #1d2f0a;
+  --forest-soft: #4a6b22;
+  --gold: #e0a82e;
+  --gold-deep: #b0761a;
+  --cream-deep: #f2eddc;
+  --line-soft: #efeadb;
+  --muted-2: #8c8a76;
+
+  /* Status pairs (foreground / background). */
+  --status-pass: #2c6430;
+  --status-pass-bg: #e7f0e2;
+  --status-fail: #9e2e1c;
+  --status-fail-bg: #fae7e1;
+  --status-inc: #8a6206;
+  --status-inc-bg: #fbf0d6;
+  --status-enrolled: #2a4c6b;
+  --status-enrolled-bg: #e4edf4;
+  --status-neutral: #5c5a4c;
+  --status-neutral-bg: #ece8da;
+
+  /* Gold pairing: the single override button uses dark brown text on gold. */
+  --gold-foreground: #3a2a05;
+
+  /* Inline notices: advisory (gold), confirmed (green), blocked (red). */
+  --notice-advisory: #7a5406;
+  --notice-advisory-bg: #fcf4e0;
+  --notice-advisory-border: #ebdcae;
+  --notice-success: #2c6430;
+  --notice-success-bg: #e7f0e2;
+  --notice-success-border: #cbddc2;
+  --notice-danger: #9e2e1c;
+  --notice-danger-bg: #fae7e1;
+  --notice-danger-border: #efcfc5;
+
+  /* Link on cream and row hover. */
+  --link: #2f4a12;
+  --link-hover: #b0761a;
+  --row-hover: #efeadb;
+
+  /* Layout and density (Layout and density sheet). */
+  --sidebar-width: 250px;
+  --topbar-height: 62px;
+  --content-gutter: 32px;
+  --content-gutter-sm: 16px;
+  --content-pad-top: 30px;
+  --content-pad-bottom: 40px;
+  --grid-gap: 18px;
+  --table-row-pad: 11px;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-heading: "Syne Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-forest-deep: var(--forest-deep);
+  --color-forest-soft: var(--forest-soft);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-cream-deep: var(--cream-deep);
+  --color-line-soft: var(--line-soft);
+  --color-muted-2: var(--muted-2);
+  --color-status-pass: var(--status-pass);
+  --color-status-pass-bg: var(--status-pass-bg);
+  --color-status-fail: var(--status-fail);
+  --color-status-fail-bg: var(--status-fail-bg);
+  --color-status-inc: var(--status-inc);
+  --color-status-inc-bg: var(--status-inc-bg);
+  --color-status-enrolled: var(--status-enrolled);
+  --color-status-enrolled-bg: var(--status-enrolled-bg);
+  --color-status-neutral: var(--status-neutral);
+  --color-status-neutral-bg: var(--status-neutral-bg);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-notice-advisory: var(--notice-advisory);
+  --color-notice-advisory-bg: var(--notice-advisory-bg);
+  --color-notice-advisory-border: var(--notice-advisory-border);
+  --color-notice-success: var(--notice-success);
+  --color-notice-success-bg: var(--notice-success-bg);
+  --color-notice-success-border: var(--notice-success-border);
+  --color-notice-danger: var(--notice-danger);
+  --color-notice-danger-bg: var(--notice-danger-bg);
+  --color-notice-danger-border: var(--notice-danger-border);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-row-hover: var(--row-hover);
+
+  /* Type scale. Syne = display voice, IBM Plex Sans = data, Plex Mono = codes and grades. */
+  --text-display-xl: 56px;
+  --text-display-xl--line-height: 1.08;
+  --text-display-xl--letter-spacing: -0.01em;
+  --text-display-l: 38px;
+  --text-display-l--line-height: 1.1;
+  --text-display-l--letter-spacing: -0.01em;
+  --text-display-m: 30px;
+  --text-display-m--line-height: 1.15;
+  --text-display-m--letter-spacing: -0.01em;
+  --text-heading: 16px;
+  --text-heading--line-height: 1.4;
+  --text-body: 15px;
+  --text-body--line-height: 1.55;
+  --text-cell: 13.5px;
+  --text-cell--line-height: 1.5;
+  --text-code: 14px;
+  --text-code--line-height: 1.5;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.5;
+  --text-kicker: 11.5px;
+  --text-kicker--line-height: 1.5;
+  --text-kicker--letter-spacing: 0.14em;
+  --text-kicker--font-weight: 600;
+  --tracking-kicker: 0.14em;
+
+  /* Spacing tokens: w-sidebar, h-topbar, px-gutter, gap-grid, py-row ... */
+  --spacing-sidebar: var(--sidebar-width);
+  --spacing-topbar: var(--topbar-height);
+  --spacing-gutter: var(--content-gutter);
+  --spacing-gutter-sm: var(--content-gutter-sm);
+  --spacing-grid: var(--grid-gap);
+  --spacing-row: var(--table-row-pad);
+
+  --breakpoint-md: 768px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    font-family: var(--font-sans);
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Display voice: Syne 700. h1 = Display / M (30px), tightens at the 768px breakpoint. */
+  h1,
+  h2 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  h1 {
+    font-size: 30px;
+  }
+  /* Heading: IBM Plex Sans 600 16/1.4. */
+  h3,
+  h4 {
+    font-family: var(--font-sans);
+    font-weight: 600;
     font-size: 16px;
+    line-height: 1.4;
+    letter-spacing: -0.011em;
+  }
+  a {
+    color: var(--link);
+  }
+  a:hover {
+    color: var(--link-hover);
+  }
+  code,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+  }
+  @media (max-width: 767px) {
+    h1 {
+      font-size: 26px;
+    }
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      scroll-behavior: auto !important;
+      transition: none !important;
+      animation: none !important;
+    }
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+/* Tables with .stack-table become stacked cards below the 768px breakpoint. */
+@media (max-width: 767px) {
+  table.stack-table thead {
+    display: none;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  table.stack-table,
+  table.stack-table tbody,
+  table.stack-table tr,
+  table.stack-table td {
+    display: block;
+    width: 100%;
   }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  table.stack-table tr {
+    padding: 10px 16px;
+    border-top: 1px solid var(--line-soft);
+  }
+  table.stack-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 5px 0;
+    text-align: right;
+  }
+  table.stack-table td::before {
+    content: attr(data-label);
+    color: var(--muted-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    text-align: left;
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+@layer components {
+  /* .display-* mirror the design sheet's Syne display styles. */
+  .display-xl { @apply font-heading text-display-xl font-bold; }
+  .display-l { @apply font-heading text-display-l font-bold; }
+  .display-m { @apply font-heading text-display-m font-bold; }
+  .kicker { @apply text-kicker font-semibold uppercase; letter-spacing: var(--tracking-kicker); }
+  .mono { @apply font-mono text-code font-medium; font-variant-ligatures: none; }
 }

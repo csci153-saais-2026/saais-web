@@ -3,8 +3,23 @@ name: CI
 on:
   push:
     branches: [main, staging, dev]
+    paths-ignore:
+      - 'docs/**'
+      - 'mockup/**'
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE.md'
   pull_request:
     branches: [main, staging, dev]
+    paths-ignore:
+      - 'docs/**'
+      - 'mockup/**'
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE.md'
+
+permissions:
+  contents: read
 
 jobs:
   lint-and-build:
@@ -27,10 +42,19 @@ jobs:
       - name: Lint API Contract (Redocly)
         run: npm run contract:lint
 
+      - name: Verify Contract Security Boundaries
+        run: npm run contract:security
+
+      - name: Verify Contract Freshness
+        run: npm run contract:check
+
+      - name: Run Typecheck
+        run: npm run typecheck
+
       - name: Run ESLint
         run: npm run lint
 
-      - name: Build and Typecheck
+      - name: Build Production Bundle
         run: npm run build
 
       - name: Run Tests with Coverage

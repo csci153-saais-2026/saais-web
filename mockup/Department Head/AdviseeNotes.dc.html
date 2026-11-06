@@ -1,0 +1,661 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student notes · SAAIS</title>
+  <link rel="stylesheet" href="department-navigation.css"><script src="adviser-navigation.js" defer></script>
+<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script></head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #FBF8EF;
+  color: #16200C;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+p { margin: 0; }
+a { color: #2F4A12; text-decoration: none; }
+a:hover { color: #B0761A; }
+table { border-collapse: collapse; width: 100%; }
+.dsp { font-family: 'Syne', 'Segoe UI', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; }
+.mono { font-family: 'IBM Plex Mono', 'Consolas', monospace; font-variant-ligatures: none; }
+.kick { font-size: 11.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.row:hover { background: #EFEADB; }
+.navi:hover { background: rgba(224,168,46,0.10); }
+.btnp:hover { background: #1D2F0A; }
+.btns:hover { border-color: #2F4A12; }
+.tab:hover { color: #16200C; }
+.crumb-link:hover { color: #2F4A12; text-decoration: underline; text-underline-offset: 3px; }
+.fld { width: 100%; background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 4px; padding: 9px 12px; font-family: inherit; font-size: 14px; color: #16200C; line-height: 1.4; }
+.fld::placeholder { color: #8C8A76; }
+.fld:hover { border-color: #C9C1A6; }
+a:focus-visible, button:focus-visible, .fld:focus-visible, input[type=checkbox]:focus-visible, tr[data-href]:focus-visible { outline: 2px solid #2F4A12; outline-offset: 2px; }
+.fld:focus { border-color: #2F4A12; }
+.fld.sel { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer; background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238C8A76' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center / 16px; }
+[hidden] { display: none !important; }
+dialog::backdrop { background: rgba(22,32,12,0.45); }
+  </style>
+</helmet>
+<div style="display: flex; min-height: 100vh; background: #FBF8EF"><aside class="head-adviser-sidebar" id="head-navigation" style="width: 250px; flex-shrink: 0; background: #1D2F0A; display: flex; flex-direction: column; padding: 22px 12px 18px; position: sticky; top: 0; align-self: flex-start; height: 100vh; overflow-y: auto"><a href="AdviserDashboard.dc.html" style="display: flex; align-items: center; gap: 11px; padding: 0 6px 20px"><img src="../logo-mark.png" alt="SAAIS" style="width: 34px; height: 34px; border-radius: 8px"><div><div class="dsp" style="font-size: 19px; color: #FBF8EF; letter-spacing: 0.01em">SAAIS</div><div style="font-size: 10.5px; letter-spacing: 0.11em; text-transform: uppercase; color: rgba(246,242,228,0.55); font-weight: 600">Department Head portal</div></div></a><div style="height: 1px; background: rgba(246,242,228,0.14); margin: 0 6px 16px"></div><nav class="role-navigation" aria-label="Department Head workspace" style="display: flex; flex-direction: column; gap: 2px"><details class="role-nav-section" open><summary class="role-nav-label">Adviser</summary><div class="role-nav-links"><a class="navi" href="AdviserDashboard.dc.html" data-nav="dashboard" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Dashboard</span></a><a class="navi" href="AdviserAdvisees.dc.html" data-nav="advisees" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: rgba(224,168,46,0.16); color: #F7E9C4; font-weight: 600"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><circle cx="9" cy="8" r="3.6"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.2a3.6 3.6 0 010 5.6M17.5 20a6.6 6.6 0 00-2.2-4.9"/></svg><span>Advisees</span></a><a class="navi" href="AdviserEncodeGrades.dc.html" data-nav="encode" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span>Encode grades</span></a><a class="navi" href="AdviserImportGrades.dc.html" data-nav="import" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span>Import grades</span></a><a class="navi" href="AdviserGradeFlags.dc.html" data-nav="flags" style="position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 14px; background: transparent; color: rgba(246,242,228,0.72); font-weight: 450"><span data-bar style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: #E0A82E; border-radius: 0 2px 2px 0" hidden></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M5.5 21V3.5M5.5 4.5h12l-2.4 4 2.4 4h-12"/></svg><span>Grade flags</span></a></div></details><details class="role-nav-section" ><summary class="role-nav-label">Department Head</summary><div class="role-nav-links"><a class="role-link " href="CurriculumTransfers.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/></svg><span>Curriculum transfers</span></a><a class="role-link " href="Curricula.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19a2 2 0 0 1 2-2h13"/></svg><span>Curricula</span></a><a class="role-link " href="Equivalence.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 13 4-4M8 15l-2 2a4 4 0 0 1-5-5l4-4a4 4 0 0 1 6 0m2 1 2-2a4 4 0 0 1 6 5l-4 4a4 4 0 0 1-6 0"/></svg><span>Equivalence</span></a><a class="role-link " href="OutsideCredits.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM8 9h8m-8 4h4m2 3 2 2 4-4"/></svg><span>Outside credits</span></a><a class="role-link " href="Students.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.6 8a3.6 3.6 0 1 1-7.2 0 3.6 3.6 0 0 1 7.2 0M2.5 20a6.5 6.5 0 0 1 13 0M16 5.2a3.6 3.6 0 0 1 0 5.6M17.5 20a6.6 6.6 0 0 0-2.2-4.9"/></svg><span>Students</span></a><a class="role-link " href="AdviserAssignments.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg><span>Adviser assignments</span></a><a class="role-link " href="AcademicTerms.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5V19A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6.5A1.5 1.5 0 0 1 5 5zM3.5 10h17M8 3v4M16 3v4"/></svg><span>Academic terms</span></a><a class="role-link " href="DepartmentReports.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3v18h18M9 17v-5m5 5V7m5 10V4"/></svg><span>Department reports</span></a><a class="role-link " href="AuditLog.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18H6zM9 7h6m-6 5h6m-6 5h4"/></svg><span>Audit log</span></a><a class="role-link " href="Settings.dc.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M9 2h6l1 4 4 1 2 5-3 3v5l-5 2-3-3H6l-4-5 3-3V6z"/></svg><span>Settings</span></a></div></details></nav><div style="flex-grow: 1"></div><div style="height: 1px; background: rgba(246,242,228,0.14); margin: 16px 6px 10px"></div><a class="navi" href="../Docs.dc.html" style="display: flex; align-items: center; gap: 11px; padding: 9px 16px 9px 17px; border-radius: 5px; font-size: 13.5px; color: rgba(246,242,228,0.72); margin-bottom: 6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 19a2 2 0 012-2h13"/></svg><span>Help &amp; documentation</span></a><div id="me" style="position: relative"><div id="me-menu" role="menu" hidden style="position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; padding: 6px; box-shadow: 0 8px 24px rgba(22,32,12,0.22)"><a role="menuitem" class="row" href="AdviserChangePassword.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; color: #16200C"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><rect x="4.5" y="10" width="15" height="10.5" rx="1.6"/><path d="M8 10V7a4 4 0 018 0v3"/></svg><span>Change password</span></a><div style="height: 1px; background: #EFEADB; margin: 4px 2px"></div><a role="menuitem" class="row" href="../Login.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; color: #9E2E1C"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M9 21H5a1 1 0 01-1-1V4a1 1 0 011-1h4"/><path d="M15.5 16.5L20 12l-4.5-4.5M20 12H9"/></svg><span>Sign out</span></a></div><button type="button" id="me-btn" class="navi" aria-haspopup="menu" aria-expanded="false" aria-controls="me-menu" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 5px; border: 0; background: transparent; cursor: pointer; text-align: left; font-family: inherit"><div style="width: 34px; height: 34px; border-radius: 50%; background: #E0A82E; color: #3A2A05; display: flex; align-items: center; justify-content: center; font-size: 13.6px; font-weight: 600; letter-spacing: 0.02em; flex-shrink: 0">AC</div><div style="min-width: 0; flex-grow: 1"><div style="font-size: 13.5px; font-weight: 600; line-height: 1.25; color: #FBF8EF">Dr. Andrea Dela Cruz</div><div style="font-size: 11.5px; color: rgba(246,242,228,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Department Head · DCST</div></div><span id="me-chev" style="display: flex; transition: transform 0.15s"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="rgba(246,242,228,0.55)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button></div></aside><div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0"><header style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 32px; height: 62px; background: #FFFFFF; border-bottom: 1px solid #E1DBC6; flex-shrink: 0"><nav id="crumb" aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 9px; font-size: 13.5px; flex-wrap: wrap"><a class="crumb-link" href="AdviserDashboard.dc.html" style="color: #8C8A76; font-weight: 450">Advising workspace</a><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#E1DBC6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg><a class="crumb-link" href="AdviserAdvisees.dc.html" style="color: #8C8A76; font-weight: 450">Advisees</a><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#E1DBC6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg><a class="crumb-link" href="AdviseeChecklist.dc.html" style="color: #8C8A76; font-weight: 450">Maria Isabel Bautista</a><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#E1DBC6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg><span style="color: #16200C; font-weight: 600" aria-current="page">Notes</span></nav><div style="color: #8C8A76"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M18 15V10a6 6 0 10-12 0v5l-1.8 3h15.6z"/><path d="M9.8 21h4.4"/></svg></div></header><main style="padding: 30px 32px 40px; flex-grow: 1; min-width: 0"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 16px"><div style="width: 52px; height: 52px; border-radius: 50%; background: #2F4A12; color: #FBF8EF; display: flex; align-items: center; justify-content: center; font-size: 20.8px; font-weight: 600; letter-spacing: 0.02em; flex-shrink: 0">MI</div><div><h1 class="dsp" style="font-size: 30px">Maria Isabel Bautista</h1><p style="color: #6E6C58; font-size: 14px; margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap"><span class="mono" style="font-size: 13px">2023-04412</span> · BS Computer Science · 2nd Year · <a href="mailto:maria.bautista@example.edu.ph">maria.bautista@example.edu.ph</a> · <span  style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 3px; background: #E7F0E2; color: #2C6430; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2C6430; flex-shrink: 0"></span>Good standing</span></p></div></div><nav aria-label="Student record" style="display: flex; gap: 26px; box-shadow: inset 0 -1px 0 #E1DBC6; margin-bottom: 24px; overflow-x: auto; overflow-y: hidden; white-space: nowrap"><a class="tab" href="AdviseeChecklist.dc.html" style="padding: 12px 2px; font-size: 14px; border-bottom: 2px solid transparent; color: #8C8A76; font-weight: 450">Checklist</a><a class="tab" href="AdviseeGrades.dc.html" style="padding: 12px 2px; font-size: 14px; border-bottom: 2px solid transparent; color: #8C8A76; font-weight: 450">Grades</a><a class="tab" href="AdviseeCurriculum.dc.html" style="padding: 12px 2px; font-size: 14px; border-bottom: 2px solid transparent; color: #8C8A76; font-weight: 450">Curriculum</a><a class="tab" href="AdviseeAdvising.dc.html" style="padding: 12px 2px; font-size: 14px; border-bottom: 2px solid transparent; color: #8C8A76; font-weight: 450">Advising</a><a class="tab" href="AdviseeNotes.dc.html" aria-current="page" style="padding: 12px 2px; font-size: 14px; border-bottom: 2px solid #E0A82E; color: #16200C; font-weight: 600">Notes</a><a class="tab" href="AdviseeHistory.dc.html" style="padding: 12px 2px; font-size: 14px; border-bottom: 2px solid transparent; color: #8C8A76; font-weight: 450">Audit log</a></nav><div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px"><div role="group" aria-label="Notes" style="display: flex; gap: 2px; background: #F2EDDC; padding: 3px; border-radius: 8px"><button type="button" data-notes-tab="active" aria-pressed="true" style="border: 0; padding: 7px 14px; border-radius: 6px; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; background: #2F4A12; color: #FBF8EF">Active (<span data-count="active">3</span>)</button><button type="button" data-notes-tab="archived" aria-pressed="false" style="border: 0; padding: 7px 14px; border-radius: 6px; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; background: transparent; color: #6E6C58">Archived (<span data-count="archived">2</span>)</button></div><button type="button" class="btnp" data-open="dlg-note" aria-haspopup="dialog" style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 9px 16px; font-size: 14px; background: #2F4A12; color: #FBF8EF; border: 1px solid #2F4A12"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Write a note</button></div><div id="nt-done" style="margin-bottom: 18px" hidden></div><section  style="background: #FFFFFF; border: 1px solid #E1DBC6; border-radius: 6px; overflow: hidden; min-width: 0"><header style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #EFEADB"><div><h3 style="font-size: 15.5px">Notes</h3><p style="font-size: 13px; color: #6E6C58; margin-top: 3px"><span id="notes-sub">Active notes · visible to the student</span></p></div></header><div style="padding: 0"><div id="notes-list"><article data-note data-state="active" style="padding: 16px 20px; border-bottom: 1px solid #EFEADB"><div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; font-size: 12.5px; color: #8C8A76"><div><strong style="color: #16200C; font-size: 13.5px">Dr. Andrea Dela Cruz</strong> · <span data-date>17 Sept 2026</span></div><div data-note-actions><button type="button" class="btns" data-note-act="archive" style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 6px 12px; font-size: 13px; background: #FFFFFF; color: #16200C; border: 1px solid #E1DBC6">Archive</button></div></div><p style="font-size: 14px; line-height: 1.65; margin-top: 8px; white-space: pre-wrap">Discussed a manageable course load. Review the CSci 102 (Discrete Structures I) completion requirements before the October deadline.</p></article><article data-note data-state="active" style="padding: 16px 20px; border-bottom: 1px solid #EFEADB"><div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; font-size: 12.5px; color: #8C8A76"><div><strong style="color: #16200C; font-size: 13.5px">Dr. Andrea Dela Cruz</strong> · <span data-date>14 Aug 2026</span></div><div data-note-actions><button type="button" class="btns" data-note-act="archive" style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 6px 12px; font-size: 13px; background: #FFFFFF; color: #16200C; border: 1px solid #E1DBC6">Archive</button></div></div><p style="font-size: 14px; line-height: 1.65; margin-top: 8px; white-space: pre-wrap">Reviewed the CS Elective 1 mapping and explained how it appears in the curriculum checklist.</p></article><article data-note data-state="active" style="padding: 16px 20px; border-bottom: 1px solid #EFEADB"><div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; font-size: 12.5px; color: #8C8A76"><div><strong style="color: #16200C; font-size: 13.5px">Dr. Andrea Dela Cruz</strong> · <span data-date>2 Mar 2026</span></div><div data-note-actions><button type="button" class="btns" data-note-act="archive" style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 6px 12px; font-size: 13px; background: #FFFFFF; color: #16200C; border: 1px solid #E1DBC6">Archive</button></div></div><p style="font-size: 14px; line-height: 1.65; margin-top: 8px; white-space: pre-wrap">Accepted Envi 11 as equivalent for the discontinued ScTS 11a. Student informed in person.</p></article><article data-note data-state="archived" hidden style="padding: 16px 20px; border-bottom: 1px solid #EFEADB"><div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; font-size: 12.5px; color: #8C8A76"><div><strong style="color: #16200C; font-size: 13.5px">Prof. Lourdes Mendez</strong> · <span data-date>12 Jun 2024</span></div><div data-note-actions><button type="button" class="btns" data-note-act="restore" style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 6px 12px; font-size: 13px; background: #FFFFFF; color: #16200C; border: 1px solid #E1DBC6">Restore</button></div></div><p style="font-size: 14px; line-height: 1.65; margin-top: 8px; white-space: pre-wrap">Handover to Prof. Reyes. Student is on track and prefers morning consultations.</p></article><article data-note data-state="archived" hidden style="padding: 16px 20px; border-bottom: 1px solid #EFEADB"><div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; font-size: 12.5px; color: #8C8A76"><div><strong style="color: #16200C; font-size: 13.5px">Prof. Lourdes Mendez</strong> · <span data-date>20 Nov 2023</span></div><div data-note-actions><button type="button" class="btns" data-note-act="restore" style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 6px 12px; font-size: 13px; background: #FFFFFF; color: #16200C; border: 1px solid #E1DBC6">Restore</button></div></div><p style="font-size: 14px; line-height: 1.65; margin-top: 8px; white-space: pre-wrap">Reviewed prior web application coursework for transfer credit toward CSci 135.</p></article><p data-notes-empty hidden style="padding: 28px 20px; text-align: center; font-size: 14px; color: #6E6C58"></p></div></div></section><dialog id="dlg-note" aria-labelledby="dlg-note-title" style="width: min(600px, calc(100vw - 32px)); padding: 0; border: 1px solid #E1DBC6; border-radius: 6px; background: #FFFFFF; color: #16200C; box-shadow: 0 24px 60px rgba(22,32,12,0.28)"><header style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 16px; border-bottom: 1px solid #EFEADB"><div><h2 id="dlg-note-title" class="dsp" style="font-size: 22px">Write a note</h2><p data-dlg-sub style="font-size: 13px; color: #6E6C58; margin-top: 5px">Visible to the student. Write what they and the next adviser should know.</p></div><button type="button" data-close aria-label="Close" class="btns" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #6E6C58; cursor: pointer; flex-shrink: 0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><div style="padding: 20px"><label for="nt-body" style="display: block; width: 100%"><div style="font-size: 12.5px; font-weight: 600; color: #6E6C58; margin-bottom: 6px">Note</div><textarea class="fld" id="nt-body" rows="4" placeholder="What was discussed or decided?" style="resize: vertical; min-height: 96px"></textarea></label><div id="nt-msg" style="margin-top: 12px" hidden></div></div><footer style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; background: #FBF8EF; border-top: 1px solid #EFEADB"><button type="button" class="btns" data-close style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 9px 16px; font-size: 14px; background: transparent; color: #2F4A12; border: 1px solid transparent">Cancel</button><button type="button" class="btnp" data-save=note style="display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 9px 16px; font-size: 14px; background: #2F4A12; color: #FBF8EF; border: 1px solid #2F4A12">Save note</button></footer></dialog><p style="font-size: 12px; color: #8C8A76; margin-top: 22px">Sample records for presentation · Reference date: 19 September 2026</p></main></div></div>
+</x-dc>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  /* Saved state: adviser-portal actions persist in this browser (localStorage) so they survive reloads and carry across pages and portals. */
+  var KEY_UI = 'saais-adviser-ui-v1', UI = {};
+  try { UI = JSON.parse(localStorage.getItem(KEY_UI)) || {}; } catch (e) { UI = window.__saaisUI || {}; }
+  var saveUI = function () { window.__saaisUI = UI; try { localStorage.setItem(KEY_UI, JSON.stringify(UI)); } catch (e) {} };
+  var SIDS = { ana: '23-1-01234', ben: '23-1-01301', dino: '24-1-02011', maria: '2023-04412' };
+  var ME = (function () { var b = document.getElementById('me-btn') || document.querySelector('.dean-profile-trigger, [aria-haspopup=menu]'); if (!b) return 'Prof. Ramon Reyes'; var m = b.innerText.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return m.filter(function (x) { return /^(Dr\.|Prof\.)/.test(x); })[0] || 'Prof. Ramon Reyes'; })();
+  var audit = function (action, student, details, sid, label) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add(ME, action, student, details, sid, label); };
+  var keep = function (id, after) {
+    var el = $(id); if (!el) return;
+    if (UI[id] != null) { el.innerHTML = UI[id]; if (after) after(); }
+    new MutationObserver(function () { UI[id] = el.innerHTML; saveUI(); }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+  };
+  var ICON = {
+    ok: '<path d="M12 3l7.5 3v6c0 4.4-3.1 7.6-7.5 9-4.4-1.4-7.5-4.6-7.5-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+    no: '<path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5M12 17h.01"/>',
+    warn: '<path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5M12 17h.01"/>'
+  };
+  var C = { ok: ['#E7F0E2', '#CBDDC2', '#2C6430'], no: ['#FAE7E1', '#EFCFC5', '#9E2E1C'], warn: ['#FCF4E0', '#EBDCAE', '#7A5406'] };
+  var TONE = { green: ['#E7F0E2', '#2C6430'], red: ['#FAE7E1', '#9E2E1C'], amber: ['#FBF0D6', '#8A6206'], blue: ['#E4EDF4', '#2A4C6B'], neutral: ['#ECE8DA', '#5C5A4C'] };
+  function say(el, kind, text) {
+    var c = C[kind];
+    el.innerHTML = '<div role="status" style="display:flex;align-items:flex-start;gap:11px;background:' + c[0] + ';border:1px solid ' + c[1] +
+      ';border-radius:5px;padding:13px 16px;color:' + c[2] + ';font-size:13.5px;line-height:1.5"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' +
+      ICON[kind] + '</svg><div>' + text + '</div></div>';
+    el.hidden = false;
+    return false;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
+  function badge(text, tone) {
+    var t = TONE[tone];
+    return '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 8px;border-radius:3px;background:' + t[0] + ';color:' + t[1] +
+      ';font-size:12px;font-weight:600;letter-spacing:0.01em;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:' + t[1] + ';flex-shrink:0"></span>' + esc(text) + '</span>';
+  }
+  function today() { return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function grade(v) { var n = +v; return v !== '' && !isNaN(n) && n >= 1 && n <= 5 && Math.round(n * 4) === n * 4; }
+  function filterRows(body, test) {
+    var n = 0;
+    $$('tr.row', body).forEach(function (tr) { var on = test(tr); tr.hidden = !on; if (on) n++; });
+    var e = body.querySelector('[data-empty]'); if (e) e.hidden = n > 0;
+    return n;
+  }
+
+  /* Dialogs: [data-open=id] opens, [data-close] closes */
+  var opener = null;
+  function openDlg(id, from) { var d = $(id); opener = from || null; $$('[id$="-msg"]', d).forEach(function (m) { m.hidden = true; }); d.showModal(); return d; }
+  $$('[data-open]').forEach(function (b) { b.addEventListener('click', function () { openDlg(b.dataset.open, b); }); });
+  $$('dialog').forEach(function (d) {
+    d.addEventListener('click', function (e) { if (e.target === d || e.target.closest('[data-close]')) d.close(); });
+    d.addEventListener('close', function () { if (opener) opener.focus(); });
+  });
+  /* [data-reset] clears its form */
+  $$('[data-reset]').forEach(function (b) { b.addEventListener('click', function () { var f = b.closest('form'); f.reset(); $$('[id$="-msg"]', f).forEach(function (m) { m.hidden = true; }); }); });
+  /* Clickable table rows */
+  $$('tr[data-href]').forEach(function (tr) {
+    tr.addEventListener('click', function (e) { if (!e.target.closest('a,button,input')) location.href = tr.dataset.href; });
+    tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') location.href = tr.dataset.href; });
+  });
+  /* Term switchers: select[aria-label="School term"] toggles sibling [data-term] blocks */
+  [['ov-term', 'ov-term-label'], ['rec-list-term', 'rec-list-label']].forEach(function (p) {
+    var s = $(p[0]); if (!s) return;
+    s.addEventListener('change', function () {
+      $$('[data-term]', s.closest('section')).forEach(function (b) { b.hidden = b.dataset.term !== s.value; });
+      $(p[1]).textContent = s.options[s.selectedIndex].text;
+    });
+  });
+
+  /* Advisees roster */
+  if ($('ros-body')) {
+    var set = 'current';
+    var run = function () {
+      var q = $('ros-q').value.trim().toLowerCase(), st = $('ros-standing').value;
+      $('ros-count').textContent = filterRows($('ros-body'), function (tr) {
+        return tr.dataset.set === set && (!q || tr.dataset.q.indexOf(q) > -1) && (st === 'all' || tr.dataset.standing === st);
+      });
+      $('ros-past-note').hidden = set !== 'past';
+    };
+    $('ros-q').addEventListener('input', run); $('ros-standing').addEventListener('change', run);
+    $$('[data-roster]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        set = b.dataset.roster;
+        $$('[data-roster]').forEach(function (x) { var on = x === b; x.setAttribute('aria-pressed', on); x.style.background = on ? '#2F4A12' : 'transparent'; x.style.color = on ? '#FBF8EF' : '#6E6C58'; });
+        run();
+      });
+    });
+  }
+
+  /* Advising: recommendations, notes, assistant */
+  if ($('plan-add')) {
+    var count = function () { var n = $$('.plan-pick:checked').length; $('plan-count').textContent = n + ' selected'; return n; };
+    $$('.plan-pick').forEach(function (c) { c.addEventListener('change', count); });
+    $('plan-term').addEventListener('change', function () { $('plan-term-label').textContent = '2025 - 2026 · ' + this.options[this.selectedIndex].text; });
+    var applyPlan = function () {
+      var term = $('plan-term').value, inPlan = (UI.plan || {})[term] || [];
+      $$('.plan-pick').forEach(function (c) {
+        var on = inPlan.indexOf(c.value) > -1, lab = c.closest('label') || c.parentNode, tag = lab.querySelector('[data-inplan]');
+        c.disabled = on; if (on) c.checked = false;
+        if (on && !tag) lab.insertAdjacentHTML('beforeend', ' <span data-inplan style="margin-left:8px;padding:1px 8px;border-radius:3px;background:#E7F0E2;color:#2C6430;font-size:12px;font-weight:600">In plan</span>');
+        if (!on && tag) tag.remove();
+      });
+      count();
+    };
+    applyPlan();
+    $('plan-term').addEventListener('change', applyPlan);
+    $('plan-add').addEventListener('click', function () {
+      var picked = $$('.plan-pick:checked').map(function (c) { return c.value; });
+      if (!picked.length) return say($('plan-msg'), 'no', 'Select at least one course to add to the plan.');
+      (UI.plan = UI.plan || {})[$('plan-term').value] = ((UI.plan || {})[$('plan-term').value] || []).concat(picked); saveUI();
+      (UI.planItems = UI.planItems || []).push.apply(UI.planItems, $$('.plan-pick:checked').map(function (c) { var lab = (c.closest('label') || c.parentNode).textContent.replace('In plan', '').trim(); return { code: c.value, title: lab.replace(c.value, '').trim(), term: $('plan-term').options[$('plan-term').selectedIndex].text }; })); saveUI();
+      audit('Change', 'Maria Isabel Bautista', 'Added to the ' + $('plan-term').options[$('plan-term').selectedIndex].text + ' plan: ' + picked.join(', '), '2023-04412', 'Updated term plan');
+      say($('plan-msg'), 'ok', 'Added to Maria\'s plan: <b>' + esc(picked.join(', ')) + '</b>.');
+      $$('.plan-pick:checked').forEach(function (c) { c.checked = false; }); applyPlan();
+    });
+  }
+  keep('note-list');
+  if ($('note-form')) $('note-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('note-body').value.trim();
+    if (!v) return say($('note-msg'), 'no', 'Write the note before saving.');
+    var a = document.createElement('article'); a.style.cssText = 'padding:16px 20px;border-bottom:1px solid #EFEADB';
+    a.innerHTML = '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12.5px;color:#8C8A76"><strong style="color:#16200C">Dr. Andrea Dela Cruz</strong><span>' + today() + '</span></div>' +
+      '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
+    $('note-list').insertBefore(a, $('note-list').firstChild);
+    audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '2023-04412', 'Added note');
+    this.reset(); say($('note-msg'), 'ok', 'Note saved. The student can read it.');
+  });
+  if ($('chat-form')) $('chat-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('chat-q').value.trim(); if (!v) return;
+    var add = function (text, mine) {
+      var d = document.createElement('div'); d.style.cssText = 'display:flex;justify-content:' + (mine ? 'flex-end' : 'flex-start');
+      d.innerHTML = '<p style="max-width:82%;padding:9px 13px;font-size:13.5px;line-height:1.55;' + (mine ? 'background:#2F4A12;color:#FBF8EF;border-radius:12px 12px 3px 12px' : 'background:#F2EDDC;color:#16200C;border-radius:12px 12px 12px 3px') + '">' + esc(text) + '</p>';
+      $('chat-log').appendChild(d); $('chat-log').scrollTop = $('chat-log').scrollHeight;
+    };
+    add(v, true); this.reset();
+    setTimeout(function () { add('Demo preview: this assistant is not connected. Check the checklist and prerequisite review before recording enrollment.', false); }, 400);
+  });
+
+  /* Collapsible term tables (Checklist, Grades) */
+  $$('[data-term-panel]').forEach(function (p) {
+    var h = p.querySelector('header'), scope = p.closest('[data-view]') || document;
+    var setOpen = function (open) {
+      var btn = h.querySelector('[data-collapse]');
+      h.nextElementSibling.hidden = !open; btn.setAttribute('aria-expanded', open);
+      btn.querySelector('[data-chev]').style.transform = open ? '' : 'rotate(-90deg)';
+      h.style.borderBottomColor = open ? '#EFEADB' : 'transparent';
+    };
+    p._setOpen = setOpen; h.style.cursor = 'pointer';
+    h.addEventListener('click', function () {
+      setOpen(h.nextElementSibling.hidden);
+      var all = $$('[data-term-panel]', scope), open = all.filter(function (x) { return !x.querySelector('header').nextElementSibling.hidden; }).length;
+      var t = scope.querySelector('[data-toggle-all]'); if (t) t.textContent = open ? 'Collapse all' : 'Expand all';
+    });
+  });
+  $$('[data-toggle-all]').forEach(function (t) {
+    t.addEventListener('click', function () {
+      var open = t.textContent === 'Expand all';
+      $$('[data-term-panel]', t.closest('[data-view]') || document).forEach(function (p) { p._setOpen(open); });
+      t.textContent = open ? 'Collapse all' : 'Expand all';
+    });
+  });
+
+  /* Checklist */
+  if ($('ck-filter')) {
+    $('ck-filter').addEventListener('change', function () {
+      var v = this.value, any = 0;
+      $$('[data-term-panel]').forEach(function (p) {
+        var n = filterRows(p, function (tr) { return v === 'all' || tr.dataset.status === v; });
+        p.hidden = !n; any += n;
+      });
+      document.querySelector('[data-ck-empty]').hidden = any > 0;
+    });
+    var TD_S = 'padding:11px 14px;font-size:13.5px;border-bottom:1px solid #EFEADB;vertical-align:middle';
+    var TH_S = 'text-align:left;padding:10px 14px;font-size:11.5px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:#8C8A76;background:#F2EDDC;border-bottom:1px solid #E1DBC6;white-space:nowrap';
+    $$('[data-info]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var i = JSON.parse(b.dataset.info), d = openDlg('dlg-info', b);
+        $('dlg-info-title').textContent = i.title;
+        d.querySelector('[data-dlg-sub]').textContent = i.meta;
+        var tone = { passed: 'green', inc: 'amber', currently_enrolled: 'blue', na: 'neutral', failed: 'red' };
+        var st = i.status[0] === 'Passed' ? 'green' : i.status[0] === 'INC' ? 'amber' : i.status[0] === 'Enrolled' ? 'blue' : 'neutral';
+        $('ci-body').innerHTML =
+          '<div style="display:flex;align-items:center;gap:10px;font-size:14px"><span>Status:</span>' + badge(i.status[0], st) + '</div>' +
+          (i.rows.length ? '<div style="overflow-x:auto;margin-top:16px"><table><thead><tr>' + ['Term', 'Midterm', 'Final', 'Completion', 'Instructor'].map(function (h) { return '<th scope="col" style="' + TH_S + '">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+            i.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td style="' + TD_S + '">' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>'
+            : '<p style="font-size:13.5px;color:#6E6C58;margin-top:16px">No attempts recorded yet.</p>') +
+          '<h3 style="font-size:15.5px;margin-top:22px">Grade fix history</h3>' +
+          (i.fixes.length ? '<ul style="list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;font-size:13.5px;color:#6E6C58">' + i.fixes.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>'
+            : '<p style="font-size:13.5px;color:#6E6C58;margin-top:8px">No grade fixes recorded.</p>');
+      });
+    });
+  }
+
+  /* Grades */
+  if ($('dlg-grade')) {
+    var row = null;
+    var setResult = function (tr, fin, mid) {
+      if (mid !== undefined && mid !== '') tr.querySelector('[data-mid]').textContent = (+mid).toFixed(2);
+      tr.querySelector('[data-fin]').textContent = (+fin).toFixed(2);
+      tr.querySelector('[data-st]').innerHTML = +fin <= 3 ? badge('Passed', 'green') : badge('Failed', 'red');
+    };
+    var gkey = function (tr) { var b = tr.querySelector('button[data-grade]') || tr.querySelector('button[data-resolve]'); return b ? b.dataset.course : ''; };
+    $$('button[data-grade],button[data-resolve]').forEach(function (b) {
+      var g = (UI.grades || {})[b.dataset.course], tr = b.closest('tr');
+      if (!g || tr._gdone) return; tr._gdone = true;
+      if (g.fin) setResult(tr, g.fin, g.mid); else if (g.mid) tr.querySelector('[data-mid]').textContent = (+g.mid).toFixed(2);
+      if (g.inc) { var r = tr.querySelector('[data-resolve]'); if (r) { r.disabled = true; r.style.opacity = '0.55'; r.style.cursor = 'default'; r.textContent = 'Resolved'; } }
+    });
+    $$('button[data-grade]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        row = b.closest('tr'); var d = openDlg('dlg-grade', b);
+        d.querySelector('[data-dlg-sub]').textContent = b.dataset.course + ' · Maria Isabel Bautista';
+        ['gr-mid', 'gr-fin', 'gr-reason'].forEach(function (id) { $(id).value = ''; });
+      });
+    });
+    $$('button[data-resolve]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        row = b.closest('tr'); var d = openDlg('dlg-inc', b);
+        d.querySelector('[data-dlg-sub]').textContent = b.dataset.course + ' · Maria Isabel Bautista';
+        ['inc-grade', 'inc-reason'].forEach(function (id) { $(id).value = ''; });
+      });
+    });
+    document.querySelector('[data-save=grade]').addEventListener('click', function () {
+      var m = $('gr-mid').value, f = $('gr-fin').value;
+      if (m === '' && f === '') return say($('gr-msg'), 'no', 'Enter a midterm or final grade.');
+      if ((m !== '' && !grade(m)) || (f !== '' && !grade(f))) return say($('gr-msg'), 'no', 'Grades run from 1.00 to 5.00 in 0.25 steps.');
+      if (!$('gr-reason').value.trim()) return say($('gr-msg'), 'no', 'Give a reason. Every grade change is audited.');
+      if (f !== '') setResult(row, f, m); else row.querySelector('[data-mid]').textContent = (+m).toFixed(2);
+      (UI.grades = UI.grades || {})[gkey(row)] = { mid: m, fin: f }; saveUI();
+      audit('Change', 'Maria Isabel Bautista', 'Corrected ' + gkey(row) + (f !== '' ? ' final to ' + (+f).toFixed(2) : ' midterm to ' + (+m).toFixed(2)) + ' (' + $('gr-reason').value.trim() + ')', '2023-04412', 'Corrected grade');
+      this.closest('dialog').close();
+      say($('gr-done'), 'ok', 'Grade recorded for <b>' + esc(row.querySelector('div').textContent) + '</b>. GWA is recomputed on save.');
+    });
+    document.querySelector('[data-save=inc]').addEventListener('click', function () {
+      var g = $('inc-grade').value;
+      if (!grade(g)) return say($('inc-msg'), 'no', 'Completion grades run from 1.00 to 5.00 in 0.25 steps.');
+      if (!$('inc-reason').value.trim()) return say($('inc-msg'), 'no', 'Give a reason for the completion.');
+      (UI.grades = UI.grades || {})[gkey(row)] = { fin: g, inc: true }; saveUI();
+      audit('Change', 'Maria Isabel Bautista', 'Resolved the INC in ' + gkey(row) + ' with a completion grade of ' + (+g).toFixed(2) + ' (' + $('inc-reason').value.trim() + ')', '2023-04412', 'Resolved INC');
+      setResult(row, g); var b = row.querySelector('[data-resolve]'); b.disabled = true; b.style.opacity = '0.55'; b.style.cursor = 'default'; b.textContent = 'Resolved';
+      this.closest('dialog').close();
+      say($('gr-done'), 'ok', 'INC resolved for <b>' + esc(row.querySelector('div').textContent) + '</b> with a completion grade of ' + (+g).toFixed(2) + '. The original attempt is preserved.');
+    });
+  }
+
+  /* Encode grades */
+  if ($('enc-body')) {
+    var GM = ['', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '5.00', 'DR'], GF = GM.slice(0, 11).concat(['INC', 'DR']);
+    var NAMES = { ana: 'Ana Reyes', ben: 'Ben Lopez', dino: 'Dino Castillo' };
+    var DATA = {
+      ana: { t1: [['CSci 31', '', 'Prof. Santos', '1.75', '', ''], ['CSci 32', '', 'Prof. Reyes', '2.00', '', ''], ['CSci 33', '', 'Prof. Villa', '2.25', '', ''], ['CS Elective 1', 'CSci 51 Web Systems and Technologies', 'Prof. Santos', '1.50', '', '']],
+             t0: [['CSci 21', '', 'Prof. Santos', '1.50', '1.75', ''], ['CSci 22', '', 'Prof. Reyes', '2.00', '2.00', ''], ['Math 12', '', 'Prof. Villa', '2.25', '2.50', '']] },
+      ben: { t1: [['CSci 31', '', 'Prof. Santos', '2.50', '', ''], ['CSci 32', '', 'Prof. Reyes', '3.00', '', ''], ['CSci 33', '', 'Prof. Villa', '2.75', '', '']],
+             t0: [['CSci 21', '', 'Prof. Santos', '2.50', '3.00', ''], ['CSci 22', '', 'Prof. Reyes', '2.75', '2.75', '']] },
+      dino: { t1: [['CSci 31', '', 'Prof. Santos', '2.25', '', ''], ['CSci 32', '', 'Prof. Reyes', 'DR', 'DR', 'Dropped after midterm'], ['CSci 33', '', 'Prof. Villa', '2.50', '', '']],
+              t0: [['CSci 21', '', 'Prof. Santos', '2.00', '2.25', ''], ['CSci 22', '', 'Prof. Reyes', '2.25', '2.50', '']] }
+    };
+    NAMES.maria = 'Maria Isabel Bautista';
+    DATA.maria = {
+      t1: [['CSIT 103', 'Data Structures and Algorithms', 'Prof. Villa', '', '', ''], ['CSIT 104', 'Information Management', 'Prof. Tan', '', '', ''], ['CSIT 105', 'Applications Development and Emerging Technologies', 'Prof. Santos', '', '', ''],
+           ['CSci 103', 'Discrete Structures II', 'Prof. Reyes', '', '', ''], ['CSci 122', 'Human Computer Interaction', 'Prof. Villa', '', '', ''], ['CSci 182', 'Integral Calculus for CS', 'Prof. Santos', '', '', ''],
+           ['ScSc 13', 'The Contemporary World', 'Prof. Tan', '', '', ''], ['PhEd 13', 'PATHFit 3', 'Prof. Santos', '', '', '']],
+      t0: [['CSci 102', 'Discrete Structures I', 'Prof. Santos', '2.00', 'INC', 'Final project not yet submitted']]
+    };
+    if (UI.enc) Object.keys(UI.enc).forEach(function (a) { Object.keys(UI.enc[a]).forEach(function (t) { if (DATA[a]) DATA[a][t] = UI.enc[a][t]; }); });
+    if (UI.imports && UI.imports.length) {
+      UI.imports.forEach(function (r) {
+        var rows = DATA[r.adv] && DATA[r.adv].t1; if (!rows) return;
+        var row = rows.filter(function (x) { return x[0] === r.course; })[0];
+        if (!row) { row = [r.course, '', r.instructor || '', '', '', '']; rows.push(row); }
+        if (r.instructor) row[2] = r.instructor; row[3] = r.midterm || ''; row[4] = r.final || '';
+      });
+      UI.imports = []; UI.enc = JSON.parse(JSON.stringify(DATA)); saveUI();
+    }
+    var cur = { adv: 'ana', term: 't1' }, cell = 'padding:10px 14px;border-bottom:1px solid #EFEADB;vertical-align:middle';
+    var opts = function (list, v) { return list.map(function (g) { return '<option value="' + g + '"' + (g === v ? ' selected' : '') + '>' + (g || '—') + '</option>'; }).join(''); };
+    var rowHtml = function (r) {
+      return '<tr class="row"><td style="' + cell + '">' +
+        (r[0] === null ? '<input class="fld enc-code" type="text" placeholder="Course code" aria-label="Course code" autocomplete="off">' :
+          '<div class="enc-code-t" style="font-weight:600;font-size:13.5px">' + esc(r[0]) + '</div>' + (r[1] ? '<div class="enc-sub" style="font-size:12.5px;color:#6E6C58;margin-top:2px">' + esc(r[1]) + '</div>' : '')) +
+        '</td><td style="' + cell + '"><input class="fld enc-ins" type="text" aria-label="Instructor" value="' + esc(r[2] || '') + '"></td>' +
+        '<td style="' + cell + '"><select class="fld sel enc-mid" aria-label="Midterm grade">' + opts(GM, r[3]) + '</select></td>' +
+        '<td style="' + cell + '"><select class="fld sel enc-fin" aria-label="Final grade">' + opts(GF, r[4]) + '</select></td>' +
+        '<td style="' + cell + '"><input class="fld enc-rem" type="text" aria-label="Remarks" value="' + esc(r[5] || '') + '"></td></tr>';
+    };
+    var code = function (tr) { var i = tr.querySelector('.enc-code'); return i ? i.value.trim() : tr.querySelector('.enc-code-t').textContent; };
+    var sub = function (tr) { var d = tr.querySelector('.enc-sub'); return d ? d.textContent : ''; };
+    var capture = function () {
+      DATA[cur.adv][cur.term] = $$('#enc-body tr').map(function (tr) {
+        return [code(tr), sub(tr), tr.querySelector('.enc-ins').value, tr.querySelector('.enc-mid').value, tr.querySelector('.enc-fin').value, tr.querySelector('.enc-rem').value];
+      });
+    };
+    var draw = function () { $('enc-body').innerHTML = DATA[cur.adv][cur.term].map(rowHtml).join(''); $('enc-msg').hidden = true; };
+    draw();
+    $('enc-adv').addEventListener('change', function () { capture(); cur.adv = this.value; draw(); });
+    $('enc-term').addEventListener('change', function () { capture(); cur.term = this.value; draw(); });
+    $('enc-add').addEventListener('click', function () {
+      $('enc-body').insertAdjacentHTML('beforeend', rowHtml([null, '', '', '', '', '']));
+      $('enc-body').lastChild.querySelector('.enc-code').focus();
+    });
+    $('enc-body').addEventListener('change', function (e) {
+      var tr = e.target.closest('tr'), mid = tr.querySelector('.enc-mid'), fin = tr.querySelector('.enc-fin'), c = code(tr) || 'This course';
+      if (e.target === fin && fin.value === 'DR' && mid.value !== 'DR') {
+        fin.value = ''; return say($('enc-msg'), 'no', '<b>' + esc(c) + '</b>: a final grade of DR needs a DR midterm. The final was cleared.');
+      }
+      if (e.target === mid && mid.value === 'DR') { fin.value = 'DR'; return say($('enc-msg'), 'ok', '<b>' + esc(c) + '</b>: a DR midterm means the course was dropped, so the final is set to DR.'); }
+      if (e.target === mid && mid.value !== 'DR' && fin.value === 'DR') { fin.value = ''; return say($('enc-msg'), 'no', '<b>' + esc(c) + '</b>: the midterm is no longer DR, so the DR final was cleared.'); }
+      $('enc-msg').hidden = true;
+    });
+    $('enc-save').addEventListener('click', function () {
+      capture();
+      var rows = DATA[cur.adv][cur.term];
+      for (var i = 0; i < rows.length; i++) {
+        if (!rows[i][0]) return say($('enc-msg'), 'no', 'Row ' + (i + 1) + ' has no course. Enter a course code or remove the row.');
+        if (rows[i][4] === 'DR' && rows[i][3] !== 'DR') return say($('enc-msg'), 'no', '<b>' + esc(rows[i][0]) + '</b>: a final grade of DR needs a DR midterm.');
+      }
+      UI.enc = JSON.parse(JSON.stringify(DATA)); saveUI();
+      var graded = rows.filter(function (r) { return r[3] || r[4]; }).length;
+      audit('Change', NAMES[cur.adv], 'Saved ' + graded + ' graded course' + (graded === 1 ? '' : 's') + ' for ' + $('enc-term').options[$('enc-term').selectedIndex].text, SIDS[cur.adv], 'Saved grades');
+      say($('enc-msg'), 'ok', 'Saved ' + graded + ' graded course' + (graded === 1 ? '' : 's') + ' for <b>' + esc(NAMES[cur.adv]) + '</b> · ' + esc($('enc-term').options[$('enc-term').selectedIndex].text) + '. GWA is recomputed on save.');
+    });
+  }
+
+  /* Import grades */
+  if ($('imp-file')) {
+    var STUDENTS = { '23-1-01234': 'Ana Reyes', '23-1-01301': 'Ben Lopez', '24-1-02011': 'Dino Castillo', '2023-04412': 'Maria Isabel Bautista' };
+    var COURSES = ['CSci 21', 'CSci 22', 'CSci 31', 'CSci 32', 'CSci 33', 'CSci 34', 'CSci 51', 'Math 12', 'CS Elective 1', 'CS Elective 2', 'CS Elective 3'];
+    var GRADES = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '5.00', 'INC', 'DR'];
+    var parsed = null;
+    var TEMPLATE = { term: '2026–2027 · 1st Semester', rows: [{ student_number: '23-1-01234', course: 'CSci 31', instructor: 'Prof. Santos', midterm: '1.75', final: '' }, { student_number: '23-1-01301', course: 'CSci 32', instructor: 'Prof. Reyes', midterm: '2.00', final: '2.25' }] };
+    var sampleFile = function () {
+      var st = Object.keys(STUDENTS), cs = ['CSci 31', 'CSci 32', 'CSci 33', 'CS Elective 1'], rows = [];
+      for (var i = 1; i <= 24; i++) rows.push({ student_number: st[i % 3], course: cs[Math.floor((i - 1) / 3) % 4], midterm: GRADES[i % 5 + 2], final: i % 4 === 0 ? GRADES[i % 5 + 3] : '' });
+      rows[6] = { student_number: '23-1-01301', course: 'CSci 31', midterm: '2.00', final: 'DR' };
+      rows[14] = { student_number: '24-1-02011', course: 'CSci 99', midterm: '1.75', final: '' };
+      return JSON.stringify({ term: '2026–2027 · 1st Semester', rows: rows });
+    };
+    var check = function (r) {
+      if (!r || typeof r !== 'object') return 'Row is not an object';
+      if (!r.student_number || !r.course) return 'Missing student_number or course';
+      if (!STUDENTS[r.student_number]) return 'Student is not your advisee';
+      if (COURSES.indexOf(r.course) < 0) return 'Course not in the student\'s curriculum or elective options';
+      var m = String(r.midterm == null ? '' : r.midterm), f = String(r.final == null ? '' : r.final);
+      if ((m && GRADES.indexOf(m) < 0) || (f && GRADES.indexOf(f) < 0)) return 'Grade is not on the VSU scale';
+      if (f === 'DR' && m !== 'DR') return 'Final grade DR without a DR midterm';
+      if (m === 'DR' && f && f !== 'DR') return 'Midterm DR needs a DR final';
+      return '';
+    };
+    var cellS = 'padding:11px 14px;font-size:13.5px;border-bottom:1px solid #EFEADB;vertical-align:middle';
+    var thS = 'text-align:left;padding:10px 14px;font-size:11.5px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:#8C8A76;background:#F2EDDC;border-bottom:1px solid #E1DBC6';
+    var load = function (name, text) {
+      var data; $('imp-msg').hidden = true;
+      try { data = JSON.parse(text); } catch (e) { return say($('imp-msg'), 'no', '<b>' + esc(name) + '</b> is not valid JSON, so nothing was read. Download the template to see the expected shape.'); }
+      var rows = Array.isArray(data) ? data : data && data.rows;
+      if (!Array.isArray(rows) || !rows.length) return say($('imp-msg'), 'no', 'No rows found. The file needs a <b>rows</b> list (or be a list of rows).');
+      var good = [], bad = [];
+      rows.forEach(function (r, i) { var p = check(r); if (p) bad.push([i + 1, r, p]); else good.push(r); });
+      parsed = { good: good };
+      $('imp-name').textContent = name;
+      say($('imp-ok'), good.length ? 'ok' : 'no', good.length + ' row' + (good.length === 1 ? ' is' : 's are') + ' valid' + (good.length ? ' and ready to save.' : '.'));
+      if (bad.length) {
+        say($('imp-bad'), 'warn', bad.length + ' row' + (bad.length === 1 ? ' was' : 's were') + ' rejected. Nothing is saved until you confirm.');
+        $('imp-table').innerHTML = '<table><thead><tr>' + ['Row', 'Student', 'Course', 'Problem'].map(function (h, i) { return '<th scope="col" style="' + thS + (i === 0 ? ';text-align:right;width:70px' : '') + '">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          bad.map(function (b) { return '<tr class="row"><td style="' + cellS + ';text-align:right">' + b[0] + '</td><td style="' + cellS + '"><span class="mono" style="font-size:13px">' + esc((b[1] && b[1].student_number) || '—') + '</span></td><td style="' + cellS + '">' + esc((b[1] && b[1].course) || '—') + '</td><td style="' + cellS + '">' + esc(b[2]) + '</td></tr>'; }).join('') + '</tbody></table>';
+        $('imp-bad').hidden = false; $('imp-table').hidden = false;
+      } else { $('imp-bad').hidden = true; $('imp-table').hidden = true; }
+      $('imp-save').textContent = 'Save the ' + good.length + ' valid row' + (good.length === 1 ? '' : 's'); $('imp-save').disabled = !good.length; $('imp-save').style.opacity = good.length ? '' : '0.55';
+      $('imp-panel').hidden = false; $('imp-result').hidden = false;
+    };
+    $('imp-file').addEventListener('change', function () {
+      var f = this.files[0]; if (!f) return; var rd = new FileReader();
+      rd.onload = function () { load(f.name, String(rd.result)); }; rd.readAsText(f); this.value = '';
+    });
+    $('imp-sample').addEventListener('click', function () { load('grades-2026-1st-sem.json', sampleFile()); });
+    var drop = $('imp-drop');
+    ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = '#2F4A12'; }); });
+    ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = '#C9C1A6'; }); });
+    drop.addEventListener('drop', function (e) {
+      var f = e.dataTransfer.files[0]; if (!f) return; var rd = new FileReader();
+      rd.onload = function () { load(f.name, String(rd.result)); }; rd.readAsText(f);
+    });
+    $('imp-cancel').addEventListener('click', function () { parsed = null; $('imp-panel').hidden = true; $('imp-msg').hidden = true; });
+    $('imp-save').addEventListener('click', function () {
+      if (!parsed || !parsed.good.length) return;
+      var n = parsed.good.length, KEYS = { '23-1-01234': 'ana', '23-1-01301': 'ben', '24-1-02011': 'dino', '2023-04412': 'maria' };
+      UI.imports = (UI.imports || []).concat(parsed.good.map(function (r) { return { adv: KEYS[r.student_number], course: r.course, instructor: r.instructor || '', midterm: r.midterm == null ? '' : String(r.midterm), final: r.final == null ? '' : String(r.final) }; })); saveUI();
+      audit('Change', '', 'Imported ' + n + ' grade row' + (n === 1 ? '' : 's') + ' from a JSON file', '', 'Imported grades');
+      parsed = null; $('imp-panel').hidden = true;
+      say($('imp-msg'), 'ok', 'Saved ' + n + ' grade row' + (n === 1 ? '' : 's') + '. GWA is recomputed for the affected advisees and the import is in the audit log.');
+    });
+    $('imp-template').addEventListener('click', function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(TEMPLATE, null, 2)], { type: 'application/json' }));
+      a.download = 'grades-template.json'; document.body.appendChild(a); a.click(); a.remove();
+    });
+  }
+
+  /* Notes */
+  if ($('notes-list')) {
+    var view = 'active';
+    var setTabs = function () {
+      $$('[data-notes-tab]').forEach(function (x) { var on = x.dataset.notesTab === view; x.setAttribute('aria-pressed', on); x.style.background = on ? '#2F4A12' : 'transparent'; x.style.color = on ? '#FBF8EF' : '#6E6C58'; });
+    };
+    var refresh = function () {
+      var items = $$('[data-note]'), shown = 0;
+      items.forEach(function (n) { var on = n.dataset.state === view; n.hidden = !on; if (on) shown++; });
+      $$('[data-count]').forEach(function (c) { c.textContent = items.filter(function (n) { return n.dataset.state === c.dataset.count; }).length; });
+      var e = document.querySelector('[data-notes-empty]');
+      e.hidden = shown > 0; e.textContent = view === 'active' ? 'No active notes. Select Write a note to add one.' : 'No archived notes.';
+      $('notes-sub').textContent = (view === 'active' ? 'Active' : 'Archived') + ' notes · visible to the student';
+      setTabs();
+    };
+    $$('[data-notes-tab]').forEach(function (b) { b.addEventListener('click', function () { view = b.dataset.notesTab; refresh(); }); });
+    var actionBtn = function (kind) {
+      return '<button type="button" class="btns" data-note-act="' + kind + '" style="display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:8px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap;padding:6px 12px;font-size:13px;background:#FFFFFF;color:#16200C;border:1px solid #E1DBC6">' + (kind === 'archive' ? 'Archive' : 'Restore') + '</button>';
+    };
+    $('notes-list').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-note-act]'); if (!b) return;
+      var n = b.closest('[data-note]'), to = b.dataset.noteAct === 'archive' ? 'archived' : 'active';
+      n.dataset.state = to; n.querySelector('[data-note-actions]').innerHTML = actionBtn(to === 'active' ? 'archive' : 'restore');
+      audit('Change', 'Maria Isabel Bautista', (to === 'archived' ? 'Archived' : 'Restored') + ' an adviser note', '2023-04412', to === 'archived' ? 'Archived note' : 'Restored note');
+      refresh(); say($('nt-done'), 'ok', to === 'archived' ? 'Note archived. Find it under Archived.' : 'Note restored to Active.');
+    });
+    keep('notes-list', refresh);
+    document.querySelector('[data-save=note]').addEventListener('click', function () {
+      var v = $('nt-body').value.trim(); if (!v) return say($('nt-msg'), 'no', 'Write the note before saving.');
+      var a = document.createElement('article'); a.setAttribute('data-note', ''); a.dataset.state = 'active'; a.style.cssText = 'padding:16px 20px;border-bottom:1px solid #EFEADB';
+      a.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:12.5px;color:#8C8A76"><div><strong style="color:#16200C;font-size:13.5px">Dr. Andrea Dela Cruz</strong> · <span data-date>' + today() + '</span></div><div data-note-actions>' + actionBtn('archive') + '</div></div>' +
+        '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
+      $('notes-list').insertBefore(a, $('notes-list').firstChild);
+      audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '2023-04412', 'Added note');
+      $('nt-body').value = ''; this.closest('dialog').close();
+      view = 'active'; refresh(); say($('nt-done'), 'ok', 'Note saved. The student can read it.');
+    });
+  }
+
+  /* Curriculum */
+  if ($('shift-cv')) {
+    var shift = JSON.parse($('shift-cv').dataset.shift);
+    $('shift-cv').addEventListener('change', function () { var s = shift[this.value]; $('shift-c').textContent = s[0]; $('shift-l').textContent = s[1]; $('shift-g').textContent = s[2]; });
+  }
+  keep('cur-body');
+  (function () {
+    var M = {}; try { M = JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}; } catch (e) {}
+    (UI.endorsed || []).forEach(function (en) {
+      var d = (M.transfers || {})[en.id]; if (!d) return;
+      var tr = $$('#cur-body tr').filter(function (r) { return r.dataset.eid === en.id; })[0];
+      if (!tr || tr.dataset.decided) return;
+      tr.dataset.decided = d.decision; tr.dataset.pending = '';
+      var td = tr.children; td[1].textContent = d.date;
+      td[3].innerHTML = badge(d.decision === 'approved' ? 'Approved' : 'Rejected', d.decision === 'approved' ? 'green' : 'red') + ' <span style="margin-left:6px">' + esc(d.reason || 'Decision recorded by the Department Head.') + '</span>';
+    });
+  })();
+  if ($('cur-form')) $('cur-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var to = $('cur-to').value, reason = $('cur-reason').value.trim();
+    if (!reason) return say($('cur-msg'), 'no', 'Give a reason for the transfer.');
+    if ($$('#cur-body tr').some(function (tr) { return tr.dataset.pending === to; })) return say($('cur-msg'), 'no', 'A transfer to <b>' + esc(to) + '</b> is already waiting for approval.');
+    var c = 'padding:11px 14px;font-size:13.5px;border-bottom:1px solid #EFEADB;vertical-align:middle';
+    var tr = document.createElement('tr'); tr.className = 'row'; tr.dataset.pending = to; var eid = 'xf' + Date.now(); tr.dataset.eid = eid;
+    tr.innerHTML = '<td style="' + c + '">' + esc(to) + '</td><td style="' + c + '">Pending</td><td style="' + c + '">—</td><td style="' + c + '">' + badge('Pending approval', 'amber') +
+      ' <span style="margin-left:6px">Endorsed by Dr. Andrea Dela Cruz, ' + today() + '. ' + esc(reason) + '</span></td>';
+    $('cur-body').appendChild(tr);
+    (UI.endorsed = UI.endorsed || []).push({ id: eid, student: 'Maria Isabel Bautista', sid: '2023-04412', from: 'BSCS 2025–present', to: to, reason: reason, adviser: 'Prof. Ramon Reyes', date: today() }); saveUI();
+    audit('Change', 'Maria Isabel Bautista', 'Endorsed a curriculum transfer to ' + to + ' (' + reason + ')', '2023-04412', 'Endorsed transfer');
+    this.reset(); say($('cur-msg'), 'ok', 'Transfer to <b>' + esc(to) + '</b> endorsed. It is with the Department Head for approval.');
+  });
+
+  /* Dashboard: grade distribution term */
+  if ($('dist-term')) {
+    var DIST = { t2: [34, 41, 18, 4, 3], t1: [30, 43, 20, 5, 2] }, LAB = ['1.00–1.50', '1.75–2.25', '2.50–3.00', '5.00', 'INC / DR / NA'];
+    $('dist-term').addEventListener('change', function () {
+      var v = DIST[this.value];
+      $$('[data-dist-row]').forEach(function (r, i) {
+        r.querySelector('[data-bar]').style.width = Math.min(100, v[i] * 2) + '%';
+        r.querySelector('[data-pct]').textContent = v[i] + '%'; r.setAttribute('aria-label', LAB[i] + ': ' + v[i] + '%');
+      });
+      $('dist-label').textContent = this.options[this.selectedIndex].text;
+    });
+  }
+
+  /* Advising assistant: chat head + floating messenger */
+  if ($('chat-head')) {
+    var setChat = function (open) {
+      $('chat-win').hidden = !open; $('chat-head').setAttribute('aria-expanded', open);
+      $('chat-head').setAttribute('aria-label', open ? 'Close advising assistant' : 'Open advising assistant');
+      $('chat-head').querySelector('[data-chat-open]').style.display = open ? 'none' : 'flex';
+      $('chat-head').querySelector('[data-chat-close]').style.display = open ? 'flex' : 'none';
+      if (open) { $('chat-log').scrollTop = $('chat-log').scrollHeight; $('chat-q').focus(); } else $('chat-head').focus();
+    };
+    $('chat-head').addEventListener('click', function () { setChat($('chat-win').hidden); });
+    $('chat-min').addEventListener('click', function () { setChat(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('chat-win').hidden && !document.querySelector('dialog[open]')) setChat(false); });
+  }
+
+  /* Grade flags */
+  if ($('flag-body')) {
+    var fRow = null, left = function () { return $$('#flag-body tr.row').filter(function (r) { return !r.dataset.closed; }).length; };
+    var closeRow = function (tr, text, tone) {
+      tr.dataset.closed = '1';
+      tr.querySelector('[data-act]').innerHTML = badge(text, tone);
+      $('flag-count').textContent = left();
+    };
+    $$('[data-fix]').forEach(function (b) { b.addEventListener('click', function () {
+      fRow = b.closest('tr'); var d = openDlg('dlg-fix', b);
+      d.querySelector('[data-dlg-sub]').textContent = fRow.dataset.name + ' · ' + fRow.dataset.course + ' · reported ' + fRow.dataset.grade;
+      $('fix-grade').value = ''; $('fix-reason').value = '';
+    }); });
+    $$('[data-reject]').forEach(function (b) { b.addEventListener('click', function () {
+      fRow = b.closest('tr'); var d = openDlg('dlg-rej', b);
+      d.querySelector('[data-dlg-sub]').textContent = fRow.dataset.name + ' · ' + fRow.dataset.course + ' · reported ' + fRow.dataset.grade;
+      $('rej-reason').value = '';
+    }); });
+    document.querySelector('[data-save=fix]').addEventListener('click', function () {
+      if (!$('fix-grade').value) return say($('fix-msg'), 'no', 'Choose the corrected grade.');
+      if (!$('fix-reason').value.trim()) return say($('fix-msg'), 'no', 'Give a reason. Every grade change is audited.');
+      audit('Change', fRow.dataset.name, 'Corrected ' + fRow.dataset.course + ' to ' + $('fix-grade').value + ' after a grade flag (' + $('fix-reason').value.trim() + ')', '', 'Fixed grade flag');
+      closeRow(fRow, 'Fixed', 'green'); this.closest('dialog').close();
+      say($('flag-done'), 'ok', 'Grade corrected to <b>' + esc($('fix-grade').value) + '</b> for ' + esc(fRow.dataset.name) + ' · ' + esc(fRow.dataset.course) + '. The student is notified.');
+    });
+    document.querySelector('[data-save=reject]').addEventListener('click', function () {
+      if (!$('rej-reason').value.trim()) return say($('rej-msg'), 'no', 'Explain why the recorded grade stands.');
+      audit('Change', fRow.dataset.name, 'Rejected the grade flag on ' + fRow.dataset.course + ' (' + $('rej-reason').value.trim() + ')', '', 'Rejected grade flag');
+      closeRow(fRow, 'Rejected', 'red'); this.closest('dialog').close();
+      say($('flag-done'), 'ok', 'Flag rejected. Your reply was sent to ' + esc(fRow.dataset.name) + '.');
+    });
+  }
+
+  /* Change password */
+  if ($('pw-form')) {
+    var EYE = '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>';
+    var EYE_OFF = EYE + '<path d="M4 4l16 16"/>';
+    $$('[data-reveal]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = $(b.dataset.reveal), on = f.type === 'password';
+        f.type = on ? 'text' : 'password';
+        b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', on ? 'Hide password' : 'Show password');
+        b.querySelector('svg').innerHTML = on ? EYE_OFF : EYE;
+      });
+    });
+    $$('[data-back]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (document.querySelector('[data-view]')) location.hash = 'dashboard';
+        else if (document.referrer && history.length > 1) history.back();
+        else location.href = 'AdviserDashboard.dc.html';
+      });
+    });
+    var rules = function () {
+      var c = $('pw-cur').value, n = $('pw-new').value, a = $('pw-again').value;
+      var r = { len: n.length >= 12, mix: /[A-Za-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
+      Object.keys(r).forEach(function (k) {
+        var li = document.querySelector('[data-rule="' + k + '"]'), m = li.querySelector('[data-mark]');
+        m.style.background = r[k] ? '#2C6430' : 'transparent'; m.style.borderColor = r[k] ? '#2C6430' : '#E1DBC6';
+        li.style.color = r[k] ? '#2C6430' : '#6E6C58';
+      });
+      return r;
+    };
+    ['pw-cur', 'pw-new', 'pw-again'].forEach(function (id) { $(id).addEventListener('input', rules); });
+    $('pw-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var r = rules();
+      if (!$('pw-cur').value) { say($('pw-msg'), 'no', 'Enter your current password.'); return $('pw-cur').focus(); }
+      if (!(r.len && r.mix && r.diff && r.match)) return say($('pw-msg'), 'no', 'The new password doesn\'t meet every requirement below yet.');
+      ['pw-cur', 'pw-new', 'pw-again'].forEach(function (id) { $(id).value = ''; }); rules();
+      say($('pw-msg'), 'ok', 'Password updated. Your other devices have been signed out.');
+    });
+  }
+
+  /* Profile menu (sidebar) */
+  if ($('me-btn')) {
+    var setMenu = function (on) {
+      $('me-menu').hidden = !on; $('me-btn').setAttribute('aria-expanded', on);
+      $('me-chev').style.transform = on ? 'rotate(180deg)' : '';
+    };
+    $('me-btn').addEventListener('click', function (e) { e.stopPropagation(); setMenu($('me-menu').hidden); });
+    document.addEventListener('click', function (e) { if (!$('me').contains(e.target)) setMenu(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('me-menu').hidden) { setMenu(false); $('me-btn').focus(); } });
+  }
+
+  /* Adviser.dc.html: hash navigation between every screen */
+  var views = document.querySelectorAll('[data-view]');
+  if (views.length > 1) {
+    var OWNER = { curriculum: 'advisees', notes: 'advisees', advising: 'advisees', checklist: 'advisees', grades: 'advisees', history: 'advisees' };
+    var showView = function () {
+      var key = (location.hash || '').slice(1), v = document.querySelector('[data-view="' + key + '"]');
+      if (!v) { key = 'dashboard'; v = document.querySelector('[data-view="dashboard"]'); }
+      views.forEach(function (x) { x.hidden = x !== v; });
+      var owner = OWNER[key] || key;
+      $$('[data-nav]').forEach(function (a) {
+        var on = a.dataset.nav === owner;
+        a.style.background = on ? 'rgba(224,168,46,0.16)' : 'transparent';
+        a.style.color = on ? '#F7E9C4' : 'rgba(246,242,228,0.72)';
+        a.style.fontWeight = on ? '600' : '450';
+        a.querySelector('[data-bar]').hidden = !on;
+        if (a.dataset.nav === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+      $('crumb').innerHTML = v.dataset.crumb;
+      document.title = v.dataset.title + ' · SAAIS';
+      if ($('me-menu')) $('me-menu').hidden = true, $('me-btn').setAttribute('aria-expanded', false), $('me-chev').style.transform = '';
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', showView); showView();
+  }
+})();
+</script>
+</body>
+</html>

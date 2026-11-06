@@ -1,0 +1,24 @@
+The role folders are the source screens for `prototype.html`. The presentation loads those exact pages in a frame so filters, dialogs, grade tools, downloads, and role-specific navigation keep their own behavior. Sidebar links update the presentation URL; browser history and direct links select the same source page. This remains a local mockup with fictional records, not an authentication or authorization boundary.
+
+Run `node mockup/_gen/build-prototype.js` from the repository root after changing a role page or running a role generator. It refreshes all 97 screen routes, the seven role entry points, the screen map, account menus, and the shared stylesheet/script references in the role folders. Do not edit generated `prototype-routes.js` by hand.
+
+Preview with `npm run dev`, then open `http://localhost:5173/mockup/prototype.html`. Serving the prototype gives its role frames a shared origin for navigation and history. Run `node mockup/_gen/test-portals.cjs` for the DOM and routing checks; these do not replace browser visual verification.
+
+`DesignSystem.dc.html` is the visual authority. `portal-ui.css` applies its 250px sidebar, 32px gutters, Syne headings, IBM Plex body text, 6px cards, 8px buttons, 4px fields, 1.6 icon strokes, and 768px drawer/table breakpoint to every role. `portal-ui.js` supplies the same accessible drawer controls and table labels across the portals. Original page workflows and role-specific profile options remain in their source files.
+
+The presentation toolbar offers Student, Adviser, Department Head, Department Staff, System Admin, Dean Adviser, and Dean DH. The Dean sidebar always says **Dean portal**. Multi-role sections retain their native collapsible controls.
+
+## Production design system
+
+The mockup and the production app share one visual system. `DesignSystem.dc.html` is the authority; `portal-ui.css` applies it to the mockup role pages, and `src/index.css` plus `src/components` apply it to the React app. Both use the same measurements: 250px sidebar, 62px topbar, 32px gutters, Syne headings, IBM Plex body text, 6px cards, 8px buttons, 4px fields, 1.6 icon strokes, and a 768px breakpoint where the sidebar becomes a drawer and tables stack into labelled cards.
+
+Keep them in sync:
+
+- Change a token or measurement in `DesignSystem.dc.html` first, then mirror it in `src/index.css` (and `portal-ui.css` for the mockup). Do not introduce a value that is not in the sheet.
+- Shared UI belongs in `src/components/ui` (standalone) or `src/components/features` (composed). Prototype helpers such as `badge()`, `panel()`, `stats()`, `table()` and `shell()` map to `StatusBadge`, `Panel`, `StatGrid`, `Table`/`DataTablePanel` and `AppShell`.
+- Prototype status classes map to `StatusBadge` statuses: `.passed`, `.failed`, `.inc`, `.delinquent`, `.currently_enrolled`, `.active`, `.disabled`, `.invited`; DR and NA use the neutral style. Every status keeps a text label.
+- `/styleguide` renders the production tokens and components with their props. Update it in the same change as any component.
+- Icons come from `@/components/icons`, never `lucide-react`. `components.json` still says `"iconLibrary": "lucide"` because shadcn only accepts its built-in libraries, so every `npx shadcn add` brings lucide imports back. After adding a component, replace those imports with the matching SAAIS icon and confirm `grep -rn lucide-react src` returns nothing.
+- Status and responsive-table behavior is covered by `src/components/ui/*.test.tsx`. Keep those tests passing when changing `StatusBadge` or `Table`, and add a case for any new status.
+- Run `npm test`, `npm run typecheck`, `npm run lint` and `npm run build` before merging; they must pass.
+
