@@ -1,6 +1,6 @@
 # Supabase authentication integration contract
 
-Version 0.2.1 documents the boundary between Supabase-managed authentication and SAAIS application operations. This document is a future implementation guide; it does not configure a Supabase project or implement login.
+Version 0.3.0 documents the boundary between Supabase-managed authentication and SAAIS application operations across all six assignable roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) and multi-role assignments. This document is a future implementation guide; it does not configure a Supabase project or implement login.
 
 ## Ownership
 
@@ -76,7 +76,7 @@ The Google provider callback is the Supabase URL `https://<project-ref>.supabase
 
 Only admin-provisioned accounts may use SAAIS. Future identity creation/linking must resolve to the provisioned account using verified identity, not a role/email supplied by the browser. A before-user-created hook can reject unwanted new identities, but it runs at creation, not every later login. Existing users still need active-profile, role and assignment checks on protected requests after account changes. [Before User Created hook](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook)
 
-The PostgreSQL `authenticated` role is not the SAAIS `student`, `adviser` or `admin` role. Read application permissions from trusted provisioned profile data; never authorize from user-editable `user_metadata`. JWT verification, RLS/grants and current/historical adviser checks remain server responsibilities. An SDK session or client route guard alone does not establish permission.
+The PostgreSQL `authenticated` role is not the SAAIS `student`, `adviser`, `department_head`, `department_staff`, `dean`, or `admin` role. Read application permissions from trusted provisioned profile and `role_assignment` data; never authorize from user-editable `user_metadata`. JWT verification, RLS/grants and current/historical/departmental/faculty assignment checks remain server responsibilities. An SDK session or client route guard alone does not establish permission.
 
 ## Invitation exception
 

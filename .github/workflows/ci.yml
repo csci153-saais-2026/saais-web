@@ -45,8 +45,30 @@ jobs:
       - name: Verify Contract Security Boundaries
         run: npm run contract:security
 
+      - name: Run OWASP API Security Audit (Spectral)
+        run: npm run contract:spectral
+
       - name: Verify Contract Freshness
         run: npm run contract:check
+
+      - name: Build Static Redoc Documentation
+        run: |
+          if ! npm run contract:docs; then
+            echo "::error file=contract/openapi.yaml::Failed to generate static Redoc bundle from canonical contract/openapi.yaml via 'npm run contract:docs'."
+            exit 1
+          fi
+          if [ ! -s docs/openapi/index.html ]; then
+            echo "::error file=docs/openapi/index.html::Static Redoc bundle docs/openapi/index.html was not created or is empty."
+            exit 1
+          fi
+
+      - name: Upload Static Redoc Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-redoc-bundle
+          path: docs/openapi/index.html
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Run Typecheck
         run: npm run typecheck

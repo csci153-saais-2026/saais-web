@@ -35,6 +35,10 @@ test('raw table endpoints cannot bypass transactional write guards', () => {
   }
   assert.deepEqual(spec.paths['/functions/v1/accounts/{profile_id}'].patch['x-required-roles'], ['admin']);
   assert.equal(spec.paths['/rest/v1/profile'].patch, undefined);
+  const invite = spec.paths['/functions/v1/auth/invite'].post;
+  assert.ok(invite['x-required-roles'].includes('department_staff'));
+  assert.equal(invite['x-access-scope'].department_staff, 'department-scoped-student-invites-only');
+  assert.equal(invite['x-access-scope'].department_head, 'department-scoped-student-invites-only');
 });
 
 test('authenticated operations specify roles, scope and failure responses', () => {
@@ -45,7 +49,7 @@ test('authenticated operations specify roles, scope and failure responses', () =
     if (!security.some(requirement => Object.hasOwn(requirement, 'bearerAuth'))) continue;
     assert.ok(operation['x-required-roles']?.length, route);
     for (const role of operation['x-required-roles']) {
-      assert.ok(['student', 'adviser', 'admin'].includes(role), route);
+      assert.ok(['student', 'adviser', 'department_head', 'department_staff', 'dean', 'admin'].includes(role), route);
     }
     assert.ok(operation.responses['403'], route);
   }
@@ -124,13 +128,31 @@ test('table reads are bounded, reject embedded projections and use valid UUID fi
   }
 });
 
-test('student access remains read-only and internal notes stay staff-only', () => {
+test('student access is restricted to reads plus allowlisted self-service writes, and internal remarks/AI stay staff-only', () => {
+  const allowedStudentWrites = new Set([
+    'post /functions/v1/students/{student_id}/grade-flags',
+    'put /functions/v1/students/{student_id}/photo',
+    'delete /functions/v1/students/{student_id}/photo',
+    'post /functions/v1/notifications/mark-read',
+    'post /functions/v1/audit/view-event',
+  ]);
   for (const { route, method, operation } of operations) {
-    if (operation['x-required-roles']?.includes('student')) assert.equal(method, 'get', route);
-    if (route.includes('advising_note') || route.endsWith('/notes') || route.endsWith('/assistant')) {
+    if (operation['x-required-roles']?.includes('student') && method !== 'get') {
+      assert.ok(allowedStudentWrites.has(`${method} ${route}`), `${method} ${route}`);
+    }
+    if (
+      route.includes('attempt_remark') ||
+      route.endsWith('/remarks') ||
+      route.endsWith('/notes') ||
+      route.includes('/notes/') ||
+      route.endsWith('/assistant')
+    ) {
       assert.ok(!operation['x-required-roles'].includes('student'), route);
     }
   }
+  assert.ok(spec.paths[`${studentPath}/grade-flags`].post['x-required-roles'].includes('student'));
+  assert.ok(spec.paths['/rest/v1/advising_note'].get['x-required-roles'].includes('student'));
+  assert.equal(spec.paths['/rest/v1/advising_note'].get['x-access-scope'].student, 'own-active-notes-read-only');
   assert.deepEqual(spec.paths[`${studentPath}/assistant`].post['x-required-roles'], ['adviser']);
 });
 

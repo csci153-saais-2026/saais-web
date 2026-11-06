@@ -6,3 +6,20 @@ if (!("ResizeObserver" in globalThis)) {
     disconnect() {}
   }
 }
+
+// jsdom defines matchMedia as undefined; SidebarProvider / useIsMobile read the 768px breakpoint with it.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string): MediaQueryList => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  })
+}
