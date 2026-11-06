@@ -146,3 +146,10 @@ const rows = unwrapApiResult(result)
 const range = parseContentRange(result.response.headers.get('Content-Range'))
 // range => { start: 0, end: 19, total: 142 }
 ```
+
+---
+
+## 4. Interactive & Static API Documentation
+
+- **In-app routes**: Run `npm run dev` and open `/docs` (curated documentation hub) or `/docs/openapi` (interactive Redoc reference bound directly to [`contract/openapi.yaml`](../../../contract/openapi.yaml)). Outside local development (`!import.meta.env.DEV`), both routes require an authenticated SAAIS session.
+- **Static Redoc bundle & CI artifact**: Run `npm run contract:docs` to generate `docs/openapi/index.html`. GitHub Actions (`.github/workflows/ci.yml`) builds and uploads `docs/openapi/index.html` as the `openapi-redoc-bundle` artifact on every CI run. See [`docs/api-documentation.md`](../../../docs/api-documentation.md) for full details.
