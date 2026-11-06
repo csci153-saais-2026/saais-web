@@ -15,7 +15,8 @@
     "contract:check": "npm run contract:gen && git diff --exit-code contract/generated",
     "contract:docs": "redocly build-docs contract/openapi.yaml --config contract/redocly.yaml -o docs/openapi/index.html",
     "preview": "vite preview",
-    "contract:security": "node --test contract/security.check.cjs"
+    "contract:security": "node --test contract/security.check.cjs",
+    "contract:spectral": "spectral lint contract/openapi.yaml --ruleset contract/.spectral.yaml"
   },
   "dependencies": {
     "@fontsource-variable/syne": "^5.3.0",
@@ -39,6 +40,8 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@redocly/cli": "^2.51.2",
+    "@stoplight/spectral-cli": "^6.17.1",
+    "@stoplight/spectral-owasp-ruleset": "^2.0.1",
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^24.13.3",

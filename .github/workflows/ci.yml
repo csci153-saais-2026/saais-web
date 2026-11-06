@@ -45,6 +45,9 @@ jobs:
       - name: Verify Contract Security Boundaries
         run: npm run contract:security
 
+      - name: Run OWASP API Security Audit (Spectral)
+        run: npm run contract:spectral
+
       - name: Verify Contract Freshness
         run: npm run contract:check
 
