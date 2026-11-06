@@ -35,6 +35,10 @@ test('raw table endpoints cannot bypass transactional write guards', () => {
   }
   assert.deepEqual(spec.paths['/functions/v1/accounts/{profile_id}'].patch['x-required-roles'], ['admin']);
   assert.equal(spec.paths['/rest/v1/profile'].patch, undefined);
+  const invite = spec.paths['/functions/v1/auth/invite'].post;
+  assert.ok(invite['x-required-roles'].includes('department_staff'));
+  assert.equal(invite['x-access-scope'].department_staff, 'department-scoped-student-invites-only');
+  assert.equal(invite['x-access-scope'].department_head, 'department-scoped-student-invites-only');
 });
 
 test('authenticated operations specify roles, scope and failure responses', () => {
@@ -146,7 +150,9 @@ test('student access is restricted to reads plus allowlisted self-service writes
       assert.ok(!operation['x-required-roles'].includes('student'), route);
     }
   }
+  assert.ok(spec.paths[`${studentPath}/grade-flags`].post['x-required-roles'].includes('student'));
   assert.ok(spec.paths['/rest/v1/advising_note'].get['x-required-roles'].includes('student'));
+  assert.equal(spec.paths['/rest/v1/advising_note'].get['x-access-scope'].student, 'own-active-notes-read-only');
   assert.deepEqual(spec.paths[`${studentPath}/assistant`].post['x-required-roles'], ['adviser']);
 });
 
