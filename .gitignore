@@ -35,3 +35,4 @@ supabase/.temp
 
 # Design tool cache
 .impeccable/
+.planning/
