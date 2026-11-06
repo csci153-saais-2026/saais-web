@@ -4,10 +4,12 @@ The 0.2.0 contract reconciles the supplied Gemini review of 0.1.0 with the final
 
 The 0.2.1 revision adds the Supabase project `apikey` alongside the user bearer JWT, preserves pre-login invitation redemption, and documents SDK-managed email/password and Google PKCE authentication in [SUPABASE-AUTH.md](SUPABASE-AUTH.md). It also accommodates upstream gateway authentication errors. No Supabase configuration is applied.
 
+The 0.3.0 revision reconciles the contract with the finalized SRS and full-stack prototype across all six assignable roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) and multi-role assignments (`role_assignment`). It adds departmental/catalog management operations (including empty-draft curriculum/term creation and unreferenced curriculum version deletion), curriculum cloning and pair equivalences, bulk adviser reassignment, unassigned-student invitation/import support, open-term attempt removal, the VSU `DR` midterm outcome rule (`midterm_status=dr`), curriculum transfer endorsement/decision, outside-credit recording and revocation, student grade-flag submission/resolution, CSV batch imports (preview and commit), advising note archive state and student read visibility (B9), typed event-driven and idempotent scheduled notifications (`POST /functions/v1/notifications/evaluate-alerts`), role-scoped cohort/grade-distribution reports, department-scoped system settings and backup metadata, and read/export audit events.
+
 | Finding | Contract correction |
 | --- | --- |
 | Client-supplied term override audit fields | A separate admin override operation accepts only `enabled`; the authenticated actor and timestamp are server-derived. |
-| Shared profile mutation permissions | Account updates are admin-only, with closed request schemas. Students have strictly read-only access. |
+| Shared profile mutation permissions | Account updates are admin-only, with closed request schemas. Students cannot author, archive or edit advising notes and have no raw table writes; their only writes are the allowlisted self-service actions (raising grade flags, updating/removing their own profile photo, marking notifications read, and logging read/export events). |
 | Missing role and assignment boundaries | Every operation specifies `x-required-roles` and an access scope. Current-adviser writes and historical-adviser reads are distinct requirements. |
 | Unbounded collection reads | Collection reads declare bounded pagination; table reads allowlist flat projections and ordering. Gateway enforcement remains mandatory. |
 | Loose operator filters | UUID filters use `eq.UUID`, `neq.UUID`, or `in.(UUID,...)`, with at most 50 IDs. Operator-prefixed strings are not plain UUIDs. |
@@ -25,7 +27,7 @@ The supplied audit predates some existing pagination, role metadata and assignme
 - First INC completion remains allowed in a locked term before its deadline. Later corrections obey the term lock. Original INC and the effective Passed/Failed result remain distinct. Default deadlines use the actual term end date.
 - College/department relationships derive through the student's assigned curriculum/program. Account provisioning includes the required adviser/program/curriculum for students and college for advisers.
 - Selected school terms include both semesters and Summer/Midyear. Offering search prioritizes the student's program before cross-program courses.
-- Students cannot read internal notes, reasons or audit snapshots. Staff reads must respect current or historical assignment scope; the record-grounded assistant is adviser-only.
+- Students can read their own advising notes (`GET /rest/v1/advising_note` under B9) and perform allowlisted self-service actions (raising grade flags, updating/removing their own profile photo, marking notifications read, and logging read/export events), but cannot author or archive advising notes, read internal course/slot remarks (`attempt_remark`), read internal reasons or audit snapshots, or access the adviser-only AI assistant. Staff reads and writes must respect current, historical, departmental, or college assignment scope.
 - Elective mapping and equivalency use student-owned attempts and actual source units. Equivalency requires a passed source; discontinued-course replacement uses another current curriculum. Source/destination exclusivity and revocation history must be enforced atomically.
 
 ## Required production enforcement
