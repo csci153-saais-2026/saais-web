@@ -675,7 +675,6 @@ The production application will provide the following role-based workflows. Thes
 | `/adviser/enrollment/new`         | Record an attempt; an unmet strict prerequisite offers Continue with override or Cancel, with a reason required to continue |
 | `/adviser/import-grades`          | Validate and review grade imports from CSV before applying them                                   |
 | `/adviser/grade-flags`            | Review and resolve student-submitted grade questions                                              |
-| `/adviser/reassignment`           | Reassign advisees to another adviser while strictly preserving zero-gap assignment continuity    |
 
 ### Department, Dean, and Admin Portals
 
