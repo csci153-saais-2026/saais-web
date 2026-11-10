@@ -14,6 +14,15 @@ import { getMockDatabase } from './store'
 
 let syntheticUuidCounter = 100
 
+const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
+
+function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
+  if (persona.roles.includes('admin')) return true
+  const roles = profile.roles?.length ? profile.roles : [profile.role]
+  return profile.id !== persona.profileId && !!persona.departmentId &&
+    profile.department_id === persona.departmentId && roles.every(role => departmentInviteRoles.has(role))
+}
+
 function nextSyntheticUuid(): string {
   syntheticUuidCounter += 1
   const hex = syntheticUuidCounter.toString(16).padStart(12, '0')
@@ -313,17 +322,13 @@ export const saaisMswHandlers = [
     }
 
     if (!persona.roles.includes('admin')) {
-      const staffAllowedRoles: ReadonlySet<string> = new Set([
-        'student',
-        'adviser',
-        'department_staff',
-      ])
-      if (!staffAllowedRoles.has(body.role)) {
+      const assignments = body.role_assignments ?? []
+      if (!departmentInviteRoles.has(body.role) || assignments.some(a => !departmentInviteRoles.has(a.role))) {
         return errorJson(
           403,
           'INSUFFICIENT_PRIVILEGE',
           `Department Head / Staff cannot provision role '${body.role}'.`,
-          'Only student, adviser, and department_staff are allowed within caller department.',
+          'Only student, adviser, department_staff, and department_head are allowed within caller department.',
         )
       }
       if (
@@ -336,6 +341,16 @@ export const saaisMswHandlers = [
           'INSUFFICIENT_PRIVILEGE',
           'Cannot provision accounts outside your assigned department.',
         )
+      }
+      const program = body.role === 'student'
+        ? getMockDatabase().programs.find(p => p.id === body.program_id)
+        : undefined
+      if (body.email.toLowerCase() === persona.email.toLowerCase() ||
+          assignments.some(a => (a.department_id && a.department_id !== persona.departmentId) ||
+            (a.faculty_id && a.faculty_id !== persona.facultyId)) ||
+          (body.role === 'student' && (!program || program.department_id !== persona.departmentId)) ||
+          ('faculty_id' in body && body.faculty_id && body.faculty_id !== persona.facultyId)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot provision this account within your department.')
       }
     }
 
@@ -356,7 +371,7 @@ export const saaisMswHandlers = [
     db.profiles.push({
       id: newProfileId,
       role: body.role,
-      roles: [body.role],
+      roles: [...new Set([body.role, ...(body.role_assignments ?? []).map(a => a.role)])],
       email: body.email,
       full_name: body.full_name,
       student_number:
@@ -873,6 +888,9 @@ export const saaisMswHandlers = [
       if (!profile) {
         return errorJson(404, 'NOT_FOUND', 'Account not found.')
       }
+      if (!canManageDepartmentInvite(auth.persona, profile)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot manage this invitation.')
+      }
       const res: ApiSchema<'ResendInviteResponse'> = {
         success: true,
         message: 'Invitation regenerated and dispatched.',
@@ -899,6 +917,9 @@ export const saaisMswHandlers = [
       const profile = db.profiles.find((p) => p.id === profileId)
       if (!profile) {
         return errorJson(404, 'NOT_FOUND', 'Account not found.')
+      }
+      if (!canManageDepartmentInvite(auth.persona, profile)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot manage this invitation.')
       }
       const updated: ApiSchema<'Profile'> = {
         ...profile,

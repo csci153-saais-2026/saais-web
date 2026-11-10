@@ -143,7 +143,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(rosterAttempt.response.status).toBe(403)
   })
 
-  it('enforces Department Staff provisioning boundaries (student/adviser/staff in own dept vs admin/dean forbidden)', async () => {
+  it('enforces Department Staff provisioning boundaries', async () => {
     loginAsMockPersona('department_staff')
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
@@ -151,11 +151,11 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       mode: 'mock',
     })
 
-    // Allowed: inviting an adviser within DCST
+    // Allowed: inviting a department head within DCST
     const allowedInvite = unwrapApiResult(
       await client.POST('/functions/v1/auth/invite', {
         body: {
-          role: 'adviser',
+          role: 'department_head',
           email: 'new.adviser.mock@vsu.edu.ph',
           full_name: 'Prof. New Adviser',
           faculty_id: MOCK_IDS.facultyComputing,
@@ -166,6 +166,13 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(allowedInvite.success).toBe(true)
     expect(allowedInvite.invitation_status).toBe('pending')
 
+    for (const operation of ['resend-invite', 'revoke-invite'] as const) {
+      const response = await fetch(`${BASE_URL}/functions/v1/accounts/${allowedInvite.profile_id}/${operation}`, {
+        method: 'POST', headers: { apikey: TEST_API_KEY, Authorization: `Bearer ${MOCK_PERSONAS.department_staff.token}` },
+      })
+      expect(response.status).toBe(200)
+    }
+
     // Denied: Department Staff attempting to provision an Admin or Dean
     const deniedAdminInvite = await client.POST('/functions/v1/auth/invite', {
       body: {
@@ -175,11 +182,15 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       },
     })
     expect(deniedAdminInvite.response.status).toBe(403)
+    const deniedDean = await client.POST('/functions/v1/auth/invite', {
+      body: { role: 'dean', email: 'rogue.dean@vsu.edu.ph', full_name: 'Rogue Dean' },
+    })
+    expect(deniedDean.response.status).toBe(403)
 
     // Denied: Department Staff attempting to provision in another department
     const crossDeptInvite = await client.POST('/functions/v1/auth/invite', {
       body: {
-        role: 'adviser',
+        role: 'department_head',
         email: 'cross.dept@vsu.edu.ph',
         full_name: 'Cross Dept Adviser',
         faculty_id: MOCK_IDS.facultyEngineering,
