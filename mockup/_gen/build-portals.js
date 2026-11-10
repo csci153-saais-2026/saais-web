@@ -19,7 +19,7 @@ function screenKey(role,file){
  let name=file.replace(/(?:\.dc)?\.html$/,'');
  if(role.id==='student')return name==='Student'?'workspace':kebab(name.replace(/^Student/,''));
  if(role.id==='adviser')return name==='Adviser'?'workspace':name.startsWith('Advisee')?'advisees/'+kebab(name.slice(7)):kebab(name.replace(/^Adviser/,''));
- if(role.id==='system-admin')return ({SystemAdmin:'workspace',AdminStudentDirectory:'students',AdminAccountsRoles:'accounts',AdminFacultyDepartments:'faculty-departments',AdminPrograms:'programs',AdminAuditLog:'audit-log',AdminSettings:'settings',AdminChangePassword:'change-password'})[name];
+ if(role.id==='system-admin')return ({SystemAdmin:'workspace',AdminStudentDirectory:'students',AdminAccountsRoles:'accounts',AdminFacultyDepartments:'faculty-departments',AdminPrograms:'programs',AdminAuditLog:'audit-log',AdminSettings:'settings',AdminChangePassword:'change-password',AdminNotifications:'notifications'})[name];
  if(role.prefix)name=name.slice(role.prefix.length);
  if(name==='Adviser')return 'adviser/workspace';
  if(name.startsWith('Advisee'))return 'adviser/advisees/'+kebab(name.slice(7));
@@ -47,7 +47,7 @@ const aliases={
  'admin/dashboard':'system-admin/students','admin/accounts':'system-admin/accounts','admin/audit-log':'system-admin/audit-log','admin/settings':'system-admin/settings',
  'admin/programs':'system-admin/programs','admin/faculties':'system-admin/faculty-departments','admin/curricula':'department-staff/curricula',
  'admin/courses':'department-staff/course-catalog','admin/course-offerings':'department-staff/academic-terms',
- 'adviser/enrollment':'adviser/encode-grades','adviser/reassignment':'department-staff/adviser-assignments'
+ 'adviser/enrollment':'adviser/encode-grades'
 };
 for(const [from,to] of Object.entries(aliases))if(!routes[to])throw Error('Alias '+from+' targets missing route '+to);
 for(const role of roles)if(!routes[role.home])throw Error('Missing home '+role.home);
