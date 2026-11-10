@@ -23,6 +23,24 @@ function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Pro
     profile.department_id === persona.departmentId && roles.every(role => departmentInviteRoles.has(role))
 }
 
+function departmentEncodingClosed(studentId: string, termId: string): boolean {
+  const db = getMockDatabase()
+  const departmentId = db.profiles.find(p => p.id === studentId)?.department_id
+  return !!departmentId && db.departmentTermEncodings.some(c =>
+    c.department_id === departmentId && c.school_term_id === termId && c.is_closed)
+}
+
+function attemptEncodingClosed(studentId: string, attemptId: string): boolean {
+  const db = getMockDatabase()
+  const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
+  const termId = db.courseOfferings.find(o => o.id === attempt?.course_offering_id)?.school_term_id
+  return !!termId && departmentEncodingClosed(studentId, termId)
+}
+
+function encodingClosedResponse() {
+  return errorJson(409, 'TERM_LOCKED', 'Grade encoding is closed for this department and term.')
+}
+
 function nextSyntheticUuid(): string {
   syntheticUuidCounter += 1
   const hex = syntheticUuidCounter.toString(16).padStart(12, '0')
@@ -320,6 +338,9 @@ export const saaisMswHandlers = [
     if (!body || !body.email || !body.full_name || !body.role) {
       return errorJson(400, 'INVALID_INPUT', 'Missing required invite fields.')
     }
+    if (body.email.toLowerCase() === persona.email.toLowerCase()) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot assign roles to yourself.')
+    }
 
     if (!persona.roles.includes('admin')) {
       const assignments = body.role_assignments ?? []
@@ -345,8 +366,7 @@ export const saaisMswHandlers = [
       const program = body.role === 'student'
         ? getMockDatabase().programs.find(p => p.id === body.program_id)
         : undefined
-      if (body.email.toLowerCase() === persona.email.toLowerCase() ||
-          assignments.some(a => (a.department_id && a.department_id !== persona.departmentId) ||
+      if (assignments.some(a => (a.department_id && a.department_id !== persona.departmentId) ||
             (a.faculty_id && a.faculty_id !== persona.facultyId)) ||
           (body.role === 'student' && (!program || program.department_id !== persona.departmentId)) ||
           ('faculty_id' in body && body.faculty_id && body.faculty_id !== persona.facultyId)) {
@@ -1299,9 +1319,7 @@ export const saaisMswHandlers = [
       code: body.code,
       title: body.title,
       category: body.category ?? 'major',
-      lecture_hours: body.lecture_hours,
-      lab_hours: body.lab_hours,
-      units: body.units,
+        units: body.units,
       is_elective: body.is_elective ?? false,
       status: body.status ?? 'active',
       repeatable_type: body.repeatable_type ?? 'none',
@@ -1568,8 +1586,11 @@ export const saaisMswHandlers = [
       }
 
       const targetDeptId = body.department_id ?? persona.departmentId ?? MOCK_IDS.deptDcst
+      if ((body.scope ?? 'department') === 'department' && persona.roles.includes('admin') && !body.department_id) {
+        return errorJson(400, 'INVALID_INPUT', 'department_id is required for an admin department closure.')
+      }
       if (
-        body.scope === 'department' &&
+        (body.scope ?? 'department') === 'department' &&
         !persona.roles.includes('admin') &&
         targetDeptId !== persona.departmentId
       ) {
@@ -1589,6 +1610,11 @@ export const saaisMswHandlers = [
         closed_at: '2026-11-10T09:00:00Z',
         closure_note: body.closure_note ?? 'Department grade encoding closed.',
       }
+      if ((body.scope ?? 'department') === 'department') {
+        const closureIndex = db.departmentTermEncodings.findIndex(c => c.school_term_id === schoolTermId && c.department_id === targetDeptId)
+        if (closureIndex < 0) db.departmentTermEncodings.push(closure)
+        else db.departmentTermEncodings[closureIndex] = { ...closure, id: db.departmentTermEncodings[closureIndex]!.id }
+      }
 
       const updated: ApiSchema<'SchoolTerm'> = {
         ...db.schoolTerms[idx]!,
@@ -1607,10 +1633,27 @@ export const saaisMswHandlers = [
     },
   ),
 
+  http.post('*/functions/v1/school-terms/:school_term_id/reopen-encoding', async ({ request, params }) => {
+    const auth = authenticateRequest(request, ['admin', 'department_head', 'department_staff'])
+    if ('response' in auth) return auth.response
+    const body = (await request.json().catch(() => ({}))) as ApiSchema<'SchoolTermCloseEncodingRequest'>
+    if (body.scope === 'institution') return errorJson(400, 'INVALID_INPUT', 'Only department closures can be reopened here.')
+    const isAdmin = auth.persona.roles.includes('admin')
+    if (isAdmin && !body.department_id) return errorJson(400, 'INVALID_INPUT', 'department_id is required.')
+    const departmentId = body.department_id ?? auth.persona.departmentId
+    if (!isAdmin && departmentId !== auth.persona.departmentId) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot reopen another department.')
+    const db = getMockDatabase()
+    const index = db.departmentTermEncodings.findIndex(c => c.school_term_id === String(params.school_term_id) && c.department_id === departmentId)
+    if (index < 0) return errorJson(404, 'NOT_FOUND', 'Department closure not found.')
+    const updated = { ...db.departmentTermEncodings[index]!, is_closed: false }
+    db.departmentTermEncodings[index] = updated
+    return HttpResponse.json(updated)
+  }),
+
   http.put(
     '*/functions/v1/school-terms/:school_term_id/override',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, ['admin', 'department_head'])
+      const auth = authenticateRequest(request, ['admin'])
       if ('response' in auth) return auth.response
       const schoolTermId = String(params.school_term_id)
       const db = getMockDatabase()
@@ -1905,7 +1948,7 @@ export const saaisMswHandlers = [
           offering: db.courseOfferings[1]!,
           code: 'CSCI 153',
           title: 'Software Engineering',
-          units: 3,
+        units: 3,
           group: 'program',
           direct_curriculum_slot_id: MOCK_IDS.slotCsci153,
           instructor_options: [
@@ -1950,7 +1993,7 @@ export const saaisMswHandlers = [
           curriculum_term_course_id: MOCK_IDS.slotFreeElective1,
           code: 'CSCI 198',
           title: 'Special Topics in Artificial Intelligence',
-          units: 3,
+        units: 3,
           why: 'Satisfies CS Elective 1 slot in 3rd Year 1st Semester.',
           badges: ['Elective'],
           excluded_summary: {
@@ -1993,6 +2036,7 @@ export const saaisMswHandlers = [
       if (!body?.school_term_id || !body?.course_offering_id) {
         return errorJson(400, 'INVALID_INPUT', 'school_term_id and course_offering_id are required.')
       }
+      if (departmentEncodingClosed(studentId, body.school_term_id)) return encodingClosedResponse()
       if (
         body.midterm_grade !== undefined &&
         body.midterm_grade !== null &&
@@ -2065,6 +2109,7 @@ export const saaisMswHandlers = [
       if (!body?.school_term_id || !Array.isArray(body.rows)) {
         return errorJson(400, 'INVALID_INPUT', 'school_term_id and rows are required.')
       }
+      if (departmentEncodingClosed(studentId, body.school_term_id)) return encodingClosedResponse()
       const results: ApiSchema<'AttemptResult'>[] = body.rows.map((row) => ({
         id: row.attempt_id ?? nextSyntheticUuid(),
         student_id: studentId,
@@ -2106,6 +2151,7 @@ export const saaisMswHandlers = [
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
+      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
       const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
       const result: ApiSchema<'AttemptResult'> = {
         id: attemptId,
@@ -2145,7 +2191,7 @@ export const saaisMswHandlers = [
 
   http.delete(
     '*/functions/v1/students/:student_id/attempts/:attempt_id',
-    ({ request }) => {
+    ({ request, params }) => {
       const auth = authenticateRequest(request, [
         'admin',
         'dean',
@@ -2153,6 +2199,7 @@ export const saaisMswHandlers = [
         'adviser',
       ])
       if ('response' in auth) return auth.response
+      if (attemptEncodingClosed(String(params.student_id), String(params.attempt_id))) return encodingClosedResponse()
       return new HttpResponse(null, { status: 204 })
     },
   ),
@@ -2169,6 +2216,7 @@ export const saaisMswHandlers = [
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
+      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'PrerequisiteGradeCorrectionRequest'>
       const result: ApiSchema<'AttemptResult'> = {
         id: attemptId,
@@ -2305,6 +2353,8 @@ export const saaisMswHandlers = [
       if ('response' in auth) return auth.response
       const flagId = String(params.flag_id)
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'GradeFlagResolveRequest'>
+      const flag = getMockDatabase().gradeFlags.find(f => f.id === flagId)
+      if (body.resolution_action !== 'reject' && flag?.attempt_id && attemptEncodingClosed(flag.student_id, flag.attempt_id)) return encodingClosedResponse()
       const resolved: ApiSchema<'GradeFlag'> = {
         id: flagId,
         student_id: MOCK_IDS.studentPrimary,
@@ -2341,6 +2391,11 @@ export const saaisMswHandlers = [
     if (!body?.mode || !body?.school_term_id || !Array.isArray(body.rows)) {
       return errorJson(400, 'INVALID_INPUT', 'mode, school_term_id, and rows are required.')
     }
+    const db = getMockDatabase()
+    if (body.rows.some(row => {
+      const student = db.profiles.find(p => p.student_number === row.student_number)
+      return student && departmentEncodingClosed(student.id, body.school_term_id)
+    })) return encodingClosedResponse()
     const response: ApiSchema<'GradeBatchImportResponse'> = {
       mode: body.mode,
       valid_count: body.rows.length,

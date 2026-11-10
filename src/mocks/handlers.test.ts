@@ -37,6 +37,32 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('retains student visibility of archived notes', async () => {
+    const db = getMockDatabase()
+    const own = db.advisingNotes.find(n => n.student_id === MOCK_IDS.studentPrimary)!
+    own.is_archived = true
+    loginAsMockPersona('student')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const notes = unwrapApiResult(await client.GET('/rest/v1/advising_note'))
+    expect(notes.some(n => n.id === own.id && n.is_archived)).toBe(true)
+    expect(notes.every(n => n.student_id === MOCK_IDS.studentPrimary)).toBe(true)
+  })
+
+  it('blocks department grade writes until the closure is reopened', async () => {
+    loginAsMockPersona('department_staff')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const path = { school_term_id: MOCK_IDS.term2026Sem1Open }
+    expect((await client.POST('/functions/v1/school-terms/{school_term_id}/close-encoding', { params: { path }, body: { scope: 'department' } })).response.status).toBe(200)
+    loginAsMockPersona('adviser')
+    const body = { school_term_id: path.school_term_id, course_offering_id: MOCK_IDS.offeringCsci153, confirmed_enrollment: true, continue_with_prerequisite_override: false }
+    const params = { path: { student_id: MOCK_IDS.studentPrimary } }
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(409)
+    loginAsMockPersona('department_staff')
+    expect((await client.POST('/functions/v1/school-terms/{school_term_id}/reopen-encoding', { params: { path }, body: { scope: 'department' } })).response.status).toBe(200)
+    loginAsMockPersona('adviser')
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(200)
+  })
+
   it('resolves named and shorthand mock persona tokens accurately', () => {
     expect(
       resolveMockPersonaFromAuthHeader(`Bearer ${MOCK_PERSONAS.adviser.token}`)
