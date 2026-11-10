@@ -14826,5 +14826,46 @@ x-supabase-auth-integration:
       SPA redirect target.
     email_policy: >-
       Verified Google email must be an institutional `@vsu.edu.ph` address that exactly matches a
-      pre-provisioned `Profile` row (`status: invited` or `active`); en
-... [truncated for diff preview]
+      pre-provisioned `Profile` row (`status: invited` or `active`); enforce eligibility/linking
+      server-side, including already-existing identities.
+  audit_events:
+    sign_in_succeeded: >-
+      Recorded server-side by the Supabase Auth post-authentication hook / session bootstrap
+      whenever a user completes password or Google OAuth sign-in.
+    login_rejected: >-
+      Recorded server-side by the Supabase Auth `before-user-created` / sign-in rejection hook
+      when an unprovisioned email, non-`@vsu.edu.ph` domain, or disabled account attempts sign-in.
+    password_changed: >-
+      Recorded server-side when an authenticated user updates their password via `auth.updateUser`
+      or completes password recovery.
+  sessions:
+    owner: Supabase SDK
+    refresh: >-
+      Use the current refreshed user access token per application request; never cache one JWT
+      forever.
+    state: >-
+      Use auth.onAuthStateChange for browser session updates; server independently
+      authenticates/authorizes.
+    logout: auth.signOut
+    password_recovery: >-
+      auth.resetPasswordForEmail and auth.updateUser after a valid recovery session; not custom
+      application endpoints.
+  headers:
+    apikey: Public project publishable key (legacy anon key where supported).
+    Authorization: Bearer <current Supabase user access_token> for protected application operations only.
+  authorization:
+    identity: >-
+      Verified Supabase JWT subject maps to the provisioned profile ID; never trust client-supplied
+      email/role or user-editable user_metadata.
+    active_account: >-
+      Require active provisioned profile on protected requests, including existing users after
+      role/status changes.
+    creation_hook: >-
+      A before-user-created hook can restrict new identity creation; it does not govern subsequent
+      logins or replace account-status/RLS checks.
+    organization: >-
+      Application role and current/historical assignment remain server-enforced separately from
+      PostgreSQL authenticated role.
+  deployment_boundary: >-
+    Specification only: no Supabase project/provider/hook/grant/Edge Function configuration or
+    implementation is changed.
