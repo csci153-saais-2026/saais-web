@@ -96,6 +96,7 @@ export type MockPersonaKey =
   | 'student_secondary'
   | 'student_other_dept'
   | 'adviser'
+  | 'adviser_secondary'
   | 'department_head'
   | 'department_staff'
   | 'dean'
@@ -125,8 +126,8 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   student: {
     key: 'student',
     profileId: MOCK_IDS.studentPrimary,
-    email: 'juan.delacruz.mock@vsu.edu.ph',
-    fullName: 'Juan M. Dela Cruz',
+    email: '24-1-01798@vsu.edu.ph',
+    fullName: 'Sta. Agata, Jerome Daniel S.',
     primaryRole: 'student',
     roles: ['student'],
     roleScopes: [
@@ -143,8 +144,8 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   student_secondary: {
     key: 'student_secondary',
     profileId: MOCK_IDS.studentSecondary,
-    email: 'maria.santos.mock@vsu.edu.ph',
-    fullName: 'Maria L. Santos',
+    email: '23-1-02121@vsu.edu.ph',
+    fullName: 'Concoles, Cyril Jade M.',
     primaryRole: 'student',
     roles: ['student'],
     roleScopes: [
@@ -161,8 +162,8 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   student_other_dept: {
     key: 'student_other_dept',
     profileId: MOCK_IDS.studentOtherDept,
-    email: 'pedro.penduko.mock@vsu.edu.ph',
-    fullName: 'Pedro R. Penduko',
+    email: '24-1-01926@vsu.edu.ph',
+    fullName: 'Flores, Raniel John B.',
     primaryRole: 'student',
     roles: ['student'],
     roleScopes: [
@@ -179,8 +180,8 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   adviser: {
     key: 'adviser',
     profileId: MOCK_IDS.adviserPrimary,
-    email: 'clara.adviser.mock@vsu.edu.ph',
-    fullName: 'Prof. Maria Clara Santos',
+    email: '23-1-02224@vsu.edu.ph',
+    fullName: 'Polo, Marco Antonio P.',
     primaryRole: 'adviser',
     roles: ['adviser'],
     roleScopes: [
@@ -194,11 +195,29 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
     departmentId: MOCK_IDS.deptDcst,
     token: `mock-jwt:adviser:${MOCK_IDS.adviserPrimary}`,
   },
+  adviser_secondary: {
+    key: 'adviser_secondary',
+    profileId: MOCK_IDS.adviserSecondary,
+    email: '22-1-00856@vsu.edu.ph',
+    fullName: 'Coting, Eulo Rod M.',
+    primaryRole: 'adviser',
+    roles: ['adviser'],
+    roleScopes: [
+      {
+        role: 'adviser',
+        scope_type: 'department',
+        scope_id: MOCK_IDS.deptDcst,
+      },
+    ],
+    facultyId: MOCK_IDS.facultyComputing,
+    departmentId: MOCK_IDS.deptDcst,
+    token: `mock-jwt:adviser_secondary:${MOCK_IDS.adviserSecondary}`,
+  },
   department_head: {
     key: 'department_head',
     profileId: MOCK_IDS.deptHeadDcst,
-    email: 'jose.depthead.mock@vsu.edu.ph',
-    fullName: 'Dr. Jose Rizalino Gomez',
+    email: '23-1-02044@vsu.edu.ph',
+    fullName: 'Bucol, Matthew Gerald A.',
     primaryRole: 'department_head',
     roles: ['department_head', 'adviser'],
     roleScopes: [
@@ -220,8 +239,8 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   department_staff: {
     key: 'department_staff',
     profileId: MOCK_IDS.deptStaffDcst,
-    email: 'andres.staff.mock@vsu.edu.ph',
-    fullName: 'Engr. Andres Bonifacio',
+    email: '23-1-01072@vsu.edu.ph',
+    fullName: 'Dumilon, John Earl Patrick G.',
     primaryRole: 'department_staff',
     roles: ['department_staff'],
     roleScopes: [
@@ -238,8 +257,8 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   dean: {
     key: 'dean',
     profileId: MOCK_IDS.deanComputing,
-    email: 'gabriela.dean.mock@vsu.edu.ph',
-    fullName: 'Dr. Gabriela Silang',
+    email: '23-1-02106@vsu.edu.ph',
+    fullName: 'Montera, Mhac Alester',
     primaryRole: 'dean',
     roles: ['dean', 'adviser'],
     roleScopes: [
@@ -261,8 +280,8 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   dean_dept_head: {
     key: 'dean_dept_head',
     profileId: MOCK_IDS.deanDeptHeadComputing,
-    email: 'apolinario.deandh.mock@vsu.edu.ph',
-    fullName: 'Dr. Apolinario Mabini',
+    email: '23-1-00972@vsu.edu.ph',
+    fullName: 'Tan, Ron Nicolas',
     primaryRole: 'dean',
     roles: ['dean', 'department_head', 'adviser'],
     roleScopes: [
@@ -289,19 +308,24 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   admin: {
     key: 'admin',
     profileId: MOCK_IDS.systemAdmin,
-    email: 'sysadmin.mock@vsu.edu.ph',
-    fullName: 'SAAIS System Administrator',
+    email: '23-1-01457@vsu.edu.ph',
+    fullName: 'Lelis, Nietzchan Jake',
     primaryRole: 'admin',
-    roles: ['admin'],
+    roles: ['admin', 'adviser'],
     roleScopes: [
       {
         role: 'admin',
         scope_type: 'institution',
         scope_id: null,
       },
+      {
+        role: 'adviser',
+        scope_type: 'department',
+        scope_id: MOCK_IDS.deptDcst,
+      },
     ],
-    facultyId: null,
-    departmentId: null,
+    facultyId: MOCK_IDS.facultyComputing,
+    departmentId: MOCK_IDS.deptDcst,
     token: `mock-jwt:admin:${MOCK_IDS.systemAdmin}`,
   },
 }

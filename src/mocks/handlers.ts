@@ -1625,7 +1625,7 @@ export const saaisMswHandlers = [
     const items: ApiSchema<'StudentRosterItem'>[] = [
       {
         student_id: MOCK_IDS.studentPrimary,
-        student_number: '24-1-00101',
+        student_number: '24-1-01798',
         full_name: MOCK_PERSONAS.student.fullName,
         email: MOCK_PERSONAS.student.email,
         avatar_url: null,
@@ -1661,7 +1661,7 @@ export const saaisMswHandlers = [
       },
       {
         student_id: MOCK_IDS.studentSecondary,
-        student_number: '24-1-00102',
+        student_number: '23-1-02121',
         full_name: MOCK_PERSONAS.student_secondary.fullName,
         email: MOCK_PERSONAS.student_secondary.email,
         avatar_url: null,
