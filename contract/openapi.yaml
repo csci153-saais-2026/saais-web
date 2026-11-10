@@ -68,13 +68,23 @@ paths:
       summary: Send account invitation
       operationId: inviteUser
       description: >-
-        Provision a pre-registered profile, role assignments, and initial student assignments, and
-        send an email invitation token for password creation. Admins may provision any role and
-        grant multi-role assignments; Department Heads and Department Staff may provision student
-        accounts within their department scope. Privileged server code provisions the Supabase Auth
-        identity and application profile/assignments; the SPA never calls Auth admin APIs or
-        receives server credentials. Compensating recovery coordinates Auth/email side effects with
-        database provisioning. An application invitation does not constitute a signed-in session.
+        Unified account provisioning and invitation flow: atomically creates a pre-registered
+        Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum /
+        adviser assignments (when student is included), and dispatches a single-use expiring
+        password-setup invitation email (/invite/:token). Pre-registered accounts may also sign in
+        immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified
+        Google sign-in activates the profile (status='active') and invalidates any unused password
+        invite token. Admins may provision any role and grant multi-role assignments across the
+        institution; Department Heads and Department Staff may provision student, adviser, and
+        department_staff accounts (including multi-role combinations restricted to those roles)
+        strictly within their own department scope. Any attempt by Department Head or Department
+        Staff to grant admin, dean, or department_head roles or assign another department/faculty is
+        explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects
+        duplicate email or student_number with 409 Conflict. Privileged server code provisions the
+        Supabase Auth identity and application profile/assignments and writes an immutable audit log
+        entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or
+        receives server credentials. An application invitation does not constitute a signed-in
+        session.
       x-required-roles:
         - department_head
         - department_staff
@@ -108,8 +118,8 @@ paths:
         "500":
           $ref: "#/components/responses/500InternalError"
       x-access-scope:
-        department_head: department-scoped-student-invites-only
-        department_staff: department-scoped-student-invites-only
+        department_head: department-scoped-student-adviser-and-staff-invites-only
+        department_staff: department-scoped-student-adviser-and-staff-invites-only
         admin: institution-wide-all-roles
   /functions/v1/auth/verify-invite:
     post:
@@ -119,13 +129,15 @@ paths:
       operationId: verifyInviteToken
       description: >-
         Application invitation redemption: accepts the single-use expiring application token from
-        the invitation email, sets the initial password in Supabase Auth through privileged server
-        code and activates the provisioned profile. Requires the public project apikey but no
-        Authorization/user session. This is not Supabase /auth/v1/verify, a Google callback or a
-        login endpoint. The handler must validate the token before any privileged work and must be
-        deployable without a gateway user-JWT requirement. Future gateway/handler configuration is
-        required; this contract does not apply it. Success returns activation acknowledgement, not
-        an access/refresh token; use the Supabase SDK to sign in afterward.
+        the invitation email, enforces the SAAIS password policy (12–128 characters with at least
+        one uppercase letter, one lowercase letter, and one digit), sets the initial password in
+        Supabase Auth through privileged server code, marks the invitation accepted, and activates
+        the provisioned profile. Requires the public project apikey but no Authorization/user
+        session. This is not Supabase /auth/v1/verify, a Google callback or a login endpoint. The
+        handler must validate the token before any privileged work and must be deployable without a
+        gateway user-JWT requirement. Future gateway/handler configuration is required; this
+        contract does not apply it. Success returns activation acknowledgement, not an
+        access/refresh token; use the Supabase SDK to sign in afterward.
       x-required-roles: []
       security:
         - supabaseProjectKey: []
@@ -142,6 +154,91 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VerifyInviteResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+      x-access-scope: single-use-expiring-invitation-token
+  /functions/v1/auth/preview-invite:
+    post:
+      tags:
+        - Auth
+      summary: Preview invitation metadata without consuming token
+      operationId: previewInviteToken
+      description: >-
+        Pre-session, non-consuming invitation preview for the Invite landing card (Invite.dc.html).
+        Accepts the opaque invitation token in the POST body (avoiding token exposure in server URL
+        access logs or Referer headers) and returns only the bounded invitation summary needed to
+        render the card (provisioned email, full_name, role, roles, faculty_name, department_name,
+        program_code, expires_at, and invitation_status). Requires the public project apikey without
+        a user session JWT and is rate-limited by IP and token hash. Never consumes or extends the
+        token and never returns internal profile IDs or tokens.
+      x-required-roles: []
+      security:
+        - supabaseProjectKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewInviteRequest"
+      responses:
+        "200":
+          description: Non-consuming invitation summary returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewInviteResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+      x-access-scope: single-use-expiring-invitation-token
+  /functions/v1/auth/decline-invite:
+    post:
+      tags:
+        - Auth
+      summary: Decline an active account invitation token
+      operationId: declineInviteToken
+      description: >-
+        Pre-session invitation decline action from the Invite landing card (Invite.dc.html). Accepts
+        the single-use expiring invitation token in the POST body, atomically invalidates the token,
+        transitions invitation_status to declined in a race-safe compare-and-set against concurrent
+        redemption or revocation, and writes an audit log entry. Requires the public project apikey
+        without a user session JWT. Returns 409 Conflict if the invitation was already accepted,
+        revoked, expired, or declined.
+      x-required-roles: []
+      security:
+        - supabaseProjectKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeclineInviteRequest"
+      responses:
+        "200":
+          description: Invitation token declined and invalidated atomically.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeclineInviteResponse"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "401":
@@ -198,8 +295,8 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|role|email|full_name|student_number|status|created_at|updated_at|faculty_id|department_id|avatar_url)(?:,(?:id|role|email|full_name|student_number|status|created_at|updated_at|faculty_id|department_id|avatar_url))*$
-            default: id,role,email,full_name,student_number,status,created_at,updated_at,faculty_id,department_id,avatar_url
+              ^(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)(?:,(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours))*$
+            default: id,role,email,full_name,student_number,status,invitation_status,invitation_sent_at,invitation_expires_at,created_at,updated_at,faculty_id,department_id,avatar_url,consultation_hours
         - name: order
           in: query
           required: false
@@ -208,7 +305,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|role|email|full_name|student_number|status|created_at|updated_at|faculty_id|department_id|avatar_url)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|role|email|full_name|student_number|status|created_at|updated_at|faculty_id|department_id|avatar_url)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -269,11 +366,15 @@ paths:
         - full_name
         - student_number
         - status
+        - invitation_status
+        - invitation_sent_at
+        - invitation_expires_at
         - created_at
         - updated_at
         - faculty_id
         - department_id
         - avatar_url
+        - consultation_hours
   /rest/v1/role_assignment:
     get:
       tags:
@@ -382,10 +483,11 @@ paths:
       summary: Query faculties / colleges
       operationId: listFaculties
       description: >-
-        Retrieve list of university faculties (colleges/divisions). Flat columns are allowlisted per
-        x-projection-fields; role metadata documents checks, not automatic runtime authorization.
-        Inaccessible/missing collection rows return 200 [], while invalid role/column requests may
-        return 403.
+        Retrieve list of university faculties (colleges/divisions), including safe display metadata
+        for letterhead rendering and PDF signatory blocks (dean_name). Flat columns are allowlisted
+        per x-projection-fields; role metadata documents checks, not automatic runtime
+        authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column
+        requests may return 403.
       x-required-roles:
         - student
         - adviser
@@ -405,8 +507,8 @@ paths:
           schema:
             type: string
             maxLength: 2000
-            pattern: ^(?:id|name)(?:,(?:id|name))*$
-            default: id,name
+            pattern: ^(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)(?:,(?:id|name|code|letterhead_prefix|letterhead_name|dean_name))*$
+            default: id,name,code,letterhead_prefix,letterhead_name,dean_name
         - name: order
           in: query
           required: false
@@ -415,7 +517,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|name)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|name)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -470,6 +572,10 @@ paths:
       x-projection-fields:
         - id
         - name
+        - code
+        - letterhead_prefix
+        - letterhead_name
+        - dean_name
   /rest/v1/department:
     get:
       tags:
@@ -477,10 +583,11 @@ paths:
       summary: Query academic departments
       operationId: listDepartments
       description: >-
-        Retrieve academic departments linked to faculties. Flat columns are allowlisted per
-        x-projection-fields; role metadata documents checks, not automatic runtime authorization.
-        Inaccessible/missing collection rows return 200 [], while invalid role/column requests may
-        return 403.
+        Retrieve academic departments linked to faculties, including safe display metadata for
+        letterhead rendering and PDF signatory blocks (department_head_name, dean_name). Flat
+        columns are allowlisted per x-projection-fields; role metadata documents checks, not
+        automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while
+        invalid role/column requests may return 403.
       x-required-roles:
         - student
         - adviser
@@ -501,8 +608,8 @@ paths:
           schema:
             type: string
             maxLength: 2000
-            pattern: ^(?:id|faculty_id|name)(?:,(?:id|faculty_id|name))*$
-            default: id,faculty_id,name
+            pattern: ^(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)(?:,(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name))*$
+            default: id,faculty_id,name,code,letterhead_prefix,letterhead_name,department_head_name,dean_name
         - name: order
           in: query
           required: false
@@ -511,7 +618,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|faculty_id|name)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|faculty_id|name)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -567,6 +674,11 @@ paths:
         - id
         - faculty_id
         - name
+        - code
+        - letterhead_prefix
+        - letterhead_name
+        - department_head_name
+        - dean_name
   /rest/v1/program:
     get:
       tags:
@@ -588,6 +700,17 @@ paths:
       parameters:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/codeQueryParam"
+        - $ref: "#/components/parameters/nameQueryParam"
+        - name: or
+          in: query
+          required: false
+          description: >-
+            Bounded PostgREST free-text search across program code and name (e.g.
+            `(code.ilike.%BSCS%,name.ilike.%Computer Science%)`).
+          schema:
+            type: string
+            maxLength: 320
+            pattern: ^\(code\.ilike\.%[^\x00-\x1f,()]{1,100}%,name\.ilike\.%[^\x00-\x1f,()]{1,150}%\)$
         - name: status
           in: query
           required: false
@@ -683,10 +806,10 @@ paths:
       summary: Query curriculum versions
       operationId: listCurriculumVersions
       description: >-
-        Retrieve versioned curriculum structures with total units and delinquency thresholds. Flat
-        columns are allowlisted per x-projection-fields; role metadata documents checks, not
-        automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while
-        invalid role/column requests may return 403.
+        Retrieve versioned curriculum structures with total units, delinquency thresholds, and
+        enrolled student count. Flat columns are allowlisted per x-projection-fields; role metadata
+        documents checks, not automatic runtime authorization. Inaccessible/missing collection rows
+        return 200 [], while invalid role/column requests may return 403.
       x-required-roles:
         - student
         - adviser
@@ -716,9 +839,9 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status)(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status))*$
+              ^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count))*$
             default: >-
-              id,program_id,version_label,effective_start,effective_end,delinquency_threshold,total_units,status
+              id,program_id,version_label,effective_start,effective_end,delinquency_threshold,total_units,status,enrolled_student_count
         - name: order
           in: query
           required: false
@@ -727,7 +850,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -788,6 +911,7 @@ paths:
         - delinquency_threshold
         - total_units
         - status
+        - enrolled_student_count
   /rest/v1/curriculum_term:
     get:
       tags:
@@ -996,10 +1120,11 @@ paths:
       summary: Query master course catalog
       operationId: listCourses
       description: >-
-        Retrieve catalog courses with credit units, lecture/lab hours, elective eligibility, and
-        repeatable rules. Flat columns are allowlisted per x-projection-fields; role metadata
-        documents checks, not automatic runtime authorization. Inaccessible/missing collection rows
-        return 200 [], while invalid role/column requests may return 403.
+        Retrieve catalog courses with credit units, lecture/lab hours, elective eligibility,
+        category classification, and repeatable rules. Flat columns are allowlisted per
+        x-projection-fields; role metadata documents checks, not automatic runtime authorization.
+        Inaccessible/missing collection rows return 200 [], while invalid role/column requests may
+        return 403.
       x-required-roles:
         - student
         - adviser
@@ -1011,6 +1136,32 @@ paths:
         - $ref: "#/components/parameters/idQueryParam"
         - $ref: "#/components/parameters/departmentIdQueryParam"
         - $ref: "#/components/parameters/codeQueryParam"
+        - name: title
+          in: query
+          required: false
+          description: Filter course title by equality or case-insensitive pattern (`eq.`, `ilike.`, `like.`).
+          schema:
+            type: string
+            maxLength: 256
+            pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,250}$
+        - name: category
+          in: query
+          required: false
+          description: Filter course category (`eq.major`, `eq.ge`, `eq.elective`, `eq.pe`, `eq.nstp`, etc.).
+          schema:
+            type: string
+            maxLength: 40
+            pattern: ^eq\.(major|ge|elective|pe|nstp|foundation|service|Major|GE|Elective|NSTP|PE|Thesis|Internship|Other)$
+        - name: or
+          in: query
+          required: false
+          description: >-
+            Bounded PostgREST free-text search across course code and title (e.g.
+            `(code.ilike.%CS 101%,title.ilike.%Introduction%)`).
+          schema:
+            type: string
+            maxLength: 420
+            pattern: ^\(code\.ilike\.%[^\x00-\x1f,()]{1,100}%,title\.ilike\.%[^\x00-\x1f,()]{1,250}%\)$
         - name: status
           in: query
           required: false
@@ -1029,8 +1180,8 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective)(?:,(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective))*$
-            default: id,department_id,code,title,lecture_hours,lab_hours,units,status,repeatable_type,is_elective
+              ^(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category)(?:,(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category))*$
+            default: id,department_id,code,title,lecture_hours,lab_hours,units,status,repeatable_type,is_elective,category
         - name: order
           in: query
           required: false
@@ -1039,7 +1190,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -1102,6 +1253,7 @@ paths:
         - status
         - repeatable_type
         - is_elective
+        - category
   /rest/v1/prerequisite:
     get:
       tags:
@@ -1314,6 +1466,116 @@ paths:
         - closed_at
         - closure_note
         - chronological_key
+  /rest/v1/department_term_encoding:
+    get:
+      tags:
+        - Terms & Offerings
+      summary: Query department-scoped grade encoding closure state per school term
+      operationId: listDepartmentTermEncodings
+      description: >-
+        Retrieve per-department grade-encoding closure records for calendar school terms. Allows
+        Department Heads and Department Staff to close grade encoding for their own department
+        without locking other departments, while global SchoolTerm.is_locked remains Admin-only.
+      x-required-roles:
+        - student
+        - adviser
+        - department_head
+        - department_staff
+        - dean
+        - admin
+      parameters:
+        - $ref: "#/components/parameters/idQueryParam"
+        - $ref: "#/components/parameters/schoolTermIdQueryParam"
+        - $ref: "#/components/parameters/departmentIdQueryParam"
+        - name: is_closed
+          in: query
+          required: false
+          description: Filter by department closure state (`eq.true` or `eq.false`).
+          schema:
+            type: string
+            maxLength: 20
+            pattern: ^eq\.(true|false)$
+        - name: select
+          in: query
+          required: false
+          description: Only these flat safe columns.
+          schema:
+            type: string
+            maxLength: 2000
+            pattern: >-
+              ^(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)(?:,(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at))*$
+            default: >-
+              id,school_term_id,department_id,is_closed,closed_by,closed_by_name,closed_at,closure_note,updated_at
+        - name: order
+          in: query
+          required: false
+          description: Stable ordering on published columns only.
+          schema:
+            type: string
+            maxLength: 1000
+            pattern: >-
+              ^(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+            default: id.asc
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+      responses:
+        "200":
+          description: Array of department term encoding closure states.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentTermEncodingClosure"
+                maxItems: 1000
+          headers:
+            Content-Range:
+              description: PostgREST visible item range.
+              schema:
+                type: string
+                maxLength: 100
+        "206":
+          description: Partial visible collection.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentTermEncodingClosure"
+                maxItems: 1000
+          headers:
+            Content-Range:
+              description: PostgREST visible item range.
+              schema:
+                type: string
+                maxLength: 100
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+      x-access-scope:
+        student: own-records
+        adviser: current-or-historic-assigned-students-read-only
+        department_head: department-and-reference-read-only
+        department_staff: department-and-reference-read-only
+        dean: faculty-and-reference-read-only
+        admin: institution-wide
+      x-projection-fields:
+        - id
+        - school_term_id
+        - department_id
+        - is_closed
+        - closed_by
+        - closed_by_name
+        - closed_at
+        - closure_note
+        - updated_at
   /rest/v1/course_offering:
     get:
       tags:
@@ -1321,10 +1583,10 @@ paths:
       summary: Query course offerings
       operationId: listCourseOfferings
       description: >-
-        Retrieve courses offered in a specific school term, including by-request accommodations.
-        Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not
-        automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while
-        invalid role/column requests may return 403.
+        Retrieve courses offered in a specific school term, including section, schedule, instructor,
+        and by-request accommodations. Flat columns are allowlisted per x-projection-fields; role
+        metadata documents checks, not automatic runtime authorization. Inaccessible/missing
+        collection rows return 200 [], while invalid role/column requests may return 403.
       x-required-roles:
         - student
         - adviser
@@ -1347,8 +1609,8 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|school_term_id|course_id|is_by_request|section|schedule)(?:,(?:id|school_term_id|course_id|is_by_request|section|schedule))*$
-            default: id,school_term_id,course_id,is_by_request,section,schedule
+              ^(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)(?:,(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor))*$
+            default: id,school_term_id,course_id,is_by_request,section,schedule,instructor
         - name: order
           in: query
           required: false
@@ -1357,7 +1619,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|school_term_id|course_id|is_by_request|section|schedule)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|school_term_id|course_id|is_by_request|section|schedule)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -1416,6 +1678,7 @@ paths:
         - is_by_request
         - section
         - schedule
+        - instructor
   /rest/v1/adviser_assignment:
     get:
       tags:
@@ -1423,11 +1686,14 @@ paths:
       summary: Query adviser assignments
       operationId: listAdviserAssignments
       description: >-
-        Retrieve student-to-adviser longitudinal assignments. RLS-scoped: students view their own
-        assignments; advisers view assigned advisees; department/faculty roles view scoped students;
-        admins have full visibility. Flat columns are allowlisted per x-projection-fields; role
-        metadata documents checks, not automatic runtime authorization. Inaccessible/missing
-        collection rows return 200 [], while invalid role/column requests may return 403.
+        Retrieve student-to-adviser longitudinal assignments, including safe display names
+        (adviser_name, handed_over_to_name, handover_label) for student and staff views without
+        exposing private reassignment reason text or broadening /rest/v1/profile RLS. RLS-scoped:
+        students view their own assignments; advisers view assigned advisees; department/faculty
+        roles view scoped students; admins have full visibility. Flat columns are allowlisted per
+        x-projection-fields; role metadata documents checks, not automatic runtime authorization.
+        Inaccessible/missing collection rows return 200 [], while invalid role/column requests may
+        return 403.
       x-required-roles:
         - student
         - adviser
@@ -1449,8 +1715,8 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|adviser_id|student_id|start_date|end_date|created_at)(?:,(?:id|adviser_id|student_id|start_date|end_date|created_at))*$
-            default: id,adviser_id,student_id,start_date,end_date,created_at
+              ^(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)(?:,(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at))*$
+            default: id,adviser_id,adviser_name,adviser_email,adviser_faculty_name,adviser_consultation_hours,student_id,start_date,end_date,handed_over_to_adviser_id,handed_over_to_name,handover_label,created_at
         - name: order
           in: query
           required: false
@@ -1459,7 +1725,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|adviser_id|student_id|start_date|end_date|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|adviser_id|student_id|start_date|end_date|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -1514,9 +1780,16 @@ paths:
       x-projection-fields:
         - id
         - adviser_id
+        - adviser_name
+        - adviser_email
+        - adviser_faculty_name
+        - adviser_consultation_hours
         - student_id
         - start_date
         - end_date
+        - handed_over_to_adviser_id
+        - handed_over_to_name
+        - handover_label
         - created_at
   /rest/v1/student_curriculum_assignment:
     get:
@@ -2062,6 +2335,120 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/AdminProfileUpdate"
+  /functions/v1/accounts/{profile_id}/resend-invite:
+    post:
+      tags:
+        - Profile
+      summary: Resend or regenerate an account invitation
+      operationId: resendAccountInvite
+      description: >-
+        Department Head, Department Staff, or Admin regenerates and resends an expiring invitation
+        email for an account whose invitation is still pending (`invited`), expired, or previously
+        revoked/declined, without exposing the raw token in API responses. Department Head and
+        Department Staff may only resend invitations for Students, Advisers, and Department Staff
+        within their own department (`admin`, `dean`, and `department_head` accounts are Admin-only).
+        Invalidates any prior unused token hash, updates `invitation_status` to `pending`, stamps
+        `invitation_sent_at` and `invitation_expires_at` server-side, and writes an audit log entry.
+      x-required-roles:
+        - department_head
+        - department_staff
+        - admin
+      x-access-scope:
+        department_head: department-scoped-student-adviser-and-staff-invites-only
+        department_staff: department-scoped-student-adviser-and-staff-invites-only
+        admin: institution-wide
+      x-atomic: true
+      x-request-validation: >-
+        Reject unknown fields; verify JWT and role/department scope at runtime; reject already
+        active accounts with 409 Conflict; never return raw invite tokens in response payloads;
+        derive audit actor/time server-side.
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Invitation regenerated and resent atomically.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResendInviteResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+  /functions/v1/accounts/{profile_id}/revoke-invite:
+    post:
+      tags:
+        - Profile
+      summary: Revoke a pending account invitation
+      operationId: revokeAccountInvite
+      description: >-
+        Department Head, Department Staff, or Admin revokes a pending account invitation before
+        redemption, invalidating its token hash, setting `invitation_status` to `revoked`, and
+        writing an audit log entry. Department Head and Department Staff may only revoke invitations
+        for Students, Advisers, and Department Staff within their own department (`admin`, `dean`,
+        and `department_head` accounts are Admin-only). Already redeemed (`accepted`) invitations
+        cannot be revoked and return `409 Conflict`.
+      x-required-roles:
+        - department_head
+        - department_staff
+        - admin
+      x-access-scope:
+        department_head: department-scoped-student-adviser-and-staff-invites-only
+        department_staff: department-scoped-student-adviser-and-staff-invites-only
+        admin: institution-wide
+      x-atomic: true
+      x-request-validation: >-
+        Reject unknown fields; verify JWT and role/department scope at runtime; reject already
+        redeemed invitations with 409 Conflict; derive audit actor/time server-side.
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RevokeInviteRequest"
+      responses:
+        "200":
+          description: Pending invitation revoked atomically.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
   /functions/v1/catalog/faculty:
     post:
       tags:
@@ -2155,6 +2542,48 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/FacultyUpdate"
+    delete:
+      tags:
+        - Faculty & Department
+      summary: Delete unreferenced faculty
+      operationId: deleteFaculty
+      description: >-
+        Admin-only, validated transactional catalog operation to delete an unreferenced faculty
+        that has no departments, role assignments, or historical academic records referencing it.
+        Avoids implicit cascade deletes; if the faculty still has child departments or referenced
+        records, returns 409 Conflict. Locks parent/child references and commits an audit log entry
+        with server-derived actor and timestamp in the same transaction.
+      x-required-roles:
+        - admin
+      x-access-scope: admin-only
+      x-atomic: true
+      x-request-validation: >-
+        Reject unknown fields; verify JWT and admin role at runtime; enforce transactional
+        dependency checks without cascade deletion; derive audit actor/time server-side.
+      responses:
+        "204":
+          description: Deleted unreferenced faculty. Faculties with child departments or referenced history return 409 Conflict.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
   /functions/v1/catalog/department:
     post:
       tags:
@@ -2248,6 +2677,48 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/DepartmentUpdate"
+    delete:
+      tags:
+        - Faculty & Department
+      summary: Delete unreferenced academic department
+      operationId: deleteDepartment
+      description: >-
+        Admin-only, validated transactional catalog operation to delete an unreferenced academic
+        department that has no degree programs, courses, role assignments, or student records
+        referencing it. Avoids implicit cascade deletes; if dependent or historical records exist,
+        returns 409 Conflict. Locks parent/child references and commits an audit log entry with
+        server-derived actor and timestamp in the same transaction.
+      x-required-roles:
+        - admin
+      x-access-scope: admin-only
+      x-atomic: true
+      x-request-validation: >-
+        Reject unknown fields; verify JWT and admin role at runtime; enforce transactional
+        dependency checks without cascade deletion; derive audit actor/time server-side.
+      responses:
+        "204":
+          description: Deleted unreferenced department. Referenced departments return 409 Conflict.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
   /functions/v1/catalog/program:
     post:
       tags:
@@ -2341,6 +2812,48 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ProgramUpdate"
+    delete:
+      tags:
+        - Program & Curriculum
+      summary: Delete unreferenced degree program
+      operationId: deleteProgram
+      description: >-
+        Admin-only, validated transactional catalog operation to delete an unreferenced degree
+        program that has no curriculum versions, student curriculum assignments, or historical
+        records referencing it. Avoids implicit cascade deletes; if curriculum versions or student
+        records exist, returns 409 Conflict. Locks parent/child references and commits an audit log
+        entry with server-derived actor and timestamp in the same transaction.
+      x-required-roles:
+        - admin
+      x-access-scope: admin-only
+      x-atomic: true
+      x-request-validation: >-
+        Reject unknown fields; verify JWT and admin role at runtime; enforce transactional
+        dependency checks without cascade deletion; derive audit actor/time server-side.
+      responses:
+        "204":
+          description: Deleted unreferenced degree program. Referenced programs return 409 Conflict.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
   /functions/v1/catalog/curriculum_version:
     post:
       tags:
@@ -3286,20 +3799,26 @@ paths:
       operationId: closeSchoolTermEncoding
       description: >-
         Department Head, Department Staff, or Admin closes grade encoding for the specified school
-        term, setting is_locked=true, stamping closed_by and closed_at server-side, recording an
-        optional closure_note, and writing an audit log entry.
+        term. Department Head and Department Staff close grade encoding for their own department
+        (`scope: department`, updating the department's `(school_term_id, department_id)` closure
+        state with `is_closed=true` and stamping `closed_by` and `closed_at` server-side). System
+        Administrators may close grade encoding for a specific department (`scope: department`,
+        requiring `department_id`) or institution-wide (`scope: institution`, setting global
+        `SchoolTerm.is_locked=true`). Cross-department or non-Admin institution-wide closure
+        requests are rejected with `403 Forbidden`. Commits an audit log entry in the same
+        transaction.
       x-required-roles:
         - department_head
         - department_staff
         - admin
       x-access-scope:
-        department_head: department-and-term-management
-        department_staff: department-and-term-management
+        department_head: department-scoped
+        department_staff: department-scoped
         admin: institution-wide
       x-atomic: true
       x-request-validation: >-
-        Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
-        server-side.
+        Reject unknown fields; verify JWT and role/department scope at runtime; restrict
+        institution-wide lock (`scope: institution`) to admin; derive audit actor/time server-side.
       responses:
         "200":
           description: Operation completed atomically.
@@ -5246,8 +5765,8 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|student_id|authored_by|body_text|is_archived|archived_at|archived_by|created_at)(?:,(?:id|student_id|authored_by|body_text|is_archived|archived_at|archived_by|created_at))*$
-            default: id,student_id,authored_by,body_text,is_archived,archived_at,archived_by,created_at
+              ^(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)(?:,(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at))*$
+            default: id,student_id,authored_by,author_name,author_role_label,body_text,is_archived,archived_at,archived_by,created_at
         - name: order
           in: query
           required: false
@@ -5256,7 +5775,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|student_id|authored_by|body_text|is_archived|archived_at|archived_by|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|authored_by|body_text|is_archived|archived_at|archived_by|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: created_at.desc,id.desc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -5305,6 +5824,8 @@ paths:
         - id
         - student_id
         - authored_by
+        - author_name
+        - author_role_label
         - body_text
         - is_archived
         - archived_at
@@ -5411,7 +5932,9 @@ paths:
       description: >-
         Read-only, row-scoped PostgREST collection. Advisers view assigned advisees; Department
         Heads view department-scoped entries; Deans view faculty-scoped entries; Admins view all
-        entries. Supports actor, action, entity_type, and created_at range filtering.
+        entries. Supports actor, action, action_category, entity_type, student, free-text search,
+        and bounded created_at range filtering (both single boundary via `created_at` and lower+upper
+        bounds via `and=(created_at.gte.<from>,created_at.lte.<to>)`).
       x-required-roles:
         - adviser
         - department_head
@@ -5434,6 +5957,30 @@ paths:
             maxLength: 1900
             pattern: >-
               ^(?:(?:eq|neq)\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\.\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\))$
+        - name: actor_name
+          in: query
+          required: false
+          description: Filter by actor display name (`eq.`, `ilike.`, `like.`).
+          schema:
+            type: string
+            maxLength: 160
+            pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,150}$
+        - name: student_name
+          in: query
+          required: false
+          description: Filter by target student display name (`eq.`, `ilike.`, `like.`).
+          schema:
+            type: string
+            maxLength: 160
+            pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,150}$
+        - name: student_number
+          in: query
+          required: false
+          description: Filter by target student number (`eq.`, `ilike.`, `like.`).
+          schema:
+            type: string
+            maxLength: 70
+            pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,64}$
         - name: action
           in: query
           required: false
@@ -5442,6 +5989,18 @@ paths:
             type: string
             maxLength: 120
             pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,100}$
+        - name: action_category
+          in: query
+          required: false
+          description: >-
+            Filter by UI action category (`eq.view`, `eq.change`, `eq.sign_in`, `eq.record_view`,
+            `eq.grade_update`, `eq.plan_save`, `eq.note_change`, `eq.override`, `eq.export`,
+            `eq.auth_account`, `eq.catalog_term`, or `in.(...)`).
+          schema:
+            type: string
+            maxLength: 260
+            pattern: >-
+              ^(?:eq\.(?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)|in\.\((?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)(?:,(?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)){0,10}\))$
         - name: entity_type
           in: query
           required: false
@@ -5453,11 +6012,33 @@ paths:
         - name: created_at
           in: query
           required: false
-          description: Filter by timestamp boundary (`gte.`, `lte.`, `gt.`, `lt.`, `eq.`).
+          description: Filter by single timestamp boundary (`gte.`, `lte.`, `gt.`, `lt.`, `eq.`).
           schema:
             type: string
             maxLength: 64
             pattern: ^(?:gte|lte|gt|lt|eq)\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+-Z]+)?$
+        - name: and
+          in: query
+          required: false
+          description: >-
+            Bounded PostgREST conjunction for closed date-range filtering:
+            `and=(created_at.gte.<from>,created_at.lte.<to>)`.
+          schema:
+            type: string
+            maxLength: 160
+            pattern: >-
+              ^\(created_at\.(?:gte|gt)\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+-Z]+)?,created_at\.(?:lte|lt)\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+-Z]+)?\)$
+        - name: or
+          in: query
+          required: false
+          description: >-
+            Bounded PostgREST disjunction for audit log search across `actor_name`, `student_name`,
+            `student_number`, `target_label`, `action`, `details_summary`, and `reason`.
+          schema:
+            type: string
+            maxLength: 700
+            pattern: >-
+              ^\((?:(?:actor_name|student_name|student_number|target_label|action|details_summary|reason)\.(?:ilike|like|eq)\.[^\x00-\x1f,()]{1,100})(?:,(?:actor_name|student_name|student_number|target_label|action|details_summary|reason)\.(?:ilike|like|eq)\.[^\x00-\x1f,()]{1,100}){0,6}\)$
         - name: select
           in: query
           required: false
@@ -5468,9 +6049,9 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|actor_id|student_id|action|entity_type|entity_id|old_value|new_value|reason|created_at)(?:,(?:id|actor_id|student_id|action|entity_type|entity_id|old_value|new_value|reason|created_at))*$
+              ^(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)(?:,(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at))*$
             default: >-
-              id,actor_id,student_id,action,entity_type,entity_id,old_value,new_value,reason,created_at
+              id,actor_id,actor_name,actor_role,student_id,student_name,student_number,target_label,action,action_category,entity_type,entity_id,details_summary,old_value,new_value,reason,created_at
         - name: order
           in: query
           required: false
@@ -5479,8 +6060,8 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|actor_id|student_id|action|entity_type|entity_id|old_value|new_value|reason|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|actor_id|student_id|action|entity_type|entity_id|old_value|new_value|reason|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
-            default: id.asc
+              ^(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+            default: created_at.desc,id.desc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
       responses:
@@ -5527,10 +6108,17 @@ paths:
       x-projection-fields:
         - id
         - actor_id
+        - actor_name
+        - actor_role
         - student_id
+        - student_name
+        - student_number
+        - target_label
         - action
+        - action_category
         - entity_type
         - entity_id
+        - details_summary
         - old_value
         - new_value
         - reason
@@ -5606,6 +6194,187 @@ paths:
           schema:
             type: string
             format: uuid
+  /functions/v1/students:
+    get:
+      tags:
+        - Advising & Exceptions
+      summary: List and filter student academic roster
+      operationId: listStudentRoster
+      description: >-
+        Paginated, server-filtered student roster and advisee list for Adviser (`All Students`,
+        `My Advisees`), Department Head (`Student Records`, `Advisee Assignments`), Department
+        Staff (`Student Records`, `Grade Encoding` student selector), Dean (`Student Records`), and
+        System Administrator (`Student Records`). Combines profile identity, active curriculum/program
+        and entry batch, derived year level, cumulative/curriculum GWA, units earned vs. total
+        curriculum units, academic standing, deficiency count, active adviser assignment (and
+        handover metadata), and last advising/activity timestamp without N+1 client waterfalls.
+        Row visibility is strictly enforced server-side per caller role and assignment scope.
+      x-required-roles:
+        - adviser
+        - department_head
+        - department_staff
+        - dean
+        - admin
+      x-access-scope:
+        adviser: current-or-historic-assigned-or-department-rostered-students-read-only
+        department_head: department-scoped-read-only
+        department_staff: department-scoped-read-only
+        dean: faculty-scoped-read-only
+        admin: institution-wide
+      x-atomic: false
+      x-request-validation: >-
+        Reject unknown fields; verify JWT and role/department/faculty/adviser scope at runtime;
+        clamp pagination and validate filter combinations server-side.
+      parameters:
+        - $ref: "#/components/parameters/limitQueryParam"
+        - $ref: "#/components/parameters/offsetQueryParam"
+        - $ref: "#/components/parameters/searchQuery"
+        - name: assignment_scope
+          in: query
+          required: false
+          description: >-
+            Filter by caller advisee relationship (`all` visible students in caller scope,
+            `current` / `my_active_advisees`, `past` / `my_handed_over_advisees`, `unassigned`).
+          schema:
+            type: string
+            enum:
+              - all
+              - current
+              - past
+              - my_active_advisees
+              - my_handed_over_advisees
+              - unassigned
+            default: all
+        - name: adviser_id
+          in: query
+          required: false
+          description: Filter by active assigned adviser UUID.
+          schema:
+            type: string
+            format: uuid
+        - name: unassigned_only
+          in: query
+          required: false
+          description: When true, return only students without an active adviser assignment.
+          schema:
+            type: boolean
+        - name: faculty_id
+          in: query
+          required: false
+          description: Filter by student's derived faculty/college UUID.
+          schema:
+            type: string
+            format: uuid
+        - name: department_id
+          in: query
+          required: false
+          description: Filter by student's derived department UUID.
+          schema:
+            type: string
+            format: uuid
+        - name: program_id
+          in: query
+          required: false
+          description: Filter by student's active degree program UUID.
+          schema:
+            type: string
+            format: uuid
+        - name: curriculum_version_id
+          in: query
+          required: false
+          description: Filter by student's active curriculum version UUID.
+          schema:
+            type: string
+            format: uuid
+        - name: entry_year
+          in: query
+          required: false
+          description: Filter by student cohort/entry academic year (e.g. `2023`).
+          schema:
+            type: integer
+            minimum: 1900
+            maximum: 2100
+        - name: year_level
+          in: query
+          required: false
+          description: Filter by derived student year level (`1` to `6`).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 6
+        - name: standing
+          in: query
+          required: false
+          description: Filter by derived academic standing (`good_standing`, `warning`, `probation`, `dismissed`).
+          schema:
+            $ref: "#/components/schemas/AcademicStanding"
+        - name: has_deficiencies
+          in: query
+          required: false
+          description: Filter students who currently have (`true`) or do not have (`false`) active failed/INC/dropped deficiencies.
+          schema:
+            type: boolean
+        - name: has_open_inc
+          in: query
+          required: false
+          description: Filter students who currently have (`true`) or do not have (`false`) open incomplete (`INC`) attempts.
+          schema:
+            type: boolean
+        - name: has_open_flags
+          in: query
+          required: false
+          description: Filter students who currently have (`true`) or do not have (`false`) open student-submitted grade flags.
+          schema:
+            type: boolean
+        - name: school_term_id
+          in: query
+          required: false
+          description: Optional school term context for term-specific advising/encoding status.
+          schema:
+            type: string
+            format: uuid
+        - name: sort_by
+          in: query
+          required: false
+          description: Sort column for the student roster.
+          schema:
+            type: string
+            enum:
+              - full_name
+              - student_number
+              - year_level
+              - gwa
+              - units_earned
+              - standing
+              - last_activity_at
+            default: full_name
+        - name: sort_dir
+          in: query
+          required: false
+          description: Sort direction (`asc` or `desc`).
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+      responses:
+        "200":
+          description: Paginated student roster and summary counts for the caller's scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentRosterResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
   /functions/v1/students/{student_id}/course-offerings:
     get:
       tags:
@@ -5669,7 +6438,9 @@ paths:
         One curriculum term beyond furthest recorded attempt; eligible unfulfilled and failed/lapsed
         retakes, with actual selected-term offerings, strict clearance and Elective/By
         request/Retake badges. Exclude completed/currently enrolled/unavailable requirements; timing
-        is student choice.
+        is student choice. Returns the excluded-courses count in the `X-Excluded-Count` response
+        header so the UI can render "Excluded: N courses (completed, enrolled, or not offered)"
+        alongside the recommendation items.
       x-required-roles:
         - adviser
         - department_head
@@ -5683,6 +6454,14 @@ paths:
       responses:
         "200":
           description: Operation completed atomically.
+          headers:
+            X-Excluded-Count:
+              description: >-
+                Total number of curriculum courses excluded from recommendations because they are
+                already completed, currently enrolled, or not offered in the selected term.
+              schema:
+                type: integer
+                minimum: 0
           content:
             application/json:
               schema:
@@ -7359,11 +8138,14 @@ paths:
     post:
       tags:
         - Advising & Exceptions
-      summary: Record sensitive student-record view or export audit event
+      summary: Record sensitive student-record view, report view, or export audit event
       operationId: recordAuditViewEvent
       description: >-
         Records an append-only audit log entry when an authorized user views a sensitive student
-        record or confirms a PDF/CSV export (FR-AUD-05).
+        record, views a department/faculty/admin summary report (`report_viewed`), or confirms a
+        PDF/CSV export (FR-AUD-05). Pre-authentication or auth-lifecycle events (`login_rejected`,
+        `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase
+        Auth hooks and Edge Functions—never via this authenticated client endpoint.
       x-required-roles:
         - student
         - adviser
@@ -7374,8 +8156,8 @@ paths:
       x-access-scope: authorized-record-viewer
       x-atomic: true
       x-request-validation: >-
-        Reject unknown fields; verify JWT and record access at runtime; derive audit actor/time
-        server-side.
+        Reject unknown fields; verify JWT and record/report access at runtime; reject auth-hook-only
+        event types; derive audit actor/time server-side.
       responses:
         "201":
           description: Audit event recorded.
@@ -7406,7 +8188,11 @@ paths:
       summary: Upload or update student profile photo
       operationId: uploadStudentPhoto
       description: >-
-        Student (for own profile) or Admin updates the student's profile photo (FR-AUTH-15).
+        Student (for own profile) or Admin updates the student's profile photo (FR-AUTH-15) after
+        uploading the image object to the private student-photo Supabase Storage bucket. Enforces
+        JPEG or PNG content types (`image/jpeg`, `image/png`) and a maximum file size of 2 MB
+        (`2,097,152` bytes), verifying the storage object metadata server-side before committing the
+        profile photo URL and audit entry.
       x-required-roles:
         - student
         - admin
@@ -7415,7 +8201,9 @@ paths:
         admin: institution-wide
       x-atomic: true
       x-request-validation: >-
-        Reject unknown fields; verify JWT and ownership at runtime.
+        Reject unknown fields; verify JWT, ownership, Storage object existence, MIME type
+        (image/jpeg or image/png), and byte size (<= 2097152) at runtime; derive audit actor/time
+        server-side.
       responses:
         "200":
           description: Profile photo updated.
@@ -7757,12 +8545,12 @@ components:
     codeQueryParam:
       name: code
       in: query
-      description: Filter by code (e.g. `eq.BSCS` or `eq.CS101`)
+      description: Filter by code equality or pattern matching (e.g. `eq.BSCS`, `ilike.*CS*`)
       required: false
       schema:
         type: string
         maxLength: 106
-        pattern: ^eq\.[^\x00-\x1f]{1,100}$
+        pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,100}$
     versionLabelQueryParam:
       name: version_label
       in: query
@@ -7996,6 +8784,41 @@ components:
         - active
         - disabled
       description: Account status
+    InvitationStatus:
+      type: string
+      enum:
+        - pending
+        - accepted
+        - expired
+        - declined
+        - revoked
+      description: Lifecycle status of an account invitation without exposing raw invitation tokens
+    CourseCategory:
+      type: string
+      enum:
+        - major
+        - ge
+        - elective
+        - pe
+        - nstp
+        - foundation
+        - service
+      description: Course catalog category filter/badge (Major, GE, Elective, PE, NSTP, Foundation, Service)
+    AuditActionCategory:
+      type: string
+      enum:
+        - view
+        - change
+        - sign_in
+        - record_view
+        - grade_update
+        - plan_save
+        - note_change
+        - override
+        - export
+        - auth_account
+        - catalog_term
+      description: High-level (`view`, `change`, `sign_in`) and granular audit action filter category for Audit Log views
     ProgramStatus:
       type: string
       enum:
@@ -8018,7 +8841,9 @@ components:
         - required
         - elective
         - ge
-      description: Curriculum slot classification (required course, departmental/technical elective, or GE elective)
+        - pe
+        - nstp
+      description: Curriculum slot classification (required/major course, departmental/technical elective, GE, PE, or NSTP)
     CourseStatus:
       type: string
       enum:
@@ -8080,8 +8905,11 @@ components:
         Admin or Department Staff/Head provisions identity and role-specific academic assignments
         atomically before invitation completion. Students require matching program/curriculum and an
         optional active adviser (or unassigned pending assignment); advisers and staff roles require
-        organizational scope. Auth invitations and database commit are coordinated with recovery,
-        not claimed to be a distributed SQL transaction.
+        organizational scope. Department Head and Department Staff may provision Students, Advisers,
+        and Department Staff within their own department (`admin`, `dean`, and `department_head`
+        grants remain Admin-only). Unified provisioning creates the pre-registered `Profile`
+        (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on
+        that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link.
     InviteResponse:
       type: object
       required:
@@ -8098,6 +8926,14 @@ components:
         profile_id:
           type: string
           format: uuid
+        invitation_status:
+          $ref: "#/components/schemas/InvitationStatus"
+        invitation_sent_at:
+          type: string
+          format: date-time
+        invitation_expires_at:
+          type: string
+          format: date-time
     VerifyInviteRequest:
       type: object
       additionalProperties: false
@@ -8115,9 +8951,12 @@ components:
         password:
           type: string
           format: password
-          minLength: 8
+          minLength: 12
           maxLength: 128
           writeOnly: true
+          description: >-
+            Initial account password: 12 to 128 characters, requiring at least one uppercase letter,
+            one lowercase letter, and one digit. Validated server-side before activating the account.
       required:
         - token
         - password
@@ -8136,6 +8975,149 @@ components:
       description: >-
         Application activation acknowledgement only. Does not create a browser Supabase session or
         contain Auth access/refresh tokens.
+    PreviewInviteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          writeOnly: true
+          pattern: \S
+          description: >-
+            Opaque application invitation token passed in the JSON request body (never in query
+            strings) to preview invitation details without consuming the token.
+    PreviewInviteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - valid
+        - status
+        - email
+        - full_name
+        - role
+        - roles
+        - expires_at
+      properties:
+        valid:
+          type: boolean
+          description: True when the invitation is still pending and unredeemed/unexpired.
+        status:
+          $ref: "#/components/schemas/InvitationStatus"
+        email:
+          type: string
+          format: email
+          description: Invited institutional email address (`@vsu.edu.ph`).
+        full_name:
+          type: string
+          maxLength: 150
+        role:
+          $ref: "#/components/schemas/RoleType"
+        roles:
+          type: array
+          minItems: 1
+          maxItems: 6
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/RoleType"
+        faculty_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          description: Display name of the invited account's assigned or derived College/Faculty.
+        department_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          description: Display name of the invited account's assigned or derived Department.
+        program_code:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+          description: Student degree program code when the invitation is for a student.
+        expires_at:
+          type: string
+          format: date-time
+          description: Timestamp when the invitation link expires.
+    DeclineInviteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          writeOnly: true
+          pattern: \S
+          description: >-
+            Opaque application invitation token passed in the JSON request body to decline a pending
+            invitation without creating a session.
+        reason:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+    DeclineInviteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - invitation_status
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Invitation declined.
+        invitation_status:
+          $ref: "#/components/schemas/InvitationStatus"
+    ResendInviteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - profile_id
+        - invitation_status
+        - invitation_sent_at
+        - invitation_expires_at
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Invitation regenerated and dispatched.
+        profile_id:
+          type: string
+          format: uuid
+        invitation_status:
+          $ref: "#/components/schemas/InvitationStatus"
+        invitation_sent_at:
+          type: string
+          format: date-time
+        invitation_expires_at:
+          type: string
+          format: date-time
+    RevokeInviteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type:
+            - string
+            - "null"
+          maxLength: 500
     RoleAssignment:
       type: object
       additionalProperties: false
@@ -8221,6 +9203,24 @@ components:
           maxLength: 64
         status:
           $ref: "#/components/schemas/ProfileStatus"
+        invitation_status:
+          anyOf:
+            - $ref: "#/components/schemas/InvitationStatus"
+            - type: "null"
+          readOnly: true
+          description: Token-free invitation lifecycle state for account directory views.
+        invitation_sent_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+          readOnly: true
+        invitation_expires_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -8244,6 +9244,12 @@ components:
             - string
             - "null"
           maxLength: 2048
+        consultation_hours:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          description: Adviser or faculty consultation schedule displayed on Student Dashboard / Mobile Student Home.
     AdminProfileUpdate:
       type: object
       additionalProperties: false
@@ -8278,6 +9284,11 @@ components:
             - string
             - "null"
           maxLength: 2048
+        consultation_hours:
+          type:
+            - string
+            - "null"
+          maxLength: 250
         student_number:
           type:
             - string
@@ -8299,28 +9310,87 @@ components:
           type: string
           format: uuid
           readOnly: true
+        code:
+          type:
+            - string
+            - "null"
+          maxLength: 50
+          example: FECS
         name:
           type: string
           example: Faculty of Engineering & Computer Studies
+        letterhead_prefix:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          example: Office of the Dean
+        letterhead_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          example: Faculty of Engineering and Computer Studies
+        dean_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Derived active Dean display name for organization management tables.
     FacultyInsert:
       type: object
       required:
         - name
       properties:
+        code:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 50
+          pattern: \S
         name:
           type: string
           minLength: 2
           maxLength: 250
           pattern: \S
+        letterhead_prefix:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+        letterhead_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
       additionalProperties: false
     FacultyUpdate:
       type: object
       properties:
+        code:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 50
+          pattern: \S
         name:
           type: string
           minLength: 2
           maxLength: 250
           pattern: \S
+        letterhead_prefix:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+        letterhead_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
       additionalProperties: false
       minProperties: 1
     Department:
@@ -8337,9 +9407,41 @@ components:
         faculty_id:
           type: string
           format: uuid
+        code:
+          type:
+            - string
+            - "null"
+          maxLength: 50
+          example: DCS
         name:
           type: string
           example: Department of Computer Science
+        letterhead_prefix:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          example: Department of Computer Science
+        letterhead_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          example: College of Engineering and Technology
+        department_head_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Derived active Department Head display name for organization and letterhead headers.
+        dean_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Derived active parent Faculty Dean display name.
     DepartmentInsert:
       type: object
       required:
@@ -8349,11 +9451,28 @@ components:
         faculty_id:
           type: string
           format: uuid
+        code:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 50
+          pattern: \S
         name:
           type: string
           minLength: 2
           maxLength: 250
           pattern: \S
+        letterhead_prefix:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+        letterhead_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
       additionalProperties: false
     DepartmentUpdate:
       type: object
@@ -8361,11 +9480,28 @@ components:
         faculty_id:
           type: string
           format: uuid
+        code:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 50
+          pattern: \S
         name:
           type: string
           minLength: 2
           maxLength: 250
           pattern: \S
+        letterhead_prefix:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+        letterhead_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
       additionalProperties: false
       minProperties: 1
     Program:
@@ -8403,7 +9539,6 @@ components:
         - code
         - name
         - nominal_duration
-        - initial_curriculum
       properties:
         code:
           type: string
@@ -8425,7 +9560,13 @@ components:
           type: string
           format: uuid
         initial_curriculum:
-          $ref: "#/components/schemas/CurriculumDefinition"
+          anyOf:
+            - $ref: "#/components/schemas/CurriculumDefinition"
+            - type: "null"
+          description: >-
+            Optional initial curriculum version created in the same transaction. When omitted or
+            null, the degree program is created first and curriculum versions are added afterward
+            via `POST /functions/v1/catalog/curriculum_version`.
       additionalProperties: false
     ProgramUpdate:
       type: object
@@ -8488,6 +9629,14 @@ components:
           example: 162
         status:
           $ref: "#/components/schemas/CurriculumVersionStatus"
+        enrolled_student_count:
+          type: integer
+          minimum: 0
+          readOnly: true
+          example: 142
+          description: >-
+            Server-derived count of students assigned to this curriculum version, enabling
+            retirement/deletion eligibility checks without privileged student-assignment queries.
     CurriculumVersionInsert:
       type: object
       additionalProperties: false
@@ -8708,6 +9857,36 @@ components:
           minimum: 0
           multipleOf: 0.25
       minProperties: 1
+    InitialCurriculumSlotInput:
+      type: object
+      additionalProperties: false
+      required:
+        - curriculum_version_id
+        - year_level
+        - term_sequence
+      properties:
+        curriculum_version_id:
+          type: string
+          format: uuid
+        year_level:
+          type: integer
+          minimum: 1
+          maximum: 8
+        term_sequence:
+          type: integer
+          minimum: 1
+          maximum: 3
+        slot_type:
+          $ref: "#/components/schemas/CurriculumSlotType"
+          default: required
+        slot_label:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+      description: >-
+        Optional curriculum term slot attachment executed atomically when adding a new course from a
+        curriculum term's "+ Create new course for this term" action.
     Course:
       type: object
       required:
@@ -8734,6 +9913,8 @@ components:
         title:
           type: string
           example: Introduction to Computer Science
+        category:
+          $ref: "#/components/schemas/CourseCategory"
         lecture_hours:
           type: number
           example: 3
@@ -8773,6 +9954,9 @@ components:
           minLength: 3
           maxLength: 250
           pattern: \S
+        category:
+          $ref: "#/components/schemas/CourseCategory"
+          default: major
         lecture_hours:
           type: number
           minimum: 0
@@ -8792,6 +9976,10 @@ components:
         repeatable_type:
           $ref: "#/components/schemas/RepeatableType"
           default: none
+        initial_curriculum_slot:
+          anyOf:
+            - $ref: "#/components/schemas/InitialCurriculumSlotInput"
+            - type: "null"
       additionalProperties: false
     CourseUpdate:
       type: object
@@ -8809,6 +9997,8 @@ components:
           minLength: 3
           maxLength: 250
           pattern: \S
+        category:
+          $ref: "#/components/schemas/CourseCategory"
         lecture_hours:
           type: number
           minimum: 0
@@ -8863,6 +10053,48 @@ components:
         type:
           $ref: "#/components/schemas/PrerequisiteType"
       additionalProperties: false
+    DepartmentTermEncodingClosure:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - school_term_id
+        - department_id
+        - is_closed
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        school_term_id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        is_closed:
+          type: boolean
+          example: true
+        closed_by:
+          type:
+            - string
+            - "null"
+          format: uuid
+          readOnly: true
+        closed_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+          readOnly: true
+        closure_note:
+          type:
+            - string
+            - "null"
+          maxLength: 2000
+      description: >-
+        Department-scoped grade encoding closure state for a `(school_term_id, department_id)` pair,
+        distinct from the institution-wide `SchoolTerm.is_locked` flag.
     SchoolTerm:
       type: object
       required:
@@ -8940,6 +10172,15 @@ components:
             - string
             - "null"
           maxLength: 2000
+        department_closures:
+          type: array
+          maxItems: 200
+          readOnly: true
+          items:
+            $ref: "#/components/schemas/DepartmentTermEncodingClosure"
+          description: >-
+            Department-scoped grade encoding closure entries visible to the caller when returned by
+            term closure or override Edge Functions.
         default_inc_deadline:
           type: string
           format: date
@@ -9020,6 +10261,25 @@ components:
       type: object
       additionalProperties: false
       properties:
+        scope:
+          type: string
+          enum:
+            - department
+            - institution
+          default: department
+          description: >-
+            Closure scope: `department` closes grade encoding for a single department (`department_head`
+            and `department_staff` are restricted to their own department); `institution` sets global
+            `SchoolTerm.is_locked=true` and is Admin-only.
+        department_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: >-
+            Target department UUID when `scope: department`. For Department Head and Department Staff
+            callers, defaults to and must match the caller's assigned department. Required when an
+            Admin closes encoding for a specific department.
         closure_note:
           type:
             - string
@@ -9053,6 +10313,12 @@ components:
             - string
             - "null"
           maxLength: 150
+        instructor:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          description: Default instructor name for this course offering/section.
         is_by_request:
           type: boolean
           example: false
@@ -9078,6 +10344,11 @@ components:
             - string
             - "null"
           maxLength: 150
+        instructor:
+          type:
+            - string
+            - "null"
+          maxLength: 150
         is_by_request:
           type: boolean
           default: false
@@ -9091,6 +10362,11 @@ components:
             - "null"
           maxLength: 64
         schedule:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+        instructor:
           type:
             - string
             - "null"
@@ -9115,6 +10391,35 @@ components:
         adviser_id:
           type: string
           format: uuid
+        adviser_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Adviser display name safe for Student Profile and advisee history views.
+        adviser_email:
+          type:
+            - string
+            - "null"
+          format: email
+          readOnly: true
+          description: Adviser institutional email safe for Student Dashboard and Mobile Student Home contact cards.
+        adviser_faculty_name:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          readOnly: true
+          description: Adviser faculty/college display name safe for Student Dashboard contact cards.
+        adviser_consultation_hours:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          readOnly: true
+          example: Tue & Thu, 13:00–16:00
+          description: Adviser consultation hours displayed on Student Dashboard and Mobile Student Home.
         student_id:
           type: string
           format: uuid
@@ -9128,6 +10433,27 @@ components:
             - "null"
           format: date
           example: null
+        handed_over_to_adviser_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          readOnly: true
+          description: Succeeding adviser UUID when this assignment was closed by a handover.
+        handed_over_to_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Succeeding adviser display name when this assignment was closed by a handover.
+        handover_label:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+          readOnly: true
+          example: Handed over to Prof. Reyes (Jan 2026)
         created_at:
           type: string
           format: date-time
@@ -9394,6 +10720,15 @@ components:
             - "null"
           minimum: 1900
           maximum: 3000
+        role_assignments:
+          type: array
+          minItems: 1
+          maxItems: 6
+          items:
+            $ref: "#/components/schemas/RoleAssignmentInput"
+          description: >-
+            Optional multi-role assignments when a provisioned student account also holds an
+            explicitly authorized secondary role assignment.
       required:
         - email
         - full_name
@@ -9511,6 +10846,23 @@ components:
         course_offering_id:
           type: string
           format: uuid
+        curriculum_term_course_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: >-
+            Optional target curriculum slot UUID. When an elective course is recorded directly into
+            an elective slot (`is_elective_slot=true`), the server atomically creates the
+            corresponding `ElectiveMapping` row in the same transaction.
+        elective_mapping_justification:
+          type:
+            - string
+            - "null"
+          maxLength: 2000
+          description: >-
+            Optional justification recorded when `curriculum_term_course_id` maps an elective
+            attempt to an elective curriculum slot during grade recording.
         midterm_status:
           anyOf:
             - $ref: "#/components/schemas/MidtermStatus"
@@ -9548,6 +10900,9 @@ components:
             - string
             - "null"
           maxLength: 2000
+          description: >-
+            Optional staff remark appended as an `AttemptRemark` row when non-empty and not
+            duplicating the latest remark on the attempt.
         confirmed_enrollment:
           type: boolean
           default: false
@@ -9564,12 +10919,13 @@ components:
         - course_offering_id
       description: >-
         Omitted/null grades mean blank. Server derives student from path, actor from verified
-        session, actual units and direct slot from records. Under the VSU DR midterm rule,
-        midterm_status=dr automatically sets status=dr and final_grade=null. For a new offering with
-        midterm supplied, first return 409 ENROLLMENT_CONFIRMATION_REQUIRED until
-        confirmed_enrollment=true. Existing populated submitted grade always rejects the whole
-        request and directs to Grades; blank/blank on existing offering rejects duplicate. Unmet
-        strict prerequisites require explicit audited override or prerequisite grade correction.
+        session, actual units and direct slot from records (or maps to `curriculum_term_course_id`
+        when an elective slot is selected). Under the VSU DR midterm rule, midterm_status=dr
+        automatically sets status=dr and final_grade=null. For a new offering with midterm supplied,
+        first return 409 ENROLLMENT_CONFIRMATION_REQUIRED until confirmed_enrollment=true. Existing
+        populated submitted grade always rejects the whole request and directs to Grades;
+        blank/blank on existing offering rejects duplicate. Unmet strict prerequisites require
+        explicit audited override or prerequisite grade correction.
     EncodeTermGradeRowInput:
       type: object
       additionalProperties: false
@@ -9587,6 +10943,18 @@ components:
             - string
             - "null"
           format: uuid
+          description: >-
+            Target curriculum slot UUID (required or elective slot). When pointing to an elective
+            slot (`is_elective_slot=true`), the server atomically creates or updates the
+            corresponding `ElectiveMapping` row in the same transaction.
+        elective_mapping_justification:
+          type:
+            - string
+            - "null"
+          maxLength: 2000
+          description: >-
+            Optional justification recorded when `curriculum_term_course_id` maps an elective
+            attempt to an elective curriculum slot during term encoding.
         midterm_status:
           anyOf:
             - $ref: "#/components/schemas/MidtermStatus"
@@ -9617,6 +10985,10 @@ components:
             - string
             - "null"
           maxLength: 2000
+          description: >-
+            Optional staff remark. Because `AttemptRemark` is an append-only log, the server
+            appends a new `AttemptRemark` row only when `remark` is non-empty and differs from the
+            most recent remark on that attempt.
         continue_with_prerequisite_override:
           type: boolean
           default: false
@@ -10061,6 +11433,23 @@ components:
           format: uuid
       required:
         - curriculum_version_id
+    AdvisingAIMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          pattern: \S
     AdvisingAIRequest:
       type: object
       additionalProperties: false
@@ -10070,6 +11459,14 @@ components:
           minLength: 1
           maxLength: 4000
           pattern: \S
+        history:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AdvisingAIMessage"
+          description: >-
+            Optional bounded prior chat turns in the active AI advising drawer session for multi-turn
+            follow-up questions.
       required:
         - message
     StudentOrganization:
@@ -10420,6 +11817,20 @@ components:
         authored_by:
           type: string
           format: uuid
+        author_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Display name of the staff author, safe for Student Notes and staff advising views.
+        author_role_label:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+          readOnly: true
+          description: Role label of the staff author (e.g. `Adviser`, `Department Head`).
         body_text:
           type: string
           minLength: 1
@@ -10504,16 +11915,60 @@ components:
             - string
             - "null"
           format: uuid
+        actor_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Display name of the actor at the time of the audited action.
+        actor_role:
+          anyOf:
+            - $ref: "#/components/schemas/RoleType"
+            - type: "null"
+          readOnly: true
+          description: Role of the actor for the audited action.
         student_id:
           type:
             - string
             - "null"
           format: uuid
+        student_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+          readOnly: true
+          description: Target student display name when the audit entry pertains to a student record.
+        student_number:
+          type:
+            - string
+            - "null"
+          maxLength: 64
+          readOnly: true
+          description: Target student number when the audit entry pertains to a student record.
+        target_label:
+          type:
+            - string
+            - "null"
+          maxLength: 250
+          readOnly: true
+          description: >-
+            Human-readable target/record label displayed in the Audit Log `Student / record` column
+            (e.g. `24-1-00124 · Own record`, `BSCS · Batch 2024`, or `DCST · Adviser assignments`).
         action:
           type: string
           minLength: 1
           maxLength: 100
           pattern: \S
+        action_category:
+          anyOf:
+            - $ref: "#/components/schemas/AuditActionCategory"
+            - type: "null"
+          readOnly: true
+          description: >-
+            UI filter category (`view`, `change`, `sign_in`, `record_view`, `grade_update`,
+            `plan_save`, `note_change`, `override`, `export`, `auth_account`, `catalog_term`).
         entity_type:
           type: string
           minLength: 1
@@ -10524,6 +11979,13 @@ components:
             - string
             - "null"
           format: uuid
+        details_summary:
+          type:
+            - string
+            - "null"
+          maxLength: 1000
+          readOnly: true
+          description: Human-readable summary line rendered in the Audit Log table and CSV export.
         old_value:
           type:
             - object
@@ -10549,6 +12011,27 @@ components:
         - entity_type
         - entity_id
         - created_at
+    RecommendationExclusionSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - total_excluded
+      properties:
+        total_excluded:
+          type: integer
+          minimum: 0
+        completed_count:
+          type: integer
+          minimum: 0
+        enrolled_count:
+          type: integer
+          minimum: 0
+        not_offered_count:
+          type: integer
+          minimum: 0
+      description: >-
+        Breakdown of curriculum courses excluded from the recommendation list (`completed`,
+        `currently_enrolled`, or `not_offered` in the selected school term).
     Recommendation:
       type: object
       additionalProperties: false
@@ -10590,6 +12073,8 @@ components:
               - Elective
               - By request
               - Retake
+        excluded_summary:
+          $ref: "#/components/schemas/RecommendationExclusionSummary"
       required:
         - course_offering_id
         - code
@@ -10983,6 +12468,45 @@ components:
       required:
         - profile
         - student_organization
+    UnmetPrerequisitePreview:
+      type: object
+      additionalProperties: false
+      required:
+        - prerequisite_course_id
+        - code
+        - title
+        - type
+        - current_status
+      properties:
+        prerequisite_course_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          maxLength: 250
+        type:
+          $ref: "#/components/schemas/PrerequisiteType"
+        current_status:
+          type: string
+          enum:
+            - not_taken
+            - failed
+            - inc
+            - lapsed_inc
+            - dr
+            - currently_enrolled
+        latest_attempt_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        latest_final_grade:
+          type:
+            - number
+            - "null"
     CourseOfferingOption:
       type: object
       additionalProperties: false
@@ -11013,6 +12537,28 @@ components:
             - string
             - "null"
           format: uuid
+        instructor_options:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 150
+          description: >-
+            Available instructor suggestions for this course offering in the selected term, allowing
+            the UI to populate instructor dropdowns while still accepting custom instructor text.
+        has_unmet_strict_prerequisites:
+          type: boolean
+          default: false
+          description: >-
+            True when the student has at least one unmet strict prerequisite for this course in the
+            selected school term, enabling immediate prerequisite warning/override prompts upon
+            course selection before form submission.
+        unmet_prerequisites:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/UnmetPrerequisitePreview"
       required:
         - offering
         - code
@@ -11020,6 +12566,189 @@ components:
         - units
         - group
         - direct_curriculum_slot_id
+    StudentRosterItem:
+      type: object
+      additionalProperties: false
+      required:
+        - student_id
+        - student_number
+        - full_name
+        - email
+        - status
+        - faculty_id
+        - faculty_name
+        - department_id
+        - department_name
+        - program_id
+        - program_code
+        - program_name
+        - curriculum_version_id
+        - curriculum_label
+        - year_level
+        - earned_units
+        - required_units
+        - standing
+        - deficiencies_count
+        - open_inc_count
+        - open_flags_count
+      properties:
+        student_id:
+          type: string
+          format: uuid
+        student_number:
+          type: string
+          maxLength: 64
+        full_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+        avatar_url:
+          type:
+            - string
+            - "null"
+          maxLength: 2048
+        status:
+          $ref: "#/components/schemas/ProfileStatus"
+        faculty_id:
+          type: string
+          format: uuid
+        faculty_name:
+          type: string
+          maxLength: 250
+        department_id:
+          type: string
+          format: uuid
+        department_name:
+          type: string
+          maxLength: 250
+        program_id:
+          type: string
+          format: uuid
+        program_code:
+          type: string
+          maxLength: 100
+        program_name:
+          type: string
+          maxLength: 250
+        curriculum_version_id:
+          type: string
+          format: uuid
+        curriculum_label:
+          type: string
+          maxLength: 100
+        entry_year:
+          type:
+            - integer
+            - "null"
+          minimum: 1900
+          maximum: 3000
+        year_level:
+          type: integer
+          minimum: 1
+          maximum: 8
+        gwa:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 5
+        earned_units:
+          type: number
+          minimum: 0
+        required_units:
+          type: number
+          minimum: 0
+        standing:
+          $ref: "#/components/schemas/AcademicStanding"
+        is_delinquent:
+          type: boolean
+        deficiencies_count:
+          type: integer
+          minimum: 0
+        open_inc_count:
+          type: integer
+          minimum: 0
+        lapsed_inc_count:
+          type: integer
+          minimum: 0
+        nearest_inc_deadline:
+          type:
+            - string
+            - "null"
+          format: date
+        nearest_inc_days_remaining:
+          type:
+            - integer
+            - "null"
+        open_flags_count:
+          type: integer
+          minimum: 0
+        assignment_status:
+          type: string
+          enum:
+            - active
+            - past
+            - unassigned
+        adviser_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        adviser_name:
+          type:
+            - string
+            - "null"
+          maxLength: 150
+        adviser_assigned_since:
+          type:
+            - string
+            - "null"
+          format: date
+        handover_label:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+        last_activity_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+    StudentRosterResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - total_count
+        - unassigned_count
+        - with_deficiencies_count
+        - items
+      properties:
+        total_count:
+          type: integer
+          minimum: 0
+        unassigned_count:
+          type: integer
+          minimum: 0
+        with_deficiencies_count:
+          type: integer
+          minimum: 0
+        flagged_count:
+          type: integer
+          minimum: 0
+          description: Total number of students in the roster matching scope who have open grade flags or delinquent standing flags.
+        open_inc_students_count:
+          type: integer
+          minimum: 0
+          description: Total number of students in the roster matching scope who have at least one open INC attempt.
+        standing_counts:
+          $ref: "#/components/schemas/StandingCounts"
+        items:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/StudentRosterItem"
     TermGrades:
       type: object
       additionalProperties: false
@@ -11093,7 +12822,11 @@ components:
           const: false
         slot_type:
           type: string
-          const: required
+          enum:
+            - required
+            - ge
+            - pe
+            - nstp
           default: required
         slot_label:
           type: "null"
@@ -11326,6 +13059,22 @@ components:
           minLength: 1
           maxLength: 100
           pattern: \S
+        curriculum_term_course_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: >-
+            Optional target curriculum slot UUID when importing an elective course directly into an
+            elective curriculum slot (`is_elective_slot=true`).
+        elective_mapping_justification:
+          type:
+            - string
+            - "null"
+          maxLength: 2000
+          description: >-
+            Optional justification recorded when `curriculum_term_course_id` maps an imported
+            elective attempt to an elective curriculum slot.
         midterm_status:
           anyOf:
             - $ref: "#/components/schemas/MidtermStatus"
@@ -11528,22 +13277,39 @@ components:
         - to_curriculum_version_id
         - endorsement_note
     CurriculumTransferDecisionRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        decision:
-          type: string
-          enum:
-            - approved
-            - rejected
-        decision_note:
-          type: string
-          minLength: 1
-          maxLength: 2000
-          pattern: \S
-      required:
-        - decision
-        - decision_note
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - decision
+          properties:
+            decision:
+              type: string
+              const: approved
+            decision_note:
+              type:
+                - string
+                - "null"
+              maxLength: 2000
+              description: Optional approval note when approving a curriculum transfer request.
+        - type: object
+          additionalProperties: false
+          required:
+            - decision
+            - decision_note
+          properties:
+            decision:
+              type: string
+              const: rejected
+            decision_note:
+              type: string
+              minLength: 1
+              maxLength: 2000
+              pattern: \S
+              description: Required non-blank rejection reason when rejecting a curriculum transfer request.
+      description: >-
+        Department Head or Admin decision on a pending curriculum transfer request. Approval allows
+        an optional `decision_note`; rejection requires a non-blank `decision_note`.
     CurriculumPairEquivalence:
       type: object
       additionalProperties: false
@@ -12355,6 +14121,14 @@ components:
               - student_count
         grade_distribution:
           $ref: "#/components/schemas/GradeDistributionBreakdown"
+        batch_curriculum_gwa:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/BatchCurriculumGwaRow"
+          description: >-
+            Mean GWA and standing breakdown by advisee entry batch and curriculum version for the
+            Adviser Reports view.
         advisees_with_deficiencies:
           type: array
           maxItems: 500
@@ -12380,6 +14154,13 @@ components:
         total_students:
           type: integer
           minimum: 0
+        with_deficiencies_count:
+          type: integer
+          minimum: 0
+          description: >-
+            Total number of students in the department who have at least one active academic
+            deficiency (failed units, open INC, lapsed INC, or open grade flag), unclipped by the
+            bounded `at_risk_roster` array.
         unassigned_students_count:
           type: integer
           minimum: 0
@@ -12536,6 +14317,12 @@ components:
         total_students:
           type: integer
           minimum: 0
+        with_deficiencies_count:
+          type: integer
+          minimum: 0
+          description: >-
+            Total number of students in the faculty/college who have at least one active academic
+            deficiency, unclipped by the bounded `at_risk_roster` array.
         average_gwa:
           type:
             - number
@@ -12748,15 +14535,55 @@ components:
           type: string
           enum:
             - student_record_viewed
+            - report_viewed
             - pdf_exported
             - csv_exported
             - report_exported
-            - login_rejected
+          description: >-
+            Authenticated client view/export audit event type. Auth-lifecycle events
+            (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by
+            server-side Supabase Auth hooks and Edge Functions.
         student_id:
           type:
             - string
             - "null"
           format: uuid
+        report_type:
+          type:
+            - string
+            - "null"
+          enum:
+            - adviser_dashboard
+            - department
+            - faculty
+            - institution
+            - null
+        report_filters:
+          type:
+            - object
+            - "null"
+          additionalProperties: false
+          properties:
+            school_term_id:
+              type:
+                - string
+                - "null"
+              format: uuid
+            faculty_id:
+              type:
+                - string
+                - "null"
+              format: uuid
+            department_id:
+              type:
+                - string
+                - "null"
+              format: uuid
+            program_id:
+              type:
+                - string
+                - "null"
+              format: uuid
         details:
           type:
             - string
@@ -12768,6 +14595,17 @@ components:
       type: object
       additionalProperties: false
       properties:
+        storage_object_path:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 512
+          pattern: \S
+          description: >-
+            Object key inside the private `student-photos` Supabase Storage bucket (e.g.
+            `students/<student_id>/avatar.png`) verified server-side for MIME type and byte size
+            before updating the profile photo URL.
         avatar_url:
           type: string
           minLength: 1
@@ -12778,11 +14616,12 @@ components:
           enum:
             - image/jpeg
             - image/png
-            - image/webp
+          description: Supported student profile photo MIME types (PNG or JPG only, matching the UI control).
         file_size_bytes:
           type: integer
           minimum: 1
-          maximum: 5242880
+          maximum: 2097152
+          description: File size in bytes; maximum 2 MB (`2,097,152` bytes).
       required:
         - avatar_url
         - mime_type
@@ -12949,7 +14788,30 @@ x-supabase-auth-integration:
     application operations.
   email_password:
     sdk_method: auth.signInWithPassword
-    signup_policy: Admin-provisioned accounts only; no public self-registration.
+    signup_policy: Admin or authorized Department Staff/Head provisioned accounts only; no public self-registration.
+    password_policy:
+      min_length: 12
+      max_length: 128
+      require_uppercase: true
+      require_lowercase: true
+      require_number: true
+      disallow_reuse_of_current_password: true
+      description: >-
+        All password setup (`POST /functions/v1/auth/verify-invite`), password recovery, and
+        authenticated password changes (`supabase.auth.updateUser({ password })`) must enforce 12 to
+        128 characters with at least one uppercase letter, one lowercase letter, and one digit, and
+        must reject reusing the current password on change.
+    change_password:
+      verify_current_password_method: auth.signInWithPassword
+      update_password_method: auth.updateUser
+      sign_out_other_devices_method: "auth.signOut({ scope: 'others' })"
+      audit_event: password_changed
+      description: >-
+        Authenticated Change Password routes across all portals verify the user's current password
+        via `auth.signInWithPassword`, enforce the 12–128 character complexity and non-reuse policy,
+        update the password via `auth.updateUser({ password })`, revoke other device sessions via
+        `auth.signOut({ scope: 'others' })`, and emit a server-side `password_changed` audit log
+        entry without recording password material.
   google_oauth:
     sdk_method: auth.signInWithOAuth
     provider: google
@@ -12963,36 +14825,6 @@ x-supabase-auth-integration:
       https://<project-ref>.supabase.co/auth/v1/callback (registered with Google); distinct from the
       SPA redirect target.
     email_policy: >-
-      Verified Google email must exactly match the admin-provisioned profile email; enforce
-      eligibility/linking server-side, including already-existing identities.
-  sessions:
-    owner: Supabase SDK
-    refresh: >-
-      Use the current refreshed user access token per application request; never cache one JWT
-      forever.
-    state: >-
-      Use auth.onAuthStateChange for browser session updates; server independently
-      authenticates/authorizes.
-    logout: auth.signOut
-    password_recovery: >-
-      auth.resetPasswordForEmail and auth.updateUser after a valid recovery session; not custom
-      application endpoints.
-  headers:
-    apikey: Public project publishable key (legacy anon key where supported).
-    Authorization: Bearer <current Supabase user access_token> for protected application operations only.
-  authorization:
-    identity: >-
-      Verified Supabase JWT subject maps to the provisioned profile ID; never trust client-supplied
-      email/role or user-editable user_metadata.
-    active_account: >-
-      Require active provisioned profile on protected requests, including existing users after
-      role/status changes.
-    creation_hook: >-
-      A before-user-created hook can restrict new identity creation; it does not govern subsequent
-      logins or replace account-status/RLS checks.
-    organization: >-
-      Application role and current/historical assignment remain server-enforced separately from
-      PostgreSQL authenticated role.
-  deployment_boundary: >-
-    Specification only: no Supabase project/provider/hook/grant/Edge Function configuration or
-    implementation is changed.
+      Verified Google email must be an institutional `@vsu.edu.ph` address that exactly matches a
+      pre-provisioned `Profile` row (`status: invited` or `active`); en
+... [truncated for diff preview]
