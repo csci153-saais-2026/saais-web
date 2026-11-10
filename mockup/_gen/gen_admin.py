@@ -75,7 +75,7 @@ DASH = shell("admin", "Dashboard", ["Administrator", "Dashboard"], USER, INI,
                      + health_row("Lapsed INC recompute", "8 Sept, 02:00", PASS_FG,
                                   "Daily pg_cron job · 2 cached GWAs invalidated and rebuilt")
                      + health_row("Contract drift check", "passing", PASS_FG,
-                                  "openapi.yaml v1.4.0 matches the live PostgREST schema")
+                                  "openapi.yaml v0.3.0 matches the live PostgREST schema")
                      + health_row("Curriculum slots without courses", "3 slots", INC_FG,
                                   "BSIT 2025–2026 · Year 3 electives not yet populated")
                      + health_row("Orphaned offerings", "1 offering", INC_FG,
