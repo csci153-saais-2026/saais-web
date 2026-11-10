@@ -54,6 +54,25 @@ export const postgrestFilter = {
   lt(value: string): `lt.${string}` {
     return `lt.${value}`
   },
+
+  ilike(pattern: string): `ilike.${string}` {
+    return `ilike.${pattern}`
+  },
+
+  like(pattern: string): `like.${string}` {
+    return `like.${pattern}`
+  },
+
+  /**
+   * Builds the bounded PostgREST `and` filter for closed `created_at` date/timestamp intervals:
+   * `(created_at.gte.<from>,created_at.lte.<to>)`.
+   */
+  createdAtBetween(
+    from: string,
+    to: string,
+  ): `(created_at.gte.${string},created_at.lte.${string})` {
+    return `(created_at.gte.${from},created_at.lte.${to})`
+  },
 } as const
 
 /**

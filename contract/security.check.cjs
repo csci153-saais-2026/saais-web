@@ -37,8 +37,20 @@ test('raw table endpoints cannot bypass transactional write guards', () => {
   assert.equal(spec.paths['/rest/v1/profile'].patch, undefined);
   const invite = spec.paths['/functions/v1/auth/invite'].post;
   assert.ok(invite['x-required-roles'].includes('department_staff'));
-  assert.equal(invite['x-access-scope'].department_staff, 'department-scoped-student-invites-only');
-  assert.equal(invite['x-access-scope'].department_head, 'department-scoped-student-invites-only');
+  assert.equal(invite['x-access-scope'].department_staff, 'department-scoped-student-adviser-and-staff-invites-only');
+  assert.equal(invite['x-access-scope'].department_head, 'department-scoped-student-adviser-and-staff-invites-only');
+  for (const catalogDeleteRoute of [
+    '/functions/v1/catalog/faculty/{id}',
+    '/functions/v1/catalog/department/{id}',
+    '/functions/v1/catalog/program/{id}',
+  ]) {
+    const del = spec.paths[catalogDeleteRoute].delete;
+    assert.ok(del, catalogDeleteRoute);
+    assert.deepEqual(del['x-required-roles'], ['admin'], catalogDeleteRoute);
+    assert.ok(del.responses['204'], catalogDeleteRoute);
+    assert.ok(del.responses['404'], catalogDeleteRoute);
+    assert.ok(del.responses['409'], catalogDeleteRoute);
+  }
 });
 
 test('authenticated operations specify roles, scope and failure responses', () => {
@@ -61,18 +73,26 @@ test('Supabase project key and user JWT are AND requirements with a pre-login in
   assert.equal(projectKey.in, 'header');
   assert.equal(projectKey.name, 'apikey');
   assert.deepEqual(spec.security, [{ supabaseProjectKey: [], bearerAuth: [] }]);
+  const preSessionInviteRoutes = new Set([
+    '/functions/v1/auth/verify-invite',
+    '/functions/v1/auth/preview-invite',
+    '/functions/v1/auth/decline-invite',
+  ]);
   for (const { route, operation } of operations) {
     const security = operation.security ?? spec.security;
-    if (route === '/functions/v1/auth/verify-invite') {
-      assert.deepEqual(security, [{ supabaseProjectKey: [] }]);
-      assert.deepEqual(operation['x-required-roles'], []);
-      assert.ok(operation.responses['401']);
+    if (preSessionInviteRoutes.has(route)) {
+      assert.deepEqual(security, [{ supabaseProjectKey: [] }], route);
+      assert.deepEqual(operation['x-required-roles'], [], route);
+      assert.ok(operation.responses['401'], route);
     } else {
       assert.deepEqual(security, [{ supabaseProjectKey: [], bearerAuth: [] }], route);
     }
     assert.ok(!route.startsWith('/auth/v1/'), 'Managed Auth paths must stay SDK-owned');
   }
   assert.equal(spec['x-supabase-auth-integration'].google_oauth.flow_type, 'pkce');
+  assert.equal(spec['x-supabase-auth-integration'].email_password.password_policy.min_length, 12);
+  assert.equal(schemas.VerifyInviteRequest.properties.password.minLength, 12);
+  assert.equal(schemas.VerifyInviteRequest.properties.password.maxLength, 128);
   assert.ok(!Object.hasOwn(schemas.VerifyInviteResponse.properties, 'access_token'));
   assert.ok(!Object.hasOwn(schemas.VerifyInviteResponse.properties, 'refresh_token'));
   const errors = spec.components.responses['401Unauthorized'].content['application/json'].schema.anyOf;
@@ -166,6 +186,13 @@ test('grade recording and correction are separate, with original prerequisite an
   assert.ok(completion.post && completion.patch);
   assert.ok(schemas.INCCompletionCorrectionRequest.required.includes('expected_updated_at'));
   assert.ok(schemas.SchoolTermInsert.required.includes('ends_on'));
+  assert.ok(schemas.ProgramInsert.required.includes('department_id'));
+  assert.ok(!schemas.ProgramInsert.required.includes('initial_curriculum'));
+  assert.deepEqual(schemas.StudentPhotoUpdateRequest.properties.mime_type.enum, ['image/jpeg', 'image/png']);
+  assert.equal(schemas.StudentPhotoUpdateRequest.properties.file_size_bytes.maximum, 2097152);
+  assert.ok(!schemas.AuditViewEventRequest.properties.event_type.enum.includes('login_rejected'));
+  assert.ok(schemas.AuditViewEventRequest.properties.event_type.enum.includes('report_viewed'));
+  assert.equal(schemas.CurriculumTransferDecisionRequest.oneOf.length, 2);
   for (const [name, field] of [['AcademicSummary', 'gwa'], ['TermGrades', 'gwa'], ['ShiftPreviewResponse', 'projected_gwa']]) {
     assert.equal(schemas[name].properties[field].multipleOf, undefined, 'Weighted GWA is not a quarter-step grade');
   }

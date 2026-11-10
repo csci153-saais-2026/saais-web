@@ -24,7 +24,9 @@ import type { paths } from './types'
  * (`contract/openapi.yaml` & `contract/SUPABASE-AUTH.md`).
  */
 export const PUBLIC_CONTRACT_PATHS: ReadonlySet<string> = new Set([
+  '/functions/v1/auth/preview-invite',
   '/functions/v1/auth/verify-invite',
+  '/functions/v1/auth/decline-invite',
 ])
 
 export interface UnauthorizedEventContext {
@@ -76,7 +78,7 @@ export function isPublicContractPath(schemaPath: string): boolean {
  * Security & contract guarantees:
  * - Injects `apikey` on every request.
  * - Resolves the fresh user `Authorization: Bearer <access_token>` per request on all protected routes.
- * - Strips `Authorization` on pre-login `/functions/v1/auth/verify-invite`.
+ * - Strips `Authorization` on pre-login `/functions/v1/auth/{preview-invite,verify-invite,decline-invite}`.
  * - Never auto-replays failed academic mutations (`POST`, `PUT`, `PATCH`, `DELETE`).
  * - Wraps raw network failures into `ApiClientError` (`code: 'NETWORK_ERROR'`).
  */
