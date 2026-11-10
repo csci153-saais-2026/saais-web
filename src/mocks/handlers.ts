@@ -221,8 +221,8 @@ export const saaisMswHandlers = [
   // 1. Pre-login / Public & Auth Edge Functions
   // ===========================================================================
   http.get('*/functions/v1/health', ({ request }) => {
-    const missingKey = requireApiKey(request)
-    if (missingKey) return missingKey
+    const auth = authenticateRequest(request)
+    if ('response' in auth) return auth.response
     return HttpResponse.json({
       status: 'ok',
       service: 'saais-api',
@@ -551,7 +551,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/attempt', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -562,7 +568,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/attempt_result', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -573,7 +585,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/inc_resolution', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -584,7 +602,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/elective_mapping', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -595,7 +619,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/equivalency_decision', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -608,7 +638,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/outside_credit', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -619,7 +655,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/curriculum_transfer_request', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -632,7 +674,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/advising_plan', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -643,7 +691,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/advising_plan_item', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -654,7 +708,13 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/advising_note', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -665,18 +725,25 @@ export const saaisMswHandlers = [
   }),
 
   http.get('*/rest/v1/attempt_remark', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
-    const { persona } = auth
     const db = getMockDatabase()
-    const rows = persona.roles.includes('student')
-      ? db.attemptRemarks.filter((a) => a.student_id === persona.profileId)
-      : db.attemptRemarks
-    return applyPostgrestQuery(rows, new URL(request.url))
+    return applyPostgrestQuery(db.attemptRemarks, new URL(request.url))
   }),
 
   http.get('*/rest/v1/grade_flag', ({ request }) => {
-    const auth = authenticateRequest(request)
+    const auth = authenticateRequest(request, [
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
     if ('response' in auth) return auth.response
     const { persona } = auth
     const db = getMockDatabase()
@@ -702,7 +769,6 @@ export const saaisMswHandlers = [
       'admin',
       'dean',
       'department_head',
-      'department_staff',
       'adviser',
     ])
     if ('response' in auth) return auth.response
@@ -712,11 +778,26 @@ export const saaisMswHandlers = [
     )
   }),
 
+  http.get('*/rest/v1/audit_log', ({ request }) => {
+    const auth = authenticateRequest(request, [
+      'admin',
+      'dean',
+      'department_head',
+      'department_staff',
+    ])
+    if ('response' in auth) return auth.response
+    return applyPostgrestQuery(
+      getMockDatabase().auditLogEntries,
+      new URL(request.url),
+    )
+  }),
+
   http.get('*/rest/v1/audit_log_entry', ({ request }) => {
     const auth = authenticateRequest(request, [
       'admin',
       'dean',
       'department_head',
+      'adviser',
     ])
     if ('response' in auth) return auth.response
     return applyPostgrestQuery(
@@ -1286,7 +1367,11 @@ export const saaisMswHandlers = [
   }),
 
   http.post('*/functions/v1/catalog/curriculum-pair-equivalences', async ({ request }) => {
-    const auth = authenticateRequest(request, ['admin', 'department_head'])
+    const auth = authenticateRequest(request, [
+      'admin',
+      'department_head',
+      'department_staff',
+    ])
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => null)) as
       | ApiSchema<'CurriculumPairEquivalenceInsert'>
@@ -1309,7 +1394,11 @@ export const saaisMswHandlers = [
   }),
 
   http.delete('*/functions/v1/catalog/curriculum-pair-equivalences/:id', ({ request, params }) => {
-    const auth = authenticateRequest(request, ['admin', 'department_head'])
+    const auth = authenticateRequest(request, [
+      'admin',
+      'department_head',
+      'department_staff',
+    ])
     if ('response' in auth) return auth.response
     const id = String(params.id)
     const db = getMockDatabase()
@@ -2321,7 +2410,11 @@ export const saaisMswHandlers = [
   http.put(
     '*/functions/v1/students/:student_id/curriculum',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, ['admin', 'department_head'])
+      const auth = authenticateRequest(request, [
+        'admin',
+        'department_head',
+        'department_staff',
+      ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'CurriculumAssignmentRequest'>
@@ -2427,7 +2520,12 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/equivalencies',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, ['admin', 'department_head'])
+      const auth = authenticateRequest(request, [
+        'admin',
+        'dean',
+        'department_head',
+        'adviser',
+      ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'EquivalencyDecisionRequest'>
@@ -2451,7 +2549,12 @@ export const saaisMswHandlers = [
   http.patch(
     '*/functions/v1/students/:student_id/equivalencies/:decision_id',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, ['admin', 'department_head'])
+      const auth = authenticateRequest(request, [
+        'admin',
+        'dean',
+        'department_head',
+        'adviser',
+      ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const decisionId = String(params.decision_id)
@@ -2476,7 +2579,12 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/equivalencies/:decision_id/revoke',
     ({ request, params }) => {
-      const auth = authenticateRequest(request, ['admin', 'department_head'])
+      const auth = authenticateRequest(request, [
+        'admin',
+        'dean',
+        'department_head',
+        'adviser',
+      ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const decisionId = String(params.decision_id)
@@ -2499,7 +2607,12 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/outside-credits',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, ['admin', 'department_head'])
+      const auth = authenticateRequest(request, [
+        'admin',
+        'dean',
+        'department_head',
+        'adviser',
+      ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'OutsideCreditCreateRequest'>
@@ -2528,7 +2641,12 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/outside-credits/:credit_id/revoke',
     ({ request, params }) => {
-      const auth = authenticateRequest(request, ['admin', 'department_head'])
+      const auth = authenticateRequest(request, [
+        'admin',
+        'dean',
+        'department_head',
+        'adviser',
+      ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const creditId = String(params.credit_id)

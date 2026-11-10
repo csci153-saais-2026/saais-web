@@ -55,6 +55,14 @@ function buildInitialMockDatabase(): MockDatabaseState {
         letterhead_name: 'Faculty of Engineering and Technology',
         dean_name: null,
       },
+      {
+        id: '10000000-0000-4000-8000-000000000003',
+        code: 'FAS',
+        name: 'Faculty of Arts and Sciences',
+        letterhead_prefix: 'Office of the Dean',
+        letterhead_name: 'Faculty of Arts and Sciences',
+        dean_name: null,
+      },
     ],
     departments: [
       {
@@ -77,6 +85,16 @@ function buildInitialMockDatabase(): MockDatabaseState {
           'Department of Agricultural and Biosystems Engineering',
         department_head_name: null,
         dean_name: null,
+      },
+      {
+        id: '20000000-0000-4000-8000-000000000003',
+        faculty_id: MOCK_IDS.facultyComputing,
+        code: 'DIS',
+        name: 'Department of Information Systems',
+        letterhead_prefix: 'Office of the Department Head',
+        letterhead_name: 'Department of Information Systems',
+        department_head_name: null,
+        dean_name: MOCK_PERSONAS.dean.fullName,
       },
     ],
     programs: [
@@ -139,6 +157,12 @@ function buildInitialMockDatabase(): MockDatabaseState {
         curriculum_version_id: MOCK_IDS.curriculumBscs2024,
         year_level: 3,
         term_sequence: 1,
+      },
+      {
+        id: '41000000-0000-4000-8000-000000000004',
+        curriculum_version_id: MOCK_IDS.curriculumBscs2024,
+        year_level: 4,
+        term_sequence: 2,
       },
     ],
     curriculumTermCourses: [
