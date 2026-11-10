@@ -75,10 +75,10 @@ paths:
         immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified
         Google sign-in activates the profile (status='active') and invalidates any unused password
         invite token. Admins may provision any role and grant multi-role assignments across the
-        institution; Department Heads and Department Staff may provision student, adviser, and
-        department_staff accounts (including multi-role combinations restricted to those roles)
+        institution; no caller may assign roles to themselves. Department Heads and Department Staff may
+        provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles)
         strictly within their own department scope. Any attempt by Department Head or Department
-        Staff to grant admin, dean, or department_head roles or assign another department/faculty is
+        Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is
         explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects
         duplicate email or student_number with 409 Conflict. Privileged server code provisions the
         Supabase Auth identity and application profile/assignments and writes an immutable audit log
@@ -118,8 +118,8 @@ paths:
         "500":
           $ref: "#/components/responses/500InternalError"
       x-access-scope:
-        department_head: department-scoped-student-adviser-and-staff-invites-only
-        department_staff: department-scoped-student-adviser-and-staff-invites-only
+        department_head: department-scoped-student-adviser-staff-and-head-invites-only
+        department_staff: department-scoped-student-adviser-staff-and-head-invites-only
         admin: institution-wide-all-roles
   /functions/v1/auth/verify-invite:
     post:
@@ -1180,8 +1180,8 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category)(?:,(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category))*$
-            default: id,department_id,code,title,lecture_hours,lab_hours,units,status,repeatable_type,is_elective,category
+              ^(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)(?:,(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category))*$
+            default: id,department_id,code,title,units,status,repeatable_type,is_elective,category
         - name: order
           in: query
           required: false
@@ -1190,7 +1190,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|department_id|code|title|lecture_hours|lab_hours|units|status|repeatable_type|is_elective|category)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -1247,8 +1247,6 @@ paths:
         - department_id
         - code
         - title
-        - lecture_hours
-        - lab_hours
         - units
         - status
         - repeatable_type
@@ -1385,9 +1383,9 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_at|closure_note|chronological_key)(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_at|closure_note|chronological_key))*$
+              ^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key))*$
             default: >-
-              id,start_year,end_year,term_type,school_year,is_locked,override_flag,override_actor_id,override_at,starts_on,ends_on,encoding_deadline,default_inc_deadline,closed_by,closed_at,closure_note,chronological_key
+              id,start_year,end_year,term_type,school_year,is_locked,override_flag,override_actor_id,override_at,starts_on,ends_on,encoding_deadline,default_inc_deadline,closed_by,closed_by_name,closed_at,closure_note,chronological_key
         - name: order
           in: query
           required: false
@@ -1396,7 +1394,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_at|closure_note|chronological_key)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_at|closure_note|chronological_key)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -1463,6 +1461,7 @@ paths:
         - encoding_deadline
         - default_inc_deadline
         - closed_by
+        - closed_by_name
         - closed_at
         - closure_note
         - chronological_key
@@ -2345,8 +2344,8 @@ paths:
         Department Head, Department Staff, or Admin regenerates and resends an expiring invitation
         email for an account whose invitation is still pending (`invited`), expired, or previously
         revoked/declined, without exposing the raw token in API responses. Department Head and
-        Department Staff may only resend invitations for Students, Advisers, and Department Staff
-        within their own department (`admin`, `dean`, and `department_head` accounts are Admin-only).
+        Department Staff may only resend invitations for Students, Advisers, Department Staff, and Department Heads
+        within their own department (`admin` and `dean` accounts are Admin-only).
         Invalidates any prior unused token hash, updates `invitation_status` to `pending`, stamps
         `invitation_sent_at` and `invitation_expires_at` server-side, and writes an audit log entry.
       x-required-roles:
@@ -2354,8 +2353,8 @@ paths:
         - department_staff
         - admin
       x-access-scope:
-        department_head: department-scoped-student-adviser-and-staff-invites-only
-        department_staff: department-scoped-student-adviser-and-staff-invites-only
+        department_head: department-scoped-student-adviser-staff-and-head-invites-only
+        department_staff: department-scoped-student-adviser-staff-and-head-invites-only
         admin: institution-wide
       x-atomic: true
       x-request-validation: >-
@@ -2400,16 +2399,16 @@ paths:
         Department Head, Department Staff, or Admin revokes a pending account invitation before
         redemption, invalidating its token hash, setting `invitation_status` to `revoked`, and
         writing an audit log entry. Department Head and Department Staff may only revoke invitations
-        for Students, Advisers, and Department Staff within their own department (`admin`, `dean`,
-        and `department_head` accounts are Admin-only). Already redeemed (`accepted`) invitations
+        for Students, Advisers, Department Staff, and Department Heads within their own department
+        (`admin` and `dean` accounts are Admin-only). Already redeemed (`accepted`) invitations
         cannot be revoked and return `409 Conflict`.
       x-required-roles:
         - department_head
         - department_staff
         - admin
       x-access-scope:
-        department_head: department-scoped-student-adviser-and-staff-invites-only
-        department_staff: department-scoped-student-adviser-and-staff-invites-only
+        department_head: department-scoped-student-adviser-staff-and-head-invites-only
+        department_staff: department-scoped-student-adviser-staff-and-head-invites-only
         admin: institution-wide
       x-atomic: true
       x-request-validation: >-
@@ -3853,6 +3852,62 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SchoolTermCloseEncodingRequest"
+  /functions/v1/school-terms/{school_term_id}/reopen-encoding:
+    post:
+      tags:
+        - Terms & Offerings
+      summary: Reopen department grade encoding for a school term
+      operationId: reopenDepartmentTermEncoding
+      description: >-
+        Department Head or Department Staff reopens their own department's encoding closure; Admin
+        may reopen a specified department. Reject institution scope and cross-department requests.
+        Atomically set is_closed=false and write an audit entry. This does not lift a global lock.
+      x-required-roles:
+        - department_head
+        - department_staff
+        - admin
+      x-access-scope:
+        department_head: department-scoped
+        department_staff: department-scoped
+        admin: institution-wide
+      x-atomic: true
+      x-request-validation: >-
+        Reject unknown fields; verify JWT and role/department scope at runtime; restrict
+        scope to department; require department_id for Admin; derive audit actor/time server-side.
+      responses:
+        "200":
+          description: Operation completed atomically.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentTermEncodingClosure"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "409":
+          $ref: "#/components/responses/409Conflict"
+        "429":
+          $ref: "#/components/responses/429TooManyRequests"
+        "500":
+          $ref: "#/components/responses/500InternalError"
+      parameters:
+        - name: school_term_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolTermCloseEncodingRequest"
   /functions/v1/school-terms/{school_term_id}/override:
     put:
       tags:
@@ -3860,13 +3915,11 @@ paths:
       summary: Set term lock override
       operationId: setSchoolTermOverride
       description: >-
-        Department Head or Admin sets enabled/disabled; server stamps actor/time and audits old/new
+        Admin sets enabled/disabled; server stamps actor/time and audits old/new
         state. Never accept client audit metadata. No per-adviser approval queue.
       x-required-roles:
-        - department_head
         - admin
       x-access-scope:
-        department_head: department-and-term-management
         admin: institution-wide
       x-atomic: true
       x-request-validation: >-
@@ -4088,6 +4141,9 @@ paths:
         rejects entire request even if identical. Return actionable conflict codes; no partial grade
         or audit write. Derive final-only Passed/Failed or explicit INC/DR/NA status. Term lock
         blocks writes unless override applies.
+      x-department-closure: >-
+        A closed department encoding state for the affected student and term blocks grade-changing writes
+        with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -4139,6 +4195,9 @@ paths:
         Atomically encode or update term enrollment rows, grades, statuses (1.00-5.00, INC, DR,
         NA), instructors, prerequisite overrides, and staff-only remarks for a student's selected
         school term from the Encode Grades modal. Obeys term lock and override rules.
+      x-department-closure: >-
+        A closed department encoding state for the affected student and term blocks grade-changing writes
+        with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -4193,6 +4252,9 @@ paths:
         Require current adviser, matching owned attempt, editable term, reason and exact revision.
         Correct grades/status; DR affects course only. Derive status from final grade; midterm never
         changes GWA. Refresh dependent reads only after commit.
+      x-department-closure: >-
+        A closed department encoding state for the affected student and term blocks grade-changing writes
+        with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -4251,6 +4313,9 @@ paths:
         school term on the Encode Grades screen. Rejects with 409 Conflict if the school term is
         locked without override or if the attempt has INC completions, credit/equivalency decisions,
         or grade flags referencing it.
+      x-department-closure: >-
+        A closed department encoding state for the affected student and term blocks grade-changing writes
+        with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -4299,6 +4364,9 @@ paths:
         reason/revision, no admin approval. Obey the original term lock. Write
         prerequisite.grade_overridden audit atomically, update student-visible grade/GWA and
         downstream clearance. Never create pending approval or dependent-course grade.
+      x-department-closure: >-
+        A closed department encoding state for the affected student and term blocks grade-changing writes
+        with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -4914,7 +4982,7 @@ paths:
       operationId: updateAdvisingNoteArchiveState
       description: >-
         Current adviser or admin toggles the archive state (is_archived) of an advising note
-        without deleting its text or audit trail. Archived notes are hidden from the student view.
+        without deleting its text or audit trail. Archived notes remain visible to the student they concern.
       x-required-roles:
         - adviser
         - admin
@@ -5738,8 +5806,8 @@ paths:
       summary: Read advising notes
       operationId: listAdvisingNotes
       description: >-
-        Read-only, row-scoped PostgREST collection. Under B9, students read their own active
-        (non-archived) advising notes (is_archived=false) on their Notes tab, while advisers,
+        Read-only, row-scoped PostgREST collection. Students read their own active and archived
+        advising notes on their Notes tab, while advisers,
         Department Heads, and Admins view active and archived notes within their scope.
       x-required-roles:
         - student
@@ -5747,7 +5815,7 @@ paths:
         - department_head
         - admin
       x-access-scope:
-        student: own-active-notes-read-only
+        student: own-notes-including-archived-read-only
         adviser: current-or-historic-assigned-students-read-only
         department_head: department-scoped-read-only
         admin: institution-wide
@@ -6201,9 +6269,8 @@ paths:
       summary: List and filter student academic roster
       operationId: listStudentRoster
       description: >-
-        Paginated, server-filtered student roster and advisee list for Adviser (`All Students`,
-        `My Advisees`), Department Head (`Student Records`, `Advisee Assignments`), Department
-        Staff (`Student Records`, `Grade Encoding` student selector), Dean (`Student Records`), and
+        Paginated, server-filtered student roster and advisee list for Adviser (`My Advisees`), Department Head (`Student Records`, `Advisee Assignments`), Department
+        Staff (`Student Records`), Dean (`Student Records`), and
         System Administrator (`Student Records`). Combines profile identity, active curriculum/program
         and entry batch, derived year level, cumulative/curriculum GWA, units earned vs. total
         curriculum units, academic standing, deficiency count, active adviser assignment (and
@@ -6216,7 +6283,7 @@ paths:
         - dean
         - admin
       x-access-scope:
-        adviser: current-or-historic-assigned-or-department-rostered-students-read-only
+        adviser: current-or-historic-assigned-students-read-only
         department_head: department-scoped-read-only
         department_staff: department-scoped-read-only
         dean: faculty-scoped-read-only
@@ -6788,6 +6855,9 @@ paths:
         open grade flag by either correcting the grade (obeying term lock/override rules and VSU DR
         invariants, and incrementing Attempt.revision) or rejecting the flag with a required
         resolution_note, notifying the student and writing an audit log entry.
+      x-department-closure: >-
+        A closed department encoding state for the affected student and term blocks grade-changing writes
+        with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
         - department_head
@@ -6845,6 +6915,9 @@ paths:
         Separates valid rows from rejected rows (unassigned student, locked term without override,
         unknown course offering, invalid grade token) and, when mode is commit, atomically writes
         all valid rows and audit log entries.
+      x-department-closure: >-
+        A closed department encoding state for the affected student and term blocks grade-changing writes
+        with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -6916,9 +6989,9 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsement_note|status|decision_note|decided_by|decided_at|carried_units|created_at|updated_at)(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsement_note|status|decision_note|decided_by|decided_at|carried_units|created_at|updated_at))*$
+              ^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at))*$
             default: >-
-              id,student_id,from_curriculum_version_id,to_curriculum_version_id,endorsed_by,endorsement_note,status,decision_note,decided_by,decided_at,carried_units,created_at,updated_at
+              id,student_id,from_curriculum_version_id,to_curriculum_version_id,endorsed_by,endorsed_by_name,endorsement_note,status,decision_note,decided_by,decided_by_name,decided_at,carried_units,created_at,updated_at
         - name: order
           in: query
           required: false
@@ -6927,7 +7000,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsement_note|status|decision_note|decided_by|decided_at|carried_units|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsement_note|status|decision_note|decided_by|decided_at|carried_units|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: created_at.desc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -6978,10 +7051,12 @@ paths:
         - from_curriculum_version_id
         - to_curriculum_version_id
         - endorsed_by
+        - endorsed_by_name
         - endorsement_note
         - status
         - decision_note
         - decided_by
+        - decided_by_name
         - decided_at
         - carried_units
         - created_at
@@ -8906,7 +8981,7 @@ components:
         atomically before invitation completion. Students require matching program/curriculum and an
         optional active adviser (or unassigned pending assignment); advisers and staff roles require
         organizational scope. Department Head and Department Staff may provision Students, Advisers,
-        and Department Staff within their own department (`admin`, `dean`, and `department_head`
+        Department Staff, and Department Heads within their own department (`admin` and `dean`
         grants remain Admin-only). Unified provisioning creates the pre-registered `Profile`
         (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on
         that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link.
@@ -9894,8 +9969,6 @@ components:
         - department_id
         - code
         - title
-        - lecture_hours
-        - lab_hours
         - units
         - status
         - repeatable_type
@@ -9915,12 +9988,6 @@ components:
           example: Introduction to Computer Science
         category:
           $ref: "#/components/schemas/CourseCategory"
-        lecture_hours:
-          type: number
-          example: 3
-        lab_hours:
-          type: number
-          example: 0
         units:
           type: number
           example: 3
@@ -9937,8 +10004,6 @@ components:
         - department_id
         - code
         - title
-        - lecture_hours
-        - lab_hours
         - units
       properties:
         department_id:
@@ -9957,12 +10022,6 @@ components:
         category:
           $ref: "#/components/schemas/CourseCategory"
           default: major
-        lecture_hours:
-          type: number
-          minimum: 0
-        lab_hours:
-          type: number
-          minimum: 0
         units:
           type: number
           minimum: 0
@@ -9999,12 +10058,6 @@ components:
           pattern: \S
         category:
           $ref: "#/components/schemas/CourseCategory"
-        lecture_hours:
-          type: number
-          minimum: 0
-        lab_hours:
-          type: number
-          minimum: 0
         units:
           type: number
           minimum: 0
@@ -10080,6 +10133,13 @@ components:
             - string
             - "null"
           format: uuid
+          readOnly: true
+        closed_by_name:
+          type: [string, "null"]
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
           readOnly: true
         closed_at:
           type:
@@ -10160,6 +10220,9 @@ components:
             - string
             - "null"
           format: uuid
+          readOnly: true
+        closed_by_name:
+          type: [string, "null"]
           readOnly: true
         closed_at:
           type:
@@ -13212,6 +13275,9 @@ components:
           type: string
           format: uuid
           readOnly: true
+        endorsed_by_name:
+          type: [string, "null"]
+          readOnly: true
         endorsement_note:
           type: string
           minLength: 1
@@ -13227,6 +13293,9 @@ components:
             - string
             - "null"
           format: uuid
+          readOnly: true
+        decided_by_name:
+          type: [string, "null"]
           readOnly: true
         decided_at:
           type:
@@ -14650,6 +14719,9 @@ x-saais-invariants:
     identical
   history: past advisers read-only; server rechecks current assignment at commit
   credit_units: actual source attempt snapshot, never client supplied
+  department_encoding_closure: >-
+    A closed department and term blocks grade writes for affected students until reopened;
+    the institution-wide lock and its Admin-only override remain independent.
   schema_boundary: Schema design is delivered separately; this contract does not deploy it.
 x-saais-notification-triggers:
   delivery: >-

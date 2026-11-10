@@ -37,8 +37,8 @@ test('raw table endpoints cannot bypass transactional write guards', () => {
   assert.equal(spec.paths['/rest/v1/profile'].patch, undefined);
   const invite = spec.paths['/functions/v1/auth/invite'].post;
   assert.ok(invite['x-required-roles'].includes('department_staff'));
-  assert.equal(invite['x-access-scope'].department_staff, 'department-scoped-student-adviser-and-staff-invites-only');
-  assert.equal(invite['x-access-scope'].department_head, 'department-scoped-student-adviser-and-staff-invites-only');
+  assert.equal(invite['x-access-scope'].department_staff, 'department-scoped-student-adviser-staff-and-head-invites-only');
+  assert.equal(invite['x-access-scope'].department_head, 'department-scoped-student-adviser-staff-and-head-invites-only');
   for (const catalogDeleteRoute of [
     '/functions/v1/catalog/faculty/{id}',
     '/functions/v1/catalog/department/{id}',
@@ -51,6 +51,20 @@ test('raw table endpoints cannot bypass transactional write guards', () => {
     assert.ok(del.responses['404'], catalogDeleteRoute);
     assert.ok(del.responses['409'], catalogDeleteRoute);
   }
+});
+
+test('department closure and course projections follow the reviewed contract', () => {
+  const reopen = spec.paths['/functions/v1/school-terms/{school_term_id}/reopen-encoding'].post;
+  assert.deepEqual(reopen['x-required-roles'], ['department_head', 'department_staff', 'admin']);
+  assert.deepEqual(spec.paths['/functions/v1/school-terms/{school_term_id}/override'].put['x-required-roles'], ['admin']);
+  for (const id of ['recordGrades', 'encodeTermGrades', 'correctGrades', 'deleteOpenTermAttempt', 'correctPrerequisiteGrade', 'resolveGradeFlag', 'importGradesBatch']) {
+    assert.ok(operations.find(({ operation }) => operation.operationId === id)?.operation['x-department-closure'], id);
+  }
+  for (const name of ['Course', 'CourseInsert', 'CourseUpdate']) {
+    assert.equal(schemas[name].properties.lecture_hours, undefined, name);
+    assert.equal(schemas[name].properties.lab_hours, undefined, name);
+  }
+  assert.equal(spec.paths['/rest/v1/advising_note'].get['x-access-scope'].student, 'own-notes-including-archived-read-only');
 });
 
 test('authenticated operations specify roles, scope and failure responses', () => {
@@ -172,7 +186,7 @@ test('student access is restricted to reads plus allowlisted self-service writes
   }
   assert.ok(spec.paths[`${studentPath}/grade-flags`].post['x-required-roles'].includes('student'));
   assert.ok(spec.paths['/rest/v1/advising_note'].get['x-required-roles'].includes('student'));
-  assert.equal(spec.paths['/rest/v1/advising_note'].get['x-access-scope'].student, 'own-active-notes-read-only');
+  assert.equal(spec.paths['/rest/v1/advising_note'].get['x-access-scope'].student, 'own-notes-including-archived-read-only');
   assert.deepEqual(spec.paths[`${studentPath}/assistant`].post['x-required-roles'], ['adviser']);
 });
 
