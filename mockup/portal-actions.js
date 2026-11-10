@@ -12,7 +12,14 @@
   const save = () => { window.__saaisMgmt = S; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-  const say = m => { if (typeof toast === 'function') toast(m); };
+  const say = m => {
+    if (dialog.open) {
+      const content = dialog.querySelector('#dialog-content');
+      let message = content.querySelector('[data-action-message]');
+      if (!message) { message = document.createElement('p'); message.dataset.actionMessage = ''; message.setAttribute('role', 'status'); message.style.cssText = 'margin:12px 0;color:#9E2E1C;font-size:14px'; content.append(message); }
+      message.textContent = m;
+    } else if (typeof toast === 'function') toast(m);
+  };
   const page = document.body.dataset.page;
   const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -191,8 +198,9 @@
     if (!code || !title) return say('Enter the original course code and name.');
     if (!/^\d+(\.\d+)?$/.test(units) || +units <= 0) return say('Units must be a positive number.');
     if (!/^[1-5]\.\d{2}$/.test(grade)) return say('Enter the grade on the VSU scale, for example 1.50.');
-    (S.credits = S.credits || []).push({ cid: 'c' + Date.now(), name: stu[0], sid: stu[1], code, title, units, grade, school: val('School / degree of origin'), eq: splitSubject(val('Equivalent course subject')), type: val('Entry type') });
-    audit('Change', stu[0], `Credited outside course ${code} · ${title} (grade ${grade}) from ${val('School / degree of origin')}`, stu[1]);
+    const why = val('Reason for credit'); if (!why) return say('Give a reason for this credit. It is written to the audit log.');
+    (S.credits = S.credits || []).push({ reason: why, cid: 'c' + Date.now(), name: stu[0], sid: stu[1], code, title, units, grade, school: val('School / degree of origin'), eq: splitSubject(val('Equivalent course subject')), type: val('Entry type') });
+    audit('Change', stu[0], `Credited outside course ${code} · ${title} (grade ${grade}) from ${val('School / degree of origin')} · reason: ${why}`, stu[1]);
     save(); applyCredits(); dialog.close(); say(`Outside credit recorded for ${stu[0]}: ${code} credited once.`);
   };
 

@@ -1,5 +1,6 @@
 /* Shared presentation behavior for the two department portal shells. */
 (() => {
+  const sharedDrawer = !!document.querySelector('script[src$="portal-ui.js"]');
   const sidebar = document.querySelector('.sidebar');
   const workspace = document.querySelector('.workspace');
   const openButton = document.querySelector('[data-menu-open]');
@@ -12,14 +13,15 @@
   let messageTimer;
 
   function setDrawer(open) {
+    if (!sidebar) return;
     sidebar.classList.toggle('open', open);
-    openButton.setAttribute('aria-expanded', String(open));
-    backdrop.hidden = !open;
-    workspace.inert = open;
+    openButton?.setAttribute('aria-expanded', String(open));
+    if (backdrop) backdrop.hidden = !open;
+    if (workspace) workspace.inert = open;
     document.body.style.overflow = open ? 'hidden' : '';
     if (open) {
       returnFocus = document.activeElement;
-      sidebar.querySelector('[data-menu-close]').focus();
+      sidebar.querySelector('[data-menu-close]')?.focus();
     } else if (returnFocus) {
       returnFocus.focus();
       returnFocus = null;
@@ -27,13 +29,14 @@
   }
 
   function setUserMenu(open) {
-    if (!userMenu || !userButton) return;
+    if (!userMenu) return;
     userMenu.hidden = !open;
-    userButton.setAttribute('aria-expanded', String(open));
+    userButton?.setAttribute('aria-expanded', String(open));
   }
 
   function message(text) {
     const toast = document.querySelector('.toast');
+    if (!toast) return;
     clearTimeout(messageTimer);
     toast.textContent = text;
     toast.hidden = false;
@@ -41,17 +44,19 @@
   }
 
   document.addEventListener('click', event => {
-    if (event.target.closest('[data-menu-open]')) setDrawer(true);
-    if (event.target.closest('[data-menu-close]')) setDrawer(false);
-    if (event.target.closest('.user-trigger')) setUserMenu(userMenu.hidden);
+    if (!sharedDrawer && event.target.closest('[data-menu-open]')) setDrawer(true);
+    if (!sharedDrawer && event.target.closest('[data-menu-close]')) setDrawer(false);
+    if (event.target.closest('.user-trigger')) setUserMenu(!userMenu || userMenu.hidden);
     else if (!event.target.closest('.user-menu')) setUserMenu(false);
     if (event.target.closest('[data-signout]')) {
       setUserMenu(false);
       message('Static preview only. No active account session is changed.');
     }
-    if (event.target.closest('[data-dialog="help"]')) {
-      document.querySelector('#dialog-title').textContent = 'Department portal guide';
+    if (modal && event.target.closest('[data-dialog="help"]')) {
+      const title = document.querySelector('#dialog-title');
       const body = document.querySelector('#dialog-content');
+      if (!title || !body) return;
+      title.textContent = 'Department portal guide';
       body.replaceChildren();
       const intro = document.createElement('p');
       intro.textContent = 'Use the sidebar to move between your department’s pages. Search and filters help you locate records; the main button on each page opens the related action.';
@@ -59,27 +64,30 @@
       note.className = 'caption';
       note.textContent = 'This is a static design with sample records. Form actions preview the workflow without saving changes.';
       body.append(intro, note);
-      document.querySelector('#dialog-confirm').hidden = true;
+      const confirm = document.querySelector('#dialog-confirm');
+      if (confirm) confirm.hidden = true;
       const rejection = modal.querySelector('[data-reject]');
       if (rejection) rejection.remove();
       modal.showModal();
     }
-    if (event.target.closest('[data-dialog]')) decorateTables(modal);
+    if (modal && event.target.closest('[data-dialog]')) decorateTables(modal);
   });
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !modal.open) {
-      if (userMenu && !userMenu.hidden) { setUserMenu(false); userButton.focus(); }
-      else if (sidebar.classList.contains('open')) setDrawer(false);
+    const dialogOpen = modal?.open;
+    if (event.key === 'Escape' && !dialogOpen) {
+      if (userMenu && !userMenu.hidden) { setUserMenu(false); userButton?.focus(); }
+      else if (!sharedDrawer && sidebar?.classList.contains('open')) setDrawer(false);
     }
-    if (event.key === 'Tab' && mobile.matches && sidebar.classList.contains('open') && !modal.open) {
+    if (!sharedDrawer && event.key === 'Tab' && mobile.matches && sidebar?.classList.contains('open') && !dialogOpen) {
       const focusable = [...sidebar.querySelectorAll('a[href],button,summary')].filter(el => el.getClientRects().length);
+      if (!focusable.length) return;
       const first = focusable[0], last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) { last.focus(); event.preventDefault(); }
       else if (!event.shiftKey && document.activeElement === last) { first.focus(); event.preventDefault(); }
     }
   });
-  mobile.addEventListener('change', () => setDrawer(false));
+  if (!sharedDrawer) mobile.addEventListener('change', () => setDrawer(false));
 
   // Use the same stacked table cards as the existing portals on small screens.
   function decorateTables(root) {
@@ -92,4 +100,12 @@
     });
   }
   decorateTables(document);
+  // Rows and cells rendered after load (filters, dialogs) need labels too.
+  new MutationObserver(records => {
+    for (const record of records) for (const node of record.addedNodes) {
+      if (node.nodeType !== 1) continue;
+      const owner = node.closest('table');
+      decorateTables(owner ? owner.parentElement || owner : node);
+    }
+  }).observe(document.body, { childList: true, subtree: true });
 })();

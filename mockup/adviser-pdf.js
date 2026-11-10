@@ -1,4 +1,4 @@
-/* Adviser dashboard "Export PDF": same generator and layout as Department reports (Department Head/pdf-export.js). */
+/* Adviser dashboard "Export PDF": same generator and layout as Department reports (pdf-export.js). */
 (function (root) {
   'use strict';
   const label = el => (el?.innerText || el?.textContent || '').trim().replace(/\s+/g, ' ');

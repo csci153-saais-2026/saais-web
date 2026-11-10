@@ -26,7 +26,7 @@
         }
       });
       document.addEventListener('click', event => { if (!profile.contains(event.target)) setOpen(false); });
-      profile.addEventListener('focusout', event => { if (!profile.contains(event.relatedTarget)) setOpen(false); });
+      profile.addEventListener('focusout', event => { if (event.relatedTarget && !profile.contains(event.relatedTarget)) setOpen(false); });
       profile.querySelector('[data-dean-signout]').addEventListener('click', () => {
         try { sessionStorage.removeItem('saais-session'); } catch (_) {}
         location.href = '../../Login.dc.html';
@@ -43,7 +43,7 @@
       const inert = event.target.closest('a[aria-disabled="true"]');
       if (inert) event.preventDefault();
       const row = event.target.closest('#student-rows [data-student]');
-      if (row) location.href = 'DeanAdviseeChecklist.dc.html?readonly=1&student=' + encodeURIComponent(row.dataset.student) + '&name=' + encodeURIComponent(row.cells[0].textContent.trim());
+      if (row) location.href = (/\/Dean\/DeanDH\//.test(decodeURIComponent(location.pathname)) ? 'DHAdviseeChecklist.dc.html' : 'DeanAdviseeChecklist.dc.html') + '?readonly=1&student=' + encodeURIComponent(row.dataset.student) + '&name=' + encodeURIComponent(row.cells[0].textContent.trim());
     });
     document.addEventListener('keydown', event => {
       const row = event.target.closest('#student-rows [data-student]');

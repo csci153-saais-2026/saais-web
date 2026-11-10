@@ -6,13 +6,13 @@
  const publicRoute=pathname=>/\/(Login|Docs|Main)\.dc\.html$/.test(pathname)?pathname.includes('Login')?'login':pathname.includes('Docs')?'docs':'':null;
  const go=route=>{location.hash='#/'+route;};
  function show(raw){
-  const [path,query='']=raw.split('?'),route=manifest.aliases[path]||path,screen=manifest.routes[route];if(!screen)return false;
+  const [path,query='']=raw.split('?'),route=manifest.aliases[path]||path,screen=route==='docs'?{file:'Docs.dc.html',title:'Help & documentation',role:''}:manifest.routes[route];if(!screen)return false;
   document.querySelectorAll('.view').forEach(v=>{v.hidden=true;v.classList.remove('active');});
   const product=document.querySelector('#product-view');if(product)product.hidden=true;
   const url=new URL(screen.file,location.href);url.search=query;url.searchParams.set('prototype','1');
   const localHash=url.searchParams.get('_view');url.searchParams.delete('_view');if(localHash)url.hash=localHash;
   let actual;try{actual=frame.contentWindow?.location.href;}catch{}
-  if(frame.getAttribute('src')!==url.href&&actual!==url.href)frame.src=url.href;
+  if(actual!==url.href) { if (actual && actual !== 'about:blank') frame.contentWindow.location.replace(url.href); else frame.src=url.href; }
   frame.hidden=false;frame.title=screen.title;document.title=screen.title+' | SAAIS';
   document.querySelectorAll('#proto-bar [data-role]').forEach(b=>b.classList.toggle('active',b.dataset.role===screen.role));
   if(route!==path)history.replaceState(null,'','#/'+route+(query?'?'+query:''));
