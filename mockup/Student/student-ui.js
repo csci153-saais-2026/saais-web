@@ -93,21 +93,20 @@
   }
 
   /* ---------- advising notes ---------- */
-  /* The student reads the notes the adviser actually wrote: active notes on the adviser's Notes tab and Advising tab. Archived notes are hidden. */
+  /* The student reads active and archived notes from the adviser's Notes and Advising tabs. */
   function adviserNotes() {
     var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
     if (UI['notes-list'] == null && UI['note-list'] == null) return NOTES;
     var out = [];
-    function read(html, active) {
+    function read(html) {
       var doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
       [].slice.call(doc.querySelectorAll('article')).forEach(function (a) {
-        if (active && a.dataset.state && a.dataset.state !== 'active') return;
         var p = a.querySelector('p'), strong = a.querySelector('strong'), date = a.querySelector('[data-date]') || a.querySelector('span');
         if (p) out.push({ author: strong ? strong.textContent.trim() : ADVISER, date: date ? date.textContent.trim() : '', text: p.textContent.trim() });
       });
     }
-    if (UI['notes-list'] != null) read(UI['notes-list'], true); else out = out.concat(NOTES);
-    if (UI['note-list'] != null) read(UI['note-list'], false);
+    if (UI['notes-list'] != null) read(UI['notes-list']); else out = out.concat(NOTES);
+    if (UI['note-list'] != null) read(UI['note-list']);
     return out;
   }
   function openNotes() {
@@ -514,7 +513,7 @@
     });
     function rules() {
       var c = $('pw-cur').value, n = $('pw-new').value, a = $('pw-again').value;
-      var r = { len: n.length >= 12, mix: /[A-Za-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
+      var r = { len: n.length >= 12 && n.length <= 128, mix: /[A-Z]/.test(n) && /[a-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
       Object.keys(r).forEach(function (k) {
         var li = document.querySelector('[data-rule="' + k + '"]'), m = li.querySelector('[data-mark]');
         m.style.background = r[k] ? '#2C6430' : 'transparent'; m.style.borderColor = r[k] ? '#2C6430' : '#E1DBC6';
