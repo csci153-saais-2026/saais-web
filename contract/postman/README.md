@@ -1,6 +1,6 @@
 # SAAIS Postman & Bruno API Collection (`contract/postman`)
 
-Shareable API collection and environment definitions generated directly from [`contract/openapi.yaml`](../openapi.yaml) covering all **119 OpenAPI operations** and **6 SAAIS roles** (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both **Authorized (`2xx`)** and **Denied (`401` / `403` / `409`)** verification requests.
+Shareable API collection and environment definitions generated directly from [`contract/openapi.yaml`](../openapi.yaml) covering all **120 OpenAPI operations** and **6 SAAIS roles** (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both **Authorized (`2xx`)** and **Denied (`401` / `403` / `409`)** verification requests.
 
 ---
 
@@ -8,7 +8,7 @@ Shareable API collection and environment definitions generated directly from [`c
 
 | File | Description |
 | --- | --- |
-| [`saais-api.postman_collection.json`](./saais-api.postman_collection.json) | Postman Collection v2.1.0 containing all **119 OpenAPI operations** (238+ authorized & denied requests) plus the **`00. Role & Scope Authorization Scenarios`** matrix folder. Can be imported directly into **Postman** or **Bruno** (*Import Collection → Postman Collection*). |
+| [`saais-api.postman_collection.json`](./saais-api.postman_collection.json) | Postman Collection v2.1.0 containing all **120 OpenAPI operations** (240+ authorized & denied requests) plus the **`00. Role & Scope Authorization Scenarios`** matrix folder. Can be imported directly into **Postman** or **Bruno** (*Import Collection → Postman Collection*). |
 | [`saais-mock.postman_environment.json`](./saais-mock.postman_environment.json) | Pre-configured environment for local **Prism (`http://127.0.0.1:4010`)** and **MSW** testing using synthetic UUIDs and mock persona tokens (`mock-jwt:<role>:<uuid>`). |
 | [`saais-staging.postman_environment.json`](./saais-staging.postman_environment.json) | Template environment for **Supabase Staging** using `<PLACEHOLDER_*>` variables only (no committed credentials, secrets, or real student PII). |
 
@@ -20,7 +20,7 @@ Whenever [`contract/openapi.yaml`](../openapi.yaml) is updated, regenerate and v
 
 ```bash
 npm run contract:postman        # Regenerate collection & environments from contract/openapi.yaml
-npm run contract:postman:check  # Verify 119/119 operation parity, role coverage, and zero-secret rules
+npm run contract:postman:check  # Verify operation parity, role coverage, and zero-secret rules
 ```
 
 ---

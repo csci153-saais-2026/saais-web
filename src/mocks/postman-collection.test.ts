@@ -86,7 +86,7 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
     saaisMockServer.close();
   });
 
-  it("executes all 119 OpenAPI operations (Authorized 2xx and Denied 401/403) and role/scope scenarios", async () => {
+  it("executes OpenAPI operations (Authorized 2xx and Denied 401/403) and role/scope scenarios", async () => {
     const collection = rawCollection as unknown as PostmanCollection;
     const env = loadEnvironmentMap();
     const requests = flattenRequests(collection.item);

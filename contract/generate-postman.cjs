@@ -180,6 +180,10 @@ const SAMPLE_BODIES = {
     department_id: '{{department_id}}',
     closure_note: 'All department grade sheets verified.',
   },
+  reopenDepartmentTermEncoding: {
+    scope: 'department',
+    department_id: '{{department_id}}',
+  },
   setSchoolTermOverride: {
     enabled: true,
   },
@@ -983,9 +987,9 @@ function generatePostmanArtifacts() {
   const collection = {
     info: {
       _postman_id: '00000000-0000-4000-8000-5aa15c011ec7',
-      name: 'SAAIS OpenAPI 3.1 Contract Collection (All 119 Operations & 6 Roles)',
+      name: 'SAAIS OpenAPI 3.1 Contract Collection (6 Roles)',
       description:
-        'Generated directly from `contract/openapi.yaml`. Covers all 119 operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both authorized (`2xx`) and unauthorized/denied (`401`/`403`/`409`) verification requests. Uses placeholder variables and synthetic test IDs only.',
+        'Generated directly from `contract/openapi.yaml`. Covers operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both authorized (`2xx`) and unauthorized/denied (`401`/`403`/`409`) verification requests. Uses placeholder variables and synthetic test IDs only.',
       schema:
         'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
     },

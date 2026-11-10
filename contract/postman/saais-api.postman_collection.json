@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "00000000-0000-4000-8000-5aa15c011ec7",
-    "name": "SAAIS OpenAPI 3.1 Contract Collection (All 119 Operations & 6 Roles)",
-    "description": "Generated directly from `contract/openapi.yaml`. Covers all 119 operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both authorized (`2xx`) and unauthorized/denied (`401`/`403`/`409`) verification requests. Uses placeholder variables and synthetic test IDs only.",
+    "name": "SAAIS OpenAPI 3.1 Contract Collection (6 Roles)",
+    "description": "Generated directly from `contract/openapi.yaml`. Covers operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both authorized (`2xx`) and unauthorized/denied (`401`/`403`/`409`) verification requests. Uses placeholder variables and synthetic test IDs only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -321,7 +321,7 @@
       "item": [
         {
           "name": "[POST] /functions/v1/auth/invite (inviteUser)",
-          "description": "Send account invitation\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-and-staff-invites-only\",\"department_staff\":\"department-scoped-student-adviser-and-staff-invites-only\",\"admin\":\"institution-wide-all-roles\"}`",
+          "description": "Send account invitation\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"department_staff\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"admin\":\"institution-wide-all-roles\"}`",
           "item": [
             {
               "name": "Authorized (department_staff) — POST /functions/v1/auth/invite",
@@ -370,7 +370,7 @@
                   ],
                   "query": []
                 },
-                "description": "Send account invitation\n\n- **Operation ID**: `inviteUser`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-and-staff-invites-only\",\"department_staff\":\"department-scoped-student-adviser-and-staff-invites-only\",\"admin\":\"institution-wide-all-roles\"}`",
+                "description": "Send account invitation\n\n- **Operation ID**: `inviteUser`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"department_staff\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"admin\":\"institution-wide-all-roles\"}`",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"role\": \"student\",\n  \"email\": \"new.student.placeholder@vsu.edu.ph\",\n  \"full_name\": \"Synthetic Student Placeholder\",\n  \"student_number\": \"26-1-00901\",\n  \"program_id\": \"{{program_id}}\",\n  \"curriculum_version_id\": \"{{curriculum_version_id}}\",\n  \"adviser_id\": \"{{adviser_id}}\",\n  \"entry_year\": 2026\n}",
@@ -1386,7 +1386,7 @@
         },
         {
           "name": "[POST] /functions/v1/accounts/{profile_id}/resend-invite (resendAccountInvite)",
-          "description": "Resend or regenerate an account invitation\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-and-staff-invites-only\",\"department_staff\":\"department-scoped-student-adviser-and-staff-invites-only\",\"admin\":\"institution-wide\"}`",
+          "description": "Resend or regenerate an account invitation\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"department_staff\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"admin\":\"institution-wide\"}`",
           "item": [
             {
               "name": "Authorized (department_staff) — POST /functions/v1/accounts/{profile_id}/resend-invite",
@@ -1431,7 +1431,7 @@
                   ],
                   "query": []
                 },
-                "description": "Resend or regenerate an account invitation\n\n- **Operation ID**: `resendAccountInvite`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-and-staff-invites-only\",\"department_staff\":\"department-scoped-student-adviser-and-staff-invites-only\",\"admin\":\"institution-wide\"}`"
+                "description": "Resend or regenerate an account invitation\n\n- **Operation ID**: `resendAccountInvite`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"department_staff\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"admin\":\"institution-wide\"}`"
               },
               "response": []
             },
@@ -1493,7 +1493,7 @@
         },
         {
           "name": "[POST] /functions/v1/accounts/{profile_id}/revoke-invite (revokeAccountInvite)",
-          "description": "Revoke a pending account invitation\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-and-staff-invites-only\",\"department_staff\":\"department-scoped-student-adviser-and-staff-invites-only\",\"admin\":\"institution-wide\"}`",
+          "description": "Revoke a pending account invitation\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"department_staff\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"admin\":\"institution-wide\"}`",
           "item": [
             {
               "name": "Authorized (department_staff) — POST /functions/v1/accounts/{profile_id}/revoke-invite",
@@ -1543,7 +1543,7 @@
                   ],
                   "query": []
                 },
-                "description": "Revoke a pending account invitation\n\n- **Operation ID**: `revokeAccountInvite`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-and-staff-invites-only\",\"department_staff\":\"department-scoped-student-adviser-and-staff-invites-only\",\"admin\":\"institution-wide\"}`",
+                "description": "Revoke a pending account invitation\n\n- **Operation ID**: `revokeAccountInvite`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"department_staff\":\"department-scoped-student-adviser-staff-and-head-invites-only\",\"admin\":\"institution-wide\"}`",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"reason\": \"Invitation revoked during verification.\"\n}",
@@ -8386,11 +8386,146 @@
           ]
         },
         {
-          "name": "[PUT] /functions/v1/school-terms/{school_term_id}/override (setSchoolTermOverride)",
-          "description": "Set term lock override\n\nAuthorized roles: department_head, admin\nScope rules: `{\"department_head\":\"department-and-term-management\",\"admin\":\"institution-wide\"}`",
+          "name": "[POST] /functions/v1/school-terms/{school_term_id}/reopen-encoding (reopenDepartmentTermEncoding)",
+          "description": "Reopen department grade encoding for a school term\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\",\"admin\":\"institution-wide\"}`",
           "item": [
             {
-              "name": "Authorized (department_head) — PUT /functions/v1/school-terms/{school_term_id}/override",
+              "name": "Authorized (department_staff) — POST /functions/v1/school-terms/{school_term_id}/reopen-encoding",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"reopenDepartmentTermEncoding — status is one of [200]\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "apikey",
+                    "value": "{{supabase_publishable_key}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token_department_staff}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/functions/v1/school-terms/{{school_term_id}}/reopen-encoding",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "functions",
+                    "v1",
+                    "school-terms",
+                    "{{school_term_id}}",
+                    "reopen-encoding"
+                  ],
+                  "query": []
+                },
+                "description": "Reopen department grade encoding for a school term\n\n- **Operation ID**: `reopenDepartmentTermEncoding`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\",\"admin\":\"institution-wide\"}`",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"scope\": \"department\",\n  \"department_id\": \"{{department_id}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Denied (Unauthorized role: student) — POST /functions/v1/school-terms/{school_term_id}/reopen-encoding",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"reopenDepartmentTermEncoding — status is one of [403]\", function () {",
+                      "  pm.expect([403]).to.include(pm.response.code);",
+                      "});",
+                      "pm.test(\"reopenDepartmentTermEncoding — error response includes sanitized code and message\", function () {",
+                      "  if (pm.response.code >= 400 && pm.response.headers.get(\"Content-Type\")?.includes(\"application/json\")) {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.be.an(\"object\");",
+                      "    pm.expect(body.code || body.error || body.message).to.be.ok;",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "apikey",
+                    "value": "{{supabase_publishable_key}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token_student}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/functions/v1/school-terms/{{school_term_id}}/reopen-encoding",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "functions",
+                    "v1",
+                    "school-terms",
+                    "{{school_term_id}}",
+                    "reopen-encoding"
+                  ],
+                  "query": []
+                },
+                "description": "Verifies that role `student` is rejected with HTTP 403 Forbidden (`INSUFFICIENT_PRIVILEGE`) on `reopenDepartmentTermEncoding`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"scope\": \"department\",\n  \"department_id\": \"{{department_id}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "[PUT] /functions/v1/school-terms/{school_term_id}/override (setSchoolTermOverride)",
+          "description": "Set term lock override\n\nAuthorized roles: admin\nScope rules: `{\"admin\":\"institution-wide\"}`",
+          "item": [
+            {
+              "name": "Authorized (admin) — PUT /functions/v1/school-terms/{school_term_id}/override",
               "event": [
                 {
                   "listen": "test",
@@ -8414,7 +8549,7 @@
                   },
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{token_department_head}}",
+                    "value": "Bearer {{token_admin}}",
                     "type": "text"
                   },
                   {
@@ -8437,7 +8572,7 @@
                   ],
                   "query": []
                 },
-                "description": "Set term lock override\n\n- **Operation ID**: `setSchoolTermOverride`\n- **Authorized roles: department_head, admin**\nScope rules: `{\"department_head\":\"department-and-term-management\",\"admin\":\"institution-wide\"}`",
+                "description": "Set term lock override\n\n- **Operation ID**: `setSchoolTermOverride`\n- **Authorized roles: admin**\nScope rules: `{\"admin\":\"institution-wide\"}`",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"enabled\": true\n}",
@@ -13563,7 +13698,7 @@
         },
         {
           "name": "[GET] /rest/v1/advising_note (listAdvisingNotes)",
-          "description": "Read advising notes\n\nAuthorized roles: student, adviser, department_head, admin\nScope rules: `{\"student\":\"own-active-notes-read-only\",\"adviser\":\"current-or-historic-assigned-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"admin\":\"institution-wide\"}`",
+          "description": "Read advising notes\n\nAuthorized roles: student, adviser, department_head, admin\nScope rules: `{\"student\":\"own-notes-including-archived-read-only\",\"adviser\":\"current-or-historic-assigned-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"admin\":\"institution-wide\"}`",
           "item": [
             {
               "name": "Authorized (student) — GET /rest/v1/advising_note",
@@ -13649,7 +13784,7 @@
                     }
                   ]
                 },
-                "description": "Read advising notes\n\n- **Operation ID**: `listAdvisingNotes`\n- **Authorized roles: student, adviser, department_head, admin**\nScope rules: `{\"student\":\"own-active-notes-read-only\",\"adviser\":\"current-or-historic-assigned-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"admin\":\"institution-wide\"}`"
+                "description": "Read advising notes\n\n- **Operation ID**: `listAdvisingNotes`\n- **Authorized roles: student, adviser, department_head, admin**\nScope rules: `{\"student\":\"own-notes-including-archived-read-only\",\"adviser\":\"current-or-historic-assigned-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"admin\":\"institution-wide\"}`"
               },
               "response": []
             },
@@ -14250,7 +14385,7 @@
         },
         {
           "name": "[GET] /functions/v1/students (listStudentRoster)",
-          "description": "List and filter student academic roster\n\nAuthorized roles: adviser, department_head, department_staff, dean, admin\nScope rules: `{\"adviser\":\"current-or-historic-assigned-or-department-rostered-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"department_staff\":\"department-scoped-read-only\",\"dean\":\"faculty-scoped-read-only\",\"admin\":\"institution-wide\"}`",
+          "description": "List and filter student academic roster\n\nAuthorized roles: adviser, department_head, department_staff, dean, admin\nScope rules: `{\"adviser\":\"current-or-historic-assigned-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"department_staff\":\"department-scoped-read-only\",\"dean\":\"faculty-scoped-read-only\",\"admin\":\"institution-wide\"}`",
           "item": [
             {
               "name": "Authorized (adviser) — GET /functions/v1/students",
@@ -14408,7 +14543,7 @@
                     }
                   ]
                 },
-                "description": "List and filter student academic roster\n\n- **Operation ID**: `listStudentRoster`\n- **Authorized roles: adviser, department_head, department_staff, dean, admin**\nScope rules: `{\"adviser\":\"current-or-historic-assigned-or-department-rostered-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"department_staff\":\"department-scoped-read-only\",\"dean\":\"faculty-scoped-read-only\",\"admin\":\"institution-wide\"}`"
+                "description": "List and filter student academic roster\n\n- **Operation ID**: `listStudentRoster`\n- **Authorized roles: adviser, department_head, department_staff, dean, admin**\nScope rules: `{\"adviser\":\"current-or-historic-assigned-students-read-only\",\"department_head\":\"department-scoped-read-only\",\"department_staff\":\"department-scoped-read-only\",\"dean\":\"faculty-scoped-read-only\",\"admin\":\"institution-wide\"}`"
               },
               "response": []
             },

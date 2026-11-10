@@ -62,8 +62,8 @@ for (const [route, pathItem] of Object.entries(spec.paths)) {
   }
 }
 
-test('Postman collection covers all 119 OpenAPI operations with authorized and denied requests', () => {
-  assert.equal(contractOperations.length, 119)
+test('Postman collection covers every OpenAPI operation with authorized and denied requests', () => {
+  assert.ok(contractOperations.length > 0)
 
   const operationFolders = new Map()
   for (const topFolder of collection.item) {
@@ -72,6 +72,7 @@ test('Postman collection covers all 119 OpenAPI operations with authorized and d
       operationFolders.set(opFolder.name, opFolder)
     }
   }
+  assert.equal(operationFolders.size, contractOperations.length)
 
   for (const op of contractOperations) {
     const key = `[${op.method}] ${op.route} (${op.operationId})`
