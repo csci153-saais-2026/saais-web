@@ -276,12 +276,12 @@ rules/                 # Vite React best practices and development rules
 ### Users & Roles
 
 - Six assignable role types: Student, Adviser, Department Head, Department Staff, Dean, and System Administrator. A profile may have multiple scoped role assignments and may access the workflows authorized by each assignment.
-- Accounts are **admin-provisioned only** — no public self-signup. Users may sign in with email/password or Google. Initial passwords are set through an invitation; password recovery is available. Google sign-in succeeds only when the authenticated Google email exactly matches the pre-registered institutional email. Mismatches are rejected.
-- Only System Administrators assign roles. Department Heads and Department Staff may manage accounts within their authorized department scope, but cannot grant or change role assignments. Users cannot assign roles to themselves.
+- Accounts are provisioned by authorized staff — no public self-signup. Users may sign in with email/password or Google. Initial passwords are set through an invitation; password recovery is available. Google sign-in succeeds only when the authenticated Google email exactly matches the pre-registered institutional email. Mismatches are rejected.
+- Department Heads and Department Staff may provision student, adviser, department staff, and department head accounts within their own department. Only System Administrators may grant dean or administrator roles. Users cannot assign roles to themselves or outside their authorized department.
 - This planned role set extends the current three-role SRS and API contract. Until a separate SRS/OpenAPI revision is reviewed, FR-AUTH-01, organizational scope, the attempt-level instructor field, and role-assignment metadata remain unchanged in those specifications. This README records the intended production direction under [#19, Task 6](https://github.com/csci153-saais-2026/saais-web/issues/19); it does not revise the SRS or API contract.
 - An adviser can have 1+ advisees; a student has exactly 1 active adviser at all times — **zero-gap continuity is required**. Reassignment is atomic: the new assignment's start date coincides with the prior assignment's end date, enforced within a single transaction/trigger so a student is never left without an active adviser.
 - Adviser-to-student assignments retain full dated history.
-- Department Heads and Department Staff manage department-level student and academic workflows. System Administrators manage accounts and roles, programs, faculties, and departments. Department Heads manage curricula and academic terms; Department Staff manage the department course catalogue and offerings.
+- Department Heads and Department Staff manage department-level student, account, and academic workflows. System Administrators manage accounts and roles institution-wide, programs, faculties, and departments. Department Heads manage curricula and academic terms; Department Staff manage the department course catalogue and offerings.
 - Deans have read-only faculty-level student, report, and audit access. A person holding both Department Head and Dean assignments receives the permissions of both roles within their respective scopes.
 - Thesis advising is out of scope.
 
@@ -302,7 +302,7 @@ rules/                 # Vite React best practices and development rules
 
 ### Courses
 
-- Attributes: code, title, lecture hours, lab hours, units, status (active/discontinued), 0+ prerequisites.
+- Attributes: code, title, units, status (active/discontinued), 0+ prerequisites.
 - Course codes are never assumed equivalent across different codes.
 - Prerequisite types: strict, co-requisite, recommended (advisory only).
 - **Prerequisite enforcement**: if a strict prerequisite is not satisfied, the adviser sees the missing prerequisite and can choose **Continue with override** or **Cancel**. Continuing requires a reason and records the override and audit entry with the attempt; cancelling records nothing. The override does not change the prerequisite grade or mark it as passed. An authorized grade correction is a separate action.
@@ -477,7 +477,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `id` | uuid, PK | |
 | `code` | text, unique, not null | never assumed equivalent across different codes |
 | `title` | text, not null | |
-| `lecture_hours`, `lab_hours`, `units` | numeric, not null | |
+| `units` | numeric, not null | |
 | `department_id` | uuid, FK → Department, not null | owning Department; Faculty is derived through Department |
 | `status` | enum(`active`,`discontinued`) | |
 | `repeatable_type` | enum(`none`,`grade_replacement`,`additional_credit`) | drives the units/GWA counting rule in §6 |
@@ -681,14 +681,14 @@ The production application will provide the following role-based workflows. Thes
 | Route group                            | Features                                                                                                                   |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `/department-head/*`                   | Department students, adviser assignments, academic terms, curricula, transfers, equivalencies, outside credits, reports, and department audit log |
-| `/department-staff/*`                  | Department students, adviser assignments, terms, curricula, department course catalogue, and department accounts (view-only role assignments) |
+| `/department-staff/*`                  | Department students, adviser assignments, terms, curricula, department course catalogue, and scoped account provisioning |
 | `/dean/*`                              | Read-only faculty-wide student directory, college statistics, and faculty audit log                                        |
 | `/admin/*`                             | System-wide Student directory, the System Administrator's landing page                                                   |
 | `/admin/accounts`                      | User account provisioning, institutional email verification, status toggling, and role assignments                        |
 | `/admin/faculties`                     | Faculty (College) and subordinate Department hierarchy management                                                          |
 | `/admin/programs`                      | Master degree programs with department/college associations and active status                                              |
 | `/admin/curricula`                     | Versioned degree curricula, required units, delinquency thresholds, curriculum terms, and slot mappings                   |
-| `/admin/courses`                       | Master course catalog: codes, lecture/lab hours, units, repeatable types, and multi-tier prerequisites                     |
+| `/admin/courses`                       | Master course catalog: codes, units, repeatable types, and multi-tier prerequisites                     |
 | `/admin/course-offerings`              | Academic school terms (with actual end dates & lock controls) and term course offerings (including by-request offerings)   |
 | `/admin/audit-log`                     | System-wide immutable audit trail with actor, action, date-range filtering, and export                                     |
 
@@ -696,7 +696,7 @@ The production application will provide the following role-based workflows. Thes
 
 Department Heads and Department Staff will be able to review curriculum versions with required units, enrolled-student counts, effective dates, and status. Their curriculum workflows will support adding and editing versions, terms, and course or elective slots.
 
-The New Course workflow will collect the course code, title, lecture hours, lab hours, units, owning department, and repeatable type (`none`, `grade_replacement`, or `additional_credit`). Creating a catalog course does not place it in a curriculum. A separate curriculum workflow adds the course to a selected curriculum term as a `CurriculumTermCourse`; a catalog course can be used in more than one curriculum.
+The New Course workflow will collect the course code, title, units, owning department, and repeatable type (`none`, `grade_replacement`, or `additional_credit`). Creating a catalog course does not place it in a curriculum. A separate curriculum workflow adds the course to a selected curriculum term as a `CurriculumTermCourse`; a catalog course can be used in more than one curriculum.
 
 ## 9. Design Details
 
