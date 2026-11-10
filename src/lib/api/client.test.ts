@@ -116,6 +116,7 @@ describe('createSaaisApiClient auth headers & pre-login exception', () => {
           department_id: SAMPLE_UUID_2,
           code: 'CSCI 153',
           title: 'Software Engineering',
+          category: 'major',
           lecture_hours: 2,
           lab_hours: 3,
           units: 3,
@@ -167,13 +168,41 @@ describe('createSaaisApiClient auth headers & pre-login exception', () => {
     )
   })
 
-  it('sends apikey WITHOUT Authorization on pre-login /functions/v1/auth/verify-invite', async () => {
+  it('sends apikey WITHOUT Authorization on pre-login /functions/v1/auth/{preview-invite,verify-invite,decline-invite}', async () => {
+    expect(isPublicContractPath('/functions/v1/auth/preview-invite')).toBe(true)
     expect(isPublicContractPath('/functions/v1/auth/verify-invite')).toBe(true)
+    expect(isPublicContractPath('/functions/v1/auth/decline-invite')).toBe(true)
     expect(isPublicContractPath('/functions/v1/auth/invite')).toBe(false)
 
-    let capturedRequest: Request | null = null
+    const capturedRequests: Request[] = []
     const mockFetch = vi.fn(async (request: Request) => {
-      capturedRequest = request
+      capturedRequests.push(request)
+      if (request.url.endsWith('/functions/v1/auth/preview-invite')) {
+        return new Response(
+          JSON.stringify({
+            valid: true,
+            status: 'pending',
+            email: 'student@vsu.edu.ph',
+            full_name: 'Juan Dela Cruz',
+            role: 'student',
+            department_name: 'Department of Computer Science and Technology',
+            faculty_name: 'Faculty of Computing',
+            program_name: 'BS in Computer Science',
+            expires_at: '2026-12-31T23:59:59Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      if (request.url.endsWith('/functions/v1/auth/decline-invite')) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            invitation_status: 'declined',
+            message: 'Invitation declined.',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
       return new Response(
         JSON.stringify({
           success: true,
@@ -190,19 +219,39 @@ describe('createSaaisApiClient auth headers & pre-login exception', () => {
       fetch: mockFetch,
     })
 
-    const result = await client.POST('/functions/v1/auth/verify-invite', {
-      headers: { Authorization: 'Bearer should-be-stripped' },
-      body: {
-        token: 'opaque-single-use-invite-token',
-        password: 'StrongPassword!2026',
-      },
-    })
+    const preview = unwrapApiResult(
+      await client.POST('/functions/v1/auth/preview-invite', {
+        headers: { Authorization: 'Bearer should-be-stripped' },
+        body: { token: 'opaque-single-use-invite-token' },
+      }),
+    )
+    expect(preview.valid).toBe(true)
+    expect(preview.status).toBe('pending')
 
-    const data = unwrapApiResult(result)
-    expect(data.success).toBe(true)
-    expect(capturedRequest).not.toBeNull()
-    expect(capturedRequest!.headers.get('apikey')).toBe(TEST_API_KEY)
-    expect(capturedRequest!.headers.get('Authorization')).toBeNull()
+    const verify = unwrapApiResult(
+      await client.POST('/functions/v1/auth/verify-invite', {
+        headers: { Authorization: 'Bearer should-be-stripped' },
+        body: {
+          token: 'opaque-single-use-invite-token',
+          password: 'StrongPassword!2026',
+        },
+      }),
+    )
+    expect(verify.success).toBe(true)
+
+    const decline = unwrapApiResult(
+      await client.POST('/functions/v1/auth/decline-invite', {
+        headers: { Authorization: 'Bearer should-be-stripped' },
+        body: { token: 'opaque-single-use-invite-token' },
+      }),
+    )
+    expect(decline.invitation_status).toBe('declined')
+
+    expect(capturedRequests).toHaveLength(3)
+    for (const req of capturedRequests) {
+      expect(req.headers.get('apikey')).toBe(TEST_API_KEY)
+      expect(req.headers.get('Authorization')).toBeNull()
+    }
   })
 
   it('short-circuits protected requests with 401 AUTH_SESSION_REQUIRED when signed out', async () => {
@@ -482,6 +531,16 @@ describe('PostgREST filter & Content-Range helpers', () => {
     )
     expect(postgrestFilter.gt('2026-01-01')).toBe('gt.2026-01-01')
     expect(postgrestFilter.lt('2026-12-31')).toBe('lt.2026-12-31')
+    expect(postgrestFilter.ilike('*CSCI*')).toBe('ilike.*CSCI*')
+    expect(postgrestFilter.like('CSCI%')).toBe('like.CSCI%')
+    expect(
+      postgrestFilter.createdAtBetween(
+        '2026-01-01T00:00:00Z',
+        '2026-01-31T23:59:59Z',
+      ),
+    ).toBe(
+      '(created_at.gte.2026-01-01T00:00:00Z,created_at.lte.2026-01-31T23:59:59Z)',
+    )
 
     expect(() => postgrestFilter.inList([])).toThrow(RangeError)
     expect(() =>

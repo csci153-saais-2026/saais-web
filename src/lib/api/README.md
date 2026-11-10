@@ -40,7 +40,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
 ```
 
 - **Protected endpoints** automatically receive both `apikey` and a fresh per-request `Authorization: Bearer <access_token>` resolved from `supabase.auth.getSession()` (in `supabase` mode) or `getMockSessionToken()` (in `mock` mode).
-- **Pre-login invitation verification** (`POST /functions/v1/auth/verify-invite`) automatically sends `apikey` **without** an `Authorization` header, matching [`contract/SUPABASE-AUTH.md`](../../../contract/SUPABASE-AUTH.md).
+- **Pre-login invitation endpoints** (`POST /functions/v1/auth/preview-invite`, `POST /functions/v1/auth/verify-invite`, `POST /functions/v1/auth/decline-invite`) automatically send `apikey` **without** an `Authorization` header, matching [`contract/SUPABASE-AUTH.md`](../../../contract/SUPABASE-AUTH.md).
 - **No automatic write replays**: Failed academic mutations (`POST`, `PUT`, `PATCH`, `DELETE`) are never automatically retried.
 
 ### Simulating Login, Role Switching, and Logout in Mock Mode
