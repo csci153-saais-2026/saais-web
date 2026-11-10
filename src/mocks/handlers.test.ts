@@ -301,7 +301,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
         body: { code: 'FVM', name: 'Faculty of Veterinary Medicine' },
       }),
     )
-    expect(getMockDatabase().faculties).toHaveLength(3)
+    expect(getMockDatabase().faculties).toHaveLength(4)
 
     const deleteNewFaculty = await client.DELETE(
       '/functions/v1/catalog/faculty/{id}',
@@ -310,7 +310,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       },
     )
     expect(deleteNewFaculty.response.status).toBe(204)
-    expect(getMockDatabase().faculties).toHaveLength(2)
+    expect(getMockDatabase().faculties).toHaveLength(3)
 
     // Audit log closed date-range filter and Content-Range header
     const auditRes = await client.GET('/rest/v1/audit_log_entry', {
@@ -332,6 +332,6 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
 
     // Resetting restores initial database state
     resetMockDatabase()
-    expect(getMockDatabase().faculties).toHaveLength(2)
+    expect(getMockDatabase().faculties).toHaveLength(3)
   })
 })
