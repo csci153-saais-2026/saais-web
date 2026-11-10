@@ -117,8 +117,6 @@ describe('createSaaisApiClient auth headers & pre-login exception', () => {
           code: 'CSCI 153',
           title: 'Software Engineering',
           category: 'major',
-          lecture_hours: 2,
-          lab_hours: 3,
           units: 3,
           is_elective: false,
           status: 'active',
