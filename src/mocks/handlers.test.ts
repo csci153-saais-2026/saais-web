@@ -37,6 +37,32 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('retains student visibility of archived notes', async () => {
+    const db = getMockDatabase()
+    const own = db.advisingNotes.find(n => n.student_id === MOCK_IDS.studentPrimary)!
+    own.is_archived = true
+    loginAsMockPersona('student')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const notes = unwrapApiResult(await client.GET('/rest/v1/advising_note'))
+    expect(notes.some(n => n.id === own.id && n.is_archived)).toBe(true)
+    expect(notes.every(n => n.student_id === MOCK_IDS.studentPrimary)).toBe(true)
+  })
+
+  it('blocks department grade writes until the closure is reopened', async () => {
+    loginAsMockPersona('department_staff')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const path = { school_term_id: MOCK_IDS.term2026Sem1Open }
+    expect((await client.POST('/functions/v1/school-terms/{school_term_id}/close-encoding', { params: { path }, body: { scope: 'department' } })).response.status).toBe(200)
+    loginAsMockPersona('adviser')
+    const body = { school_term_id: path.school_term_id, course_offering_id: MOCK_IDS.offeringCsci153, confirmed_enrollment: true, continue_with_prerequisite_override: false }
+    const params = { path: { student_id: MOCK_IDS.studentPrimary } }
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(409)
+    loginAsMockPersona('department_staff')
+    expect((await client.POST('/functions/v1/school-terms/{school_term_id}/reopen-encoding', { params: { path }, body: { scope: 'department' } })).response.status).toBe(200)
+    loginAsMockPersona('adviser')
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(200)
+  })
+
   it('resolves named and shorthand mock persona tokens accurately', () => {
     expect(
       resolveMockPersonaFromAuthHeader(`Bearer ${MOCK_PERSONAS.adviser.token}`)
@@ -143,7 +169,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(rosterAttempt.response.status).toBe(403)
   })
 
-  it('enforces Department Staff provisioning boundaries (student/adviser/staff in own dept vs admin/dean forbidden)', async () => {
+  it('enforces Department Staff provisioning boundaries', async () => {
     loginAsMockPersona('department_staff')
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
@@ -151,11 +177,11 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       mode: 'mock',
     })
 
-    // Allowed: inviting an adviser within DCST
+    // Allowed: inviting a department head within DCST
     const allowedInvite = unwrapApiResult(
       await client.POST('/functions/v1/auth/invite', {
         body: {
-          role: 'adviser',
+          role: 'department_head',
           email: 'new.adviser.mock@vsu.edu.ph',
           full_name: 'Prof. New Adviser',
           faculty_id: MOCK_IDS.facultyComputing,
@@ -166,6 +192,13 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(allowedInvite.success).toBe(true)
     expect(allowedInvite.invitation_status).toBe('pending')
 
+    for (const operation of ['resend-invite', 'revoke-invite'] as const) {
+      const response = await fetch(`${BASE_URL}/functions/v1/accounts/${allowedInvite.profile_id}/${operation}`, {
+        method: 'POST', headers: { apikey: TEST_API_KEY, Authorization: `Bearer ${MOCK_PERSONAS.department_staff.token}` },
+      })
+      expect(response.status).toBe(200)
+    }
+
     // Denied: Department Staff attempting to provision an Admin or Dean
     const deniedAdminInvite = await client.POST('/functions/v1/auth/invite', {
       body: {
@@ -175,11 +208,15 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       },
     })
     expect(deniedAdminInvite.response.status).toBe(403)
+    const deniedDean = await client.POST('/functions/v1/auth/invite', {
+      body: { role: 'dean', email: 'rogue.dean@vsu.edu.ph', full_name: 'Rogue Dean' },
+    })
+    expect(deniedDean.response.status).toBe(403)
 
     // Denied: Department Staff attempting to provision in another department
     const crossDeptInvite = await client.POST('/functions/v1/auth/invite', {
       body: {
-        role: 'adviser',
+        role: 'department_head',
         email: 'cross.dept@vsu.edu.ph',
         full_name: 'Cross Dept Adviser',
         faculty_id: MOCK_IDS.facultyEngineering,
