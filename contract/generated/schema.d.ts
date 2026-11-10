@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Send account invitation
-         * @description Unified account provisioning and invitation flow: atomically creates a pre-registered Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum / adviser assignments (when student is included), and dispatches a single-use expiring password-setup invitation email (/invite/:token). Pre-registered accounts may also sign in immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified Google sign-in activates the profile (status='active') and invalidates any unused password invite token. Admins may provision any role and grant multi-role assignments across the institution; Department Heads and Department Staff may provision student, adviser, and department_staff accounts (including multi-role combinations restricted to those roles) strictly within their own department scope. Any attempt by Department Head or Department Staff to grant admin, dean, or department_head roles or assign another department/faculty is explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects duplicate email or student_number with 409 Conflict. Privileged server code provisions the Supabase Auth identity and application profile/assignments and writes an immutable audit log entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or receives server credentials. An application invitation does not constitute a signed-in session.
+         * @description Unified account provisioning and invitation flow: atomically creates a pre-registered Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum / adviser assignments (when student is included), and dispatches a single-use expiring password-setup invitation email (/invite/:token). Pre-registered accounts may also sign in immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified Google sign-in activates the profile (status='active') and invalidates any unused password invite token. Admins may provision any role and grant multi-role assignments across the institution; no caller may assign roles to themselves. Department Heads and Department Staff may provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles) strictly within their own department scope. Any attempt by Department Head or Department Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects duplicate email or student_number with 409 Conflict. Privileged server code provisions the Supabase Auth identity and application profile/assignments and writes an immutable audit log entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or receives server credentials. An application invitation does not constitute a signed-in session.
          */
         post: operations["inviteUser"];
         delete?: never;
@@ -495,7 +495,7 @@ export interface paths {
         put?: never;
         /**
          * Resend or regenerate an account invitation
-         * @description Department Head, Department Staff, or Admin regenerates and resends an expiring invitation email for an account whose invitation is still pending (`invited`), expired, or previously revoked/declined, without exposing the raw token in API responses. Department Head and Department Staff may only resend invitations for Students, Advisers, and Department Staff within their own department (`admin`, `dean`, and `department_head` accounts are Admin-only). Invalidates any prior unused token hash, updates `invitation_status` to `pending`, stamps `invitation_sent_at` and `invitation_expires_at` server-side, and writes an audit log entry.
+         * @description Department Head, Department Staff, or Admin regenerates and resends an expiring invitation email for an account whose invitation is still pending (`invited`), expired, or previously revoked/declined, without exposing the raw token in API responses. Department Head and Department Staff may only resend invitations for Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` accounts are Admin-only). Invalidates any prior unused token hash, updates `invitation_status` to `pending`, stamps `invitation_sent_at` and `invitation_expires_at` server-side, and writes an audit log entry.
          */
         post: operations["resendAccountInvite"];
         delete?: never;
@@ -515,7 +515,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke a pending account invitation
-         * @description Department Head, Department Staff, or Admin revokes a pending account invitation before redemption, invalidating its token hash, setting `invitation_status` to `revoked`, and writing an audit log entry. Department Head and Department Staff may only revoke invitations for Students, Advisers, and Department Staff within their own department (`admin`, `dean`, and `department_head` accounts are Admin-only). Already redeemed (`accepted`) invitations cannot be revoked and return `409 Conflict`.
+         * @description Department Head, Department Staff, or Admin revokes a pending account invitation before redemption, invalidating its token hash, setting `invitation_status` to `revoked`, and writing an audit log entry. Department Head and Department Staff may only revoke invitations for Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` accounts are Admin-only). Already redeemed (`accepted`) invitations cannot be revoked and return `409 Conflict`.
          */
         post: operations["revokeAccountInvite"];
         delete?: never;
@@ -976,6 +976,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/functions/v1/school-terms/{school_term_id}/reopen-encoding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen department grade encoding for a school term
+         * @description Department Head or Department Staff reopens their own department's encoding closure; Admin may reopen a specified department. Reject institution scope and cross-department requests. Atomically set is_closed=false and write an audit entry. This does not lift a global lock.
+         */
+        post: operations["reopenDepartmentTermEncoding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/functions/v1/school-terms/{school_term_id}/override": {
         parameters: {
             query?: never;
@@ -986,7 +1006,7 @@ export interface paths {
         get?: never;
         /**
          * Set term lock override
-         * @description Department Head or Admin sets enabled/disabled; server stamps actor/time and audits old/new state. Never accept client audit metadata. No per-adviser approval queue.
+         * @description Admin sets enabled/disabled; server stamps actor/time and audits old/new state. Never accept client audit metadata. No per-adviser approval queue.
          */
         put: operations["setSchoolTermOverride"];
         post?: never;
@@ -1355,7 +1375,7 @@ export interface paths {
         head?: never;
         /**
          * Archive or restore an advising note
-         * @description Current adviser or admin toggles the archive state (is_archived) of an advising note without deleting its text or audit trail. Archived notes are hidden from the student view.
+         * @description Current adviser or admin toggles the archive state (is_archived) of an advising note without deleting its text or audit trail. Archived notes remain visible to the student they concern.
          */
         patch: operations["updateAdvisingNoteArchiveState"];
         trace?: never;
@@ -1549,7 +1569,7 @@ export interface paths {
         };
         /**
          * Read advising notes
-         * @description Read-only, row-scoped PostgREST collection. Under B9, students read their own active (non-archived) advising notes (is_archived=false) on their Notes tab, while advisers, Department Heads, and Admins view active and archived notes within their scope.
+         * @description Read-only, row-scoped PostgREST collection. Students read their own active and archived advising notes on their Notes tab, while advisers, Department Heads, and Admins view active and archived notes within their scope.
          */
         get: operations["listAdvisingNotes"];
         put?: never;
@@ -1629,7 +1649,7 @@ export interface paths {
         };
         /**
          * List and filter student academic roster
-         * @description Paginated, server-filtered student roster and advisee list for Adviser (`All Students`, `My Advisees`), Department Head (`Student Records`, `Advisee Assignments`), Department Staff (`Student Records`, `Grade Encoding` student selector), Dean (`Student Records`), and System Administrator (`Student Records`). Combines profile identity, active curriculum/program and entry batch, derived year level, cumulative/curriculum GWA, units earned vs. total curriculum units, academic standing, deficiency count, active adviser assignment (and handover metadata), and last advising/activity timestamp without N+1 client waterfalls. Row visibility is strictly enforced server-side per caller role and assignment scope.
+         * @description Paginated, server-filtered student roster and advisee list for Adviser (`My Advisees`), Department Head (`Student Records`, `Advisee Assignments`), Department Staff (`Student Records`), Dean (`Student Records`), and System Administrator (`Student Records`). Combines profile identity, active curriculum/program and entry batch, derived year level, cumulative/curriculum GWA, units earned vs. total curriculum units, academic standing, deficiency count, active adviser assignment (and handover metadata), and last advising/activity timestamp without N+1 client waterfalls. Row visibility is strictly enforced server-side per caller role and assignment scope.
          */
         get: operations["listStudentRoster"];
         put?: never;
@@ -2326,7 +2346,7 @@ export interface components {
          * @enum {string}
          */
         SchoolTermType: "1st Semester" | "2nd Semester" | "Summer";
-        /** @description Admin or Department Staff/Head provisions identity and role-specific academic assignments atomically before invitation completion. Students require matching program/curriculum and an optional active adviser (or unassigned pending assignment); advisers and staff roles require organizational scope. Department Head and Department Staff may provision Students, Advisers, and Department Staff within their own department (`admin`, `dean`, and `department_head` grants remain Admin-only). Unified provisioning creates the pre-registered `Profile` (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link. */
+        /** @description Admin or Department Staff/Head provisions identity and role-specific academic assignments atomically before invitation completion. Students require matching program/curriculum and an optional active adviser (or unassigned pending assignment); advisers and staff roles require organizational scope. Department Head and Department Staff may provision Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` grants remain Admin-only). Unified provisioning creates the pre-registered `Profile` (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link. */
         InviteRequest: components["schemas"]["StudentInviteRequest"] | components["schemas"]["AdviserInviteRequest"] | components["schemas"]["AdminInviteRequest"] | components["schemas"]["StaffRoleInviteRequest"];
         InviteResponse: {
             /** @example true */
@@ -2698,10 +2718,6 @@ export interface components {
             title: string;
             category?: components["schemas"]["CourseCategory"];
             /** @example 3 */
-            lecture_hours: number;
-            /** @example 0 */
-            lab_hours: number;
-            /** @example 3 */
             units: number;
             /** @example false */
             is_elective?: boolean;
@@ -2715,8 +2731,6 @@ export interface components {
             title: string;
             /** @default major */
             category: components["schemas"]["CourseCategory"];
-            lecture_hours: number;
-            lab_hours: number;
             units: number;
             /** @default false */
             is_elective: boolean;
@@ -2732,8 +2746,6 @@ export interface components {
             code?: string;
             title?: string;
             category?: components["schemas"]["CourseCategory"];
-            lecture_hours?: number;
-            lab_hours?: number;
             units?: number;
             is_elective?: boolean;
             status?: components["schemas"]["CourseStatus"];
@@ -2767,6 +2779,9 @@ export interface components {
             is_closed: boolean;
             /** Format: uuid */
             readonly closed_by?: string | null;
+            readonly closed_by_name?: string | null;
+            /** Format: date-time */
+            readonly updated_at?: string;
             /** Format: date-time */
             readonly closed_at?: string | null;
             closure_note?: string | null;
@@ -2797,6 +2812,7 @@ export interface components {
             encoding_deadline?: string | null;
             /** Format: uuid */
             readonly closed_by?: string | null;
+            readonly closed_by_name?: string | null;
             /** Format: date-time */
             readonly closed_at?: string | null;
             closure_note?: string | null;
@@ -3793,11 +3809,13 @@ export interface components {
             to_curriculum_version_id: string;
             /** Format: uuid */
             readonly endorsed_by: string;
+            readonly endorsed_by_name?: string | null;
             endorsement_note: string;
             /** @enum {string} */
             status: "pending" | "approved" | "rejected";
             /** Format: uuid */
             readonly decided_by?: string | null;
+            readonly decided_by_name?: string | null;
             /** Format: date-time */
             readonly decided_at?: string | null;
             decision_note?: string | null;
@@ -6510,6 +6528,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SchoolTerm"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    reopenDepartmentTermEncoding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolTermCloseEncodingRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentTermEncodingClosure"];
                 };
             };
             400: components["responses"]["400BadRequest"];
