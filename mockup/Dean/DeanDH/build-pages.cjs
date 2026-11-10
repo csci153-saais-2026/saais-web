@@ -84,9 +84,9 @@ bodies.AuditLog='<div class="portal-audit">'+panel('Department activity','Record
  ['15 Aug 2025<br><small>10:42 AM</small>','Ana Marie Santos',badge('View','blue'),'24-1-00124 · Own record','Viewed curriculum checklist'],
  ['15 Aug 2025<br><small>10:35 AM</small>','Luis Miguel Cruz',badge('Sign-in'),'23-1-00218 · Student portal','Successful school email sign-in'],
  ['15 Aug 2025<br><small>10:20 AM</small>','Dr. Elena Reyes',badge('View','blue'),'24-1-00124 · Ana Marie Santos','Viewed student academic record'],
- ['14 Aug 2025<br><small>03:16 PM</small>','Prof. Marco Villanueva',badge('Change','green'),'23-1-00218 · Luis Miguel Cruz','Submitted curriculum transfer request'],
+ ['14 Aug 2025<br><small>03:16 PM</small>','Prof. Marco Villanueva',badge('Change','green'),'23-1-00218 · Luis Miguel Cruz','Endorsed curriculum transfer to BSCS 2024'],
  ['14 Aug 2025<br><small>02:08 PM</small>','Dr. Andrea Dela Cruz',badge('View','blue'),'BSCS · Batch 2024','Viewed batch student GWA report'],
- ['13 Aug 2025<br><small>11:40 AM</small>','Sofia Isabel Garcia',badge('Change','green'),'24-1-00316 · Own profile','Updated contact information'],
+ ['13 Aug 2025<br><small>11:40 AM</small>','Sofia Isabel Garcia',badge('Change','green'),'24-1-00316 · Own profile','Updated profile photo'],
  ['13 Aug 2025<br><small>09:12 AM</small>','Dr. Andrea Dela Cruz',badge('Change','green'),'DCST · Adviser assignments','Reassigned 3 students to Dr. Elena Reyes']
 ])}</div>`+foot('<span id="audit-count">7 sample events</span>'))+'</div>';
 bodies.Settings=fs.readFileSync(path.join(__dirname,'settings-layout.html'),'utf8');

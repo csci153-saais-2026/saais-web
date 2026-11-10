@@ -11503,7 +11503,6 @@
             heading(
               "Know your students.",
               "Search current and past advisees. Historical records remain read-only.",
-              link("Reassign advisees", "adviser/reassignment"),
             ) +
             `<div class="toolbar"><label class="field search">Search advisees<input type="search" data-filter="roster" value="${esc(rosterSearch)}" placeholder="Name or student number"></label>${select(
               "roster-standing",
@@ -12085,7 +12084,7 @@
             heading("Settings.", "Manage how you sign in to SAAIS.") +
             panel(
               "Change password",
-              "Use at least 8 characters.",
+              "Use 12–128 characters with uppercase, lowercase and a number.",
               `<div class="panel-body">${form("change-password", field("current_password", "Current password", "", "password", true, 'autocomplete="current-password"') + field("new_password", "New password", "", "password", true, 'minlength="8" autocomplete="new-password"') + field("confirm_password", "Confirm new password", "", "password", true, 'minlength="8" autocomplete="new-password"'), "Change password", 'class="settings-form"')}</div>`,
               "",
               "settings-panel",
@@ -12581,7 +12580,6 @@
             ],
             "adviser/advisees/notes": [notes, "Advising notes"],
             "adviser/enrollment/new": [record, "Record enrollment"],
-            "adviser/reassignment": [reassign, "Reassignment"],
             "admin/dashboard": [adminDashboard, "Dashboard"],
             "admin/accounts": [accounts, "Accounts"],
             "admin/faculties": [faculties, "Faculty & departments"],
@@ -13277,9 +13275,9 @@
                 if (!u) throw Error("Sign in to change your password.");
                 if (d.current_password !== (u.demo_password || "Demo2026!"))
                   throw Error("Your current password is incorrect.");
-                if (d.new_password.length < 8)
+                if (d.new_password.length < 12 || d.new_password.length > 128 || !/[A-Z]/.test(d.new_password) || !/[a-z]/.test(d.new_password) || !/\d/.test(d.new_password))
                   throw Error(
-                    "Use at least 8 characters for the new password.",
+                    "Use 12–128 characters with uppercase, lowercase and a number.",
                   );
                 if (d.new_password === d.current_password)
                   throw Error(
@@ -13309,6 +13307,7 @@
                   throw Error(
                     "No eligible invitation or recovery account. Contact an administrator.",
                   );
+                if (d.password.length < 12 || d.password.length > 128 || !/[A-Z]/.test(d.password) || !/[a-z]/.test(d.password) || !/\d/.test(d.password)) throw Error("Use 12–128 characters with uppercase, lowercase and a number.");
                 if (d.password !== d.confirm)
                   throw Error("Passwords do not match. Re-enter both fields.");
                 u.demo_password = d.password;
