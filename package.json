@@ -18,7 +18,9 @@
     "contract:security": "node --test contract/security.check.cjs",
     "contract:spectral": "spectral lint contract/openapi.yaml --ruleset contract/.spectral.yaml",
     "contract:prism": "prism mock contract/openapi.yaml --host 127.0.0.1 --port 4010 --cors",
-    "mock:prism": "npm run contract:prism"
+    "mock:prism": "npm run contract:prism",
+    "contract:postman": "node contract/generate-postman.cjs",
+    "contract:postman:check": "node --test contract/postman.check.cjs"
   },
   "dependencies": {
     "@fontsource-variable/syne": "^5.3.0",
