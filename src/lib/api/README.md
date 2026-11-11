@@ -141,8 +141,11 @@ import { apiClient, parseContentRange, unwrapApiResult } from '@/lib/api'
 
 const result = await apiClient.GET('/rest/v1/audit_log_entry', {
   params: { query: { limit: 20, offset: 0 } },
+  headers: { Prefer: 'count=exact' },
 })
 const rows = unwrapApiResult(result)
 const range = parseContentRange(result.response.headers.get('Content-Range'))
 // range => { start: 0, end: 19, total: 142 }
 ```
+
+Filter helpers accept alphanumeric, underscore and hyphen list values; like patterns reject PostgREST structural punctuation. Date ranges require ordered ISO dates or timestamps. Pagination totals may be unavailable when the server or CORS policy does not expose `Content-Range`.
