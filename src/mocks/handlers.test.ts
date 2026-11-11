@@ -100,6 +100,29 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(terms.find(t => t.school_term_id === MOCK_IDS.term2026Sem1Open)?.gwa).toBe(2.25)
   })
 
+  it('weights cumulative GWA by units and replaces a failure only after a numeric retake result', async () => {
+    const db = getMockDatabase()
+    const first = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
+    const second = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci153Open)!
+    db.attemptResults.splice(0, db.attemptResults.length, ...db.attemptResults.filter(a => a.student_id !== MOCK_IDS.studentPrimary))
+    db.attemptResults.push(
+      { ...first, recorded_status: 'failed', effective_status: 'failed', final_grade: 5, completion_grade: null, is_lapsed_inc: false, units_attempted: 6 },
+      { ...second, recorded_status: 'passed', effective_status: 'passed', final_grade: 3, completion_grade: null, is_lapsed_inc: false, units_attempted: 3 },
+    )
+    const retake = { ...first, id: '80000000-0000-4000-8000-000000000098', recorded_status: 'inc' as const, effective_status: 'inc' as const, final_grade: null, completion_grade: null, is_lapsed_inc: false, units_attempted: 6, created_at: '2026-11-01T00:00:00Z' }
+    db.attemptResults.push(retake)
+    loginAsMockPersona('student')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const read = async () => unwrapApiResult(await client.GET('/functions/v1/students/{student_id}/academic-summary', { params: { path: { student_id: MOCK_IDS.studentPrimary } } }))
+    expect((await read()).gwa).toBe(4.33)
+    retake.is_lapsed_inc = true
+    expect((await read()).gwa).toBe(4.33)
+    db.attemptResults[db.attemptResults.indexOf(retake)] = { ...retake, is_lapsed_inc: false, effective_status: 'passed', completion_grade: 2 }
+    const summary = await read()
+    expect(summary.gwa).toBe(2.33)
+    expect(summary.counted_units).toBe(9)
+  })
+
   it('uses the student current department closure for a cross-department course', async () => {
     const db = getMockDatabase()
     const profile = db.profiles.find(p => p.id === MOCK_IDS.studentPrimary)!
