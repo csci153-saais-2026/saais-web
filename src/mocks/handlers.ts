@@ -20,6 +20,29 @@ function alreadyPassedCourse(studentId: string, offeringId: string, existingAtte
   return Boolean(courseId && db.attemptResults.some(a => a.student_id === studentId && a.id !== existingAttemptId && a.effective_status === 'passed' && db.courseOfferings.some(o => o.id === a.course_offering_id && o.course_id === courseId)))
 }
 
+function markRetakeResults(attempts: ApiSchema<'AttemptResult'>[]): ApiSchema<'AttemptResult'>[] {
+  const db = getMockDatabase()
+  const courseId = (attempt: ApiSchema<'AttemptResult'>) => db.courseOfferings.find(o => o.id === attempt.course_offering_id)?.course_id
+  const termOrder = (attempt: ApiSchema<'AttemptResult'>) => {
+    const offering = db.courseOfferings.find(o => o.id === attempt.course_offering_id)
+    return db.schoolTerms.find(term => term.id === offering?.school_term_id)?.chronological_key ?? 0
+  }
+  const numericGrade = (attempt: ApiSchema<'AttemptResult'>) => attempt.completion_grade ?? attempt.final_grade
+  const overrides = new Map(attempts.map(attempt => [attempt.id, attempt]))
+  const all = db.attemptResults.map(attempt => overrides.get(attempt.id) ?? attempt)
+  for (const attempt of attempts) if (!all.some(existing => existing.id === attempt.id)) all.push(attempt)
+  return attempts.map(attempt => {
+    const course = courseId(attempt)
+    const same = all.filter(other => other.student_id === attempt.student_id && course && courseId(other) === course)
+      .sort((left, right) => termOrder(left) - termOrder(right) || (left.created_at ?? '').localeCompare(right.created_at ?? '') || left.id.localeCompare(right.id))
+    const numeric = same.filter(other => numericGrade(other) != null)
+    const selected = numeric.at(-1) ?? same.filter(other => other.is_lapsed_inc).at(-1)
+    const grade = numericGrade(attempt)
+    const repeated = grade != null && grade > 3 && !!selected && selected.id !== attempt.id && same.indexOf(selected) > same.indexOf(attempt)
+    return { ...attempt, is_repeated: repeated, counts_toward_cumulative_gwa: selected?.id === attempt.id }
+  })
+}
+
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
 
 function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
@@ -647,7 +670,7 @@ export const saaisMswHandlers = [
     const rows = persona.roles.includes('student')
       ? db.attemptResults.filter((a) => a.student_id === persona.profileId)
       : db.attemptResults
-    return applyPostgrestQuery(rows, new URL(request.url))
+    return applyPostgrestQuery(markRetakeResults(rows), new URL(request.url))
   }),
 
   http.get('*/rest/v1/inc_resolution', ({ request }) => {
@@ -1945,16 +1968,14 @@ export const saaisMswHandlers = [
         )
       }
       const db = getMockDatabase()
-      const termGrades: ApiSchema<'TermGrades'>[] = [
-        {
-          school_term_id: MOCK_IDS.term2026Sem1Open,
-          school_year: '2026 - 2027',
-          term_type: '1st Semester',
-          chronological_key: 20261,
-          gwa: 1.75,
-          attempts: db.attemptResults.filter((a) => a.student_id === studentId),
-        },
-      ]
+      const studentAttempts = markRetakeResults(db.attemptResults.filter(a => a.student_id === studentId))
+      const termGrades: ApiSchema<'TermGrades'>[] = db.schoolTerms.flatMap(term => {
+        const attempts = studentAttempts.filter(a => db.courseOfferings.some(o => o.id === a.course_offering_id && o.school_term_id === term.id))
+        if (!attempts.length) return []
+        const graded = attempts.map(a => ({ grade: a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null), units: a.units_attempted })).filter(a => a.grade != null && a.units > 0)
+        const units = graded.reduce((sum, item) => sum + item.units, 0)
+        return [{ school_term_id: term.id, school_year: term.school_year, term_type: term.term_type, chronological_key: term.chronological_key, gwa: units ? graded.reduce((sum, item) => sum + item.grade! * item.units, 0) / units : null, attempts }]
+      }).sort((a, b) => b.chronological_key - a.chronological_key)
       return HttpResponse.json(termGrades, { status: 200 })
     },
   ),
@@ -2068,9 +2089,13 @@ export const saaisMswHandlers = [
         return errorJson(400, 'INVALID_INPUT', 'school_term_id and course_offering_id are required.')
       }
       if (departmentEncodingClosed(studentId, body.school_term_id)) return encodingClosedResponse()
-      if (alreadyPassedCourse(studentId, body.course_offering_id)) return errorJson(409, 'COURSE_ALREADY_PASSED', 'A passed course cannot be retaken.')
+      const db = getMockDatabase()
+      const existing = db.attemptResults.find(a => a.student_id === studentId && a.course_offering_id === body.course_offering_id)
+      if (existing && body.final_grade != null && existing.final_grade != null) return errorJson(409, 'GRADE_ALREADY_RECORDED', 'Use grade correction for an existing final grade.')
+      if (existing?.effective_status === 'passed') return errorJson(409, 'COURSE_ALREADY_PASSED', 'A passed course cannot be retaken.')
+      if (!existing && alreadyPassedCourse(studentId, body.course_offering_id)) return errorJson(409, 'COURSE_ALREADY_PASSED', 'A passed course cannot be retaken.')
       if (
-        body.midterm_grade !== undefined &&
+        !existing && body.midterm_grade !== undefined &&
         body.midterm_grade !== null &&
         !body.confirmed_enrollment
       ) {
@@ -2095,15 +2120,15 @@ export const saaisMswHandlers = [
               : 'currently_enrolled'
 
       const result: ApiSchema<'AttemptResult'> = {
-        id: nextSyntheticUuid(),
+        id: existing?.id ?? nextSyntheticUuid(),
         student_id: studentId,
         course_offering_id: body.course_offering_id,
         curriculum_term_course_id:
           body.curriculum_term_course_id ?? MOCK_IDS.slotCsci153,
         recorded_status: recordedStatus,
         midterm_status: body.midterm_status ?? 'graded',
-        midterm_grade: body.midterm_grade ?? null,
-        final_grade: body.midterm_status === 'dr' ? null : (body.final_grade ?? null),
+        midterm_grade: body.midterm_grade ?? existing?.midterm_grade ?? null,
+        final_grade: body.midterm_status === 'dr' ? null : (body.final_grade ?? existing?.final_grade ?? null),
         inc_deadline: recordedStatus === 'inc' ? '2027-12-18' : null,
         instructor: body.instructor ?? 'Dr. Jose Rizalino Gomez',
         prerequisite_override: Boolean(body.continue_with_prerequisite_override),
@@ -2111,16 +2136,19 @@ export const saaisMswHandlers = [
         grade_fix_history: [],
         units_attempted: 3,
         revision: 1,
-        created_at: '2026-11-10T09:00:00Z',
+        created_at: existing?.created_at ?? '2026-11-10T09:00:00Z',
         updated_at: '2026-11-10T09:00:00Z',
         completion_grade: null,
         resolved_at: null,
         effective_status: recordedStatus,
         gwa_grade: body.final_grade ?? null,
         is_lapsed_inc: false,
+        is_repeated: false,
+        counts_toward_cumulative_gwa: false,
       }
-      getMockDatabase().attemptResults.push(result)
-      return HttpResponse.json(result, { status: 200 })
+      if (existing) db.attemptResults[db.attemptResults.indexOf(existing)] = result
+      else db.attemptResults.push(result)
+      return HttpResponse.json(markRetakeResults([result])[0], { status: 200 })
     },
   ),
 
@@ -2141,34 +2169,41 @@ export const saaisMswHandlers = [
       if (!body?.school_term_id || !Array.isArray(body.rows)) {
         return errorJson(400, 'INVALID_INPUT', 'school_term_id and rows are required.')
       }
+      if (!canAccessStudentRecord(auth.persona, studentId)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
       if (departmentEncodingClosed(studentId, body.school_term_id)) return encodingClosedResponse()
-      if (body.rows.some(row => alreadyPassedCourse(studentId, row.course_offering_id, row.attempt_id ?? undefined))) return errorJson(409, 'COURSE_ALREADY_PASSED', 'A passed course cannot be retaken.')
-      const results: ApiSchema<'AttemptResult'>[] = body.rows.map((row) => ({
-        id: row.attempt_id ?? nextSyntheticUuid(),
-        student_id: studentId,
-        course_offering_id: row.course_offering_id,
-        curriculum_term_course_id:
-          row.curriculum_term_course_id ?? MOCK_IDS.slotCsci153,
-        recorded_status: row.status ?? 'currently_enrolled',
-        midterm_status: row.midterm_status ?? 'graded',
-        midterm_grade: row.midterm_grade ?? null,
-        final_grade: row.final_grade ?? null,
-        inc_deadline: null,
-        instructor: row.instructor ?? 'Dr. Jose Rizalino Gomez',
-        prerequisite_override: Boolean(row.continue_with_prerequisite_override),
-        prerequisite_grade_override: false,
-        grade_fix_history: [],
-        units_attempted: 3,
-        revision: 1,
-        created_at: '2026-11-10T09:00:00Z',
-        updated_at: '2026-11-10T09:00:00Z',
-        completion_grade: null,
-        resolved_at: null,
-        effective_status: row.status ?? 'currently_enrolled',
-        gwa_grade: row.final_grade ?? null,
-        is_lapsed_inc: false,
-      }))
-      return HttpResponse.json(results, { status: 200 })
+      const db = getMockDatabase()
+      const existing = body.rows.map(row => db.attemptResults.find(a => a.student_id === studentId && a.course_offering_id === row.course_offering_id))
+      if (new Set(body.rows.map(row => row.course_offering_id)).size !== body.rows.length) return errorJson(409, 'DUPLICATE_OFFERING', 'Each course offering may appear once.')
+      if (body.rows.some((row, index) => row.attempt_id && row.attempt_id !== existing[index]?.id)) return errorJson(404, 'NOT_FOUND', 'The selected attempt was not found.')
+      if (body.rows.some((row, index) => !existing[index] && alreadyPassedCourse(studentId, row.course_offering_id))) return errorJson(409, 'COURSE_ALREADY_PASSED', 'A passed course cannot be retaken.')
+      if (body.rows.some((row, index) => existing[index]?.final_grade != null && row.final_grade != null && existing[index]?.final_grade !== row.final_grade)) return errorJson(409, 'GRADE_ALREADY_RECORDED', 'Use grade correction for an existing final grade.')
+      const results: ApiSchema<'AttemptResult'>[] = body.rows.map((row, index) => {
+        const old = existing[index]
+        const final = row.final_grade ?? old?.final_grade ?? null
+        const status = row.status ?? (final == null ? old?.recorded_status ?? 'currently_enrolled' : final <= 3 ? 'passed' : 'failed')
+        const offering = db.courseOfferings.find(o => o.id === row.course_offering_id)
+        const course = db.courses.find(c => c.id === offering?.course_id)
+        return {
+          id: old?.id ?? nextSyntheticUuid(), student_id: studentId, course_offering_id: row.course_offering_id,
+          curriculum_term_course_id: row.curriculum_term_course_id ?? old?.curriculum_term_course_id ?? null,
+          recorded_status: status, midterm_status: row.midterm_status ?? old?.midterm_status ?? 'graded',
+          midterm_grade: row.midterm_grade ?? old?.midterm_grade ?? null, final_grade: final,
+          inc_deadline: old?.inc_deadline ?? null, instructor: row.instructor ?? old?.instructor ?? null,
+          prerequisite_override: Boolean(row.continue_with_prerequisite_override ?? old?.prerequisite_override),
+          prerequisite_grade_override: old?.prerequisite_grade_override ?? false, grade_fix_history: old?.grade_fix_history ?? [],
+          units_attempted: old?.units_attempted ?? course?.units ?? 0, revision: (old?.revision ?? 0) + 1,
+          created_at: old?.created_at ?? '2026-11-10T09:00:00Z', updated_at: '2026-11-10T09:00:00Z',
+          completion_grade: old?.completion_grade ?? null, resolved_at: old?.resolved_at ?? null,
+          effective_status: status, gwa_grade: final, is_lapsed_inc: old?.is_lapsed_inc ?? false,
+          is_repeated: false, counts_toward_cumulative_gwa: false,
+        }
+      })
+      results.forEach((result, index) => {
+        const old = existing[index]
+        if (old) db.attemptResults[db.attemptResults.indexOf(old)] = result
+        else db.attemptResults.push(result)
+      })
+      return HttpResponse.json(markRetakeResults(results), { status: 200 })
     },
   ),
 
@@ -2217,8 +2252,10 @@ export const saaisMswHandlers = [
         effective_status: 'passed',
         gwa_grade: Number(body.final_grade ?? 1.5),
         is_lapsed_inc: false,
+        is_repeated: false,
+        counts_toward_cumulative_gwa: false,
       }
-      return HttpResponse.json(result, { status: 200 })
+      return HttpResponse.json(markRetakeResults([result])[0], { status: 200 })
     },
   ),
 
@@ -2274,8 +2311,10 @@ export const saaisMswHandlers = [
         effective_status: 'passed',
         gwa_grade: body.final_grade ?? 2.25,
         is_lapsed_inc: false,
+        is_repeated: false,
+        counts_toward_cumulative_gwa: false,
       }
-      return HttpResponse.json(result, { status: 200 })
+      return HttpResponse.json(markRetakeResults([result])[0], { status: 200 })
     },
   ),
 

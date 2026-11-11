@@ -37,6 +37,63 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('keeps an earlier failure selected until a retake has a numeric result', async () => {
+    const db = getMockDatabase()
+    const earlier = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
+    db.attemptResults[db.attemptResults.indexOf(earlier)] = { ...earlier, recorded_status: 'failed', effective_status: 'failed', final_grade: 5, gwa_grade: 5, inc_deadline: null }
+    const oldOffering = db.courseOfferings.find(o => o.id === MOCK_IDS.offeringCsci102)!
+    const newOfferingId = '62000000-0000-4000-8000-000000000099'
+    db.courseOfferings.push({ ...oldOffering, id: newOfferingId, school_term_id: MOCK_IDS.term2026Sem1Open })
+    const retakeId = '80000000-0000-4000-8000-000000000099'
+    db.attemptResults.push({ ...earlier, id: retakeId, course_offering_id: newOfferingId, recorded_status: 'inc', effective_status: 'inc', final_grade: null, completion_grade: null, gwa_grade: null, is_lapsed_inc: false, created_at: '2026-11-01T00:00:00Z' })
+    loginAsMockPersona('student')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const read = async () => unwrapApiResult(await client.GET('/functions/v1/students/{student_id}/grades', { params: { path: { student_id: MOCK_IDS.studentPrimary } } }))
+    let terms = await read()
+    let prior = terms.flatMap(t => t.attempts).find(a => a.id === earlier.id)!
+    let retake = terms.flatMap(t => t.attempts).find(a => a.id === retakeId)!
+    expect(prior.counts_toward_cumulative_gwa).toBe(true)
+    expect(prior.is_repeated).toBe(false)
+    expect(retake.counts_toward_cumulative_gwa).toBe(false)
+    const current = db.attemptResults.find(a => a.id === retakeId)!
+    db.attemptResults[db.attemptResults.indexOf(current)] = { ...current, recorded_status: 'dr', effective_status: 'dr' }
+    terms = await read()
+    expect(terms.flatMap(t => t.attempts).find(a => a.id === earlier.id)?.counts_toward_cumulative_gwa).toBe(true)
+    expect(terms.flatMap(t => t.attempts).find(a => a.id === retakeId)?.counts_toward_cumulative_gwa).toBe(false)
+    const dropped = db.attemptResults.find(a => a.id === retakeId)!
+    db.attemptResults[db.attemptResults.indexOf(dropped)] = { ...dropped, recorded_status: 'inc', effective_status: 'inc', is_lapsed_inc: true }
+    terms = await read()
+    prior = terms.flatMap(t => t.attempts).find(a => a.id === earlier.id)!
+    retake = terms.flatMap(t => t.attempts).find(a => a.id === retakeId)!
+    expect(prior.counts_toward_cumulative_gwa).toBe(true)
+    expect(retake.counts_toward_cumulative_gwa).toBe(false)
+    const lapsed = db.attemptResults.find(a => a.id === retakeId)!
+    db.attemptResults[db.attemptResults.indexOf(lapsed)] = { ...lapsed, recorded_status: 'currently_enrolled', effective_status: 'currently_enrolled', is_lapsed_inc: false }
+    loginAsMockPersona('adviser')
+    const submission = await client.POST('/functions/v1/students/{student_id}/record-grades', { params: { path: { student_id: MOCK_IDS.studentPrimary } }, body: { school_term_id: MOCK_IDS.term2026Sem1Open, course_offering_id: newOfferingId, final_grade: 3.25, confirmed_enrollment: false, continue_with_prerequisite_override: false } })
+    expect(submission.response.status).toBe(200)
+    expect(db.attemptResults.filter(a => a.course_offering_id === newOfferingId)).toHaveLength(1)
+    loginAsMockPersona('student')
+    terms = await read()
+    expect(terms.flatMap(t => t.attempts).find(a => a.id === earlier.id)?.is_repeated).toBe(true)
+    expect(terms.flatMap(t => t.attempts).find(a => a.id === retakeId)?.counts_toward_cumulative_gwa).toBe(true)
+    const graded = db.attemptResults.find(a => a.id === retakeId)!
+    db.attemptResults[db.attemptResults.indexOf(graded)] = { ...graded, recorded_status: 'currently_enrolled', effective_status: 'currently_enrolled', final_grade: null, gwa_grade: null }
+    loginAsMockPersona('adviser')
+    const encoded = await client.POST('/functions/v1/students/{student_id}/encode-grades', { params: { path: { student_id: MOCK_IDS.studentPrimary } }, body: { school_term_id: MOCK_IDS.term2026Sem1Open, rows: [{ attempt_id: retakeId, course_offering_id: newOfferingId, final_grade: 2, continue_with_prerequisite_override: false }] } })
+    expect(encoded.response.status).toBe(200)
+    expect(db.attemptResults.filter(a => a.course_offering_id === newOfferingId)).toHaveLength(1)
+    loginAsMockPersona('student')
+    terms = await read()
+    prior = terms.flatMap(t => t.attempts).find(a => a.id === earlier.id)!
+    retake = terms.flatMap(t => t.attempts).find(a => a.id === retakeId)!
+    expect(prior.is_repeated).toBe(true)
+    expect(prior.counts_toward_cumulative_gwa).toBe(false)
+    expect(retake.counts_toward_cumulative_gwa).toBe(true)
+    expect(terms.find(t => t.school_term_id === MOCK_IDS.term2025Sem2Closed)?.gwa).toBe(5)
+    expect(terms.find(t => t.school_term_id === MOCK_IDS.term2026Sem1Open)?.gwa).toBe(2)
+  })
+
   it('uses the student current department closure for a cross-department course', async () => {
     const db = getMockDatabase()
     const profile = db.profiles.find(p => p.id === MOCK_IDS.studentPrimary)!
