@@ -37,6 +37,49 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('retains the outgoing adviser through a cross-department transfer until reassignment', async () => {
+    const db = getMockDatabase()
+    const studentId = MOCK_IDS.studentPrimary
+    const profile = db.profiles.find(p => p.id === studentId)!
+    db.profiles[db.profiles.indexOf(profile)] = { ...profile, department_id: MOCK_IDS.deptDabe, faculty_id: MOCK_IDS.facultyEngineering }
+    const adviser = db.profiles.find(p => p.id === MOCK_IDS.adviserPrimary)!
+    db.profiles[db.profiles.indexOf(adviser)] = { ...adviser, department_id: MOCK_IDS.deptDabe, faculty_id: MOCK_IDS.facultyEngineering }
+    const org = db.studentOrganizations.find(o => o.student_id === studentId)!
+    db.studentOrganizations[db.studentOrganizations.indexOf(org)] = { ...org, department_id: MOCK_IDS.deptDabe, faculty_id: MOCK_IDS.facultyEngineering }
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    loginAsMockPersona('admin')
+    const decision = await client.POST('/functions/v1/curriculum-transfers/{transfer_id}/decision', { params: { path: { transfer_id: MOCK_IDS.transferRequest1 } }, body: { decision: 'approved' } })
+    expect(decision.response.status).toBe(200)
+    expect(db.studentOrganizations.find(o => o.student_id === studentId)?.department_id).toBe(MOCK_IDS.deptDcst)
+    expect(db.adviserAssignments.filter(a => a.student_id === studentId && a.end_date === null).map(a => a.adviser_id)).toEqual([MOCK_IDS.adviserPrimary])
+    loginAsMockPersona('adviser')
+    const own = { path: { student_id: studentId } }
+    expect((await client.GET('/functions/v1/students/{student_id}/academic-summary', { params: own })).response.status).toBe(200)
+    expect((await client.GET('/functions/v1/students/{student_id}/academic-summary', { params: { path: { student_id: MOCK_IDS.studentSecondary } } })).response.status).toBe(403)
+    loginAsMockPersona('department_staff')
+    const reassignment = await client.PUT('/functions/v1/students/{student_id}/adviser', { params: own, body: { adviser_id: MOCK_IDS.adviserSecondary, start_date: '2026-11-10', reason: 'Department handoff' } })
+    expect(reassignment.response.status).toBe(200)
+    expect(db.adviserAssignments.filter(a => a.student_id === studentId && a.end_date === null).map(a => a.adviser_id)).toEqual([MOCK_IDS.adviserSecondary])
+    expect(db.adviserAssignments.find(a => a.student_id === studentId && a.adviser_id === MOCK_IDS.adviserPrimary)?.end_date).toBe('2026-11-10')
+    loginAsMockPersona('adviser')
+    expect((await client.GET('/functions/v1/students/{student_id}/academic-summary', { params: own })).response.status).toBe(200)
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params: own, body: { school_term_id: MOCK_IDS.term2026Sem1Open, course_offering_id: MOCK_IDS.offeringCsci153, confirmed_enrollment: true, continue_with_prerequisite_override: false } })).response.status).toBe(403)
+  })
+
+  it('bulk reassignment closes old assignments and opens new assignments without a gap', async () => {
+    const db = getMockDatabase()
+    const outgoing = db.profiles.find(p => p.id === MOCK_IDS.adviserPrimary)!
+    db.profiles[db.profiles.indexOf(outgoing)] = { ...outgoing, department_id: MOCK_IDS.deptDabe }
+    loginAsMockPersona('department_staff')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const result = await client.POST('/functions/v1/adviser-assignments/bulk-reassign', { body: { student_ids: [MOCK_IDS.studentPrimary], adviser_id: MOCK_IDS.adviserSecondary, effective_since: '2026-11-10', reason: 'Transfer handoff' } })
+    expect(result.response.status).toBe(200)
+    const history = db.adviserAssignments.filter(a => a.student_id === MOCK_IDS.studentPrimary)
+    expect(history.find(a => a.adviser_id === MOCK_IDS.adviserPrimary)?.end_date).toBe('2026-11-10')
+    expect(history.find(a => a.adviser_id === MOCK_IDS.adviserSecondary)?.start_date).toBe('2026-11-10')
+    expect(history.filter(a => a.end_date === null)).toHaveLength(1)
+  })
+
   it('allows timely first INC completion during department closure and blocks correction', async () => {
     const db = getMockDatabase()
     const attempt = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
@@ -96,7 +139,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
 
   it('restricts adviser reassignment to department Head and Staff scope', async () => {
     const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
-    const body = { adviser_id: MOCK_IDS.adviserPrimary, start_date: '2026-11-10', reason: 'Caseload change' }
+    const body = { adviser_id: MOCK_IDS.adviserSecondary, start_date: '2026-11-10', reason: 'Caseload change' }
     const own = { path: { student_id: MOCK_IDS.studentPrimary } }
     loginAsMockPersona('adviser')
     expect((await client.PUT('/functions/v1/students/{student_id}/adviser', { params: own, body })).response.status).toBe(403)

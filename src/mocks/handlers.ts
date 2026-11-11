@@ -235,14 +235,18 @@ function applyPostgrestQuery<T extends object>(
 function canAccessStudentRecord(
   persona: MockPersona,
   studentId: string,
+  allowHistoric = false,
 ): boolean {
   if (persona.roles.includes('admin')) return true
   if (persona.roles.includes('student')) {
     return persona.profileId === studentId
   }
   const db = getMockDatabase()
+  const adviserAssignment = db.adviserAssignments.find(a => a.student_id === studentId && a.adviser_id === persona.profileId && (a.end_date === null || allowHistoric))
+  if (persona.roles.includes('adviser') && adviserAssignment) return true
+  if (persona.roles.includes('adviser') && !persona.roles.some(role => ['department_head', 'department_staff', 'dean'].includes(role))) return false
   const org = db.studentOrganizations.find((s) => s.student_id === studentId)
-  if (!org) return true
+  if (!org) return false
   if (persona.roles.includes('dean')) {
     return canAccessFaculty(persona, org.faculty_id)
   }
@@ -1828,7 +1832,7 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request)
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (!canAccessStudentRecord(auth.persona, studentId, true)) {
         return errorJson(
           403,
           'INSUFFICIENT_PRIVILEGE',
@@ -1878,7 +1882,7 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request)
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (!canAccessStudentRecord(auth.persona, studentId, true)) {
         return errorJson(
           403,
           'INSUFFICIENT_PRIVILEGE',
@@ -1933,7 +1937,7 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request)
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (!canAccessStudentRecord(auth.persona, studentId, true)) {
         return errorJson(
           403,
           'INSUFFICIENT_PRIVILEGE',
@@ -1966,7 +1970,7 @@ export const saaisMswHandlers = [
       ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (!canAccessStudentRecord(auth.persona, studentId, true)) {
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
       }
       const db = getMockDatabase()
@@ -2011,7 +2015,7 @@ export const saaisMswHandlers = [
       ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (!canAccessStudentRecord(auth.persona, studentId, true)) {
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
       }
       const recs: ApiSchema<'Recommendation'>[] = [
@@ -2488,11 +2492,14 @@ export const saaisMswHandlers = [
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Reassignment is limited to your department.')
       }
       if (!adviser.roles?.includes('adviser') || adviser.status !== 'active') return errorJson(409, 'INVALID_ADVISER', 'Choose an active adviser in the department.')
+      const previous = db.adviserAssignments.find(a => a.student_id === studentId && a.end_date === null)
+      if (!previous || !body.start_date || body.start_date < previous.start_date || !body.reason?.trim()) return errorJson(409, 'INVALID_ASSIGNMENT', 'An active assignment, valid effective date and reason are required.')
+      const closed = { ...previous, end_date: body.start_date, handed_over_to_adviser_id: adviser.id, handed_over_to_name: adviser.full_name }
       const assignment: ApiSchema<'AdviserAssignment'> = {
         id: nextSyntheticUuid(),
-        adviser_id: body.adviser_id ?? MOCK_IDS.adviserPrimary,
-        adviser_name: MOCK_PERSONAS.adviser.fullName,
-        adviser_email: MOCK_PERSONAS.adviser.email,
+        adviser_id: adviser.id,
+        adviser_name: adviser.full_name,
+        adviser_email: adviser.email,
         adviser_faculty_name: 'Faculty of Computing',
         adviser_consultation_hours: 'Tue & Thu, 13:00–16:00',
         student_id: studentId,
@@ -2503,7 +2510,11 @@ export const saaisMswHandlers = [
         handover_label: null,
         created_at: '2026-11-10T09:00:00Z',
       }
-      return HttpResponse.json([assignment], { status: 200 })
+      db.adviserAssignments[db.adviserAssignments.indexOf(previous)] = closed
+      db.adviserAssignments.push(assignment)
+      const org = db.studentOrganizations.find(o => o.student_id === studentId)
+      if (org) db.studentOrganizations[db.studentOrganizations.indexOf(org)] = { ...org, adviser_id: adviser.id }
+      return HttpResponse.json([closed, assignment], { status: 200 })
     },
   ),
 
@@ -2522,23 +2533,22 @@ export const saaisMswHandlers = [
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Reassignment is limited to your department.')
       }
       if (!adviser.roles?.includes('adviser') || adviser.status !== 'active') return errorJson(409, 'INVALID_ADVISER', 'Choose an active adviser in the department.')
-      const assignments: ApiSchema<'AdviserAssignment'>[] = studentIds.map(
-        (studentId) => ({
-          id: nextSyntheticUuid(),
-          adviser_id: body.adviser_id ?? MOCK_IDS.adviserPrimary,
-          adviser_name: MOCK_PERSONAS.adviser.fullName,
-          adviser_email: MOCK_PERSONAS.adviser.email,
-          adviser_faculty_name: 'Faculty of Computing',
-          adviser_consultation_hours: 'Tue & Thu, 13:00–16:00',
-          student_id: studentId,
-          start_date: body.effective_since ?? '2026-11-10',
-          end_date: null,
-          handed_over_to_adviser_id: null,
-          handed_over_to_name: null,
-          handover_label: null,
-          created_at: '2026-11-10T09:00:00Z',
-        }),
-      )
+      const previous = studentIds.map(studentId => db.adviserAssignments.find(a => a.student_id === studentId && a.end_date === null))
+      if (!studentIds.length || new Set(studentIds).size !== studentIds.length || !body.reason?.trim() || !body.effective_since || previous.some(a => !a || body.effective_since < a.start_date)) return errorJson(409, 'INVALID_ASSIGNMENT', 'Each student needs an active assignment, valid effective date and reason.')
+      const assignments: ApiSchema<'AdviserAssignment'>[] = studentIds.map(studentId => ({
+        id: nextSyntheticUuid(), adviser_id: adviser.id, adviser_name: adviser.full_name,
+        adviser_email: adviser.email, adviser_faculty_name: null,
+        adviser_consultation_hours: adviser.consultation_hours ?? null, student_id: studentId,
+        start_date: body.effective_since, end_date: null, handed_over_to_adviser_id: null,
+        handed_over_to_name: null, handover_label: null, created_at: '2026-11-10T09:00:00Z',
+      }))
+      previous.forEach((old, index) => {
+        const current = old!
+        db.adviserAssignments[db.adviserAssignments.indexOf(current)] = { ...current, end_date: body.effective_since, handed_over_to_adviser_id: adviser.id, handed_over_to_name: adviser.full_name }
+        db.adviserAssignments.push(assignments[index])
+        const org = db.studentOrganizations.find(o => o.student_id === current.student_id)
+        if (org) db.studentOrganizations[db.studentOrganizations.indexOf(org)] = { ...org, adviser_id: adviser.id }
+      })
       const res: ApiSchema<'BulkAdviserReassignmentResponse'> = {
         reassigned_count: assignments.length,
         assignments,
@@ -2849,21 +2859,30 @@ export const saaisMswHandlers = [
       if ('response' in auth) return auth.response
       const transferId = String(params.transfer_id)
       const body = (await request.json().catch(() => ({ decision: 'approved' }))) as ApiSchema<'CurriculumTransferDecisionRequest'>
-      const req: ApiSchema<'CurriculumTransferRequest'> = {
-        id: transferId,
-        student_id: MOCK_IDS.studentPrimary,
-        from_curriculum_version_id: MOCK_IDS.curriculumBscs2020,
-        to_curriculum_version_id: MOCK_IDS.curriculumBscs2024,
-        endorsed_by: MOCK_IDS.adviserPrimary,
-        endorsement_note: 'Endorsed transition to 2024 BSCS curriculum.',
-        status: body.decision,
-        decided_by: auth.persona.profileId,
-        decided_at: '2026-11-10T09:00:00Z',
-        decision_note: body.decision_note ?? null,
-        carried_units: 36,
-        created_at: '2026-09-01T08:00:00Z',
-        updated_at: '2026-11-10T09:00:00Z',
+      const db = getMockDatabase()
+      const existing = db.curriculumTransferRequests.find(t => t.id === transferId)
+      if (!existing) return errorJson(404, 'NOT_FOUND', 'Transfer request not found.')
+      if (existing.status !== 'pending') return errorJson(409, 'TRANSFER_ALREADY_DECIDED', 'Transfer has already been decided.')
+      const org = db.studentOrganizations.find(o => o.student_id === existing.student_id)
+      const target = db.curriculumVersions.find(c => c.id === existing.to_curriculum_version_id)
+      const program = db.programs.find(p => p.id === target?.program_id)
+      const department = db.departments.find(d => d.id === program?.department_id)
+      if (!org || !target || !program || !department) return errorJson(409, 'INVALID_TRANSFER', 'Transfer assignments are incomplete.')
+      if (!auth.persona.roles.includes('admin') && auth.persona.departmentId !== org.department_id) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      if (body.decision === 'approved') {
+        const old = db.studentCurriculumAssignments.find(a => a.student_id === existing.student_id && a.end_date === null)
+        if (!old) return errorJson(409, 'INVALID_TRANSFER', 'Current curriculum assignment not found.')
+        const today = '2026-11-10'
+        const current = { ...old, end_date: today }
+        const next = { ...old, id: nextSyntheticUuid(), curriculum_version_id: target.id, start_date: today, end_date: null, change_note: 'Approved curriculum transfer', created_at: `${today}T09:00:00Z` }
+        db.studentCurriculumAssignments[db.studentCurriculumAssignments.indexOf(old)] = current
+        db.studentCurriculumAssignments.push(next)
+        db.studentOrganizations[db.studentOrganizations.indexOf(org)] = { ...org, student_curriculum_assignment_id: next.id, curriculum_version_id: target.id, program_id: program.id, department_id: department.id, faculty_id: department.faculty_id }
+        const profile = db.profiles.find(p => p.id === existing.student_id)
+        if (profile) db.profiles[db.profiles.indexOf(profile)] = { ...profile, department_id: department.id, faculty_id: department.faculty_id }
       }
+      const req: ApiSchema<'CurriculumTransferRequest'> = { ...existing, status: body.decision, decided_by: auth.persona.profileId, decided_at: '2026-11-10T09:00:00Z', decision_note: body.decision_note ?? null, updated_at: '2026-11-10T09:00:00Z' }
+      db.curriculumTransferRequests[db.curriculumTransferRequests.indexOf(existing)] = req
       return HttpResponse.json(req, { status: 200 })
     },
   ),
