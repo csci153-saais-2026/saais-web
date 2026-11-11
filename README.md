@@ -349,7 +349,7 @@ rules/                 # Vite React best practices and development rules
 - A lapsed INC (past its compliance deadline) is likewise treated as failed units for the **delinquency flag** calculation, consistent with its GWA treatment.
 - **Units-earned/GWA counting rule, by `repeatable_type`:**
   - **`none` / `grade_replacement`**: once a student has a Passed attempt, that **most recent Passed attempt** is what counts toward units earned/GWA — permanently, even if one or more Failed/other-status attempts occur _after_ that pass. A later failure never reverts an already-passed course back to failing for GWA purposes. If the course has never been passed, the most recent attempt (whatever its status) is what counts.
-  - **`additional_credit`**: each Passed attempt counts **independently** toward units earned/GWA — the "latest passing attempt only" rule does not apply, since each successful repeat stacks credit rather than replacing a prior one.
+  - **`additional_credit`**: each Passed attempt counts **independently** toward units earned/GWA, even after curriculum requirements are filled; each successful repeat stacks credit rather than replacing a prior one.
   - All other attempts not selected by the rule above are retained for history only and do not affect units earned/GWA.
 - Term/cumulative GWA are derived (unit-weighted), cached with a recompute trigger on grade change. Because a lapsed INC changes GWA purely due to elapsed time (not an explicit grade edit), any cached GWA value must also be invalidated/recomputed by a scheduled check — see [Design Details](#9-design-details).
 - A delinquency flag is computed per student per term against the curriculum's threshold, using the failed-units definition above (explicit Failed status + lapsed INC).
@@ -545,7 +545,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `is_locked` | boolean, not null, default false | set once grades finalize |
 | `override_flag` | boolean, not null, default false | true while a lock override is in effect |
 | `override_actor_id` | uuid, FK → Profile, nullable | who invoked the override |
-| `override_at` | timestamptz, nullable | override _process_ is out of scope — state only |
+| `override_at` | timestamptz, nullable | time of the direct, audited administrator override |
 
 **CourseOffering**
 
@@ -974,10 +974,10 @@ _This is not legal advice. Independent legal review is recommended, particularly
 
 Consolidated from flagged items across the document — resolve before or during early implementation:
 
-1. **Additional-credit retake cap** (§6, §7) — no maximum number of additional-credit repeats or cumulative units is specified; confirm whether one is needed, or whether it's bounded only by the curriculum's own unit totals.
-2. **Term-lock override process** (§6, §11) — only lock state plus an override flag/timestamp/actor are modeled; the actual approval workflow for invoking an override is out of scope and needs a decision before implementation.
+1. **Additional-credit retakes** (§6, §7) — each passing attempt counts toward earned units and GWA, even beyond curriculum requirements.
+2. **Term-lock override** (§6, §11) — the System Administrator directly sets the audited override; no separate approval queue is required.
 3. **Adviser advisee-capacity limits** (§11) — confirmed out of scope for v1; revisit if adviser workload becomes a practical issue.
-4. **Retroactive effect of revoking an ElectiveMapping/EquivalencyDecision** (§6) — confirm whether revocation retroactively recomputes past-term GWA/checklist status or only takes effect going forward.
+4. **Revoking an ElectiveMapping/EquivalencyDecision** (§6) — preserve historical report results as of their original time; exclude the revoked credit from the current checklist and future calculations, and refresh affected caches.
 5. **Grade-replacement vs. additional-credit rule** (§6, §12 item 11) — the two-branch counting rule reflects the intended policy as clarified during design; confirm it matches the organization's registrar practice before implementation.
 6. **Data Privacy Act (RA 10173) compliance review** (§15.9) — required before any deployment involving real student data; not yet conducted.
 7. **PostgREST drift-check strictness** (§9) — the CI comparison between `contract/openapi.yaml` and the live auto-generated PostgREST description needs a decided policy on additive changes: a new column is harmless to the frontend but is still drift. Confirm whether the check fails on any difference or only on ones affecting documented operations.
