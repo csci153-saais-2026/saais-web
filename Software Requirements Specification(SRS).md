@@ -46,8 +46,6 @@ The separate enrollment system, student emails requesting enrollment approval, a
 | FR-AUTH-14 | Sign-in provides a keep-signed-in choice and clear feedback for unregistered accounts or invalid credentials. Sign-out ends the active session. Session persistence must respect the selected option and server-side account status. |
 | FR-AUTH-15 | Students may upload or remove their own profile photo while identity and academic details remain read-only. The upload accepts JPG or PNG up to 2 MB; production storage, content validation and access control are server-enforced via Supabase Storage. Students can review adviser and curriculum assignment histories. |
 
-**Open alignment issue:** FR-AUTH-03 requires an initial adviser, while the proposed API contract currently permits a student to remain unassigned pending assignment. The team must resolve that difference before implementing provisioning; the zero-gap rule for an existing adviser reassignment remains unchanged.
-
 ## 4. Administration: accounts, programs and curricula
 
 | ID | Requirement |
