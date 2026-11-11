@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Send account invitation
-         * @description Unified account provisioning and invitation flow: atomically creates a pre-registered Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum / adviser assignments (when student is included), and dispatches a single-use expiring password-setup invitation email (/invite#token=...). The fragment is read by the page and sent only in the JSON body to an invitation function. Pre-registered accounts may also sign in immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified Google sign-in activates the profile (status='active') and invalidates any unused password invite token. Admins may provision any role and grant multi-role assignments across the institution; no caller may assign roles to themselves. Department Heads and Department Staff may provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles) strictly within their own department scope. Any attempt by Department Head or Department Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects duplicate email or student_number with 409 Conflict. A Dean assignment must coexist with an Adviser and/or Department Head assignment; new accounts must include the accompanying assignment in the same request. Reject a Dean-only account with 400. Privileged server code provisions the Supabase Auth identity and application profile/assignments and writes an immutable audit log entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or receives server credentials. An application invitation does not constitute a signed-in session.
+         * @description Unified account provisioning and invitation flow: atomically creates a pre-registered Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum / adviser assignments (when student is included), and dispatches a single-use expiring password-setup invitation email (/invite#token=...). The fragment is read by the page and sent only in the JSON body to an invitation function. Pre-registered accounts may also sign in immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified Google sign-in activates the profile (status='active') and invalidates any unused password invite token. Admins may provision any role and grant multi-role assignments across the institution; no caller may assign roles to themselves. Department Heads and Department Staff may provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles) strictly within their own department scope. Any attempt by Department Head or Department Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects duplicate email or student_number with 409 Conflict. A Dean may hold only the Dean role or have additional separately authorized role assignments. Privileged server code provisions the Supabase Auth identity and application profile/assignments and writes an immutable audit log entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or receives server credentials. An application invitation does not constitute a signed-in session.
          */
         post: operations["inviteUser"];
         delete?: never;
@@ -479,7 +479,7 @@ export interface paths {
         head?: never;
         /**
          * Manage an account
-         * @description Admin-only update. Students/advisers cannot edit profiles. Validate target-role fields and protect historical roles/identity; synchronize any Auth-related changes through privileged server logic. A Dean assignment must coexist with an Adviser and/or Department Head assignment; reject changes that leave an active Dean without either accompanying role.
+         * @description Admin-only update. Students/advisers cannot edit profiles. Validate target-role fields and protect historical roles/identity; synchronize any Auth-related changes through privileged server logic. A Dean assignment may exist alone or alongside other authorized roles.
          */
         patch: operations["updateProfile"];
         trace?: never;
@@ -1066,7 +1066,7 @@ export interface paths {
         get?: never;
         /**
          * Change curriculum assignment
-         * @description Department Head or Admin changes a student's curriculum assignment. Match program to curriculum; close old/open new on same date with reason and audit. Derived Department/College follow program; preserve earlier attempts, decisions and plans, and auto-apply matching CurriculumPairEquivalence rules where applicable. If the target department makes the current adviser ineligible, require an eligible target-department `new_adviser_id` and atomically close/open adviser assignments on the same date. The caller must also have a Department Head or Department Staff assignment authorized for the target department; an Admin role alone does not grant adviser-reassignment authority. Reject missing or ineligible advisers with 409 and insufficient target-department authority with 403.
+         * @description Department Head or Admin changes a student's curriculum assignment. Match program to curriculum; close old/open new on same date with reason and audit. Derived Department/College follow program; preserve earlier attempts, decisions and plans, and auto-apply matching CurriculumPairEquivalence rules where applicable. Changing a curriculum does not itself change the student's adviser assignment; any separate adviser reassignment follows the authorized department workflow and preserves zero-gap continuity.
          */
         put: operations["assignStudentCurriculum"];
         post?: never;
@@ -1871,7 +1871,7 @@ export interface paths {
         put?: never;
         /**
          * Approve or reject a curriculum transfer request
-         * @description Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When approved, atomically closes the prior StudentCurriculumAssignment, opens the new one, applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and commits the audit log entry. If the destination department makes the current adviser ineligible, approval requires `new_adviser_id` for an eligible active target-department adviser and atomically changes the adviser assignment with zero gap. The caller must hold a target-department Head or Staff assignment authorizing the reassignment; Admin alone does not grant that authority. Reject a missing or ineligible replacement with 409 and missing target-department authority with 403; rejection never changes assignments.
+         * @description Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When approved, atomically closes the prior StudentCurriculumAssignment, opens the new one, applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and commits the audit log entry. Approval does not itself change the student's adviser assignment; any separate reassignment follows the authorized department workflow and preserves zero-gap continuity. Rejection never changes assignments.
          */
         post: operations["decideCurriculumTransfer"];
         delete?: never;
@@ -3176,11 +3176,6 @@ export interface components {
             program_id: string;
             /** Format: uuid */
             curriculum_version_id: string;
-            /**
-             * Format: uuid
-             * @description Required if the current adviser is ineligible for the destination department.
-             */
-            new_adviser_id?: string;
             /** Format: date */
             start_date: string;
             reason: string;
@@ -3841,11 +3836,6 @@ export interface components {
             decision: "approved";
             /** @description Optional approval note when approving a curriculum transfer request. */
             decision_note?: string | null;
-            /**
-             * Format: uuid
-             * @description Required if the current adviser is ineligible for the destination department.
-             */
-            new_adviser_id?: string;
         } | {
             /** @constant */
             decision: "rejected";
