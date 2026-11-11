@@ -1,12 +1,12 @@
 import * as React from "react"
+import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons"
+import { FormField } from "@/components/features/form-field"
 import { PageHeading } from "@/components/features/page-heading"
-import { StatGrid } from "@/components/features/stat-tile"
 import { Panel } from "@/components/features/panel"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { DownloadIcon, PlusIcon } from "@/components/icons"
 import {
   Dialog,
   DialogContent,
@@ -15,11 +15,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { SampleFooter } from "@/components/features/sample-footer"
+import { DepartmentToast } from "@/routes/department-head/dh-ui"
+import {
+  formatDisplayDate,
+  formatTermDateRange,
+  useDepartmentToast,
+} from "@/routes/department-head/dh-utils"
 import { MOCK_ACADEMIC_TERMS, type AcademicTermRecord } from "@/routes/department-head/mock-data"
+
+const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const
 
 export default function AcademicTermsPage() {
   const [terms, setTerms] = React.useState<AcademicTermRecord[]>(MOCK_ACADEMIC_TERMS)
@@ -27,59 +41,68 @@ export default function AcademicTermsPage() {
   const [termToClose, setTermToClose] = React.useState<AcademicTermRecord | null>(null)
   const [termToView, setTermToView] = React.useState<AcademicTermRecord | null>(null)
   const [closureNote, setClosureNote] = React.useState("")
-  const [toastMessage, setToastMessage] = React.useState<string | null>(null)
+  const { message: toastMessage, showToast } = useDepartmentToast()
 
   // Add term form states
   const [newAY, setNewAY] = React.useState("2025–2026")
-  const [newSem, setNewSem] = React.useState("2nd semester")
+  const [newSem, setNewSem] = React.useState<string>("2nd semester")
   const [newStartDate, setNewStartDate] = React.useState("2026-01-12")
   const [newEndDate, setNewEndDate] = React.useState("2026-05-29")
   const [newDeadline, setNewDeadline] = React.useState("2026-06-12")
   const [newStatus, setNewStatus] = React.useState<"Open" | "Closed">("Closed")
 
-  const showToast = (message: string) => {
-    setToastMessage(message)
-    setTimeout(() => setToastMessage(null), 4500)
-  }
-
   const handleExportPdf = () => {
-    showToast("Generating Academic Terms PDF summary... (Preview download triggered)")
-    window.print()
+    showToast("Generating Academic Terms PDF summary...")
+    try {
+      if (typeof window !== "undefined" && typeof window.print === "function") {
+        window.print()
+      }
+    } catch {
+      // Ignore unimplemented print in headless test environments
+    }
   }
 
   const handleCreateTerm = () => {
-    const formattedDates = `${newStartDate} – ${newEndDate}`
     const created: AcademicTermRecord = {
       id: `term-${Date.now()}`,
       academicYear: newAY.trim() || "2025–2026",
       semester: newSem,
-      termDates: formattedDates,
-      encodingDeadline: newDeadline,
+      termDates: formatTermDateRange(newStartDate, newEndDate),
+      encodingDeadline: formatDisplayDate(newDeadline),
       status: newStatus,
       closedBy: newStatus === "Closed" ? "Dr. Andrea Dela Cruz" : undefined,
+      startDate: newStartDate,
+      endDate: newEndDate,
     }
 
     setTerms((prev) => [created, ...prev])
     setIsAddTermOpen(false)
-    showToast(`Added academic term ${created.academicYear} ${created.semester}. (Preview only)`)
+    showToast(`Added academic term ${created.academicYear} ${created.semester}.`)
   }
 
   const handleCloseEncoding = () => {
     if (!termToClose) return
+    const trimmedNote = closureNote.trim()
     setTerms((prev) =>
       prev.map((t) =>
         t.id === termToClose.id
-          ? { ...t, status: "Closed", closedBy: "Dr. Andrea Dela Cruz" }
+          ? {
+              ...t,
+              status: "Closed",
+              closedBy: "Dr. Andrea Dela Cruz",
+              closureNote: trimmedNote || undefined,
+            }
           : t
       )
     )
     const closedName = `${termToClose.academicYear} · ${termToClose.semester}`
     setTermToClose(null)
     setClosureNote("")
-    showToast(`Encoding closed for ${closedName}. Administrator notified. (Preview only)`)
+    showToast(`Encoding closed for ${closedName}. Administrator notified.`)
   }
 
-  const activeTerm = terms.find((t) => t.status === "Open")
+  const openCount = terms.filter((t) => t.status === "Open").length
+  const closedCount = terms.length - openCount
 
   return (
     <div className="space-y-6">
@@ -100,28 +123,9 @@ export default function AcademicTermsPage() {
         }
       />
 
-      <StatGrid
-        items={[
-          {
-            label: "Active term",
-            value: activeTerm ? `${activeTerm.academicYear}` : "None",
-            note: activeTerm ? activeTerm.semester : "No term currently in session",
-          },
-          {
-            label: "Grade encoding",
-            value: activeTerm ? "Open" : "Closed",
-            note: activeTerm ? `Deadline: ${activeTerm.encodingDeadline}` : "All terms closed",
-          },
-          {
-            label: "Encoding window",
-            value: "Standard",
-            note: "Managed under DCST department scope",
-          },
-        ]}
-      />
-
-      <Alert className="bg-notice-advisory-bg border-notice-advisory-border text-notice-advisory">
-        <AlertDescription className="text-xs md:text-sm">
+      <Alert variant="advisory">
+        <AlertIcon />
+        <AlertDescription>
           Closing encoding prevents further grade entry for the term. A backup reminder is sent to the administrator; the Department Head can record a completed backup in Settings.
         </AlertDescription>
       </Alert>
@@ -139,7 +143,7 @@ export default function AcademicTermsPage() {
               <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Term dates</TableHead>
               <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Encoding deadline</TableHead>
               <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Status</TableHead>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase text-right">Actions</TableHead>
+              <TableHead className="text-right" aria-label="Actions" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -168,10 +172,10 @@ export default function AcademicTermsPage() {
                     </Button>
                   ) : (
                     <Button
-                      variant="ghost"
+                      variant="link"
                       size="sm"
                       onClick={() => setTermToView(t)}
-                      className="cursor-pointer text-xs text-primary font-medium hover:bg-secondary"
+                      className="h-auto px-0 py-1 font-semibold underline-offset-4 cursor-pointer"
                     >
                       View term
                     </Button>
@@ -183,7 +187,10 @@ export default function AcademicTermsPage() {
         </Table>
 
         <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-          <span>{terms.length} academic terms</span>
+          <span>
+            {openCount} open {openCount === 1 ? "term" : "terms"} · {closedCount} closed{" "}
+            {closedCount === 1 ? "term" : "terms"}
+          </span>
           <span>DCST department scope</span>
         </div>
       </Panel>
@@ -199,77 +206,76 @@ export default function AcademicTermsPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="at-ay">Academic year</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Academic year" htmlFor="at-ay">
                 <Input
                   id="at-ay"
                   value={newAY}
                   onChange={(e) => setNewAY(e.target.value)}
                   placeholder="2025–2026"
                 />
-              </div>
+              </FormField>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="at-sem">Semester</Label>
-                <select
-                  id="at-sem"
-                  value={newSem}
-                  onChange={(e) => setNewSem(e.target.value)}
-                  className="w-full h-9 rounded-sm border border-line bg-background px-3 text-sm focus-visible:outline-primary"
-                >
-                  <option>1st semester</option>
-                  <option>2nd semester</option>
-                  <option>Midyear</option>
-                </select>
-              </div>
+              <FormField label="Semester" htmlFor="at-sem">
+                <Select value={newSem} onValueChange={setNewSem}>
+                  <SelectTrigger id="at-sem" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEMESTER_OPTIONS.map((sem) => (
+                      <SelectItem key={sem} value={sem}>
+                        {sem}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="at-start">Start date</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Start date" htmlFor="at-start">
                 <Input
                   id="at-start"
                   type="date"
                   value={newStartDate}
                   onChange={(e) => setNewStartDate(e.target.value)}
                 />
-              </div>
+              </FormField>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="at-end">Actual end date</Label>
+              <FormField label="Actual end date" htmlFor="at-end">
                 <Input
                   id="at-end"
                   type="date"
                   value={newEndDate}
                   onChange={(e) => setNewEndDate(e.target.value)}
                 />
-              </div>
+              </FormField>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="at-deadline">Encoding deadline</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Encoding deadline" htmlFor="at-deadline">
                 <Input
                   id="at-deadline"
                   type="date"
                   value={newDeadline}
                   onChange={(e) => setNewDeadline(e.target.value)}
                 />
-              </div>
+              </FormField>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="at-status">Encoding status</Label>
-                <select
-                  id="at-status"
+              <FormField label="Encoding status" htmlFor="at-status">
+                <Select
                   value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value as "Open" | "Closed")}
-                  className="w-full h-9 rounded-sm border border-line bg-background px-3 text-sm focus-visible:outline-primary"
+                  onValueChange={(val) => setNewStatus(val as "Open" | "Closed")}
                 >
-                  <option>Closed</option>
-                  <option>Open</option>
-                </select>
-              </div>
+                  <SelectTrigger id="at-status" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                    <SelectItem value="Open">Open</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
             </div>
           </div>
 
@@ -283,7 +289,15 @@ export default function AcademicTermsPage() {
       </Dialog>
 
       {/* Close Encoding Dialog */}
-      <Dialog open={!!termToClose} onOpenChange={(open) => !open && setTermToClose(null)}>
+      <Dialog
+        open={!!termToClose}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTermToClose(null)
+            setClosureNote("")
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Close grade encoding</DialogTitle>
@@ -302,28 +316,32 @@ export default function AcademicTermsPage() {
                 ?
               </p>
 
-              <Alert className="bg-notice-advisory-bg border-notice-advisory-border text-notice-advisory">
+              <Alert variant="advisory">
+                <AlertIcon />
                 <AlertDescription className="text-xs">
                   New grade entries will be closed for this term. A backup reminder will be sent to the administrator.
                 </AlertDescription>
               </Alert>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="closure-note" className="text-xs font-semibold text-muted-2 uppercase tracking-wider">
-                  Closure note
-                </Label>
+              <FormField label="Closure note" htmlFor="closure-note">
                 <Textarea
                   id="closure-note"
                   placeholder="Enter a note or summary for closing this term"
                   value={closureNote}
                   onChange={(e) => setClosureNote(e.target.value)}
                 />
-              </div>
+              </FormField>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTermToClose(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTermToClose(null)
+                setClosureNote("")
+              }}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleCloseEncoding}>
@@ -342,7 +360,7 @@ export default function AcademicTermsPage() {
           </DialogHeader>
 
           {termToView && (
-            <div className="grid grid-cols-2 gap-4 py-3 text-sm">
+            <dl className="grid grid-cols-2 gap-4 py-3 text-sm">
               <div>
                 <dt className="text-xs font-semibold text-muted-2 uppercase tracking-wider">Academic year</dt>
                 <dd className="mt-1 font-medium text-foreground">{termToView.academicYear}</dd>
@@ -371,7 +389,13 @@ export default function AcademicTermsPage() {
                 <dt className="text-xs font-semibold text-muted-2 uppercase tracking-wider">Closed by</dt>
                 <dd className="mt-1 font-medium text-foreground">{termToView.closedBy ?? "Dr. Andrea Dela Cruz"}</dd>
               </div>
-            </div>
+              {termToView.closureNote && (
+                <div className="col-span-2">
+                  <dt className="text-xs font-semibold text-muted-2 uppercase tracking-wider">Closure note</dt>
+                  <dd className="mt-1 font-medium text-foreground">{termToView.closureNote}</dd>
+                </div>
+              )}
+            </dl>
           )}
 
           <DialogFooter>
@@ -380,12 +404,7 @@ export default function AcademicTermsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Floating feedback toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-md bg-sidebar-primary px-4 py-3 text-sm font-medium text-sidebar-primary-foreground shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2">
-          {toastMessage}
-        </div>
-      )}
+      <DepartmentToast message={toastMessage} />
 
       <SampleFooter>
         Sample records for presentation · Reference date: 15 August 2025 · Static design
