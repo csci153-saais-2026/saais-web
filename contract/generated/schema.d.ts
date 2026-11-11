@@ -253,7 +253,7 @@ export interface paths {
         };
         /**
          * Query master course catalog
-         * @description Retrieve catalog courses with credit units, lecture/lab hours, elective eligibility, category classification, and repeatable rules. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve catalog courses with credit units, lecture/lab hours, elective eligibility, category classification. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listCourses"];
         put?: never;
@@ -1087,7 +1087,7 @@ export interface paths {
         put?: never;
         /**
          * Record enrollment or missing grades
-         * @description Lock student/offering/attempt and recheck current assignment, selected term membership and strict clearance at commit (or record an audited prerequisite override when continue_with_prerequisite_override is true with prerequisite_override_reason). Blank new grades enroll; first new midterm requires confirmation. Existing submitted populated grade rejects entire request even if identical. Return actionable conflict codes; no partial grade or audit write. Derive final-only Passed/Failed or explicit INC/DR/NA status. Term lock blocks writes unless override applies.
+         * @description Lock student/offering/attempt and recheck current assignment, selected term membership and strict clearance at commit (or record an audited prerequisite override when continue_with_prerequisite_override is true with prerequisite_override_reason). Blank new grades enroll; first new midterm requires confirmation. Existing submitted populated grade rejects entire request even if identical. Return actionable conflict codes; no partial grade or audit write. Derive final-only Passed/Failed or explicit INC/DR/NA status. Term lock blocks writes unless override applies. Reject a new attempt if the student has already passed the same course, including via a passed INC completion; corrections to the existing attempt remain available through their audited operations.
          */
         post: operations["recordGrades"];
         delete?: never;
@@ -1107,7 +1107,7 @@ export interface paths {
         put?: never;
         /**
          * Batch-save the Encode Grades term grid
-         * @description Atomically encode or update term enrollment rows, grades, statuses (1.00-5.00, INC, DR, NA), instructors, prerequisite overrides, and staff-only remarks for a student's selected school term from the Encode Grades modal. Obeys term lock and override rules.
+         * @description Atomically encode or update term enrollment rows, grades, statuses (1.00-5.00, INC, DR, NA), instructors, prerequisite overrides, and staff-only remarks for a student's selected school term from the Encode Grades modal. Obeys term lock and override rules. Reject the entire batch if a new row would retake a course the student has already passed.
          */
         post: operations["encodeTermGrades"];
         delete?: never;
@@ -1449,7 +1449,7 @@ export interface paths {
         };
         /**
          * Read academic summary
-         * @description Scope own/assigned/department/faculty/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Most recent pass remains counted for none/grade_replacement; later failures do not undo it. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
+         * @description Scope own/assigned/department/faculty/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Count the passed attempt for a course; if no attempt passed, count the latest attempt. Historical records remain intact if legacy data contains later attempts after a pass. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
          */
         get: operations["getAcademicSummary"];
         put?: never;
@@ -1811,7 +1811,7 @@ export interface paths {
         put?: never;
         /**
          * Preview or commit batch grade import
-         * @description Adviser previews or commits a batch of grade rows for assigned advisees (FR-IMP-01). Separates valid rows from rejected rows (unassigned student, locked term without override, unknown course offering, invalid grade token) and, when mode is commit, atomically writes all valid rows and audit log entries.
+         * @description Adviser previews or commits a batch of grade rows for assigned advisees (FR-IMP-01). Separates valid rows from rejected rows (unassigned student, locked term without override, unknown course offering, invalid grade token, or a new attempt at an already-passed course) and, when mode is commit, atomically writes all valid rows and audit log entries.
          */
         post: operations["importGradesBatch"];
         delete?: never;
@@ -2317,10 +2317,11 @@ export interface components {
          */
         CourseStatus: "active" | "inactive" | "discontinued";
         /**
-         * @description Course retake credit rule. For additional_credit, every passed repeat contributes its earned units and grade to GWA, including passes beyond curriculum requirements; filling the curriculum requirement does not cap earned credit or GWA contributions.
+         * @deprecated
+         * @description Legacy compatibility field; only none is accepted. A student may retake a course that has not been passed, but cannot take the same course again after passing it.
          * @enum {string}
          */
-        RepeatableType: "none" | "grade_replacement" | "grade_averaging" | "additional_credit";
+        RepeatableType: "none";
         /**
          * @description Midterm outcome status (graded numeric midterm vs VSU DR midterm drop)
          * @enum {string}

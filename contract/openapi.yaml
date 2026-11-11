@@ -1123,7 +1123,7 @@ paths:
       operationId: listCourses
       description: >-
         Retrieve catalog courses with credit units, lecture/lab hours, elective eligibility,
-        category classification, and repeatable rules. Flat columns are allowlisted per
+        category classification. Flat columns are allowlisted per
         x-projection-fields; role metadata documents checks, not automatic runtime authorization.
         Inaccessible/missing collection rows return 200 [], while invalid role/column requests may
         return 403.
@@ -4139,7 +4139,9 @@ paths:
         grades enroll; first new midterm requires confirmation. Existing submitted populated grade
         rejects entire request even if identical. Return actionable conflict codes; no partial grade
         or audit write. Derive final-only Passed/Failed or explicit INC/DR/NA status. Term lock
-        blocks writes unless override applies.
+        blocks writes unless override applies. Reject a new attempt if the student has already passed
+        the same course, including via a passed INC completion; corrections to the existing attempt
+        remain available through their audited operations.
       x-department-closure: >-
         A closed department encoding state for the affected student and term blocks grade-changing writes
         with 409 until reopened; the global lock and its override remain independently enforced.
@@ -4193,7 +4195,8 @@ paths:
       description: >-
         Atomically encode or update term enrollment rows, grades, statuses (1.00-5.00, INC, DR,
         NA), instructors, prerequisite overrides, and staff-only remarks for a student's selected
-        school term from the Encode Grades modal. Obeys term lock and override rules.
+        school term from the Encode Grades modal. Obeys term lock and override rules. Reject the
+        entire batch if a new row would retake a course the student has already passed.
       x-department-closure: >-
         A closed department encoding state for the affected student and term blocks grade-changing writes
         with 409 until reopened; the global lock and its override remain independently enforced.
@@ -5206,7 +5209,8 @@ paths:
       description: >-
         Scope own/assigned/department/faculty/admin records. Use academically ordered effective
         attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA.
-        Most recent pass remains counted for none/grade_replacement; later failures do not undo it.
+        Count the passed attempt for a course; if no attempt passed, count the latest attempt.
+        Historical records remain intact if legacy data contains later attempts after a pass.
         Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
       x-required-roles:
         - student
@@ -6922,7 +6926,8 @@ paths:
       description: >-
         Adviser previews or commits a batch of grade rows for assigned advisees (FR-IMP-01).
         Separates valid rows from rejected rows (unassigned student, locked term without override,
-        unknown course offering, invalid grade token) and, when mode is commit, atomically writes
+        unknown course offering, invalid grade token, or a new attempt at an already-passed course)
+        and, when mode is commit, atomically writes
         all valid rows and audit log entries.
       x-department-closure: >-
         A closed department encoding state for the affected student and term blocks grade-changing writes
@@ -8951,13 +8956,10 @@ components:
       type: string
       enum:
         - none
-        - grade_replacement
-        - grade_averaging
-        - additional_credit
+      deprecated: true
       description: >-
-        Course retake credit rule. For additional_credit, every passed repeat contributes its
-        earned units and grade to GWA, including passes beyond curriculum requirements; filling
-        the curriculum requirement does not cap earned credit or GWA contributions.
+        Legacy compatibility field; only none is accepted. A student may retake a course that
+        has not been passed, but cannot take the same course again after passing it.
     MidtermStatus:
       type: string
       enum:
@@ -14758,6 +14760,10 @@ x-saais-invariants:
     - department_staff
     - dean
     - admin
+  course_retakes: >-
+    Students may retake a course that has not been passed. Once passed, including by INC
+    completion, no new attempt for the same course may be created by any enrollment or import path.
+    Audited corrections and existing historical attempts remain available.
   student_profile: >-
     Read-only to the student; provisioned by Admin or authorized department Head/Staff with an
     eligible active initial adviser in the same transaction. A role update must not create a student

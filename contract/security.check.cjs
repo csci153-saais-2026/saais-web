@@ -295,3 +295,12 @@ test('student invitation requires a non-null initial adviser', () => {
   assert.match(schemas.InviteRequest.description, /other invite variants cannot add a student role/);
   assert.match(spec['x-saais-invariants'].student_profile, /active initial adviser/);
 });
+
+
+test('passed courses cannot be retaken through grade entry or import', () => {
+  assert.deepEqual(schemas.RepeatableType.enum, ['none']);
+  assert.match(spec['x-saais-invariants'].course_retakes, /no new attempt/);
+  for (const id of ['recordGrades', 'encodeTermGrades', 'importGradesBatch']) {
+    assert.match(operations.find(x => x.operation.operationId === id).operation.description, /pass/i, id);
+  }
+});
