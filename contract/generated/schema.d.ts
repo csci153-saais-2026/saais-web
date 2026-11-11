@@ -1449,7 +1449,7 @@ export interface paths {
         };
         /**
          * Read academic summary
-         * @description Scope own/assigned/department/faculty/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Each graded attempt contributes to the GWA of its own school term; an earlier failing grade remains in that term when the course is retaken later. An ungraded retake contributes no final grade to its term. Cumulative GWA derives from semester GWAs; semester weighting is pending confirmation. Course completion and earned units count the passing attempt once. Historical records remain intact if legacy data contains later attempts after a pass. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
+         * @description Scope own/assigned/department/faculty/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Each graded attempt remains in its original historical term GWA. Until a later retake has a numeric final or completion grade, the earlier failure counts in cumulative GWA. Once the later grade is recorded, it replaces the failure in cumulative GWA; the original remains on the transcript, marked Repeated and excluded from cumulative GWA. Recompute cumulative GWA after recording the result. Non-numeric retake outcomes, including INC and DR, do not replace or duplicate the earlier failure in cumulative GWA until a numeric final or INC completion grade is recorded. A lapsed INC retake may count as 5.00 in its historical term GWA but does not add a second cumulative contribution while the earlier failure remains selected. Semester weighting remains pending confirmation. Course completion and earned units count the passing attempt once. Historical records remain intact if legacy data contains later attempts after a pass. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
          */
         get: operations["getAcademicSummary"];
         put?: never;
@@ -1729,7 +1729,7 @@ export interface paths {
         };
         /**
          * Read newest-first semester grades
-         * @description Return terms newest first by academic chronological key. Use effective INC completion results and final-only term GWA; data-entry time must not reorder academic history. Bound total attempt rows as well as returned term groups.
+         * @description Return terms newest first by academic chronological key. Use effective INC completion results and final-only historical term GWA; data-entry time must not reorder academic history. Mark a failure superseded by a later graded retake as Repeated and exclude it from cumulative GWA while retaining the original grade and term history. Bound total attempt rows and term groups.
          */
         get: operations["getTermGrades"];
         put?: never;
@@ -3322,6 +3322,10 @@ export interface components {
             effective_status: components["schemas"]["AttemptStatus"];
             gwa_grade: number | null;
             is_lapsed_inc: boolean;
+            /** @description True when this failing attempt is superseded by a later numeric retake result; show Repeated on the transcript. */
+            readonly is_repeated: boolean;
+            /** @description True when this attempt contributes to cumulative GWA after retake replacement rules. */
+            readonly counts_toward_cumulative_gwa: boolean;
         };
         INCResolution: {
             /** Format: uuid */
