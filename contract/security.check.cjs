@@ -344,6 +344,8 @@ test('closure scope and semester retake history reflect confirmed rules', () => 
   assert.match(summary.description, /marked Repeated and excluded/);
   assert.match(summary.description, /including INC and DR, do not replace/);
   assert.match(summary.description, /does not add a second cumulative contribution/);
+  assert.match(summary.description, /grade times its units divided by total included units/);
+  assert.doesNotMatch(summary.description, /weighting remains pending/);
   assert.ok(schemas.AttemptResult.required.includes('is_repeated'));
   assert.ok(schemas.AttemptResult.required.includes('counts_toward_cumulative_gwa'));
 });
