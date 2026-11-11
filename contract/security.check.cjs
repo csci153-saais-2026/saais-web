@@ -317,3 +317,16 @@ test('department closure permits only first timely INC completion', () => {
   assert.match(route.post.description, /before\/on existing deadline/);
   assert.match(route.patch.description, /blocked by a department encoding closure/);
 });
+
+
+test('cross-department transfers retain the assigned adviser until destination reassignment', () => {
+  const transfer = operations.find(x => x.operation.operationId === 'decideCurriculumTransfer').operation;
+  const single = operations.find(x => x.operation.operationId === 'reassignAdviser').operation;
+  const bulk = operations.find(x => x.operation.operationId === 'bulkReassignAdvisers').operation;
+  assert.match(transfer.description, /existing adviser remains current/);
+  assert.match(transfer.description, /does not grant broader access/);
+  assert.match(single.description, /destination department.s Head or Staff/);
+  assert.match(single.description, /current adviser belongs to the former department/);
+  assert.match(bulk.description, /student.s current destination department/);
+  assert.deepEqual(single['x-required-roles'], ['department_head', 'department_staff']);
+});
