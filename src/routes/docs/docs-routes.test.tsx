@@ -1,8 +1,9 @@
+import LoginPage from '@/routes/auth/LoginPage'
 import { getSupabaseClient, resetSupabaseClientForTests } from '@/lib/supabase/client'
 import { parseMarkdownBlocks } from '@/routes/docs/markdown-blocks'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { setAccessTokenResolver, setMockSessionToken } from '@/lib/api'
 import App from '@/App'
 import DocsHubPage from '@/routes/docs/DocsHubPage'
@@ -63,6 +64,20 @@ describe('docs-registry canonical & allowlist guarantees', () => {
 })
 
 describe('DocsAuthGate & session policy', () => {
+  it('offers an actual password sign-in form and submits to Supabase', async () => {
+    vi.stubEnv('VITE_API_MODE', 'supabase')
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co')
+    vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-key')
+    const sdk = getSupabaseClient()
+    const signIn = vi.spyOn(sdk.auth, 'signInWithPassword').mockResolvedValue({ data: { user: null, session: null }, error: null } as never)
+    render(<MemoryRouter initialEntries={['/login']}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/docs" element={<div>Signed in</div>} /></Routes></MemoryRouter>)
+    fireEvent.change(screen.getByLabelText('Institutional email'), { target: { value: 'student@vsu.edu.ph' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password-test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => expect(signIn).toHaveBeenCalledWith({ email: 'student@vsu.edu.ph', password: 'password-test' }))
+    await screen.findByText('Signed in')
+  })
+
   it('hides docs when the Supabase session signs out', async () => {
     vi.stubEnv('VITE_API_MODE', 'supabase')
     vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co')
