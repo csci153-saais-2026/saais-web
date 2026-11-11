@@ -1,3 +1,4 @@
+import { AlertIcon } from "@/components/icons"
 import { Panel } from "@/components/features/panel"
 import { PageHeading } from "@/components/features/page-heading"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -13,7 +14,8 @@ export function PartnerPlaceholderPage({ title, subtitle, screenNumber }: Partne
   return (
     <div className="space-y-6">
       <PageHeading title={title} subtitle={subtitle} />
-      <Alert className="bg-muted/40 border-line">
+      <Alert className="bg-muted/40 border-border">
+        <AlertIcon />
         <AlertTitle className="font-semibold text-foreground">Assigned to Partner (Developer 2 — Matt)</AlertTitle>
         <AlertDescription className="text-muted-foreground mt-1">
           This screen (Screen {screenNumber}: {title}) is reserved for Developer 2 in accordance with the 50/50 division of work detailed in{" "}

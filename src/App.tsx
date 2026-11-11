@@ -9,6 +9,7 @@ const CurriculaPage = lazy(() => import("@/routes/department-head/CurriculaPage"
 const EquivalencePage = lazy(() => import("@/routes/department-head/EquivalencePage"))
 const OutsideCreditsPage = lazy(() => import("@/routes/department-head/OutsideCreditsPage"))
 const AcademicTermsPage = lazy(() => import("@/routes/department-head/AcademicTermsPage"))
+const NotificationsPage = lazy(() => import("@/routes/department-head/NotificationsPage"))
 
 function Home() {
   return (
@@ -17,7 +18,7 @@ function Home() {
         <h1 className="text-3xl font-display font-bold">SAAIS</h1>
         <p className="text-muted-foreground mt-1">Student Academic Advising and Information System</p>
       </div>
-      <div className="rounded-lg border border-line bg-card p-6 shadow-xs">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-xs">
         <h2 className="text-lg font-semibold mb-2">Available Portals & Modules</h2>
         <ul className="space-y-3">
           <li>
@@ -61,6 +62,7 @@ function App() {
             <Route path="equivalence" element={<EquivalencePage />} />
             <Route path="outside-credits" element={<OutsideCreditsPage />} />
             <Route path="academic-terms" element={<AcademicTermsPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
 
             {/* Developer 2 (Partner) Reserved Routes */}
             <Route
