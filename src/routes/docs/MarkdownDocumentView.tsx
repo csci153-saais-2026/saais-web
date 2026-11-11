@@ -51,6 +51,11 @@ function InlineTokens({
  * Safe semantic renderer for allowlisted Markdown AST blocks using SAAIS typography,
  * forest code specimens, and responsive stack-tables (zero raw HTML injection).
  */
+function NestedList({ list }: { list: { readonly ordered: boolean; readonly items: readonly import('./markdown-blocks').MarkdownListItem[] } }) {
+  const Tag = list.ordered ? 'ol' : 'ul'
+  return <Tag className={list.ordered ? 'list-decimal pl-6' : 'list-disc pl-6'}>{list.items.map((item, i) => <li key={i}><InlineTokens tokens={item.tokens} />{item.children.map((child, j) => <NestedList key={j} list={child} />)}</li>)}</Tag>
+}
+
 export function MarkdownDocumentView({
   blocks,
 }: {
@@ -122,9 +127,12 @@ export function MarkdownDocumentView({
                     : 'max-w-[70ch] list-disc space-y-2 pl-6 text-body text-muted-foreground'
                 }
               >
-                {block.items.map((itemTokens, itemIndex) => (
+                {block.items.map((item, itemIndex) => (
                   <li key={itemIndex}>
-                    <InlineTokens tokens={itemTokens} />
+                    <InlineTokens tokens={item.tokens} />
+                    {item.children.map((child, childIndex) => (
+                      <NestedList key={childIndex} list={child} />
+                    ))}
                   </li>
                 ))}
               </ListTag>

@@ -1,3 +1,5 @@
+import { getSupabaseClient, resetSupabaseClientForTests } from '@/lib/supabase/client'
+import { parseMarkdownBlocks } from '@/routes/docs/markdown-blocks'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -24,6 +26,9 @@ import {
 
 afterEach(() => {
   cleanup()
+  vi.unstubAllEnvs()
+  vi.restoreAllMocks()
+  resetSupabaseClientForTests()
   setMockSessionToken(null)
   setAccessTokenResolver(null)
   resetRedocLoaderForTests()
@@ -34,6 +39,15 @@ afterEach(() => {
 })
 
 describe('docs-registry canonical & allowlist guarantees', () => {
+  it('consumes unsupported lines, respects fence lengths, and preserves nested lists', () => {
+    const blocks = parseMarkdownBlocks('#### Troubleshooting\n#hashtag\n| not a table\n\n````js\n```\n```suffix\ncode\n````\n\n1. Parent\n   - Child\n   - Another\n2. Next')
+    expect(blocks[0].kind).toBe('paragraph')
+    const code = blocks.find(b => b.kind === 'code')
+    expect(code?.kind === 'code' && code.code).toBe('```\n```suffix\ncode')
+    const list = blocks.find(b => b.kind === 'list')
+    expect(list?.kind === 'list' && list.items[0].children[0].items).toHaveLength(2)
+  })
+
   it('resolves canonical contract/openapi.yaml URL directly and excludes meeting minutes', () => {
     expect(CANONICAL_OPENAPI_SPEC_URL).toContain('openapi')
     expect(ALLOWLISTED_DOCS.length).toBeGreaterThan(0)
@@ -49,6 +63,32 @@ describe('docs-registry canonical & allowlist guarantees', () => {
 })
 
 describe('DocsAuthGate & session policy', () => {
+  it('hides docs when the Supabase session signs out', async () => {
+    vi.stubEnv('VITE_API_MODE', 'supabase')
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co')
+    vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-key')
+    const sdk = getSupabaseClient()
+    const callback: { current?: (event: string) => void } = {}
+    vi.spyOn(sdk.auth, 'onAuthStateChange').mockImplementation((handler) => {
+      callback.current = (event) => { void handler(event as 'SIGNED_OUT', null) }
+      return { data: { subscription: { id: 'test', callback: handler, unsubscribe: vi.fn() } } }
+    })
+    render(<MemoryRouter><DocsHubPage isDev={false} checkAuthenticated={async () => true} /></MemoryRouter>)
+    await screen.findByRole('heading', { name: 'Documentation' })
+    expect(callback.current).toBeDefined()
+    callback.current?.('SIGNED_OUT')
+    await screen.findByText('Active session not found')
+  })
+
+  it('rechecks the session when the window regains focus', async () => {
+    let active = true
+    render(<MemoryRouter><DocsHubPage isDev={false} checkAuthenticated={async () => active} /></MemoryRouter>)
+    await screen.findByRole('heading', { name: 'Documentation' })
+    active = false
+    fireEvent.focus(window)
+    await screen.findByText('Active session not found')
+  })
+
   it('allows unauthenticated access in development mode (isDev=true)', () => {
     render(
       <MemoryRouter initialEntries={['/docs']}>
