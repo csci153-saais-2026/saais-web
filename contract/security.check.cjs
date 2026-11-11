@@ -283,3 +283,13 @@ test('grade recording and correction are separate, with original prerequisite an
     assert.equal(schemas[name].properties[field].multipleOf, undefined, 'Weighted GWA is not a quarter-step grade');
   }
 });
+
+
+test('student invitation requires a non-null initial adviser', () => {
+  const student = schemas.StudentInviteRequest;
+  assert.ok(student.required.includes('adviser_id'));
+  assert.equal(student.properties.adviser_id.type, 'string');
+  assert.equal(student.properties.adviser_id.format, 'uuid');
+  assert.match(schemas.InviteRequest.description, /other invite variants cannot add a student role/);
+  assert.match(spec['x-saais-invariants'].student_profile, /active initial adviser/);
+});

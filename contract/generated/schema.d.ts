@@ -2346,7 +2346,7 @@ export interface components {
          * @enum {string}
          */
         SchoolTermType: "1st Semester" | "2nd Semester" | "Summer";
-        /** @description Admin or Department Staff/Head provisions identity and role-specific academic assignments atomically before invitation completion. Students require matching program/curriculum and an optional active adviser (or unassigned pending assignment); advisers and staff roles require organizational scope. Department Head and Department Staff may provision Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` grants remain Admin-only). Unified provisioning creates the pre-registered `Profile` (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link. */
+        /** @description Admin or Department Staff/Head provisions identity and role-specific academic assignments atomically before invitation completion. Students require matching program/curriculum and an required eligible active adviser; advisers and staff roles require organizational scope. When any requested role is student, use StudentInviteRequest with the required student details and adviser; other invite variants cannot add a student role. Department Head and Department Staff may provision Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` grants remain Admin-only). Unified provisioning creates the pre-registered `Profile` (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link. */
         InviteRequest: components["schemas"]["StudentInviteRequest"] | components["schemas"]["AdviserInviteRequest"] | components["schemas"]["AdminInviteRequest"] | components["schemas"]["StaffRoleInviteRequest"];
         InviteResponse: {
             /** @example true */
@@ -3032,8 +3032,11 @@ export interface components {
             program_id: string;
             /** Format: uuid */
             curriculum_version_id: string;
-            /** Format: uuid */
-            adviser_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Eligible active adviser assigned atomically during student provisioning.
+             */
+            adviser_id: string;
             entry_year?: number | null;
             /** @description Optional multi-role assignments when a provisioned student account also holds an explicitly authorized secondary role assignment. */
             role_assignments?: components["schemas"]["RoleAssignmentInput"][];
