@@ -1,11 +1,12 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
-import { cleanup, render, screen, fireEvent } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router"
 import CurriculumTransfersPage from "./CurriculumTransfersPage"
 import CurriculaPage from "./CurriculaPage"
 import EquivalencePage from "./EquivalencePage"
 import OutsideCreditsPage from "./OutsideCreditsPage"
 import AcademicTermsPage from "./AcademicTermsPage"
+import NotificationsPage from "./NotificationsPage"
 import { PartnerPlaceholderPage } from "./PartnerPlaceholderPage"
 import { DepartmentHeadLayout } from "./DepartmentHeadLayout"
 
@@ -28,13 +29,13 @@ beforeAll(() => {
 afterEach(cleanup)
 
 describe("Department Head Frontend Suite", () => {
-  describe("DepartmentHeadLayout & Navigation Shell", () => {
-    it("renders dual-role navigation headers and user identity", () => {
+  describe("DepartmentHeadLayout & Notifications", () => {
+    it("renders dual-role navigation headers, user identity, and bell state", () => {
       render(
-        <MemoryRouter initialEntries={["/department-head/curriculum-transfers"]}>
+        <MemoryRouter initialEntries={["/department-head/notifications"]}>
           <Routes>
             <Route path="/department-head" element={<DepartmentHeadLayout />}>
-              <Route path="curriculum-transfers" element={<div>Transfers Content</div>} />
+              <Route path="notifications" element={<NotificationsPage />} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -44,7 +45,11 @@ describe("Department Head Frontend Suite", () => {
       expect(screen.getByText("Department Head · DCST")).toBeDefined()
       expect(screen.getByText("Adviser")).toBeDefined()
       expect(screen.getByText("Department Head")).toBeDefined()
-      expect(screen.getAllByText("Curriculum transfers").length).toBeGreaterThan(0)
+      expect(screen.getByRole("heading", { name: "Notifications" })).toBeDefined()
+      expect(screen.getByText("2 unread of 3 notifications.")).toBeDefined()
+
+      fireEvent.click(screen.getByRole("button", { name: "Mark all as read" }))
+      expect(screen.getByText("You are all caught up.")).toBeDefined()
     })
   })
 
@@ -63,52 +68,63 @@ describe("Department Head Frontend Suite", () => {
       expect(screen.getByText("23-1-00218")).toBeDefined()
     })
 
-    it("opens review dialog for a transfer request", () => {
+    it("supports ?history=1 tab selection and review dialog validation", () => {
       render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={["/department-head/curriculum-transfers?history=1"]}>
           <CurriculumTransfersPage />
         </MemoryRouter>
       )
 
+      expect(screen.getByText("Transfer decision history")).toBeDefined()
+      expect(screen.getByText("Maria Lopez")).toBeDefined()
+
+      const pendingTab = screen.getByRole("tab", { name: /Pending review/i })
+      fireEvent.mouseDown(pendingTab, { button: 0 })
+      fireEvent.click(pendingTab)
       const reviewButtons = screen.getAllByRole("button", { name: /Review request →/i })
       fireEvent.click(reviewButtons[0])
 
       expect(screen.getByRole("heading", { name: "Review curriculum transfer" })).toBeDefined()
-      expect(screen.getAllByText("Current curriculum").length).toBeGreaterThan(0)
-      expect(screen.getAllByText("Requested curriculum").length).toBeGreaterThan(0)
-      expect(screen.getByRole("button", { name: /Approve request/i })).toBeDefined()
-      expect(screen.getByRole("button", { name: /Reject request/i })).toBeDefined()
+      fireEvent.click(screen.getByRole("button", { name: /Reject request/i }))
+      expect(screen.getByText(/Add a decision reason to reject/i)).toBeDefined()
     })
   })
 
-  describe("Screen 2: Curricula & Opened Subjects", () => {
-    it("renders curriculum version cards and opened subjects", () => {
+  describe("Screen 2: Curricula Builder", () => {
+    it("renders version selector, 4-stat summary, and positional term panels", () => {
       render(
         <MemoryRouter>
           <CurriculaPage />
         </MemoryRouter>
       )
 
-      expect(screen.getAllByText("BSCS 2024").length).toBeGreaterThan(0)
-      expect(screen.getAllByText("BSCS 2021").length).toBeGreaterThan(0)
-      expect(screen.getAllByText("BSIT 2024").length).toBeGreaterThan(0)
-      expect(screen.getByText("Opened subjects")).toBeDefined()
-      expect(screen.getByText("CC 101")).toBeDefined()
-      expect(screen.getByText("Introduction to Computing")).toBeDefined()
+      expect(screen.getByRole("heading", { name: "Shape the path to graduation." })).toBeDefined()
+      expect(screen.getAllByText("Required units")).toHaveLength(3)
+      expect(screen.getByText("Enrolled students")).toBeDefined()
+      expect(screen.getByText("Effective from")).toBeDefined()
+      expect(screen.getByText("1 Jun 2023")).toBeDefined()
+      expect(screen.getByText("Status")).toBeDefined()
+      expect(screen.getByText("Year 1 · Semester 1")).toBeDefined()
+      expect(screen.getByText("Year 1 · Semester 2")).toBeDefined()
+      expect(screen.getByText("CSIT 100 — Introduction to Computing")).toBeDefined()
+      expect(screen.getByText("GE elective")).toBeDefined()
     })
 
-    it("opens New version dialog", () => {
+    it("opens Add version and New course dialogs", () => {
       render(
         <MemoryRouter>
           <CurriculaPage />
         </MemoryRouter>
       )
 
-      const addBtn = screen.getByRole("button", { name: /New version/i })
-      fireEvent.click(addBtn)
+      fireEvent.click(screen.getByRole("button", { name: /Add version/i }))
+      expect(screen.getByRole("heading", { name: "Add version" })).toBeDefined()
+      expect(screen.getByLabelText(/Academic year/i)).toBeDefined()
 
-      expect(screen.getByRole("heading", { name: "New version of curriculum" })).toBeDefined()
-      expect(screen.getByLabelText(/Version name/i)).toBeDefined()
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+      fireEvent.click(screen.getByRole("button", { name: /New course/i }))
+      expect(screen.getByRole("heading", { name: "New course" })).toBeDefined()
+      expect(screen.getByLabelText(/Course code/i)).toBeDefined()
     })
   })
 
@@ -133,9 +149,7 @@ describe("Department Head Frontend Suite", () => {
         </MemoryRouter>
       )
 
-      const addBtn = screen.getByRole("button", { name: /Add course equivalence/i })
-      fireEvent.click(addBtn)
-
+      fireEvent.click(screen.getByRole("button", { name: /Add course equivalence/i }))
       expect(screen.getByRole("heading", { name: "Add course equivalence" })).toBeDefined()
       expect(screen.getByLabelText(/Old course subject/i)).toBeDefined()
       expect(screen.getByLabelText(/Equivalent course subject/i)).toBeDefined()
@@ -143,7 +157,7 @@ describe("Department Head Frontend Suite", () => {
   })
 
   describe("Screen 4: Outside Credits", () => {
-    it("renders outside credit metrics and student entries", () => {
+    it("renders outside credit metrics, student entries, and sample footer count", () => {
       render(
         <MemoryRouter>
           <OutsideCreditsPage />
@@ -154,7 +168,7 @@ describe("Department Head Frontend Suite", () => {
       expect(screen.getByText("Students with outside credits")).toBeDefined()
       expect(screen.getByText("Ana Marie Santos")).toBeDefined()
       expect(screen.getByText("Northern State College")).toBeDefined()
-      expect(screen.getByText("Sofia Isabel Garcia")).toBeDefined()
+      expect(screen.getByText("Showing 4 sample records of 28 credited subjects")).toBeDefined()
     })
 
     it("opens Credit a course modal", () => {
@@ -164,25 +178,25 @@ describe("Department Head Frontend Suite", () => {
         </MemoryRouter>
       )
 
-      const creditBtn = screen.getByRole("button", { name: /Credit a course/i })
-      fireEvent.click(creditBtn)
-
+      fireEvent.click(screen.getByRole("button", { name: /Credit a course/i }))
       expect(screen.getByRole("heading", { name: "Credit an outside course" })).toBeDefined()
       expect(screen.getByLabelText(/Original course code/i)).toBeDefined()
     })
   })
 
   describe("Screen 5: Academic Terms", () => {
-    it("renders active term metrics and terms schedule", () => {
+    it("renders advisory banner, terms schedule, and term counts without extra stat cards", () => {
       render(
         <MemoryRouter>
           <AcademicTermsPage />
         </MemoryRouter>
       )
 
-      expect(screen.getByText("Active term")).toBeDefined()
-      expect(screen.getByText("Grade encoding")).toBeDefined()
+      expect(screen.getByText(/Closing encoding prevents further grade entry/i)).toBeDefined()
+      expect(screen.queryByText("Active term")).toBeNull()
       expect(screen.getAllByText("2025–2026").length).toBeGreaterThan(0)
+      expect(screen.getByText("04 Aug – 19 Dec 2025")).toBeDefined()
+      expect(screen.getByText("1 open term · 3 closed terms")).toBeDefined()
       expect(screen.getByRole("button", { name: /Close encoding/i })).toBeDefined()
     })
 
@@ -193,9 +207,7 @@ describe("Department Head Frontend Suite", () => {
         </MemoryRouter>
       )
 
-      const closeBtn = screen.getByRole("button", { name: /Close encoding/i })
-      fireEvent.click(closeBtn)
-
+      fireEvent.click(screen.getByRole("button", { name: /Close encoding/i }))
       expect(screen.getByRole("heading", { name: "Close grade encoding" })).toBeDefined()
       expect(screen.getByText(/New grade entries will be closed for this term/i)).toBeDefined()
     })
