@@ -37,6 +37,32 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('allows timely first INC completion during department closure and blocks correction', async () => {
+    const db = getMockDatabase()
+    const attempt = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
+    attempt.inc_deadline = '2999-01-01'
+    db.departmentTermEncodings.push({ ...db.departmentTermEncodings[0], school_term_id: MOCK_IDS.term2025Sem2Closed, is_closed: true })
+    loginAsMockPersona('adviser')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const params = { path: { student_id: MOCK_IDS.studentPrimary, attempt_id: MOCK_IDS.attemptCsci102Inc } }
+    const completion = { completion_grade: 2.0, reason: 'Completed requirements' }
+    expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: completion })).response.status).toBe(201)
+    expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: completion })).response.status).toBe(409)
+    expect((await client.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { ...completion, expected_updated_at: '2026-11-10T09:00:00Z' } })).response.status).toBe(409)
+    expect(db.incResolutions).toHaveLength(1)
+  })
+
+  it('rejects a first INC completion after its deadline even when encoding is closed', async () => {
+    const db = getMockDatabase()
+    db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!.inc_deadline = '2000-01-01'
+    db.departmentTermEncodings.push({ ...db.departmentTermEncodings[0], school_term_id: MOCK_IDS.term2025Sem2Closed, is_closed: true })
+    loginAsMockPersona('adviser')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const params = { path: { student_id: MOCK_IDS.studentPrimary, attempt_id: MOCK_IDS.attemptCsci102Inc } }
+    expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { completion_grade: 2, reason: 'Late completion' } })).response.status).toBe(409)
+    expect(db.incResolutions).toHaveLength(0)
+  })
+
   it('rejects a new attempt after a pass but allows a failed course to be retaken', async () => {
     loginAsMockPersona('adviser')
     const db = getMockDatabase()
