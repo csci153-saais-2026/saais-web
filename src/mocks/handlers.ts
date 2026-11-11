@@ -387,6 +387,18 @@ export const saaisMswHandlers = [
       )
     }
 
+    if (body.role !== 'student' && body.role_assignments?.some(a => a.role === 'student')) {
+      return errorJson(400, 'INVALID_INPUT', 'Student roles require student provisioning details and an initial adviser.')
+    }
+    if (body.role === 'student') {
+      const adviser = db.profiles.find(p => p.id === body.adviser_id && p.status === 'active' && p.roles?.includes('adviser'))
+      const program = db.programs.find(p => p.id === body.program_id)
+      const curriculum = db.curriculumVersions.find(c => c.id === body.curriculum_version_id && c.program_id === body.program_id && c.status === 'active')
+      if (!body.adviser_id || !adviser || !program || !curriculum || adviser.department_id !== program.department_id) {
+        return errorJson(400, 'INVALID_INPUT', 'An eligible active adviser and matching active curriculum are required.')
+      }
+    }
+
     const newProfileId = nextSyntheticUuid()
     db.profiles.push({
       id: newProfileId,
@@ -409,6 +421,15 @@ export const saaisMswHandlers = [
       avatar_url: null,
       consultation_hours: null,
     })
+
+    if (body.role === 'student') {
+      const adviser = db.profiles.find(p => p.id === body.adviser_id)!
+      const program = db.programs.find(p => p.id === body.program_id)!
+      const assignmentId = nextSyntheticUuid()
+      db.studentCurriculumAssignments.push({ id: assignmentId, student_id: newProfileId, curriculum_version_id: body.curriculum_version_id, start_date: '2026-11-10', end_date: null, change_note: 'Initial curriculum assignment', created_at: '2026-11-10T08:00:00Z' })
+      db.studentOrganizations.push({ student_id: newProfileId, student_curriculum_assignment_id: assignmentId, curriculum_version_id: body.curriculum_version_id, program_id: body.program_id, department_id: program.department_id, faculty_id: adviser.faculty_id, adviser_id: body.adviser_id, entry_year: body.entry_year ?? null })
+      db.adviserAssignments.push({ id: nextSyntheticUuid(), student_id: newProfileId, adviser_id: body.adviser_id, adviser_name: adviser.full_name, adviser_email: adviser.email, adviser_faculty_name: null, adviser_consultation_hours: adviser.consultation_hours ?? null, start_date: '2026-11-10', end_date: null, handed_over_to_adviser_id: null, handed_over_to_name: null, handover_label: null, created_at: '2026-11-10T08:00:00Z' })
+    }
 
     const response: ApiSchema<'InviteResponse'> = {
       success: true,

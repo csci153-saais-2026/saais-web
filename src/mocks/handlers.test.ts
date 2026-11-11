@@ -37,6 +37,22 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('requires and creates an initial adviser assignment for new students', async () => {
+    loginAsMockPersona('department_staff')
+    const token = MOCK_PERSONAS.department_staff.token
+    const body = { role: 'student', email: 'new.student@vsu.edu.ph', full_name: 'New Student', student_number: '26-1-00001', program_id: MOCK_IDS.programBscs, curriculum_version_id: MOCK_IDS.curriculumBscs2024 }
+    const send = (payload: object) => fetch(`${BASE_URL}/functions/v1/auth/invite`, { method: 'POST', headers: { apikey: TEST_API_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    expect((await send(body)).status).toBe(400)
+    expect((await send({ ...body, adviser_id: null })).status).toBe(400)
+    expect((await send({ ...body, adviser_id: MOCK_IDS.studentPrimary })).status).toBe(400)
+    expect(getMockDatabase().profiles.some(p => p.email === body.email)).toBe(false)
+    const response = await send({ ...body, adviser_id: MOCK_IDS.adviserPrimary })
+    expect(response.status).toBe(201)
+    const result = await response.json() as { profile_id: string }
+    expect(getMockDatabase().adviserAssignments.some(a => a.student_id === result.profile_id && a.adviser_id === MOCK_IDS.adviserPrimary && a.end_date === null)).toBe(true)
+    expect(getMockDatabase().studentCurriculumAssignments.some(a => a.student_id === result.profile_id)).toBe(true)
+  })
+
   it('restricts adviser reassignment to department Head and Staff scope', async () => {
     const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
     const body = { adviser_id: MOCK_IDS.adviserPrimary, start_date: '2026-11-10', reason: 'Caseload change' }
