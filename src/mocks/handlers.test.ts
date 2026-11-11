@@ -37,6 +37,20 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('restricts adviser reassignment to department Head and Staff scope', async () => {
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const body = { adviser_id: MOCK_IDS.adviserPrimary, start_date: '2026-11-10', reason: 'Caseload change' }
+    const own = { path: { student_id: MOCK_IDS.studentPrimary } }
+    loginAsMockPersona('adviser')
+    expect((await client.PUT('/functions/v1/students/{student_id}/adviser', { params: own, body })).response.status).toBe(403)
+    loginAsMockPersona('admin')
+    expect((await client.PUT('/functions/v1/students/{student_id}/adviser', { params: own, body })).response.status).toBe(403)
+    loginAsMockPersona('department_staff')
+    expect((await client.PUT('/functions/v1/students/{student_id}/adviser', { params: own, body })).response.status).toBe(200)
+    const other = { path: { student_id: MOCK_IDS.studentOtherDept } }
+    expect((await client.PUT('/functions/v1/students/{student_id}/adviser', { params: other, body })).response.status).toBe(403)
+  })
+
   it('retains student visibility of archived notes', async () => {
     const db = getMockDatabase()
     const own = db.advisingNotes.find(n => n.student_id === MOCK_IDS.studentPrimary)!

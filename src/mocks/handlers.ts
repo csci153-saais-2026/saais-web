@@ -2419,15 +2419,18 @@ export const saaisMswHandlers = [
   http.put(
     '*/functions/v1/students/:student_id/adviser',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'department_head',
-        'department_staff',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['department_head', 'department_staff'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'AdviserReassignmentRequest'>
+      const db = getMockDatabase()
+      const student = db.profiles.find(p => p.id === studentId)
+      const adviser = db.profiles.find(p => p.id === body.adviser_id)
+      if (!student || !adviser) return errorJson(404, 'NOT_FOUND', 'Student or adviser not found.')
+      if (!auth.persona.departmentId || student.department_id !== auth.persona.departmentId || adviser.department_id !== auth.persona.departmentId) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Reassignment is limited to your department.')
+      }
+      if (!adviser.roles?.includes('adviser') || adviser.status !== 'active') return errorJson(409, 'INVALID_ADVISER', 'Choose an active adviser in the department.')
       const assignment: ApiSchema<'AdviserAssignment'> = {
         id: nextSyntheticUuid(),
         adviser_id: body.adviser_id ?? MOCK_IDS.adviserPrimary,
@@ -2450,14 +2453,18 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/adviser-assignments/bulk-reassign',
     async ({ request }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'department_head',
-        'department_staff',
-      ])
+      const auth = authenticateRequest(request, ['department_head', 'department_staff'])
       if ('response' in auth) return auth.response
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'BulkAdviserReassignmentRequest'>
       const studentIds = body.student_ids ?? [MOCK_IDS.studentPrimary]
+      const db = getMockDatabase()
+      const adviser = db.profiles.find(p => p.id === body.adviser_id)
+      const students = studentIds.map(id => db.profiles.find(p => p.id === id))
+      if (!adviser || students.some(student => !student)) return errorJson(404, 'NOT_FOUND', 'Student or adviser not found.')
+      if (!auth.persona.departmentId || adviser.department_id !== auth.persona.departmentId || students.some(student => student?.department_id !== auth.persona.departmentId)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Reassignment is limited to your department.')
+      }
+      if (!adviser.roles?.includes('adviser') || adviser.status !== 'active') return errorJson(409, 'INVALID_ADVISER', 'Choose an active adviser in the department.')
       const assignments: ApiSchema<'AdviserAssignment'>[] = studentIds.map(
         (studentId) => ({
           id: nextSyntheticUuid(),

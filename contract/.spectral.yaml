@@ -14,10 +14,17 @@ rules:
   owasp:api4:2023-string-restricted: off
   owasp:api4:2023-integer-format: off
   owasp:api4:2023-integer-limit: off
-  # Rate limiting and CORS headers are applied by the Supabase gateway, not declared per operation.
-  # 429 responses are required on every operation by contract/security.check.cjs.
+  # Configure rate limits and CORS at the gateway before deployment; declaring 429 responses
+  # does not activate either control. security.check.cjs checks response coverage only.
   owasp:api4:2023-rate-limit: off
   owasp:api8:2023-define-cors-origin: off
-  # Local Supabase sandbox server (http://127.0.0.1:54321, x-internal: true) is loopback-only.
-  # Production requests require HTTPS as documented in servers[0].
+  # Replace the upstream blanket HTTP rule with an explicit local-sandbox exception.
   owasp:api8:2023-no-server-http: off
+  saais-server-https-or-local-sandbox:
+    description: Hosted servers require HTTPS; HTTP is limited to the local Supabase sandbox.
+    given: $.servers[*].url
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: '^(?:https://[^\s/]+(?:/[^\s]*)?|http://127\.0\.0\.1:54321/?)$'
