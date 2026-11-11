@@ -264,7 +264,7 @@ function buildInitialMockDatabase(): MockDatabaseState {
         units: 3,
         is_elective: true,
         status: 'active',
-        repeatable_type: 'additional_credit',
+        repeatable_type: 'none',
       },
       {
         id: MOCK_IDS.coursePhEd11,

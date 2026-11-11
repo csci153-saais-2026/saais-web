@@ -37,6 +37,21 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('rejects a new attempt after a pass but allows a failed course to be retaken', async () => {
+    loginAsMockPersona('adviser')
+    const db = getMockDatabase()
+    const existing = db.attemptResults.find(a => a.student_id === MOCK_IDS.studentPrimary && a.course_offering_id === MOCK_IDS.offeringCsci153)!
+    existing.effective_status = 'passed'
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const params = { path: { student_id: MOCK_IDS.studentPrimary } }
+    const body = { school_term_id: MOCK_IDS.term2026Sem1Open, course_offering_id: MOCK_IDS.offeringCsci153, confirmed_enrollment: true, continue_with_prerequisite_override: false }
+    const before = db.attemptResults.length
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(409)
+    expect(db.attemptResults.length).toBe(before)
+    existing.effective_status = 'failed'
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(200)
+  })
+
   it('requires and creates an initial adviser assignment for new students', async () => {
     loginAsMockPersona('department_staff')
     const token = MOCK_PERSONAS.department_staff.token

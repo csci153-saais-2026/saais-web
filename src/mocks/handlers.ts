@@ -14,6 +14,12 @@ import { getMockDatabase } from './store'
 
 let syntheticUuidCounter = 100
 
+function alreadyPassedCourse(studentId: string, offeringId: string, existingAttemptId?: string): boolean {
+  const db = getMockDatabase()
+  const courseId = db.courseOfferings.find(o => o.id === offeringId)?.course_id
+  return Boolean(courseId && db.attemptResults.some(a => a.student_id === studentId && a.id !== existingAttemptId && a.effective_status === 'passed' && db.courseOfferings.some(o => o.id === a.course_offering_id && o.course_id === courseId)))
+}
+
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
 
 function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
@@ -2058,6 +2064,7 @@ export const saaisMswHandlers = [
         return errorJson(400, 'INVALID_INPUT', 'school_term_id and course_offering_id are required.')
       }
       if (departmentEncodingClosed(studentId, body.school_term_id)) return encodingClosedResponse()
+      if (alreadyPassedCourse(studentId, body.course_offering_id)) return errorJson(409, 'COURSE_ALREADY_PASSED', 'A passed course cannot be retaken.')
       if (
         body.midterm_grade !== undefined &&
         body.midterm_grade !== null &&
@@ -2131,6 +2138,7 @@ export const saaisMswHandlers = [
         return errorJson(400, 'INVALID_INPUT', 'school_term_id and rows are required.')
       }
       if (departmentEncodingClosed(studentId, body.school_term_id)) return encodingClosedResponse()
+      if (body.rows.some(row => alreadyPassedCourse(studentId, row.course_offering_id, row.attempt_id ?? undefined))) return errorJson(409, 'COURSE_ALREADY_PASSED', 'A passed course cannot be retaken.')
       const results: ApiSchema<'AttemptResult'>[] = body.rows.map((row) => ({
         id: row.attempt_id ?? nextSyntheticUuid(),
         student_id: studentId,
@@ -2417,18 +2425,25 @@ export const saaisMswHandlers = [
       const student = db.profiles.find(p => p.student_number === row.student_number)
       return student && departmentEncodingClosed(student.id, body.school_term_id)
     })) return encodingClosedResponse()
+    const passed = (row: ApiSchema<'GradeBatchImportRequest'>['rows'][number]) => {
+      const student = db.profiles.find(p => p.student_number === row.student_number)
+      const course = db.courses.find(c => c.code === row.course_code)
+      const offering = db.courseOfferings.find(o => o.course_id === course?.id && o.school_term_id === body.school_term_id)
+      return Boolean(student && offering && alreadyPassedCourse(student.id, offering.id))
+    }
+    const validCount = body.rows.filter(row => !passed(row)).length
     const response: ApiSchema<'GradeBatchImportResponse'> = {
       mode: body.mode,
-      valid_count: body.rows.length,
+      valid_count: validCount,
       warning_count: 0,
-      error_count: 0,
-      imported_count: body.mode === 'commit' ? body.rows.length : 0,
+      error_count: body.rows.length - validCount,
+      imported_count: body.mode === 'commit' ? validCount : 0,
       results: body.rows.map((r) => ({
         row_number: r.row_number,
         student_number: r.student_number,
         course_code: r.course_code,
-        outcome: body.mode === 'commit' ? 'imported' : 'valid',
-        message: 'Validated successfully.',
+        outcome: passed(r) ? 'error' : body.mode === 'commit' ? 'imported' : 'valid',
+        message: passed(r) ? 'A passed course cannot be retaken.' : 'Validated successfully.',
       })),
     }
     return HttpResponse.json(response, { status: 200 })
