@@ -81,7 +81,9 @@ paths:
         strictly within their own department scope. Any attempt by Department Head or Department
         Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is
         explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects
-        duplicate email or student_number with 409 Conflict. Privileged server code provisions the
+        duplicate email or student_number with 409 Conflict. A Dean assignment must coexist with
+        an Adviser and/or Department Head assignment; new accounts must include the accompanying
+        assignment in the same request. Reject a Dean-only account with 400. Privileged server code provisions the
         Supabase Auth identity and application profile/assignments and writes an immutable audit log
         entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or
         receives server credentials. An application invitation does not constitute a signed-in
@@ -2293,7 +2295,8 @@ paths:
       description: >-
         Admin-only update. Students/advisers cannot edit profiles. Validate target-role fields and
         protect historical roles/identity; synchronize any Auth-related changes through privileged
-        server logic.
+        server logic. A Dean assignment must coexist with an Adviser and/or Department Head
+        assignment; reject changes that leave an active Dean without either accompanying role.
       x-required-roles:
         - admin
       x-access-scope: admin-only
@@ -14727,7 +14730,10 @@ x-saais-invariants:
     - department_staff
     - dean
     - admin
-  student_profile: read-only; admin-provisioned
+  student_profile: read-only to the student; provisioned by Admin or authorized department Head/Staff
+  dean_roles: >-
+    An active Dean assignment must coexist with an Adviser and/or Department Head assignment.
+    Enforce this on provisioning, role grant, revocation and account update in one transaction.
   prerequisite_override: >-
     current adviser replaces the original failed prerequisite final grade with a passing grade and
     reason; no approval queue or enrollment-only bypass
