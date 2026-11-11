@@ -8988,8 +8988,10 @@ components:
       description: >-
         Admin or Department Staff/Head provisions identity and role-specific academic assignments
         atomically before invitation completion. Students require matching program/curriculum and an
-        optional active adviser (or unassigned pending assignment); advisers and staff roles require
-        organizational scope. Department Head and Department Staff may provision Students, Advisers,
+        required eligible active adviser; advisers and staff roles require
+        organizational scope. When any requested role is student, use StudentInviteRequest with the
+        required student details and adviser; other invite variants cannot add a student role.
+        Department Head and Department Staff may provision Students, Advisers,
         Department Staff, and Department Heads within their own department (`admin` and `dean`
         grants remain Admin-only). Unified provisioning creates the pre-registered `Profile`
         (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on
@@ -10783,10 +10785,9 @@ components:
           type: string
           format: uuid
         adviser_id:
-          type:
-            - string
-            - "null"
+          type: string
           format: uuid
+          description: Eligible active adviser assigned atomically during student provisioning.
         entry_year:
           type:
             - integer
@@ -10809,9 +10810,19 @@ components:
         - student_number
         - program_id
         - curriculum_version_id
+        - adviser_id
     AdviserInviteRequest:
       type: object
       additionalProperties: false
+      not:
+        required: [role_assignments]
+        properties:
+          role_assignments:
+            contains:
+              required: [role]
+              properties:
+                role:
+                  const: student
       properties:
         email:
           type: string
@@ -10847,6 +10858,15 @@ components:
     AdminInviteRequest:
       type: object
       additionalProperties: false
+      not:
+        required: [role_assignments]
+        properties:
+          role_assignments:
+            contains:
+              required: [role]
+              properties:
+                role:
+                  const: student
       properties:
         email:
           type: string
@@ -10873,6 +10893,15 @@ components:
     StaffRoleInviteRequest:
       type: object
       additionalProperties: false
+      not:
+        required: [role_assignments]
+        properties:
+          role_assignments:
+            contains:
+              required: [role]
+              properties:
+                role:
+                  const: student
       properties:
         email:
           type: string
@@ -14714,7 +14743,10 @@ x-saais-invariants:
     - department_staff
     - dean
     - admin
-  student_profile: read-only to the student; provisioned by Admin or authorized department Head/Staff
+  student_profile: >-
+    Read-only to the student; provisioned by Admin or authorized department Head/Staff with an
+    eligible active initial adviser in the same transaction. A role update must not create a student
+    lacking a valid student record and active adviser assignment.
   dean_roles: >-
     A Dean assignment may exist alone or alongside additional independently authorized roles.
   prerequisite_override: >-
