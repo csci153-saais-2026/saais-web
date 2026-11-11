@@ -1449,7 +1449,7 @@ export interface paths {
         };
         /**
          * Read academic summary
-         * @description Scope own/assigned/department/faculty/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Count the passed attempt for a course; if no attempt passed, count the latest attempt. Historical records remain intact if legacy data contains later attempts after a pass. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
+         * @description Scope own/assigned/department/faculty/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Each graded attempt contributes to the GWA of its own school term; an earlier failing grade remains in that term when the course is retaken later. An ungraded retake contributes no final grade to its term. Cumulative GWA derives from semester GWAs; semester weighting is pending confirmation. Course completion and earned units count the passing attempt once. Historical records remain intact if legacy data contains later attempts after a pass. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
          */
         get: operations["getAcademicSummary"];
         put?: never;
