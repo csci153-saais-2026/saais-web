@@ -131,9 +131,20 @@ for(const file of ['SystemAdmin/AdminAccountsRoles.dc.html','SystemAdmin/SystemA
  d.querySelector('[data-dialog="credit"]').click();d.querySelector('#dialog-confirm').click();
  assert.match(d.querySelector('[data-credit-error]').textContent,/Give a reason/);
  const field=[...d.querySelectorAll('#dialog-content label')].find(l=>l.querySelector('span')?.textContent==='Reason for credit').querySelector('textarea');
+ assert.equal(field.maxLength,2000);field.value='x'.repeat(2001);d.querySelector('#dialog-confirm').click();assert.match(d.querySelector('[data-credit-error]').textContent,/2,000/);
  field.value='Equivalent coursework verified';d.querySelector('#dialog-confirm').click();
  assert.equal(JSON.parse(w.localStorage.getItem('saais-mgmt-v1')).credits[0].reason,'Equivalent coursework verified');
  dom.window.close();
 }
+{
+ const first='SystemAdmin/AdminFacultyDepartments.dc.html',dom=documentFor(first),w=dom.window,d=w.document;execute(dom,first);
+ const row=[...d.querySelectorAll('#dep-body tr')].find(r=>r.dataset.name==='Computer Science');
+ row.querySelector('[data-edit]').click();d.querySelector('#dep-name').value='Computer Science Renamed';d.querySelector('#dep-modal [data-save]').click();
+ const saved=w.localStorage.getItem('saais-admin-ui-v1');dom.window.close();
+ const file='SystemAdmin/AdminPrograms.dc.html',next=documentFor(file),nw=next.window,nd=nw.document;nw.localStorage.setItem('saais-admin-ui-v1',saved);execute(next,file);
+ const program=nd.querySelector('#pg-body tr[data-code="BSCS"]');assert.equal(program.dataset.dep,'Computer Science Renamed');assert.match(program.textContent,/Computer Science Renamed/);
+ program.querySelector('[data-edit]').click();assert.equal(nd.querySelector('#pg-dep').value,'Computer Science Renamed');next.window.close();
+}
+assert.doesNotMatch(read('prototype.html'), /\["swap", "Reassignment", "reassignment"\]/);
 assert.deepEqual(failures,[]);
 console.log(`Passed: ${Object.keys(manifest.routes).length} source screens, ${manifest.roles.length} roles, drawers, role groups, links, branding, route queries, screen map, sign-in, and landing.`);
