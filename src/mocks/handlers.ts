@@ -36,8 +36,8 @@ function markRetakeResults(attempts: ApiSchema<'AttemptResult'>[]): ApiSchema<'A
     const same = all.filter(other => other.student_id === attempt.student_id && course && courseId(other) === course)
       .sort((left, right) => termOrder(left) - termOrder(right) || (left.created_at ?? '').localeCompare(right.created_at ?? '') || left.id.localeCompare(right.id))
     const numeric = same.filter(other => numericGrade(other) != null)
-    const selected = numeric.at(-1) ?? same.filter(other => other.is_lapsed_inc).at(-1)
-    const grade = numericGrade(attempt)
+    const selected = numeric.at(-1) ?? same.find(other => other.is_lapsed_inc)
+    const grade = numericGrade(attempt) ?? (attempt.is_lapsed_inc ? 5 : null)
     const repeated = grade != null && grade > 3 && !!selected && selected.id !== attempt.id && same.indexOf(selected) > same.indexOf(attempt)
     return { ...attempt, is_repeated: repeated, counts_toward_cumulative_gwa: selected?.id === attempt.id }
   })
@@ -1862,12 +1862,16 @@ export const saaisMswHandlers = [
           'Not authorized to view this student academic summary.',
         )
       }
+      const countedAttempts = markRetakeResults(getMockDatabase().attemptResults.filter(a => a.student_id === studentId)).filter(a => a.counts_toward_cumulative_gwa)
+      const weighted = countedAttempts.map(a => ({ grade: a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null), units: a.units_attempted })).filter(a => a.grade != null && a.units > 0)
+      const countedUnits = weighted.reduce((sum, item) => sum + item.units, 0)
+      const cumulativeGwa = countedUnits ? Number((weighted.reduce((sum, item) => sum + item.grade! * item.units, 0) / countedUnits).toFixed(2)) : null
       const summary: ApiSchema<'AcademicSummary'> = {
         student_id: studentId,
-        gwa: 1.75,
+        gwa: cumulativeGwa,
         earned_units: 36,
         required_units: 162,
-        counted_units: 36,
+        counted_units: countedUnits,
         failed_units: 0,
         in_progress_units: 3,
         remaining_units: 126,
