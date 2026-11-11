@@ -31,7 +31,7 @@ function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Pro
 
 function departmentEncodingClosed(studentId: string, termId: string): boolean {
   const db = getMockDatabase()
-  const departmentId = db.profiles.find(p => p.id === studentId)?.department_id
+  const departmentId = db.studentOrganizations.find(org => org.student_id === studentId)?.department_id
   return !!departmentId && db.departmentTermEncodings.some(c =>
     c.department_id === departmentId && c.school_term_id === termId && c.is_closed)
 }
