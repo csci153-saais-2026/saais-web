@@ -6,7 +6,7 @@ The **Department Head** portal in SAAIS provides department-level academic manag
 1. **Adviser Capabilities**: Standard advisee advising, checklist review, and grade encoding.
 2. **Department Management Capabilities**: Administrative oversight spanning 10 dedicated management domains:
    - Curriculum Transfers
-   - Curricula & Offerings
+   - Curricula Builder (Versions, Terms & Courses/Slots)
    - Course Equivalencies
    - Outside Credits Recognition
    - Department Student Directory
@@ -16,21 +16,21 @@ The **Department Head** portal in SAAIS provides department-level academic manag
    - Department Activity Audit Trail
    - Department Settings & Scholastic Thresholds
 
-The module is implemented as a React Single-Page Application (SPA) using Vite, Tailwind CSS v4, and Radix UI / shadcn-based design tokens adhering strictly to `mockup/Department Head` and `mockup/DESIGN.md`.
+The module is implemented as a React Single-Page Application (SPA) using Vite, Tailwind CSS v4, and Radix UI / shadcn-based design tokens adhering strictly to `mockup/Department Head`, `mockup/DESIGN.md`, and the merged production components in `src/components/`.
 
 ---
 
 ## 2. Identified Screens and Functional Groups
 
-Through comprehensive inspection of `mockup/Department Head`, `build-pages.cjs`, and `mockup/prototype-routes.js`, 10 distinct management screens have been identified and categorized into cohesive functional groups:
+Through comprehensive inspection of `mockup/Department Head` (`*.dc.html`, `curricula-editor.js`, `department-head.js`) and `mockup/prototype-routes.js`, 10 distinct management screens (plus shared `Notifications`) have been identified and categorized into cohesive functional groups:
 
 ### Group A: Curriculum & Academic Program Administration
 - **Screen 1: Curriculum Transfers** (`/department-head/curriculum-transfers`)
-  - *Description*: Review adviser-endorsed applications to move students between curriculum versions. Features pending vs. history tabs, transfer route visualizers, adviser justification reviews, and approve/reject decision dialogs.
+  - *Description*: Review adviser-endorsed applications to move students between curriculum versions. Features pending vs. history tabs (`?history=1`), transfer route visualizers, adviser justification reviews, and approve/reject decision dialogs.
   - *Complexity*: **Medium-High** (multi-tab state, decision modal with dynamic validation, reason capture, badge indicators).
 - **Screen 2: Curricula** (`/department-head/curricula`)
-  - *Description*: Oversee degree curriculum versions (BSCS 2024, BSCS 2021, BSIT 2024), student enrollment distribution, and semester course offerings. Includes curriculum version cards, multi-level dropdown offerings filters, and modals for creating versions and renaming curricula.
-  - *Complexity*: **High** (multi-card dashboard, interactive offerings table with curriculum and year-standing filters, two distinct modals).
+  - *Description*: Manage versioned degree curricula (`BSCS · 2023–2024`, `BSCS · 2019–2020`, `BSIT · 2023–2024`) in an interactive curriculum builder (`Shape the path to graduation.`). Includes a version selector toolbar (`Edit version`, `Delete version`, `Add term`, `New course`), 4-tile summary stats (`Required units`, `Enrolled students`, `Effective from`, `Status`), positional term panels (`Year X · Semester Y`), course/slot rows with Edit/Delete actions, and full builder modals.
+  - *Complexity*: **High** (hierarchical version → term → slot builder state, faculty-to-department cascading `New course` modal, 10 dialog flows with inline validation).
 - **Screen 3: Equivalence** (`/department-head/equivalence`)
   - *Description*: Define and maintain one-to-one course equivalencies between paired curriculum versions (e.g., BSCS 2021 → BSCS 2024). Includes educational rule notices, paired dropdown selectors, equivalency table, and modal for adding equivalencies.
   - *Complexity*: **Medium** (dual-dropdown filtering, paired curriculum table, add equivalence dialog).
@@ -81,9 +81,9 @@ graph TD
     DH --> D2[Developer 2: Matt / Partner Implementation]
 
     subgraph "Developer 1 (Assigned to Me)"
-        D1 --> S0[Portal AppShell, Navigation & Route Registry]
+        D1 --> S0[Portal AppShell, Navigation & Notifications]
         D1 --> S1[1. Curriculum Transfers]
-        D1 --> S2[2. Curricula & Offerings]
+        D1 --> S2[2. Curricula Builder]
         D1 --> S3[3. Course Equivalence]
         D1 --> S4[4. Outside Credits]
         D1 --> S5[5. Academic Terms & Encoding Controls]
@@ -104,36 +104,37 @@ graph TD
 
 ### A. Assigned to Me (Developer 1 — Jerome)
 1. **Department Head Shared Infrastructure & Shell**:
-   - `DepartmentHeadLayout`: Configured `AppShell` with dual collapsible navigation (`Adviser` and `Department Head` sections).
+   - `DepartmentHeadLayout`: Configured `AppShell` with dual collapsible navigation (`Adviser` and `Department Head` sections) and stateful `NotificationBell`.
+   - `NotificationsPage` (`/department-head/notifications`) matching `mockup/notifications-page.js`.
    - Route configuration in `src/App.tsx` and route tree under `src/routes/department-head/`.
    - Dynamic breadcrumb generation and user trigger (`Dr. Andrea Dela Cruz`, Department Head · DCST).
 2. **Screen 1: Curriculum Transfers** (`/department-head/curriculum-transfers`):
    - Stat tiles for pending, approved, and rejected counts.
-   - Tabs for "Pending review" and "Decision history".
-   - Pending transfers table with "Review request →" action.
-   - Interactive modal "Review curriculum transfer" with route visualization, adviser reason, decision notes textarea, and Approve / Reject actions.
+   - `RecordTabs` (`Pending review` and `Decision history`) with `?history=1` URL query support.
+   - Pending transfers table with "Review request →" action and advisory banner.
+   - Interactive modal "Review curriculum transfer" with route visualization, adviser reason, `FormField`-validated decision notes textarea, and Approve / Reject actions.
    - Decision history view with past decisions and rationale.
 3. **Screen 2: Curricula** (`/department-head/curricula`):
-   - Active curriculum cards (BSCS 2024 Current, BSCS 2021 Older, BSIT 2024 Current) with enrollment stats and rename triggers.
-   - Semester opened subjects panel with curriculum and year-standing filters.
-   - "New version of curriculum" modal with degree program, copy-from version, and effective AY.
-   - "Rename curriculum" modal.
+   - Toolbar with `Curriculum version` selector (`BSCS · 2023–2024`, `BSCS · 2019–2020`, `BSIT · 2023–2024`), `Edit version`, `Delete version`, `Add term`, and `New course`.
+   - 4-tile `StatGrid` (`Required units`, `Enrolled students`, `Effective from`, `Status`).
+   - Positional term panels (`Year X · Semester Y`) with course/slot tables and per-term/per-row edit and delete controls.
+   - Builder modals (`Add version`, `Edit version`, `Delete record`, `Add term`, `Edit term`, `New course`, `Add course / slot`, `Edit course / slot`).
 4. **Screen 3: Equivalence** (`/department-head/equivalence`):
-   - Educational policy notice for 1-to-1 course equivalence.
+   - Advisory notice for 1-to-1 course equivalence.
    - Curriculum pair selectors (`From` and `To` dropdowns).
    - Equivalency matrix table with mapped units and status badge.
    - "Add course equivalence" modal with subject selectors and rule caption.
 5. **Screen 4: Outside Credits** (`/department-head/outside-credits`):
    - Outside credit statistics tiles (credited subjects, students, recognized units).
-   - Credited courses data table (student, original subject, grade, school of origin, credited equivalent, term).
+   - Credited courses data table (student, original course / units, school / origin, grade, equivalent subject / units, entry type badge).
    - "Credit an outside course" modal with student selection, entry type (Transferee / Shiftee), grades, and equivalent course mapping.
 6. **Screen 5: Academic Terms** (`/department-head/academic-terms`):
-   - Term schedule and encoding status statistics.
-   - Academic terms data table with status badges and action links.
+   - Advisory encoding/backup policy notice.
+   - Academic terms data table with status badges, `Close encoding`, and `View term` actions.
    - "Add academic term" modal.
    - "Academic term details" modal (key-value definition list).
    - "Close grade encoding" modal with warning notice and closure note.
-   - PDF export client-side download action.
+   - PDF export trigger.
 
 ### B. Reserved for Partner (Developer 2 — Matt)
 1. **Screen 6: Students (Directory)** (`/department-head/students`):
@@ -184,10 +185,11 @@ The implementation strictly reuses the pre-built, production-tested components m
 | `Dialog` | `@/components/ui/dialog` | Accessible Radix modals for all form previews and workflows |
 | `Table` | `@/components/ui/table` | Responsive data table with IBM Plex Mono figures |
 | `Badge` | `@/components/ui/badge` | Generic category and role tags |
-| `Alert` | `@/components/ui/alert` | Policy notices, warnings, and backup reminder banners |
+| `Alert` | `@/components/ui/alert` | Advisory notices (`variant="advisory"`), warnings, and backup reminder banners |
+| `FormField` | `@/components/features/form-field` | Accessible form labels and inline validation errors across filters & dialogs |
+| `RecordTabs` | `@/components/features/student-record-header` | Gold-underlined tab switcher (`Pending review` vs. `Decision history`) |
 | `Input` / `Select` / `Textarea` | `@/components/ui/*` | Form input fields matching 4px radius style guide |
-| `Tabs` | `@/components/ui/tabs` | Tab switcher (Pending review vs. Decision history) |
-| `Icons` | `@/components/icons` | Consistent 24px icon set (swap, book, cal, users, download, plus, etc.) |
+| `Icons` | `@/components/icons` | Consistent 24px icon set (swap, book, list, check, cal, users, download, plus, alert, etc.) |
 
 ---
 
@@ -195,9 +197,9 @@ The implementation strictly reuses the pre-built, production-tested components m
 
 | Screen / Feature | Assigned To | Status | Implementation Details |
 |---|---|---|---|
-| **DH Portal Shell & Routing** | Jerome (Me) | **Completed** | `DepartmentHeadLayout.tsx`, breadcrumbs, dual-role nav in `App.tsx` |
-| **Curriculum Transfers** | Jerome (Me) | **Completed** | `CurriculumTransfersPage.tsx`: Tabs, stats, review modal with approve/reject |
-| **Curricula & Offerings** | Jerome (Me) | **Completed** | `CurriculaPage.tsx`: Version cards, offerings table, new version & rename modals |
+| **DH Portal Shell & Notifications** | Jerome (Me) | **Completed** | `DepartmentHeadLayout.tsx`, `NotificationsPage.tsx`, stateful bell, breadcrumbs, dual-role nav |
+| **Curriculum Transfers** | Jerome (Me) | **Completed** | `CurriculumTransfersPage.tsx`: `RecordTabs`, 3-stat grid, review modal with approve/reject |
+| **Curricula Builder** | Jerome (Me) | **Completed** | `CurriculaPage.tsx`: Version selector, 4-stat grid, term panels, version/term/course/slot dialogs |
 | **Equivalence** | Jerome (Me) | **Completed** | `EquivalencePage.tsx`: Curriculum pair selectors, equivalency table, add modal |
 | **Outside Credits** | Jerome (Me) | **Completed** | `OutsideCreditsPage.tsx`: Stats, outside credits table, credit course modal |
 | **Academic Terms** | Jerome (Me) | **Completed** | `AcademicTermsPage.tsx`: Term table, add term modal, term details modal, close encoding modal |
