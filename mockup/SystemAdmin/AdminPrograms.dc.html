@@ -119,7 +119,8 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     rows().forEach(function (r) { var on = (!q || r.dataset.q.indexOf(q) > -1) && (f === 'All records' || r.dataset.status === f); r.hidden = !on; if (on) n++; });
     body.querySelector('[data-empty]').hidden = n > 0;
   }
-  rows().forEach(function (r) { var dep = r.dataset.dep || (r.dataset.code === 'BSCS' ? 'Computer Science' : r.dataset.code === 'BSIT' ? 'Information Technology' : ''); fill(r, {code:r.dataset.code, name:r.dataset.name, years:r.dataset.years, fac:r.dataset.fac, dep:dep, status:r.dataset.status}); });
+  rows().forEach(function (r) { var dep = r.dataset.dep || (r.dataset.code === 'BSCS' ? 'Computer Science' : r.dataset.code === 'BSIT' ? 'Information Technology' : ''), fac = r.dataset.fac, renamed = (ADM['department-renames'] || {})[dep]; if (renamed) { dep = renamed.name; fac = renamed.fac; } fill(r, {code:r.dataset.code, name:r.dataset.name, years:r.dataset.years, fac:fac, dep:dep, status:r.dataset.status}); });
+  if (ADM['department-renames']) { ADM['pg-body'] = body.innerHTML; delete ADM['department-renames']; saveADM(); }
   $('pg-q').addEventListener('input', run); $('pg-filter').addEventListener('change', run);
   function open(row) {
     editing = row || null; dlg.querySelector('[data-msg]').hidden = true;
