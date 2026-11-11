@@ -309,3 +309,11 @@ test('passed courses cannot be retaken through grade entry or import', () => {
     assert.match(operations.find(x => x.operation.operationId === id).operation.description, /pass/i, id);
   }
 });
+
+
+test('department closure permits only first timely INC completion', () => {
+  const route = spec.paths['/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion'];
+  assert.match(route.post.description, /department.*closed encoding/);
+  assert.match(route.post.description, /before\/on existing deadline/);
+  assert.match(route.patch.description, /blocked by a department encoding closure/);
+});
