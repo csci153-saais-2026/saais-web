@@ -67,6 +67,39 @@ test('department closure and course projections follow the reviewed contract', (
   assert.equal(spec.paths['/rest/v1/advising_note'].get['x-access-scope'].student, 'own-notes-including-archived-read-only');
 });
 
+test('reassignment authority and notification sources match the reviewed contract', () => {
+  for (const operationId of ['reassignAdviser', 'bulkReassignAdvisers']) {
+    const operation = operations.find(item => item.operation.operationId === operationId)?.operation;
+    assert.deepEqual(operation?.['x-required-roles'], ['department_head', 'department_staff'], operationId);
+  }
+  const known = new Set(operations.map(({ operation }) => operation.operationId));
+  for (const event of spec['x-saais-notification-triggers'].event_driven) {
+    for (const source of event.source_operations ?? []) assert.ok(known.has(source), `${event.event_type}: ${source}`);
+  }
+  assert.match(spec.paths['/functions/v1/students/{student_id}/notes'].post.description, /active and archived/);
+});
+
+test('transfers preserve adviser continuity and outside credits cannot double-count', () => {
+  const direct = schemas.CurriculumAssignmentRequest.properties.new_adviser_id;
+  const approval = schemas.CurriculumTransferDecisionRequest.oneOf.find(item => item.properties.decision.const === 'approved');
+  const rejection = schemas.CurriculumTransferDecisionRequest.oneOf.find(item => item.properties.decision.const === 'rejected');
+  assert.equal(direct.format, 'uuid');
+  assert.equal(approval.properties.new_adviser_id.format, 'uuid');
+  assert.equal(rejection.properties.new_adviser_id, undefined);
+  for (const operationId of ['assignStudentCurriculum', 'decideCurriculumTransfer']) {
+    const operation = operations.find(item => item.operation.operationId === operationId).operation;
+    assert.match(operation.description, /new_adviser_id/);
+    assert.match(operation.description, /target.department/);
+  }
+  const credit = operations.find(item => item.operation.operationId === 'createOutsideCredit').operation;
+  assert.match(credit.description, /duplicate live credit/);
+  assert.match(credit.description, /slot already satisfied/);
+  assert.equal(schemas.OutsideCreditCreateRequest.properties.units.exclusiveMinimum, 0);
+  const grade = new RegExp(schemas.OutsideCreditCreateRequest.properties.grade.pattern);
+  for (const value of ['1.00', '2.75', '3.00']) assert.ok(grade.test(value), value);
+  for (const value of ['0.75', '3.01', '5.00', 'INC']) assert.ok(!grade.test(value), value);
+});
+
 test('authenticated operations specify roles, scope and failure responses', () => {
   for (const { route, operation } of operations) {
     assert.ok(operation['x-access-scope'], route);
@@ -141,6 +174,29 @@ test('write bodies reject extra properties and client-controlled audit fields', 
   }
 });
 
+test('JSON write request strings have finite bounds', () => {
+  const fixedFormats = new Set(['uuid', 'date', 'date-time', 'time']);
+  const visit = (value, label, refs = new Set()) => {
+    if (value?.$ref) {
+      if (refs.has(value.$ref)) return;
+      refs = new Set(refs).add(value.$ref);
+      value = resolve(value);
+    }
+    if (!value || typeof value !== 'object') return;
+    const types = Array.isArray(value.type) ? value.type : [value.type];
+    if (types.includes('string') && !value.enum && !Object.hasOwn(value, 'const') && !fixedFormats.has(value.format)) {
+      assert.ok(Number.isInteger(value.maxLength) && value.maxLength > 0, `${label} requires maxLength`);
+    }
+    for (const [name, child] of Object.entries(value.properties || {})) visit(child, `${label}.${name}`, refs);
+    if (value.items) visit(value.items, `${label}[]`, refs);
+    for (const key of ['oneOf', 'anyOf', 'allOf']) for (const child of value[key] || []) visit(child, label, refs);
+  };
+  for (const { route, method, operation } of operations.filter(item => item.method !== 'get')) {
+    const body = resolve(operation.requestBody)?.content?.['application/json']?.schema;
+    if (body) visit(body, `${method} ${route}`);
+  }
+});
+
 test('table reads are bounded, reject embedded projections and use valid UUID filters', () => {
   for (const { route, operation } of operations.filter(value => value.route.startsWith('/rest/v1/'))) {
     const parameters = operation.parameters.map(resolve);
@@ -184,7 +240,18 @@ test('student access is restricted to reads plus allowlisted self-service writes
       assert.ok(!operation['x-required-roles'].includes('student'), route);
     }
   }
-  assert.ok(spec.paths[`${studentPath}/grade-flags`].post['x-required-roles'].includes('student'));
+  for (const key of allowedStudentWrites) {
+    const [method, route] = key.split(' ');
+    const operation = spec.paths[route]?.[method];
+    assert.ok(operation?.['x-required-roles']?.includes('student'), key);
+    const scope = operation['x-access-scope'];
+    if (route === '/functions/v1/audit/view-event') {
+      assert.equal(scope, 'authorized-record-viewer', key);
+      assert.match(operation.description, /Students may log events only for their own authorized record/);
+    } else {
+      assert.equal(typeof scope === 'string' ? scope : scope?.student, 'own-records', key);
+    }
+  }
   assert.ok(spec.paths['/rest/v1/advising_note'].get['x-required-roles'].includes('student'));
   assert.equal(spec.paths['/rest/v1/advising_note'].get['x-access-scope'].student, 'own-notes-including-archived-read-only');
   assert.deepEqual(spec.paths[`${studentPath}/assistant`].post['x-required-roles'], ['adviser']);
@@ -204,7 +271,9 @@ test('grade recording and correction are separate, with original prerequisite an
   assert.ok(!schemas.ProgramInsert.required.includes('initial_curriculum'));
   assert.deepEqual(schemas.StudentPhotoUpdateRequest.properties.mime_type.enum, ['image/jpeg', 'image/png']);
   assert.equal(schemas.StudentPhotoUpdateRequest.properties.file_size_bytes.maximum, 2097152);
-  assert.ok(!schemas.AuditViewEventRequest.properties.event_type.enum.includes('login_rejected'));
+  for (const event of ['sign_in_succeeded', 'login_rejected', 'password_changed']) {
+    assert.ok(!schemas.AuditViewEventRequest.properties.event_type.enum.includes(event), event);
+  }
   assert.ok(schemas.AuditViewEventRequest.properties.event_type.enum.includes('report_viewed'));
   assert.equal(schemas.CurriculumTransferDecisionRequest.oneOf.length, 2);
   for (const [name, field] of [['AcademicSummary', 'gwa'], ['TermGrades', 'gwa'], ['ShiftPreviewResponse', 'projected_gwa']]) {
