@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Route, Routes } from "react-router"
 
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"))
+const LoginPage = lazy(() => import("@/routes/auth/LoginPage"))
 const DocsHubPage = lazy(() => import("@/routes/docs/DocsHubPage"))
 const OpenApiDocsPage = lazy(() => import("@/routes/docs/OpenApiDocsPage"))
 
@@ -21,6 +22,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/styleguide" element={<StyleguidePage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/docs" element={<DocsHubPage />} />
           <Route path="/docs/openapi" element={<OpenApiDocsPage />} />
         </Routes>
