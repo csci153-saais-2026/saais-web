@@ -22,7 +22,10 @@ rules:
   owasp:api8:2023-no-server-http: off
   saais-server-https-or-local-sandbox:
     description: Hosted servers require HTTPS; HTTP is limited to the local Supabase sandbox.
-    given: $.servers[*].url
+    given:
+      - $.servers[*].url
+      - $.paths[*].servers[*].url
+      - $.paths[*][get,put,post,delete,options,head,patch,trace].servers[*].url
     severity: error
     then:
       function: pattern
