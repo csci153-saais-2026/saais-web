@@ -297,7 +297,7 @@ rules/                 # Vite React best practices and development rules
 - A program has 1+ curriculum versions, each with an effectivity period.
 - Each curriculum version belongs to exactly 1 program.
 - A student is assigned to exactly 1 curriculum at a time; changes are tracked as dated history (transfer/shift events), never overwritten.
-- An adviser endorses a curriculum transfer with a reason; a Department Head approves or rejects it. Approval updates the curriculum assignment without automatically changing the student's adviser. A separate authorized reassignment retains zero-gap adviser continuity.
+- An adviser endorses a curriculum transfer with a reason; a Department Head approves or rejects it. Approval updates the curriculum assignment without automatically changing the student's adviser. After a cross-department transfer, the existing adviser remains assigned to that student until the destination department's Head or Staff separately reassigns them to an eligible adviser there; this grants no broader department access. Reassignment retains zero-gap continuity.
 - A curriculum has 1+ terms (year level + term-within-year sequence); each term has 1+ courses.
 - A course can appear in multiple curricula (many-to-many at the term level).
 - Each curriculum defines its own delinquency threshold.
