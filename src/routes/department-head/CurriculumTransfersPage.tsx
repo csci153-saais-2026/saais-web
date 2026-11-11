@@ -1,9 +1,12 @@
 import * as React from "react"
+import { useSearchParams } from "react-router"
+import { AlertIcon } from "@/components/icons"
+import { FormField } from "@/components/features/form-field"
 import { PageHeading } from "@/components/features/page-heading"
+import { RecordTabs } from "@/components/features/student-record-header"
 import { StatGrid } from "@/components/features/stat-tile"
 import { Panel } from "@/components/features/panel"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -15,9 +18,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { SampleFooter } from "@/components/features/sample-footer"
+import { DepartmentToast } from "@/routes/department-head/dh-ui"
+import { useDepartmentToast } from "@/routes/department-head/dh-utils"
 import {
   MOCK_TRANSFER_REQUESTS,
   MOCK_TRANSFER_HISTORY,
@@ -26,16 +30,24 @@ import {
 } from "@/routes/department-head/mock-data"
 
 export default function CurriculumTransfersPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.has("history") ? "history" : "pending"
+
   const [pendingRequests, setPendingRequests] = React.useState<TransferRequest[]>(MOCK_TRANSFER_REQUESTS)
   const [decisionHistory, setDecisionHistory] = React.useState<TransferDecisionHistory[]>(MOCK_TRANSFER_HISTORY)
   const [selectedRequest, setSelectedRequest] = React.useState<TransferRequest | null>(null)
   const [decisionReason, setDecisionReason] = React.useState("")
   const [rejectionError, setRejectionError] = React.useState(false)
-  const [toastMessage, setToastMessage] = React.useState<string | null>(null)
+  const { message: toastMessage, showToast } = useDepartmentToast()
 
-  const showToast = (message: string) => {
-    setToastMessage(message)
-    setTimeout(() => setToastMessage(null), 4000)
+  const handleTabChange = (nextTab: string) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (nextTab === "history") {
+      nextParams.set("history", "1")
+    } else {
+      nextParams.delete("history")
+    }
+    setSearchParams(nextParams, { replace: true })
   }
 
   const handleOpenReview = (req: TransferRequest) => {
@@ -61,7 +73,7 @@ export default function CurriculumTransfersPage() {
     setPendingRequests((prev) => prev.filter((r) => r.id !== selectedRequest.id))
     setDecisionHistory((prev) => [approvedItem, ...prev])
     setSelectedRequest(null)
-    showToast(`Request for ${approvedItem.studentName} approved. (Preview only)`)
+    showToast(`Request for ${approvedItem.studentName} approved.`)
   }
 
   const handleReject = () => {
@@ -86,8 +98,10 @@ export default function CurriculumTransfersPage() {
     setPendingRequests((prev) => prev.filter((r) => r.id !== selectedRequest.id))
     setDecisionHistory((prev) => [rejectedItem, ...prev])
     setSelectedRequest(null)
-    showToast(`Request for ${rejectedItem.studentName} rejected. (Preview only)`)
+    showToast(`Request for ${rejectedItem.studentName} rejected.`)
   }
+
+  const totalDecisionsCount = decisionHistory.length + 12
 
   return (
     <div className="space-y-6">
@@ -97,6 +111,7 @@ export default function CurriculumTransfersPage() {
       />
 
       <StatGrid
+        className="lg:grid-cols-3"
         items={[
           {
             label: "Pending review",
@@ -116,17 +131,17 @@ export default function CurriculumTransfersPage() {
         ]}
       />
 
-      <Tabs defaultValue="pending" className="w-full">
-        <TabsList variant="line" className="mb-6 border-b border-line w-full justify-start gap-8">
-          <TabsTrigger value="pending" className="text-sm pb-3">
-            Pending review ({pendingRequests.length})
-          </TabsTrigger>
-          <TabsTrigger value="history" className="text-sm pb-3">
-            Decision history ({decisionHistory.length + 12})
-          </TabsTrigger>
-        </TabsList>
+      <RecordTabs
+        tabs={[
+          { value: "pending", label: `Pending review (${pendingRequests.length})` },
+          { value: "history", label: `Decision history (${totalDecisionsCount})` },
+        ]}
+        value={activeTab}
+        onValueChange={handleTabChange}
+      />
 
-        <TabsContent value="pending" className="space-y-6">
+      {activeTab === "pending" ? (
+        <div className="space-y-6">
           <Panel
             title="Transfer requests"
             description="Review the student record and adviser's reason before making a decision."
@@ -140,7 +155,7 @@ export default function CurriculumTransfersPage() {
                   <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Requested curriculum</TableHead>
                   <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Adviser</TableHead>
                   <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Submitted</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase text-right">Actions</TableHead>
+                  <TableHead className="text-right" aria-label="Actions" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -156,9 +171,9 @@ export default function CurriculumTransfersPage() {
                     <TableCell label="Submitted" className="text-muted-foreground">{req.submittedDate}</TableCell>
                     <TableCell label="Actions" className="text-right">
                       <Button
-                        variant="ghost"
+                        variant="link"
                         size="sm"
-                        className="text-primary font-semibold hover:text-primary hover:bg-secondary cursor-pointer"
+                        className="h-auto px-0 py-1 font-semibold underline-offset-4 cursor-pointer"
                         onClick={() => handleOpenReview(req)}
                       >
                         Review request →
@@ -176,67 +191,70 @@ export default function CurriculumTransfersPage() {
               </TableBody>
             </Table>
             <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-              <span>{pendingRequests.length} requests awaiting a decision</span>
+              <span>
+                {pendingRequests.length} {pendingRequests.length === 1 ? "request" : "requests"} awaiting a decision
+              </span>
               <span>DCST department scope</span>
             </div>
           </Panel>
 
-          <Alert className="bg-notice-advisory-bg border-notice-advisory-border text-notice-advisory">
-            <AlertDescription className="text-xs md:text-sm">
+          <Alert variant="advisory">
+            <AlertIcon />
+            <AlertDescription>
               Requests originate from the student's adviser. Approved transfers use the equivalencies defined for the curriculum pair.
             </AlertDescription>
           </Alert>
-        </TabsContent>
-
-        <TabsContent value="history">
-          <Panel
-            title="Transfer decision history"
-            description="A sample of the 14 decisions recorded this semester."
-            flush
-          >
-            <Table responsive>
-              <TableHeader className="bg-secondary">
-                <TableRow>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Student</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Curriculum transfer</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Adviser</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Decision</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Decision reason</TableHead>
+        </div>
+      ) : (
+        <Panel
+          title="Transfer decision history"
+          description={`A sample of the ${totalDecisionsCount} decisions recorded this semester.`}
+          flush
+        >
+          <Table responsive>
+            <TableHeader className="bg-secondary">
+              <TableRow>
+                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Student</TableHead>
+                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Curriculum transfer</TableHead>
+                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Adviser</TableHead>
+                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Decision</TableHead>
+                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Decision reason</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {decisionHistory.map((hist) => (
+                <TableRow key={hist.id}>
+                  <TableCell label="Student">
+                    <span className="font-medium text-foreground">{hist.studentName}</span>{" "}
+                    <span className="font-mono text-xs text-muted-2">· {hist.studentId}</span>
+                  </TableCell>
+                  <TableCell label="Curriculum transfer" className="font-mono text-xs">
+                    {hist.currentCurriculum} → {hist.requestedCurriculum}
+                  </TableCell>
+                  <TableCell label="Adviser" className="text-muted-foreground">{hist.adviser}</TableCell>
+                  <TableCell label="Decision">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={hist.decision === "Approved" ? "passed" : "failed"}>
+                        {hist.decision}
+                      </StatusBadge>
+                      <span className="text-xs text-muted-2">· {hist.decisionDate}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell label="Decision reason" className="text-sm text-muted-foreground max-w-xs">
+                    {hist.decisionReason}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {decisionHistory.map((hist) => (
-                  <TableRow key={hist.id}>
-                    <TableCell label="Student">
-                      <span className="font-medium text-foreground">{hist.studentName}</span>{" "}
-                      <span className="font-mono text-xs text-muted-2">· {hist.studentId}</span>
-                    </TableCell>
-                    <TableCell label="Curriculum transfer" className="font-mono text-xs">
-                      {hist.currentCurriculum} → {hist.requestedCurriculum}
-                    </TableCell>
-                    <TableCell label="Adviser" className="text-muted-foreground">{hist.adviser}</TableCell>
-                    <TableCell label="Decision">
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={hist.decision === "Approved" ? "passed" : "failed"}>
-                          {hist.decision}
-                        </StatusBadge>
-                        <span className="text-xs text-muted-2">· {hist.decisionDate}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell label="Decision reason" className="text-sm text-muted-foreground max-w-xs">
-                      {hist.decisionReason}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-              <span>{decisionHistory.length} sample decisions of 14</span>
-              <span>DCST department scope</span>
-            </div>
-          </Panel>
-        </TabsContent>
-      </Tabs>
+              ))}
+            </TableBody>
+          </Table>
+          <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
+            <span>
+              {decisionHistory.length} sample decisions of {totalDecisionsCount}
+            </span>
+            <span>DCST department scope</span>
+          </div>
+        </Panel>
+      )}
 
       {/* Review Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
@@ -269,8 +287,7 @@ export default function CurriculumTransfersPage() {
                 </div>
               </div>
 
-              {/* Route transition display */}
-              <div className="flex items-center justify-between rounded-sm border border-line bg-secondary/50 p-4">
+              <div className="flex items-center justify-between rounded-sm border border-border bg-secondary/60 p-4">
                 <div className="flex-1">
                   <small className="block text-xs text-muted-foreground mb-1">Current curriculum</small>
                   <strong className="font-heading font-semibold text-foreground">{selectedRequest.currentCurriculum}</strong>
@@ -291,21 +308,22 @@ export default function CurriculumTransfersPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 pt-1">
-                <Label htmlFor="decision-reason" className="text-xs font-semibold text-muted-2 uppercase tracking-wider">
-                  Decision reason {rejectionError && <span className="text-destructive font-normal">(Required to reject)</span>}
-                </Label>
+              <FormField
+                label="Decision reason"
+                htmlFor="decision-reason"
+                error={rejectionError ? "Add a decision reason to reject the request." : undefined}
+              >
                 <Textarea
                   id="decision-reason"
                   placeholder="Enter a reason for this decision"
                   value={decisionReason}
+                  aria-invalid={rejectionError || undefined}
                   onChange={(e) => {
                     setDecisionReason(e.target.value)
                     if (rejectionError && e.target.value.trim()) setRejectionError(false)
                   }}
-                  className={rejectionError ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
-              </div>
+              </FormField>
             </div>
           )}
 
@@ -323,12 +341,7 @@ export default function CurriculumTransfersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Floating feedback toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-md bg-sidebar-primary px-4 py-3 text-sm font-medium text-sidebar-primary-foreground shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2">
-          {toastMessage}
-        </div>
-      )}
+      <DepartmentToast message={toastMessage} />
 
       <SampleFooter>
         Sample records for presentation · Reference date: 15 August 2025 · Static design

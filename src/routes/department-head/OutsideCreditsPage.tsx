@@ -1,11 +1,12 @@
 import * as React from "react"
+import { PlusIcon } from "@/components/icons"
+import { FormField } from "@/components/features/form-field"
 import { PageHeading } from "@/components/features/page-heading"
 import { StatGrid } from "@/components/features/stat-tile"
 import { Panel } from "@/components/features/panel"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { PlusIcon } from "@/components/icons"
 import {
   Dialog,
   DialogContent,
@@ -14,30 +15,52 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { SampleFooter } from "@/components/features/sample-footer"
+import { DepartmentToast } from "@/routes/department-head/dh-ui"
+import { useDepartmentToast } from "@/routes/department-head/dh-utils"
 import { MOCK_OUTSIDE_CREDITS, type OutsideCreditRecord } from "@/routes/department-head/mock-data"
+
+const STUDENT_OPTIONS = [
+  "Ana Marie Santos · 24-1-00124",
+  "Sofia Isabel Garcia · 24-1-00316",
+  "Isabella Ramos · 25-1-00087",
+] as const
+
+const EQUIV_SUBJECT_OPTIONS = [
+  "CC 101 · Introduction to Computing · 3 units",
+  "CC 102 · Computer Programming 1 · 3 units",
+  "CC 104 · Data Structures and Algorithms · 3 units",
+  "GE 1 · Purposive Communication · 3 units",
+  "GE 4 · Mathematics in the Modern World · 3 units",
+] as const
+
+function parseUnits(label: string | undefined): number {
+  const match = label?.match(/\d+/)
+  return match ? Number(match[0]) : 3
+}
 
 export default function OutsideCreditsPage() {
   const [credits, setCredits] = React.useState<OutsideCreditRecord[]>(MOCK_OUTSIDE_CREDITS)
   const [isAddOpen, setIsAddOpen] = React.useState(false)
-  const [toastMessage, setToastMessage] = React.useState<string | null>(null)
+  const { message: toastMessage, showToast } = useDepartmentToast()
 
   // Form states
-  const [selectedStudent, setSelectedStudent] = React.useState("Ana Marie Santos · 24-1-00124")
+  const [selectedStudent, setSelectedStudent] = React.useState<string>(STUDENT_OPTIONS[0])
   const [entryType, setEntryType] = React.useState<"Transferee" | "Shiftee">("Transferee")
   const [origCode, setOrigCode] = React.useState("CS 101")
   const [origTitle, setOrigTitle] = React.useState("Computing Fundamentals")
   const [origUnits, setOrigUnits] = React.useState("3")
   const [grade, setGrade] = React.useState("1.50")
   const [schoolOrigin, setSchoolOrigin] = React.useState("Northern State College")
-  const [equivSubject, setEquivSubject] = React.useState("CC 101 · Introduction to Computing · 3 units")
-
-  const showToast = (message: string) => {
-    setToastMessage(message)
-    setTimeout(() => setToastMessage(null), 4500)
-  }
+  const [equivSubject, setEquivSubject] = React.useState<string>(EQUIV_SUBJECT_OPTIONS[0])
 
   const handleAddCredit = () => {
     const studentParts = selectedStudent.split("·").map((s) => s.trim())
@@ -54,15 +77,21 @@ export default function OutsideCreditsPage() {
       grade: grade.trim() || "1.50",
       equivalentCode: equivParts[0] ?? "CC 101",
       equivalentTitle: equivParts[1] ?? "Course",
-      equivalentUnits: 3,
+      equivalentUnits: parseUnits(equivParts[2]),
       targetCurriculum: "BSCS 2024",
       entryType,
     }
 
     setCredits((prev) => [newRecord, ...prev])
     setIsAddOpen(false)
-    showToast(`Credited ${newRecord.originalCode} for ${newRecord.studentName}. (Preview only)`)
+    showToast(`Credited ${newRecord.originalCode} for ${newRecord.studentName}.`)
   }
+
+  const addedCount = credits.length - MOCK_OUTSIDE_CREDITS.length
+  const totalCreditedSubjects = 28 + addedCount
+  const addedUnits = credits
+    .slice(0, addedCount)
+    .reduce((sum, r) => sum + r.equivalentUnits, 0)
 
   return (
     <div className="space-y-6">
@@ -78,10 +107,11 @@ export default function OutsideCreditsPage() {
       />
 
       <StatGrid
+        className="lg:grid-cols-3"
         items={[
           {
             label: "Credited subjects",
-            value: 28 + (credits.length - MOCK_OUTSIDE_CREDITS.length),
+            value: totalCreditedSubjects,
             note: "AY 2025–2026 · 1st semester",
           },
           {
@@ -91,7 +121,7 @@ export default function OutsideCreditsPage() {
           },
           {
             label: "Units recognized",
-            value: 84 + (credits.length - MOCK_OUTSIDE_CREDITS.length) * 3,
+            value: 84 + addedUnits,
             note: "Across BSCS and BSIT curricula",
           },
         ]}
@@ -110,7 +140,7 @@ export default function OutsideCreditsPage() {
               <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">School / origin</TableHead>
               <TableHead className="w-20 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase text-right">Grade</TableHead>
               <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Equivalent subject / units</TableHead>
-              <TableHead className="w-28 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase text-right">Type</TableHead>
+              <TableHead className="w-28 text-right" aria-label="Type" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -121,7 +151,7 @@ export default function OutsideCreditsPage() {
                   <small className="block font-mono text-xs text-muted-2">{c.studentId}</small>
                 </TableCell>
                 <TableCell label="Original course / units">
-                  <strong className="block font-mono text-xs text-foreground">
+                  <strong className="block font-semibold text-foreground">
                     {c.originalCode} · {c.originalTitle}
                   </strong>
                   <small className="block text-xs text-muted-2">{c.originalUnits} units</small>
@@ -131,7 +161,7 @@ export default function OutsideCreditsPage() {
                   {c.grade}
                 </TableCell>
                 <TableCell label="Equivalent subject / units">
-                  <strong className="block font-mono text-xs text-foreground">
+                  <strong className="block font-semibold text-foreground">
                     {c.equivalentCode} · {c.equivalentTitle}
                   </strong>
                   <small className="block text-xs text-muted-2">
@@ -149,7 +179,9 @@ export default function OutsideCreditsPage() {
         </Table>
 
         <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-          <span>{credits.length} sample outside credit records</span>
+          <span>
+            Showing {credits.length} sample records of {totalCreditedSubjects} credited subjects
+          </span>
           <span>DCST department scope</span>
         </div>
       </Panel>
@@ -165,60 +197,60 @@ export default function OutsideCreditsPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="cr-student">Student</Label>
-                <select
-                  id="cr-student"
-                  value={selectedStudent}
-                  onChange={(e) => setSelectedStudent(e.target.value)}
-                  className="w-full h-9 rounded-sm border border-line bg-background px-3 text-xs focus-visible:outline-primary"
-                >
-                  <option>Ana Marie Santos · 24-1-00124</option>
-                  <option>Sofia Isabel Garcia · 24-1-00316</option>
-                  <option>Isabella Ramos · 25-1-00087</option>
-                </select>
-              </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Student" htmlFor="cr-student">
+                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                  <SelectTrigger id="cr-student" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STUDENT_OPTIONS.map((student) => (
+                      <SelectItem key={student} value={student}>
+                        {student}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="cr-entry">Entry type</Label>
-                <select
-                  id="cr-entry"
+              <FormField label="Entry type" htmlFor="cr-entry">
+                <Select
                   value={entryType}
-                  onChange={(e) => setEntryType(e.target.value as "Transferee" | "Shiftee")}
-                  className="w-full h-9 rounded-sm border border-line bg-background px-3 text-xs focus-visible:outline-primary"
+                  onValueChange={(val) => setEntryType(val as "Transferee" | "Shiftee")}
                 >
-                  <option>Transferee</option>
-                  <option>Shiftee</option>
-                </select>
-              </div>
+                  <SelectTrigger id="cr-entry" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Transferee">Transferee</SelectItem>
+                    <SelectItem value="Shiftee">Shiftee</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="cr-code">Original course code</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Original course code" htmlFor="cr-code">
                 <Input
                   id="cr-code"
                   value={origCode}
                   onChange={(e) => setOrigCode(e.target.value)}
                   placeholder="e.g. CS 101"
                 />
-              </div>
+              </FormField>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="cr-title">Original course name</Label>
+              <FormField label="Original course name" htmlFor="cr-title">
                 <Input
                   id="cr-title"
                   value={origTitle}
                   onChange={(e) => setOrigTitle(e.target.value)}
                   placeholder="e.g. Computing Fundamentals"
                 />
-              </div>
+              </FormField>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="cr-units">Units</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Units" htmlFor="cr-units">
                 <Input
                   id="cr-units"
                   type="number"
@@ -227,44 +259,41 @@ export default function OutsideCreditsPage() {
                   value={origUnits}
                   onChange={(e) => setOrigUnits(e.target.value)}
                 />
-              </div>
+              </FormField>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="cr-grade">Grade</Label>
+              <FormField label="Grade" htmlFor="cr-grade">
                 <Input
                   id="cr-grade"
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
                   placeholder="e.g. 1.50"
                 />
-              </div>
+              </FormField>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="cr-school">School / degree of origin</Label>
+            <FormField label="School / degree of origin" htmlFor="cr-school">
               <Input
                 id="cr-school"
                 value={schoolOrigin}
                 onChange={(e) => setSchoolOrigin(e.target.value)}
                 placeholder="e.g. Northern State College"
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="cr-equiv">Equivalent course subject</Label>
-              <select
-                id="cr-equiv"
-                value={equivSubject}
-                onChange={(e) => setEquivSubject(e.target.value)}
-                className="w-full h-9 rounded-sm border border-line bg-background px-3 text-xs focus-visible:outline-primary"
-              >
-                <option>CC 101 · Introduction to Computing · 3 units</option>
-                <option>CC 102 · Computer Programming 1 · 3 units</option>
-                <option>CC 104 · Data Structures and Algorithms · 3 units</option>
-                <option>GE 1 · Purposive Communication · 3 units</option>
-                <option>GE 4 · Mathematics in the Modern World · 3 units</option>
-              </select>
-            </div>
+            <FormField label="Equivalent course subject" htmlFor="cr-equiv">
+              <Select value={equivSubject} onValueChange={setEquivSubject}>
+                <SelectTrigger id="cr-equiv" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EQUIV_SUBJECT_OPTIONS.map((subj) => (
+                    <SelectItem key={subj} value={subj}>
+                      {subj}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
           </div>
 
           <DialogFooter>
@@ -276,12 +305,7 @@ export default function OutsideCreditsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Floating feedback toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-md bg-sidebar-primary px-4 py-3 text-sm font-medium text-sidebar-primary-foreground shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2">
-          {toastMessage}
-        </div>
-      )}
+      <DepartmentToast message={toastMessage} />
 
       <SampleFooter>
         Sample records for presentation · Reference date: 15 August 2025 · Static design
