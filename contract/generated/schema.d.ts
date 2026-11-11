@@ -1251,7 +1251,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke elective mapping
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations. Invalidate affected current calculation caches and retain effective-dated data or snapshots needed to reproduce historical results.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations where they depend on the decision. The underlying attempt and any independently applicable GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeElectiveMapping"];
         delete?: never;
@@ -1311,7 +1311,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke equivalency decision
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations. Invalidate affected current calculation caches and retain effective-dated data or snapshots needed to reproduce historical results.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations where they depend on the decision. The underlying attempt and any independently applicable GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeEquivalencyDecision"];
         delete?: never;
