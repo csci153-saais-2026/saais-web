@@ -1187,7 +1187,7 @@ export interface paths {
         put?: never;
         /**
          * Complete an unresolved INC
-         * @description One first completion, server time, before/on existing deadline using Asia/Manila date. Explicitly permitted even when the original term is locked. Retain stored INC; project Passed <=3/Failed >3. After deadline reject; never backdate or rewrite lapsed INC to Failed.
+         * @description One first completion, server time, before/on existing deadline using Asia/Manila date. Explicitly permitted even when the original term is institution-locked or its department has closed encoding. Retain stored INC; project Passed <=3/Failed >3. After deadline reject; never backdate or rewrite lapsed INC to Failed.
          */
         post: operations["completeINC"];
         delete?: never;
@@ -1195,7 +1195,7 @@ export interface paths {
         head?: never;
         /**
          * Correct an existing INC completion
-         * @description Lock owned attempt/completion, require current adviser, reason, expected_updated_at and editable original term. Correction is not the first-completion lock exception.
+         * @description Lock owned attempt/completion, require current adviser, reason, expected_updated_at and editable original term. Correction is not the first-completion lock exception and is blocked by a department encoding closure; an institution lock blocks it unless its override applies.
          */
         patch: operations["correctINCCompletion"];
         trace?: never;
