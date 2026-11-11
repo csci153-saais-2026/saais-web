@@ -100,143 +100,129 @@ export const MOCK_TRANSFER_HISTORY: TransferDecisionHistory[] = [
   },
 ]
 
-export interface CurriculumVersion {
+export type CurriculumVersionStatus = "active" | "draft" | "retired"
+
+export type CurriculumSemester = "Semester 1" | "Semester 2" | "Midyear"
+
+export type CurriculumSlotType = "Required course" | "Elective slot" | "GE slot"
+
+export interface CurriculumCourseSlot {
   id: string
-  code: string
-  program: string
-  department: string
-  status: "Current" | "Older curriculum" | "Draft" | "Retired"
-  isCurrent: boolean
-  enrolled: number
-  effectiveYear: string
+  courseOrSlot: string
   requiredUnits: number
+  type: CurriculumSlotType
 }
 
-export const MOCK_CURRICULUM_VERSIONS: CurriculumVersion[] = [
-  {
-    id: "ver-bscs-2024",
-    code: "BSCS 2024",
-    program: "BS Computer Science",
-    department: "DCST",
-    status: "Current",
-    isCurrent: true,
-    enrolled: 286,
-    effectiveYear: "AY 2024–2025",
-    requiredUnits: 147,
-  },
-  {
-    id: "ver-bscs-2021",
-    code: "BSCS 2021",
-    program: "BS Computer Science",
-    department: "DCST",
-    status: "Older curriculum",
-    isCurrent: false,
-    enrolled: 142,
-    effectiveYear: "AY 2021–2022",
-    requiredUnits: 150,
-  },
-  {
-    id: "ver-bsit-2024",
-    code: "BSIT 2024",
-    program: "BS Information Technology",
-    department: "DCST",
-    status: "Current",
-    isCurrent: true,
-    enrolled: 184,
-    effectiveYear: "AY 2024–2025",
-    requiredUnits: 148,
-  },
+export interface CurriculumTermBlock {
+  id: string
+  year: number
+  sem: CurriculumSemester
+  rows: CurriculumCourseSlot[]
+}
+
+export interface CurriculumVersionRecord {
+  id: string
+  prog: "BSCS" | "BSIT"
+  year: string
+  units: number
+  enrolled: number
+  from: string
+  status: CurriculumVersionStatus
+  terms: CurriculumTermBlock[]
+}
+
+export const FACULTY_DEPARTMENTS: Record<string, string[]> = {
+  "Faculty of Computer Studies": ["Computer Science", "Information Technology"],
+  "Faculty of Arts and Sciences": [
+    "Mathematics and Statistics",
+    "Psychology",
+    "General Education",
+  ],
+  "University Administration": ["Office of the Registrar"],
+}
+
+export const CURRICULUM_SEMESTERS: CurriculumSemester[] = [
+  "Semester 1",
+  "Semester 2",
+  "Midyear",
 ]
 
-export interface OpenedSubject {
-  id: string
-  curriculum: string
-  yearLevel: "1st" | "2nd" | "3rd" | "4th"
-  code: string
-  title: string
-  units: number
-  category: "Professional" | "Elective" | "General Education"
-  prerequisites: string
-  corequisites: string
-}
-
-export const MOCK_OPENED_SUBJECTS: OpenedSubject[] = [
+export const MOCK_CURRICULA_VERSIONS: CurriculumVersionRecord[] = [
   {
-    id: "subj-1",
-    curriculum: "BSCS 2024",
-    yearLevel: "1st",
-    code: "CC 101",
-    title: "Introduction to Computing",
-    units: 3,
-    category: "Professional",
-    prerequisites: "None",
-    corequisites: "None",
+    id: "ver-bscs-2023",
+    prog: "BSCS",
+    year: "2023–2024",
+    units: 147,
+    enrolled: 286,
+    from: "2023-06-01",
+    status: "active",
+    terms: [
+      {
+        id: "bscs23-y1-s1",
+        year: 1,
+        sem: "Semester 1",
+        rows: [
+          { id: "r1", courseOrSlot: "CSIT 100 — Introduction to Computing", requiredUnits: 3, type: "Required course" },
+          { id: "r2", courseOrSlot: "CSIT 101 — Fundamentals of Programming", requiredUnits: 4, type: "Required course" },
+          { id: "r3", courseOrSlot: "CSci 180 — Pre-calculus for CS", requiredUnits: 3, type: "Required course" },
+          { id: "r4", courseOrSlot: "Comm 11 — Purposive Communication", requiredUnits: 3, type: "Required course" },
+          { id: "r5", courseOrSlot: "Entr 11 — Entrepreneurial Mind", requiredUnits: 3, type: "Required course" },
+          { id: "r6", courseOrSlot: "ITec 11 — Living in the IT Era", requiredUnits: 3, type: "Required course" },
+          { id: "r7", courseOrSlot: "PE 1 — Physical Fitness", requiredUnits: 2, type: "Required course" },
+        ],
+      },
+      {
+        id: "bscs23-y1-s2",
+        year: 1,
+        sem: "Semester 2",
+        rows: [
+          { id: "r8", courseOrSlot: "CSIT 102 — Data Structures", requiredUnits: 4, type: "Required course" },
+          { id: "r9", courseOrSlot: "CSci 181 — Discrete Mathematics", requiredUnits: 3, type: "Required course" },
+          { id: "r10", courseOrSlot: "Math 11 — Calculus 1", requiredUnits: 3, type: "Required course" },
+          { id: "r11", courseOrSlot: "GE elective", requiredUnits: 3, type: "GE slot" },
+        ],
+      },
+    ],
   },
   {
-    id: "subj-2",
-    curriculum: "BSCS 2024",
-    yearLevel: "1st",
-    code: "CC 102",
-    title: "Computer Programming 1",
-    units: 3,
-    category: "Professional",
-    prerequisites: "None",
-    corequisites: "CC 102L",
+    id: "ver-bscs-2019",
+    prog: "BSCS",
+    year: "2019–2020",
+    units: 150,
+    enrolled: 142,
+    from: "2019-06-01",
+    status: "retired",
+    terms: [
+      {
+        id: "bscs19-y1-s1",
+        year: 1,
+        sem: "Semester 1",
+        rows: [
+          { id: "r12", courseOrSlot: "CSIT 100 — Introduction to Computing", requiredUnits: 3, type: "Required course" },
+          { id: "r13", courseOrSlot: "CSIT 101 — Fundamentals of Programming", requiredUnits: 4, type: "Required course" },
+        ],
+      },
+    ],
   },
   {
-    id: "subj-3",
-    curriculum: "BSCS 2024",
-    yearLevel: "2nd",
-    code: "CC 104",
-    title: "Data Structures and Algorithms",
-    units: 3,
-    category: "Professional",
-    prerequisites: "CC 103 · course",
-    corequisites: "CC 104L",
-  },
-  {
-    id: "subj-4",
-    curriculum: "BSCS 2024",
-    yearLevel: "2nd",
-    code: "CS 211",
-    title: "Discrete Structures 2",
-    units: 3,
-    category: "Professional",
-    prerequisites: "CS 112 · course",
-    corequisites: "None",
-  },
-  {
-    id: "subj-5",
-    curriculum: "BSCS 2024",
-    yearLevel: "3rd",
-    code: "CS 311",
-    title: "Software Engineering 1",
-    units: 3,
-    category: "Professional",
-    prerequisites: "CC 106; 3rd-year standing",
-    corequisites: "CS 311L",
-  },
-  {
-    id: "subj-6",
-    curriculum: "BSCS 2024",
-    yearLevel: "3rd",
-    code: "CS ELEC 1",
-    title: "Intelligent Systems",
-    units: 3,
-    category: "Elective",
-    prerequisites: "Professional category · ≥ 18 units",
-    corequisites: "None",
-  },
-  {
-    id: "subj-7",
-    curriculum: "BSCS 2024",
-    yearLevel: "4th",
-    code: "CS 411",
-    title: "Thesis 1",
-    units: 3,
-    category: "Professional",
-    prerequisites: "CS 322; 4th-year standing",
-    corequisites: "None",
+    id: "ver-bsit-2023",
+    prog: "BSIT",
+    year: "2023–2024",
+    units: 148,
+    enrolled: 184,
+    from: "2023-06-01",
+    status: "active",
+    terms: [
+      {
+        id: "bsit23-y1-s1",
+        year: 1,
+        sem: "Semester 1",
+        rows: [
+          { id: "r14", courseOrSlot: "ITec 11 — Living in the IT Era", requiredUnits: 3, type: "Required course" },
+          { id: "r15", courseOrSlot: "CSIT 101 — Fundamentals of Programming", requiredUnits: 4, type: "Required course" },
+        ],
+      },
+    ],
   },
 ]
 
@@ -381,6 +367,7 @@ export interface AcademicTermRecord {
   encodingDeadline: string
   status: "Open" | "Closed"
   closedBy?: string
+  closureNote?: string
   startDate?: string
   endDate?: string
 }
@@ -420,5 +407,45 @@ export const MOCK_ACADEMIC_TERMS: AcademicTermRecord[] = [
     encodingDeadline: "14 Jun 2024",
     status: "Closed",
     closedBy: "Dr. Andrea Dela Cruz",
+  },
+]
+
+export interface DepartmentNotificationRecord {
+  id: string
+  title: string
+  body: string
+  time: string
+  unread: boolean
+  to: string
+  kind: "transfer" | "alert" | "note"
+}
+
+export const MOCK_DEPARTMENT_NOTIFICATIONS: DepartmentNotificationRecord[] = [
+  {
+    id: "notif-1",
+    title: "New transfer request submitted for Luis Miguel Cruz",
+    body: "Prof. Marco Villanueva endorsed a curriculum transfer from BSCS 2021 to BSCS 2024.",
+    time: "10m ago",
+    unread: true,
+    to: "/department-head/curriculum-transfers",
+    kind: "transfer",
+  },
+  {
+    id: "notif-2",
+    title: "Grade encoding deadline approaching for AY 2025–2026 1st sem",
+    body: "Encoding closes on 05 Jan 2026. Remind advisers to finalize pending grade submissions.",
+    time: "2h ago",
+    unread: true,
+    to: "/department-head/academic-terms",
+    kind: "alert",
+  },
+  {
+    id: "notif-3",
+    title: "Outside credits evaluated for Ana Marie Santos",
+    body: "CS 101 · Computing Fundamentals (Northern State College) mapped to CC 101.",
+    time: "Yesterday",
+    unread: false,
+    to: "/department-head/outside-credits",
+    kind: "note",
   },
 ]
