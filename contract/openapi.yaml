@@ -4644,7 +4644,12 @@ paths:
       operationId: revokeElectiveMapping
       description: >-
         Current adviser, reason, expected_updated_at and student ownership required. Soft revoke
-        atomically with audit; no physical deletion of source or decision history.
+        atomically with audit; no physical deletion of source or decision history. Revocation takes
+        effect at the server-stamped revocation time: preserve historical report results as of their
+        original time, and exclude revoked credit from current checklist and future calculations
+        where they depend on the decision. The underlying attempt and any independently applicable
+        GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots
+        needed to reproduce historical results.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -4814,7 +4819,12 @@ paths:
       operationId: revokeEquivalencyDecision
       description: >-
         Current adviser, reason, expected_updated_at and student ownership required. Soft revoke
-        atomically with audit; no physical deletion of source or decision history.
+        atomically with audit; no physical deletion of source or decision history. Revocation takes
+        effect at the server-stamped revocation time: preserve historical report results as of their
+        original time, and exclude revoked credit from current checklist and future calculations
+        where they depend on the decision. The underlying attempt and any independently applicable
+        GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots
+        needed to reproduce historical results.
       x-required-roles:
         - adviser
       x-access-scope: current-adviser-only
@@ -7601,7 +7611,9 @@ paths:
       description: >-
         Department Head, Department Staff, or Admin previews or commits a batch of student
         accounts from CSV/TSV/spreadsheet rows (FR-ADM-14), validating student_number format
-        YY-N-NNNNN, institutional email uniqueness, curriculum version, and adviser assignment.
+        YY-N-NNNNN, institutional email uniqueness, matching active curriculum version, and a
+        required eligible active initial adviser for every row. Invalid rows are rejected; committing
+        a valid row creates its student and initial assignments atomically.
       x-required-roles:
         - department_head
         - department_staff
@@ -8942,7 +8954,10 @@ components:
         - grade_replacement
         - grade_averaging
         - additional_credit
-      description: Course retake credit rule
+      description: >-
+        Course retake credit rule. For additional_credit, every passed repeat contributes its
+        earned units and grade to GWA, including passes beyond curriculum requirements; filling
+        the curriculum requirement does not cap earned credit or GWA contributions.
     MidtermStatus:
       type: string
       enum:
@@ -13639,10 +13654,9 @@ components:
           type: string
           format: uuid
         adviser_id:
-          type:
-            - string
-            - "null"
+          type: string
           format: uuid
+          description: Eligible active initial adviser for the imported student.
         entry_year:
           type:
             - integer
@@ -13656,6 +13670,7 @@ components:
         - email
         - program_id
         - curriculum_version_id
+        - adviser_id
     StudentBatchImportRequest:
       type: object
       additionalProperties: false

@@ -1251,7 +1251,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke elective mapping
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations where they depend on the decision. The underlying attempt and any independently applicable GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeElectiveMapping"];
         delete?: never;
@@ -1311,7 +1311,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke equivalency decision
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations where they depend on the decision. The underlying attempt and any independently applicable GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeEquivalencyDecision"];
         delete?: never;
@@ -2011,7 +2011,7 @@ export interface paths {
         put?: never;
         /**
          * Preview or commit student directory spreadsheet import
-         * @description Department Head, Department Staff, or Admin previews or commits a batch of student accounts from CSV/TSV/spreadsheet rows (FR-ADM-14), validating student_number format YY-N-NNNNN, institutional email uniqueness, curriculum version, and adviser assignment.
+         * @description Department Head, Department Staff, or Admin previews or commits a batch of student accounts from CSV/TSV/spreadsheet rows (FR-ADM-14), validating student_number format YY-N-NNNNN, institutional email uniqueness, matching active curriculum version, and a required eligible active initial adviser for every row. Invalid rows are rejected; committing a valid row creates its student and initial assignments atomically.
          */
         post: operations["importStudentsBatch"];
         delete?: never;
@@ -2317,7 +2317,7 @@ export interface components {
          */
         CourseStatus: "active" | "inactive" | "discontinued";
         /**
-         * @description Course retake credit rule
+         * @description Course retake credit rule. For additional_credit, every passed repeat contributes its earned units and grade to GWA, including passes beyond curriculum requirements; filling the curriculum requirement does not cap earned credit or GWA contributions.
          * @enum {string}
          */
         RepeatableType: "none" | "grade_replacement" | "grade_averaging" | "additional_credit";
@@ -3920,8 +3920,11 @@ export interface components {
             program_id: string;
             /** Format: uuid */
             curriculum_version_id: string;
-            /** Format: uuid */
-            adviser_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Eligible active initial adviser for the imported student.
+             */
+            adviser_id: string;
             entry_year?: number | null;
         };
         StudentBatchImportRequest: {

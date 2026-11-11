@@ -2845,18 +2845,25 @@ export const saaisMswHandlers = [
     if (!body?.mode || !Array.isArray(body.rows)) {
       return errorJson(400, 'INVALID_INPUT', 'mode and rows are required.')
     }
+    const db = getMockDatabase()
+    const valid = (r: ApiSchema<'StudentBatchImportRowInput'>) => {
+      const adviser = db.profiles.find(p => p.id === r.adviser_id && p.status === 'active' && p.roles?.includes('adviser'))
+      const program = db.programs.find(p => p.id === r.program_id)
+      return Boolean(adviser && program && adviser.department_id === program.department_id && db.curriculumVersions.some(c => c.id === r.curriculum_version_id && c.program_id === r.program_id && c.status === 'active'))
+    }
+    const validCount = body.rows.filter(valid).length
     const res: ApiSchema<'StudentBatchImportResponse'> = {
       mode: body.mode,
-      valid_count: body.rows.length,
+      valid_count: validCount,
       warning_count: 0,
-      error_count: 0,
-      imported_count: body.mode === 'commit' ? body.rows.length : 0,
+      error_count: body.rows.length - validCount,
+      imported_count: body.mode === 'commit' ? validCount : 0,
       results: body.rows.map((r) => ({
         row_number: r.row_number,
         student_number: r.student_number,
         email: r.email,
-        outcome: body.mode === 'commit' ? 'imported' : 'valid',
-        message: 'Validated successfully.',
+        outcome: valid(r) ? (body.mode === 'commit' ? 'imported' : 'valid') : 'error',
+        message: valid(r) ? 'Validated successfully.' : 'An eligible active adviser and matching active curriculum are required.',
       })),
     }
     return HttpResponse.json(res, { status: 200 })
