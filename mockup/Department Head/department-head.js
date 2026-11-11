@@ -5,7 +5,7 @@ const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const dialog = $('#preview-dialog');
 const field = (name,value='',type='text') => `<label><span>${name}</span><input type="${type}" value="${value}"></label>`;
 const select = (name,options) => `<label><span>${name}</span><select>${options.map(s=>`<option>${s}</option>`).join('')}</select></label>`;
-const reason = name => `<label class="wide"><span>${name}</span><textarea placeholder="Enter a reason for this decision"></textarea></label>`;
+const reason = name => `<label class="wide"><span>${name}</span><textarea ${name === 'Reason for credit' ? 'maxlength="2000"' : ''} placeholder="Enter a reason for this decision"></textarea></label>`;
 const form = content => `<div class="form-grid">${content}</div>`;
 const disclaimer = '';
 const sampleTable = (heads,rows) => `<div class="table-wrap"><table><thead><tr>${heads.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
