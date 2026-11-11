@@ -176,7 +176,7 @@ npm run contract:docs     # build the static Redoc bundle
 `supabase/seed.sql` should populate enough sample data to exercise every UI state and business rule without real student data:
 
 - 1–2 sample Programs, each with a CurriculumVersion carrying its own `delinquency_threshold`.
-- A prerequisite chain covering all three types (strict, co-requisite, recommended), including at least one course of each `repeatable_type` (`none`, `grade_replacement`, `additional_credit`).
+- A prerequisite chain covering all three types (strict, co-requisite, recommended), including a failed course eligible for retake.
 - At least one `by_request` CourseOffering for a discontinued course, and one locked SchoolTerm with an active `override_flag`.
 - Sample students covering: a lapsed INC (past its compliance deadline, unresolved), an audited prerequisite enrollment override, an active ElectiveMapping, a transfer EquivalencyDecision, a student above the curriculum's delinquency threshold, and an AdviserAssignment history with at least one reassignment (to exercise gap-free continuity).
 - At least one RoleAssignment for each assignable role type (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`), plus one profile with both Department Head and Dean assignments. Include one student-visible AdvisingNote and a separate staff-only AttemptRemark to exercise their different access rules.
@@ -309,7 +309,7 @@ rules/                 # Vite React best practices and development rules
 - Course codes are never assumed equivalent across different codes.
 - Prerequisite types: strict, co-requisite, recommended (advisory only).
 - **Prerequisite enforcement**: if a strict prerequisite is not satisfied, the adviser sees the missing prerequisite and can choose **Continue with override** or **Cancel**. Continuing requires a reason and records the override and audit entry with the attempt; cancelling records nothing. The override does not change the prerequisite grade or mark it as passed. An authorized grade correction is a separate action.
-- `repeatable_type` distinguishes how a repeated course affects GWA/units: `none` (course cannot be retaken once passed), `grade_replacement` (only the applicable attempt per the rule in [Enrollment & Attempts](#enrollment--attempts) counts), or `additional_credit` (each passed attempt counts independently — see below).
+- A student may retake a course only until it is passed; a passed course cannot be taken again.
 - A curriculum term slot can be an elective slot, not tied to one fixed code.
 
 ### Elective Course Mapping (within a Curriculum)
@@ -347,9 +347,8 @@ rules/                 # Vite React best practices and development rules
 - Midterm and final grade fields; INC resolved later via a separate completion-grade record.
 - **INC handling**: an INC has a compliance deadline, defaulting to one calendar year after the actual end date of the term in which it was incurred. Changing a term's end date affects defaults for future INC entries; it does not rewrite existing deadlines. If not resolved within that period, the attempt's `status` remains `INC` permanently — it is never auto-changed to `Failed`. Instead, **GWA computation** treats any INC past its compliance deadline as a grade of 5.00 for calculation purposes only. This is a computed rule evaluated at GWA-calculation time, not a stored status transition.
 - A lapsed INC (past its compliance deadline) is likewise treated as failed units for the **delinquency flag** calculation, consistent with its GWA treatment.
-- **Units-earned/GWA counting rule, by `repeatable_type`:**
-  - **`none` / `grade_replacement`**: once a student has a Passed attempt, that **most recent Passed attempt** is what counts toward units earned/GWA — permanently, even if one or more Failed/other-status attempts occur _after_ that pass. A later failure never reverts an already-passed course back to failing for GWA purposes. If the course has never been passed, the most recent attempt (whatever its status) is what counts.
-  - **`additional_credit`**: each Passed attempt counts **independently** toward units earned/GWA, even after curriculum requirements are filled; each successful repeat stacks credit rather than replacing a prior one.
+- **Units-earned/GWA counting rule:**
+  - Count the passed attempt for the course; if no attempt has passed, count the latest attempt. Preserve any legacy attempt history without permitting new retakes after a pass.
   - All other attempts not selected by the rule above are retained for history only and do not affect units earned/GWA.
 - Term/cumulative GWA are derived (unit-weighted), cached with a recompute trigger on grade change. Because a lapsed INC changes GWA purely due to elapsed time (not an explicit grade edit), any cached GWA value must also be invalidated/recomputed by a scheduled check — see [Design Details](#9-design-details).
 - A delinquency flag is computed per student per term against the curriculum's threshold, using the failed-units definition above (explicit Failed status + lapsed INC).
@@ -484,7 +483,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `units` | numeric, not null | |
 | `department_id` | uuid, FK → Department, not null | owning Department; Faculty is derived through Department |
 | `status` | enum(`active`,`discontinued`) | |
-| `repeatable_type` | enum(`none`,`grade_replacement`,`additional_credit`) | drives the units/GWA counting rule in §6 |
+| `repeatable_type` | legacy enum(`none`) | Compatibility field; passed courses cannot be retaken. |
 
 **Prerequisite**
 
@@ -692,7 +691,7 @@ The production application will provide the following role-based workflows. Thes
 | `/admin/faculties`                     | Faculty (College) and subordinate Department hierarchy management                                                          |
 | `/admin/programs`                      | Master degree programs with department/college associations and active status                                              |
 | `/department-staff/curricula`          | Department curriculum versions, terms, and slot mappings |
-| `/department-staff/course-catalog`     | Department course catalog: codes, units, repeatable types, and prerequisites |
+| `/department-staff/course-catalog`     | Department course catalog: codes, units, and prerequisites |
 | `/department-staff/academic-terms`     | Department term management and course offerings, including by-request offerings |
 | `/admin/audit-log`                     | System-wide immutable audit trail with actor, action, date-range filtering, and export                                     |
 
@@ -700,7 +699,7 @@ The production application will provide the following role-based workflows. Thes
 
 Department Heads and Department Staff will be able to review curriculum versions with required units, enrolled-student counts, effective dates, and status. Their curriculum workflows will support adding and editing versions, terms, and course or elective slots.
 
-The New Course workflow will collect the course code, title, units, owning department, and repeatable type (`none`, `grade_replacement`, or `additional_credit`). Creating a catalog course does not place it in a curriculum. A separate curriculum workflow adds the course to a selected curriculum term as a `CurriculumTermCourse`; a catalog course can be used in more than one curriculum.
+The New Course workflow will collect the course code, title, units, and owning department. Creating a catalog course does not place it in a curriculum. A separate curriculum workflow adds the course to a selected curriculum term as a `CurriculumTermCourse`; a catalog course can be used in more than one curriculum.
 
 ## 9. Design Details
 
@@ -829,7 +828,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 8. Tech stack confirmed: React (Vite SPA), TypeScript, React Router, TanStack Query, React Context for client state, Tailwind CSS + shadcn/ui, Zod, Supabase (Postgres/RLS/Auth/Edge Functions), Vitest/RTL + Playwright, GitHub Actions, Vercel (static) + hosted Supabase.
 9. All project management (Issues, Milestones, PRs, reviews, CI) happens on GitHub — see §13.
 10. License: All Rights Reserved, owned by Jomari Joseph A. Barrera, with an explicit contributor-assignment clause for project contributions — see §15 and [LICENSE.md](./LICENSE.md).
-11. **Repeatable-course GWA rule** — `repeatable_type` of `none`/`grade_replacement` counts only the most recent Passed attempt toward units earned/GWA (a later failure never un-counts an earlier pass); `additional_credit` counts every Passed attempt independently — see §6 and §7.
+11. **Retake and GWA rule** — a passed course cannot be retaken. Count its passed attempt for units and GWA; if none passed, count the latest attempt.
 12. Data Privacy Act (RA 10173) compliance applies to this system's grade, enrollment, and advising-note data — see §15.9.
 13. **Contract-first backend boundary** — there is no application server; Supabase is the backend, and the frontend/backend interface is `contract/openapi.yaml` (OpenAPI 3.1), documented with Redoc. The frontend may only call operations declared there, and calls through a client generated from it. The auto-generated PostgREST spec is treated as a drift-detection input, never as the contract itself — see §3 and §9.
 14. **Server-side logic placement** — anything that needs a secret, a privileged write, or a multi-statement transaction is a Supabase Edge Function and a documented contract operation; plain reads and single-row writes go directly to PostgREST under RLS — see §9.
@@ -967,18 +966,15 @@ _This is not legal advice. Independent legal review is recommended, particularly
 | **Lapsed INC**                                                       | An INC attempt past its compliance deadline (default 1 year); status stays `INC` permanently, but is treated as 5.00/failed-units for GWA and delinquency calculation purposes only. |
 | **Gap-free continuity**                                              | The rule that a student always has exactly one active adviser; a reassignment's start date must coincide with the prior assignment's end date, enforced at the DB level.             |
 | **Delinquency flag**                                                 | A per-student, per-term flag computed against the student's curriculum-specific failed-units threshold (explicit Failed status + lapsed INC).                                        |
-| **Grade-replacement retake** (`repeatable_type = grade_replacement`) | A repeat where the most recent Passed attempt counts toward units/GWA, permanently superseding any later failures.                                                                   |
-| **Additional-credit retake** (`repeatable_type = additional_credit`) | A repeat where each Passed attempt counts independently toward units/GWA (e.g. variable-topic or practicum-style courses).                                                           |
 
 ## 17. Open Questions & Risks
 
 Consolidated from flagged items across the document — resolve before or during early implementation:
 
-1. **Additional-credit retakes** (§6, §7) — each passing attempt counts toward earned units and GWA, even beyond curriculum requirements.
+1. **Course retakes** (§6, §7) — a student cannot retake a course after passing it.
 2. **Term-lock override** (§6, §11) — the System Administrator directly sets the audited override; no separate approval queue is required.
 3. **Adviser advisee-capacity limits** (§11) — confirmed out of scope for v1; revisit if adviser workload becomes a practical issue.
 4. **Revoking an ElectiveMapping/EquivalencyDecision** (§6) — preserve historical report results as of their original time; exclude the revoked credit from the current checklist and future decision-dependent calculations, and refresh affected caches. Preserve the underlying attempt and any independent GWA contribution.
-5. **Grade-replacement vs. additional-credit rule** (§6, §12 item 11) — the two-branch counting rule reflects the intended policy as clarified during design; confirm it matches the organization's registrar practice before implementation.
 6. **Data Privacy Act (RA 10173) compliance review** (§15.9) — required before any deployment involving real student data; not yet conducted.
 7. **PostgREST drift-check strictness** (§9) — the CI comparison between `contract/openapi.yaml` and the live auto-generated PostgREST description needs a decided policy on additive changes: a new column is harmless to the frontend but is still drift. Confirm whether the check fails on any difference or only on ones affecting documented operations.
 8. **Contract review in a small group** (§13) — the both-sides-approval rule for contract changes assumes the group is large enough that the frontend and backend halves are different people. Confirm how it degrades for a two-person group, where one member may own both sides and the rule becomes self-approval.
