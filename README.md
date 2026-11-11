@@ -333,7 +333,7 @@ rules/                 # Vite React best practices and development rules
 ### Terms & Course Offerings
 
 - Curriculum term slot (positional) ≠ school term (calendar instance: school year + term type; natural key = school year + term type).
-- Department Heads and Staff can close and reopen grade encoding within their department. A separate institution-wide term lock and its override are managed by System Administrators; both closures block ordinary grade changes. First completion of an unresolved INC on or before its deadline is allowed during either closure; corrections to a completed INC obey both closures. A multi-step override approval workflow is out of scope.
+- Department Heads and Staff can close and reopen grade encoding within their department. A separate institution-wide term lock and its override are managed by System Administrators; the closure of the student’s current department controls their grade changes even for a course offered by another department, and the institution-wide lock also applies. First completion of an unresolved INC on or before its deadline is allowed during either closure; corrections to a completed INC obey both closures. A multi-step override approval workflow is out of scope.
 - A course is offered in a term via a course-offering record (not assumed available every term).
 - A course-offering can be flagged by-request (for discontinued courses still needed under an older curriculum).
 - Course offerings may include section, schedule and a default instructor. The grade-entry workflow also records the instructor for each attempt.
@@ -347,10 +347,8 @@ rules/                 # Vite React best practices and development rules
 - Midterm and final grade fields; INC resolved later via a separate completion-grade record.
 - **INC handling**: an INC has a compliance deadline, defaulting to one calendar year after the actual end date of the term in which it was incurred. Changing a term's end date affects defaults for future INC entries; it does not rewrite existing deadlines. If not resolved within that period, the attempt's `status` remains `INC` permanently — it is never auto-changed to `Failed`. Instead, **GWA computation** treats any INC past its compliance deadline as a grade of 5.00 for calculation purposes only. This is a computed rule evaluated at GWA-calculation time, not a stored status transition.
 - A lapsed INC (past its compliance deadline) is likewise treated as failed units for the **delinquency flag** calculation, consistent with its GWA treatment.
-- **Units-earned/GWA counting rule:**
-  - Count the passed attempt for the course; if no attempt has passed, count the latest attempt. Preserve any legacy attempt history without permitting new retakes after a pass.
-  - All other attempts not selected by the rule above are retained for history only and do not affect units earned/GWA.
-- Term/cumulative GWA are derived (unit-weighted), cached with a recompute trigger on grade change. Because a lapsed INC changes GWA purely due to elapsed time (not an explicit grade edit), any cached GWA value must also be invalidated/recomputed by a scheduled check — see [Design Details](#9-design-details).
+- **Units and GWA counting:** Each graded attempt contributes to the school term in which it was taken. A failed grade remains in its original term GWA when the student retakes the course later; an ungraded retake adds no final grade to its term. Earned units and course completion are counted once for the passing attempt. A passed course cannot be retaken.
+- Term GWA is unit-weighted using final/completion results. Cumulative GWA derives from semester GWAs; the weighting of semesters is pending confirmation. Values are cached with a recompute trigger on grade change. Because a lapsed INC changes GWA purely due to elapsed time (not an explicit grade edit), any cached GWA value must also be invalidated/recomputed by a scheduled check — see [Design Details](#9-design-details).
 - A delinquency flag is computed per student per term against the curriculum's threshold, using the failed-units definition above (explicit Failed status + lapsed INC).
 
 ### Advising & Documentation
@@ -828,7 +826,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 8. Tech stack confirmed: React (Vite SPA), TypeScript, React Router, TanStack Query, React Context for client state, Tailwind CSS + shadcn/ui, Zod, Supabase (Postgres/RLS/Auth/Edge Functions), Vitest/RTL + Playwright, GitHub Actions, Vercel (static) + hosted Supabase.
 9. All project management (Issues, Milestones, PRs, reviews, CI) happens on GitHub — see §13.
 10. License: All Rights Reserved, owned by Jomari Joseph A. Barrera, with an explicit contributor-assignment clause for project contributions — see §15 and [LICENSE.md](./LICENSE.md).
-11. **Retake and GWA rule** — a passed course cannot be retaken. Count its passed attempt for units and GWA; if none passed, count the latest attempt.
+11. **Retake and GWA rule** — a passed course cannot be retaken. Count each graded attempt in its own semester GWA; a later retake does not erase the earlier failure.
 12. Data Privacy Act (RA 10173) compliance applies to this system's grade, enrollment, and advising-note data — see §15.9.
 13. **Contract-first backend boundary** — there is no application server; Supabase is the backend, and the frontend/backend interface is `contract/openapi.yaml` (OpenAPI 3.1), documented with Redoc. The frontend may only call operations declared there, and calls through a client generated from it. The auto-generated PostgREST spec is treated as a drift-detection input, never as the contract itself — see §3 and §9.
 14. **Server-side logic placement** — anything that needs a secret, a privileged write, or a multi-statement transaction is a Supabase Edge Function and a documented contract operation; plain reads and single-row writes go directly to PostgREST under RLS — see §9.
