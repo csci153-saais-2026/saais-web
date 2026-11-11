@@ -94,8 +94,13 @@ export function parseRetryAfterSeconds(
 ): number | null {
   const raw = response?.headers?.get('Retry-After')
   if (!raw) return null
-  const seconds = Number.parseInt(raw.trim(), 10)
-  return Number.isFinite(seconds) && seconds > 0 ? seconds : null
+  const value = raw.trim()
+  if (/^\d+$/.test(value)) {
+    const seconds = Number(value)
+    return Number.isSafeInteger(seconds) ? seconds : null
+  }
+  const time = Date.parse(value)
+  return Number.isFinite(time) ? Math.max(0, Math.ceil((time - Date.now()) / 1000)) : null
 }
 
 function defaultStatusMessage(status: number): string {

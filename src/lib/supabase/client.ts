@@ -52,7 +52,7 @@ export function resolveSaaisEnvConfig(
           : 'mock'
 
   const apiBaseUrl =
-    explicitBaseUrl ?? supabaseUrl ?? defaultBrowserOrTestOrigin()
+    explicitBaseUrl ?? (mode === 'supabase' ? supabaseUrl : null) ?? defaultBrowserOrTestOrigin()
 
   return {
     mode,
@@ -87,10 +87,10 @@ export function createSupabaseBrowserClient(
  * Returns the lazily initialized singleton Supabase SDK client when running
  * against a configured Supabase project, or throws if credentials are missing.
  */
-export function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(explicitMode?: ApiRuntimeMode): SupabaseClient {
   if (cachedSupabaseClient) return cachedSupabaseClient
 
-  const config = resolveSaaisEnvConfig()
+  const config = resolveSaaisEnvConfig(explicitMode ? { ...import.meta.env, VITE_API_MODE: explicitMode } : import.meta.env)
   if (!config.supabaseUrl || !config.supabaseKey || config.mode === 'mock') {
     throw new Error(
       'Supabase client is unavailable: set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) and ensure VITE_API_MODE is not "mock".',
