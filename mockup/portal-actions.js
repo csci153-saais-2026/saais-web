@@ -197,7 +197,7 @@
     const stu = val('Student').split('·').map(x => x.trim()), code = val('Original course code'), title = val('Original course name'), units = val('Units'), grade = val('Grade');
     if (!code || !title) return say('Enter the original course code and name.');
     if (!/^\d+(\.\d+)?$/.test(units) || +units <= 0) return say('Units must be a positive number.');
-    if (!/^[1-5]\.\d{2}$/.test(grade)) return say('Enter the grade on the VSU scale, for example 1.50.');
+    if (!/^(?:[1-2]\.\d{2}|3\.00)$/.test(grade)) return say('Enter a passing grade from 1.00 to 3.00.');
     const why = val('Reason for credit'); if (!why) return say('Give a reason for this credit. It is written to the audit log.');
     (S.credits = S.credits || []).push({ reason: why, cid: 'c' + Date.now(), name: stu[0], sid: stu[1], code, title, units, grade, school: val('School / degree of origin'), eq: splitSubject(val('Equivalent course subject')), type: val('Entry type') });
     audit('Change', stu[0], `Credited outside course ${code} · ${title} (grade ${grade}) from ${val('School / degree of origin')} · reason: ${why}`, stu[1]);

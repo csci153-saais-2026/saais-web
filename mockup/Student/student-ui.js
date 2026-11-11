@@ -93,21 +93,20 @@
   }
 
   /* ---------- advising notes ---------- */
-  /* The student reads the notes the adviser actually wrote: active notes on the adviser's Notes tab and Advising tab. Archived notes are hidden. */
+  /* The student reads the notes the adviser actually wrote, including notes later archived from the adviser view. */
   function adviserNotes() {
     var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
     if (UI['notes-list'] == null && UI['note-list'] == null) return NOTES;
     var out = [];
-    function read(html, active) {
+    function read(html) {
       var doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
       [].slice.call(doc.querySelectorAll('article')).forEach(function (a) {
-        if (active && a.dataset.state && a.dataset.state !== 'active') return;
         var p = a.querySelector('p'), strong = a.querySelector('strong'), date = a.querySelector('[data-date]') || a.querySelector('span');
         if (p) out.push({ author: strong ? strong.textContent.trim() : ADVISER, date: date ? date.textContent.trim() : '', text: p.textContent.trim() });
       });
     }
-    if (UI['notes-list'] != null) read(UI['notes-list'], true); else out = out.concat(NOTES);
-    if (UI['note-list'] != null) read(UI['note-list'], false);
+    if (UI['notes-list'] != null) read(UI['notes-list']); else out = out.concat(NOTES);
+    if (UI['note-list'] != null) read(UI['note-list']);
     return out;
   }
   function openNotes() {
