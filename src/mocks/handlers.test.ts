@@ -92,6 +92,12 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(retake.counts_toward_cumulative_gwa).toBe(true)
     expect(terms.find(t => t.school_term_id === MOCK_IDS.term2025Sem2Closed)?.gwa).toBe(5)
     expect(terms.find(t => t.school_term_id === MOCK_IDS.term2026Sem1Open)?.gwa).toBe(2)
+    const completed = db.attemptResults.find(a => a.id === retakeId)!
+    db.attemptResults[db.attemptResults.indexOf(completed)] = { ...completed, recorded_status: 'inc', effective_status: 'passed', final_grade: null, completion_grade: 2.25, gwa_grade: 2.25 }
+    terms = await read()
+    expect(terms.flatMap(t => t.attempts).find(a => a.id === earlier.id)?.is_repeated).toBe(true)
+    expect(terms.flatMap(t => t.attempts).find(a => a.id === retakeId)?.counts_toward_cumulative_gwa).toBe(true)
+    expect(terms.find(t => t.school_term_id === MOCK_IDS.term2026Sem1Open)?.gwa).toBe(2.25)
   })
 
   it('uses the student current department closure for a cross-department course', async () => {
