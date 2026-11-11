@@ -77,6 +77,9 @@ test('reassignment authority and notification sources match the reviewed contrac
     for (const source of event.source_operations ?? []) assert.ok(known.has(source), `${event.event_type}: ${source}`);
   }
   assert.match(spec.paths['/functions/v1/students/{student_id}/notes'].post.description, /active and archived/);
+  assert.match(spec['x-saais-invariants'].dean_roles, /must coexist with an Adviser and\/or Department Head/);
+  assert.match(spec.paths['/functions/v1/auth/invite'].post.description, /Dean assignment must coexist/);
+  assert.match(spec.paths['/functions/v1/accounts/{profile_id}'].patch.description, /Dean assignment must coexist/);
 });
 
 test('transfers preserve adviser continuity and outside credits cannot double-count', () => {
