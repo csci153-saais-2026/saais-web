@@ -68,7 +68,7 @@ The separate enrollment system, student emails requesting enrollment approval, a
 
 | ID | Requirement |
 | --- | --- |
-| FR-CRS-01 | The Department Staff course catalogue (`/department-staff/course-catalog`) supports authorized course management: unique code, title, administering Department (`department_id`), units (positive numeric), course type (`non_elective` or `elective`), status (`active` or `discontinued`, shown in UI as Active/Inactive) and repeat policy (`none`, `grade_replacement`, `additional_credit`). |
+| FR-CRS-01 | The Department Staff course catalogue (`/department-staff/course-catalog`) supports authorized course management: unique code, title, administering Department (`department_id`), units (positive numeric), course type (`non_elective` or `elective`), status (`active` or `discontinued`, shown in UI as Active/Inactive) without a repeat-policy selector. |
 | FR-CRS-02 | Different course codes never imply equivalence. Any student-specific decision (FR-EQV-01) or explicitly approved curriculum-pair mapping (FR-EQV-08) must be recorded and scoped; a code match alone does not create a global equivalence. |
 | FR-CRS-03 | Prerequisites have `strict` (labelled `Prerequisite` in catalog UI), `co_requisite` (`Co-requisite`) or `recommended` type. Strict prerequisites determine clearance and trigger the FR-ENR-12 override warning; other types are advisory and do not prevent recording. |
 | FR-CRS-04 | Numeric grades use the 1.00–5.00 scale in discrete 0.25 increments (`1.00` to `3.00` in `0.25` steps are Passed; `> 3.00`, notably `5.00`, is Failed), alongside non-numeric attempt statuses `INC`, `DR` and `NA`. Midterm grades do not determine final status or GWA. |
@@ -86,7 +86,7 @@ The Record grades (`Encode grades`) workflow records courses already approved in
 | ID | Requirement |
 | --- | --- |
 | FR-ENR-01 | Record grades (`/adviser/encode-grades`, `/adviser/advisees/:id/record-grades` and `/adviser/enrollment/new`) is an Adviser workflow for a selected current advisee and school term. Enrollment and grade writes are declared contract operations and transactionally enforced server-side. The six advisee-record views are listed in FR-ADV-07. |
-| FR-ENR-02 | One Attempt per student + course offering. Retakes use another offering and preserve all earlier attempts. |
+| FR-ENR-02 | One Attempt per student + course offering. Retakes use another offering and preserve all earlier attempts; reject a new attempt after the student has passed the same course, including by INC completion. |
 | FR-ENR-03 | An attempt may directly fulfill one matching curriculum slot (`curriculum_term_course_id`); this optional link is distinct from elective mapping and equivalency. |
 | FR-ENR-04 | Attempts carry status (`passed`, `failed`, `currently_enrolled`, `inc`, `dr`, `na`), optional midterm/final grades, an optional instructor name recorded per attempt, INC deadline when applicable, timestamps and audited correction/override provenance. The instructor name is retained with that attempt and visible in authorized course-attempt detail; it does not model instructor scheduling. |
 | FR-ENR-05 | A student may have no enrollment records or records in multiple school terms, with one or more courses per recorded term. |
@@ -120,7 +120,7 @@ The Record grades (`Encode grades`) workflow records courses already approved in
 | FR-GWA-03 | An unresolved lapsed INC retains stored INC status permanently; no automatic transition to Failed. Completion after its deadline is rejected. |
 | FR-GWA-04 | Lapsed INC counts as 5.00 for GWA calculations only and as failed units for delinquency. These are read-time rules, not stored grade/status replacements. |
 | FR-GWA-05 | Completed INC displays **Passed** for completion grade ≤3.00 or **Failed** for grade >3.00 across Grades, History, checklist and dashboards. Display the original completion grade/provenance; do not show INC/Resolved as the current result. Keep the original INC attempt and its separate completion record for history. |
-| FR-GWA-06 | For `none`/`grade_replacement`, once passed, the most recent passing attempt counts toward units/GWA permanently; later failure does not undo it. If never passed, the latest attempt counts. Additional-credit passes count independently toward earned units and GWA, even beyond curriculum requirements. Select attempts by chronological school-term order, never by data-entry order. All other attempts are history-only. |
+| FR-GWA-06 | A course cannot be retaken after a passing attempt. Count the passed attempt for units and GWA; if none passed, count the latest attempt. Select attempts by chronological school-term order and preserve legacy history. |
 | FR-GWA-07 | Term/cumulative GWA is unit-weighted using final/completion results only. Midterm grades never affect GWA. Cached values recompute after initial final entry, final corrections, prerequisite-grade overrides and INC completion/correction. |
 | FR-GWA-08 | A service-role-only daily scheduled recomputation applies newly lapsed INC deadlines to caches and delinquency. SPA users cannot invoke this maintenance operation. Uncached reads always apply deadline rules. |
 | FR-GWA-09 | Delinquency is computed per student/school term using failed and lapsed-INC units against the applicable curriculum threshold. |
