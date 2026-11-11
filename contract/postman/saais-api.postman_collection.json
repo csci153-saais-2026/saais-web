@@ -9618,10 +9618,10 @@
         },
         {
           "name": "[PUT] /functions/v1/students/{student_id}/adviser (reassignAdviser)",
-          "description": "Reassign current adviser\n\nAuthorized roles: adviser, department_head, department_staff, admin\nScope rules: `{\"adviser\":\"current-adviser-only\",\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\",\"admin\":\"institution-wide\"}`",
+          "description": "Reassign current adviser\n\nAuthorized roles: department_head, department_staff\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\"}`",
           "item": [
             {
-              "name": "Authorized (adviser) — PUT /functions/v1/students/{student_id}/adviser",
+              "name": "Authorized (department_staff) — PUT /functions/v1/students/{student_id}/adviser",
               "event": [
                 {
                   "listen": "test",
@@ -9645,7 +9645,7 @@
                   },
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{token_adviser}}",
+                    "value": "Bearer {{token_department_staff}}",
                     "type": "text"
                   },
                   {
@@ -9668,7 +9668,7 @@
                   ],
                   "query": []
                 },
-                "description": "Reassign current adviser\n\n- **Operation ID**: `reassignAdviser`\n- **Authorized roles: adviser, department_head, department_staff, admin**\nScope rules: `{\"adviser\":\"current-adviser-only\",\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\",\"admin\":\"institution-wide\"}`",
+                "description": "Reassign current adviser\n\n- **Operation ID**: `reassignAdviser`\n- **Authorized roles: department_head, department_staff**\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\"}`",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"adviser_id\": \"{{adviser_id}}\",\n  \"start_date\": \"2026-11-10\",\n  \"reason\": \"Regular caseload balancing.\"\n}",
@@ -9753,7 +9753,7 @@
         },
         {
           "name": "[POST] /functions/v1/adviser-assignments/bulk-reassign (bulkReassignAdvisers)",
-          "description": "Bulk reassign adviser for multiple students\n\nAuthorized roles: department_head, department_staff, admin\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\",\"admin\":\"institution-wide\"}`",
+          "description": "Bulk reassign adviser for multiple students\n\nAuthorized roles: department_head, department_staff\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\"}`",
           "item": [
             {
               "name": "Authorized (department_staff) — POST /functions/v1/adviser-assignments/bulk-reassign",
@@ -9802,7 +9802,7 @@
                   ],
                   "query": []
                 },
-                "description": "Bulk reassign adviser for multiple students\n\n- **Operation ID**: `bulkReassignAdvisers`\n- **Authorized roles: department_head, department_staff, admin**\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\",\"admin\":\"institution-wide\"}`",
+                "description": "Bulk reassign adviser for multiple students\n\n- **Operation ID**: `bulkReassignAdvisers`\n- **Authorized roles: department_head, department_staff**\nScope rules: `{\"department_head\":\"department-scoped\",\"department_staff\":\"department-scoped\"}`",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"student_ids\": [\n    \"{{student_id}}\"\n  ],\n  \"adviser_id\": \"{{adviser_id}}\",\n  \"effective_since\": \"2026-11-10\",\n  \"reason\": \"Faculty study leave handover.\"\n}",
