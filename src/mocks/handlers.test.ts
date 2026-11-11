@@ -40,7 +40,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
   it('allows timely first INC completion during department closure and blocks correction', async () => {
     const db = getMockDatabase()
     const attempt = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
-    attempt.inc_deadline = '2999-01-01'
+    attempt.inc_deadline = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
     db.departmentTermEncodings.push({ ...db.departmentTermEncodings[0], school_term_id: MOCK_IDS.term2025Sem2Closed, is_closed: true })
     loginAsMockPersona('adviser')
     const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
