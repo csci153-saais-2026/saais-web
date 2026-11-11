@@ -4147,7 +4147,7 @@ paths:
         the same course, including via a passed INC completion; corrections to the existing attempt
         remain available through their audited operations.
       x-department-closure: >-
-        A closed department encoding state for the affected student and term blocks grade-changing writes
+        A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
         with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
@@ -4202,7 +4202,7 @@ paths:
         school term from the Encode Grades modal. Obeys term lock and override rules. Reject the
         entire batch if a new row would retake a course the student has already passed.
       x-department-closure: >-
-        A closed department encoding state for the affected student and term blocks grade-changing writes
+        A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
         with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
@@ -4259,7 +4259,7 @@ paths:
         Correct grades/status; DR affects course only. Derive status from final grade; midterm never
         changes GWA. Refresh dependent reads only after commit.
       x-department-closure: >-
-        A closed department encoding state for the affected student and term blocks grade-changing writes
+        A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
         with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
@@ -4320,7 +4320,7 @@ paths:
         locked without override or if the attempt has INC completions, credit/equivalency decisions,
         or grade flags referencing it.
       x-department-closure: >-
-        A closed department encoding state for the affected student and term blocks grade-changing writes
+        A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
         with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
@@ -4371,7 +4371,7 @@ paths:
         prerequisite.grade_overridden audit atomically, update student-visible grade/GWA and
         downstream clearance. Never create pending approval or dependent-course grade.
       x-department-closure: >-
-        A closed department encoding state for the affected student and term blocks grade-changing writes
+        A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
         with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
@@ -5214,7 +5214,10 @@ paths:
       description: >-
         Scope own/assigned/department/faculty/admin records. Use academically ordered effective
         attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA.
-        Count the passed attempt for a course; if no attempt passed, count the latest attempt.
+        Each graded attempt contributes to the GWA of its own school term; an earlier failing grade
+        remains in that term when the course is retaken later. An ungraded retake contributes no
+        final grade to its term. Cumulative GWA derives from semester GWAs; semester weighting is
+        pending confirmation. Course completion and earned units count the passing attempt once.
         Historical records remain intact if legacy data contains later attempts after a pass.
         Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
       x-required-roles:
@@ -6874,7 +6877,7 @@ paths:
         invariants, and incrementing Attempt.revision) or rejecting the flag with a required
         resolution_note, notifying the student and writing an audit log entry.
       x-department-closure: >-
-        A closed department encoding state for the affected student and term blocks grade-changing writes
+        A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
         with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser
@@ -6935,7 +6938,7 @@ paths:
         and, when mode is commit, atomically writes
         all valid rows and audit log entries.
       x-department-closure: >-
-        A closed department encoding state for the affected student and term blocks grade-changing writes
+        A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
         with 409 until reopened; the global lock and its override remain independently enforced.
       x-required-roles:
         - adviser

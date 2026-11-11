@@ -330,3 +330,15 @@ test('cross-department transfers retain the assigned adviser until destination r
   assert.match(bulk.description, /student.s current destination department/);
   assert.deepEqual(single['x-required-roles'], ['department_head', 'department_staff']);
 });
+
+
+test('closure scope and semester retake history reflect confirmed rules', () => {
+  for (const id of ['recordGrades', 'encodeTermGrades', 'correctGrades', 'importGradesBatch']) {
+    const op = operations.find(x => x.operation.operationId === id).operation;
+    assert.match(op['x-department-closure'], /student.s current department/);
+    assert.match(op['x-department-closure'], /another department/);
+  }
+  const summary = operations.find(x => x.operation.operationId === 'getAcademicSummary').operation;
+  assert.match(summary.description, /earlier failing grade remains in that term/);
+  assert.match(summary.description, /ungraded retake contributes no final grade/);
+});
