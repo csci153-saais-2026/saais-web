@@ -71,7 +71,8 @@ paths:
         Unified account provisioning and invitation flow: atomically creates a pre-registered
         Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum /
         adviser assignments (when student is included), and dispatches a single-use expiring
-        password-setup invitation email (/invite/:token). Pre-registered accounts may also sign in
+        password-setup invitation email (/invite#token=...). The fragment is read by the page and
+        sent only in the JSON body to an invitation function. Pre-registered accounts may also sign in
         immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified
         Google sign-in activates the profile (status='active') and invalidates any unused password
         invite token. Admins may provision any role and grant multi-role assignments across the
@@ -3966,20 +3967,17 @@ paths:
       summary: Reassign current adviser
       operationId: reassignAdviser
       description: >-
-        Current adviser may transfer own student to eligible active adviser without approval;
-        Department Heads, Department Staff, and Admins manage department/institutional assignments.
+        Department Heads and Department Staff reassign a student to an eligible active adviser
+        within their authorized department. Adviser and System Administrator roles alone do not
+        authorize reassignment.
         Lock student and close/open assignment on identical dates in one transaction; history
         remains immutable and past advisers immediately lose write access.
       x-required-roles:
-        - adviser
         - department_head
         - department_staff
-        - admin
       x-access-scope:
-        adviser: current-adviser-only
         department_head: department-scoped
         department_staff: department-scoped
-        admin: institution-wide
       x-atomic: true
       x-request-validation: >-
         Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
@@ -4029,18 +4027,16 @@ paths:
       summary: Bulk reassign adviser for multiple students
       operationId: bulkReassignAdvisers
       description: >-
-        Department Head, Department Staff, or Admin atomically reassigns one or more students to an
-        eligible active adviser within the same Faculty/Department scope, closing each prior
+        Department Head or Department Staff atomically reassigns one or more students to an
+        eligible active adviser within their department, closing each prior
         AdviserAssignment and opening the new one on identical dates with audit logging and
         notifications.
       x-required-roles:
         - department_head
         - department_staff
-        - admin
       x-access-scope:
         department_head: department-scoped
         department_staff: department-scoped
-        admin: institution-wide
       x-atomic: true
       x-request-validation: >-
         Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
@@ -4082,7 +4078,12 @@ paths:
         Department Head or Admin changes a student's curriculum assignment. Match program to
         curriculum; close old/open new on same date with reason and audit. Derived
         Department/College follow program; preserve earlier attempts, decisions and plans, and
-        auto-apply matching CurriculumPairEquivalence rules where applicable.
+        auto-apply matching CurriculumPairEquivalence rules where applicable. If the target
+        department makes the current adviser ineligible, require an eligible target-department
+        `new_adviser_id` and atomically close/open adviser assignments on the same date. The caller
+        must also have a Department Head or Department Staff assignment authorized for the target
+        department; an Admin role alone does not grant adviser-reassignment authority. Reject
+        missing or ineligible advisers with 409 and insufficient target-department authority with 403.
       x-required-roles:
         - department_head
         - admin
@@ -4929,7 +4930,7 @@ paths:
       operationId: addAdvisingNote
       description: >-
         Current adviser or authorized admin appends an advising note; historical advisers read
-        only. Server stamps author/time. Under B9, active (non-archived) advising notes are
+        only. Server stamps author/time. Under B9, active and archived advising notes are
         read-only visible to the student on their Notes tab, while attempt_remark remains strictly
         staff-only.
       x-required-roles:
@@ -7122,7 +7123,12 @@ paths:
         Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When
         approved, atomically closes the prior StudentCurriculumAssignment, opens the new one,
         applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and
-        commits the audit log entry.
+        commits the audit log entry. If the destination department makes the current adviser
+        ineligible, approval requires `new_adviser_id` for an eligible active target-department
+        adviser and atomically changes the adviser assignment with zero gap. The caller must hold
+        a target-department Head or Staff assignment authorizing the reassignment; Admin alone does
+        not grant that authority. Reject a missing or ineligible replacement with 409 and missing
+        target-department authority with 403; rejection never changes assignments.
       x-required-roles:
         - department_head
         - admin
@@ -7480,7 +7486,13 @@ paths:
       operationId: createOutsideCredit
       description: >-
         Department Head or Admin credits a passed course from a previous school (Transferee) or
-        previous VSU program (Shiftee) toward an open curriculum slot (FR-CRD-01).
+        previous VSU program (Shiftee) toward an open curriculum slot (FR-CRD-01). In the same
+        transaction, reject duplicate live credit for the same student, normalized origin and
+        original course code (trimmed, whitespace-collapsed and case-folded), and reject a slot
+        already satisfied by direct completion, an elective
+        mapping, equivalency or other outside credit. Lock the affected student and decisions to
+        prevent concurrent duplicates. Correct an existing credit through audited revocation and
+        replacement; never count the same source or slot twice.
       x-required-roles:
         - department_head
         - admin
@@ -8218,7 +8230,9 @@ paths:
       description: >-
         Records an append-only audit log entry when an authorized user views a sensitive student
         record, views a department/faculty/admin summary report (`report_viewed`), or confirms a
-        PDF/CSV export (FR-AUD-05). Pre-authentication or auth-lifecycle events (`login_rejected`,
+        PDF/CSV export (FR-AUD-05). Students may log events only for their own authorized record
+        and exports; staff may log events only within their authorized record or report scope.
+        Pre-authentication or auth-lifecycle events (`login_rejected`,
         `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase
         Auth hooks and Edge Functions—never via this authenticated client endpoint.
       x-required-roles:
@@ -9904,6 +9918,7 @@ components:
           type:
             - string
             - "null"
+          maxLength: 150
         nominal_units:
           type: number
           minimum: 0
@@ -11273,6 +11288,10 @@ components:
         curriculum_version_id:
           type: string
           format: uuid
+        new_adviser_id:
+          type: string
+          format: uuid
+          description: Required if the current adviser is ineligible for the destination department.
         start_date:
           type: string
           format: date
@@ -13361,6 +13380,10 @@ components:
                 - "null"
               maxLength: 2000
               description: Optional approval note when approving a curriculum transfer request.
+            new_adviser_id:
+              type: string
+              format: uuid
+              description: Required if the current adviser is ineligible for the destination department.
         - type: object
           additionalProperties: false
           required:
@@ -13547,13 +13570,14 @@ components:
           pattern: \S
         units:
           type: number
-          minimum: 0
+          exclusiveMinimum: 0
           multipleOf: 0.25
         grade:
           type: string
-          minLength: 1
-          maxLength: 32
-          pattern: \S
+          minLength: 4
+          maxLength: 4
+          pattern: '^(?:[12]\.\d{2}|3\.00)$'
+          description: Passing grade on the institutional 1.00–3.00 scale, formatted to two decimals.
         destination_curriculum_term_course_id:
           type: string
           format: uuid
@@ -14732,23 +14756,23 @@ x-saais-notification-triggers:
   event_driven:
     - event_type: advising_note_added
       kind: note
-      source_operations: [createStudentNote]
+      source_operations: [addAdvisingNote]
       recipients: [student]
     - event_type: advising_plan_saved
       kind: note
-      source_operations: [saveStudentAdvisingPlan]
+      source_operations: [saveAdvisingPlan]
       recipients: [student]
     - event_type: midterm_grades_posted
       kind: grade
-      source_operations: [recordStudentGrades, encodeStudentTermGrades, importGradesBatch]
+      source_operations: [recordGrades, encodeTermGrades, importGradesBatch]
       recipients: [student]
     - event_type: final_grades_posted
       kind: grade
-      source_operations: [recordStudentGrades, encodeStudentTermGrades, importGradesBatch]
+      source_operations: [recordGrades, encodeTermGrades, importGradesBatch]
       recipients: [student]
     - event_type: grade_corrected
       kind: grade
-      source_operations: [correctStudentGrade]
+      source_operations: [correctGrades]
       recipients: [student, department_head]
     - event_type: prerequisite_grade_corrected
       kind: grade
@@ -14756,11 +14780,11 @@ x-saais-notification-triggers:
       recipients: [student, department_head]
     - event_type: inc_completed
       kind: grade
-      source_operations: [completeIncAttempt, correctIncCompletion]
+      source_operations: [completeINC, correctINCCompletion]
       recipients: [student]
     - event_type: grade_flag_submitted
       kind: flag
-      source_operations: [submitStudentGradeFlag]
+      source_operations: [createGradeFlag]
       recipients: [adviser, department_head]
     - event_type: grade_flag_resolved
       kind: flag
@@ -14776,11 +14800,11 @@ x-saais-notification-triggers:
       recipients: [adviser, department_head, admin]
     - event_type: adviser_assigned
       kind: person
-      source_operations: [inviteUser, reassignStudentAdviser, bulkReassignAdvisers]
+      source_operations: [inviteUser, reassignAdviser, bulkReassignAdvisers]
       recipients: [student, adviser]
     - event_type: adviser_reassigned_away
       kind: person
-      source_operations: [reassignStudentAdviser, bulkReassignAdvisers]
+      source_operations: [reassignAdviser, bulkReassignAdvisers]
       recipients: [adviser]
     - event_type: curriculum_reassigned
       kind: transfer
@@ -14796,7 +14820,7 @@ x-saais-notification-triggers:
       recipients: [adviser, student]
     - event_type: credit_decision_recorded
       kind: grade
-      source_operations: [createElectiveMapping, createEquivalencyDecision, recordOutsideCredit]
+      source_operations: [createElectiveMapping, createEquivalencyDecision, createOutsideCredit]
       recipients: [student]
     - event_type: credit_decision_revoked
       kind: alert
@@ -14812,7 +14836,7 @@ x-saais-notification-triggers:
       recipients: [adviser, department_staff, department_head, dean]
     - event_type: term_override_toggled
       kind: alert
-      source_operations: [toggleSchoolTermOverride]
+      source_operations: [setSchoolTermOverride]
       recipients: [adviser, department_head, admin]
     - event_type: catalog_updated
       kind: report
@@ -14874,16 +14898,17 @@ x-supabase-auth-integration:
         128 characters with at least one uppercase letter, one lowercase letter, and one digit, and
         must reject reusing the current password on change.
     change_password:
-      verify_current_password_method: auth.signInWithPassword
+      verify_current_password_method: auth.updateUser.current_password
       update_password_method: auth.updateUser
       sign_out_other_devices_method: "auth.signOut({ scope: 'others' })"
       audit_event: password_changed
       description: >-
-        Authenticated Change Password routes across all portals verify the user's current password
-        via `auth.signInWithPassword`, enforce the 12–128 character complexity and non-reuse policy,
-        update the password via `auth.updateUser({ password })`, revoke other device sessions via
-        `auth.signOut({ scope: 'others' })`, and emit a server-side `password_changed` audit log
-        entry without recording password material.
+        Enable the Supabase Auth current-password requirement. Authenticated Change Password routes
+        enforce the 12–128 character complexity and non-reuse policy and call `auth.updateUser`
+        with both `current_password` and `password`, without replacing the current session. Revoke
+        other sessions via `auth.signOut({ scope: 'others' })` and emit a server-side
+        `password_changed` audit entry without recording password material. Revoked sessions' access
+        JWTs may remain usable until expiry unless protected requests also check session validity.
   google_oauth:
     sdk_method: auth.signInWithOAuth
     provider: google
