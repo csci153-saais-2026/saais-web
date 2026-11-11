@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { getSupabaseClient, resolveSaaisEnvConfig } from '@/lib/supabase/client'
 import { Link } from 'react-router'
 import { AuthLayout } from '@/components/features/auth-layout'
 import { Panel } from '@/components/features/panel'
@@ -50,22 +51,30 @@ export function DocsAuthGate({
     if (isDev) return
 
     let cancelled = false
+    let generation = 0
 
-    void Promise.resolve()
-      .then(() => checkAuthenticated())
-      .then((authenticated) => {
-        if (!cancelled) {
-          setStatus(authenticated ? 'authenticated' : 'unauthenticated')
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setStatus('unauthenticated')
-        }
-      })
-
+    const refresh = () => {
+      const check = ++generation
+      void Promise.resolve().then(() => checkAuthenticated()).then((authenticated) => {
+        if (!cancelled && check === generation) setStatus(authenticated ? 'authenticated' : 'unauthenticated')
+      }).catch(() => { if (!cancelled && check === generation) setStatus('unauthenticated') })
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    let unsubscribe = () => {}
+    try {
+      if (resolveSaaisEnvConfig().mode === 'supabase') {
+        const { data } = getSupabaseClient().auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_OUT') { generation += 1; setStatus('unauthenticated') }
+          else refresh()
+        })
+        unsubscribe = () => data.subscription.unsubscribe()
+      }
+    } catch { /* An unconfigured session remains unauthenticated. */ }
     return () => {
       cancelled = true
+      unsubscribe()
+      window.removeEventListener('focus', refresh)
     }
   }, [isDev, checkAuthenticated])
 

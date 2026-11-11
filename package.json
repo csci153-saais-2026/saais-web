@@ -15,7 +15,7 @@
     "contract:check": "npm run contract:gen && git diff --exit-code contract/generated",
     "contract:docs": "redocly build-docs contract/openapi.yaml --config contract/redocly.yaml -o docs/openapi/index.html",
     "preview": "vite preview",
-    "contract:security": "node --test contract/security.check.cjs",
+    "contract:security": "node --test contract/security.check.cjs contract/server-policy.check.cjs",
     "contract:spectral": "spectral lint contract/openapi.yaml --ruleset contract/.spectral.yaml",
     "contract:prism": "prism mock contract/openapi.yaml --host 127.0.0.1 --port 4010 --cors",
     "mock:prism": "npm run contract:prism",

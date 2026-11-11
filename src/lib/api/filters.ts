@@ -28,6 +28,7 @@ export const postgrestFilter = {
         `postgrestFilter.inList exceeds the contract maximum of ${MAX_POSTGREST_IN_ITEMS} items (received ${values.length}).`,
       )
     }
+    if (values.some(value => !/^[A-Za-z0-9_-]+$/.test(value))) throw new TypeError('inList items must contain only letters, digits, underscores, or hyphens.')
     return `in.(${values.join(',')})`
   },
 
@@ -56,10 +57,12 @@ export const postgrestFilter = {
   },
 
   ilike(pattern: string): `ilike.${string}` {
+    if (/[(),."\\]/.test(pattern)) throw new TypeError('Pattern contains PostgREST syntax characters.')
     return `ilike.${pattern}`
   },
 
   like(pattern: string): `like.${string}` {
+    if (/[(),."\\]/.test(pattern)) throw new TypeError('Pattern contains PostgREST syntax characters.')
     return `like.${pattern}`
   },
 
@@ -71,6 +74,8 @@ export const postgrestFilter = {
     from: string,
     to: string,
   ): `(created_at.gte.${string},created_at.lte.${string})` {
+    const iso = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2}))?$/
+    if (!iso.test(from) || !iso.test(to) || !Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(to)) || Date.parse(from) > Date.parse(to)) throw new TypeError('Expected an ordered ISO date or timestamp range.')
     return `(created_at.gte.${from},created_at.lte.${to})`
   },
 } as const
@@ -93,5 +98,7 @@ export function parseContentRange(
       ? Number.parseInt(match[3], 10)
       : null
 
+  if ([start, end, total].some(n => n !== null && !Number.isSafeInteger(n))) return null
+  if (start !== null && end !== null && (start > end || (total !== null && end >= total))) return null
   return { start, end, total }
 }

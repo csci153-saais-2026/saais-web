@@ -22,13 +22,18 @@ export type MarkdownBlock =
   | {
       readonly kind: 'list'
       readonly ordered: boolean
-      readonly items: readonly (readonly InlineMarkdownToken[])[]
+      readonly items: readonly MarkdownListItem[]
     }
   | {
       readonly kind: 'table'
       readonly headers: readonly (readonly InlineMarkdownToken[])[]
       readonly rows: readonly (readonly (readonly InlineMarkdownToken[])[])[]
     }
+
+export interface MarkdownListItem {
+  readonly tokens: readonly InlineMarkdownToken[]
+  readonly children: readonly { readonly ordered: boolean; readonly items: readonly MarkdownListItem[] }[]
+}
 
 export interface MarkdownSectionHeading {
   readonly id: string
@@ -104,23 +109,21 @@ export function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
       continue
     }
 
-    // Fenced code blocks
-    if (trimmed.startsWith('```')) {
-      const language = trimmed.slice(3).trim() || 'text'
+    // Fenced code blocks close only with a matching or longer bare fence.
+    const openingFence = /^(`{3,})([^`]*)$/.exec(trimmed)
+    if (openingFence) {
+      const language = openingFence[2].trim() || 'text'
+      const fenceLength = openingFence[1].length
       const codeLines: string[] = []
       index += 1
-      while (index < lines.length && !(lines[index] ?? '').trim().startsWith('```')) {
+      while (index < lines.length) {
+        const close = /^(`{3,})\s*$/.exec((lines[index] ?? '').trim())
+        if (close && close[1].length >= fenceLength) break
         codeLines.push(lines[index] ?? '')
         index += 1
       }
-      if (index < lines.length) {
-        index += 1
-      }
-      blocks.push({
-        kind: 'code',
-        language,
-        code: codeLines.join('\n'),
-      })
+      if (index < lines.length) index += 1
+      blocks.push({ kind: 'code', language, code: codeLines.join('\n') })
       continue
     }
 
@@ -156,36 +159,32 @@ export function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
       continue
     }
 
-    // Unordered or ordered lists (including indented continuation bullets)
-    if (/^([-*]|\d+\.)\s+/.test(trimmed)) {
-      const ordered = /^\d+\.\s+/.test(trimmed)
-      const items: InlineMarkdownToken[][] = []
-      while (index < lines.length) {
-        const candidateRaw = lines[index] ?? ''
-        const candidate = candidateRaw.trim()
-        if (candidate.length === 0) break
-
-        const itemMatch = /^([-*]|\d+\.)\s+(.+)$/.exec(candidate)
-        if (itemMatch) {
-          items.push(tokenizeInlineMarkdown(itemMatch[2].trim()))
+    // Preserve indentation and list type for nested items.
+    const listLine = (line: string) => /^( *)([-*]|\d+\.)\s+(.+)$/.exec(line)
+    const initialItem = listLine(rawLine)
+    if (initialItem) {
+      const parseList = (indent: number, ordered: boolean): MarkdownListItem[] => {
+        const items: { tokens: InlineMarkdownToken[]; children: { ordered: boolean; items: MarkdownListItem[] }[] }[] = []
+        while (index < lines.length) {
+          const candidate = lines[index] ?? ''
+          const match = listLine(candidate)
+          if (!match || match[1].length < indent) break
+          const currentIndent = match[1].length
+          const currentOrdered = /^\d/.test(match[2])
+          if (currentIndent > indent) {
+            const parent = items[items.length - 1]
+            if (!parent) break
+            parent.children.push({ ordered: currentOrdered, items: parseList(currentIndent, currentOrdered) })
+            continue
+          }
+          if (currentOrdered !== ordered) break
+          items.push({ tokens: tokenizeInlineMarkdown(match[3].trim()), children: [] })
           index += 1
-          continue
         }
-
-        if (candidateRaw.startsWith('  ') && items.length > 0) {
-          const previous = items[items.length - 1]
-          items[items.length - 1] = [
-            ...previous,
-            { kind: 'text', value: ' ' },
-            ...tokenizeInlineMarkdown(candidate),
-          ]
-          index += 1
-          continue
-        }
-
-        break
+        return items
       }
-      blocks.push({ kind: 'list', ordered, items })
+      const ordered = /^\d/.test(initialItem[2])
+      blocks.push({ kind: 'list', ordered, items: parseList(initialItem[1].length, ordered) })
       continue
     }
 
@@ -195,14 +194,18 @@ export function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
       const candidate = (lines[index] ?? '').trim()
       if (
         candidate.length === 0 ||
-        candidate.startsWith('```') ||
-        candidate.startsWith('#') ||
-        candidate.startsWith('|') ||
+        /^(`{3,})([^`]*)$/.test(candidate) ||
+        /^(#{1,3})\s+/.test(candidate) ||
+        (candidate.startsWith('|') && index + 1 < lines.length && isTableDividerLine(lines[index + 1] ?? '')) ||
         /^([-*]|\d+\.)\s+/.test(candidate)
       ) {
         break
       }
       paragraphLines.push(candidate)
+      index += 1
+    }
+    if (paragraphLines.length === 0) {
+      paragraphLines.push(trimmed)
       index += 1
     }
     if (paragraphLines.length > 0) {
