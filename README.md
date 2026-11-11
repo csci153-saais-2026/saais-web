@@ -43,7 +43,7 @@ The planned production system supports six assignable roles. A person may hold m
 - **Dean** — reviews faculty-level students, reports, and audit activity.
 - **System Administrator** — manages students, accounts and roles, faculties and departments, programs, settings, and the audit log.
 
-The role expansion is a planned production requirement. The current three-role SRS and API contract remain unchanged until a separate SRS/OpenAPI revision is reviewed; this README records the intended direction and does not revise those specifications.
+The six-role SRS and API contract are proposed in [#52](https://github.com/csci153-saais-2026/saais-web/pull/52) and [#56](https://github.com/csci153-saais-2026/saais-web/pull/56). They describe intended behavior and do not by themselves implement production authorization.
 
 This README is the main project description and documents the intended production application. The SRS records detailed development requirements, and the OpenAPI contract specifies the application API. The interactive prototype is the reference for the application's workflows and interface.
 
@@ -277,12 +277,14 @@ rules/                 # Vite React best practices and development rules
 
 - Six assignable role types: Student, Adviser, Department Head, Department Staff, Dean, and System Administrator. A profile may have multiple scoped role assignments and may access the workflows authorized by each assignment.
 - Accounts are provisioned by authorized staff — no public self-signup. Users may sign in with email/password or Google. Initial passwords are set through an invitation; password recovery is available. Google sign-in succeeds only when the authenticated Google email exactly matches the pre-registered institutional email. Mismatches are rejected.
-- Department Heads and Department Staff may provision student, adviser, department staff, and department head accounts within their own department. Only System Administrators may grant dean or administrator roles. Users cannot assign roles to themselves or outside their authorized department.
-- This planned role set extends the current three-role SRS and API contract. Until a separate SRS/OpenAPI revision is reviewed, FR-AUTH-01, organizational scope, the attempt-level instructor field, and role-assignment metadata remain unchanged in those specifications. This README records the intended production direction under [#19, Task 6](https://github.com/csci153-saais-2026/saais-web/issues/19); it does not revise the SRS or API contract.
+- Password setup and changes require 12–128 characters, including uppercase, lowercase and a digit; no symbol is required. A changed password must differ from the current password. Other sessions are revoked after a successful change, although existing access tokens may remain usable until expiry unless the server also checks session validity.
+- Department Heads and Department Staff may provision student, adviser, department staff, and department head accounts within their own department. Only System Administrators may grant dean or administrator roles. Users cannot assign roles to themselves; department-scoped users cannot grant roles outside their department.
+- The six-role SRS and OpenAPI revisions are proposed in [#52](https://github.com/csci153-saais-2026/saais-web/pull/52) and [#56](https://github.com/csci153-saais-2026/saais-web/pull/56). Their documented authorization and transactional rules still require server-side implementation and enforcement.
 - An adviser can have 1+ advisees; a student has exactly 1 active adviser at all times — **zero-gap continuity is required**. Reassignment is atomic: the new assignment's start date coincides with the prior assignment's end date, enforced within a single transaction/trigger so a student is never left without an active adviser.
+- **Open alignment issue:** the proposed API contract permits newly provisioned students to be unassigned pending assignment, while the SRS and this README require an initial adviser. The team must resolve that difference before implementation; it does not change zero-gap reassignment of an existing adviser.
 - Adviser-to-student assignments retain full dated history.
 - Department Heads and Department Staff manage department-level student, account, and academic workflows. System Administrators manage accounts and roles institution-wide, programs, faculties, and departments. Department Heads manage curricula and academic terms; Department Staff manage the department course catalogue and offerings.
-- Deans have read-only faculty-level student, report, and audit access. A person holding both Department Head and Dean assignments receives the permissions of both roles within their respective scopes.
+- Deans have read-only faculty-level student, report, and audit access. A person may hold Dean alone or multiple independently scoped roles; a person holding both Department Head and Dean assignments receives the permissions of both within their respective scopes.
 - Thesis advising is out of scope.
 
 ### Organizational Scope
@@ -295,6 +297,7 @@ rules/                 # Vite React best practices and development rules
 - A program has 1+ curriculum versions, each with an effectivity period.
 - Each curriculum version belongs to exactly 1 program.
 - A student is assigned to exactly 1 curriculum at a time; changes are tracked as dated history (transfer/shift events), never overwritten.
+- An adviser endorses a curriculum transfer with a reason; a Department Head approves or rejects it. Approval updates the curriculum assignment without automatically changing the student's adviser. A separate authorized reassignment retains zero-gap adviser continuity.
 - A curriculum has 1+ terms (year level + term-within-year sequence); each term has 1+ courses.
 - A course can appear in multiple curricula (many-to-many at the term level).
 - Each curriculum defines its own delinquency threshold.
@@ -330,10 +333,10 @@ rules/                 # Vite React best practices and development rules
 ### Terms & Course Offerings
 
 - Curriculum term slot (positional) ≠ school term (calendar instance: school year + term type; natural key = school year + term type).
-- A school term can be locked after grades finalize; edits outside an override process are blocked. Override _workflow_ is out of scope — only lock state plus an override flag/timestamp/actor are modeled.
+- Department Heads and Staff can close and reopen grade encoding within their department. A separate institution-wide term lock and its override are managed by System Administrators; either applicable closure can block grade changes. A multi-step override approval workflow is out of scope.
 - A course is offered in a term via a course-offering record (not assumed available every term).
 - A course-offering can be flagged by-request (for discontinued courses still needed under an older curriculum).
-- Course-offering section and schedule details are out of scope. The grade-entry workflow records an instructor per attempt; this does not model instructor assignment or scheduling.
+- Course offerings may include section, schedule and a default instructor. The grade-entry workflow also records the instructor for each attempt.
 
 ### Enrollment & Attempts
 
@@ -354,9 +357,10 @@ rules/                 # Vite React best practices and development rules
 ### Advising & Documentation
 
 - Advisers record dated, append-only, free-text general notes per student.
-- Advising notes are visible to the student they concern and authorized staff. Attempt-level remarks are staff-only (adviser + admin).
+- Active and archived advising notes are visible to the student they concern and authorized staff. Attempt-level remarks remain staff-only.
 - The checklist collates all remarks across every attempt of a course, ordered by term.
 - A remark can attach to a checklist slot with no attempt yet.
+- Outside-course credits require a reason, positive units, and a passing grade from 1.00 through 3.00. The same source course or an already satisfied destination slot cannot be credited twice; corrections retain an audited revocation history.
 
 ### Audit & Integrity
 
@@ -369,7 +373,7 @@ rules/                 # Vite React best practices and development rules
 
 ### Entity Glossary
 
-The following workflow records are described in §8 but are not yet part of this core schema sketch: grade flags, curriculum-transfer approvals, outside-credit records, course-level equivalence rules, grade-import batches, scholastic-standing thresholds, sender-email settings, backup records, notifications, note-archival metadata, and audit events for sensitive record views. Their production entities, permissions, and operations are deferred to the separate SRS/OpenAPI revision required by [#19, Task 6](https://github.com/csci153-saais-2026/saais-web/issues/19). The `delinquency_threshold` on `CurriculumVersion` is already modeled; scholastic standing thresholds are a separate deferred setting.
+This core schema sketch does not enumerate every workflow record, including grade flags, transfer approvals, outside credits, notifications, note-archival metadata and sensitive-view audit events. The proposed [SRS](https://github.com/csci153-saais-2026/saais-web/pull/52) and [OpenAPI revision](https://github.com/csci153-saais-2026/saais-web/pull/56) describe their intended behavior; the sketch does not establish that their database schema or enforcement has been implemented.
 
 | Entity                      | Purpose                                                                                                                                                           |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -414,7 +418,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 |---|---|---|
 | `id` | uuid, PK | |
 | `profile_id` | uuid, FK → Profile, not null | one profile may hold multiple assignments |
-| `role` | enum(`student`,`adviser`,`department_head`,`department_staff`,`dean`,`admin`) | assigned by a System Administrator; never self-editable |
+| `role` | enum(`student`,`adviser`,`department_head`,`department_staff`,`dean`,`admin`) | Admin grants any role; authorized Head/Staff provision permitted roles in their department; never self-assigned |
 | `faculty_id` | uuid, FK → Faculty, nullable | required for faculty-scoped assignments |
 | `department_id` | uuid, FK → Department, nullable | required for department-scoped assignments; must belong to the assigned Faculty where both are set |
 | `created_at` | timestamptz, not null | |
@@ -584,7 +588,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | `id` | uuid, PK | |
 | `student_id` | uuid, FK → Profile, not null | |
 | `authored_by` | uuid, FK → Profile (adviser/admin), not null | |
-| `body_text` | text, not null | append-only; visible to the student it concerns and authorized staff |
+| `body_text` | text, not null | append-only; visible to the student it concerns and authorized staff, including when archived |
 | `created_at` | timestamptz, not null | |
 
 **AttemptRemark**
@@ -643,7 +647,7 @@ The production application will provide the following role-based workflows. Thes
 | Route                                  | Purpose                                                                                                  |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `/login`                              | Email/password or Google sign-in for provisioned accounts; Google email must match the institutional profile |
-| `/invite/:token`                      | Set an initial password from an administrator-issued invitation                                           |
+| `/invite#token=...`                   | Preview, accept, or decline an authorized invitation; the client sends the fragment token in a request body, not the URL path or query |
 | `/forgot-password`, `/reset-password` | Recover account access                                                                                    |
 | `/docs`                               | Browse the API contract, with access controlled by the deployment environment                             |
 
@@ -687,9 +691,9 @@ The production application will provide the following role-based workflows. Thes
 | `/admin/accounts`                      | User account provisioning, institutional email verification, status toggling, and role assignments                        |
 | `/admin/faculties`                     | Faculty (College) and subordinate Department hierarchy management                                                          |
 | `/admin/programs`                      | Master degree programs with department/college associations and active status                                              |
-| `/admin/curricula`                     | Versioned degree curricula, required units, delinquency thresholds, curriculum terms, and slot mappings                   |
-| `/admin/courses`                       | Master course catalog: codes, units, repeatable types, and multi-tier prerequisites                     |
-| `/admin/course-offerings`              | Academic school terms (with actual end dates & lock controls) and term course offerings (including by-request offerings)   |
+| `/department-staff/curricula`          | Department curriculum versions, terms, and slot mappings |
+| `/department-staff/course-catalog`     | Department course catalog: codes, units, repeatable types, and prerequisites |
+| `/department-staff/academic-terms`     | Department term management and course offerings, including by-request offerings |
 | `/admin/audit-log`                     | System-wide immutable audit trail with actor, action, date-range filtering, and export                                     |
 
 ### Curriculum and Course Catalogue
@@ -702,10 +706,10 @@ The New Course workflow will collect the course code, title, units, owning depar
 
 ### Architecture
 
-A React SPA talks to Supabase over HTTP, and only through operations declared in `contract/openapi.yaml`. Read-heavy views (checklist, grades, dashboards) are TanStack Query reads against PostgREST endpoints, where RLS decides what the caller may see. Writes fall into two classes:
+A React SPA uses the documented application operations to talk to Supabase, while Supabase Auth flows use the SDK. Read-heavy views (checklist, grades, dashboards) are TanStack Query reads against PostgREST endpoints, where RLS decides what the caller may see. Application data access follows these rules:
 
-- **Simple, single-row writes** (advising notes, profile edits) go straight to PostgREST; RLS and DB constraints are the whole enforcement story.
-- **Writes with invariants the client cannot be trusted to uphold** — enrollment overrides and prerequisite-grade corrections with their audit records, adviser reassignment's zero-gap transaction, and equivalency decisions — go through an Edge Function, so the rule lives on the server side of the contract.
+- **Reads** use the contract's bounded PostgREST projections, with RLS and server checks enforcing scope.
+- **Writes** use the documented transactional Edge Functions, including notes, account changes, grade entry and corrections, adviser reassignment, and equivalency decisions. Server-side authorization, validation and audit requirements apply even when a change appears simple.
 
 There is no application server of our own. Anything that would previously have justified one (a secret, a privileged write, a multi-statement transaction) is an Edge Function, and every Edge Function is a documented operation in the contract.
 
@@ -715,24 +719,24 @@ There is no application server of our own. Anything that would previously have j
 
 **Layout and versioning.** Supabase fixes the path prefixes (`/rest/v1`, `/functions/v1`), so the contract carries its own semver in `info.version`. A breaking change (removing a field, tightening a type, changing an operation's meaning) requires a major bump plus a migration note in the PR description; additive changes are minor.
 
-**Operations.** Every operation has a stable `operationId` in camelCase (`listAdviseeAttempts`, `recordEnrollmentAttempt`, `reassignAdviser`), which is what the generated client's method names derive from. The planned `x-tagGroups` organize Student, Adviser, Department Head, Department Staff, Dean, System Administrator, and Auth workflows. People with multiple assignments can access the operations permitted by each role and scope. The current OpenAPI tag groups and role metadata will be updated in a separate specification revision; until then, the current contract remains unchanged.
+**Operations.** Each documented operation has a stable camelCase `operationId`, such as `listAttempts`, `recordGrades`, or `reassignAdviser`. People with multiple assignments can access the operations permitted by each role and scope; role metadata describes requirements that the server must enforce.
 
-**Auth.** One `bearerAuth` security scheme (the Supabase JWT) is declared globally. The handful of unauthenticated operations opt out explicitly with `security: []`. The contract also documents, per operation, _which role can succeed_ — RLS is the enforcement, but an undocumented 403 is a contract bug.
+**Auth.** Protected operations require both the Supabase project `apikey` and a user bearer JWT. Invitation preview, acceptance and decline require the project key and an application invitation token in the request body, without a signed-in bearer token. RLS and server checks must enforce the documented role and scope.
 
-**Error model.** A single `Error` schema matching PostgREST's `{ code, message, details, hint }`. Edge Functions must return the same shape and the same status codes, so `src/lib/api` has exactly one error path regardless of which surface answered.
+**Error model.** Application errors use `{ code, message, details, hint }`; clients must also handle Supabase gateway authentication errors, which can have a different shape.
 
 **Edge Function operations for this system:**
 
 | Operation                  | Endpoint                                   | Why it can't be a plain PostgREST write                                                                                              |
 | -------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `recordEnrollmentAttempt`  | `POST /functions/v1/enrollment-attempts`   | Checks prerequisites; an authorized override records the attempt, reason, and audit entry together                                    |
-| `reassignAdviser`          | `POST /functions/v1/adviser-reassignment`  | Closes the outgoing assignment and opens the incoming one in one transaction, so zero-gap continuity can never be violated mid-write |
-| `applyEquivalencyDecision` | `POST /functions/v1/equivalency-decisions` | Writes the decision and remaps the affected checklist slot atomically                                                                |
-| `recomputeLapsedIncGwa`    | `POST /functions/v1/recompute-lapsed-inc`  | Scheduled (not user-facing); invoked by `pg_cron` with the service role to invalidate GWA caches whose INC deadline has newly passed |
+| `recordGrades` | `POST /functions/v1/students/{student_id}/record-grades` | Records grades and any authorized prerequisite override with its reason and audit entry |
+| `correctPrerequisiteGrade` | `POST /functions/v1/students/{student_id}/attempts/{attempt_id}/prerequisite-grade` | Corrects the original prerequisite grade and records the audit entry atomically |
+| `reassignAdviser` | `PUT /functions/v1/students/{student_id}/adviser` | Closes the outgoing assignment and opens the incoming one atomically to preserve continuity |
+| `createEquivalencyDecision` | `POST /functions/v1/students/{student_id}/equivalencies` | Records the student-specific decision and affected checklist slot atomically |
 
 **Generated client.** `openapi-typescript` produces `contract/generated/schema.d.ts`; `openapi-fetch` wraps it into a typed client in `src/lib/api`, which attaches the current access token and normalizes errors. Query hooks in `src/hooks` are thin wrappers, one per operation. Nothing else in the app imports `supabase-js` for data access — the Supabase SDK is used only for auth.
 
-**Drift detection.** After migrations run in CI, `contract:check` fetches the live auto-generated PostgREST description and compares it against every PostgREST path the contract documents. A migration that renames a column or changes a type fails CI, rather than surfacing as a runtime error in the browser.
+**Drift detection.** `contract:check` regenerates the TypeScript schema and checks it against the committed generated file. It does not compare a live PostgREST schema; runtime and database compatibility require separate verification.
 
 **Documentation.** Redoc renders the contract two ways, deliberately: an in-app `/docs` route (the `redoc` React component, so contributors read the same spec the running build uses — gated behind an authenticated session outside development), and a static bundle built by `redocly build-docs` in CI, published as a build artifact so the contract is browsable without running anything.
 
@@ -744,9 +748,9 @@ There is no self-service registration. A server-side Supabase Auth hook rejects 
 
 ### Data Access & RLS
 
-The target access model keys off `RoleAssignment`, organizational scope, and relationship tables. A separate SRS/API revision will define the full operation-level permissions and matching RLS policies; until then, this README does not change the current contract.
+The target access model keys off `RoleAssignment`, organizational scope, and relationship tables. The proposed SRS and API revision describe operation-level permissions; matching RLS policies and server checks must still be implemented and verified.
 
-- **Student**: read their own academic records and advising notes; attempt-level remarks remain staff-only.
+- **Student**: read their own academic records and active or archived advising notes; attempt-level remarks remain staff-only.
 - **Adviser**: manage currently assigned advisees and retain read-only access to historical advisees through `AdviserAssignment`.
 - **Department Head**: manage department-level student and academic workflows, including curriculum and transfer decisions.
 - **Department Staff**: manage department-scoped student, term, curriculum, course-catalogue, and account workflows.
@@ -755,7 +759,7 @@ The target access model keys off `RoleAssignment`, organizational scope, and rel
 
 ### GWA Caching & Time-Based Recompute
 
-Cached term/cumulative GWA values are recomputed via a DB trigger whenever a grade is inserted or updated. However, a lapsed INC changes a student's effective GWA purely due to elapsed time, with no corresponding row edit to trigger a recompute. To keep cached values correct, the `recomputeLapsedIncGwa` Edge Function runs daily on a `pg_cron` schedule, checking for attempts whose INC compliance deadline has newly passed and invalidating/recomputing the affected cached GWA and delinquency-flag values. Live (uncached) GWA reads should always apply the deadline check directly, regardless of cache state. This job is not reachable from the SPA — it is documented in the contract for completeness but marked with a service-role-only security requirement.
+Cached term/cumulative GWA values need recomputation when grades change. A lapsed INC can also change the effective GWA purely through elapsed time, so the target design requires a scheduled server-side check to invalidate or recompute affected cached GWA and delinquency flags. Live reads must apply the deadline check. The scheduling and implementation still need verification; the proposed contract does not expose a dedicated recompute endpoint to the SPA.
 
 ### Adviser Reassignment Integrity
 
@@ -821,7 +825,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 4. Equivalency/mapping slots use the original attempt's grade/units and don't re-trigger GWA recompute.
 5. **Advising-note access (B9)** — notes are visible to the student they concern and authorized staff. Attempt-level remarks remain staff-only.
 6. Attempt natural key is (student, course-offering); an optional FK links an attempt to the specific checklist slot it directly fulfills.
-7. The six assignable role types and matching API role metadata will be documented in a separate SRS/OpenAPI revision. Until that revision is reviewed, the current three-role SRS and API contract remain unchanged.
+7. The proposed SRS and OpenAPI revisions document six assignable role types and matching API role metadata; implementation and server-side enforcement remain separate work.
 8. Tech stack confirmed: React (Vite SPA), TypeScript, React Router, TanStack Query, React Context for client state, Tailwind CSS + shadcn/ui, Zod, Supabase (Postgres/RLS/Auth/Edge Functions), Vitest/RTL + Playwright, GitHub Actions, Vercel (static) + hosted Supabase.
 9. All project management (Issues, Milestones, PRs, reviews, CI) happens on GitHub — see §13.
 10. License: All Rights Reserved, owned by Jomari Joseph A. Barrera, with an explicit contributor-assignment clause for project contributions — see §15 and [LICENSE.md](./LICENSE.md).
@@ -829,7 +833,7 @@ Supabase CLI migrations: `YYYYMMDDHHMMSS_description.sql`, one logical change pe
 12. Data Privacy Act (RA 10173) compliance applies to this system's grade, enrollment, and advising-note data — see §15.9.
 13. **Contract-first backend boundary** — there is no application server; Supabase is the backend, and the frontend/backend interface is `contract/openapi.yaml` (OpenAPI 3.1), documented with Redoc. The frontend may only call operations declared there, and calls through a client generated from it. The auto-generated PostgREST spec is treated as a drift-detection input, never as the contract itself — see §3 and §9.
 14. **Server-side logic placement** — anything that needs a secret, a privileged write, or a multi-statement transaction is a Supabase Edge Function and a documented contract operation; plain reads and single-row writes go directly to PostgREST under RLS — see §9.
-15. **Sign-in decision (A4)** — administrator-provisioned accounts support both email/password and Google sign-in. Initial password setup uses an invitation; password recovery remains available. New identities must match a pre-registered institutional email, enforced server-side for both methods; existing-profile invitation acceptance and password recovery remain available. This deliberately retains both sign-in methods instead of adopting the reference's Google-only flow.
+15. **Sign-in decision (A4)** — authorized staff provision accounts supporting both email/password and Google sign-in. Initial password setup uses an invitation; password recovery remains available. New identities must match a pre-registered institutional email, enforced server-side for both methods; existing-profile invitation acceptance and password recovery remain available. This deliberately retains both sign-in methods instead of adopting the reference's Google-only flow.
 
 ## 13. Project Management & Contributing
 
