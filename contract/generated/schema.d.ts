@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Send account invitation
-         * @description Unified account provisioning and invitation flow: atomically creates a pre-registered Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum / adviser assignments (when student is included), and dispatches a single-use expiring password-setup invitation email (/invite/:token). Pre-registered accounts may also sign in immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified Google sign-in activates the profile (status='active') and invalidates any unused password invite token. Admins may provision any role and grant multi-role assignments across the institution; no caller may assign roles to themselves. Department Heads and Department Staff may provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles) strictly within their own department scope. Any attempt by Department Head or Department Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects duplicate email or student_number with 409 Conflict. Privileged server code provisions the Supabase Auth identity and application profile/assignments and writes an immutable audit log entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or receives server credentials. An application invitation does not constitute a signed-in session.
+         * @description Unified account provisioning and invitation flow: atomically creates a pre-registered Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum / adviser assignments (when student is included), and dispatches a single-use expiring password-setup invitation email (/invite#token=...). The fragment is read by the page and sent only in the JSON body to an invitation function. Pre-registered accounts may also sign in immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified Google sign-in activates the profile (status='active') and invalidates any unused password invite token. Admins may provision any role and grant multi-role assignments across the institution; no caller may assign roles to themselves. Department Heads and Department Staff may provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles) strictly within their own department scope. Any attempt by Department Head or Department Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects duplicate email or student_number with 409 Conflict. Privileged server code provisions the Supabase Auth identity and application profile/assignments and writes an immutable audit log entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or receives server credentials. An application invitation does not constitute a signed-in session.
          */
         post: operations["inviteUser"];
         delete?: never;
@@ -1026,7 +1026,7 @@ export interface paths {
         get?: never;
         /**
          * Reassign current adviser
-         * @description Current adviser may transfer own student to eligible active adviser without approval; Department Heads, Department Staff, and Admins manage department/institutional assignments. Lock student and close/open assignment on identical dates in one transaction; history remains immutable and past advisers immediately lose write access.
+         * @description Department Heads and Department Staff reassign a student to an eligible active adviser within their authorized department. Adviser and System Administrator roles alone do not authorize reassignment. Lock student and close/open assignment on identical dates in one transaction; history remains immutable and past advisers immediately lose write access.
          */
         put: operations["reassignAdviser"];
         post?: never;
@@ -1047,7 +1047,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk reassign adviser for multiple students
-         * @description Department Head, Department Staff, or Admin atomically reassigns one or more students to an eligible active adviser within the same Faculty/Department scope, closing each prior AdviserAssignment and opening the new one on identical dates with audit logging and notifications.
+         * @description Department Head or Department Staff atomically reassigns one or more students to an eligible active adviser within their department, closing each prior AdviserAssignment and opening the new one on identical dates with audit logging and notifications.
          */
         post: operations["bulkReassignAdvisers"];
         delete?: never;
@@ -1066,7 +1066,7 @@ export interface paths {
         get?: never;
         /**
          * Change curriculum assignment
-         * @description Department Head or Admin changes a student's curriculum assignment. Match program to curriculum; close old/open new on same date with reason and audit. Derived Department/College follow program; preserve earlier attempts, decisions and plans, and auto-apply matching CurriculumPairEquivalence rules where applicable.
+         * @description Department Head or Admin changes a student's curriculum assignment. Match program to curriculum; close old/open new on same date with reason and audit. Derived Department/College follow program; preserve earlier attempts, decisions and plans, and auto-apply matching CurriculumPairEquivalence rules where applicable. If the target department makes the current adviser ineligible, require an eligible target-department `new_adviser_id` and atomically close/open adviser assignments on the same date. The caller must also have a Department Head or Department Staff assignment authorized for the target department; an Admin role alone does not grant adviser-reassignment authority. Reject missing or ineligible advisers with 409 and insufficient target-department authority with 403.
          */
         put: operations["assignStudentCurriculum"];
         post?: never;
@@ -1351,7 +1351,7 @@ export interface paths {
         put?: never;
         /**
          * Append advising note
-         * @description Current adviser or authorized admin appends an advising note; historical advisers read only. Server stamps author/time. Under B9, active (non-archived) advising notes are read-only visible to the student on their Notes tab, while attempt_remark remains strictly staff-only.
+         * @description Current adviser or authorized admin appends an advising note; historical advisers read only. Server stamps author/time. Under B9, active and archived advising notes are read-only visible to the student on their Notes tab, while attempt_remark remains strictly staff-only.
          */
         post: operations["addAdvisingNote"];
         delete?: never;
@@ -1871,7 +1871,7 @@ export interface paths {
         put?: never;
         /**
          * Approve or reject a curriculum transfer request
-         * @description Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When approved, atomically closes the prior StudentCurriculumAssignment, opens the new one, applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and commits the audit log entry.
+         * @description Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When approved, atomically closes the prior StudentCurriculumAssignment, opens the new one, applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and commits the audit log entry. If the destination department makes the current adviser ineligible, approval requires `new_adviser_id` for an eligible active target-department adviser and atomically changes the adviser assignment with zero gap. The caller must hold a target-department Head or Staff assignment authorizing the reassignment; Admin alone does not grant that authority. Reject a missing or ineligible replacement with 409 and missing target-department authority with 403; rejection never changes assignments.
          */
         post: operations["decideCurriculumTransfer"];
         delete?: never;
@@ -1971,7 +1971,7 @@ export interface paths {
         put?: never;
         /**
          * Credit an outside or shiftee course to a curriculum slot
-         * @description Department Head or Admin credits a passed course from a previous school (Transferee) or previous VSU program (Shiftee) toward an open curriculum slot (FR-CRD-01).
+         * @description Department Head or Admin credits a passed course from a previous school (Transferee) or previous VSU program (Shiftee) toward an open curriculum slot (FR-CRD-01). In the same transaction, reject duplicate live credit for the same student, normalized origin and original course code (trimmed, whitespace-collapsed and case-folded), and reject a slot already satisfied by direct completion, an elective mapping, equivalency or other outside credit. Lock the affected student and decisions to prevent concurrent duplicates. Correct an existing credit through audited revocation and replacement; never count the same source or slot twice.
          */
         post: operations["createOutsideCredit"];
         delete?: never;
@@ -2211,7 +2211,7 @@ export interface paths {
         put?: never;
         /**
          * Record sensitive student-record view, report view, or export audit event
-         * @description Records an append-only audit log entry when an authorized user views a sensitive student record, views a department/faculty/admin summary report (`report_viewed`), or confirms a PDF/CSV export (FR-AUD-05). Pre-authentication or auth-lifecycle events (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase Auth hooks and Edge Functions—never via this authenticated client endpoint.
+         * @description Records an append-only audit log entry when an authorized user views a sensitive student record, views a department/faculty/admin summary report (`report_viewed`), or confirms a PDF/CSV export (FR-AUD-05). Students may log events only for their own authorized record and exports; staff may log events only within their authorized record or report scope. Pre-authentication or auth-lifecycle events (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase Auth hooks and Edge Functions—never via this authenticated client endpoint.
          */
         post: operations["recordAuditViewEvent"];
         delete?: never;
@@ -3176,6 +3176,11 @@ export interface components {
             program_id: string;
             /** Format: uuid */
             curriculum_version_id: string;
+            /**
+             * Format: uuid
+             * @description Required if the current adviser is ineligible for the destination department.
+             */
+            new_adviser_id?: string;
             /** Format: date */
             start_date: string;
             reason: string;
@@ -3836,6 +3841,11 @@ export interface components {
             decision: "approved";
             /** @description Optional approval note when approving a curriculum transfer request. */
             decision_note?: string | null;
+            /**
+             * Format: uuid
+             * @description Required if the current adviser is ineligible for the destination department.
+             */
+            new_adviser_id?: string;
         } | {
             /** @constant */
             decision: "rejected";
@@ -3901,6 +3911,7 @@ export interface components {
             original_course_code: string;
             original_course_title: string;
             units: number;
+            /** @description Passing grade on the institutional 1.00–3.00 scale, formatted to two decimals. */
             grade: string;
             /** Format: uuid */
             destination_curriculum_term_course_id: string;
