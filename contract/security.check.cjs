@@ -77,22 +77,22 @@ test('reassignment authority and notification sources match the reviewed contrac
     for (const source of event.source_operations ?? []) assert.ok(known.has(source), `${event.event_type}: ${source}`);
   }
   assert.match(spec.paths['/functions/v1/students/{student_id}/notes'].post.description, /active and archived/);
-  assert.match(spec['x-saais-invariants'].dean_roles, /must coexist with an Adviser and\/or Department Head/);
-  assert.match(spec.paths['/functions/v1/auth/invite'].post.description, /Dean assignment must coexist/);
-  assert.match(spec.paths['/functions/v1/accounts/{profile_id}'].patch.description, /Dean assignment must coexist/);
+  assert.match(spec['x-saais-invariants'].dean_roles, /may exist alone/);
+  assert.ok(schemas.StaffRoleInviteRequest.properties.role.enum.includes('dean'));
+  assert.ok(!schemas.StaffRoleInviteRequest.required.includes('role_assignments'));
+  assert.match(spec.paths['/functions/v1/auth/invite'].post.description, /Dean may hold only the Dean role/);
 });
 
-test('transfers preserve adviser continuity and outside credits cannot double-count', () => {
-  const direct = schemas.CurriculumAssignmentRequest.properties.new_adviser_id;
+test('transfers preserve adviser assignment and outside credits cannot double-count', () => {
   const approval = schemas.CurriculumTransferDecisionRequest.oneOf.find(item => item.properties.decision.const === 'approved');
   const rejection = schemas.CurriculumTransferDecisionRequest.oneOf.find(item => item.properties.decision.const === 'rejected');
-  assert.equal(direct.format, 'uuid');
-  assert.equal(approval.properties.new_adviser_id.format, 'uuid');
+  assert.equal(schemas.CurriculumAssignmentRequest.properties.new_adviser_id, undefined);
+  assert.equal(approval.properties.new_adviser_id, undefined);
   assert.equal(rejection.properties.new_adviser_id, undefined);
   for (const operationId of ['assignStudentCurriculum', 'decideCurriculumTransfer']) {
     const operation = operations.find(item => item.operation.operationId === operationId).operation;
-    assert.match(operation.description, /new_adviser_id/);
-    assert.match(operation.description, /target.department/);
+    assert.match(operation.description, /does not itself change the student's adviser assignment/);
+    assert.match(operation.description, /zero-gap/);
   }
   const credit = operations.find(item => item.operation.operationId === 'createOutsideCredit').operation;
   assert.match(credit.description, /duplicate live credit/);
