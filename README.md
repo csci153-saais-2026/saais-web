@@ -333,7 +333,7 @@ rules/                 # Vite React best practices and development rules
 ### Terms & Course Offerings
 
 - Curriculum term slot (positional) ≠ school term (calendar instance: school year + term type; natural key = school year + term type).
-- Department Heads and Staff can close and reopen grade encoding within their department. A separate institution-wide term lock and its override are managed by System Administrators; either applicable closure can block grade changes. A multi-step override approval workflow is out of scope.
+- Department Heads and Staff can close and reopen grade encoding within their department. A separate institution-wide term lock and its override are managed by System Administrators; both closures block ordinary grade changes. First completion of an unresolved INC on or before its deadline is allowed during either closure; corrections to a completed INC obey both closures. A multi-step override approval workflow is out of scope.
 - A course is offered in a term via a course-offering record (not assumed available every term).
 - A course-offering can be flagged by-request (for discontinued courses still needed under an older curriculum).
 - Course offerings may include section, schedule and a default instructor. The grade-entry workflow also records the instructor for each attempt.
