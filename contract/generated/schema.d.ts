@@ -1026,7 +1026,7 @@ export interface paths {
         get?: never;
         /**
          * Reassign current adviser
-         * @description Department Heads and Department Staff reassign a student to an eligible active adviser within their authorized department. Adviser and System Administrator roles alone do not authorize reassignment. Lock student and close/open assignment on identical dates in one transaction; history remains immutable and past advisers immediately lose write access.
+         * @description Department Heads and Department Staff reassign a student to an eligible active adviser within their authorized department. Adviser and System Administrator roles alone do not authorize reassignment. Following a cross-department transfer, the destination department's Head or Staff may reassign its student to an eligible active adviser in that department even when the current adviser belongs to the former department. The outgoing assignment remains valid until this transaction; do not grant the outgoing adviser broader department access. Lock student and close/open assignment on identical dates in one transaction; history remains immutable and past advisers immediately lose write access.
          */
         put: operations["reassignAdviser"];
         post?: never;
@@ -1047,7 +1047,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk reassign adviser for multiple students
-         * @description Department Head or Department Staff atomically reassigns one or more students to an eligible active adviser within their department, closing each prior AdviserAssignment and opening the new one on identical dates with audit logging and notifications.
+         * @description Department Head or Department Staff atomically reassigns one or more students to an eligible active adviser within their department, closing each prior AdviserAssignment and opening the new one on identical dates with audit logging and notifications. The caller's department must be each student's current destination department; an existing adviser may belong to the student's former department after a transfer.
          */
         post: operations["bulkReassignAdvisers"];
         delete?: never;
@@ -1871,7 +1871,7 @@ export interface paths {
         put?: never;
         /**
          * Approve or reject a curriculum transfer request
-         * @description Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When approved, atomically closes the prior StudentCurriculumAssignment, opens the new one, applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and commits the audit log entry. Approval does not itself change the student's adviser assignment; any separate reassignment follows the authorized department workflow and preserves zero-gap continuity. Rejection never changes assignments.
+         * @description Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When approved, atomically closes the prior StudentCurriculumAssignment, opens the new one, applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and commits the audit log entry. Approval does not itself change the student's adviser assignment; after a cross-department transfer, the existing adviser remains current for that student, including current-adviser access limited to the assignment, until the destination department's Head or Staff separately reassigns the student to an eligible active adviser there. This does not grant broader access to the destination department. Reassignment preserves zero-gap continuity. Rejection never changes assignments.
          */
         post: operations["decideCurriculumTransfer"];
         delete?: never;
