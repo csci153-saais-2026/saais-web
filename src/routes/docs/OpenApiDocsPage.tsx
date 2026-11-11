@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { DocsAuthGate } from '@/routes/docs/DocsAuthGate'
 import { DocsShell } from '@/routes/docs/DocsShell'
 import type { SessionCheckFn } from '@/routes/docs/docs-auth'
-import { CANONICAL_OPENAPI_SPEC_URL } from '@/routes/docs/docs-registry'
+import { CANONICAL_OPENAPI_SPEC_URL, fetchDocumentation } from '@/routes/docs/docs-registry'
 import {
   mountRedocStandalone,
   type MountRedocOptions,
@@ -76,6 +76,13 @@ function OpenApiContractViewer({
     }
   }, [attempt, mountRedoc, specUrl])
 
+  const handleDownload = async () => {
+    try {
+      const content = await fetchDocumentation('openapi')
+      const url = URL.createObjectURL(new Blob([content], { type: 'application/yaml' }))
+      const link = document.createElement('a'); link.href = url; link.download = 'saais-openapi.yaml'; link.click(); URL.revokeObjectURL(url)
+    } catch { setViewerState({ status: 'error', message: 'The document could not be downloaded.' }) }
+  }
   const handleRetry = () => {
     setViewerState({ status: 'loading' })
     setAttempt((prev) => prev + 1)
@@ -96,12 +103,7 @@ function OpenApiContractViewer({
           <code className="hidden rounded-sm bg-secondary px-2 py-0.5 font-mono text-caption text-muted-2 lg:inline-block">
             contract/openapi.yaml
           </code>
-          <Button variant="outline" size="sm" asChild>
-            <a href={specUrl} download="saais-openapi.yaml">
-              <DownloadIcon />
-              Download YAML
-            </a>
-          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownload}><DownloadIcon />Download YAML</Button>
         </div>
       }
     >
@@ -146,11 +148,7 @@ function OpenApiContractViewer({
               <Button type="button" onClick={handleRetry}>
                 Retry loading contract
               </Button>
-              <Button variant="outline" asChild>
-                <a href={specUrl} target="_blank" rel="noreferrer">
-                  Open raw openapi.yaml
-                </a>
-              </Button>
+              <Button variant="outline" onClick={handleDownload}>Download YAML</Button>
               <Button variant="ghost" asChild>
                 <Link to="/docs">Back to documentation hub</Link>
               </Button>

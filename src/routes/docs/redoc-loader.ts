@@ -1,3 +1,4 @@
+import { fetchDocumentation } from '@/routes/docs/docs-registry'
 export const REDOC_STANDALONE_SRC =
   'https://cdn.redocly.com/redoc/v2.5.3/bundles/redoc.standalone.js'
 
@@ -184,18 +185,14 @@ export async function mountRedocStandalone({
   fetchImpl = fetch,
   loadScript = () => loadRedocStandaloneScript(),
 }: MountRedocOptions): Promise<void> {
-  const response = await fetchImpl(specUrl, {
-    method: 'GET',
-    signal,
-  })
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch canonical OpenAPI contract (${response.status} ${response.statusText || 'Error'}).`,
-    )
+  let rawYaml: string
+  if (specUrl === '/api/docs?document=openapi') {
+    rawYaml = await fetchDocumentation('openapi', signal)
+  } else {
+    const response = await fetchImpl(specUrl, { method: 'GET', signal })
+    if (!response.ok) throw new Error(`Failed to fetch canonical OpenAPI contract (${response.status} ${response.statusText || 'Error'}).`)
+    rawYaml = await response.text()
   }
-
-  const rawYaml = await response.text()
   if (rawYaml.trim().length === 0) {
     throw new Error('Canonical OpenAPI contract asset is empty.')
   }
@@ -208,21 +205,19 @@ export async function mountRedocStandalone({
   container.replaceChildren()
   const redocOptions = buildSaaisRedocOptions()
 
-  await new Promise<void>((resolve, reject) => {
-    try {
-      redoc.init(specUrl, redocOptions, container, (err?: Error) => {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve()
-      })
-    } catch (error) {
-      reject(
-        error instanceof Error
-          ? error
-          : new Error('Failed to initialize Redoc viewer.'),
-      )
-    }
-  })
+  const objectUrl = URL.createObjectURL(new Blob([rawYaml], { type: 'application/yaml' }))
+  try {
+    await new Promise<void>((resolve, reject) => {
+      try {
+        redoc.init(objectUrl, redocOptions, container, (error?: Error) => {
+          if (error) reject(error)
+          else resolve()
+        })
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error('Failed to initialize Redoc viewer.'))
+      }
+    })
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
 }
