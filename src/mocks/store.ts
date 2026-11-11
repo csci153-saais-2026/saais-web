@@ -784,6 +784,8 @@ function buildInitialMockDatabase(): MockDatabaseState {
         effective_status: 'inc',
         gwa_grade: null,
         is_lapsed_inc: false,
+        is_repeated: false,
+        counts_toward_cumulative_gwa: false,
       },
       {
         id: MOCK_IDS.attemptCsci153Open,
@@ -808,6 +810,8 @@ function buildInitialMockDatabase(): MockDatabaseState {
         effective_status: 'currently_enrolled',
         gwa_grade: null,
         is_lapsed_inc: false,
+        is_repeated: false,
+        counts_toward_cumulative_gwa: false,
       },
     ],
     incResolutions: [],
