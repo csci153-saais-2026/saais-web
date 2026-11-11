@@ -14,6 +14,8 @@ import { checkDocsSessionAuthenticated } from '@/routes/docs/docs-auth'
 import {
   ALLOWLISTED_DOCS,
   CANONICAL_OPENAPI_SPEC_URL,
+  loadGuide,
+  fetchDocumentation,
 } from '@/routes/docs/docs-registry'
 import {
   buildSaaisRedocOptions,
@@ -28,6 +30,7 @@ import {
 afterEach(() => {
   cleanup()
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
   resetSupabaseClientForTests()
   setMockSessionToken(null)
@@ -40,6 +43,17 @@ afterEach(() => {
 })
 
 describe('docs-registry canonical & allowlist guarantees', () => {
+  it('fetches production documents with a bearer token and rejects HTML fallbacks', async () => {
+    vi.stubEnv('DEV', false)
+    setAccessTokenResolver(() => 'real-session')
+    const fetchMock = vi.fn().mockResolvedValue(new Response('openapi: 3.1.0', { headers: { 'Content-Type': 'application/yaml' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await fetchDocumentation('openapi')).toBe('openapi: 3.1.0')
+    expect(fetchMock).toHaveBeenCalledWith('/api/docs?document=openapi', expect.objectContaining({ headers: { Authorization: 'Bearer real-session' } }))
+    fetchMock.mockResolvedValue(new Response('<html></html>', { headers: { 'Content-Type': 'text/html' } }))
+    await expect(fetchDocumentation('openapi')).rejects.toThrow(/unexpected response/)
+  })
+
   it('consumes unsupported lines, respects fence lengths, and preserves nested lists', () => {
     const blocks = parseMarkdownBlocks('#### Troubleshooting\n#hashtag\n| not a table\n\n````js\n```\n```suffix\ncode\n````\n\n1. Parent\n   - Child\n   - Another\n2. Next')
     expect(blocks[0].kind).toBe('paragraph')
@@ -49,17 +63,16 @@ describe('docs-registry canonical & allowlist guarantees', () => {
     expect(list?.kind === 'list' && list.items[0].children[0].items).toHaveLength(2)
   })
 
-  it('resolves canonical contract/openapi.yaml URL directly and excludes meeting minutes', () => {
+  it('loads only the allowlisted guide', async () => {
     expect(CANONICAL_OPENAPI_SPEC_URL).toContain('openapi')
     expect(ALLOWLISTED_DOCS.length).toBeGreaterThan(0)
     expect(ALLOWLISTED_DOCS.map((d) => d.sourcePath)).toEqual([
       'docs/api-documentation.md',
     ])
-    for (const doc of ALLOWLISTED_DOCS) {
-      expect(doc.sourcePath.includes('meeting-minutes')).toBe(false)
-      expect(doc.blocks.length).toBeGreaterThan(5)
-      expect(doc.sections.length).toBeGreaterThan(2)
-    }
+    const doc = await loadGuide()
+    expect(doc.sourcePath.includes('meeting-minutes')).toBe(false)
+    expect(doc.blocks.length).toBeGreaterThan(5)
+    expect(doc.sections.length).toBeGreaterThan(2)
   })
 })
 
@@ -104,7 +117,7 @@ describe('DocsAuthGate & session policy', () => {
     await screen.findByText('Active session not found')
   })
 
-  it('allows unauthenticated access in development mode (isDev=true)', () => {
+  it('allows unauthenticated access in development mode (isDev=true)', async () => {
     render(
       <MemoryRouter initialEntries={['/docs']}>
         <DocsHubPage isDev={true} />
@@ -123,7 +136,7 @@ describe('DocsAuthGate & session policy', () => {
     expect(screen.getByLabelText('Quick Access')).toBeTruthy()
     expect(document.querySelector('[data-slot="sidebar"]')).toBeTruthy()
     expect(document.querySelector('[data-slot="status-badge"]')).toBeTruthy()
-    expect(document.querySelector('table.stack-table td[data-label="Artifact"]')).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('table.stack-table td[data-label="Artifact"]')).toBeTruthy())
   })
 
   it('blocks unauthenticated access outside development (isDev=false) using real token resolver', async () => {
@@ -158,7 +171,7 @@ describe('DocsAuthGate & session policy', () => {
       await screen.findByRole('heading', { name: 'Documentation' }),
     ).toBeTruthy()
     expect(
-      screen.getAllByText('openapi-redoc-bundle').length,
+      (await screen.findAllByText('openapi-redoc-bundle')).length,
     ).toBeGreaterThanOrEqual(2)
   })
 
@@ -324,7 +337,7 @@ describe('redoc-loader standalone script & spec verification', () => {
     })
 
     expect(initSpy).toHaveBeenCalledTimes(1)
-    expect(initSpy.mock.calls[0]?.[0]).toBe('/assets/openapi.yaml')
+    expect(initSpy.mock.calls[0]?.[0]).toMatch(/^blob:/)
     expect(initSpy.mock.calls[0]?.[1]).toEqual(SAAIS_REDOC_OPTIONS)
     expect(container.dataset.mounted).toBe('true')
   })

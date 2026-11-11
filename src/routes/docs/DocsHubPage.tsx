@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { Link } from 'react-router'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -12,7 +13,9 @@ import { DocsShell } from '@/routes/docs/DocsShell'
 import type { SessionCheckFn } from '@/routes/docs/docs-auth'
 import {
   ALLOWLISTED_DOCS,
-  CANONICAL_OPENAPI_SPEC_URL,
+  loadGuide,
+  fetchDocumentation,
+  type AllowlistedDocEntry,
 } from '@/routes/docs/docs-registry'
 import { MarkdownDocumentView } from '@/routes/docs/MarkdownDocumentView'
 
@@ -27,7 +30,22 @@ const HUB_QUICK_LINKS = [
 ]
 
 function DocsHubContent() {
-  const allGuideSections = ALLOWLISTED_DOCS.flatMap((doc) => doc.sections)
+  const [docs, setDocs] = React.useState<readonly AllowlistedDocEntry[]>(ALLOWLISTED_DOCS)
+  const [error, setError] = React.useState('')
+  React.useEffect(() => {
+    const controller = new AbortController()
+    void loadGuide(controller.signal).then(doc => setDocs([doc])).catch(() => { if (!controller.signal.aborted) setError('The guide could not be loaded.') })
+    return () => controller.abort()
+  }, [])
+  const allGuideSections = docs.flatMap((doc) => doc.sections)
+  async function downloadSpec() {
+    try {
+      const content = await fetchDocumentation('openapi')
+      const url = URL.createObjectURL(new Blob([content], { type: 'application/yaml' }))
+      const link = document.createElement('a'); link.href = url; link.download = 'saais-openapi.yaml'; link.click()
+      URL.revokeObjectURL(url)
+    } catch { setError('The OpenAPI document could not be downloaded.') }
+  }
 
   return (
     <DocsShell
@@ -70,12 +88,7 @@ function DocsHubContent() {
                 Explore OpenAPI Contract
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <a href={CANONICAL_OPENAPI_SPEC_URL} download="saais-openapi.yaml">
-                <DownloadIcon />
-                Download openapi.yaml
-              </a>
-            </Button>
+            <Button variant="outline" onClick={downloadSpec}><DownloadIcon />Download openapi.yaml</Button>
           </div>
         </Panel>
 
@@ -117,7 +130,8 @@ function DocsHubContent() {
         </AlertDescription>
       </Alert>
 
-      {ALLOWLISTED_DOCS.map((doc) => (
+      {error && <p role="alert">{error}</p>}
+      {docs.map((doc) => (
         <Panel
           key={doc.slug}
           title={doc.title}

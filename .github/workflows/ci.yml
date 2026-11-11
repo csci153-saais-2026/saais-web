@@ -70,6 +70,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Verify documentation access boundary
+        run: node --test scripts/docs-endpoint.test.js
+
       - name: Run Typecheck
         run: npm run typecheck
 
@@ -78,6 +81,9 @@ jobs:
 
       - name: Build Production Bundle
         run: npm run build
+
+      - name: Check production documentation assets
+        run: node --test scripts/docs-build.test.js
 
       - name: Run Tests with Coverage
         run: npx vitest run --coverage --passWithNoTests

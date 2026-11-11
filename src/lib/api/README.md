@@ -152,7 +152,7 @@ const range = parseContentRange(result.response.headers.get('Content-Range'))
 
 ## 4. Interactive & Static API Documentation
 
-- **In-app routes**: Run `npm run dev` and open `/docs` (curated documentation hub) or `/docs/openapi` (interactive Redoc reference bound directly to [`contract/openapi.yaml`](../../../contract/openapi.yaml)). Outside local development (`!import.meta.env.DEV`), both routes require an authenticated SAAIS session.
+- **In-app routes**: Run `npm run dev` and open `/docs` (curated documentation hub) or `/docs/openapi` (interactive Redoc reference bound directly to [`contract/openapi.yaml`](../../../contract/openapi.yaml)). Outside local development, `/api/docs` verifies a Supabase user session and active profile server-side. Vite preview alone does not run the Vercel function.
 - **Static Redoc bundle & CI artifact**: Run `npm run contract:docs` to generate `docs/openapi/index.html`. GitHub Actions (`.github/workflows/ci.yml`) builds and uploads `docs/openapi/index.html` as the `openapi-redoc-bundle` artifact on every CI run. See [`docs/api-documentation.md`](../../../docs/api-documentation.md) for full details.
 
 Filter helpers accept alphanumeric, underscore and hyphen list values; like patterns reject PostgREST structural punctuation. Date ranges require ordered ISO dates or timestamps. Pagination totals may be unavailable when the server or CORS policy does not expose `Content-Range`.
