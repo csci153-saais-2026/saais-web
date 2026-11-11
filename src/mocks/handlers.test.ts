@@ -37,6 +37,24 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('uses the student current department closure for a cross-department course', async () => {
+    const db = getMockDatabase()
+    const profile = db.profiles.find(p => p.id === MOCK_IDS.studentPrimary)!
+    db.profiles[db.profiles.indexOf(profile)] = { ...profile, department_id: MOCK_IDS.deptDabe }
+    const course = db.courses.find(c => c.id === MOCK_IDS.courseCsci153)!
+    db.courses[db.courses.indexOf(course)] = { ...course, department_id: MOCK_IDS.deptDabe }
+    const closure = db.departmentTermEncodings.find(c => c.school_term_id === MOCK_IDS.term2026Sem1Open && c.department_id === MOCK_IDS.deptDcst)!
+    closure.is_closed = true
+    loginAsMockPersona('adviser')
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const params = { path: { student_id: MOCK_IDS.studentPrimary } }
+    const body = { school_term_id: MOCK_IDS.term2026Sem1Open, course_offering_id: MOCK_IDS.offeringCsci153, confirmed_enrollment: true, continue_with_prerequisite_override: false }
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(409)
+    closure.is_closed = false
+    db.departmentTermEncodings.push({ ...closure, id: '61000000-0000-4000-8000-000000000099', department_id: MOCK_IDS.deptDabe, is_closed: true })
+    expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(200)
+  })
+
   it('retains the outgoing adviser through a cross-department transfer until reassignment', async () => {
     const db = getMockDatabase()
     const studentId = MOCK_IDS.studentPrimary
