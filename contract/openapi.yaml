@@ -7601,7 +7601,9 @@ paths:
       description: >-
         Department Head, Department Staff, or Admin previews or commits a batch of student
         accounts from CSV/TSV/spreadsheet rows (FR-ADM-14), validating student_number format
-        YY-N-NNNNN, institutional email uniqueness, curriculum version, and adviser assignment.
+        YY-N-NNNNN, institutional email uniqueness, matching active curriculum version, and a
+        required eligible active initial adviser for every row. Invalid rows are rejected; committing
+        a valid row creates its student and initial assignments atomically.
       x-required-roles:
         - department_head
         - department_staff
@@ -13639,10 +13641,9 @@ components:
           type: string
           format: uuid
         adviser_id:
-          type:
-            - string
-            - "null"
+          type: string
           format: uuid
+          description: Eligible active initial adviser for the imported student.
         entry_year:
           type:
             - integer
@@ -13656,6 +13657,7 @@ components:
         - email
         - program_id
         - curriculum_version_id
+        - adviser_id
     StudentBatchImportRequest:
       type: object
       additionalProperties: false
