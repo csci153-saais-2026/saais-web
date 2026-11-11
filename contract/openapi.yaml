@@ -5221,9 +5221,10 @@ paths:
         after recording the result. Non-numeric retake outcomes, including INC and DR, do not replace
         or duplicate the earlier failure in cumulative GWA until a numeric final or INC completion
         grade is recorded. A lapsed INC retake may count as 5.00 in its historical term GWA but does
-        not add a second cumulative contribution while the earlier failure remains selected. Semester
-        weighting remains pending confirmation. Course completion and earned units count the passing
-        attempt once.
+        not add a second cumulative contribution while the earlier failure remains selected. Cumulative
+        GWA is the sum of each included attempt's grade times its units divided by total included units;
+        it is not an equal-weight average of semester GWAs. Course completion and earned units count
+        the passing attempt once.
         Historical records remain intact if legacy data contains later attempts after a pass.
         Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
       x-required-roles:
