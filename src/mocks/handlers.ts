@@ -2288,6 +2288,15 @@ export const saaisMswHandlers = [
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'INCCompletionRequest'>
+      const db = getMockDatabase()
+      const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
+      if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
+      if (!canAccessStudentRecord(auth.persona, studentId)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+      if (attempt.recorded_status !== 'inc' || !attempt.inc_deadline || attempt.inc_deadline < today || db.incResolutions.some(r => r.attempt_id === attemptId)) {
+        return errorJson(409, 'INC_NOT_ELIGIBLE', 'Only an unresolved INC on or before its deadline can be completed.')
+      }
+      if (!body.reason?.trim() || !Number.isFinite(body.completion_grade) || body.completion_grade < 1 || body.completion_grade > 5 || body.completion_grade * 4 % 1 !== 0) return errorJson(400, 'INVALID_INPUT', 'Enter a valid completion grade and reason.')
       const resolution: ApiSchema<'INCResolution'> = {
         id: MOCK_IDS.incResolution1,
         student_id: studentId,
@@ -2299,7 +2308,13 @@ export const saaisMswHandlers = [
         updated_at: '2026-11-10T09:00:00Z',
         effective_status: (body.completion_grade ?? 2.0) <= 3.0 ? 'passed' : 'failed',
       }
-      getMockDatabase().incResolutions.push(resolution)
+      db.incResolutions.push(resolution)
+      db.attemptResults[db.attemptResults.indexOf(attempt)] = {
+        ...attempt,
+        completion_grade: resolution.completion_grade,
+        effective_status: resolution.effective_status,
+        resolved_at: resolution.resolved_at,
+      }
       return HttpResponse.json(resolution, { status: 201 })
     },
   ),
@@ -2316,6 +2331,12 @@ export const saaisMswHandlers = [
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
+      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
+      const db = getMockDatabase()
+      const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
+      const offering = db.courseOfferings.find(o => o.id === attempt?.course_offering_id)
+      const term = db.schoolTerms.find(t => t.id === offering?.school_term_id)
+      if (term?.is_locked && !term.override_flag) return errorJson(409, 'TERM_LOCKED', 'Corrections require an editable term.')
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'INCCompletionCorrectionRequest'>
       const resolution: ApiSchema<'INCResolution'> = {
         id: MOCK_IDS.incResolution1,
