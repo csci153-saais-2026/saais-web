@@ -2011,7 +2011,7 @@ export interface paths {
         put?: never;
         /**
          * Preview or commit student directory spreadsheet import
-         * @description Department Head, Department Staff, or Admin previews or commits a batch of student accounts from CSV/TSV/spreadsheet rows (FR-ADM-14), validating student_number format YY-N-NNNNN, institutional email uniqueness, curriculum version, and adviser assignment.
+         * @description Department Head, Department Staff, or Admin previews or commits a batch of student accounts from CSV/TSV/spreadsheet rows (FR-ADM-14), validating student_number format YY-N-NNNNN, institutional email uniqueness, matching active curriculum version, and a required eligible active initial adviser for every row. Invalid rows are rejected; committing a valid row creates its student and initial assignments atomically.
          */
         post: operations["importStudentsBatch"];
         delete?: never;
@@ -3920,8 +3920,11 @@ export interface components {
             program_id: string;
             /** Format: uuid */
             curriculum_version_id: string;
-            /** Format: uuid */
-            adviser_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Eligible active initial adviser for the imported student.
+             */
+            adviser_id: string;
             entry_year?: number | null;
         };
         StudentBatchImportRequest: {
