@@ -1251,7 +1251,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke elective mapping
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations. Invalidate affected current calculation caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeElectiveMapping"];
         delete?: never;
@@ -1311,7 +1311,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke equivalency decision
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations. Invalidate affected current calculation caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeEquivalencyDecision"];
         delete?: never;
@@ -2317,7 +2317,7 @@ export interface components {
          */
         CourseStatus: "active" | "inactive" | "discontinued";
         /**
-         * @description Course retake credit rule
+         * @description Course retake credit rule. For additional_credit, every passed repeat contributes its earned units and grade to GWA, including passes beyond curriculum requirements; filling the curriculum requirement does not cap earned credit or GWA contributions.
          * @enum {string}
          */
         RepeatableType: "none" | "grade_replacement" | "grade_averaging" | "additional_credit";
