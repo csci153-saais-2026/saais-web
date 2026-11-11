@@ -1,11 +1,5 @@
-import apiDocumentationRaw from '../../../docs/api-documentation.md?raw'
-import canonicalOpenApiSpecUrl from '../../../contract/openapi.yaml?url'
-import {
-  extractMarkdownSections,
-  parseMarkdownBlocks,
-  type MarkdownBlock,
-  type MarkdownSectionHeading,
-} from '@/routes/docs/markdown-blocks'
+import { resolveCurrentAccessToken } from '@/lib/api'
+import { extractMarkdownSections, parseMarkdownBlocks, type MarkdownBlock, type MarkdownSectionHeading } from '@/routes/docs/markdown-blocks'
 
 export interface AllowlistedDocEntry {
   readonly slug: string
@@ -17,30 +11,29 @@ export interface AllowlistedDocEntry {
   readonly sections: readonly MarkdownSectionHeading[]
 }
 
-const apiDocBlocks = parseMarkdownBlocks(apiDocumentationRaw)
+export const CANONICAL_OPENAPI_SPEC_URL = '/api/docs?document=openapi'
+export const ALLOWLISTED_DOCS: readonly AllowlistedDocEntry[] = [{
+  slug: 'api-documentation', title: 'API & Developer Documentation Guide', category: 'Contract & CI',
+  summary: 'How SAAIS serves and publishes API documentation.', sourcePath: 'docs/api-documentation.md', blocks: [], sections: [],
+}]
 
-/**
- * Canonical URL to `contract/openapi.yaml` resolved directly by Vite (`?url`).
- * - In `npm run dev`, serves `contract/openapi.yaml` live from disk.
- * - In `npm run build`, emits a content-hashed asset under `dist/assets/`.
- * Never copies or duplicates `contract/openapi.yaml` in source control.
- */
-export const CANONICAL_OPENAPI_SPEC_URL: string = canonicalOpenApiSpecUrl
+export async function fetchDocumentation(document: 'openapi' | 'guide', signal?: AbortSignal): Promise<string> {
+  if (import.meta.env.DEV) {
+    return document === 'openapi'
+      ? (await import('../../../contract/openapi.yaml?raw')).default
+      : (await import('../../../docs/api-documentation.md?raw')).default
+  }
+  const token = await resolveCurrentAccessToken()
+  if (!token) throw new Error('An active session is required to load documentation.')
+  const response = await fetch(`/api/docs?document=${document}`, { headers: { Authorization: `Bearer ${token}` }, signal })
+  if (!response.ok) throw new Error(`Documentation request failed (${response.status}).`)
+  const type = response.headers.get('Content-Type') || ''
+  const expected = document === 'openapi' ? 'application/yaml' : 'text/markdown'
+  if (!type.toLowerCase().startsWith(expected)) throw new Error('Documentation endpoint returned an unexpected response.')
+  return response.text()
+}
 
-/**
- * Explicit allowlist of repository guides published at `/docs`.
- * Never replace this with wildcard `import.meta.glob` over `docs/`, so private
- * artifacts (such as `docs/meeting-minutes/*`) are never bundled into the SPA.
- */
-export const ALLOWLISTED_DOCS: readonly AllowlistedDocEntry[] = [
-  {
-    slug: 'api-documentation',
-    title: 'API & Developer Documentation Guide',
-    category: 'Contract & CI',
-    summary:
-      'How SAAIS serves canonical OpenAPI 3.1 documentation in-app (/docs, /docs/openapi) and publishes the static Redoc artifact in CI.',
-    sourcePath: 'docs/api-documentation.md',
-    blocks: apiDocBlocks,
-    sections: extractMarkdownSections(apiDocBlocks),
-  },
-]
+export async function loadGuide(signal?: AbortSignal): Promise<AllowlistedDocEntry> {
+  const blocks = parseMarkdownBlocks(await fetchDocumentation('guide', signal))
+  return { ...ALLOWLISTED_DOCS[0], blocks, sections: extractMarkdownSections(blocks) }
+}
