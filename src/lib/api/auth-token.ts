@@ -49,7 +49,7 @@ export async function resolveCurrentAccessToken(
     return mockSessionAccessToken
   }
 
-  const supabase = getSupabaseClient()
+  const supabase = getSupabaseClient(mode)
   const { data, error } = await supabase.auth.getSession()
   if (error || !data.session?.access_token) {
     return null

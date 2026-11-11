@@ -104,13 +104,15 @@ export function createSaaisApiClient(
       const effectiveApiKey = existingApiKey || configuredApiKey?.trim() || ''
 
       if (!effectiveApiKey) {
-        return jsonErrorResponse(401, {
+        const payload = {
           code: API_ERROR_CODES.MISSING_API_KEY,
-          message:
-            'Supabase project publishable API key is not configured for API requests.',
+          message: 'Supabase project publishable API key is not configured for API requests.',
           details: null,
           hint: 'Configure VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY), or run with VITE_API_MODE=mock.',
-        })
+        }
+        const response = jsonErrorResponse(401, payload)
+        if (!isPublicContractPath(schemaPath)) options.onUnauthorized?.({ schemaPath, method: request.method, status: 401, error: normalizeApiError(payload, response) })
+        return response
       }
 
       request.headers.set('apikey', effectiveApiKey)

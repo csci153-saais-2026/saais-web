@@ -35,6 +35,7 @@ afterEach(() => {
   setAccessTokenResolver(null)
   resetSupabaseClientForTests()
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('resolveSaaisEnvConfig & Supabase client setup', () => {
@@ -75,6 +76,7 @@ describe('resolveSaaisEnvConfig & Supabase client setup', () => {
   })
 
   it('creates a PKCE-configured Supabase client and guards unconfigured getSupabaseClient()', () => {
+    vi.stubEnv('VITE_SUPABASE_URL', '')
     const sdkClient = createSupabaseBrowserClient(BASE_URL, TEST_API_KEY)
     expect(sdkClient.auth).toBeDefined()
     expect(() => getSupabaseClient()).toThrow(/Supabase client is unavailable/i)
@@ -82,6 +84,17 @@ describe('resolveSaaisEnvConfig & Supabase client setup', () => {
 })
 
 describe('auth token resolution (mock mode & custom resolver)', () => {
+  it('honors an explicit Supabase mode when the default mode is mock', async () => {
+    vi.stubEnv('VITE_API_MODE', 'mock')
+    vi.stubEnv('VITE_SUPABASE_URL', BASE_URL)
+    vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', TEST_API_KEY)
+    const sdk = getSupabaseClient('supabase')
+    vi.spyOn(sdk.auth, 'getSession').mockResolvedValue({ data: { session: null }, error: null })
+    expect(await resolveCurrentAccessToken('supabase')).toBeNull()
+    expect(sdk.auth.getSession).toHaveBeenCalled()
+    expect(resolveSaaisEnvConfig({ VITE_API_MODE: 'mock', VITE_SUPABASE_URL: BASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY: TEST_API_KEY }).apiBaseUrl).not.toBe(BASE_URL)
+  })
+
   it('stores, trims, and clears mock session tokens cleanly', async () => {
     expect(getMockSessionToken()).toBeNull()
     expect(await resolveCurrentAccessToken('mock')).toBeNull()
@@ -104,6 +117,15 @@ describe('auth token resolution (mock mode & custom resolver)', () => {
 })
 
 describe('createSaaisApiClient auth headers & pre-login exception', () => {
+  it('notifies only protected requests when the API key is missing', async () => {
+    const events: UnauthorizedEventContext[] = []
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, mode: 'supabase', apiKey: '', onUnauthorized: event => events.push(event) })
+    await client.GET('/rest/v1/course')
+    await client.POST('/functions/v1/auth/preview-invite', { body: { token: 'test-token' } })
+    expect(events).toHaveLength(1)
+    expect(events[0].error.code).toBe(API_ERROR_CODES.MISSING_API_KEY)
+  })
+
   it('attaches apikey and a fresh per-request Bearer token on protected routes', async () => {
     const seenRequests: Request[] = []
     let currentToken: string | null = 'jwt-initial'
@@ -513,6 +535,24 @@ describe('error handling, gateway 401s, rate limits, 204s, and network failures'
 })
 
 describe('PostgREST filter & Content-Range helpers', () => {
+  it('rejects syntax injection and malformed ranges', () => {
+    expect(() => postgrestFilter.inList(['ok,malicious'])).toThrow()
+    expect(() => postgrestFilter.ilike('x),status.eq.admin')).toThrow()
+    expect(() => postgrestFilter.like('x.y')).toThrow()
+    expect(() => postgrestFilter.createdAtBetween('2026-01-02', '2026-01-01')).toThrow()
+    expect(parseContentRange('10-2/20')).toBeNull()
+    expect(parseContentRange('0-999999999999999999999/*')).toBeNull()
+  })
+
+  it('accepts zero and HTTP-date Retry-After values', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-11T00:00:00Z'))
+    try {
+      expect(parseRetryAfterSeconds({ headers: new Headers({ 'Retry-After': '0' }) })).toBe(0)
+      expect(parseRetryAfterSeconds({ headers: new Headers({ 'Retry-After': 'Wed, 11 Nov 2026 00:00:30 GMT' }) })).toBe(30)
+    } finally { vi.useRealTimers() }
+  })
+
   it('builds operator-prefixed filters and enforces the 50-UUID cap on inList', () => {
     expect(postgrestFilter.eq(SAMPLE_UUID_1)).toBe(`eq.${SAMPLE_UUID_1}`)
     expect(postgrestFilter.neq('archived')).toBe('neq.archived')

@@ -192,8 +192,13 @@ test('JSON write request strings have finite bounds', () => {
     }
     for (const [name, child] of Object.entries(value.properties || {})) visit(child, `${label}.${name}`, refs);
     if (value.items) visit(value.items, `${label}[]`, refs);
+    if (typeof value.additionalProperties === 'object') visit(value.additionalProperties, `${label}.*`, refs);
+    for (const [pattern, child] of Object.entries(value.patternProperties || {})) visit(child, `${label}[${pattern}]`, refs);
     for (const key of ['oneOf', 'anyOf', 'allOf']) for (const child of value[key] || []) visit(child, label, refs);
   };
+  assert.throws(() => visit({ additionalProperties: { type: 'string' } }, 'map'), /maxLength/);
+  assert.throws(() => visit({ patternProperties: { '^x': { type: 'string' } } }, 'map'), /maxLength/);
+  visit({ additionalProperties: { type: 'string', maxLength: 10 } }, 'bounded-map');
   for (const { route, method, operation } of operations.filter(item => item.method !== 'get')) {
     const body = resolve(operation.requestBody)?.content?.['application/json']?.schema;
     if (body) visit(body, `${method} ${route}`);
