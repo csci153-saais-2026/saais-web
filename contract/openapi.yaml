@@ -5214,10 +5214,16 @@ paths:
       description: >-
         Scope own/assigned/department/faculty/admin records. Use academically ordered effective
         attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA.
-        Each graded attempt contributes to the GWA of its own school term; an earlier failing grade
-        remains in that term when the course is retaken later. An ungraded retake contributes no
-        final grade to its term. Cumulative GWA derives from semester GWAs; semester weighting is
-        pending confirmation. Course completion and earned units count the passing attempt once.
+        Each graded attempt remains in its original historical term GWA. Until a later retake has a
+        numeric final or completion grade, the earlier failure counts in cumulative GWA. Once the
+        later grade is recorded, it replaces the failure in cumulative GWA; the original remains on
+        the transcript, marked Repeated and excluded from cumulative GWA. Recompute cumulative GWA
+        after recording the result. Non-numeric retake outcomes, including INC and DR, do not replace
+        or duplicate the earlier failure in cumulative GWA until a numeric final or INC completion
+        grade is recorded. A lapsed INC retake may count as 5.00 in its historical term GWA but does
+        not add a second cumulative contribution while the earlier failure remains selected. Semester
+        weighting remains pending confirmation. Course completion and earned units count the passing
+        attempt once.
         Historical records remain intact if legacy data contains later attempts after a pass.
         Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
       x-required-roles:
@@ -5423,9 +5429,9 @@ paths:
             type: string
             maxLength: 2000
             pattern: >-
-              ^(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc)(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc))*$
+              ^(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa))*$
             default: >-
-              id,student_id,course_offering_id,curriculum_term_course_id,recorded_status,midterm_status,midterm_grade,final_grade,instructor,prerequisite_override,prerequisite_grade_override,inc_deadline,units_attempted,revision,created_at,updated_at,completion_grade,resolved_at,effective_status,gwa_grade,is_lapsed_inc
+              id,student_id,course_offering_id,curriculum_term_course_id,recorded_status,midterm_status,midterm_grade,final_grade,instructor,prerequisite_override,prerequisite_grade_override,inc_deadline,units_attempted,revision,created_at,updated_at,completion_grade,resolved_at,effective_status,gwa_grade,is_lapsed_inc,is_repeated,counts_toward_cumulative_gwa
         - name: order
           in: query
           required: false
@@ -5434,7 +5440,7 @@ paths:
             type: string
             maxLength: 1000
             pattern: >-
-              ^(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+              ^(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
             default: id.asc
         - $ref: "#/components/parameters/limitQueryParam"
         - $ref: "#/components/parameters/offsetQueryParam"
@@ -5501,6 +5507,8 @@ paths:
         - effective_status
         - gwa_grade
         - is_lapsed_inc
+        - is_repeated
+        - counts_toward_cumulative_gwa
   /rest/v1/inc_resolution:
     get:
       tags:
@@ -6649,8 +6657,9 @@ paths:
       operationId: getTermGrades
       description: >-
         Return terms newest first by academic chronological key. Use effective INC completion
-        results and final-only term GWA; data-entry time must not reorder academic history. Bound
-        total attempt rows as well as returned term groups.
+        results and final-only historical term GWA; data-entry time must not reorder academic history.
+        Mark a failure superseded by a later graded retake as Repeated and exclude it from cumulative
+        GWA while retaining the original grade and term history. Bound total attempt rows and term groups.
       x-required-roles:
         - student
         - adviser
@@ -11769,6 +11778,14 @@ components:
           multipleOf: 0.25
         is_lapsed_inc:
           type: boolean
+        is_repeated:
+          type: boolean
+          readOnly: true
+          description: True when this failing attempt is superseded by a later numeric retake result; show Repeated on the transcript.
+        counts_toward_cumulative_gwa:
+          type: boolean
+          readOnly: true
+          description: True when this attempt contributes to cumulative GWA after retake replacement rules.
       required:
         - id
         - student_id
@@ -11782,6 +11799,8 @@ components:
         - completion_grade
         - gwa_grade
         - is_lapsed_inc
+        - is_repeated
+        - counts_toward_cumulative_gwa
     INCResolution:
       type: object
       additionalProperties: false
@@ -14787,7 +14806,8 @@ x-saais-invariants:
   equivalency: student-specific passed attempt to one destination; no global code-to-code equivalence
   inc: >-
     original INC remains stored; completion <=3 Passed, >3 Failed; first completion on or before
-    deadline is allowed during institution lock and department encoding closure; corrections obey both
+    deadline is allowed during institution lock and department encoding closure; corrections obey both.
+    Lapsed INC is 5.00 for term GWA; a nonnumeric retake does not duplicate an earlier failure in cumulative GWA
   midterm_dr_rule: >-
     under VSU grading policy, midterm_status=dr automatically forces attempt status=dr and
     final_grade=null

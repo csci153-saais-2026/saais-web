@@ -339,6 +339,11 @@ test('closure scope and semester retake history reflect confirmed rules', () => 
     assert.match(op['x-department-closure'], /another department/);
   }
   const summary = operations.find(x => x.operation.operationId === 'getAcademicSummary').operation;
-  assert.match(summary.description, /earlier failing grade remains in that term/);
-  assert.match(summary.description, /ungraded retake contributes no final grade/);
+  assert.match(summary.description, /earlier failure counts in cumulative GWA/);
+  assert.match(summary.description, /replaces the failure in cumulative GWA/);
+  assert.match(summary.description, /marked Repeated and excluded/);
+  assert.match(summary.description, /including INC and DR, do not replace/);
+  assert.match(summary.description, /does not add a second cumulative contribution/);
+  assert.ok(schemas.AttemptResult.required.includes('is_repeated'));
+  assert.ok(schemas.AttemptResult.required.includes('counts_toward_cumulative_gwa'));
 });
