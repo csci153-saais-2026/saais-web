@@ -290,6 +290,8 @@ test('student invitation requires a non-null initial adviser', () => {
   assert.ok(student.required.includes('adviser_id'));
   assert.equal(student.properties.adviser_id.type, 'string');
   assert.equal(student.properties.adviser_id.format, 'uuid');
+  assert.ok(schemas.StudentBatchImportRowInput.required.includes('adviser_id'));
+  assert.equal(schemas.StudentBatchImportRowInput.properties.adviser_id.type, 'string');
   assert.match(schemas.InviteRequest.description, /other invite variants cannot add a student role/);
   assert.match(spec['x-saais-invariants'].student_profile, /active initial adviser/);
 });
