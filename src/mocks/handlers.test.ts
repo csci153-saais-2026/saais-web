@@ -123,6 +123,36 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(summary.counted_units).toBe(9)
   })
 
+  it('allows only in-scope Department Heads to clone curriculum terms and slots', async () => {
+    const db = getMockDatabase()
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const body = { program_id: MOCK_IDS.programBscs, version_label: 'BSCS cloned', effective_start: '2026-08-01', clone_from_version_id: MOCK_IDS.curriculumBscs2024 }
+    const before = db.curriculumVersions.length
+    for (const role of ['department_staff', 'admin'] as const) {
+      loginAsMockPersona(role)
+      const denied = await client.POST('/functions/v1/catalog/curriculum_version', { body })
+      expect(denied.response.status).toBe(403)
+      expect(db.curriculumVersions).toHaveLength(before)
+    }
+    loginAsMockPersona('department_staff')
+    expect((await client.POST('/functions/v1/catalog/curriculum_version', { body: { ...body, clone_from_version_id: null } })).response.status).toBe(201)
+    loginAsMockPersona('department_head')
+    const result = await client.POST('/functions/v1/catalog/curriculum_version', { body })
+    expect(result.response.status).toBe(201)
+    const created = unwrapApiResult(result)
+    const originals = db.curriculumTerms.filter(term => term.curriculum_version_id === MOCK_IDS.curriculumBscs2024)
+    const copies = db.curriculumTerms.filter(term => term.curriculum_version_id === created.id)
+    expect(copies).toHaveLength(originals.length)
+    for (const original of originals) {
+      const copy = copies.find(term => term.year_level === original.year_level && term.term_sequence === original.term_sequence)!
+      expect(copy.id).not.toBe(original.id)
+      const originalSlots = db.curriculumTermCourses.filter(slot => slot.curriculum_term_id === original.id)
+      const copySlots = db.curriculumTermCourses.filter(slot => slot.curriculum_term_id === copy.id)
+      expect(copySlots.map(slot => slot.course_id)).toEqual(originalSlots.map(slot => slot.course_id))
+      expect(copySlots.every(slot => !originalSlots.some(originalSlot => originalSlot.id === slot.id))).toBe(true)
+    }
+  })
+
   it('uses the student current department closure for a cross-department course', async () => {
     const db = getMockDatabase()
     const profile = db.profiles.find(p => p.id === MOCK_IDS.studentPrimary)!
@@ -197,6 +227,25 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: completion })).response.status).toBe(409)
     expect((await client.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { ...completion, expected_updated_at: '2026-11-10T09:00:00Z' } })).response.status).toBe(409)
     expect(db.incResolutions).toHaveLength(1)
+  })
+
+  it('restricts INC completion and correction to the current adviser and checks revision', async () => {
+    const db = getMockDatabase()
+    db.schoolTerms.find(term => term.id === MOCK_IDS.term2025Sem2Closed)!.is_locked = false
+    db.attemptResults.find(attempt => attempt.id === MOCK_IDS.attemptCsci102Inc)!.inc_deadline = '2099-01-01'
+    const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const params = { path: { student_id: MOCK_IDS.studentPrimary, attempt_id: MOCK_IDS.attemptCsci102Inc } }
+    const body = { completion_grade: 2, reason: 'Documented completion' }
+    loginAsMockPersona('dean')
+    expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body })).response.status).toBe(403)
+    loginAsMockPersona('adviser_secondary')
+    expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body })).response.status).toBe(403)
+    loginAsMockPersona('adviser')
+    const created = unwrapApiResult(await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body }))
+    expect((await client.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { ...body, completion_grade: 1.75, expected_updated_at: '2000-01-01T00:00:00Z' } })).response.status).toBe(409)
+    const corrected = unwrapApiResult(await client.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { ...body, completion_grade: 1.75, expected_updated_at: created.updated_at } }))
+    expect(corrected.completion_grade).toBe(1.75)
+    expect(db.attemptResults.find(attempt => attempt.id === MOCK_IDS.attemptCsci102Inc)?.completion_grade).toBe(1.75)
   })
 
   it('rejects a first INC completion after its deadline even when encoding is closed', async () => {

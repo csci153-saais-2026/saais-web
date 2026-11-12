@@ -29,6 +29,13 @@ const operations = Object.entries(spec.paths).flatMap(([route, item]) =>
 const schemas = spec.components.schemas;
 const studentPath = '/functions/v1/students/{student_id}';
 
+test('curriculum cloning requires an in-scope Department Head assignment', () => {
+  const operation = spec.paths['/functions/v1/catalog/curriculum_version'].post;
+  assert.ok(operation['x-required-roles'].includes('department_staff'));
+  assert.match(operation.description, /Only a Department Head/);
+  assert.match(operation['x-request-validation'], /Department Head assignment covering the source and target/);
+});
+
 test('raw table endpoints cannot bypass transactional write guards', () => {
   for (const { route, method } of operations) {
     if (route.startsWith('/rest/v1/')) assert.equal(method, 'get', route);

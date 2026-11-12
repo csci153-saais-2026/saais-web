@@ -93,7 +93,7 @@ This README is the main project description and documents the intended productio
 | CI/CD                        | GitHub Actions                                                                                                                    |
 | Project Management           | GitHub Issues, Milestones, Projects (board), Pull Requests                                                                        |
 | Hosting                      | Vercel (static SPA build) + hosted Supabase project (database/auth)                                                               |
-| Node                         | 20.x (pin via `.nvmrc`)                                                                                                           |
+| Node                         | 22.x (pin via `.nvmrc`)                                                                                                           |
 | Package manager              | npm — one lockfile (`package-lock.json`); do not introduce a second package manager                                               |
 
 ### Contract-First Convention
@@ -111,7 +111,7 @@ Supabase auto-publishes a machine-generated OpenAPI description of PostgREST. **
 
 ### Prerequisites
 
-- Node.js 20.x (use the version in `.nvmrc`; `nvm use` if you have nvm installed)
+- Node.js 22.x (use the version in `.nvmrc`; `nvm use` if you have nvm installed)
 - npm — the canonical package manager for this project; all commands below use `npm`. Commit only `package-lock.json`; do not introduce a second package manager.
 - Docker (for local Supabase)
 - Supabase CLI — install per the [official instructions](https://supabase.com/docs/guides/cli/getting-started) for your OS (Homebrew, Scoop, or direct binary; avoid the unsupported global npm install)
@@ -169,7 +169,7 @@ npm run contract:check    # fails if generated output is stale, or if PostgREST 
 npm run contract:docs     # build the static Redoc bundle
 ```
 
-`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. Redoc is also served in-app at `/docs` while the dev server is running.
+`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [contract freeze candidate and workflow crosswalk](contract/FREEZE-0.3.0.md) record the version, proposed change process and outstanding approvals. Redoc is also served in-app at `/docs` while the dev server is running.
 
 ### Seed Data Specification
 
@@ -295,7 +295,7 @@ rules/                 # Vite React best practices and development rules
 ### Program & Curriculum
 
 - A program has 1+ curriculum versions, each with an effectivity period.
-- Each curriculum version belongs to exactly 1 program.
+- Each curriculum version belongs to exactly 1 program. Department Heads may clone a version within their department; Department Staff and administrators may create blank versions but may clone only if they also hold an in-scope Department Head assignment.
 - A student is assigned to exactly 1 curriculum at a time; changes are tracked as dated history (transfer/shift events), never overwritten.
 - An adviser endorses a curriculum transfer with a reason; a Department Head approves or rejects it. Approval updates the curriculum assignment without automatically changing the student's adviser. After a cross-department transfer, the existing adviser remains assigned to that student until the destination department's Head or Staff separately reassigns them to an eligible adviser there; this grants no broader department access. Reassignment retains zero-gap continuity.
 - A curriculum has 1+ terms (year level + term-within-year sequence); each term has 1+ courses.
@@ -354,7 +354,7 @@ rules/                 # Vite React best practices and development rules
 ### Advising & Documentation
 
 - Advisers record dated, append-only, free-text general notes per student.
-- Active and archived advising notes are visible to the student they concern and authorized staff. Attempt-level remarks remain staff-only.
+- Active and archived advising notes are visible to the student they concern and authorized staff. Only the current adviser or an authorized System Administrator can archive or restore a note. Attempt-level remarks remain staff-only.
 - The checklist collates all remarks across every attempt of a course, ordered by term.
 - A remark can attach to a checklist slot with no attempt yet.
 - Outside-course credits require a reason, positive units, and a passing grade from 1.00 through 3.00. The same source course or an already satisfied destination slot cannot be credited twice; corrections retain an audited revocation history.
@@ -370,7 +370,7 @@ rules/                 # Vite React best practices and development rules
 
 ### Entity Glossary
 
-This core schema sketch does not enumerate every workflow record, including grade flags, transfer approvals, outside credits, notifications, note-archival metadata and sensitive-view audit events. The proposed [SRS](https://github.com/csci153-saais-2026/saais-web/pull/52) and [OpenAPI revision](https://github.com/csci153-saais-2026/saais-web/pull/56) describe their intended behavior; the sketch does not establish that their database schema or enforcement has been implemented.
+This core schema sketch does not enumerate every workflow record, including grade flags, transfer approvals, outside credits, notifications, note-archival metadata and sensitive-view audit events. The [SRS](Software%20Requirements%20Specification(SRS).md) and [OpenAPI contract](contract/openapi.yaml) describe their intended behavior; the sketch does not establish that their database schema or enforcement has been implemented.
 
 | Entity                      | Purpose                                                                                                                                                           |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |

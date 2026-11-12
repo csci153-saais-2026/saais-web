@@ -1178,6 +1178,20 @@ export const saaisMswHandlers = [
     ])
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    const db = getMockDatabase()
+    const cloneId = body.clone_from_version_id
+    if (cloneId != null && !hasMockRole(auth.persona, ['department_head'])) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only a Department Head may clone a curriculum.')
+    }
+    const source = cloneId == null ? undefined : db.curriculumVersions.find(version => version.id === cloneId)
+    if (cloneId != null && !source) return errorJson(404, 'NOT_FOUND', 'Source curriculum not found.')
+    if (source) {
+      const sourceProgram = db.programs.find(program => program.id === source.program_id)
+      const targetProgram = db.programs.find(program => program.id === body.program_id)
+      if (!auth.persona.departmentId || sourceProgram?.department_id !== auth.persona.departmentId || targetProgram?.department_id !== auth.persona.departmentId) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'The source and target must be within the Department Head’s scope.')
+      }
+    }
     const created: ApiSchema<'CurriculumVersion'> = {
       id: nextSyntheticUuid(),
       program_id: String(body.program_id ?? MOCK_IDS.programBscs),
@@ -1189,7 +1203,16 @@ export const saaisMswHandlers = [
       status: 'draft',
       enrolled_student_count: 0,
     }
-    getMockDatabase().curriculumVersions.push(created)
+    db.curriculumVersions.push(created)
+    if (source) {
+      const sourceTerms = db.curriculumTerms.filter(term => term.curriculum_version_id === source.id)
+      for (const term of sourceTerms) {
+        const newTermId = nextSyntheticUuid()
+        db.curriculumTerms.push({ ...term, id: newTermId, curriculum_version_id: created.id })
+        const slots = db.curriculumTermCourses.filter(slot => slot.curriculum_term_id === term.id)
+        for (const slot of slots) db.curriculumTermCourses.push({ ...slot, id: nextSyntheticUuid(), curriculum_term_id: newTermId })
+      }
+    }
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -2325,12 +2348,7 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/attempts/:attempt_id/inc-completion',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
@@ -2338,7 +2356,7 @@ export const saaisMswHandlers = [
       const db = getMockDatabase()
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
       if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
-      if (!canAccessStudentRecord(auth.persona, studentId)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      if (!db.adviserAssignments.some(a => a.student_id === studentId && a.adviser_id === auth.persona.profileId && a.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may complete an INC.')
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
       if (attempt.recorded_status !== 'inc' || !attempt.inc_deadline || attempt.inc_deadline < today || db.incResolutions.some(r => r.attempt_id === attemptId)) {
         return errorJson(409, 'INC_NOT_ELIGIBLE', 'Only an unresolved INC on or before its deadline can be completed.')
@@ -2369,33 +2387,28 @@ export const saaisMswHandlers = [
   http.patch(
     '*/functions/v1/students/:student_id/attempts/:attempt_id/inc-completion',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
-      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
       const db = getMockDatabase()
+      if (!db.adviserAssignments.some(a => a.student_id === studentId && a.adviser_id === auth.persona.profileId && a.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may correct an INC completion.')
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
-      const offering = db.courseOfferings.find(o => o.id === attempt?.course_offering_id)
+      const existing = db.incResolutions.find(r => r.attempt_id === attemptId && r.student_id === studentId)
+      if (!attempt || !existing) return errorJson(404, 'NOT_FOUND', 'INC completion not found.')
+      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
+      const offering = db.courseOfferings.find(o => o.id === attempt.course_offering_id)
       const term = db.schoolTerms.find(t => t.id === offering?.school_term_id)
       if (term?.is_locked && !term.override_flag) return errorJson(409, 'TERM_LOCKED', 'Corrections require an editable term.')
       const body = (await request.json().catch(() => ({}))) as ApiSchema<'INCCompletionCorrectionRequest'>
+      if (!body.reason?.trim() || !Number.isFinite(body.completion_grade) || body.completion_grade < 1 || body.completion_grade > 5 || body.completion_grade * 4 % 1 !== 0 || !body.expected_updated_at) return errorJson(400, 'INVALID_INPUT', 'Enter a valid completion grade, reason, and expected timestamp.')
+      if (body.expected_updated_at !== existing.updated_at) return errorJson(409, 'CONFLICT', 'The INC completion has changed.')
       const resolution: ApiSchema<'INCResolution'> = {
-        id: MOCK_IDS.incResolution1,
-        student_id: studentId,
-        attempt_id: attemptId,
-        completion_grade: body.completion_grade ?? 1.75,
-        resolved_by: auth.persona.profileId,
-        resolved_at: '2026-11-10T09:00:00Z',
-        updated_by: auth.persona.profileId,
-        updated_at: '2026-11-10T09:05:00Z',
-        effective_status: (body.completion_grade ?? 1.75) <= 3.0 ? 'passed' : 'failed',
+        ...existing, completion_grade: body.completion_grade, updated_by: auth.persona.profileId,
+        updated_at: new Date().toISOString(), effective_status: body.completion_grade <= 3 ? 'passed' : 'failed',
       }
+      db.incResolutions[db.incResolutions.indexOf(existing)] = resolution
+      db.attemptResults[db.attemptResults.indexOf(attempt)] = { ...attempt, completion_grade: resolution.completion_grade, effective_status: resolution.effective_status }
       return HttpResponse.json(resolution, { status: 200 })
     },
   ),
