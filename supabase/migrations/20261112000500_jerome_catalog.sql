@@ -99,6 +99,9 @@ begin
     perform saais_private.require_scope(array['admin']);
   elsif entity='school_term' then
     perform saais_private.require_scope(array['admin','department_head','department_staff']);
+    if body ? 'is_locked' and not saais_private.has_role('admin') and
+      ((verb='create' and (body->>'is_locked')::boolean) or (verb='update' and body->'is_locked' is distinct from before_row->'is_locked')) then
+      perform saais_private.fail(403,'Only Admin may change the institution lock.'); end if;
   elsif entity='curriculum_pair_equivalence' then
     for child in select v.id,p.department_id from public.curriculum_version v join public.program p on p.id=v.program_id
       where v.id in ((data->>'from_curriculum_version_id')::uuid,(data->>'to_curriculum_version_id')::uuid) order by v.id for update of v
