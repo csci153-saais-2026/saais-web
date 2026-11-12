@@ -12,6 +12,7 @@ begin
   perform test.call('updateDepartment',jsonb_build_object('id',d->>'id'),'{"code":"DA"}');
   perform test.expect('PT409','deleteFaculty',jsonb_build_object('id',f->>'id'));
   p:=test.call('createProgram','{}',jsonb_build_object('department_id',d->>'id','code','TST','name','Test Program','nominal_duration',4));
+  perform test.expect('PT400','createProgram','{}',jsonb_build_object('department_id',d->>'id','code','OVERFLOW','name','Overflow Program','nominal_duration',100000000));
   perform test.call('updateProgram',jsonb_build_object('id',p->>'id'),'{"name":"Test Program Updated"}');
   perform test.expect('PT409','deleteDepartment',jsonb_build_object('id',d->>'id'));
   v:=test.call('createCurriculumVersion','{}',jsonb_build_object('program_id',p->>'id','version_label','2026','effective_start','2026-01-01','delinquency_threshold',12));

@@ -58,7 +58,7 @@ begin
 exception
   when unique_violation then perform saais_private.fail(409,'A record with this identity already exists.');
   when foreign_key_violation then perform saais_private.fail(409,'Referenced academic records must exist and their history must be preserved.');
-  when check_violation or not_null_violation or invalid_text_representation or datetime_field_overflow then perform saais_private.fail(400,'The request violates an academic data constraint.');
+  when check_violation or not_null_violation or invalid_text_representation or datetime_field_overflow or numeric_value_out_of_range then perform saais_private.fail(400,'The request violates an academic data constraint.');
   when serialization_failure or deadlock_detected then perform saais_private.fail(409,'The academic record changed concurrently. Reload before retrying.');
 end $$;
 revoke all on function public.jerome_operation(text,jsonb,jsonb) from public,anon;

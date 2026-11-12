@@ -50,7 +50,7 @@ begin
     if s->>'format'='date' then
       if k !~ '^\d{4}-\d{2}-\d{2}$' then return false; end if; dt:=k::date;
     elsif s->>'format'='date-time' then
-      if k !~* '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$' then return false; end if; ts:=k::timestamptz;
+      if k !~* '^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d:([0-5]\d|60)(\.\d+)?(Z|[+-]([01]\d|2[0-3]):[0-5]\d)$' then return false; end if; ts:=k::timestamptz;
     end if;
   elsif t='number' then
     if (s ? 'minimum' and (p_value#>>'{}')::numeric<(s->>'minimum')::numeric)
