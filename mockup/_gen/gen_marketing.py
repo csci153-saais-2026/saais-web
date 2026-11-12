@@ -758,7 +758,7 @@ def invite_form():
             "".join(f'<div style="display: flex; align-items: center; gap: 7px; font-size: 12.5px; '
                     f'color: {PASS_FG if ok else MUTED_2}">{ico("check", 14, PASS_FG if ok else LINE)}{t}</div>'
                     for t, ok in [("At least 12 characters", True), ("One uppercase letter", True),
-                                  ("One number", True), ("One lowercase letter", False)]) +
+                                  ("One lowercase letter", True), ("One number", True)]) +
             f'</div></div>'
             f'<div style="margin-top: 20px">'
             f'<button class="btnp" style="width: 100%; padding: 12px; background: {FOREST}; color: {CREAM}; '
@@ -774,7 +774,7 @@ write("Invite", auth_shell(invite_form(), "Invitation"))
 
 # ------------------------------------------------------------------ docs
 def docs_page():
-    groups = [("Auth", ["signInWithPassword (SDK)", "signInWithGoogle (SDK)", "previewInviteToken / verifyInviteToken"]),
+    groups = [("Auth", ["signInWithPassword", "signInWithGoogle", "previewInviteToken", "verifyInviteToken"]),
               ("Student", ["getChecklist", "getTermGrades", "listAttempts", "listProfiles"]),
               ("Adviser", ["listStudentRoster", "getAcademicSummary", "recordGrades",
                            "createEquivalencyDecision", "createElectiveMapping", "addAdvisingNote",
@@ -791,11 +791,10 @@ def docs_page():
         side += (f'<div style="margin-bottom: 18px"><div class="kick" style="color: {MUTED_2}; '
                  f'padding: 0 12px 8px">{g}</div>{li}</div>')
     req = ("{\n"
-           '  "school_term_id": "b7c1…9f2a",\n'
-           '  "course_offering_id": "3d40…11c8",\n'
-           '  "curriculum_term_course_id": "9a02…7b31",\n'
+           '  "school_term_id": "3d40…11c8",\n'
+           '  "course_offering_id": "9a02…7b31",\n'
            '  "continue_with_prerequisite_override": true,\n'
-           '  "prerequisite_override_reason": "Concurrent with CS 121 retake; approved by dept chair."\n'
+           '  "prerequisite_override_reason": "Concurrent with CSci 121 retake; approved by department head."\n'
            "}")
     err = ("{\n"
            '  "code": "PREREQUISITE_NOT_MET",\n'
@@ -825,17 +824,19 @@ def docs_page():
             f'When <b>continue_with_prerequisite_override</b> is true, the attempt and its AuditLogEntry are written in a '
             f'single transaction.</p>'
             f'<div style="display: flex; gap: 10px; margin-top: 16px">'
-            f'{badge("bearerAuth", MUTED, CREAM_DP, dot=False)}{badge("Role: adviser", MUTED, CREAM_DP, dot=False)}'
+            f'{badge("bearerAuth", MUTED, CREAM_DP, dot=False)}{badge("Role: adviser (current adviser only)", MUTED, CREAM_DP, dot=False)}'
             f'{badge("Contract v0.3.0", MUTED, CREAM_DP, dot=False)}</div>'
             f'<h3 style="font-size: 15px; margin-top: 30px">Request body</h3>'
             f'<div style="margin-top: 12px; border: 1px solid {LINE}; border-radius: 6px; overflow: hidden; '
             f'background: {SURFACE}">' +
             table(["Field", "Type", "Required", "Notes"],
-                  [[code("school_term_id"), "uuid", "yes", "School term."],
-                   [code("course_offering_id"), "uuid", "yes", "Offering must belong to an unlocked school term."],
-                   [code("midterm_grade, final_grade, instructor"), "varies", "no", "Optional grade and instructor details."],
-                   [code("continue_with_prerequisite_override"), "boolean", "no", "Defaults to false; true forces the audit write."],
-                   [code("prerequisite_override_reason"), "string", "conditional", "Required when the override flag is true."]],
+                  [[code("school_term_id"), "uuid", "yes", "Term being recorded."],
+                   [code("course_offering_id"), "uuid", "yes", "Must belong to that term."],
+                   [code("midterm_grade"), "number", "no", "1.00–5.00 in 0.25 steps."],
+                   [code("final_grade"), "number", "no", "1.00–5.00 in 0.25 steps."],
+                   [code("instructor"), "string", "no", ""],
+                   [code("continue_with_prerequisite_override"), "boolean", "no", "Default false."],
+                   [code("prerequisite_override_reason"), "string", "conditional", "Required when the override is true."]],
                   widths=["210px", "90px", "100px", "auto"]) +
             f'</div>'
             f'<h3 style="font-size: 15px; margin-top: 30px">Responses</h3>'
@@ -843,10 +844,10 @@ def docs_page():
             "".join(f'<div style="display: flex; align-items: center; gap: 14px; padding: 11px 16px; '
                     f'background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px">'
                     f'{badge(c, fg, bg, dot=False)}<span style="font-size: 13.5px; color: {MUTED}">{d}</span></div>'
-                    for c, d, fg, bg in [("200", "Attempt recorded.", PASS_FG, PASS_BG),
-                                         ("409", "Strict prerequisite not satisfied and no override supplied.", INC_FG, INC_BG),
+                    for c, d, fg, bg in [("200", "Grades recorded.", PASS_FG, PASS_BG),
+                                         ("409", "Strict prerequisite not met without override, term locked, or a grade already recorded.", INC_FG, INC_BG),
                                          ("403", "Caller is not the student's active adviser.", FAIL_FG, FAIL_BG),
-                                         ("400", "Invalid input.", NEU_FG, NEU_BG)]) +
+                                         ("400", "Invalid grade or input.", NEU_FG, NEU_BG)]) +
             f'</div></div>')
     return (f'<div style="min-height: 1040px; background: {CREAM}">'
             f'{site_nav()}'

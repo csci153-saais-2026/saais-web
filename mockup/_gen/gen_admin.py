@@ -208,7 +208,8 @@ PROGRAMS = shell("admin", "Programs", ["Administrator", "Programs"], USER, INI,
                          f'<div style="padding: 20px; display: flex; flex-direction: column; gap: 16px">'
                          f'{field("Program code", "BSCS")}'
                          f'{field("Program name", "BS Computer Science")}'
-                         f'{select("College", "College of Computer Studies")}'
+                         f'{select("Faculty", "Faculty of Computer Studies")}'
+                         f'{select("Department", "Computer Science")}'
                          f'{field("Nominal duration", "4 years")}'
                          f'<div style="display: flex; gap: 10px; justify-content: flex-end">'
                          f'{btn("Cancel", "secondary", size="sm")}{btn("Create program", "primary", size="sm")}</div></div>')

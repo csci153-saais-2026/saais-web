@@ -164,7 +164,7 @@
      items[e.key==='Home'?0:e.key==='End'?items.length-1:index<0?(e.key==='ArrowUp'?items.length-1:0):(index+(e.key==='ArrowUp'?-1:1)+items.length)%items.length]?.focus();
     }else if(e.key==='Escape'&&!popup.hidden){e.preventDefault();e.stopPropagation();trigger.click();trigger.focus();}
    });
-   staffAccount.addEventListener('focusout',e=>{if(!staffAccount.contains(e.relatedTarget)&&!popup.hidden)trigger.click();});
+   staffAccount.addEventListener('focusout',e=>{if(e.relatedTarget&&!staffAccount.contains(e.relatedTarget)&&!popup.hidden)trigger.click();});
   }
   const labelTable=table=>{
    table.classList.add('portal-table');const headings=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim()||'Actions');

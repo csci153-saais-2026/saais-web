@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Encode grades · SAAIS</title>
   <script src="../support.js"></script>
-<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script></head>
+<script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script><link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script></head>
 <body>
 <x-dc>
 <helmet>
@@ -60,7 +60,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
   try { UI = JSON.parse(localStorage.getItem(KEY_UI)) || {}; } catch (e) { UI = window.__saaisUI || {}; }
   var saveUI = function () { window.__saaisUI = UI; try { localStorage.setItem(KEY_UI, JSON.stringify(UI)); } catch (e) {} };
   var SIDS = { ana: '23-1-01234', ben: '23-1-01301', dino: '24-1-02011', maria: '2023-04412' };
-  var ME = (function () { var b = document.getElementById('me-btn') || document.querySelector('.dean-profile-trigger, [aria-haspopup=menu]'); if (!b) return 'Prof. Ramon Reyes'; var m = b.innerText.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return m.filter(function (x) { return /^(Dr\.|Prof\.)/.test(x); })[0] || 'Prof. Ramon Reyes'; })();
+  var ME = (function () { var b = document.getElementById('me-btn') || document.querySelector('.dean-profile-trigger, [aria-haspopup=menu]'); if (!b) return 'Prof. Ramon Reyes'; var m = (b.innerText || b.textContent || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return m.filter(function (x) { return /^(Dr\.|Prof\.)/.test(x); })[0] || 'Prof. Ramon Reyes'; })();
   var audit = function (action, student, details, sid, label) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add(ME, action, student, details, sid, label); };
   var keep = function (id, after) {
     var el = $(id); if (!el) return;

@@ -12,7 +12,14 @@
   const save = () => { window.__saaisMgmt = S; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-  const say = m => { if (typeof toast === 'function') toast(m); };
+  const say = m => {
+    if (dialog.open) {
+      const content = dialog.querySelector('#dialog-content');
+      let message = content.querySelector('[data-action-message]');
+      if (!message) { message = document.createElement('p'); message.dataset.actionMessage = ''; message.setAttribute('role', 'status'); message.style.cssText = 'margin:12px 0;color:#9E2E1C;font-size:14px'; content.append(message); }
+      message.textContent = m;
+    } else if (typeof toast === 'function') toast(m);
+  };
   const page = document.body.dataset.page;
   const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -207,7 +214,7 @@
     if (!/^\d+(\.\d+)?$/.test(units) || +units <= 0) return say('Units must be a positive number.');
     if (!/^(?:[1-2]\.\d{2}|3\.00)$/.test(grade)) return say('Enter a passing grade from 1.00 to 3.00.');
     (S.credits = S.credits || []).push({ cid: 'c' + Date.now(), name: stu[0], sid: stu[1], code, title, units, grade, reason: creditReason, school: val('School / degree of origin'), eq: splitSubject(val('Equivalent course subject')), type: val('Entry type') });
-    audit('Change', stu[0], `Credited outside course ${code} · ${title} (grade ${grade}) from ${val('School / degree of origin')} · Reason: ${creditReason}`, stu[1]);
+    audit('Change', stu[0], `Credited outside course ${code} · ${title} (grade ${grade}) from ${val('School / degree of origin')} · reason: ${creditReason}`, stu[1]);
     save(); applyCredits(); dialog.close(); say(`Outside credit recorded for ${stu[0]}: ${code} credited once.`);
   };
 

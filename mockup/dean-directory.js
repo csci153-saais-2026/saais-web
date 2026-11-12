@@ -32,13 +32,30 @@
     ['14 Oct 2026 15:40', 'Dr. Paz Villanueva', 'View', '—', 'Report drill-down: batch 2023 (96 students)'],
     ['13 Oct 2026 08:01', 'System administrator', 'View', 'Ben Lopez', 'Opened grades by term']
   ];
-  const key = 'saais-dean-adviser-audit-screenshot-v2';
+  const key = /\/Dean\/DeanDH\//.test(decodeURIComponent(location.pathname)) ? 'saais-dean-dh-audit-screenshot-v2' : 'saais-dean-adviser-audit-screenshot-v2';
   const readAudit = () => {
     try {
       const rows = JSON.parse(sessionStorage.getItem(key) || 'null');
       if (Array.isArray(rows) && rows.every(row => Array.isArray(row) && row.length === 5 && row.every(cell => typeof cell === 'string'))) return rows;
     } catch (_) {}
     return seed.slice();
+  };
+  const localStamp = () => new Date().toISOString();
+  const displayAuditTime = value => {
+    const legacy = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(value);
+    if (!legacy && !/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
+    const date = new Date(legacy ? legacy[1] + 'T' + legacy[2] + ':00Z' : value);
+    if (Number.isNaN(date.getTime())) return value;
+    const pad = n => String(n).padStart(2, '0');
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+  };
+  const auditDay = value => {
+    const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+    const named = /^(\d{1,2}) ([A-Za-z]{3}) (\d{4})/.exec(value);
+    if (!named) return '';
+    const month = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(named[2].toLowerCase());
+    return month < 0 ? '' : named[3] + '-' + String(month + 1).padStart(2, '0') + '-' + named[1].padStart(2, '0');
   };
   const value = id => document.getElementById(id)?.value.trim() || '';
   function render(body, rows, empty) {
@@ -83,7 +100,7 @@
           dialog.showModal();
           const audit = readAudit();
           const count = button.closest('tr').cells[2].textContent.trim();
-          audit.unshift([new Date().toISOString().slice(0, 16).replace('T', ' '), 'Dr. Paz Villanueva', 'View', '—', 'Report drill-down: batch ' + button.dataset.batch + ' (' + count + ' students)']);
+          audit.unshift([localStamp(), 'Dr. Paz Villanueva', 'View', '—', 'Report drill-down: batch ' + button.dataset.batch + ' (' + count + ' students)']);
           try { sessionStorage.setItem(key, JSON.stringify(audit)); } catch (_) {}
         });
       });
@@ -111,7 +128,7 @@
         if (!row) return;
         const student = students.find(item => item[1] === row.dataset.student);
         const audit = readAudit();
-        audit.unshift([new Date().toISOString().slice(0, 16).replace('T', ' '), 'Dr. Paz Villanueva', 'View', student[1] + ' · ' + student[0], 'Viewed student academic record']);
+        audit.unshift([localStamp(), 'Dr. Paz Villanueva', 'View', student[1] + ' · ' + student[0], 'Viewed student academic record']);
         try { sessionStorage.setItem(key, JSON.stringify(audit)); } catch (_) {}
       });
       update();
@@ -120,11 +137,11 @@
     if (audit) {
       const update = () => {
         const saved = window.SAAIS_AUDIT ? window.SAAIS_AUDIT.entries().filter(e => e.action === 'View' || e.action === 'Change').map(e => { const t = window.SAAIS_AUDIT.stamp(e.ts); return [t.date + ' ' + t.time24, e.who, e.action, e.student ? (e.sid ? e.sid + ' · ' : '') + e.student : '—', e.details]; }) : [];
-        const rows = saved.concat(readAudit()).filter(row =>
+        const rows = saved.concat(readAudit().map(row => [displayAuditTime(row[0]), ...row.slice(1)])).filter(row =>
           row[1].toLowerCase().includes(value('audit-person').toLowerCase()) &&
           row[3].toLowerCase().includes(value('audit-student').toLowerCase()) &&
           (!value('audit-action') || row[2] === value('audit-action')) &&
-          (!value('audit-from') || new Date(row[0]) >= new Date(value('audit-from') + 'T00:00:00')));
+          (!value('audit-from') || auditDay(row[0]) >= value('audit-from')));
         render(audit, rows, 'No audit records match these filters.');
         Array.from(audit.rows).forEach((row, index) => {
           if (!rows[index]) return;

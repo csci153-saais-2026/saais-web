@@ -93,7 +93,7 @@
   }
 
   /* ---------- advising notes ---------- */
-  /* The student reads active and archived notes from the adviser's Notes and Advising tabs. */
+  /* The student reads the notes the adviser actually wrote, including notes later archived from the adviser view. */
   function adviserNotes() {
     var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
     if (UI['notes-list'] == null && UI['note-list'] == null) return NOTES;
