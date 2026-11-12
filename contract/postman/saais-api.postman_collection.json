@@ -10854,7 +10854,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/inc-completion",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{editable_term_attempt_id}}/inc-completion",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10864,7 +10864,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{editable_term_attempt_id}}",
                     "inc-completion"
                   ],
                   "query": []
@@ -10924,7 +10924,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/inc-completion",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{editable_term_attempt_id}}/inc-completion",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10934,7 +10934,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{editable_term_attempt_id}}",
                     "inc-completion"
                   ],
                   "query": []
