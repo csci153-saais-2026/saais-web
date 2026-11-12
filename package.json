@@ -75,5 +75,8 @@
   },
   "overrides": {
     "deepmerge": "4.1.2"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }
