@@ -24,7 +24,11 @@ export default function InvitePage() {
     const hash = window.location.hash
     const extracted = extractInviteTokenFromHash(hash)
     if (hash) {
-      window.history.replaceState(null, '', window.location.pathname)
+      window.history.replaceState(
+        window.history.state,
+        '',
+        window.location.pathname + window.location.search,
+      )
     }
     return extracted
   })

@@ -15,7 +15,9 @@ import { getMockDatabase } from '@/mocks/store'
 export type SyntheticPersonaKey =
   | MockPersonaKey
   | 'dean_only'
+  | 'department_head_only'
   | 'disabled_account'
+  | 'invited_adviser'
 
 export interface SyntheticPersonaDescriptor {
   readonly key: SyntheticPersonaKey
@@ -32,7 +34,9 @@ export interface SyntheticPersonaDescriptor {
 }
 
 export const SYNTHETIC_DEAN_ONLY_ID = '00000000-0000-4000-8000-000000000503'
+export const SYNTHETIC_DEPT_HEAD_ONLY_ID = '00000000-0000-4000-8000-000000000504'
 export const SYNTHETIC_DISABLED_ID = '00000000-0000-4000-8000-000000000199'
+export const SYNTHETIC_INVITED_ADVISER_ID = '00000000-0000-4000-8000-000000000299'
 
 function buildDescriptorFromMockPersona(
   persona: MockPersona,
@@ -79,6 +83,19 @@ export function getSyntheticPersonas(): Readonly<
       token: `mock-jwt:dean:${SYNTHETIC_DEAN_ONLY_ID}`,
       authProvider: 'password',
     },
+    department_head_only: {
+      key: 'department_head_only',
+      profileId: SYNTHETIC_DEPT_HEAD_ONLY_ID,
+      email: 'head.dcst@vsu.edu.ph',
+      fullName: 'Department Head of DCST (Dept-Head-Only)',
+      primaryRole: 'department_head',
+      roles: ['department_head'],
+      facultyId: MOCK_IDS.facultyComputing,
+      departmentId: MOCK_IDS.deptDcst,
+      status: 'active',
+      token: `mock-jwt:department_head:${SYNTHETIC_DEPT_HEAD_ONLY_ID}`,
+      authProvider: 'password',
+    },
     disabled_account: {
       key: 'disabled_account',
       profileId: SYNTHETIC_DISABLED_ID,
@@ -90,6 +107,19 @@ export function getSyntheticPersonas(): Readonly<
       departmentId: MOCK_IDS.deptDcst,
       status: 'disabled',
       token: `mock-jwt:student:${SYNTHETIC_DISABLED_ID}`,
+      authProvider: 'password',
+    },
+    invited_adviser: {
+      key: 'invited_adviser',
+      profileId: SYNTHETIC_INVITED_ADVISER_ID,
+      email: 'pending.adviser@vsu.edu.ph',
+      fullName: 'Pending Adviser (Invited)',
+      primaryRole: 'adviser',
+      roles: ['adviser'],
+      facultyId: MOCK_IDS.facultyComputing,
+      departmentId: MOCK_IDS.deptDcst,
+      status: 'invited',
+      token: `mock-jwt:adviser:${SYNTHETIC_INVITED_ADVISER_ID}`,
       authProvider: 'password',
     },
   }
@@ -124,6 +154,64 @@ export function ensureSyntheticProfilesInMockStore(): void {
       faculty_id: MOCK_IDS.facultyComputing,
       department_id: null,
       created_at: '2026-07-01T08:00:00Z',
+    })
+  }
+
+  if (!db.profiles.some((p) => p.id === SYNTHETIC_DEPT_HEAD_ONLY_ID)) {
+    db.profiles.push({
+      id: SYNTHETIC_DEPT_HEAD_ONLY_ID,
+      role: 'department_head',
+      roles: ['department_head'],
+      email: 'head.dcst@vsu.edu.ph',
+      full_name: 'Department Head of DCST (Dept-Head-Only)',
+      student_number: null,
+      status: 'active',
+      invitation_status: 'accepted',
+      invitation_sent_at: '2026-07-01T08:00:00Z',
+      invitation_expires_at: '2026-07-08T08:00:00Z',
+      created_at: '2026-07-01T08:00:00Z',
+      updated_at: '2026-07-01T08:00:00Z',
+      faculty_id: MOCK_IDS.facultyComputing,
+      department_id: MOCK_IDS.deptDcst,
+      avatar_url: null,
+      consultation_hours: null,
+    })
+    db.roleAssignments.push({
+      id: '92000000-0000-4000-8000-000000000099',
+      profile_id: SYNTHETIC_DEPT_HEAD_ONLY_ID,
+      role: 'department_head',
+      faculty_id: MOCK_IDS.facultyComputing,
+      department_id: MOCK_IDS.deptDcst,
+      created_at: '2026-07-01T08:00:00Z',
+    })
+  }
+
+  if (!db.profiles.some((p) => p.id === SYNTHETIC_INVITED_ADVISER_ID)) {
+    db.profiles.push({
+      id: SYNTHETIC_INVITED_ADVISER_ID,
+      role: 'adviser',
+      roles: ['adviser'],
+      email: 'pending.adviser@vsu.edu.ph',
+      full_name: 'Pending Adviser (Invited)',
+      student_number: null,
+      status: 'invited',
+      invitation_status: 'pending',
+      invitation_sent_at: '2026-08-01T08:00:00Z',
+      invitation_expires_at: '2026-12-31T23:59:59Z',
+      created_at: '2026-08-01T08:00:00Z',
+      updated_at: '2026-08-01T08:00:00Z',
+      faculty_id: MOCK_IDS.facultyComputing,
+      department_id: MOCK_IDS.deptDcst,
+      avatar_url: null,
+      consultation_hours: null,
+    })
+    db.roleAssignments.push({
+      id: '92000000-0000-4000-8000-000000000100',
+      profile_id: SYNTHETIC_INVITED_ADVISER_ID,
+      role: 'adviser',
+      faculty_id: MOCK_IDS.facultyComputing,
+      department_id: MOCK_IDS.deptDcst,
+      created_at: '2026-08-01T08:00:00Z',
     })
   }
 

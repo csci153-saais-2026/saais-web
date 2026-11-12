@@ -16,6 +16,8 @@ const PERSONA_LIST: {
   { key: 'student_other_dept', badge: 'bg-[#2F4A12] text-[#FBF8EF]', desc: 'Other Dept Student' },
   { key: 'adviser', badge: 'bg-[#B0761A] text-white', desc: 'Primary Academic Adviser' },
   { key: 'adviser_secondary', badge: 'bg-[#B0761A] text-white', desc: 'Secondary Adviser' },
+  { key: 'invited_adviser', badge: 'bg-[#B0761A] text-white', desc: 'Adviser Invited (Pending)' },
+  { key: 'department_head_only', badge: 'bg-[#285A84] text-white', desc: 'Dept Head Only' },
   { key: 'department_head', badge: 'bg-[#285A84] text-white', desc: 'Dept Head + Adviser' },
   { key: 'department_staff', badge: 'bg-[#4B6B94] text-white', desc: 'Department Staff' },
   { key: 'dean_only', badge: 'bg-[#6D327C] text-white', desc: 'Dean-Only Account' },
@@ -32,13 +34,14 @@ export const DevRoleSwitcher: React.FC = () => {
     roles,
     activeRole,
     activePersonaKey,
+    isMockMode,
     isAllowedToEnter,
     switchMockPersona,
     setActiveRole,
     signOut,
   } = useAuth()
 
-  if (!import.meta.env.DEV) {
+  if (!import.meta.env.DEV || !isMockMode) {
     return null
   }
 

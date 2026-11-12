@@ -6,7 +6,10 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertIcon, CheckIcon } from '@/components/icons'
 import { useAuth } from '@/hooks/use-auth'
-import { changeAuthenticatedPassword, validatePasswordPolicy } from '@/lib/auth/auth-service'
+import {
+  changeAuthenticatedPassword,
+  validatePasswordPolicy,
+} from '@/lib/auth/auth-service'
 
 export default function ChangePasswordPage() {
   const { user } = useAuth()
@@ -15,14 +18,14 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [success, setSuccess] = React.useState(false)
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
 
   const isGoogleManagedAccount = user?.authProvider === 'google'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setSuccess(false)
+    setSuccessMessage(null)
 
     const validation = validatePasswordPolicy(newPassword, currentPassword)
     if (!validation.valid) {
@@ -38,9 +41,13 @@ export default function ChangePasswordPage() {
     setSubmitting(true)
 
     try {
-      await changeAuthenticatedPassword(currentPassword, newPassword)
+      const result = await changeAuthenticatedPassword(currentPassword, newPassword)
 
-      setSuccess(true)
+      setSuccessMessage(
+        result.simulated
+          ? 'Password change simulated in mock mode. In production, your password is updated and other active sessions are signed out.'
+          : 'Your password has been changed successfully. Other active sessions have been signed out.',
+      )
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -66,13 +73,10 @@ export default function ChangePasswordPage() {
           </Alert>
         ) : (
           <>
-            {success && (
+            {successMessage && (
               <Alert className="mb-4 bg-primary/10 text-primary border-primary/20">
                 <CheckIcon className="w-4 h-4 text-primary" />
-                <AlertDescription>
-                  Your password has been changed successfully. Other active sessions have been
-                  signed out.
-                </AlertDescription>
+                <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
 

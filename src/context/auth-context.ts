@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { ApiSchema } from '@/lib/api'
+import type { RoleScope } from '@/lib/auth/auth-service'
 import type { SyntheticPersonaKey } from '@/lib/auth/mock-auth-service'
 import type { SaaisRole } from '@/mocks/personas'
 
@@ -23,12 +24,15 @@ export interface AuthContextValue {
   readonly session: Session | null
   readonly roles: readonly SaaisRole[]
   readonly roleAssignments: readonly ApiSchema<'RoleAssignment'>[]
+  readonly roleScopes: readonly RoleScope[]
   readonly activeRole: SaaisRole | null
   readonly primaryRole: SaaisRole | null
   readonly isLoading: boolean
   readonly isAuthenticated: boolean
   readonly isAllowedToEnter: boolean
   readonly entryBlockedReason: string | null
+  readonly authError: string | null
+  readonly isPasswordRecovery: boolean
   readonly keepSignedIn: boolean
   readonly isMockMode: boolean
   readonly activePersonaKey: SyntheticPersonaKey | null
@@ -39,11 +43,11 @@ export interface AuthContextValue {
   ) => Promise<void>
   readonly signInWithGoogle: (keepSignedIn?: boolean) => Promise<void>
   readonly signOut: () => Promise<void>
+  readonly retryHydration: () => Promise<void>
   readonly setActiveRole: (role: SaaisRole) => void
-  readonly switchMockPersona: (
-    personaKey: SyntheticPersonaKey | null,
-    options?: { keepSignedIn?: boolean; provider?: 'password' | 'google' },
-  ) => void
+  readonly switchMockPersona: (key: SyntheticPersonaKey | null) => void
 }
 
-export const AuthContext = createContext<AuthContextValue | null>(null)
+export const AuthContext = createContext<AuthContextValue | undefined>(
+  undefined,
+)

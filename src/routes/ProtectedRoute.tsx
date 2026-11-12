@@ -2,6 +2,9 @@ import React from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/use-auth'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertIcon } from '@/components/icons'
 import type { SaaisRole } from '@/mocks/personas'
 
 interface ProtectedRouteProps {
@@ -20,6 +23,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isLoading,
     isAllowedToEnter,
     entryBlockedReason,
+    authError,
+    retryHydration,
+    signOut,
   } = useAuth()
   const location = useLocation()
 
@@ -31,6 +37,36 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <span className="text-sm font-medium text-muted-foreground">
             Verifying session…
           </span>
+        </div>
+      </div>
+    )
+  }
+
+  if (authError && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="max-w-md w-full grid gap-4 p-6 rounded-lg border bg-card">
+          <Alert variant="destructive">
+            <AlertIcon />
+            <AlertDescription>{authError}</AlertDescription>
+          </Alert>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              onClick={() => void retryHydration()}
+              className="flex-1"
+            >
+              Retry
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void signOut()}
+              className="flex-1"
+            >
+              Sign out
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -50,7 +86,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const hasAllowedRole = roles.some((r) => allowedRoles.includes(r))
     if (!hasAllowedRole) {
       const target =
-        (activeRole && ROLE_DEFAULT_ROUTE[activeRole]) ||
+        (activeRole && roles.includes(activeRole) && ROLE_DEFAULT_ROUTE[activeRole]) ||
         (roles[0] && ROLE_DEFAULT_ROUTE[roles[0]]) ||
         '/login'
       return <Navigate to={target} replace />

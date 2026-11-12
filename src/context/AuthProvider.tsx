@@ -1,11 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { ApiSchema } from '@/lib/api'
 import { getMockSessionToken } from '@/lib/api/auth-token'
 import {
+  AuthHydrationError,
   evaluateAccountEntryEligibility,
+  extractRoleScopes,
   fetchAuthenticatedUserBoundary,
-  isInstitutionalEmail,
+  isValidEmailFormat,
 } from '@/lib/auth/auth-service'
 import {
   activateMockPersonaSession,
@@ -16,7 +24,9 @@ import {
 } from '@/lib/auth/mock-auth-service'
 import {
   getSupabaseClient,
+  getSupabaseSessionPersistence,
   resolveSaaisEnvConfig,
+  setSupabaseSessionPersistence,
 } from '@/lib/supabase/client'
 import type { SaaisRole } from '@/mocks/personas'
 import {
@@ -27,7 +37,6 @@ import {
 
 const MOCK_PERSONA_STORAGE_KEY = 'saais_active_mock_persona'
 const ACTIVE_ROLE_STORAGE_KEY = 'saais_active_role'
-const KEEP_SIGNED_IN_STORAGE_KEY = 'saais_keep_signed_in'
 
 function readStoredValue(key: string): string | null {
   if (typeof window === 'undefined') return null
@@ -58,399 +67,548 @@ function removeStoredValue(key: string): void {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const envConfig = useMemo(() => resolveSaaisEnvConfig(), [])
-  const isMockMode = envConfig.mode === 'mock'
+  const envConfig = resolveSaaisEnvConfig()
+  const isMockMode = envConfig.mode === 'mock' && !envConfig.configError
 
-  const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<ApiSchema<'Profile'> | null>(null)
-  const [roleAssignments, setRoleAssignments] = useState<
-    readonly ApiSchema<'RoleAssignment'>[]
-  >([])
+  const [keepSignedIn, setKeepSignedIn] = useState<boolean>(() =>
+    getSupabaseSessionPersistence(),
+  )
   const [user, setUser] = useState<AuthProfile | null>(null)
+  const [profile, setProfile] = useState<ApiSchema<'Profile'> | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [roles, setRoles] = useState<SaaisRole[]>([])
+  const [roleAssignments, setRoleAssignments] = useState<
+    ApiSchema<'RoleAssignment'>[]
+  >([])
+  const [activeRole, setActiveRoleState] = useState<SaaisRole | null>(null)
   const [activePersonaKey, setActivePersonaKey] =
     useState<SyntheticPersonaKey | null>(null)
-  const [activeRole, setActiveRoleState] = useState<SaaisRole | null>(null)
-  const [keepSignedIn, setKeepSignedIn] = useState<boolean>(() => {
-    const raw = readStoredValue(KEEP_SIGNED_IN_STORAGE_KEY)
-    return raw === null ? true : raw === 'true'
-  })
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-
-  const roles = useMemo<readonly SaaisRole[]>(() => {
-    return user?.roles ?? []
-  }, [user])
-
-  const primaryRole = useMemo<SaaisRole | null>(() => {
-    return user?.primaryRole ?? null
-  }, [user])
-
-  const eligibility = useMemo(
-    () => evaluateAccountEntryEligibility(profile, roles),
-    [profile, roles],
+  const [entryBlockedReason, setEntryBlockedReason] = useState<string | null>(
+    null,
+  )
+  const [authError, setAuthError] = useState<string | null>(
+    () => envConfig.configError,
+  )
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(
+    () => !isMockMode && !envConfig.configError,
   )
 
-  const isAuthenticated = Boolean(session && user)
-  const isAllowedToEnter = isAuthenticated && eligibility.isAllowedToEnter
-  const entryBlockedReason = isAuthenticated ? eligibility.reason : null
+  const keepSignedInRef = useRef<boolean>(keepSignedIn)
+  const hydrationRequestIdRef = useRef<number>(0)
+  const [pendingRealSession, setPendingRealSession] = useState<Session | null>(
+    null,
+  )
 
-  const clearAuthState = useCallback(() => {
-    clearMockPersonaSession()
-    setActivePersonaKey(null)
-    setProfile(null)
-    setRoleAssignments([])
-    setUser(null)
-    setSession(null)
-    setActiveRoleState(null)
-    removeStoredValue(MOCK_PERSONA_STORAGE_KEY)
-    removeStoredValue(ACTIVE_ROLE_STORAGE_KEY)
-    removeStoredValue(KEEP_SIGNED_IN_STORAGE_KEY)
-  }, [])
-
-  const switchMockPersona = useCallback(
-    (
-      personaKey: SyntheticPersonaKey | null,
-      options?: { keepSignedIn?: boolean; provider?: 'password' | 'google' },
-    ) => {
-      if (!personaKey) {
-        clearAuthState()
-        return
+  const clearAuthState = useCallback(
+    (options?: { preserveBlockedReason?: string | null }) => {
+      hydrationRequestIdRef.current += 1
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setRoles([])
+      setRoleAssignments([])
+      setActiveRoleState(null)
+      setActivePersonaKey(null)
+      setEntryBlockedReason(options?.preserveBlockedReason ?? null)
+      setAuthError(null)
+      setIsPasswordRecovery(false)
+      removeStoredValue(MOCK_PERSONA_STORAGE_KEY)
+      removeStoredValue(ACTIVE_ROLE_STORAGE_KEY)
+      if (isMockMode) {
+        clearMockPersonaSession()
       }
+    },
+    [isMockMode],
+  )
 
-      const persistChoice = options?.keepSignedIn ?? keepSignedIn
-      const provider = options?.provider ?? 'password'
-      const activated = activateMockPersonaSession(personaKey, provider)
-      const resolvedRoles = Array.from(
-        new Set<SaaisRole>([
-          activated.profile.role,
-          ...(activated.profile.roles ?? []),
-          ...activated.roleAssignments.map((r) => r.role),
-        ]),
+  const applyMockPersona = useCallback(
+    (
+      key: SyntheticPersonaKey,
+      provider: 'password' | 'google' = 'password',
+      persistChoice?: boolean,
+    ) => {
+      if (!isMockMode) return
+      const shouldPersist = persistChoice ?? keepSignedInRef.current
+      keepSignedInRef.current = shouldPersist
+      setKeepSignedIn(shouldPersist)
+      setSupabaseSessionPersistence(shouldPersist)
+
+      const {
+        descriptor,
+        session: mockSession,
+        profile: mockProfile,
+        roleAssignments: mockAssignments,
+      } = activateMockPersonaSession(key, provider)
+
+      const roleSet = new Set<SaaisRole>()
+      for (const assignment of mockAssignments) {
+        roleSet.add(assignment.role)
+      }
+      const normalizedRoles = Array.from(roleSet)
+      const eligibility = evaluateAccountEntryEligibility(
+        mockProfile,
+        normalizedRoles,
       )
 
       const authProfile: AuthProfile = {
-        id: activated.profile.id,
-        email: activated.profile.email,
-        fullName: activated.profile.full_name,
-        primaryRole: activated.profile.role,
-        roles: resolvedRoles,
-        facultyId: activated.profile.faculty_id,
-        departmentId: activated.profile.department_id,
-        status: activated.profile.status,
-        studentNumber: activated.profile.student_number,
-        authProvider: provider,
+        id: mockProfile.id,
+        email: mockProfile.email,
+        fullName: mockProfile.full_name,
+        primaryRole: mockProfile.role,
+        roles: normalizedRoles,
+        facultyId: mockProfile.faculty_id ?? null,
+        departmentId: mockProfile.department_id ?? null,
+        status: mockProfile.status,
+        studentNumber: mockProfile.student_number ?? null,
+        authProvider: descriptor.authProvider ?? provider,
       }
 
-      setKeepSignedIn(persistChoice)
-      setActivePersonaKey(personaKey)
-      setProfile(activated.profile)
-      setRoleAssignments(activated.roleAssignments)
-      setUser(authProfile)
-      setSession(activated.session)
-      setActiveRoleState(authProfile.primaryRole)
+      const storedRole = readStoredValue(ACTIVE_ROLE_STORAGE_KEY) as
+        | SaaisRole
+        | null
+      const defaultRole =
+        storedRole && normalizedRoles.includes(storedRole)
+          ? storedRole
+          : normalizedRoles[0] ?? mockProfile.role
 
-      writeStoredValue(MOCK_PERSONA_STORAGE_KEY, personaKey, persistChoice)
-      writeStoredValue(
-        ACTIVE_ROLE_STORAGE_KEY,
-        authProfile.primaryRole,
-        persistChoice,
-      )
-      writeStoredValue(
-        KEEP_SIGNED_IN_STORAGE_KEY,
-        String(persistChoice),
-        persistChoice,
-      )
+      setUser(authProfile)
+      setProfile(mockProfile)
+      setSession(mockSession)
+      setRoles(normalizedRoles)
+      setRoleAssignments(mockAssignments)
+      setActiveRoleState(defaultRole)
+      setActivePersonaKey(key)
+      setEntryBlockedReason(eligibility.reason)
+      setAuthError(null)
+      setIsLoading(false)
+
+      writeStoredValue(MOCK_PERSONA_STORAGE_KEY, key, shouldPersist)
+      writeStoredValue(ACTIVE_ROLE_STORAGE_KEY, defaultRole, shouldPersist)
     },
-    [clearAuthState, keepSignedIn],
+    [isMockMode],
   )
 
-  const setActiveRole = useCallback(
-    (newRole: SaaisRole) => {
-      if (!roles.includes(newRole)) {
-        console.warn(`Cannot switch to unassigned role: ${newRole}`)
+  const switchMockPersona = useCallback(
+    (key: SyntheticPersonaKey | null) => {
+      if (!isMockMode) return
+      if (!key) {
+        clearAuthState()
         return
       }
-      setActiveRoleState(newRole)
-      writeStoredValue(ACTIVE_ROLE_STORAGE_KEY, newRole, keepSignedIn)
+      applyMockPersona(key, 'password', keepSignedInRef.current)
     },
-    [roles, keepSignedIn],
+    [isMockMode, applyMockPersona, clearAuthState],
   )
 
   const hydrateFromRealSession = useCallback(
-    async (activeSession: Session | null) => {
-      if (!activeSession?.user) {
-        setSession(null)
-        setProfile(null)
-        setRoleAssignments([])
+    async (nextSession: Session | null) => {
+      const requestId = ++hydrationRequestIdRef.current
+
+      if (!nextSession?.user) {
+        if (requestId !== hydrationRequestIdRef.current) return
         setUser(null)
+        setProfile(null)
+        setSession(null)
+        setRoles([])
+        setRoleAssignments([])
         setActiveRoleState(null)
+        setActivePersonaKey(null)
+        setEntryBlockedReason(null)
+        setAuthError(null)
+        setIsLoading(false)
         return
       }
 
-      setSession(activeSession)
+      setIsLoading(true)
+      setAuthError(null)
+
       try {
         const boundary = await fetchAuthenticatedUserBoundary(
-          activeSession.user.id,
+          nextSession.user.id,
         )
-        setProfile(boundary.profile)
-        setRoleAssignments(boundary.roleAssignments)
+        if (requestId !== hydrationRequestIdRef.current) return
 
-        if (boundary.profile) {
-          const provider =
-            activeSession.user.app_metadata?.provider === 'google'
-              ? 'google'
-              : 'password'
-          const authProfile: AuthProfile = {
-            id: boundary.profile.id,
-            email: boundary.profile.email,
-            fullName: boundary.profile.full_name,
-            primaryRole: boundary.profile.role,
-            roles: boundary.roles,
-            facultyId: boundary.profile.faculty_id,
-            departmentId: boundary.profile.department_id,
-            status: boundary.profile.status,
-            studentNumber: boundary.profile.student_number,
-            authProvider: provider,
+        const eligibility = evaluateAccountEntryEligibility(
+          boundary.profile,
+          boundary.roles,
+        )
+
+        if (!eligibility.isAllowedToEnter || !boundary.profile) {
+          // Confirmed ineligible account: clear the dangling Supabase session so
+          // a disabled/invited/unprovisioned token does not remain active.
+          try {
+            const client = getSupabaseClient('supabase')
+            await client.auth.signOut({ scope: 'local' })
+          } catch {
+            // Ignore signOut errors during cleanup
           }
-          setUser(authProfile)
-          setActiveRoleState((prev) =>
-            prev && boundary.roles.includes(prev)
-              ? prev
-              : authProfile.primaryRole,
-          )
-        } else {
+          if (requestId !== hydrationRequestIdRef.current) return
+
           setUser(null)
+          setProfile(boundary.profile)
+          setSession(null)
+          setRoles([])
+          setRoleAssignments([])
           setActiveRoleState(null)
+          setEntryBlockedReason(
+            eligibility.reason ??
+              'Your institutional account is not authorized to access SAAIS.',
+          )
+          setAuthError(null)
+          setIsLoading(false)
+          return
         }
-      } catch (err) {
-        console.warn('Unable to load user profile through API boundary:', err)
-        setProfile(null)
-        setRoleAssignments([])
+
+        const matchedProfile = boundary.profile
+        const providerRaw = nextSession.user.app_metadata?.provider
+        const authProvider: 'password' | 'google' =
+          providerRaw === 'google' ? 'google' : 'password'
+
+        const authProfile: AuthProfile = {
+          id: matchedProfile.id,
+          email: matchedProfile.email,
+          fullName: matchedProfile.full_name,
+          primaryRole: matchedProfile.role,
+          roles: boundary.roles,
+          facultyId: matchedProfile.faculty_id ?? null,
+          departmentId: matchedProfile.department_id ?? null,
+          status: matchedProfile.status,
+          studentNumber: matchedProfile.student_number ?? null,
+          authProvider,
+        }
+
+        const storedRole = readStoredValue(ACTIVE_ROLE_STORAGE_KEY) as
+          | SaaisRole
+          | null
+        const defaultRole =
+          storedRole && boundary.roles.includes(storedRole)
+            ? storedRole
+            : boundary.roles[0] ?? matchedProfile.role
+
+        setUser(authProfile)
+        setProfile(matchedProfile)
+        setSession(nextSession)
+        setRoles(boundary.roles)
+        setRoleAssignments(boundary.roleAssignments)
+        setActiveRoleState(defaultRole)
+        setEntryBlockedReason(null)
+        setAuthError(null)
+        setIsLoading(false)
+      } catch (err: unknown) {
+        if (requestId !== hydrationRequestIdRef.current) return
+        // Fail closed on API/network failures without misclassifying as
+        // revoked/deactivated and without wiping a recoverable session.
+        const msg =
+          err instanceof AuthHydrationError || err instanceof Error
+            ? err.message
+            : 'Unable to verify your institutional profile. Please retry.'
         setUser(null)
+        setProfile(null)
+        setSession(nextSession)
+        setRoles([])
+        setRoleAssignments([])
         setActiveRoleState(null)
+        setEntryBlockedReason(null)
+        setAuthError(msg)
+        setIsLoading(false)
       }
     },
     [],
   )
 
+  const retryHydration = useCallback(async () => {
+    if (isMockMode || envConfig.configError) return
+    const client = getSupabaseClient('supabase')
+    setIsLoading(true)
+    const { data, error } = await client.auth.getSession()
+    if (error) {
+      setAuthError(error.message)
+      setIsLoading(false)
+      return
+    }
+    await hydrateFromRealSession(data.session ?? null)
+  }, [isMockMode, envConfig.configError, hydrateFromRealSession])
+
+  // Initialize auth state (mock restore OR real Supabase listener + getSession)
   useEffect(() => {
-    let isMounted = true
-
-    const initAuth = async () => {
-      try {
-        if (isMockMode) {
-          const personas = getSyntheticPersonas()
-          const storedKey = readStoredValue(
-            MOCK_PERSONA_STORAGE_KEY,
-          ) as SyntheticPersonaKey | null
-
-          if (storedKey && storedKey in personas) {
-            const storedPersist =
-              readStoredValue(KEEP_SIGNED_IN_STORAGE_KEY) !== 'false'
-            switchMockPersona(storedKey, { keepSignedIn: storedPersist })
-            const storedRole = readStoredValue(
-              ACTIVE_ROLE_STORAGE_KEY,
-            ) as SaaisRole | null
-            if (storedRole && personas[storedKey].roles.includes(storedRole)) {
-              setActiveRoleState(storedRole)
-            }
-          } else {
-            const currentToken = getMockSessionToken()
-            if (currentToken) {
-              const matched = Object.values(personas).find(
-                (p) => p.token === currentToken,
-              )
-              if (matched) {
-                switchMockPersona(matched.key)
-              }
-            }
-          }
-          if (isMounted) setIsLoading(false)
-          return
-        }
-
-        try {
-          const client = getSupabaseClient('supabase')
-          const {
-            data: { session: initialSession },
-          } = await client.auth.getSession()
-
-          if (isMounted && initialSession) {
-            await hydrateFromRealSession(initialSession)
-          }
-        } catch (clientErr) {
-          console.warn('Supabase client could not be initialized:', clientErr)
-        }
-      } catch (err) {
-        console.error('Auth initialization error:', err)
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
-
-    void initAuth()
-
-    if (!isMockMode) {
-      try {
-        const client = getSupabaseClient('supabase')
-        const {
-          data: { subscription },
-        } = client.auth.onAuthStateChange(async (_event, newSession) => {
-          if (!isMounted) return
-          await hydrateFromRealSession(newSession)
-        })
-
-        return () => {
-          isMounted = false
-          subscription.unsubscribe()
-        }
-      } catch {
-        // Ignored when Supabase credentials are not configured
-      }
-    }
-
-    return () => {
-      isMounted = false
-    }
-  }, [isMockMode, switchMockPersona, hydrateFromRealSession])
-
-  const signInWithPassword = useCallback(
-    async (email: string, password: string, persistChoice = true) => {
-      setIsLoading(true)
-      const trimmedEmail = email.trim()
-
-      try {
-        if (!trimmedEmail.includes('@')) {
-          throw new Error('Please enter a valid institutional email address.')
-        }
-
-        if (!isInstitutionalEmail(trimmedEmail)) {
-          throw new Error(
-            'Sign-in was rejected: Only institutional emails (.edu.ph) are permitted.',
-          )
-        }
-
-        if (isMockMode) {
-          const matchedPersona = findSyntheticPersonaByEmail(trimmedEmail)
-
-          if (!matchedPersona) {
-            throw new Error(
-              `Sign-in was rejected: Your email (${trimmedEmail}) is not a registered institutional profile. Please contact your department administrator.`,
-            )
-          }
-
-          const dbCheck = evaluateAccountEntryEligibility(
-            { status: matchedPersona.status, email: matchedPersona.email },
-            matchedPersona.roles,
-          )
-          if (!dbCheck.isAllowedToEnter) {
-            throw new Error(
-              dbCheck.reason ??
-                'Sign-in was rejected: Account is not permitted to enter.',
-            )
-          }
-
-          switchMockPersona(matchedPersona.key, {
-            keepSignedIn: persistChoice,
-            provider: 'password',
-          })
-          return
-        }
-
-        const client = getSupabaseClient('supabase')
-        setKeepSignedIn(persistChoice)
-        writeStoredValue(
-          KEEP_SIGNED_IN_STORAGE_KEY,
-          String(persistChoice),
-          persistChoice,
-        )
-        const { data, error: authError } = await client.auth.signInWithPassword(
-          {
-            email: trimmedEmail,
-            password,
-          },
-        )
-        if (authError) throw authError
-        if (data?.session) {
-          await hydrateFromRealSession(data.session)
-        }
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [isMockMode, switchMockPersona, hydrateFromRealSession],
-  )
-
-  const signInWithGoogle = useCallback(
-    async (persistChoice = true) => {
-      setIsLoading(true)
-      try {
-        if (isMockMode) {
-          switchMockPersona('student', {
-            keepSignedIn: persistChoice,
-            provider: 'google',
-          })
-          return
-        }
-
-        setKeepSignedIn(persistChoice)
-        writeStoredValue(
-          KEEP_SIGNED_IN_STORAGE_KEY,
-          String(persistChoice),
-          persistChoice,
-        )
-        const client = getSupabaseClient('supabase')
-        const redirectTo = `${window.location.origin}/auth/callback`
-        const { error: oauthError } = await client.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo,
-            queryParams: {
-              access_type: 'offline',
-              prompt: 'select_account',
-            },
-          },
-        })
-        if (oauthError) throw oauthError
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [isMockMode, switchMockPersona],
-  )
-
-  const signOut = useCallback(async () => {
-    if (isMockMode) {
-      clearAuthState()
+    if (envConfig.configError) {
       return
     }
 
-    try {
-      const client = getSupabaseClient('supabase')
-      await client.auth.signOut()
-    } finally {
-      clearAuthState()
+    if (isMockMode) {
+      const storedKey = readStoredValue(MOCK_PERSONA_STORAGE_KEY) as
+        | SyntheticPersonaKey
+        | null
+      const personas = getSyntheticPersonas()
+      if (storedKey && storedKey in personas) {
+        queueMicrotask(() => {
+          applyMockPersona(storedKey, 'password', keepSignedInRef.current)
+        })
+      } else {
+        const existingToken = getMockSessionToken()
+        if (existingToken) {
+          const matchedEntry = Object.values(personas).find(
+            (p) => p.token === existingToken,
+          )
+          if (matchedEntry) {
+            queueMicrotask(() => {
+              applyMockPersona(
+                matchedEntry.key,
+                'password',
+                keepSignedInRef.current,
+              )
+            })
+          }
+        }
+      }
+      return
     }
-  }, [isMockMode, clearAuthState])
 
-  const contextValue = useMemo<AuthContextValue>(
+    let isMounted = true
+    const client = getSupabaseClient('supabase')
+
+    // Keep onAuthStateChange strictly synchronous per Supabase guidance to avoid
+    // client lock deadlocks when calling getSession() inside middleware.
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((event, nextSession) => {
+      if (!isMounted) return
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true)
+      } else if (event === 'SIGNED_OUT') {
+        setIsPasswordRecovery(false)
+      }
+      if (!nextSession) {
+        hydrationRequestIdRef.current += 1
+        setPendingRealSession(null)
+        setUser(null)
+        setProfile(null)
+        setSession(null)
+        setRoles([])
+        setRoleAssignments([])
+        setActiveRoleState(null)
+        setAuthError(null)
+        setIsLoading(false)
+      } else {
+        setIsLoading(true)
+        setPendingRealSession(nextSession)
+      }
+    })
+
+    client.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!isMounted) return
+        if (!data.session) {
+          setPendingRealSession(null)
+          setIsLoading(false)
+        } else {
+          setPendingRealSession(data.session)
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isMounted) return
+        setAuthError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to initialize authentication session.',
+        )
+        setIsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [isMockMode, envConfig.configError, applyMockPersona])
+
+  // Schedule hydration asynchronously outside the onAuthStateChange callback
+  useEffect(() => {
+    if (isMockMode || envConfig.configError) return
+    if (!pendingRealSession) return
+    queueMicrotask(() => {
+      void hydrateFromRealSession(pendingRealSession)
+    })
+  }, [
+    isMockMode,
+    envConfig.configError,
+    pendingRealSession,
+    hydrateFromRealSession,
+  ])
+
+  const signInWithPassword = useCallback(
+    async (email: string, password: string, keep = true) => {
+      if (envConfig.configError) {
+        throw new Error(envConfig.configError)
+      }
+
+      const trimmedEmail = email.trim()
+      if (!isValidEmailFormat(trimmedEmail)) {
+        throw new Error('Please enter a valid institutional email address.')
+      }
+
+      keepSignedInRef.current = keep
+      setKeepSignedIn(keep)
+      setSupabaseSessionPersistence(keep)
+      setAuthError(null)
+
+      if (isMockMode) {
+        const matched = findSyntheticPersonaByEmail(trimmedEmail)
+        if (!matched) {
+          throw new Error(
+            `Sign-in was rejected: Your email (${trimmedEmail}) is not a registered institutional profile. Please contact your department administrator.`,
+          )
+        }
+
+        const { profile: mockProfile, roleAssignments: mockAssignments } =
+          activateMockPersonaSession(matched.key, 'password')
+        const assignedRoles = Array.from(
+          new Set(mockAssignments.map((a) => a.role)),
+        )
+        const eligibility = evaluateAccountEntryEligibility(
+          mockProfile,
+          assignedRoles,
+        )
+        if (!eligibility.isAllowedToEnter) {
+          clearMockPersonaSession()
+          throw new Error(
+            eligibility.reason ??
+              'Your institutional account is not authorized to sign in.',
+          )
+        }
+
+        applyMockPersona(matched.key, 'password', keep)
+        return
+      }
+
+      const client = getSupabaseClient('supabase')
+      const { data, error } = await client.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      if (data.session) {
+        await hydrateFromRealSession(data.session)
+      }
+    },
+    [envConfig.configError, isMockMode, applyMockPersona, hydrateFromRealSession],
+  )
+
+  const signInWithGoogle = useCallback(
+    async (keep = keepSignedInRef.current) => {
+      if (envConfig.configError) {
+        throw new Error(envConfig.configError)
+      }
+
+      keepSignedInRef.current = keep
+      setKeepSignedIn(keep)
+      setSupabaseSessionPersistence(keep)
+      setAuthError(null)
+
+      if (isMockMode) {
+        const storedKey = readStoredValue(MOCK_PERSONA_STORAGE_KEY) as
+          | SyntheticPersonaKey
+          | null
+        const targetKey = storedKey ?? 'adviser'
+        const personas = getSyntheticPersonas()
+        const target = personas[targetKey]
+        if (target?.status === 'disabled') {
+          throw new Error(
+            'Sign-in was rejected: Your institutional account has been deactivated. Please contact your department administrator.',
+          )
+        }
+        applyMockPersona(targetKey, 'google', keep)
+        return
+      }
+
+      const client = getSupabaseClient('supabase')
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : undefined
+
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            hd: 'vsu.edu.ph',
+          },
+        },
+      })
+
+      if (error) {
+        throw error
+      }
+    },
+    [envConfig.configError, isMockMode, applyMockPersona],
+  )
+
+  const signOut = useCallback(async () => {
+    setPendingRealSession(null)
+    clearAuthState()
+    if (!isMockMode && !envConfig.configError) {
+      const client = getSupabaseClient('supabase')
+      const { error } = await client.auth.signOut()
+      if (error) {
+        console.error('Supabase sign out error:', error)
+      }
+    }
+  }, [isMockMode, envConfig.configError, clearAuthState])
+
+  const setActiveRole = useCallback(
+    (role: SaaisRole) => {
+      if (!roles.includes(role)) return
+      setActiveRoleState(role)
+      writeStoredValue(ACTIVE_ROLE_STORAGE_KEY, role, keepSignedInRef.current)
+    },
+    [roles],
+  )
+
+  const eligibility = useMemo(
+    () =>
+      user
+        ? evaluateAccountEntryEligibility(
+            { status: user.status ?? 'active', email: user.email },
+            roles,
+          )
+        : { isAllowedToEnter: false, reason: entryBlockedReason },
+    [user, roles, entryBlockedReason],
+  )
+
+  const roleScopes = useMemo(
+    () => extractRoleScopes(roleAssignments),
+    [roleAssignments],
+  )
+
+  const value = useMemo<AuthContextValue>(
     () => ({
       user,
       profile,
       session,
       roles,
       roleAssignments,
+      roleScopes,
       activeRole,
-      primaryRole,
+      primaryRole: user?.primaryRole ?? null,
       isLoading,
-      isAuthenticated,
-      isAllowedToEnter,
-      entryBlockedReason,
+      isAuthenticated: Boolean(user),
+      isAllowedToEnter: eligibility.isAllowedToEnter,
+      entryBlockedReason: eligibility.reason ?? entryBlockedReason,
+      authError,
+      isPasswordRecovery,
       keepSignedIn,
       isMockMode,
       activePersonaKey,
       signInWithPassword,
       signInWithGoogle,
       signOut,
+      retryHydration,
       setActiveRole,
       switchMockPersona,
     }),
@@ -460,24 +618,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       session,
       roles,
       roleAssignments,
+      roleScopes,
       activeRole,
-      primaryRole,
       isLoading,
-      isAuthenticated,
-      isAllowedToEnter,
+      eligibility.isAllowedToEnter,
+      eligibility.reason,
       entryBlockedReason,
+      authError,
+      isPasswordRecovery,
       keepSignedIn,
       isMockMode,
       activePersonaKey,
       signInWithPassword,
       signInWithGoogle,
       signOut,
+      retryHydration,
       setActiveRole,
       switchMockPersona,
     ],
   )
 
-  return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

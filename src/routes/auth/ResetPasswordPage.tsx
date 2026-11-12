@@ -7,18 +7,44 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertIcon, CheckIcon } from '@/components/icons'
-import { completePasswordReset, validatePasswordPolicy } from '@/lib/auth/auth-service'
+import { useAuth } from '@/hooks/use-auth'
+import {
+  completePasswordReset,
+  validatePasswordPolicy,
+} from '@/lib/auth/auth-service'
+
+function hasRecoveryUrlIndicator(): boolean {
+  if (typeof window === 'undefined') return false
+  const searchParams = new URLSearchParams(window.location.search)
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  return (
+    searchParams.get('type') === 'recovery' ||
+    hashParams.get('type') === 'recovery' ||
+    searchParams.has('code') ||
+    hashParams.has('access_token')
+  )
+}
 
 export default function ResetPasswordPage() {
+  const { isPasswordRecovery, isMockMode, isLoading } = useAuth()
+  const [hasUrlRecovery] = React.useState<boolean>(() => hasRecoveryUrlIndicator())
   const [password, setPassword] = React.useState('')
   const [confirmPassword, setConfirmPassword] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [success, setSuccess] = React.useState(false)
+  const [wasSimulated, setWasSimulated] = React.useState(false)
+
+  const canResetPassword = isPasswordRecovery || (hasUrlRecovery && !isMockMode) || (isMockMode && hasUrlRecovery)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (!canResetPassword) {
+      setError('A valid password recovery link is required.')
+      return
+    }
 
     const validation = validatePasswordPolicy(password)
     if (!validation.valid) {
@@ -34,7 +60,8 @@ export default function ResetPasswordPage() {
     setSubmitting(true)
 
     try {
-      await completePasswordReset(password)
+      const result = await completePasswordReset(password)
+      setWasSimulated(result.simulated)
       setSuccess(true)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unable to reset password.'
@@ -60,15 +87,42 @@ export default function ResetPasswordPage() {
       ]}
     >
       <Panel title="Set Password" description="Create your new institutional login password.">
-        {success ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center p-8 gap-3">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Verifying recovery session…</p>
+          </div>
+        ) : !canResetPassword && !success ? (
+          <div className="grid gap-4">
+            <h2 className="text-2xl font-bold">Invalid or Expired Recovery Link</h2>
+            <Alert variant="destructive">
+              <AlertIcon />
+              <AlertDescription>
+                This page requires an active password recovery link from your institutional email.
+                If you are already signed in and want to update your password, use Account Settings.
+              </AlertDescription>
+            </Alert>
+            <div className="flex flex-col gap-2 mt-2">
+              <Link to="/forgot-password" className="w-full">
+                <Button className="w-full">Request New Recovery Link</Button>
+              </Link>
+              <Link to="/settings" className="w-full">
+                <Button variant="outline" className="w-full">
+                  Go to Account Settings
+                </Button>
+              </Link>
+            </div>
+          </div>
+        ) : success ? (
           <div className="grid gap-4 text-center py-4">
             <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
               <CheckIcon className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-bold">Password Reset Complete</h2>
             <p className="text-sm text-muted-foreground">
-              Your password has been successfully updated. You may now sign in with your new
-              password.
+              {wasSimulated
+                ? 'Password reset was simulated in mock mode. In production, your institutional password is updated and you can sign in with your new credentials.'
+                : 'Your password has been successfully updated. You may now sign in with your new password.'}
             </p>
             <Link to="/login" className="w-full mt-2">
               <Button className="w-full">Sign in to your account</Button>

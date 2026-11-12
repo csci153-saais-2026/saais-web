@@ -299,20 +299,39 @@ export const saaisMswHandlers = [
     if (!body?.token || body.token.trim().length < 8) {
       return errorJson(400, 'INVALID_TOKEN', 'Invitation token is invalid.')
     }
-    if (body.token === 'expired-invite-token') {
+    const token = body.token.trim()
+    if (token === 'expired-invite-token') {
       return errorJson(409, 'INVITE_EXPIRED', 'Invitation token has expired.')
     }
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (!matchedProfile) {
+      return errorJson(404, 'INVITE_NOT_FOUND', 'Invitation not found.')
+    }
+    if (matchedProfile.status !== 'invited') {
+      return errorJson(409, 'INVITE_ALREADY_USED', 'Invitation has already been activated.')
+    }
+    const dept = db.departments.find((d) => d.id === matchedProfile.department_id)
+    const faculty = db.faculties.find((f) => f.id === matchedProfile.faculty_id)
     const response: ApiSchema<'PreviewInviteResponse'> = {
       valid: true,
-      status: 'pending',
-      email: MOCK_PERSONAS.student_secondary.email,
-      full_name: MOCK_PERSONAS.student_secondary.fullName,
-      role: 'student',
-      roles: ['student'],
-      faculty_name: 'Faculty of Computing',
-      department_name: 'Department of Computer Science and Technology',
-      program_code: 'BSCS',
-      expires_at: '2026-12-31T23:59:59Z',
+      status: matchedProfile.invitation_status ?? 'pending',
+      email: matchedProfile.email,
+      full_name: matchedProfile.full_name,
+      role: matchedProfile.role,
+      roles: matchedProfile.roles,
+      faculty_name: faculty?.name ?? 'Faculty of Computing',
+      department_name: dept?.name ?? 'Department of Computer Science and Technology',
+      program_code: matchedProfile.role === 'student' ? 'BSCS' : null,
+      expires_at: matchedProfile.invitation_expires_at ?? '2026-12-31T23:59:59Z',
     }
     return HttpResponse.json(response, { status: 200 })
   }),
@@ -333,6 +352,25 @@ export const saaisMswHandlers = [
         'Password must be between 12 and 128 characters.',
       )
     }
+    const token = body.token.trim()
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (matchedProfile) {
+      db.profiles = db.profiles.map((p) =>
+        p.id === matchedProfile.id
+          ? { ...p, status: 'active', invitation_status: 'accepted' }
+          : p,
+      )
+    }
+
     const response: ApiSchema<'VerifyInviteResponse'> = {
       success: true,
       message: 'Account successfully activated.',
@@ -349,6 +387,25 @@ export const saaisMswHandlers = [
     if (!body?.token) {
       return errorJson(400, 'INVALID_TOKEN', 'Invitation token is required.')
     }
+    const token = body.token.trim()
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (matchedProfile) {
+      db.profiles = db.profiles.map((p) =>
+        p.id === matchedProfile.id
+          ? { ...p, invitation_status: 'declined' }
+          : p,
+      )
+    }
+
     const response: ApiSchema<'DeclineInviteResponse'> = {
       success: true,
       message: 'Invitation declined.',

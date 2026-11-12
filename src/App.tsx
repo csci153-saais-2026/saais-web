@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AuthProvider } from '@/context/AuthProvider'
 import { DevRoleSwitcher } from '@/components/DevRoleSwitcher'
+import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 
 const StyleguidePage = lazy(() => import('@/routes/styleguide/StyleguidePage'))
@@ -60,45 +61,38 @@ function App() {
             <Route path="/docs" element={<DocsHubPage />} />
             <Route path="/docs/openapi" element={<OpenApiDocsPage />} />
 
-            {/* Authenticated user password change (all contract-documented paths) */}
+            {/* Authenticated shell wrapping all protected portals and settings */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/settings" element={<ChangePasswordPage />} />
-              <Route path="/change-password" element={<ChangePasswordPage />} />
-              <Route path="/student/change-password" element={<ChangePasswordPage />} />
-              <Route path="/adviser/change-password" element={<ChangePasswordPage />} />
-              <Route path="/dept-head/change-password" element={<ChangePasswordPage />} />
-              <Route path="/department-head/change-password" element={<ChangePasswordPage />} />
-              <Route path="/staff/change-password" element={<ChangePasswordPage />} />
-              <Route path="/department-staff/change-password" element={<ChangePasswordPage />} />
-              <Route path="/dean/change-password" element={<ChangePasswordPage />} />
-              <Route path="/dean-dh/change-password" element={<ChangePasswordPage />} />
-              <Route path="/admin/change-password" element={<ChangePasswordPage />} />
-            </Route>
+              <Route element={<AuthenticatedPortalLayout />}>
+                <Route path="/settings" element={<ChangePasswordPage />} />
+                <Route path="/change-password" element={<Navigate to="/settings" replace />} />
 
-            {/* Protected Student Portal */}
-            <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-              <Route path="/student/*" element={<StudentPortal />} />
-            </Route>
+                <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                  <Route path="/student/*" element={<StudentPortal />} />
+                </Route>
 
-            {/* Protected Adviser / Department Head / Department Staff / Dean Portals */}
-            <Route
-              element={
-                <ProtectedRoute
-                  allowedRoles={['adviser', 'dean', 'department_head', 'department_staff']}
-                />
-              }
-            >
-              <Route path="/adviser/*" element={<AdviserPortal />} />
-              <Route path="/dept-head/*" element={<AdviserPortal />} />
-              <Route path="/department-head/*" element={<AdviserPortal />} />
-              <Route path="/staff/*" element={<AdviserPortal />} />
-              <Route path="/department-staff/*" element={<AdviserPortal />} />
-              <Route path="/dean/*" element={<AdviserPortal />} />
-            </Route>
+                <Route element={<ProtectedRoute allowedRoles={['adviser']} />}>
+                  <Route path="/adviser/*" element={<AdviserPortal />} />
+                </Route>
 
-            {/* Protected Admin Portal */}
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/admin/*" element={<AdminPortal />} />
+                <Route element={<ProtectedRoute allowedRoles={['department_head']} />}>
+                  <Route path="/department-head/*" element={<AdviserPortal />} />
+                  <Route path="/dept-head/*" element={<Navigate to="/department-head" replace />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['department_staff']} />}>
+                  <Route path="/department-staff/*" element={<AdviserPortal />} />
+                  <Route path="/staff/*" element={<Navigate to="/department-staff" replace />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['dean']} />}>
+                  <Route path="/dean/*" element={<AdviserPortal />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route path="/admin/*" element={<AdminPortal />} />
+                </Route>
+              </Route>
             </Route>
           </Routes>
         </Suspense>

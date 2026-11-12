@@ -4,7 +4,6 @@ import {
   resolveSaaisEnvConfig,
 } from '@/lib/supabase/client'
 import type { SaaisRole } from '@/mocks/personas'
-import { getMockDatabase } from '@/mocks/store'
 
 export const ROLE_DEFAULT_ROUTE: Readonly<Record<SaaisRole, string>> = {
   student: '/student',
@@ -13,6 +12,13 @@ export const ROLE_DEFAULT_ROUTE: Readonly<Record<SaaisRole, string>> = {
   department_staff: '/department-staff',
   dean: '/dean',
   admin: '/admin',
+}
+
+export class AuthHydrationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AuthHydrationError'
+  }
 }
 
 export interface PasswordValidationResult {
@@ -59,9 +65,24 @@ export function validatePasswordPolicy(
   return { valid: true, error: null }
 }
 
+export function isValidEmailFormat(email: string): boolean {
+  const trimmed = email.trim()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+}
+
+/**
+ * Institutional `@vsu.edu.ph` check for new Google OAuth / institutional identities.
+ * Note: Authoritative institutional-domain & whitelist enforcement happens
+ * server-side via Supabase Auth hooks and RLS.
+ */
+export function isInstitutionalVsuEmail(email: string): boolean {
+  const trimmed = email.trim().toLowerCase()
+  return trimmed.endsWith('@vsu.edu.ph')
+}
+
 export function isInstitutionalEmail(email: string): boolean {
   const trimmed = email.trim().toLowerCase()
-  return trimmed.includes('@') && trimmed.endsWith('.edu.ph')
+  return isValidEmailFormat(trimmed) && trimmed.endsWith('.edu.ph')
 }
 
 export interface AccountEntryEligibility {
@@ -108,6 +129,22 @@ export function evaluateAccountEntryEligibility(
   return { isAllowedToEnter: true, reason: null }
 }
 
+export interface RoleScope {
+  readonly role: SaaisRole
+  readonly facultyId: string | null
+  readonly departmentId: string | null
+}
+
+export function extractRoleScopes(
+  roleAssignments: readonly ApiSchema<'RoleAssignment'>[],
+): RoleScope[] {
+  return roleAssignments.map((assignment) => ({
+    role: assignment.role,
+    facultyId: assignment.faculty_id ?? null,
+    departmentId: assignment.department_id ?? null,
+  }))
+}
+
 export function extractInviteTokenFromHash(hash: string): string | null {
   if (!hash) return null
   const match = hash.match(/(?:^|[#&])token=([^&]+)/)
@@ -119,6 +156,10 @@ export function extractInviteTokenFromHash(hash: string): string | null {
 /**
  * Loads the authenticated user's Profile and RoleAssignment records through
  * the documented OpenAPI contract boundary (`/rest/v1/profile` & `/rest/v1/role_assignment`).
+ *
+ * Fails closed (`AuthHydrationError`) on API errors or unexpected response shapes,
+ * requires an exact `profile.id === userId` match, and derives authorized roles
+ * strictly from verified `RoleAssignment` rows.
  */
 export async function fetchAuthenticatedUserBoundary(userId: string): Promise<{
   profile: ApiSchema<'Profile'> | null
@@ -143,22 +184,33 @@ export async function fetchAuthenticatedUserBoundary(userId: string): Promise<{
     }),
   ])
 
-  const profileRows = (profileRes.data ?? []) as ApiSchema<'Profile'>[]
-  const profile =
-    profileRows.find((row) => row.id === userId) ?? profileRows[0] ?? null
+  if (profileRes.error) {
+    const errMsg =
+      (profileRes.error as { message?: string })?.message ||
+      'Unable to load your institutional profile.'
+    throw new AuthHydrationError(errMsg)
+  }
 
-  const rawAssignments = (rolesRes.data ?? []) as ApiSchema<'RoleAssignment'>[]
+  if (rolesRes.error) {
+    const errMsg =
+      (rolesRes.error as { message?: string })?.message ||
+      'Unable to load your institutional role assignments.'
+    throw new AuthHydrationError(errMsg)
+  }
+
+  if (!Array.isArray(profileRes.data) || !Array.isArray(rolesRes.data)) {
+    throw new AuthHydrationError(
+      'Received an unexpected response while loading your account.',
+    )
+  }
+
+  const profileRows = profileRes.data as ApiSchema<'Profile'>[]
+  const profile = profileRows.find((row) => row.id === userId) ?? null
+
+  const rawAssignments = rolesRes.data as ApiSchema<'RoleAssignment'>[]
   const roleAssignments = rawAssignments.filter((r) => r.profile_id === userId)
 
   const roleSet = new Set<SaaisRole>()
-  if (profile?.role) {
-    roleSet.add(profile.role)
-  }
-  if (profile?.roles) {
-    for (const r of profile.roles) {
-      roleSet.add(r)
-    }
-  }
   for (const assignment of roleAssignments) {
     roleSet.add(assignment.role)
   }
@@ -212,17 +264,6 @@ export async function verifyInvitationToken(
     throw new Error(msg)
   }
 
-  // In mock mode, transition the invited profile in the in-memory mock database
-  // so subsequent password sign-in succeeds immediately.
-  if (resolveSaaisEnvConfig().mode === 'mock') {
-    const db = getMockDatabase()
-    db.profiles = db.profiles.map((profile) =>
-      profile.status === 'invited'
-        ? { ...profile, status: 'active', invitation_status: 'accepted' }
-        : profile,
-    )
-  }
-
   return data
 }
 
@@ -249,16 +290,18 @@ export async function declineInvitationToken(
 
 export async function requestPasswordRecoveryEmail(
   email: string,
-): Promise<void> {
+): Promise<{ simulated: boolean }> {
   const trimmedEmail = email.trim()
-  if (!isInstitutionalEmail(trimmedEmail)) {
-    throw new Error(
-      'Please enter a valid institutional email address (.edu.ph).',
-    )
+  if (!isValidEmailFormat(trimmedEmail)) {
+    throw new Error('Please enter a valid email address.')
   }
 
-  const { mode } = resolveSaaisEnvConfig()
-  if (mode === 'supabase') {
+  const config = resolveSaaisEnvConfig()
+  if (config.configError) {
+    throw new Error(config.configError)
+  }
+
+  if (config.mode === 'supabase') {
     const client = getSupabaseClient('supabase')
     const redirectTo =
       typeof window !== 'undefined'
@@ -269,46 +312,40 @@ export async function requestPasswordRecoveryEmail(
       redirectTo ? { redirectTo } : undefined,
     )
     if (error) throw error
-    return
+    return { simulated: false }
   }
 
-  // In mock mode, verify the email belongs to a provisioned profile
-  const db = getMockDatabase()
-  const matched = db.profiles.find(
-    (p) => p.email.toLowerCase() === trimmedEmail.toLowerCase(),
-  )
-  if (!matched) {
-    throw new Error(
-      'Account not found: No provisioned institutional profile matches this email address.',
-    )
-  }
-  if (matched.status === 'disabled') {
-    throw new Error(
-      'Password recovery is unavailable: This institutional account has been deactivated.',
-    )
-  }
+  // In mock mode, return neutrally without enumerating existing or disabled accounts.
+  return { simulated: true }
 }
 
 export async function completePasswordReset(
   newPassword: string,
-): Promise<void> {
+): Promise<{ simulated: boolean }> {
   const validation = validatePasswordPolicy(newPassword)
   if (!validation.valid) {
     throw new Error(validation.error ?? 'Invalid password.')
   }
 
-  const { mode } = resolveSaaisEnvConfig()
-  if (mode === 'supabase') {
+  const config = resolveSaaisEnvConfig()
+  if (config.configError) {
+    throw new Error(config.configError)
+  }
+
+  if (config.mode === 'supabase') {
     const client = getSupabaseClient('supabase')
     const { error } = await client.auth.updateUser({ password: newPassword })
     if (error) throw error
+    return { simulated: false }
   }
+
+  return { simulated: true }
 }
 
 export async function changeAuthenticatedPassword(
   currentPassword: string,
   newPassword: string,
-): Promise<void> {
+): Promise<{ simulated: boolean }> {
   if (!currentPassword) {
     throw new Error('Current password is required.')
   }
@@ -318,8 +355,12 @@ export async function changeAuthenticatedPassword(
     throw new Error(validation.error ?? 'Invalid password.')
   }
 
-  const { mode } = resolveSaaisEnvConfig()
-  if (mode === 'supabase') {
+  const config = resolveSaaisEnvConfig()
+  if (config.configError) {
+    throw new Error(config.configError)
+  }
+
+  if (config.mode === 'supabase') {
     const client = getSupabaseClient('supabase')
     const { error: updateError } = await client.auth.updateUser({
       current_password: currentPassword,
@@ -328,5 +369,8 @@ export async function changeAuthenticatedPassword(
     if (updateError) throw updateError
 
     await client.auth.signOut({ scope: 'others' })
+    return { simulated: false }
   }
+
+  return { simulated: true }
 }

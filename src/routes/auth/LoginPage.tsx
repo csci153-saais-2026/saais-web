@@ -7,10 +7,35 @@ import type { SignInValues } from '@/components/features/sign-in-schema'
 import { CheckIcon } from '@/components/icons'
 import { useAuth } from '@/hooks/use-auth'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
+import type { SaaisRole } from '@/mocks/personas'
 
 interface LoginLocationState {
   from?: { pathname: string }
   blockedReason?: string | null
+}
+
+function isDestinationAllowedForRoles(
+  pathname: string,
+  roles: readonly SaaisRole[],
+): boolean {
+  if (pathname.startsWith('/student')) return roles.includes('student')
+  if (pathname.startsWith('/adviser')) return roles.includes('adviser')
+  if (
+    pathname.startsWith('/department-head') ||
+    pathname.startsWith('/dept-head')
+  ) {
+    return roles.includes('department_head')
+  }
+  if (
+    pathname.startsWith('/department-staff') ||
+    pathname.startsWith('/staff')
+  ) {
+    return roles.includes('department_staff')
+  }
+  if (pathname.startsWith('/dean')) return roles.includes('dean')
+  if (pathname.startsWith('/admin')) return roles.includes('admin')
+  if (pathname === '/settings' || pathname === '/change-password') return true
+  return true
 }
 
 export default function LoginPage() {
@@ -18,9 +43,12 @@ export default function LoginPage() {
   const location = useLocation()
   const {
     user,
+    roles,
     activeRole,
+    isLoading,
     isAllowedToEnter,
     entryBlockedReason,
+    authError,
     signInWithPassword,
     signInWithGoogle,
   } = useAuth()
@@ -45,26 +73,35 @@ export default function LoginPage() {
     return null
   })
 
-  const destination = React.useMemo(() => {
-    const from = locationState?.from?.pathname
-    if (from && from !== '/login') return from
-    if (activeRole && activeRole in ROLE_DEFAULT_ROUTE) {
-      return ROLE_DEFAULT_ROUTE[activeRole]
-    }
-    return '/docs'
-  }, [locationState, activeRole])
-
   React.useEffect(() => {
-    if (user && activeRole && isAllowedToEnter) {
-      navigate(destination, { replace: true })
-    }
-  }, [user, activeRole, isAllowedToEnter, destination, navigate])
+    if (isLoading || !user || !isAllowedToEnter || roles.length === 0) return
+
+    const fallbackRole = activeRole && roles.includes(activeRole) ? activeRole : roles[0]
+    const defaultPortal = ROLE_DEFAULT_ROUTE[fallbackRole] ?? '/settings'
+    const fromPath = locationState?.from?.pathname
+
+    const target =
+      fromPath &&
+      fromPath !== '/login' &&
+      isDestinationAllowedForRoles(fromPath, roles)
+        ? fromPath
+        : defaultPortal
+
+    navigate(target, { replace: true })
+  }, [
+    isLoading,
+    user,
+    roles,
+    activeRole,
+    isAllowedToEnter,
+    locationState,
+    navigate,
+  ])
 
   const handleSignIn = async (values: SignInValues) => {
     setErrorMessage(null)
     try {
       await signInWithPassword(values.email, values.password, values.keep)
-      navigate(destination, { replace: true })
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -78,7 +115,6 @@ export default function LoginPage() {
     setErrorMessage(null)
     try {
       await signInWithGoogle()
-      navigate(destination, { replace: true })
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -88,7 +124,7 @@ export default function LoginPage() {
     }
   }
 
-  const displayedError = errorMessage ?? entryBlockedReason
+  const displayedError = errorMessage ?? authError ?? entryBlockedReason
 
   return (
     <AuthLayout
