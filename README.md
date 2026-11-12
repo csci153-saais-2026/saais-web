@@ -93,7 +93,7 @@ This README is the main project description and documents the intended productio
 | CI/CD                        | GitHub Actions                                                                                                                    |
 | Project Management           | GitHub Issues, Milestones, Projects (board), Pull Requests                                                                        |
 | Hosting                      | Vercel (static SPA build) + hosted Supabase project (database/auth)                                                               |
-| Node                         | 20.x (pin via `.nvmrc`)                                                                                                           |
+| Node                         | 22.x (pin via `.nvmrc`)                                                                                                           |
 | Package manager              | npm — one lockfile (`package-lock.json`); do not introduce a second package manager                                               |
 
 ### Contract-First Convention
@@ -111,7 +111,7 @@ Supabase auto-publishes a machine-generated OpenAPI description of PostgREST. **
 
 ### Prerequisites
 
-- Node.js 20.x (use the version in `.nvmrc`; `nvm use` if you have nvm installed)
+- Node.js 22.x (use the version in `.nvmrc`; `nvm use` if you have nvm installed)
 - npm — the canonical package manager for this project; all commands below use `npm`. Commit only `package-lock.json`; do not introduce a second package manager.
 - Docker (for local Supabase)
 - Supabase CLI — install per the [official instructions](https://supabase.com/docs/guides/cli/getting-started) for your OS (Homebrew, Scoop, or direct binary; avoid the unsupported global npm install)
