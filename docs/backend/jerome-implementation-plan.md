@@ -6,7 +6,7 @@ Initial checkout: `feat/jerome-edge-functions`, `03ce7ac1764334deeee564601de8a68
 
 ## Assigned operations
 
-Status starts as pending; the final report records actual checks. Schemas below refer to the pinned baseline.
+All 47 operations now have domain implementations and successful local SQL coverage. Hosted Supabase/Deno integration remains unverified; see jerome-implementation-report.md for conservative per-operation statuses. Schemas below refer to the pinned baseline.
 
 | Operation | Method and path | Request schema | Success | Roles |
 | --- | --- | --- | --- | --- |
@@ -83,3 +83,16 @@ The current contract passes `npm run contract:lint` and all seven `npm run contr
 - Base schema has only three roles, positive-only draft totals, mandatory lecture/lab hours, no section support, and no authorization policies. Additive changes are required; do not assume the base branch is deployable.
 - Scheduled backup reminder age is not specified by the contract. Keep an operator-configured interval instead of inventing a policy. Settings thresholds and sender identity must come from provisioned settings, with no fabricated institution defaults.
 - Email notifications are queued as pending; delivery transport and retry operations need deployment integration.
+
+## Final checklist
+
+- [x] Read both reference documents completely and inspect the repository/branches.
+- [x] Report the contract mismatch and obtain the user's explicit cfa620c baseline decision.
+- [x] Reuse the existing team schema and implement shared validation, authorization and transactions.
+- [x] Implement catalog (30), school terms (3), student routes (11), transfer decisions (1), notifications (2).
+- [x] Run fresh migrations, 47-operation success/auth/input sweeps, workflow rollback and real concurrency tests.
+- [x] Verify contract snapshots, lint, TypeScript, frontend regression tests, production build and preview.
+- [x] Preserve frontend/contract files, existing team work and the shared students integration boundary.
+- [x] Record exact local implementation commits and changed files in the final report; do not push.
+- [ ] Execute deployed Supabase/Auth/PostgREST/Deno integration and production cron/email verification when available.
+- [ ] Confirm the documented academic interpretation and deployment configuration items with the team.
