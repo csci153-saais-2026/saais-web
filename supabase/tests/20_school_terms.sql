@@ -11,6 +11,7 @@ begin
   result:=test.call('closeSchoolTermEncoding',jsonb_build_object('school_term_id',term),'{"closure_note":"Encoding complete"}');
   perform test.assert((result->>'is_locked')::boolean=false,'department closure changed global lock');
   perform test.assert(jsonb_array_length(result->'department_closures')=1,'scoped closure projection');
+  perform test.assert(exists(select 1 from public.audit_log_entry a where a.action='closeSchoolTermEncoding' and a.entity_type='department_term_encoding' and (a.new_value->>'is_closed')::boolean),'audit did not record the department closure state');
   perform test.login(1);
   perform test.expect('PT400','closeSchoolTermEncoding',jsonb_build_object('school_term_id',term),'{}');
   result:=test.call('closeSchoolTermEncoding',jsonb_build_object('school_term_id',term),'{"scope":"institution"}');

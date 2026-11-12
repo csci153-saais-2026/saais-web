@@ -1,7 +1,7 @@
 create function saais_private.school_terms(operation text, params jsonb, body jsonb) returns jsonb
 language plpgsql set search_path=pg_catalog,public as $$
 declare term_id uuid:=(params->>'school_term_id')::uuid; department uuid:=(body->>'department_id')::uuid;
-  scope text:=coalesce(body->>'scope','department'); before_row jsonb; after_row jsonb; closure jsonb; recipients uuid[]; choices integer;
+  scope text:=coalesce(body->>'scope','department'); before_row jsonb; after_row jsonb; closure jsonb; new_closure jsonb; recipients uuid[]; choices integer;
 begin
   select to_jsonb(t) into before_row from public.school_term t where t.id=term_id for update;
   if before_row is null then perform saais_private.fail(404,'School term not found.'); end if;
@@ -34,19 +34,21 @@ begin
         if closure is null then perform saais_private.fail(409,'The department has no encoding closure to reopen.'); end if;
         update public.department_term_encoding c set is_closed=false,updated_at=clock_timestamp(),closure_note=body->>'closure_note'
           where c.school_term_id=term_id and c.department_id=department returning to_jsonb(c) into after_row;
+        new_closure:=after_row;
       else
         insert into public.department_term_encoding(school_term_id,department_id,is_closed,closed_by,closed_at,closure_note)
           values(term_id,department,true,auth.uid(),clock_timestamp(),body->>'closure_note')
-          on conflict(school_term_id,department_id) do update set is_closed=true,closed_by=auth.uid(),closed_at=clock_timestamp(),closure_note=excluded.closure_note,updated_at=clock_timestamp();
+          on conflict(school_term_id,department_id) do update set is_closed=true,closed_by=auth.uid(),closed_at=clock_timestamp(),closure_note=excluded.closure_note,updated_at=clock_timestamp()
+          returning to_jsonb(department_term_encoding.*) into new_closure;
         after_row:=before_row;
       end if;
       recipients:=saais_private.recipients(department,array['adviser','department_staff','department_head','dean']);
     end if;
     if operation='closeSchoolTermEncoding' then perform saais_private.notify('term_encoding_closed','alert',recipients,'school_term',term_id); end if;
   end if;
-  perform saais_private.audit(operation,case when operation='reopenDepartmentTermEncoding' then 'department_term_encoding' else 'school_term' end,
-    case when operation='reopenDepartmentTermEncoding' then (after_row->>'id')::uuid else term_id end,
-    coalesce(closure,before_row),after_row,null,body->>'closure_note');
+  if new_closure is not null then
+    perform saais_private.audit(operation,'department_term_encoding',(new_closure->>'id')::uuid,closure,new_closure,null,body->>'closure_note');
+  else perform saais_private.audit(operation,'school_term',term_id,before_row,after_row,null,body->>'closure_note'); end if;
   if operation<>'reopenDepartmentTermEncoding' then
     select after_row||jsonb_build_object('department_closures',coalesce(jsonb_agg(to_jsonb(c)),'[]')) into after_row
       from public.department_term_encoding c where c.school_term_id=term_id and
