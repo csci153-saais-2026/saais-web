@@ -1,6 +1,6 @@
 do $$
 #variable_conflict use_variable
-declare student uuid:='00000005-0000-4000-8000-000000000000'; department uuid; other uuid; course uuid; result jsonb; operation jsonb; has_body boolean;
+declare student uuid:='00000005-0000-4000-8000-000000000000'; department uuid; other uuid; course uuid; result jsonb; operation jsonb; path_params jsonb;
 begin
   select (value->>'id')::uuid into department from test.records where name='department';
   select (value->>'id')::uuid into other from test.records where name='department_b';
@@ -23,6 +23,9 @@ begin
     perform test.assert(exists(select 1 from test.coverage c where c.operation=operation->>'id'),'missing successful SQL coverage: '||(operation->>'id'));
     perform test.login(case when operation->'roles' ? 'admin' then 1 else 4 end);
     perform test.expect('PT400',operation->>'id','{"spoofed_actor":"untrusted"}');
+    select coalesce(jsonb_object_agg(p->>'name','ffffffff-0000-4000-8000-000000000000'),'{}') into path_params from jsonb_array_elements(operation->'parameters') p;
+    perform test.expect('PT400',operation->>'id',path_params,'{"spoofed_actor":"untrusted"}');
+    if operation->'input'<>'null'::jsonb and not saais_private.valid('{}',operation->'input') then perform test.expect('PT400',operation->>'id',path_params,'{}'); end if;
     perform test.login(5);
     if not operation->'roles' ? 'student' then perform test.expect('PT403',operation->>'id'); end if;
     perform set_config('request.jwt.claims','{}',true);
