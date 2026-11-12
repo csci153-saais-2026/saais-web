@@ -1,41 +1,125 @@
 import * as React from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { AuthLayout } from '@/components/features/auth-layout'
 import { Panel } from '@/components/features/panel'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { getSupabaseClient } from '@/lib/supabase/client'
+import { SignInForm } from '@/components/features/sign-in-form'
+import type { SignInValues } from '@/components/features/sign-in-schema'
+import { CheckIcon } from '@/components/icons'
+import { useAuth } from '@/hooks/use-auth'
+import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
+
+interface LoginLocationState {
+  from?: { pathname: string }
+  blockedReason?: string | null
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = React.useState('')
-  const [password, setPassword] = React.useState('')
-  const [error, setError] = React.useState('')
-  const [busy, setBusy] = React.useState(false)
+  const location = useLocation()
+  const {
+    user,
+    activeRole,
+    isAllowedToEnter,
+    entryBlockedReason,
+    signInWithPassword,
+    signInWithGoogle,
+  } = useAuth()
 
-  async function signIn(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
+  const locationState = (location.state as LoginLocationState | null) ?? null
+
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(() => {
+    if (locationState?.blockedReason) {
+      return locationState.blockedReason
+    }
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const err = params.get('error_description') || params.get('error')
+      if (err) {
+        return err.includes('whitelist') ||
+          err.includes('not provisioned') ||
+          err.includes('registered')
+          ? 'Sign-in was rejected: Your institutional email is not pre-registered. Please contact your department administrator for access.'
+          : err
+      }
+    }
+    return null
+  })
+
+  const destination = React.useMemo(() => {
+    const from = locationState?.from?.pathname
+    if (from && from !== '/login') return from
+    if (activeRole && activeRole in ROLE_DEFAULT_ROUTE) {
+      return ROLE_DEFAULT_ROUTE[activeRole]
+    }
+    return '/docs'
+  }, [locationState, activeRole])
+
+  React.useEffect(() => {
+    if (user && activeRole && isAllowedToEnter) {
+      navigate(destination, { replace: true })
+    }
+  }, [user, activeRole, isAllowedToEnter, destination, navigate])
+
+  const handleSignIn = async (values: SignInValues) => {
+    setErrorMessage(null)
     try {
-      const { error: authError } = await getSupabaseClient('supabase').auth.signInWithPassword({ email: email.trim(), password })
-      if (authError) throw authError
-      navigate('/docs', { replace: true })
-    } catch {
-      setError('Unable to sign in. Check your credentials and try again.')
-    } finally {
-      setBusy(false)
+      await signInWithPassword(values.email, values.password, values.keep)
+      navigate(destination, { replace: true })
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Unable to sign in. Please verify your credentials and try again.'
+      setErrorMessage(msg)
     }
   }
 
-  return <AuthLayout kicker="SAAIS" headline="Sign in to your account" bullets={[]}>
-    <Panel title="Sign in" description="Use your institutional account to continue.">
-      <form onSubmit={signIn} className="grid gap-4">
-        <label className="grid gap-1.5 text-sm">Institutional email<Input type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required /></label>
-        <label className="grid gap-1.5 text-sm">Password<Input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required /></label>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</Button>
-      </form>
-    </Panel>
-  </AuthLayout>
+  const handleGoogleSignIn = async () => {
+    setErrorMessage(null)
+    try {
+      await signInWithGoogle()
+      navigate(destination, { replace: true })
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Failed to initiate Google sign-in.'
+      setErrorMessage(msg)
+    }
+  }
+
+  const displayedError = errorMessage ?? entryBlockedReason
+
+  return (
+    <AuthLayout
+      kicker="Visayas State University"
+      headline="Student Academic Advising Information System"
+      bullets={[
+        {
+          icon: <CheckIcon className="w-4 h-4" />,
+          text: 'Interactive curriculum audit and tracking',
+        },
+        {
+          icon: <CheckIcon className="w-4 h-4" />,
+          text: 'Official course prerequisite trees and progress projections',
+        },
+        {
+          icon: <CheckIcon className="w-4 h-4" />,
+          text: 'Direct academic adviser communication and note logging',
+        },
+      ]}
+    >
+      <Panel
+        title="Sign in"
+        description="Use your institutional account to continue."
+      >
+        <SignInForm
+          error={displayedError}
+          onSubmit={handleSignIn}
+          onGoogle={handleGoogleSignIn}
+          forgotHref="/forgot-password"
+        />
+      </Panel>
+    </AuthLayout>
+  )
 }
