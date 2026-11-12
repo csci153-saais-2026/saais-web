@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Audit log · SAAIS</title>
   <script src="../support.js"></script>
-<link rel="stylesheet" href="audit-settings.css"><script src="audit-settings.js" defer></script><link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script></head>
+<link rel="stylesheet" href="audit-settings.css"><script src="../audit-settings.js" defer></script><script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script><link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script></head>
 <body>
 <x-dc>
 <helmet>
@@ -238,7 +238,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
   });
   function rules() {
     var c = $('pw-cur').value, n = $('pw-new').value, a = $('pw-again').value;
-    var r = { len: n.length >= 12, mix: /[A-Za-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
+    var r = { len: n.length >= 12 && n.length <= 128, mix: /[A-Z]/.test(n) && /[a-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
     Object.keys(r).forEach(function (k) {
       var li = document.querySelector('[data-rule="' + k + '"]'), m = li.querySelector('[data-mark]');
       m.style.background = r[k] ? '#2C6430' : 'transparent'; m.style.borderColor = r[k] ? '#2C6430' : '#E1DBC6';

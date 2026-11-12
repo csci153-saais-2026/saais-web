@@ -10,9 +10,10 @@ const failures=[];
 function documentFor(file,query=''){
  const console=new VirtualConsole();
  // jsdom does not implement the native CSS nesting used by the marketing page.
- console.on('jsdomError',e=>{if(e.type!=='css parsing')failures.push(`${file}: ${e.message}`);});
+ console.on('jsdomError',e=>{if(e.type!=='css parsing'&&!(file==='prototype.html'&&e.message==='Not implemented: navigation (except hash changes)'))failures.push(`${file}: ${e.message}`);});
  const dom=new JSDOM(read(file),{url:'http://localhost/mockup/'+file+query,runScripts:'outside-only',virtualConsole:console});
  const w=dom.window;
+ Object.defineProperty(w.HTMLElement.prototype,'innerText',{get(){return this.textContent},set(value){this.textContent=value}});
  w.structuredClone=structuredClone;w.matchMedia=()=>({matches:false,addEventListener(){}});w.scrollTo=()=>{};
  w.HTMLElement.prototype.scrollIntoView=()=>{};
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;};
@@ -21,7 +22,7 @@ function documentFor(file,query=''){
 function execute(dom,file){
  const scripts=[...dom.window.document.querySelectorAll('script')];
  for(const script of [...scripts.filter(s=>!s.defer),...scripts.filter(s=>s.defer)]){
-  const ref=script.getAttribute('src');const code=ref?read(path.join(path.dirname(file),ref)):script.textContent;
+  const ref=script.getAttribute('src');const code=ref?read(path.join(path.dirname(file),decodeURIComponent(ref))):script.textContent;
   new vm.Script(code);dom.window.eval(code);
  }
  dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
@@ -82,11 +83,13 @@ for(const [route,screen]of Object.entries(manifest.routes)){
 const dom=documentFor('prototype.html'),w=dom.window,d=w.document;execute(dom,'prototype.html');
 for(const role of manifest.roles){
  d.querySelector(`[data-role="${role.id}"]`).click();w.SAAISDemo.render();
- assert.ok(decodeURIComponent(d.querySelector('#portal-frame').src).includes(manifest.routes[role.home].file),role.id+' entry point');
+ assert.equal(w.location.hash,'#/'+role.home,role.id+' entry route');
+ assert.equal(d.querySelector('#portal-frame').title,manifest.routes[role.home].title,role.id+' entry point');
 }
 for(const route of Object.keys(manifest.routes)){w.location.hash='#/'+route;w.SAAISDemo.render();assert.equal(d.querySelector('#portal-frame').hidden,false,route+' presentation');}
 w.location.hash='#/dean-dh/dean/reports?student=sample';w.SAAISDemo.render();
-assert.ok(d.querySelector('#portal-frame').src.includes('student=sample'),'query preserved');
+assert.equal(w.location.hash,'#/dean-dh/dean/reports?student=sample','route query preserved');
+assert.equal(d.querySelector('#portal-frame').title,manifest.routes['dean-dh/dean/reports'].title,'queried route renders');
 for(const role of manifest.roles){
  const url=new URL(role.folder+'/index.html',w.location.href);
  w.dispatchEvent(new w.MessageEvent('message',{source:d.querySelector('#portal-frame').contentWindow,origin:w.location.origin,data:{type:'saais:open',url:url.href}}));
@@ -98,5 +101,52 @@ d.querySelector('#proto-map').click();assert.equal(d.querySelector('#proto-sitem
 w.location.hash='#/login';w.SAAISDemo.render();assert.ok(d.querySelector('#product-view form'),'sign-in retained');
 w.location.hash='#/';w.SAAISDemo.render();assert.ok(d.querySelector('.view.active[data-route=""]'),'landing retained');
 dom.window.close();
+{
+ const dom=documentFor('Student/StudentDashboard.html','?prototype=1'),w=dom.window,d=w.document;
+ w.localStorage.setItem('saais-adviser-ui-v1',JSON.stringify({'notes-list':'<article data-state="archived"><strong>Adviser</strong><p>Archived note stays visible</p></article>'}));
+ execute(dom,'Student/StudentDashboard.html');
+ d.querySelector('[data-advising-notes]').click();
+ assert.match(d.querySelector('dialog').textContent,/Archived note stays visible/,'student can read archived notes');
+ dom.window.close();
+}
+for(const file of ['SystemAdmin/AdminAccountsRoles.dc.html','SystemAdmin/SystemAdmin.dc.html']){
+ const dom=documentFor(file,'?prototype=1'),w=dom.window,d=w.document;execute(dom,file);
+ d.querySelector('#acct-add').click();
+ const student=[...d.querySelectorAll('input[name=acct-role]')].find(x=>x.value==='Student');student.checked=true;student.dispatchEvent(new w.Event('change'));
+ d.querySelector('#acct-name').value='Sample Student';d.querySelector('#acct-email').value='sample.student@vsu.edu.ph';
+ d.querySelector('#acct-save').click();assert.match(d.querySelector('#acct-msg').textContent,/Enter the student number/);
+ d.querySelector('#acct-sid').value='24-1-00124';d.querySelector('#acct-save').click();
+ const entry=JSON.parse(w.localStorage.getItem('saais-accounts-v1'))[0];
+ assert.equal(entry.studentNumber,'24-1-00124');assert.ok(entry.curriculum.startsWith('BSCS'));
+ dom.window.close();
+}
+{
+ const dom=documentFor('SystemAdmin/AdminPrograms.dc.html','?prototype=1'),w=dom.window,d=w.document;execute(dom,'SystemAdmin/AdminPrograms.dc.html');
+ d.querySelector('#pg-new').click();d.querySelector('#pg-code').value='BSTM';d.querySelector('#pg-name').value='Tourism';
+ d.querySelector('#pg-modal [data-save]').click();assert.match(d.querySelector('#pg-modal [data-msg]').textContent,/Pick a department/);
+ d.querySelector('#pg-dep').value='Computer Science';d.querySelector('#pg-modal [data-save]').click();
+ assert.equal(d.querySelector('#pg-body tr[data-code="BSTM"]').dataset.dep,'Computer Science');
+ dom.window.close();
+}
+{
+ const file='Department Head/OutsideCredits.dc.html',dom=documentFor(file,'?prototype=1'),w=dom.window,d=w.document;execute(dom,file);
+ d.querySelector('[data-dialog="credit"]').click();d.querySelector('#dialog-confirm').click();
+ assert.match(d.querySelector('[data-credit-error]').textContent,/Give a reason/);
+ const field=[...d.querySelectorAll('#dialog-content label')].find(l=>l.querySelector('span')?.textContent==='Reason for credit').querySelector('textarea');
+ assert.equal(field.maxLength,2000);field.value='x'.repeat(2001);d.querySelector('#dialog-confirm').click();assert.match(d.querySelector('[data-credit-error]').textContent,/2,000/);
+ field.value='Equivalent coursework verified';d.querySelector('#dialog-confirm').click();
+ assert.equal(JSON.parse(w.localStorage.getItem('saais-mgmt-v1')).credits[0].reason,'Equivalent coursework verified');
+ dom.window.close();
+}
+{
+ const first='SystemAdmin/AdminFacultyDepartments.dc.html',dom=documentFor(first,'?prototype=1'),w=dom.window,d=w.document;execute(dom,first);
+ const row=[...d.querySelectorAll('#dep-body tr')].find(r=>r.dataset.name==='Computer Science');
+ row.querySelector('[data-edit]').click();d.querySelector('#dep-name').value='Computer Science Renamed';d.querySelector('#dep-modal [data-save]').click();
+ const saved=w.localStorage.getItem('saais-admin-ui-v1');dom.window.close();
+ const file='SystemAdmin/AdminPrograms.dc.html',next=documentFor(file,'?prototype=1'),nw=next.window,nd=nw.document;nw.localStorage.setItem('saais-admin-ui-v1',saved);execute(next,file);
+ const program=nd.querySelector('#pg-body tr[data-code="BSCS"]');assert.equal(program.dataset.dep,'Computer Science Renamed');assert.match(program.textContent,/Computer Science Renamed/);
+ program.querySelector('[data-edit]').click();assert.equal(nd.querySelector('#pg-dep').value,'Computer Science Renamed');next.window.close();
+}
+assert.doesNotMatch(read('prototype.html'), /\["swap", "Reassignment", "reassignment"\]/);
 assert.deepEqual(failures,[]);
 console.log(`Passed: ${Object.keys(manifest.routes).length} source screens, ${manifest.roles.length} roles, drawers, role groups, links, branding, route queries, screen map, sign-in, and landing.`);

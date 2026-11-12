@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Faculty &amp; departments · SAAIS</title>
   <script src="../support.js"></script>
-<link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script><script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script></head>
+<script src="../saais-audit.js"></script><script src="../saais-metrics.js"></script><link rel="stylesheet" href="../portal-ui.css"><script src="../portal-ui.js" defer></script></head>
 <body>
 <x-dc>
 <helmet>
@@ -141,8 +141,15 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     var dup = Array.prototype.some.call(depBody.rows, function (r) { return r.dataset.name.toLowerCase() === name.toLowerCase() && r !== editing; });
     if (dup) return say(msg, 'no', '<b>' + esc(name) + '</b> already exists. Department names must be unique.');
     if (editing) {
+      var previous = editing.dataset.name;
+      if (previous !== name || editing.dataset.fac !== fac) {
+        var renames = ADM['department-renames'] || {};
+        Object.keys(renames).forEach(function (key) { if (renames[key].name === previous) renames[key] = { name: name, fac: fac }; });
+        renames[previous] = { name: name, fac: fac }; ADM['department-renames'] = renames; saveADM();
+      }
       editing.dataset.name = name; editing.dataset.fac = fac;
       editing.cells[0].innerHTML = '<span style="font-weight:600">' + esc(name) + '</span>'; editing.cells[1].textContent = fac;
+      ADM['dep-body'] = depBody.innerHTML; saveADM();
     } else depBody.appendChild(depRow(name, fac));
     closeDep(); recount(); say($('fd-done'), 'ok', '<b>' + esc(name) + '</b> was saved under ' + esc(fac) + '.');
   });

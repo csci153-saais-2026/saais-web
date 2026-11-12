@@ -1,9 +1,11 @@
+
 import { lazy, Suspense } from "react"
 import { BrowserRouter, Navigate, Route, Routes, Link } from "react-router"
 import { DepartmentHeadLayout } from "@/routes/department-head/DepartmentHeadLayout"
 import { PartnerPlaceholderPage } from "@/routes/department-head/PartnerPlaceholderPage"
 
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"))
+
 const CurriculumTransfersPage = lazy(() => import("@/routes/department-head/CurriculumTransfersPage"))
 const CurriculaPage = lazy(() => import("@/routes/department-head/CurriculaPage"))
 const EquivalencePage = lazy(() => import("@/routes/department-head/EquivalencePage"))
@@ -11,13 +13,20 @@ const OutsideCreditsPage = lazy(() => import("@/routes/department-head/OutsideCr
 const AcademicTermsPage = lazy(() => import("@/routes/department-head/AcademicTermsPage"))
 const NotificationsPage = lazy(() => import("@/routes/department-head/NotificationsPage"))
 
+const LoginPage = lazy(() => import("@/routes/auth/LoginPage"))
+const DocsHubPage = lazy(() => import("@/routes/docs/DocsHubPage"))
+const OpenApiDocsPage = lazy(() => import("@/routes/docs/OpenApiDocsPage"))
+
 function Home() {
   return (
     <main className="mx-auto max-w-3xl p-8 space-y-6">
       <div>
         <h1 className="text-3xl font-display font-bold">SAAIS</h1>
-        <p className="text-muted-foreground mt-1">Student Academic Advising and Information System</p>
+        <p className="text-muted-foreground mt-1">
+          Student Academic Advising and Information System
+        </p>
       </div>
+
       <div className="rounded-lg border border-border bg-card p-6 shadow-xs">
         <h2 className="text-lg font-semibold mb-2">Available Portals & Modules</h2>
         <ul className="space-y-3">
@@ -32,11 +41,17 @@ function Home() {
               Review transfers, curriculum versions, course equivalencies, outside credits, and academic terms.
             </p>
           </li>
+
           <li>
-            <Link to="/styleguide" className="inline-flex items-center gap-2 text-primary font-semibold hover:underline">
+            <Link
+              to="/styleguide"
+              className="inline-flex items-center gap-2 text-primary font-semibold hover:underline"
+            >
               <span>Production Design System &amp; Style Guide →</span>
             </Link>
-            <p className="text-sm text-muted-foreground">Tokens, components, and interactive examples.</p>
+            <p className="text-sm text-muted-foreground">
+              Tokens, components, and interactive examples.
+            </p>
           </li>
         </ul>
       </div>
@@ -55,7 +70,7 @@ function App() {
           {/* Department Head Module */}
           <Route path="/department-head" element={<DepartmentHeadLayout />}>
             <Route index element={<Navigate to="curriculum-transfers" replace />} />
-            
+
             {/* Developer 1 Assigned Routes */}
             <Route path="curriculum-transfers" element={<CurriculumTransfersPage />} />
             <Route path="curricula" element={<CurriculaPage />} />
@@ -138,6 +153,13 @@ function App() {
               }
             />
           </Route>
+
+          {/* Authentication */}
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Documentation */}
+          <Route path="/docs" element={<DocsHubPage />} />
+          <Route path="/docs/openapi" element={<OpenApiDocsPage />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

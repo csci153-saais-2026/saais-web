@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Send account invitation
-         * @description Admin operation to provision a pre-registered profile and send an email invitation token for password creation. Required role: admin. Privileged server code provisions the Supabase Auth identity and application profile/assignments; the SPA never calls Auth admin APIs or receives server credentials. Compensating recovery coordinates Auth/email side effects with database provisioning. An application invitation does not constitute a signed-in session.
+         * @description Unified account provisioning and invitation flow: atomically creates a pre-registered Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum / adviser assignments (when student is included), and dispatches a single-use expiring password-setup invitation email (/invite#token=...). The fragment is read by the page and sent only in the JSON body to an invitation function. Pre-registered accounts may also sign in immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified Google sign-in activates the profile (status='active') and invalidates any unused password invite token. Admins may provision any role and grant multi-role assignments across the institution; no caller may assign roles to themselves. Department Heads and Department Staff may provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles) strictly within their own department scope. Any attempt by Department Head or Department Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects duplicate email or student_number with 409 Conflict. A Dean may hold only the Dean role or have additional separately authorized role assignments. Privileged server code provisions the Supabase Auth identity and application profile/assignments and writes an immutable audit log entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or receives server credentials. An application invitation does not constitute a signed-in session.
          */
         post: operations["inviteUser"];
         delete?: never;
@@ -35,9 +35,49 @@ export interface paths {
         put?: never;
         /**
          * Verify invitation token and set initial password
-         * @description Application invitation redemption: accepts the single-use expiring application token from the invitation email, sets the initial password in Supabase Auth through privileged server code and activates the provisioned profile. Requires the public project apikey but no Authorization/user session. This is not Supabase /auth/v1/verify, a Google callback or a login endpoint. The handler must validate the token before any privileged work and must be deployable without a gateway user-JWT requirement. Future gateway/handler configuration is required; this contract does not apply it. Success returns activation acknowledgement, not an access/refresh token; use the Supabase SDK to sign in afterward.
+         * @description Application invitation redemption: accepts the single-use expiring application token from the invitation email, enforces the SAAIS password policy (12–128 characters with at least one uppercase letter, one lowercase letter, and one digit), sets the initial password in Supabase Auth through privileged server code, marks the invitation accepted, and activates the provisioned profile. Requires the public project apikey but no Authorization/user session. This is not Supabase /auth/v1/verify, a Google callback or a login endpoint. The handler must validate the token before any privileged work and must be deployable without a gateway user-JWT requirement. Future gateway/handler configuration is required; this contract does not apply it. Success returns activation acknowledgement, not an access/refresh token; use the Supabase SDK to sign in afterward.
          */
         post: operations["verifyInviteToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/auth/preview-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview invitation metadata without consuming token
+         * @description Pre-session, non-consuming invitation preview for the Invite landing card (Invite.dc.html). Accepts the opaque invitation token in the POST body (avoiding token exposure in server URL access logs or Referer headers) and returns only the bounded invitation summary needed to render the card (provisioned email, full_name, role, roles, faculty_name, department_name, program_code, expires_at, and invitation_status). Requires the public project apikey without a user session JWT and is rate-limited by IP and token hash. Never consumes or extends the token and never returns internal profile IDs or tokens.
+         */
+        post: operations["previewInviteToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/auth/decline-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline an active account invitation token
+         * @description Pre-session invitation decline action from the Invite landing card (Invite.dc.html). Accepts the single-use expiring invitation token in the POST body, atomically invalidates the token, transitions invitation_status to declined in a race-safe compare-and-set against concurrent redemption or revocation, and writes an audit log entry. Requires the public project apikey without a user session JWT. Returns 409 Conflict if the invitation was already accepted, revoked, expired, or declined.
+         */
+        post: operations["declineInviteToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -53,10 +93,29 @@ export interface paths {
         };
         /**
          * Query user profiles
-         * @description List or filter user profiles via PostgREST query parameters. Students can only select their own profile via RLS. Advisers can select assigned advisees. Admins have system-wide visibility.
-         *      Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description List or filter user profiles via PostgREST query parameters. Students can only select their own profile via RLS. Advisers can select assigned advisees. Department Heads and Department Staff can select department-scoped profiles. Deans can select faculty-scoped profiles. Admins have system-wide visibility. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listProfiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/role_assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query multi-role assignments
+         * @description Retrieve institutional role assignments (including faculty/department scope) for user profiles. Enables multi-role authorization (e.g., Dean + Department Head, Adviser + Department Head) under a single login session.
+         */
+        get: operations["listRoleAssignments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -74,7 +133,7 @@ export interface paths {
         };
         /**
          * Query faculties / colleges
-         * @description Retrieve list of university faculties (colleges/divisions). Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve list of university faculties (colleges/divisions), including safe display metadata for letterhead rendering and PDF signatory blocks (dean_name). Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listFaculties"];
         put?: never;
@@ -94,7 +153,7 @@ export interface paths {
         };
         /**
          * Query academic departments
-         * @description Retrieve academic departments linked to faculties. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve academic departments linked to faculties, including safe display metadata for letterhead rendering and PDF signatory blocks (department_head_name, dean_name). Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listDepartments"];
         put?: never;
@@ -134,7 +193,7 @@ export interface paths {
         };
         /**
          * Query curriculum versions
-         * @description Retrieve versioned curriculum structures with total units and delinquency thresholds. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve versioned curriculum structures with total units, delinquency thresholds, and enrolled student count. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listCurriculumVersions"];
         put?: never;
@@ -174,7 +233,7 @@ export interface paths {
         };
         /**
          * Query curriculum term course slots
-         * @description Retrieve curriculum term slots, distinguishing required courses and named elective placeholders. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve curriculum term slots, distinguishing required courses, general education (GE) courses, and named elective placeholders. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listCurriculumTermCourses"];
         put?: never;
@@ -194,7 +253,7 @@ export interface paths {
         };
         /**
          * Query master course catalog
-         * @description Retrieve catalog courses with credit units, lecture/lab hours, and repeatable rules. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve catalog courses with credit units, lecture/lab hours, elective eligibility, category classification. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listCourses"];
         put?: never;
@@ -234,9 +293,29 @@ export interface paths {
         };
         /**
          * Query calendar school terms
-         * @description Retrieve academic school terms with lock states and override flags. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve academic school terms with lock states, encoding deadlines, closure notes, and override flags. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listSchoolTerms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/department_term_encoding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query department-scoped grade encoding closure state per school term
+         * @description Retrieve per-department grade-encoding closure records for calendar school terms. Allows Department Heads and Department Staff to close grade encoding for their own department without locking other departments, while global SchoolTerm.is_locked remains Admin-only.
+         */
+        get: operations["listDepartmentTermEncodings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -254,7 +333,7 @@ export interface paths {
         };
         /**
          * Query course offerings
-         * @description Retrieve courses offered in a specific school term, including by-request accommodations. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve courses offered in a specific school term, including section, schedule, instructor, and by-request accommodations. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listCourseOfferings"];
         put?: never;
@@ -274,7 +353,7 @@ export interface paths {
         };
         /**
          * Query adviser assignments
-         * @description Retrieve student-to-adviser longitudinal assignments. RLS-scoped: students view their own assignments; advisers view assigned advisees; admins have full visibility. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve student-to-adviser longitudinal assignments, including safe display names (adviser_name, handed_over_to_name, handover_label) for student and staff views without exposing private reassignment reason text or broadening /rest/v1/profile RLS. RLS-scoped: students view their own assignments; advisers view assigned advisees; department/faculty roles view scoped students; admins have full visibility. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listAdviserAssignments"];
         put?: never;
@@ -294,7 +373,7 @@ export interface paths {
         };
         /**
          * Query student curriculum assignments
-         * @description Retrieve student curriculum catalog assignments. RLS-scoped: students view their own curriculum version assignments; advisers view assigned advisees; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve student curriculum catalog assignments. RLS-scoped: students view their own curriculum version assignments; advisers view assigned advisees; department/faculty roles view scoped students; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listStudentCurriculumAssignments"];
         put?: never;
@@ -314,7 +393,7 @@ export interface paths {
         };
         /**
          * Query student course enrollment attempts
-         * @description Retrieve student enrollment attempts, grades, original completion states, and grade revisions. RLS-scoped: students view only their own attempts; advisers view attempts of assigned advisees; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve student enrollment attempts, grades, midterm_status (graded vs DR), instructor, prerequisite override flags, original completion states, and grade revisions. RLS-scoped: students view only their own attempts; advisers view attempts of assigned advisees; department/faculty roles view scoped students; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listAttempts"];
         put?: never;
@@ -334,7 +413,7 @@ export interface paths {
         };
         /**
          * Query elective checklist mappings
-         * @description Retrieve mappings associating passed course attempts to open elective checklist slots. RLS-scoped: students view their own credited slots; advisers view assigned advisees; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve mappings associating passed course attempts to open elective checklist slots. RLS-scoped: students view their own credited slots; advisers view assigned advisees; department/faculty roles view scoped students; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listElectiveMappings"];
         put?: never;
@@ -354,7 +433,7 @@ export interface paths {
         };
         /**
          * Query course equivalency decisions
-         * @description Retrieve one-to-one transfer or discontinued course substitution decisions. RLS-scoped: students view their own approved substitutions; advisers view assigned advisees; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Retrieve one-to-one transfer or discontinued course substitution decisions. RLS-scoped: students view their own approved substitutions; advisers view assigned advisees; department/faculty roles view scoped students; admins view all. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
          */
         get: operations["listEquivalencyDecisions"];
         put?: never;
@@ -400,9 +479,49 @@ export interface paths {
         head?: never;
         /**
          * Manage an account
-         * @description Admin-only update. Students/advisers cannot edit profiles. Validate target-role fields and protect historical roles/identity; synchronize any Auth-related changes through privileged server logic.
+         * @description Admin-only update. Students/advisers cannot edit profiles. Validate target-role fields and protect historical roles/identity; synchronize any Auth-related changes through privileged server logic. A Dean assignment may exist alone or alongside other authorized roles.
          */
         patch: operations["updateProfile"];
+        trace?: never;
+    };
+    "/functions/v1/accounts/{profile_id}/resend-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend or regenerate an account invitation
+         * @description Department Head, Department Staff, or Admin regenerates and resends an expiring invitation email for an account whose invitation is still pending (`invited`), expired, or previously revoked/declined, without exposing the raw token in API responses. Department Head and Department Staff may only resend invitations for Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` accounts are Admin-only). Invalidates any prior unused token hash, updates `invitation_status` to `pending`, stamps `invitation_sent_at` and `invitation_expires_at` server-side, and writes an audit log entry.
+         */
+        post: operations["resendAccountInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/accounts/{profile_id}/revoke-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a pending account invitation
+         * @description Department Head, Department Staff, or Admin revokes a pending account invitation before redemption, invalidating its token hash, setting `invitation_status` to `revoked`, and writing an audit log entry. Department Head and Department Staff may only revoke invitations for Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` accounts are Admin-only). Already redeemed (`accepted`) invitations cannot be revoked and return `409 Conflict`.
+         */
+        post: operations["revokeAccountInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/functions/v1/catalog/faculty": {
@@ -435,7 +554,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete unreferenced faculty
+         * @description Admin-only, validated transactional catalog operation to delete an unreferenced faculty that has no departments, role assignments, or historical academic records referencing it. Avoids implicit cascade deletes; if the faculty still has child departments or referenced records, returns 409 Conflict. Locks parent/child references and commits an audit log entry with server-derived actor and timestamp in the same transaction.
+         */
+        delete: operations["deleteFaculty"];
         options?: never;
         head?: never;
         /**
@@ -475,7 +598,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete unreferenced academic department
+         * @description Admin-only, validated transactional catalog operation to delete an unreferenced academic department that has no degree programs, courses, role assignments, or student records referencing it. Avoids implicit cascade deletes; if dependent or historical records exist, returns 409 Conflict. Locks parent/child references and commits an audit log entry with server-derived actor and timestamp in the same transaction.
+         */
+        delete: operations["deleteDepartment"];
         options?: never;
         head?: never;
         /**
@@ -515,7 +642,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete unreferenced degree program
+         * @description Admin-only, validated transactional catalog operation to delete an unreferenced degree program that has no curriculum versions, student curriculum assignments, or historical records referencing it. Avoids implicit cascade deletes; if curriculum versions or student records exist, returns 409 Conflict. Locks parent/child references and commits an audit log entry with server-derived actor and timestamp in the same transaction.
+         */
+        delete: operations["deleteProgram"];
         options?: never;
         head?: never;
         /**
@@ -535,8 +666,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create curriculum version
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * Create or clone curriculum version
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Supports creating a blank version or cloning terms and course slots from an existing version via clone_from_version_id. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createCurriculumVersion"];
         delete?: never;
@@ -555,12 +686,16 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete unreferenced curriculum version
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation to delete a draft or unreferenced curriculum version that has no student assignments, curriculum transfer requests, or pair-equivalence rules referencing it. Referenced versions return 409 Conflict and must be retired/closed instead.
+         */
+        delete: operations["deleteCurriculumVersion"];
         options?: never;
         head?: never;
         /**
          * Update curriculum version
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         patch: operations["updateCurriculumVersion"];
         trace?: never;
@@ -576,13 +711,37 @@ export interface paths {
         put?: never;
         /**
          * Create curriculum term
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createCurriculumTerm"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/catalog/curriculum_term/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete unreferenced curriculum term
+         * @description Department Head, Department Staff, or Admin operation to remove an empty or unreferenced curriculum term while preserving at least one term on referenced curriculum versions.
+         */
+        delete: operations["deleteCurriculumTerm"];
+        options?: never;
+        head?: never;
+        /**
+         * Update curriculum term
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation to update year_level or term_sequence on an unreferenced curriculum term.
+         */
+        patch: operations["updateCurriculumTerm"];
         trace?: never;
     };
     "/functions/v1/catalog/curriculum_term_course": {
@@ -596,7 +755,7 @@ export interface paths {
         put?: never;
         /**
          * Add course or elective slot to curriculum term
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createCurriculumTermCourse"];
         delete?: never;
@@ -617,12 +776,16 @@ export interface paths {
         post?: never;
         /**
          * Remove course or elective slot from curriculum term
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         delete: operations["deleteCurriculumTermCourse"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update course or elective slot in curriculum term
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation to edit an unreferenced curriculum slot (course, slot_type, slot_label, or nominal_units) and recompute parent CurriculumVersion.total_units.
+         */
+        patch: operations["updateCurriculumTermCourse"];
         trace?: never;
     };
     "/functions/v1/catalog/course": {
@@ -636,7 +799,7 @@ export interface paths {
         put?: never;
         /**
          * Create course
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Staff, Department Head, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createCourse"];
         delete?: never;
@@ -655,12 +818,16 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete unreferenced course
+         * @description Department Staff, Department Head, or Admin operation to remove a course that has no curriculum slots, offerings, prerequisites, or attempts referencing it; referenced courses must be marked discontinued instead.
+         */
+        delete: operations["deleteCourse"];
         options?: never;
         head?: never;
         /**
          * Update course
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Staff, Department Head, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         patch: operations["updateCourse"];
         trace?: never;
@@ -676,7 +843,7 @@ export interface paths {
         put?: never;
         /**
          * Link prerequisite to course
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Staff, Department Head, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createPrerequisite"];
         delete?: never;
@@ -697,7 +864,7 @@ export interface paths {
         post?: never;
         /**
          * Delete prerequisite linkage
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Staff, Department Head, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         delete: operations["deletePrerequisite"];
         options?: never;
@@ -716,7 +883,7 @@ export interface paths {
         put?: never;
         /**
          * Create school term
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createSchoolTerm"];
         delete?: never;
@@ -740,7 +907,7 @@ export interface paths {
         head?: never;
         /**
          * Update school term
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         patch: operations["updateSchoolTerm"];
         trace?: never;
@@ -756,7 +923,7 @@ export interface paths {
         put?: never;
         /**
          * Create course offering
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Staff, Department Head, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createCourseOffering"];
         delete?: never;
@@ -777,16 +944,56 @@ export interface paths {
         post?: never;
         /**
          * Delete course offering
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Staff, Department Head, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         delete: operations["deleteCourseOffering"];
         options?: never;
         head?: never;
         /**
          * Update course offering
-         * @description Admin-only, validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Staff, Department Head, or Admin validated transactional catalog operation. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         patch: operations["updateCourseOffering"];
+        trace?: never;
+    };
+    "/functions/v1/school-terms/{school_term_id}/close-encoding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close grade encoding for a school term
+         * @description Department Head, Department Staff, or Admin closes grade encoding for the specified school term. Department Head and Department Staff close grade encoding for their own department (`scope: department`, updating the department's `(school_term_id, department_id)` closure state with `is_closed=true` and stamping `closed_by` and `closed_at` server-side). System Administrators may close grade encoding for a specific department (`scope: department`, requiring `department_id`) or institution-wide (`scope: institution`, setting global `SchoolTerm.is_locked=true`). Cross-department or non-Admin institution-wide closure requests are rejected with `403 Forbidden`. Commits an audit log entry in the same transaction.
+         */
+        post: operations["closeSchoolTermEncoding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/school-terms/{school_term_id}/reopen-encoding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen department grade encoding for a school term
+         * @description Department Head or Department Staff reopens their own department's encoding closure; Admin may reopen a specified department. Reject institution scope and cross-department requests. Atomically set is_closed=false and write an audit entry. This does not lift a global lock.
+         */
+        post: operations["reopenDepartmentTermEncoding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/functions/v1/school-terms/{school_term_id}/override": {
@@ -798,7 +1005,7 @@ export interface paths {
         };
         get?: never;
         /**
-         * Set administrator term override
+         * Set term lock override
          * @description Admin sets enabled/disabled; server stamps actor/time and audits old/new state. Never accept client audit metadata. No per-adviser approval queue.
          */
         put: operations["setSchoolTermOverride"];
@@ -819,10 +1026,30 @@ export interface paths {
         get?: never;
         /**
          * Reassign current adviser
-         * @description Current adviser may transfer own student to eligible active adviser without approval; admins manage provisioning/assignments. Lock student and close/open assignment on identical dates in one transaction; history remains immutable and past advisers immediately lose write access.
+         * @description Department Heads and Department Staff reassign a student to an eligible active adviser within their authorized department. Adviser and System Administrator roles alone do not authorize reassignment. Following a cross-department transfer, the destination department's Head or Staff may reassign its student to an eligible active adviser in that department even when the current adviser belongs to the former department. The outgoing assignment remains valid until this transaction; do not grant the outgoing adviser broader department access. Lock student and close/open assignment on identical dates in one transaction; history remains immutable and past advisers immediately lose write access.
          */
         put: operations["reassignAdviser"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/adviser-assignments/bulk-reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk reassign adviser for multiple students
+         * @description Department Head or Department Staff atomically reassigns one or more students to an eligible active adviser within their department, closing each prior AdviserAssignment and opening the new one on identical dates with audit logging and notifications. The caller's department must be each student's current destination department; an existing adviser may belong to the student's former department after a transfer.
+         */
+        post: operations["bulkReassignAdvisers"];
         delete?: never;
         options?: never;
         head?: never;
@@ -839,7 +1066,7 @@ export interface paths {
         get?: never;
         /**
          * Change curriculum assignment
-         * @description Match program to curriculum; close old/open new on same date with reason and audit. Derived Department/College follow program; preserve earlier attempts, decisions and plans.
+         * @description Department Head or Admin changes a student's curriculum assignment. Match program to curriculum; close old/open new on same date with reason and audit. Derived Department/College follow program; preserve earlier attempts, decisions and plans, and auto-apply matching CurriculumPairEquivalence rules where applicable. Changing a curriculum does not itself change the student's adviser assignment; any separate adviser reassignment follows the authorized department workflow and preserves zero-gap continuity.
          */
         put: operations["assignStudentCurriculum"];
         post?: never;
@@ -860,9 +1087,29 @@ export interface paths {
         put?: never;
         /**
          * Record enrollment or missing grades
-         * @description Lock student/offering/attempt and recheck current assignment, selected term membership and strict clearance at commit. Blank new grades enroll; first new midterm requires confirmation. Existing submitted populated grade rejects entire request even if identical. Return actionable conflict codes; no partial grade or audit write. Derive final-only Passed/Failed. Term lock blocks writes unless admin override applies.
+         * @description Lock student/offering/attempt and recheck current assignment, selected term membership and strict clearance at commit (or record an audited prerequisite override when continue_with_prerequisite_override is true with prerequisite_override_reason). Blank new grades enroll; first new midterm requires confirmation. Existing submitted populated grade rejects entire request even if identical. Return actionable conflict codes; no partial grade or audit write. Derive final-only Passed/Failed or explicit INC/DR/NA status. Term lock blocks writes unless override applies. Reject a new attempt if the student has already passed the same course, including via a passed INC completion; corrections to the existing attempt remain available through their audited operations.
          */
         post: operations["recordGrades"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/encode-grades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch-save the Encode Grades term grid
+         * @description Atomically encode or update term enrollment rows, grades, statuses (1.00-5.00, INC, DR, NA), instructors, prerequisite overrides, and staff-only remarks for a student's selected school term from the Encode Grades modal. Obeys term lock and override rules. Reject the entire batch if a new row would retake a course the student has already passed.
+         */
+        post: operations["encodeTermGrades"];
         delete?: never;
         options?: never;
         head?: never;
@@ -887,6 +1134,26 @@ export interface paths {
          * @description Require current adviser, matching owned attempt, editable term, reason and exact revision. Correct grades/status; DR affects course only. Derive status from final grade; midterm never changes GWA. Refresh dependent reads only after commit.
          */
         patch: operations["correctGrades"];
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/attempts/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove unsubmitted or erroneous open-term enrollment row
+         * @description Current adviser removes an ungraded or erroneously added enrollment row from an unlocked school term on the Encode Grades screen. Rejects with 409 Conflict if the school term is locked without override or if the attempt has INC completions, credit/equivalency decisions, or grade flags referencing it.
+         */
+        delete: operations["deleteOpenTermAttempt"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/functions/v1/students/{student_id}/attempts/{attempt_id}/prerequisite-grade": {
@@ -920,7 +1187,7 @@ export interface paths {
         put?: never;
         /**
          * Complete an unresolved INC
-         * @description One first completion, server time, before/on existing deadline using Asia/Manila date. Explicitly permitted even when the original term is locked. Retain stored INC; project Passed <=3/Failed >3. After deadline reject; never backdate or rewrite lapsed INC to Failed.
+         * @description One first completion, server time, before/on existing deadline using Asia/Manila date. Explicitly permitted even when the original term is institution-locked or its department has closed encoding. Retain stored INC; project Passed <=3/Failed >3. After deadline reject; never backdate or rewrite lapsed INC to Failed.
          */
         post: operations["completeINC"];
         delete?: never;
@@ -928,7 +1195,7 @@ export interface paths {
         head?: never;
         /**
          * Correct an existing INC completion
-         * @description Lock owned attempt/completion, require current adviser, reason, expected_updated_at and editable original term. Correction is not the first-completion lock exception.
+         * @description Lock owned attempt/completion, require current adviser, reason, expected_updated_at and editable original term. Correction is not the first-completion lock exception and is blocked by a department encoding closure; an institution lock blocks it unless its override applies.
          */
         patch: operations["correctINCCompletion"];
         trace?: never;
@@ -984,7 +1251,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke elective mapping
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations where they depend on the decision. The underlying attempt and any independently applicable GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeElectiveMapping"];
         delete?: never;
@@ -1044,7 +1311,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke equivalency decision
-         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history.
+         * @description Current adviser, reason, expected_updated_at and student ownership required. Soft revoke atomically with audit; no physical deletion of source or decision history. Revocation takes effect at the server-stamped revocation time: preserve historical report results as of their original time, and exclude revoked credit from current checklist and future calculations where they depend on the decision. The underlying attempt and any independently applicable GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots needed to reproduce historical results.
          */
         post: operations["revokeEquivalencyDecision"];
         delete?: never;
@@ -1083,14 +1350,34 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Append internal advising note
-         * @description Current adviser or authorized admin appends internal note; historical advisers read only. Server stamps author/time. Immediately invalidate recent notes; never return to students.
+         * Append advising note
+         * @description Current adviser or authorized admin appends an advising note; historical advisers read only. Server stamps author/time. Under B9, active and archived advising notes are read-only visible to the student on their Notes tab, while attempt_remark remains strictly staff-only.
          */
         post: operations["addAdvisingNote"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Archive or restore an advising note
+         * @description Current adviser or admin toggles the archive state (is_archived) of an advising note without deleting its text or audit trail. Archived notes remain visible to the student they concern.
+         */
+        patch: operations["updateAdvisingNoteArchiveState"];
         trace?: never;
     };
     "/functions/v1/students/{student_id}/remarks": {
@@ -1124,7 +1411,7 @@ export interface paths {
         put?: never;
         /**
          * Preview curriculum shift
-         * @description Pure read-only projection using course identity and effective passing sources. Never change assignments, attempts, credits, approvals or plans. Elective/equivalency candidates require review and are not automatically approved.
+         * @description Pure read-only projection using course identity, CurriculumPairEquivalence rules, and effective passing sources. Never change assignments, attempts, credits, approvals or plans. Unmatched candidates require manual equivalency/elective review.
          */
         post: operations["previewCurriculumShift"];
         delete?: never;
@@ -1162,7 +1449,7 @@ export interface paths {
         };
         /**
          * Read academic summary
-         * @description Scope own/assigned/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Most recent pass remains counted for none/grade_replacement; later failures do not undo it. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
+         * @description Scope own/assigned/department/faculty/admin records. Use academically ordered effective attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA. Each graded attempt remains in its original historical term GWA. Until a later retake has a numeric final or completion grade, the earlier failure counts in cumulative GWA. Once the later grade is recorded, it replaces the failure in cumulative GWA; the original remains on the transcript, marked Repeated and excluded from cumulative GWA. Recompute cumulative GWA after recording the result. Non-numeric retake outcomes, including INC and DR, do not replace or duplicate the earlier failure in cumulative GWA until a numeric final or INC completion grade is recorded. A lapsed INC retake may count as 5.00 in its historical term GWA but does not add a second cumulative contribution while the earlier failure remains selected. Cumulative GWA is the sum of each included attempt's grade times its units divided by total included units; it is not an equal-weight average of semester GWAs. Course completion and earned units count the passing attempt once. Historical records remain intact if legacy data contains later attempts after a pass. Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
          */
         get: operations["getAcademicSummary"];
         put?: never;
@@ -1281,8 +1568,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Read recent internal notes
-         * @description Read-only, row-scoped PostgREST collection. RLS hides unauthorized records; a missing/hidden row is 200 [] rather than a promised 404. Bound page size at runtime. Select only published safe columns. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * Read advising notes
+         * @description Read-only, row-scoped PostgREST collection. Students read their own active and archived advising notes on their Notes tab, while advisers, Department Heads, and Admins view active and archived notes within their scope.
          */
         get: operations["listAdvisingNotes"];
         put?: never;
@@ -1302,7 +1589,7 @@ export interface paths {
         };
         /**
          * Read internal attempt or slot remarks
-         * @description Read-only, row-scoped PostgREST collection. RLS hides unauthorized records; a missing/hidden row is 200 [] rather than a promised 404. Bound page size at runtime. Select only published safe columns. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Read-only, row-scoped PostgREST collection. Strictly staff-only: students never access attempt_remark.
          */
         get: operations["listAttemptRemarks"];
         put?: never;
@@ -1322,7 +1609,7 @@ export interface paths {
         };
         /**
          * Read immutable scoped audit history
-         * @description Read-only, row-scoped PostgREST collection. RLS hides unauthorized records; a missing/hidden row is 200 [] rather than a promised 404. Bound page size at runtime. Select only published safe columns. Flat columns are allowlisted per x-projection-fields; role metadata documents checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column requests may return 403.
+         * @description Read-only, row-scoped PostgREST collection. Advisers view assigned advisees; Department Heads view department-scoped entries; Deans view faculty-scoped entries; Admins view all entries. Supports actor, action, action_category, entity_type, student, free-text search, and bounded created_at range filtering (both single boundary via `created_at` and lower+upper bounds via `and=(created_at.gte.<from>,created_at.lte.<to>)`).
          */
         get: operations["listAuditLogEntries"];
         put?: never;
@@ -1342,9 +1629,29 @@ export interface paths {
         };
         /**
          * List accounts with organization filters
-         * @description Combine role, College and Department filters. Student organization derives from curriculum/program; advisers filter by assigned College without fabricated Department. Paginate and bound search; return no password/invitation material.
+         * @description Combine role, College and Department filters. Student organization derives from curriculum/program; staff accounts include multi-role assignments. Department Heads and Department Staff read department-scoped accounts; Deans read faculty-scoped accounts; Admins have institution-wide access.
          */
         get: operations["listAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List and filter student academic roster
+         * @description Paginated, server-filtered student roster and advisee list for Adviser (`My Advisees`), Department Head (`Student Records`, `Advisee Assignments`), Department Staff (`Student Records`), Dean (`Student Records`), and System Administrator (`Student Records`). Combines profile identity, active curriculum/program and entry batch, derived year level, cumulative/curriculum GWA, units earned vs. total curriculum units, academic standing, deficiency count, active adviser assignment (and handover metadata), and last advising/activity timestamp without N+1 client waterfalls. Row visibility is strictly enforced server-side per caller role and assignment scope.
+         */
+        get: operations["listStudentRoster"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1382,7 +1689,7 @@ export interface paths {
         };
         /**
          * Read eligible course recommendations
-         * @description One curriculum term beyond furthest recorded attempt; eligible unfulfilled and failed/lapsed retakes, with actual selected-term offerings, strict clearance and Elective/By request/Retake badges. Exclude completed/currently enrolled/unavailable requirements; timing is student choice.
+         * @description One curriculum term beyond furthest recorded attempt; eligible unfulfilled and failed/lapsed retakes, with actual selected-term offerings, strict clearance and Elective/By request/Retake badges. Exclude completed/currently enrolled/unavailable requirements; timing is student choice. Returns the excluded-courses count in the `X-Excluded-Count` response header so the UI can render "Excluded: N courses (completed, enrolled, or not offered)" alongside the recommendation items.
          */
         get: operations["listRecommendations"];
         put?: never;
@@ -1402,7 +1709,7 @@ export interface paths {
         };
         /**
          * Read interactive degree checklist
-         * @description Scoped interactive checklist with effective source provenance/actual units; student-safe response has no notes or justifications.
+         * @description Scoped interactive checklist with effective source provenance/actual units and student-safe grade fix history; student-safe response has no staff remarks or internal justifications.
          */
         get: operations["getChecklist"];
         put?: never;
@@ -1422,12 +1729,516 @@ export interface paths {
         };
         /**
          * Read newest-first semester grades
-         * @description Return terms newest first by academic chronological key. Use effective INC completion results and final-only term GWA; data-entry time must not reorder academic history. Bound total attempt rows as well as returned term groups.
+         * @description Return terms newest first by academic chronological key. Use effective INC completion results and final-only historical term GWA; data-entry time must not reorder academic history. Mark a failure superseded by a later graded retake as Repeated and exclude it from cumulative GWA while retaining the original grade and term history. Bound total attempt rows and term groups.
          */
         get: operations["getTermGrades"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/grade_flag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query student grade flags
+         * @description Read-only PostgREST collection of student-submitted grade flags (FR-FLG-01). Students read their own grade flags; advisers read flags for assigned advisees; Department Heads read department-scoped flags; Admins read all flags.
+         */
+        get: operations["listGradeFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/grade-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a student grade flag
+         * @description Student submits an open grade flag on one of their own recorded attempts (FR-FLG-01) with issue_type and details, notifying the assigned adviser and writing an audit log entry.
+         */
+        post: operations["createGradeFlag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/grade-flags/{flag_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve or reject a student grade flag
+         * @description Current adviser (or Department Head / Admin for unassigned or escalated flags) resolves an open grade flag by either correcting the grade (obeying term lock/override rules and VSU DR invariants, and incrementing Attempt.revision) or rejecting the flag with a required resolution_note, notifying the student and writing an audit log entry.
+         */
+        post: operations["resolveGradeFlag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/grades/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview or commit batch grade import
+         * @description Adviser previews or commits a batch of grade rows for assigned advisees (FR-IMP-01). Separates valid rows from rejected rows (unassigned student, locked term without override, unknown course offering, invalid grade token, or a new attempt at an already-passed course) and, when mode is commit, atomically writes all valid rows and audit log entries.
+         */
+        post: operations["importGradesBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/curriculum_transfer_request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query curriculum transfer requests
+         * @description Read-only PostgREST collection of adviser-endorsed curriculum transfer requests (FR-TRN-01).
+         */
+        get: operations["listCurriculumTransferRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/curriculum-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Endorse a student curriculum transfer request
+         * @description Current adviser submits a pending CurriculumTransferRequest for an assigned advisee to move to a target CurriculumVersion (FR-TRN-01), notifying the Department Head and recording an audit log entry.
+         */
+        post: operations["endorseCurriculumTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/curriculum-transfers/{transfer_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve or reject a curriculum transfer request
+         * @description Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When approved, atomically closes the prior StudentCurriculumAssignment, opens the new one, applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and commits the audit log entry. Approval does not itself change the student's adviser assignment; after a cross-department transfer, the existing adviser remains current for that student, including current-adviser access limited to the assignment, until the destination department's Head or Staff separately reassigns the student to an eligible active adviser there. This does not grant broader access to the destination department. Reassignment preserves zero-gap continuity. Rejection never changes assignments.
+         */
+        post: operations["decideCurriculumTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/curriculum_pair_equivalence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query curriculum-pair equivalence rules
+         * @description Read-only PostgREST collection of reusable course equivalence mappings between a source CurriculumVersion and a target CurriculumVersion (FR-EQV-08).
+         */
+        get: operations["listCurriculumPairEquivalences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/catalog/curriculum-pair-equivalences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create curriculum-pair equivalence rule
+         * @description Department Head or Admin creates a reusable course equivalence rule between two curriculum versions (FR-EQV-08).
+         */
+        post: operations["createCurriculumPairEquivalence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/catalog/curriculum-pair-equivalences/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete curriculum-pair equivalence rule
+         * @description Department Head or Admin removes a curriculum-pair equivalence rule.
+         */
+        delete: operations["deleteCurriculumPairEquivalence"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/outside_credit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query outside credits (Transferee / Shiftee)
+         * @description Read-only PostgREST collection of approved outside/transfer credits (FR-CRD-01).
+         */
+        get: operations["listOutsideCredits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/outside-credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Credit an outside or shiftee course to a curriculum slot
+         * @description Department Head or Admin credits a passed course from a previous school (Transferee) or previous VSU program (Shiftee) toward an open curriculum slot (FR-CRD-01). In the same transaction, reject duplicate live credit for the same student, normalized origin and original course code (trimmed, whitespace-collapsed and case-folded), and reject a slot already satisfied by direct completion, an elective mapping, equivalency or other outside credit. Lock the affected student and decisions to prevent concurrent duplicates. Correct an existing credit through audited revocation and replacement; never count the same source or slot twice.
+         */
+        post: operations["createOutsideCredit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/outside-credits/{credit_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke an outside or shiftee credit decision
+         * @description Department Head or Admin soft-revokes an outside credit decision with a required reason and expected_updated_at optimistic concurrency guard, preserving historical records and writing an audit log entry.
+         */
+        post: operations["revokeOutsideCredit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview or commit student directory spreadsheet import
+         * @description Department Head, Department Staff, or Admin previews or commits a batch of student accounts from CSV/TSV/spreadsheet rows (FR-ADM-14), validating student_number format YY-N-NNNNN, institutional email uniqueness, matching active curriculum version, and a required eligible active initial adviser for every row. Invalid rows are rejected; committing a valid row creates its student and initial assignments atomically.
+         */
+        post: operations["importStudentsBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/notification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query user notifications
+         * @description Read-only PostgREST collection of in-app notifications scoped to the authenticated user's recipient_id (FR-NOT-01).
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/notifications/mark-read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark one, selected, or all notifications as read or unread
+         * @description Authenticated user marks a single notification, a bounded list of notifications, or all of their notifications as read (or unread when is_read=false) (FR-NOT-01).
+         */
+        post: operations["markNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/notifications/evaluate-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Evaluate idempotent deadline and standing notifications
+         * @description Evaluates deadline-driven and threshold-driven notifications (approaching INC deadlines, lapsed INCs, academic standing / delinquency changes, approaching grade-encoding closure, unassigned students, expiring account invitations, and overdue backup reminders) as of reference_date (defaults to current Asia/Manila date). Uses deterministic dedupe_key values so repeated evaluations never emit duplicate notifications. In production, pg_cron invokes the same server evaluation routine daily; in mock/MSW testing, handlers run it lazily on session bootstrap and allow Department Heads / Admins (or test harnesses) to pass any reference_date to simulate time-based alerts deterministically.
+         */
+        post: operations["evaluateScheduledNotifications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/reports/adviser-dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read adviser dashboard summary and advisee roster metrics
+         * @description Retrieve advisee counts, at-risk/expiring-INC/open-flag counts, year-level distribution, and advisee roster summaries for the authenticated adviser (FR-ADV-01).
+         */
+        get: operations["getAdviserDashboardReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/reports/department": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read department cohort analytics and at-risk roster
+         * @description Retrieve department-level cohort analytics (total students, encoding progress, standing distribution, year-level breakdown, course failure rates, and at-risk roster) filtered by school_term_id and program_id (FR-RPT-01).
+         */
+        get: operations["getDepartmentReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/reports/faculty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read faculty-wide Dean analytics and cross-department comparison
+         * @description Retrieve faculty-wide KPIs, cross-department comparison table, standing distribution, and faculty-wide at-risk student list for the Dean and Admin views (FR-RPT-01).
+         */
+        get: operations["getFacultyReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/system_settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read system academic standing thresholds and backup metadata
+         * @description Read-only PostgREST projection of system/department academic standing delinquency thresholds (warning_pct, probation_pct, dismissal_pct), sender_email, and last_backup_at metadata (FR-SET-01).
+         */
+        get: operations["getSystemSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update academic standing delinquency thresholds and sender email
+         * @description Department Head or Admin updates configurable academic standing failure-percentage thresholds (0 < warning_pct < probation_pct < dismissal_pct <= 100) and sender_email (FR-SET-01).
+         */
+        put: operations["updateSystemSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/settings/record-backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record completed database backup timestamp
+         * @description Department Head or Admin records a completed database backup timestamp and writes an audit log entry (FR-SET-01).
+         */
+        post: operations["recordCompletedBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/audit/view-event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record sensitive student-record view, report view, or export audit event
+         * @description Records an append-only audit log entry when an authorized user views a sensitive student record, views a department/faculty/admin summary report (`report_viewed`), or confirms a PDF/CSV export (FR-AUD-05). Students may log events only for their own authorized record and exports; staff may log events only within their authorized record or report scope. Pre-authentication or auth-lifecycle events (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase Auth hooks and Edge Functions—never via this authenticated client endpoint.
+         */
+        post: operations["recordAuditViewEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions/v1/students/{student_id}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload or update student profile photo
+         * @description Student (for own profile) or Admin updates the student's profile photo (FR-AUTH-15) after uploading the image object to the private student-photo Supabase Storage bucket. Enforces JPEG or PNG content types (`image/jpeg`, `image/png`) and a maximum file size of 2 MB (`2,097,152` bytes), verifying the storage object metadata server-side before committing the profile photo URL and audit entry.
+         */
+        put: operations["uploadStudentPhoto"];
+        post?: never;
+        /**
+         * Remove student profile photo
+         * @description Student (for own profile) or Admin removes the student's profile photo (FR-AUTH-15).
+         */
+        delete: operations["deleteStudentPhoto"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1464,32 +2275,58 @@ export interface components {
          * @description User role within SAAIS
          * @enum {string}
          */
-        RoleType: "student" | "adviser" | "admin";
+        RoleType: "student" | "adviser" | "department_head" | "department_staff" | "dean" | "admin";
         /**
          * @description Account status
          * @enum {string}
          */
         ProfileStatus: "invited" | "active" | "disabled";
         /**
+         * @description Lifecycle status of an account invitation without exposing raw invitation tokens
+         * @enum {string}
+         */
+        InvitationStatus: "pending" | "accepted" | "expired" | "declined" | "revoked";
+        /**
+         * @description Course catalog category filter/badge (Major, GE, Elective, PE, NSTP, Foundation, Service)
+         * @enum {string}
+         */
+        CourseCategory: "major" | "ge" | "elective" | "pe" | "nstp" | "foundation" | "service";
+        /**
+         * @description High-level (`view`, `change`, `sign_in`) and granular audit action filter category for Audit Log views
+         * @enum {string}
+         */
+        AuditActionCategory: "view" | "change" | "sign_in" | "record_view" | "grade_update" | "plan_save" | "note_change" | "override" | "export" | "auth_account" | "catalog_term";
+        /**
          * @description Program status
          * @enum {string}
          */
-        ProgramStatus: "active" | "archived";
+        ProgramStatus: "active" | "inactive" | "archived";
         /**
          * @description Curriculum version lifecycle status
          * @enum {string}
          */
-        CurriculumVersionStatus: "draft" | "active" | "teach_out" | "closed";
+        CurriculumVersionStatus: "draft" | "active" | "retired" | "teach_out" | "closed";
+        /**
+         * @description Curriculum slot classification (required/major course, departmental/technical elective, GE, PE, or NSTP)
+         * @enum {string}
+         */
+        CurriculumSlotType: "required" | "elective" | "ge" | "pe" | "nstp";
         /**
          * @description Course catalog offering status
          * @enum {string}
          */
-        CourseStatus: "active" | "discontinued";
+        CourseStatus: "active" | "inactive" | "discontinued";
         /**
-         * @description Course retake credit rule
+         * @deprecated
+         * @description Legacy compatibility field; only none is accepted. A student may retake a course that has not been passed, but cannot take the same course again after passing it.
          * @enum {string}
          */
-        RepeatableType: "none" | "grade_replacement" | "additional_credit";
+        RepeatableType: "none";
+        /**
+         * @description Midterm outcome status (graded numeric midterm vs VSU DR midterm drop)
+         * @enum {string}
+         */
+        MidtermStatus: "graded" | "dr";
         /**
          * @description Prerequisite linkage enforcement type
          * @enum {string}
@@ -1510,8 +2347,8 @@ export interface components {
          * @enum {string}
          */
         SchoolTermType: "1st Semester" | "2nd Semester" | "Summer";
-        /** @description Admin provisions identity and role-specific academic assignments atomically before invitation completion. Students require matching program/curriculum and an active adviser; advisers require College. Auth invitations and database commit are coordinated with recovery, not claimed to be a distributed SQL transaction. */
-        InviteRequest: components["schemas"]["StudentInviteRequest"] | components["schemas"]["AdviserInviteRequest"] | components["schemas"]["AdminInviteRequest"];
+        /** @description Admin or Department Staff/Head provisions identity and role-specific academic assignments atomically before invitation completion. Students require matching program/curriculum and an required eligible active adviser; advisers and staff roles require organizational scope. When any requested role is student, use StudentInviteRequest with the required student details and adviser; other invite variants cannot add a student role. Department Head and Department Staff may provision Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` grants remain Admin-only). Unified provisioning creates the pre-registered `Profile` (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link. */
+        InviteRequest: components["schemas"]["StudentInviteRequest"] | components["schemas"]["AdviserInviteRequest"] | components["schemas"]["AdminInviteRequest"] | components["schemas"]["StaffRoleInviteRequest"];
         InviteResponse: {
             /** @example true */
             success: boolean;
@@ -1519,11 +2356,19 @@ export interface components {
             message: string;
             /** Format: uuid */
             profile_id: string;
+            invitation_status?: components["schemas"]["InvitationStatus"];
+            /** Format: date-time */
+            invitation_sent_at?: string;
+            /** Format: date-time */
+            invitation_expires_at?: string;
         };
         VerifyInviteRequest: {
             /** @description Opaque application invitation token, not a user JWT, OAuth authorization code, refresh token or Supabase token_hash. Validate expiry and single-use redemption server-side; never log the token or password. */
             token: string;
-            /** Format: password */
+            /**
+             * Format: password
+             * @description Initial account password: 12 to 128 characters, requiring at least one uppercase letter, one lowercase letter, and one digit. Validated server-side before activating the account.
+             */
             password: string;
         };
         /** @description Application activation acknowledgement only. Does not create a browser Supabase session or contain Auth access/refresh tokens. */
@@ -1533,60 +2378,183 @@ export interface components {
             /** @example Account successfully activated. */
             message: string;
         };
+        PreviewInviteRequest: {
+            /** @description Opaque application invitation token passed in the JSON request body (never in query strings) to preview invitation details without consuming the token. */
+            token: string;
+        };
+        PreviewInviteResponse: {
+            /** @description True when the invitation is still pending and unredeemed/unexpired. */
+            valid: boolean;
+            status: components["schemas"]["InvitationStatus"];
+            /**
+             * Format: email
+             * @description Invited institutional email address (`@vsu.edu.ph`).
+             */
+            email: string;
+            full_name: string;
+            role: components["schemas"]["RoleType"];
+            roles: components["schemas"]["RoleType"][];
+            /** @description Display name of the invited account's assigned or derived College/Faculty. */
+            faculty_name?: string | null;
+            /** @description Display name of the invited account's assigned or derived Department. */
+            department_name?: string | null;
+            /** @description Student degree program code when the invitation is for a student. */
+            program_code?: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the invitation link expires.
+             */
+            expires_at: string;
+        };
+        DeclineInviteRequest: {
+            /** @description Opaque application invitation token passed in the JSON request body to decline a pending invitation without creating a session. */
+            token: string;
+            reason?: string | null;
+        };
+        DeclineInviteResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example Invitation declined. */
+            message: string;
+            invitation_status: components["schemas"]["InvitationStatus"];
+        };
+        ResendInviteResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example Invitation regenerated and dispatched. */
+            message: string;
+            /** Format: uuid */
+            profile_id: string;
+            invitation_status: components["schemas"]["InvitationStatus"];
+            /** Format: date-time */
+            invitation_sent_at: string;
+            /** Format: date-time */
+            invitation_expires_at: string;
+        };
+        RevokeInviteRequest: {
+            reason?: string | null;
+        };
+        RoleAssignment: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            profile_id: string;
+            role: components["schemas"]["RoleType"];
+            /** Format: uuid */
+            faculty_id?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        RoleAssignmentInput: {
+            role: components["schemas"]["RoleType"];
+            /** Format: uuid */
+            faculty_id?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+        };
         Profile: {
             /** Format: uuid */
             readonly id: string;
             role: components["schemas"]["RoleType"];
+            roles?: components["schemas"]["RoleType"][];
             /** Format: email */
             email: string;
             full_name: string;
             student_number?: string | null;
             status: components["schemas"]["ProfileStatus"];
+            /** @description Token-free invitation lifecycle state for account directory views. */
+            readonly invitation_status?: components["schemas"]["InvitationStatus"] | null;
+            /** Format: date-time */
+            readonly invitation_sent_at?: string | null;
+            /** Format: date-time */
+            readonly invitation_expires_at?: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
             /** Format: uuid */
             faculty_id?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+            avatar_url?: string | null;
+            /** @description Adviser or faculty consultation schedule displayed on Student Dashboard / Mobile Student Home. */
+            consultation_hours?: string | null;
         };
         /** @description Admin-only account fields; role-specific organization and retained-history checks apply server-side. Student program changes use the curriculum-assignment transaction. Auth identity and profile must remain consistent. Students have no profile mutation operation. */
         AdminProfileUpdate: {
             full_name?: string;
             role?: components["schemas"]["RoleType"];
+            role_assignments?: components["schemas"]["RoleAssignmentInput"][];
             status?: components["schemas"]["ProfileStatus"];
             /** Format: uuid */
             faculty_id?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+            avatar_url?: string | null;
+            consultation_hours?: string | null;
             student_number?: string | null;
         };
         Faculty: {
             /** Format: uuid */
             readonly id: string;
+            /** @example FECS */
+            code?: string | null;
             /** @example Faculty of Engineering & Computer Studies */
             name: string;
+            /** @example Office of the Dean */
+            letterhead_prefix?: string | null;
+            /** @example Faculty of Engineering and Computer Studies */
+            letterhead_name?: string | null;
+            /** @description Derived active Dean display name for organization management tables. */
+            readonly dean_name?: string | null;
         };
         FacultyInsert: {
+            code?: string | null;
             name: string;
+            letterhead_prefix?: string | null;
+            letterhead_name?: string | null;
         };
         FacultyUpdate: {
+            code?: string | null;
             name?: string;
+            letterhead_prefix?: string | null;
+            letterhead_name?: string | null;
         };
         Department: {
             /** Format: uuid */
             readonly id: string;
             /** Format: uuid */
             faculty_id: string;
+            /** @example DCS */
+            code?: string | null;
             /** @example Department of Computer Science */
             name: string;
+            /** @example Department of Computer Science */
+            letterhead_prefix?: string | null;
+            /** @example College of Engineering and Technology */
+            letterhead_name?: string | null;
+            /** @description Derived active Department Head display name for organization and letterhead headers. */
+            readonly department_head_name?: string | null;
+            /** @description Derived active parent Faculty Dean display name. */
+            readonly dean_name?: string | null;
         };
         DepartmentInsert: {
             /** Format: uuid */
             faculty_id: string;
+            code?: string | null;
             name: string;
+            letterhead_prefix?: string | null;
+            letterhead_name?: string | null;
         };
         DepartmentUpdate: {
             /** Format: uuid */
             faculty_id?: string;
+            code?: string | null;
             name?: string;
+            letterhead_prefix?: string | null;
+            letterhead_name?: string | null;
         };
         Program: {
             /** Format: uuid */
@@ -1609,7 +2577,8 @@ export interface components {
             status: components["schemas"]["ProgramStatus"];
             /** Format: uuid */
             department_id: string;
-            initial_curriculum: components["schemas"]["CurriculumDefinition"];
+            /** @description Optional initial curriculum version created in the same transaction. When omitted or null, the degree program is created first and curriculum versions are added afterward via `POST /functions/v1/catalog/curriculum_version`. */
+            initial_curriculum?: components["schemas"]["CurriculumDefinition"] | null;
         };
         ProgramUpdate: {
             code?: string;
@@ -1638,12 +2607,30 @@ export interface components {
             /** @example 162 */
             total_units: number;
             status: components["schemas"]["CurriculumVersionStatus"];
+            /**
+             * @description Server-derived count of students assigned to this curriculum version, enabling retirement/deletion eligibility checks without privileged student-assignment queries.
+             * @example 142
+             */
+            readonly enrolled_student_count?: number;
         };
         CurriculumVersionInsert: {
             /** Format: uuid */
             program_id: string;
-            curriculum: components["schemas"]["CurriculumDefinition"];
-        };
+            /**
+             * Format: uuid
+             * @description Optional existing curriculum version UUID to clone terms and slots from.
+             */
+            clone_from_version_id?: string | null;
+            version_label?: string;
+            /** Format: date */
+            effective_start?: string;
+            /** Format: date */
+            effective_end?: string | null;
+            delinquency_threshold?: number;
+            total_units?: number;
+            status?: components["schemas"]["CurriculumVersionStatus"];
+            curriculum?: components["schemas"]["CurriculumDefinition"];
+        } | unknown | unknown;
         CurriculumVersionUpdate: {
             version_label?: string;
             /** Format: date */
@@ -1669,7 +2656,12 @@ export interface components {
             curriculum_version_id: string;
             year_level: number;
             term_sequence: number;
+            /** @default [] */
             slots: components["schemas"]["CurriculumSlotDefinition"][];
+        };
+        CurriculumTermUpdate: {
+            year_level?: number;
+            term_sequence?: number;
         };
         CurriculumTermCourse: {
             /** Format: uuid */
@@ -1680,6 +2672,7 @@ export interface components {
             course_id?: string | null;
             /** @example false */
             is_elective_slot: boolean;
+            slot_type?: components["schemas"]["CurriculumSlotType"];
             /** @example null */
             slot_label?: string | null;
             /** @example 3 */
@@ -1692,8 +2685,28 @@ export interface components {
             course_id?: string | null;
             /** @default false */
             is_elective_slot: boolean;
+            /** @default required */
+            slot_type: components["schemas"]["CurriculumSlotType"];
             slot_label?: string | null;
             nominal_units: number;
+        };
+        CurriculumTermCourseUpdate: {
+            /** Format: uuid */
+            course_id?: string | null;
+            is_elective_slot?: boolean;
+            slot_type?: components["schemas"]["CurriculumSlotType"];
+            slot_label?: string | null;
+            nominal_units?: number;
+        };
+        /** @description Optional curriculum term slot attachment executed atomically when adding a new course from a curriculum term's "+ Create new course for this term" action. */
+        InitialCurriculumSlotInput: {
+            /** Format: uuid */
+            curriculum_version_id: string;
+            year_level: number;
+            term_sequence: number;
+            /** @default required */
+            slot_type: components["schemas"]["CurriculumSlotType"];
+            slot_label?: string | null;
         };
         Course: {
             /** Format: uuid */
@@ -1704,12 +2717,11 @@ export interface components {
             code: string;
             /** @example Introduction to Computer Science */
             title: string;
-            /** @example 3 */
-            lecture_hours: number;
-            /** @example 0 */
-            lab_hours: number;
+            category?: components["schemas"]["CourseCategory"];
             /** @example 3 */
             units: number;
+            /** @example false */
+            is_elective?: boolean;
             status: components["schemas"]["CourseStatus"];
             repeatable_type: components["schemas"]["RepeatableType"];
         };
@@ -1718,22 +2730,25 @@ export interface components {
             department_id: string;
             code: string;
             title: string;
-            lecture_hours: number;
-            lab_hours: number;
+            /** @default major */
+            category: components["schemas"]["CourseCategory"];
             units: number;
+            /** @default false */
+            is_elective: boolean;
             /** @default active */
             status: components["schemas"]["CourseStatus"];
             /** @default none */
             repeatable_type: components["schemas"]["RepeatableType"];
+            initial_curriculum_slot?: components["schemas"]["InitialCurriculumSlotInput"] | null;
         };
         CourseUpdate: {
             /** Format: uuid */
             department_id?: string;
             code?: string;
             title?: string;
-            lecture_hours?: number;
-            lab_hours?: number;
+            category?: components["schemas"]["CourseCategory"];
             units?: number;
+            is_elective?: boolean;
             status?: components["schemas"]["CourseStatus"];
             repeatable_type?: components["schemas"]["RepeatableType"];
         };
@@ -1752,6 +2767,25 @@ export interface components {
             /** Format: uuid */
             prerequisite_course_id: string;
             type: components["schemas"]["PrerequisiteType"];
+        };
+        /** @description Department-scoped grade encoding closure state for a `(school_term_id, department_id)` pair, distinct from the institution-wide `SchoolTerm.is_locked` flag. */
+        DepartmentTermEncodingClosure: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            school_term_id: string;
+            /** Format: uuid */
+            department_id: string;
+            /** @example true */
+            is_closed: boolean;
+            /** Format: uuid */
+            readonly closed_by?: string | null;
+            readonly closed_by_name?: string | null;
+            /** Format: date-time */
+            readonly updated_at?: string;
+            /** Format: date-time */
+            readonly closed_at?: string | null;
+            closure_note?: string | null;
         };
         SchoolTerm: {
             /** Format: uuid */
@@ -1772,7 +2806,19 @@ export interface components {
             /** Format: date-time */
             readonly override_at?: string | null;
             /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
             ends_on: string;
+            /** Format: date */
+            encoding_deadline?: string | null;
+            /** Format: uuid */
+            readonly closed_by?: string | null;
+            readonly closed_by_name?: string | null;
+            /** Format: date-time */
+            readonly closed_at?: string | null;
+            closure_note?: string | null;
+            /** @description Department-scoped grade encoding closure entries visible to the caller when returned by term closure or override Edge Functions. */
+            readonly department_closures?: components["schemas"]["DepartmentTermEncodingClosure"][];
             /** Format: date */
             readonly default_inc_deadline: string;
             readonly chronological_key: number;
@@ -1782,18 +2828,40 @@ export interface components {
             end_year: number;
             term_type: components["schemas"]["SchoolTermType"];
             /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
             ends_on: string;
+            /** Format: date */
+            encoding_deadline?: string | null;
             /** @default false */
             is_locked: boolean;
         };
-        /** @description Admin-only term settings. Generated year/chronology/default INC date and override actor/time are not request fields. Changing ends_on does not rewrite existing INC deadlines. Referenced calendar identity is protected server-side. */
+        /** @description Admin or Department Staff/Head term settings. Generated year/chronology/default INC date and override actor/time are not request fields. Changing ends_on does not rewrite existing INC deadlines. Referenced calendar identity is protected server-side. */
         SchoolTermUpdate: {
             start_year?: number;
             end_year?: number;
             term_type?: components["schemas"]["SchoolTermType"];
             /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
             ends_on?: string;
+            /** Format: date */
+            encoding_deadline?: string | null;
             is_locked?: boolean;
+        };
+        SchoolTermCloseEncodingRequest: {
+            /**
+             * @description Closure scope: `department` closes grade encoding for a single department (`department_head` and `department_staff` are restricted to their own department); `institution` sets global `SchoolTerm.is_locked=true` and is Admin-only.
+             * @default department
+             * @enum {string}
+             */
+            scope: "department" | "institution";
+            /**
+             * Format: uuid
+             * @description Target department UUID when `scope: department`. For Department Head and Department Staff callers, defaults to and must match the caller's assigned department. Required when an Admin closes encoding for a specific department.
+             */
+            department_id?: string | null;
+            closure_note?: string | null;
         };
         CourseOffering: {
             /** Format: uuid */
@@ -1802,6 +2870,10 @@ export interface components {
             school_term_id: string;
             /** Format: uuid */
             course_id: string;
+            section?: string | null;
+            schedule?: string | null;
+            /** @description Default instructor name for this course offering/section. */
+            instructor?: string | null;
             /** @example false */
             is_by_request: boolean;
         };
@@ -1810,10 +2882,16 @@ export interface components {
             school_term_id: string;
             /** Format: uuid */
             course_id: string;
+            section?: string | null;
+            schedule?: string | null;
+            instructor?: string | null;
             /** @default false */
             is_by_request: boolean;
         };
         CourseOfferingUpdate: {
+            section?: string | null;
+            schedule?: string | null;
+            instructor?: string | null;
             is_by_request?: boolean;
         };
         AdviserAssignment: {
@@ -1821,6 +2899,20 @@ export interface components {
             readonly id: string;
             /** Format: uuid */
             adviser_id: string;
+            /** @description Adviser display name safe for Student Profile and advisee history views. */
+            readonly adviser_name?: string | null;
+            /**
+             * Format: email
+             * @description Adviser institutional email safe for Student Dashboard and Mobile Student Home contact cards.
+             */
+            readonly adviser_email?: string | null;
+            /** @description Adviser faculty/college display name safe for Student Dashboard contact cards. */
+            readonly adviser_faculty_name?: string | null;
+            /**
+             * @description Adviser consultation hours displayed on Student Dashboard and Mobile Student Home.
+             * @example Tue & Thu, 13:00–16:00
+             */
+            readonly adviser_consultation_hours?: string | null;
             /** Format: uuid */
             student_id: string;
             /**
@@ -1833,6 +2925,15 @@ export interface components {
              * @example null
              */
             end_date?: string | null;
+            /**
+             * Format: uuid
+             * @description Succeeding adviser UUID when this assignment was closed by a handover.
+             */
+            readonly handed_over_to_adviser_id?: string | null;
+            /** @description Succeeding adviser display name when this assignment was closed by a handover. */
+            readonly handed_over_to_name?: string | null;
+            /** @example Handed over to Prof. Reyes (Jan 2026) */
+            readonly handover_label?: string | null;
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -1847,6 +2948,7 @@ export interface components {
             start_date: string;
             /** Format: date */
             end_date?: string | null;
+            change_note?: string | null;
             /** Format: date-time */
             readonly created_at?: string;
         };
@@ -1860,10 +2962,14 @@ export interface components {
             /** Format: uuid */
             curriculum_term_course_id: string | null;
             status: components["schemas"]["AttemptStatus"];
+            midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade: number | null;
             final_grade: number | null;
             /** Format: date */
             inc_deadline: string | null;
+            instructor?: string | null;
+            prerequisite_override?: boolean;
+            prerequisite_grade_override?: boolean;
             readonly units_attempted: number;
             /** Format: uuid */
             readonly created_by: string;
@@ -1927,8 +3033,14 @@ export interface components {
             program_id: string;
             /** Format: uuid */
             curriculum_version_id: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Eligible active adviser assigned atomically during student provisioning.
+             */
             adviser_id: string;
+            entry_year?: number | null;
+            /** @description Optional multi-role assignments when a provisioned student account also holds an explicitly authorized secondary role assignment. */
+            role_assignments?: components["schemas"]["RoleAssignmentInput"][];
         };
         AdviserInviteRequest: {
             /** Format: email */
@@ -1938,6 +3050,9 @@ export interface components {
             role: "adviser";
             /** Format: uuid */
             faculty_id: string;
+            /** Format: uuid */
+            department_id?: string | null;
+            role_assignments?: components["schemas"]["RoleAssignmentInput"][];
         };
         AdminInviteRequest: {
             /** Format: email */
@@ -1945,26 +3060,87 @@ export interface components {
             full_name: string;
             /** @constant */
             role: "admin";
+            role_assignments?: components["schemas"]["RoleAssignmentInput"][];
         };
-        /** @description Omitted/null grades mean blank. Server derives student from path, actor from verified session, actual units and direct slot from records. For a new offering with midterm supplied, first return 409 ENROLLMENT_CONFIRMATION_REQUIRED until confirmed_enrollment=true. Existing populated submitted grade always rejects the whole request and directs to Grades; blank/blank on existing offering rejects duplicate. Unmet strict prerequisites cannot be bypassed. */
+        StaffRoleInviteRequest: {
+            /** Format: email */
+            email: string;
+            full_name: string;
+            /** @enum {string} */
+            role: "department_head" | "department_staff" | "dean";
+            /** Format: uuid */
+            faculty_id?: string | null;
+            /** Format: uuid */
+            department_id?: string | null;
+            role_assignments?: components["schemas"]["RoleAssignmentInput"][];
+        };
+        /** @description Omitted/null grades mean blank. Server derives student from path, actor from verified session, actual units and direct slot from records (or maps to `curriculum_term_course_id` when an elective slot is selected). Under the VSU DR midterm rule, midterm_status=dr automatically sets status=dr and final_grade=null. For a new offering with midterm supplied, first return 409 ENROLLMENT_CONFIRMATION_REQUIRED until confirmed_enrollment=true. Existing populated submitted grade always rejects the whole request and directs to Grades; blank/blank on existing offering rejects duplicate. Unmet strict prerequisites require explicit audited override or prerequisite grade correction. */
         RecordGradesRequest: {
             /** Format: uuid */
             school_term_id: string;
             /** Format: uuid */
             course_offering_id: string;
+            /**
+             * Format: uuid
+             * @description Optional target curriculum slot UUID. When an elective course is recorded directly into an elective slot (`is_elective_slot=true`), the server atomically creates the corresponding `ElectiveMapping` row in the same transaction.
+             */
+            curriculum_term_course_id?: string | null;
+            /** @description Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during grade recording. */
+            elective_mapping_justification?: string | null;
+            midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade?: number | null;
             final_grade?: number | null;
+            /** @enum {string|null} */
+            status?: "inc" | "dr" | "na" | null;
+            instructor?: string | null;
+            /** @description Optional staff remark appended as an `AttemptRemark` row when non-empty and not duplicating the latest remark on the attempt. */
+            remark?: string | null;
             /** @default false */
             confirmed_enrollment: boolean;
+            /** @default false */
+            continue_with_prerequisite_override: boolean;
+            prerequisite_override_reason?: string | null;
+        };
+        EncodeTermGradeRowInput: {
+            /** Format: uuid */
+            attempt_id?: string | null;
+            /** Format: uuid */
+            course_offering_id: string;
+            /**
+             * Format: uuid
+             * @description Target curriculum slot UUID (required or elective slot). When pointing to an elective slot (`is_elective_slot=true`), the server atomically creates or updates the corresponding `ElectiveMapping` row in the same transaction.
+             */
+            curriculum_term_course_id?: string | null;
+            /** @description Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during term encoding. */
+            elective_mapping_justification?: string | null;
+            midterm_status?: components["schemas"]["MidtermStatus"] | null;
+            midterm_grade?: number | null;
+            final_grade?: number | null;
+            status?: components["schemas"]["AttemptStatus"];
+            instructor?: string | null;
+            /** @description Optional staff remark. Because `AttemptRemark` is an append-only log, the server appends a new `AttemptRemark` row only when `remark` is non-empty and differs from the most recent remark on that attempt. */
+            remark?: string | null;
+            /** @default false */
+            continue_with_prerequisite_override: boolean;
+            prerequisite_override_reason?: string | null;
+        };
+        EncodeTermGradesRequest: {
+            /** Format: uuid */
+            school_term_id: string;
+            rows: components["schemas"]["EncodeTermGradeRowInput"][];
+            /** @description Open-term attempt UUIDs removed during encoding workspace save. */
+            remove_attempt_ids?: string[];
         };
         /** @description Current-adviser correction under term lock/revision guards. Omitted values preserve existing data; explicit null clears an optional grade. The complete resulting record must satisfy final-derived Passed/Failed and INC/DR/NA rules. INC defaults use actual term ends_on; completed INC uses its completion-correction operation. Never bypass strict prerequisites. */
         GradeCorrectionRequest: {
             expected_revision: number;
             status?: components["schemas"]["AttemptStatus"];
+            midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade?: number | null;
             final_grade?: number | null;
+            instructor?: string | null;
             reason: string;
-        } | unknown | unknown | unknown;
+        } | unknown | unknown | unknown | unknown | unknown;
         PrerequisiteGradeCorrectionRequest: {
             expected_revision: number;
             final_grade: number;
@@ -1986,6 +3162,18 @@ export interface components {
             /** Format: date */
             start_date: string;
             reason: string;
+        };
+        BulkAdviserReassignmentRequest: {
+            student_ids: string[];
+            /** Format: uuid */
+            adviser_id: string;
+            /** Format: date */
+            effective_since: string;
+            reason: string;
+        };
+        BulkAdviserReassignmentResponse: {
+            reassigned_count: number;
+            assignments: components["schemas"]["AdviserAssignment"][];
         };
         CurriculumAssignmentRequest: {
             /** Format: uuid */
@@ -2054,6 +3242,9 @@ export interface components {
         NoteRequest: {
             body_text: string;
         };
+        NoteArchiveUpdateRequest: {
+            is_archived: boolean;
+        };
         RemarkRequest: {
             body_text: string;
             /** Format: uuid */
@@ -2065,8 +3256,15 @@ export interface components {
             /** Format: uuid */
             curriculum_version_id: string;
         };
+        AdvisingAIMessage: {
+            /** @enum {string} */
+            role: "user" | "assistant";
+            content: string;
+        };
         AdvisingAIRequest: {
             message: string;
+            /** @description Optional bounded prior chat turns in the active AI advising drawer session for multi-turn follow-up questions. */
+            history?: components["schemas"]["AdvisingAIMessage"][];
         };
         StudentOrganization: {
             /** Format: uuid */
@@ -2081,6 +3279,17 @@ export interface components {
             department_id: string;
             /** Format: uuid */
             faculty_id: string;
+            /** Format: uuid */
+            adviser_id?: string | null;
+            entry_year?: number | null;
+        };
+        GradeFixHistoryEntry: {
+            /** Format: date-time */
+            changed_at: string;
+            old_grade: number | string | null;
+            new_grade: number | string | null;
+            actor_name?: string | null;
+            summary?: string | null;
         };
         AttemptResult: {
             /** Format: uuid */
@@ -2092,10 +3301,15 @@ export interface components {
             /** Format: uuid */
             curriculum_term_course_id?: string | null;
             recorded_status: components["schemas"]["AttemptStatus"];
+            midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade: number | null;
             final_grade: number | null;
             /** Format: date */
             inc_deadline?: string | null;
+            instructor?: string | null;
+            prerequisite_override?: boolean;
+            prerequisite_grade_override?: boolean;
+            grade_fix_history?: components["schemas"]["GradeFixHistoryEntry"][];
             readonly units_attempted: number;
             readonly revision: number;
             /** Format: date-time */
@@ -2108,6 +3322,10 @@ export interface components {
             effective_status: components["schemas"]["AttemptStatus"];
             gwa_grade: number | null;
             is_lapsed_inc: boolean;
+            /** @description True when this failing attempt is superseded by a later numeric retake result; show Repeated on the transcript. */
+            readonly is_repeated: boolean;
+            /** @description True when this attempt contributes to cumulative GWA after retake replacement rules. */
+            readonly counts_toward_cumulative_gwa: boolean;
         };
         INCResolution: {
             /** Format: uuid */
@@ -2153,6 +3371,8 @@ export interface components {
             /** Format: uuid */
             advising_plan_id: string;
             /** Format: uuid */
+            student_id: string;
+            /** Format: uuid */
             school_term_id: string;
             /** Format: uuid */
             course_offering_id: string;
@@ -2173,7 +3393,17 @@ export interface components {
             student_id: string;
             /** Format: uuid */
             authored_by: string;
+            /** @description Display name of the staff author, safe for Student Notes and staff advising views. */
+            readonly author_name?: string | null;
+            /** @description Role label of the staff author (e.g. `Adviser`, `Department Head`). */
+            readonly author_role_label?: string | null;
             body_text: string;
+            /** @default false */
+            is_archived: boolean;
+            /** Format: date-time */
+            readonly archived_at?: string | null;
+            /** Format: uuid */
+            readonly archived_by?: string | null;
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -2197,17 +3427,38 @@ export interface components {
             readonly id: string;
             /** Format: uuid */
             actor_id: string | null;
+            /** @description Display name of the actor at the time of the audited action. */
+            readonly actor_name?: string | null;
+            /** @description Role of the actor for the audited action. */
+            readonly actor_role?: components["schemas"]["RoleType"] | null;
             /** Format: uuid */
             student_id: string | null;
+            /** @description Target student display name when the audit entry pertains to a student record. */
+            readonly student_name?: string | null;
+            /** @description Target student number when the audit entry pertains to a student record. */
+            readonly student_number?: string | null;
+            /** @description Human-readable target/record label displayed in the Audit Log `Student / record` column (e.g. `24-1-00124 · Own record`, `BSCS · Batch 2024`, or `DCST · Adviser assignments`). */
+            readonly target_label?: string | null;
             action: string;
+            /** @description UI filter category (`view`, `change`, `sign_in`, `record_view`, `grade_update`, `plan_save`, `note_change`, `override`, `export`, `auth_account`, `catalog_term`). */
+            readonly action_category?: components["schemas"]["AuditActionCategory"] | null;
             entity_type: string;
             /** Format: uuid */
-            entity_id: string;
+            entity_id: string | null;
+            /** @description Human-readable summary line rendered in the Audit Log table and CSV export. */
+            readonly details_summary?: string | null;
             old_value?: Record<string, never> | null;
             new_value?: Record<string, never> | null;
             reason?: string | null;
             /** Format: date-time */
             readonly created_at: string;
+        };
+        /** @description Breakdown of curriculum courses excluded from the recommendation list (`completed`, `currently_enrolled`, or `not_offered` in the selected school term). */
+        RecommendationExclusionSummary: {
+            total_excluded: number;
+            completed_count?: number;
+            enrolled_count?: number;
+            not_offered_count?: number;
         };
         Recommendation: {
             /** Format: uuid */
@@ -2219,6 +3470,25 @@ export interface components {
             units: number;
             why: string;
             badges: ("Elective" | "By request" | "Retake")[];
+            excluded_summary?: components["schemas"]["RecommendationExclusionSummary"];
+        };
+        /**
+         * @description Computed academic standing classification against department failure-percentage thresholds
+         * @enum {string}
+         */
+        AcademicStanding: "good_standing" | "warning" | "probation" | "dismissed";
+        StudentDeficiencyItem: {
+            /** @enum {string} */
+            kind: "failed" | "open_inc" | "lapsed_inc" | "open_flag" | "unmet_prerequisite";
+            /** Format: uuid */
+            attempt_id?: string | null;
+            course_code: string;
+            course_title: string;
+            term_label?: string | null;
+            /** Format: date */
+            inc_deadline?: string | null;
+            days_remaining?: number | null;
+            detail?: string | null;
         };
         AcademicSummary: {
             /** Format: uuid */
@@ -2226,9 +3496,39 @@ export interface components {
             gwa: number | null;
             earned_units: number;
             required_units: number;
+            counted_units?: number;
+            failed_units?: number;
+            in_progress_units?: number;
+            remaining_units?: number;
+            failure_pct?: number;
+            standing?: components["schemas"]["AcademicStanding"];
+            year_level?: number;
+            slots_satisfied?: number;
+            total_slots?: number;
+            open_inc_count?: number;
+            lapsed_inc_count?: number;
+            open_flags_count?: number;
+            deficiencies_count?: number;
+            deficiencies?: components["schemas"]["StudentDeficiencyItem"][];
             is_delinquent: boolean;
             /** Format: date-time */
             computed_at: string;
+        };
+        ChecklistSlotAttemptSummary: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            school_term_id: string;
+            term_label: string;
+            midterm_status?: components["schemas"]["MidtermStatus"] | null;
+            midterm_grade?: number | null;
+            final_grade?: number | null;
+            recorded_status: components["schemas"]["AttemptStatus"];
+            completion_grade?: number | null;
+            effective_status: components["schemas"]["AttemptStatus"];
+            /** Format: date */
+            inc_deadline?: string | null;
+            instructor?: string | null;
         };
         ChecklistSlotResult: {
             /** Format: uuid */
@@ -2240,7 +3540,11 @@ export interface components {
             /** Format: uuid */
             source_attempt_id: string | null;
             /** @enum {string|null} */
-            satisfaction_source: "Direct" | "Elective mapping" | "Transfer equivalency" | "Discontinued equivalency" | null;
+            satisfaction_source: "Direct" | "Elective mapping" | "Transfer equivalency" | "Discontinued equivalency" | "Outside credit" | null;
+            credited_course_code?: string | null;
+            credited_course_title?: string | null;
+            attempts?: components["schemas"]["ChecklistSlotAttemptSummary"][];
+            grade_fix_history?: components["schemas"]["GradeFixHistoryEntry"][];
         };
         ShiftPreviewResponse: {
             carried_units: number;
@@ -2276,7 +3580,20 @@ export interface components {
         };
         AccountSummary: {
             profile: components["schemas"]["Profile"];
+            role_assignments?: components["schemas"]["RoleAssignment"][];
             student_organization: components["schemas"]["StudentOrganization"] | null;
+        };
+        UnmetPrerequisitePreview: {
+            /** Format: uuid */
+            prerequisite_course_id: string;
+            code: string;
+            title: string;
+            type: components["schemas"]["PrerequisiteType"];
+            /** @enum {string} */
+            current_status: "not_taken" | "failed" | "inc" | "lapsed_inc" | "dr" | "currently_enrolled";
+            /** Format: uuid */
+            latest_attempt_id?: string | null;
+            latest_final_grade?: number | null;
         };
         CourseOfferingOption: {
             offering: components["schemas"]["CourseOffering"];
@@ -2287,6 +3604,72 @@ export interface components {
             group: "program" | "cross_program";
             /** Format: uuid */
             direct_curriculum_slot_id: string | null;
+            /** @description Available instructor suggestions for this course offering in the selected term, allowing the UI to populate instructor dropdowns while still accepting custom instructor text. */
+            instructor_options?: string[];
+            /**
+             * @description True when the student has at least one unmet strict prerequisite for this course in the selected school term, enabling immediate prerequisite warning/override prompts upon course selection before form submission.
+             * @default false
+             */
+            has_unmet_strict_prerequisites: boolean;
+            unmet_prerequisites?: components["schemas"]["UnmetPrerequisitePreview"][];
+        };
+        StudentRosterItem: {
+            /** Format: uuid */
+            student_id: string;
+            student_number: string;
+            full_name: string;
+            /** Format: email */
+            email: string;
+            avatar_url?: string | null;
+            status: components["schemas"]["ProfileStatus"];
+            /** Format: uuid */
+            faculty_id: string;
+            faculty_name: string;
+            /** Format: uuid */
+            department_id: string;
+            department_name: string;
+            /** Format: uuid */
+            program_id: string;
+            program_code: string;
+            program_name: string;
+            /** Format: uuid */
+            curriculum_version_id: string;
+            curriculum_label: string;
+            entry_year?: number | null;
+            year_level: number;
+            gwa?: number | null;
+            earned_units: number;
+            required_units: number;
+            standing: components["schemas"]["AcademicStanding"];
+            is_delinquent?: boolean;
+            deficiencies_count: number;
+            open_inc_count: number;
+            lapsed_inc_count?: number;
+            /** Format: date */
+            nearest_inc_deadline?: string | null;
+            nearest_inc_days_remaining?: number | null;
+            open_flags_count: number;
+            /** @enum {string} */
+            assignment_status?: "active" | "past" | "unassigned";
+            /** Format: uuid */
+            adviser_id?: string | null;
+            adviser_name?: string | null;
+            /** Format: date */
+            adviser_assigned_since?: string | null;
+            handover_label?: string | null;
+            /** Format: date-time */
+            last_activity_at?: string | null;
+        };
+        StudentRosterResponse: {
+            total_count: number;
+            unassigned_count: number;
+            with_deficiencies_count: number;
+            /** @description Total number of students in the roster matching scope who have open grade flags or delinquent standing flags. */
+            flagged_count?: number;
+            /** @description Total number of students in the roster matching scope who have at least one open INC attempt. */
+            open_inc_students_count?: number;
+            standing_counts?: components["schemas"]["StandingCounts"];
+            items: components["schemas"]["StudentRosterItem"][];
         };
         TermGrades: {
             /** Format: uuid */
@@ -2301,6 +3684,11 @@ export interface components {
             course_id?: null;
             /** @constant */
             is_elective_slot: true;
+            /**
+             * @default elective
+             * @enum {string}
+             */
+            slot_type: "elective" | "ge";
             slot_label: string;
             nominal_units: number;
         };
@@ -2309,6 +3697,11 @@ export interface components {
             course_id: string;
             /** @constant */
             is_elective_slot: false;
+            /**
+             * @default required
+             * @enum {string}
+             */
+            slot_type: "required" | "ge" | "pe" | "nstp";
             slot_label?: null;
             nominal_units: number;
         };
@@ -2322,6 +3715,548 @@ export interface components {
             message: string;
         } | {
             error: string;
+        };
+        GradeFlag: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            student_id: string;
+            /** Format: uuid */
+            attempt_id: string;
+            /** @enum {string|null} */
+            reported_stage?: "midterm" | "final" | null;
+            reported_grade_text?: string | null;
+            /** @enum {string} */
+            issue_type: "wrong_grade" | "incorrect_grade" | "missing_grade" | "wrong_course_credited" | "wrong_status" | "missing_completion" | "other";
+            details: string;
+            /** @enum {string} */
+            status: "open" | "corrected" | "rejected";
+            /** @enum {string|null} */
+            resolution_action?: "correct" | "reject" | null;
+            corrected_grade?: number | null;
+            corrected_status?: components["schemas"]["AttemptStatus"] | null;
+            resolution_note?: string | null;
+            /** Format: uuid */
+            readonly resolved_by?: string | null;
+            /** Format: date-time */
+            readonly resolved_at?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        GradeFlagCreateRequest: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** @enum {string|null} */
+            reported_stage?: "midterm" | "final" | null;
+            reported_grade_text?: string | null;
+            /** @enum {string} */
+            issue_type: "wrong_grade" | "incorrect_grade" | "missing_grade" | "wrong_course_credited" | "wrong_status" | "missing_completion" | "other";
+            details: string;
+        };
+        GradeFlagResolveRequest: {
+            /** @enum {string} */
+            resolution_action: "correct" | "reject";
+            corrected_grade?: number | null;
+            corrected_status?: components["schemas"]["AttemptStatus"] | null;
+            corrected_midterm_status?: components["schemas"]["MidtermStatus"] | null;
+            resolution_note: string;
+            expected_revision?: number | null;
+        };
+        GradeBatchImportRowInput: {
+            row_number: number;
+            student_number: string;
+            course_code: string;
+            /**
+             * Format: uuid
+             * @description Optional target curriculum slot UUID when importing an elective course directly into an elective curriculum slot (`is_elective_slot=true`).
+             */
+            curriculum_term_course_id?: string | null;
+            /** @description Optional justification recorded when `curriculum_term_course_id` maps an imported elective attempt to an elective curriculum slot. */
+            elective_mapping_justification?: string | null;
+            midterm_status?: components["schemas"]["MidtermStatus"] | null;
+            midterm_grade?: number | null;
+            final_grade?: number | null;
+            status?: components["schemas"]["AttemptStatus"];
+            instructor?: string | null;
+            remark?: string | null;
+        };
+        GradeBatchImportRequest: {
+            /** @enum {string} */
+            mode: "preview" | "commit";
+            /** Format: uuid */
+            school_term_id: string;
+            rows: components["schemas"]["GradeBatchImportRowInput"][];
+        };
+        GradeBatchImportRowResult: {
+            row_number: number;
+            student_number: string;
+            course_code: string;
+            /** @enum {string} */
+            outcome: "valid" | "warning" | "error" | "imported";
+            message?: string | null;
+        };
+        GradeBatchImportResponse: {
+            /** @enum {string} */
+            mode: "preview" | "commit";
+            valid_count: number;
+            warning_count: number;
+            error_count: number;
+            imported_count: number;
+            results: components["schemas"]["GradeBatchImportRowResult"][];
+        };
+        CurriculumTransferRequest: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            student_id: string;
+            /** Format: uuid */
+            from_curriculum_version_id: string;
+            /** Format: uuid */
+            to_curriculum_version_id: string;
+            /** Format: uuid */
+            readonly endorsed_by: string;
+            readonly endorsed_by_name?: string | null;
+            endorsement_note: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            /** Format: uuid */
+            readonly decided_by?: string | null;
+            readonly decided_by_name?: string | null;
+            /** Format: date-time */
+            readonly decided_at?: string | null;
+            decision_note?: string | null;
+            carried_units: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        CurriculumTransferEndorseRequest: {
+            /** Format: uuid */
+            to_curriculum_version_id: string;
+            endorsement_note: string;
+        };
+        /** @description Department Head or Admin decision on a pending curriculum transfer request. Approval allows an optional `decision_note`; rejection requires a non-blank `decision_note`. */
+        CurriculumTransferDecisionRequest: {
+            /** @constant */
+            decision: "approved";
+            /** @description Optional approval note when approving a curriculum transfer request. */
+            decision_note?: string | null;
+        } | {
+            /** @constant */
+            decision: "rejected";
+            /** @description Required non-blank rejection reason when rejecting a curriculum transfer request. */
+            decision_note: string;
+        };
+        CurriculumPairEquivalence: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            from_curriculum_version_id: string;
+            /** Format: uuid */
+            to_curriculum_version_id: string;
+            /** Format: uuid */
+            source_course_id: string;
+            /** Format: uuid */
+            target_course_id: string;
+            note?: string | null;
+            /** Format: uuid */
+            readonly created_by: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        CurriculumPairEquivalenceInsert: {
+            /** Format: uuid */
+            from_curriculum_version_id: string;
+            /** Format: uuid */
+            to_curriculum_version_id: string;
+            /** Format: uuid */
+            source_course_id: string;
+            /** Format: uuid */
+            target_course_id: string;
+            note?: string | null;
+        };
+        OutsideCredit: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            student_id: string;
+            /** @enum {string} */
+            entry_type: "transferee" | "shiftee";
+            origin_school: string;
+            original_course_code: string;
+            original_course_title: string;
+            units: number;
+            grade: string;
+            /** Format: uuid */
+            destination_curriculum_term_course_id: string;
+            readonly units_credited: number;
+            /** Format: uuid */
+            readonly decided_by: string;
+            /** Format: date-time */
+            readonly decided_at: string;
+            /** Format: date-time */
+            revoked_at: string | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        OutsideCreditCreateRequest: {
+            /** @enum {string} */
+            entry_type: "transferee" | "shiftee";
+            origin_school: string;
+            original_course_code: string;
+            original_course_title: string;
+            units: number;
+            /** @description Passing grade on the institutional 1.00–3.00 scale, formatted to two decimals. */
+            grade: string;
+            /** Format: uuid */
+            destination_curriculum_term_course_id: string;
+            reason: string;
+        };
+        StudentBatchImportRowInput: {
+            row_number: number;
+            student_number: string;
+            full_name: string;
+            /** Format: email */
+            email: string;
+            /** Format: uuid */
+            program_id: string;
+            /** Format: uuid */
+            curriculum_version_id: string;
+            /**
+             * Format: uuid
+             * @description Eligible active initial adviser for the imported student.
+             */
+            adviser_id: string;
+            entry_year?: number | null;
+        };
+        StudentBatchImportRequest: {
+            /** @enum {string} */
+            mode: "preview" | "commit";
+            rows: components["schemas"]["StudentBatchImportRowInput"][];
+        };
+        StudentBatchImportRowResult: {
+            row_number: number;
+            student_number: string;
+            email: string;
+            /** @enum {string} */
+            outcome: "valid" | "warning" | "error" | "imported";
+            message?: string | null;
+        };
+        StudentBatchImportResponse: {
+            /** @enum {string} */
+            mode: "preview" | "commit";
+            valid_count: number;
+            warning_count: number;
+            error_count: number;
+            imported_count: number;
+            results: components["schemas"]["StudentBatchImportRowResult"][];
+        };
+        /**
+         * @description Visual icon/category classification matching the SAAIS notification center across all 6 roles
+         * @enum {string}
+         */
+        NotificationKind: "note" | "grade" | "alert" | "flag" | "import" | "person" | "transfer" | "report";
+        /**
+         * @description Canonical domain event or scheduled rule that produced the notification
+         * @enum {string}
+         */
+        NotificationEventType: "advising_note_added" | "advising_plan_saved" | "midterm_grades_posted" | "final_grades_posted" | "grade_corrected" | "prerequisite_grade_corrected" | "inc_completed" | "grade_flag_submitted" | "grade_flag_resolved" | "grade_import_committed" | "student_import_committed" | "adviser_assigned" | "adviser_reassigned_away" | "bulk_adviser_reassigned" | "curriculum_reassigned" | "curriculum_transfer_endorsed" | "curriculum_transfer_decided" | "credit_decision_recorded" | "credit_decision_revoked" | "invitation_accepted" | "term_encoding_closed" | "term_override_toggled" | "catalog_updated" | "report_snapshot_ready" | "inc_deadline_approaching" | "inc_lapsed" | "standing_threshold_alert" | "encoding_deadline_approaching" | "unassigned_students_pending" | "invitation_expiring_soon" | "backup_overdue_reminder";
+        Notification: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            recipient_id: string;
+            kind: components["schemas"]["NotificationKind"];
+            event_type: components["schemas"]["NotificationEventType"];
+            title: string;
+            body: string;
+            target_route?: string | null;
+            /** Format: uuid */
+            target_student_id?: string | null;
+            /** Format: uuid */
+            actor_id?: string | null;
+            entity_type?: string | null;
+            /** Format: uuid */
+            entity_id?: string | null;
+            dedupe_key?: string | null;
+            /** @enum {string|null} */
+            email_delivery_status?: "pending" | "sent" | "skipped" | "failed" | null;
+            is_read: boolean;
+            /** Format: date-time */
+            readonly read_at?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        MarkNotificationsReadRequest: {
+            /** Format: uuid */
+            notification_id?: string | null;
+            notification_ids?: string[];
+            /** @default false */
+            mark_all: boolean;
+            /** @default true */
+            is_read: boolean;
+        };
+        MarkNotificationsReadResponse: {
+            updated_count: number;
+        };
+        EvaluateAlertsRequest: {
+            /**
+             * Format: date
+             * @description Optional Asia/Manila date used to evaluate deadline and reminder windows deterministically.
+             */
+            reference_date?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional department scope filter (defaults to caller department for Department Head or all departments for Admin).
+             */
+            department_id?: string | null;
+            /**
+             * @description When true, computes candidate notifications without inserting rows.
+             * @default false
+             */
+            dry_run: boolean;
+        };
+        EvaluateAlertsResponse: {
+            /** Format: date */
+            reference_date: string;
+            dry_run: boolean;
+            evaluated_counts: {
+                inc_deadline_approaching: number;
+                inc_lapsed: number;
+                standing_threshold_alert: number;
+                encoding_deadline_approaching: number;
+                unassigned_students_pending: number;
+                invitation_expiring_soon: number;
+                backup_overdue_reminder: number;
+                skipped_duplicates: number;
+                total_created: number;
+            };
+            created_notifications: components["schemas"]["Notification"][];
+        };
+        StandingCounts: {
+            good_standing: number;
+            warning: number;
+            probation: number;
+            dismissed: number;
+        };
+        GradeDistributionBucket: {
+            label: string;
+            min_grade?: number | null;
+            max_grade?: number | null;
+            status_key?: string | null;
+            count: number;
+            percentage: number;
+        };
+        GradeDistributionBreakdown: {
+            total_graded: number;
+            inc_count: number;
+            dr_count: number;
+            na_count: number;
+            currently_enrolled_count: number;
+            buckets: components["schemas"]["GradeDistributionBucket"][];
+        };
+        DeficiencyStudentSummary: {
+            /** Format: uuid */
+            student_id: string;
+            student_number: string;
+            full_name: string;
+            program_code: string;
+            curriculum_label: string;
+            year_level: number;
+            /** Format: uuid */
+            adviser_id?: string | null;
+            adviser_name?: string | null;
+            gwa?: number | null;
+            standing: components["schemas"]["AcademicStanding"];
+            failed_units: number;
+            open_inc_count: number;
+            lapsed_inc_count: number;
+            open_flags_count: number;
+            deficiencies: components["schemas"]["StudentDeficiencyItem"][];
+        };
+        BatchCurriculumGwaRow: {
+            entry_year: number;
+            /** Format: uuid */
+            program_id: string;
+            program_code: string;
+            /** Format: uuid */
+            curriculum_version_id: string;
+            curriculum_label: string;
+            student_count: number;
+            mean_gwa: number | null;
+            good_standing_count: number;
+            at_risk_count: number;
+        };
+        AdviserDashboardReport: {
+            /** Format: uuid */
+            adviser_id: string;
+            total_advisees: number;
+            standing_counts: components["schemas"]["StandingCounts"];
+            open_grade_flags_count: number;
+            pending_inc_count: number;
+            expiring_inc_soon_count?: number;
+            lapsed_inc_count?: number;
+            mean_gwa?: number | null;
+            year_level_counts?: {
+                year_level: number;
+                student_count: number;
+            }[];
+            grade_distribution?: components["schemas"]["GradeDistributionBreakdown"];
+            /** @description Mean GWA and standing breakdown by advisee entry batch and curriculum version for the Adviser Reports view. */
+            batch_curriculum_gwa?: components["schemas"]["BatchCurriculumGwaRow"][];
+            advisees_with_deficiencies?: components["schemas"]["DeficiencyStudentSummary"][];
+            /** Format: date-time */
+            computed_at: string;
+        };
+        DepartmentReport: {
+            /** Format: uuid */
+            department_id: string;
+            total_students: number;
+            /** @description Total number of students in the department who have at least one active academic deficiency (failed units, open INC, lapsed INC, or open grade flag), unclipped by the bounded `at_risk_roster` array. */
+            with_deficiencies_count?: number;
+            unassigned_students_count?: number;
+            open_grade_flags_count?: number;
+            pending_transfers_count?: number;
+            encoding_progress_pct?: number;
+            average_gwa?: number | null;
+            standing_counts: components["schemas"]["StandingCounts"];
+            year_level_counts?: {
+                year_level: number;
+                student_count: number;
+            }[];
+            adviser_caseloads: {
+                /** Format: uuid */
+                adviser_id: string;
+                adviser_name: string;
+                student_count: number;
+                at_risk_count: number;
+            }[];
+            curriculum_summaries?: {
+                /** Format: uuid */
+                curriculum_version_id: string;
+                program_code: string;
+                version_label: string;
+                status: components["schemas"]["CurriculumVersionStatus"];
+                student_count: number;
+                average_gwa: number | null;
+                at_risk_count: number;
+            }[];
+            batch_curriculum_gwa?: components["schemas"]["BatchCurriculumGwaRow"][];
+            grade_distribution?: components["schemas"]["GradeDistributionBreakdown"];
+            bottleneck_courses: {
+                /** Format: uuid */
+                course_id: string;
+                code: string;
+                title: string;
+                fail_or_inc_rate: number;
+                affected_count: number;
+            }[];
+            at_risk_roster?: components["schemas"]["DeficiencyStudentSummary"][];
+            /** Format: date-time */
+            computed_at: string;
+        };
+        FacultyReport: {
+            /** Format: uuid */
+            faculty_id: string;
+            total_students: number;
+            /** @description Total number of students in the faculty/college who have at least one active academic deficiency, unclipped by the bounded `at_risk_roster` array. */
+            with_deficiencies_count?: number;
+            average_gwa: number | null;
+            standing_counts?: components["schemas"]["StandingCounts"];
+            open_inc_count?: number;
+            at_risk_total_count?: number;
+            encoding_progress_pct?: number;
+            department_summaries: {
+                /** Format: uuid */
+                department_id: string;
+                department_name: string;
+                student_count: number;
+                average_gwa: number | null;
+                at_risk_count: number;
+            }[];
+            batch_curriculum_gwa?: components["schemas"]["BatchCurriculumGwaRow"][];
+            grade_distribution?: components["schemas"]["GradeDistributionBreakdown"];
+            at_risk_roster?: components["schemas"]["DeficiencyStudentSummary"][];
+            /** Format: date-time */
+            computed_at: string;
+        };
+        SystemSettings: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            department_id?: string | null;
+            warning_pct: number;
+            probation_pct: number;
+            dismissal_pct: number;
+            /** Format: email */
+            sender_email: string;
+            /** Format: date-time */
+            readonly last_backup_at?: string | null;
+            /** Format: uuid */
+            readonly last_backup_by?: string | null;
+            last_backup_reference?: string | null;
+            last_backup_location?: string | null;
+            /** @enum {string|null} */
+            last_backup_scope?: "department_records" | "department_records_and_audit_log" | "institution_wide" | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        SystemSettingsUpdateRequest: {
+            /** Format: uuid */
+            department_id?: string | null;
+            warning_pct?: number;
+            probation_pct?: number;
+            dismissal_pct?: number;
+            /** Format: email */
+            sender_email?: string;
+        };
+        RecordBackupRequest: {
+            /** Format: uuid */
+            department_id?: string | null;
+            backup_label?: string | null;
+            backup_reference?: string | null;
+            storage_location?: string | null;
+            /** @enum {string|null} */
+            scope?: "department_records" | "department_records_and_audit_log" | "institution_wide" | null;
+            /** Format: date-time */
+            completed_at?: string | null;
+        };
+        AuditViewEventRequest: {
+            /**
+             * @description Authenticated client view/export audit event type. Auth-lifecycle events (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase Auth hooks and Edge Functions.
+             * @enum {string}
+             */
+            event_type: "student_record_viewed" | "report_viewed" | "pdf_exported" | "csv_exported" | "report_exported";
+            /** Format: uuid */
+            student_id?: string | null;
+            /** @enum {string|null} */
+            report_type?: "adviser_dashboard" | "department" | "faculty" | "institution" | null;
+            report_filters?: {
+                /** Format: uuid */
+                school_term_id?: string | null;
+                /** Format: uuid */
+                faculty_id?: string | null;
+                /** Format: uuid */
+                department_id?: string | null;
+                /** Format: uuid */
+                program_id?: string | null;
+            } | null;
+            details?: string | null;
+        };
+        StudentPhotoUpdateRequest: {
+            /** @description Object key inside the private `student-photos` Supabase Storage bucket (e.g. `students/<student_id>/avatar.png`) verified server-side for MIME type and byte size before updating the profile photo URL. */
+            storage_object_path?: string | null;
+            avatar_url: string;
+            /**
+             * @description Supported student profile photo MIME types (PNG or JPG only, matching the UI control).
+             * @enum {string}
+             */
+            mime_type: "image/jpeg" | "image/png";
+            /** @description File size in bytes; maximum 2 MB (`2,097,152` bytes). */
+            file_size_bytes: number;
         };
     };
     responses: {
@@ -2482,7 +4417,7 @@ export interface components {
         studentNumberQueryParam: string;
         /** @description Filter by name equality or pattern matching */
         nameQueryParam: string;
-        /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS101`) */
+        /** @description Filter by code equality or pattern matching (e.g. `eq.BSCS`, `ilike.*CS*`) */
         codeQueryParam: string;
         /** @description Filter by version label (e.g. `eq.2023-2024`) */
         versionLabelQueryParam: string;
@@ -2500,6 +4435,10 @@ export interface components {
         advisingPlanIdQueryParam: string;
         /** @description Filter original recorded attempt status; completed INC effective result is separate. */
         recordedStatusQueryParam: string;
+        /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+        profileIdQueryParam: string;
+        /** @description Filter by archive state (e.g. `eq.false`) */
+        isArchivedQueryParam: string;
     };
     requestBodies: never;
     headers: never;
@@ -2567,6 +4506,66 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    previewInviteToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Non-consuming invitation summary returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewInviteResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    declineInviteToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeclineInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Invitation token declined and invalidated atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclineInviteResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     listProfiles: {
         parameters: {
             query?: {
@@ -2590,6 +4589,8 @@ export interface operations {
                 offset?: components["parameters"]["offsetQueryParam"];
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 faculty_id?: components["parameters"]["facultyIdQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                department_id?: components["parameters"]["departmentIdQueryParam"];
             };
             header?: never;
             path?: never;
@@ -2617,6 +4618,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Profile"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listRoleAssignments: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                profile_id?: components["parameters"]["profileIdQueryParam"];
+                /** @description Filter by role (e.g. `eq.student`) */
+                role?: components["parameters"]["roleQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                faculty_id?: components["parameters"]["facultyIdQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                department_id?: components["parameters"]["departmentIdQueryParam"];
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only; whitelist and enforce at runtime. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of role assignments. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range; total may be * when exact counts are not requested. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAssignment"][];
+                };
+            };
+            /** @description Partial visible collection if the gateway reports a partial range. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range; total may be * when exact counts are not requested. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAssignment"][];
                 };
             };
             400: components["responses"]["400BadRequest"];
@@ -2735,8 +4793,12 @@ export interface operations {
             query?: {
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 id?: components["parameters"]["idQueryParam"];
-                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS101`) */
+                /** @description Filter by code equality or pattern matching (e.g. `eq.BSCS`, `ilike.*CS*`) */
                 code?: components["parameters"]["codeQueryParam"];
+                /** @description Filter by name equality or pattern matching */
+                name?: components["parameters"]["nameQueryParam"];
+                /** @description Bounded PostgREST free-text search across program code and name (e.g. `(code.ilike.%BSCS%,name.ilike.%Computer Science%)`). */
+                or?: string;
                 /** @description Filter this entity’s valid status. */
                 status?: string;
                 /** @description Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults. */
@@ -2951,8 +5013,14 @@ export interface operations {
                 id?: components["parameters"]["idQueryParam"];
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 department_id?: components["parameters"]["departmentIdQueryParam"];
-                /** @description Filter by code (e.g. `eq.BSCS` or `eq.CS101`) */
+                /** @description Filter by code equality or pattern matching (e.g. `eq.BSCS`, `ilike.*CS*`) */
                 code?: components["parameters"]["codeQueryParam"];
+                /** @description Filter course title by equality or case-insensitive pattern (`eq.`, `ilike.`, `like.`). */
+                title?: string;
+                /** @description Filter course category (`eq.major`, `eq.ge`, `eq.elective`, `eq.pe`, `eq.nstp`, etc.). */
+                category?: string;
+                /** @description Bounded PostgREST free-text search across course code and title (e.g. `(code.ilike.%CS 101%,title.ilike.%Introduction%)`). */
+                or?: string;
                 /** @description Filter this entity’s valid status. */
                 status?: string;
                 /** @description Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults. */
@@ -3096,6 +5164,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SchoolTerm"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listDepartmentTermEncodings: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                school_term_id?: components["parameters"]["schoolTermIdQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                department_id?: components["parameters"]["departmentIdQueryParam"];
+                /** @description Filter by department closure state (`eq.true` or `eq.false`). */
+                is_closed?: string;
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of department term encoding closure states. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentTermEncodingClosure"][];
+                };
+            };
+            /** @description Partial visible collection. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentTermEncodingClosure"][];
                 };
             };
             400: components["responses"]["400BadRequest"];
@@ -3493,6 +5616,68 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    resendAccountInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation regenerated and resent atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResendInviteResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    revokeAccountInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RevokeInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Pending invitation revoked atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     createFaculty: {
         parameters: {
             query?: never;
@@ -3518,6 +5703,33 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteFaculty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted unreferenced faculty. Faculties with child departments or referenced history return 409 Conflict. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             409: components["responses"]["409Conflict"];
             429: components["responses"]["429TooManyRequests"];
             500: components["responses"]["500InternalError"];
@@ -3586,6 +5798,33 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    deleteDepartment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted unreferenced department. Referenced departments return 409 Conflict. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     updateDepartment: {
         parameters: {
             query?: never;
@@ -3644,6 +5883,33 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted unreferenced degree program. Referenced programs return 409 Conflict. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             409: components["responses"]["409Conflict"];
             429: components["responses"]["429TooManyRequests"];
             500: components["responses"]["500InternalError"];
@@ -3712,6 +5978,33 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    deleteCurriculumVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted unreferenced curriculum version. Referenced versions return 409 Conflict. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     updateCurriculumVersion: {
         parameters: {
             query?: never;
@@ -3775,6 +6068,66 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    deleteCurriculumTerm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed unreferenced record. Referenced/history/last-child conflicts are rejected. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateCurriculumTerm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumTermUpdate"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTerm"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     createCurriculumTermCourse: {
         parameters: {
             query?: never;
@@ -3832,6 +6185,39 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    updateCurriculumTermCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumTermCourseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTermCourse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     createCourse: {
         parameters: {
             query?: never;
@@ -3857,6 +6243,33 @@ export interface operations {
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed unreferenced course. Referenced courses return 409 Conflict. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             409: components["responses"]["409Conflict"];
             429: components["responses"]["429TooManyRequests"];
             500: components["responses"]["500InternalError"];
@@ -4105,6 +6518,72 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    closeSchoolTermEncoding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolTermCloseEncodingRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolTerm"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    reopenDepartmentTermEncoding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolTermCloseEncodingRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentTermEncodingClosure"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     setSchoolTermOverride: {
         parameters: {
             query?: never;
@@ -4160,6 +6639,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdviserAssignment"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    bulkReassignAdvisers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAdviserReassignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkAdviserReassignmentResponse"];
                 };
             };
             400: components["responses"]["400BadRequest"];
@@ -4237,6 +6747,39 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    encodeTermGrades: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncodeTermGradesRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptResult"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     correctGrades: {
         parameters: {
             query?: never;
@@ -4261,6 +6804,34 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AttemptResult"];
                 };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteOpenTermAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Open-term enrollment row removed and audited. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
@@ -4642,6 +7213,40 @@ export interface operations {
             500: components["responses"]["500InternalError"];
         };
     };
+    updateAdvisingNoteArchiveState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteArchiveUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisingNote"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
     addAttemptRemark: {
         parameters: {
             query?: never;
@@ -4783,6 +7388,10 @@ export interface operations {
                 department_id?: components["parameters"]["departmentIdQueryParam"];
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 faculty_id?: components["parameters"]["facultyIdQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                adviser_id?: components["parameters"]["adviserIdQueryParam"];
+                /** @description Filter derived student cohort entry year (e.g. `eq.2023`). */
+                entry_year?: string;
                 /** @description Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults. */
                 select?: string;
                 /** @description Stable ordering on published columns only; whitelist and enforce at runtime. */
@@ -4996,6 +7605,8 @@ export interface operations {
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 advising_plan_id?: components["parameters"]["advisingPlanIdQueryParam"];
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 school_term_id?: components["parameters"]["schoolTermIdQueryParam"];
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 course_offering_id?: components["parameters"]["courseOfferingIdQueryParam"];
@@ -5050,6 +7661,8 @@ export interface operations {
                 id?: components["parameters"]["idQueryParam"];
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Filter by archive state (e.g. `eq.false`) */
+                is_archived?: components["parameters"]["isArchivedQueryParam"];
                 /** @description Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults. */
                 select?: string;
                 /** @description Stable ordering on published columns only; whitelist and enforce at runtime. */
@@ -5156,6 +7769,26 @@ export interface operations {
                 id?: components["parameters"]["idQueryParam"];
                 /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
                 student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Filter by actor UUID (`eq.UUID`, `neq.UUID`, or `in.(UUID,...)`). */
+                actor_id?: string;
+                /** @description Filter by actor display name (`eq.`, `ilike.`, `like.`). */
+                actor_name?: string;
+                /** @description Filter by target student display name (`eq.`, `ilike.`, `like.`). */
+                student_name?: string;
+                /** @description Filter by target student number (`eq.`, `ilike.`, `like.`). */
+                student_number?: string;
+                /** @description Filter by audit action identifier or pattern (`eq.`, `ilike.`, `like.`). */
+                action?: string;
+                /** @description Filter by UI action category (`eq.view`, `eq.change`, `eq.sign_in`, `eq.record_view`, `eq.grade_update`, `eq.plan_save`, `eq.note_change`, `eq.override`, `eq.export`, `eq.auth_account`, `eq.catalog_term`, or `in.(...)`). */
+                action_category?: string;
+                /** @description Filter by audited entity type (`eq.<type>`). */
+                entity_type?: string;
+                /** @description Filter by single timestamp boundary (`gte.`, `lte.`, `gt.`, `lt.`, `eq.`). */
+                created_at?: string;
+                /** @description Bounded PostgREST conjunction for closed date-range filtering: `and=(created_at.gte.<from>,created_at.lte.<to>)`. */
+                and?: string;
+                /** @description Bounded PostgREST disjunction for audit log search across `actor_name`, `student_name`, `student_number`, `target_label`, `action`, `details_summary`, and `reason`. */
+                or?: string;
                 /** @description Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults. */
                 select?: string;
                 /** @description Stable ordering on published columns only; whitelist and enforce at runtime. */
@@ -5211,9 +7844,9 @@ export interface operations {
                 search?: components["parameters"]["searchQuery"];
                 /** @description Filter account role. */
                 role?: components["schemas"]["RoleType"];
-                /** @description Derived student College or assigned adviser College. */
+                /** @description Derived student College or assigned staff College. */
                 faculty_id?: string;
-                /** @description Derived student Department. */
+                /** @description Derived student Department or assigned staff Department. */
                 department_id?: string;
             };
             header?: never;
@@ -5235,6 +7868,70 @@ export interface operations {
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
             409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listStudentRoster: {
+        parameters: {
+            query?: {
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+                /** @description Search text. Server uses parameterized queries; no client-defined query language. */
+                search?: components["parameters"]["searchQuery"];
+                /** @description Filter by caller advisee relationship (`all` visible students in caller scope, `current` / `my_active_advisees`, `past` / `my_handed_over_advisees`, `unassigned`). */
+                assignment_scope?: "all" | "current" | "past" | "my_active_advisees" | "my_handed_over_advisees" | "unassigned";
+                /** @description Filter by active assigned adviser UUID. */
+                adviser_id?: string;
+                /** @description When true, return only students without an active adviser assignment. */
+                unassigned_only?: boolean;
+                /** @description Filter by student's derived faculty/college UUID. */
+                faculty_id?: string;
+                /** @description Filter by student's derived department UUID. */
+                department_id?: string;
+                /** @description Filter by student's active degree program UUID. */
+                program_id?: string;
+                /** @description Filter by student's active curriculum version UUID. */
+                curriculum_version_id?: string;
+                /** @description Filter by student cohort/entry academic year (e.g. `2023`). */
+                entry_year?: number;
+                /** @description Filter by derived student year level (`1` to `6`). */
+                year_level?: number;
+                /** @description Filter by derived academic standing (`good_standing`, `warning`, `probation`, `dismissed`). */
+                standing?: components["schemas"]["AcademicStanding"];
+                /** @description Filter students who currently have (`true`) or do not have (`false`) active failed/INC/dropped deficiencies. */
+                has_deficiencies?: boolean;
+                /** @description Filter students who currently have (`true`) or do not have (`false`) open incomplete (`INC`) attempts. */
+                has_open_inc?: boolean;
+                /** @description Filter students who currently have (`true`) or do not have (`false`) open student-submitted grade flags. */
+                has_open_flags?: boolean;
+                /** @description Optional school term context for term-specific advising/encoding status. */
+                school_term_id?: string;
+                /** @description Sort column for the student roster. */
+                sort_by?: "full_name" | "student_number" | "year_level" | "gwa" | "units_earned" | "standing" | "last_activity_at";
+                /** @description Sort direction (`asc` or `desc`). */
+                sort_dir?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated student roster and summary counts for the caller's scope. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentRosterResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             429: components["responses"]["429TooManyRequests"];
             500: components["responses"]["500InternalError"];
         };
@@ -5298,6 +7995,8 @@ export interface operations {
             /** @description Operation completed atomically. */
             200: {
                 headers: {
+                    /** @description Total number of curriculum courses excluded from recommendations because they are already completed, currently enrolled, or not offered in the selected term. */
+                    "X-Excluded-Count"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -5377,6 +8076,938 @@ export interface operations {
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
             409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listGradeFlags: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                attempt_id?: components["parameters"]["attemptIdQueryParam"];
+                /** @description Filter grade flag lifecycle status. */
+                status?: string;
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible rows; empty array if no visible matches. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeFlag"][];
+                };
+            };
+            /** @description Partial visible collection. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeFlag"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createGradeFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GradeFlagCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeFlag"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    resolveGradeFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                flag_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GradeFlagResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeFlag"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    importGradesBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GradeBatchImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeBatchImportResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listCurriculumTransferRequests: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Filter transfer request status. */
+                status?: string;
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible rows; empty array if no visible matches. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTransferRequest"][];
+                };
+            };
+            /** @description Partial visible collection. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTransferRequest"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    endorseCurriculumTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumTransferEndorseRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTransferRequest"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    decideCurriculumTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumTransferDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumTransferRequest"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listCurriculumPairEquivalences: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by source curriculum version UUID (`eq.UUID`). */
+                from_curriculum_version_id?: string;
+                /** @description Filter by target curriculum version UUID (`eq.UUID`). */
+                to_curriculum_version_id?: string;
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible rows; empty array if no visible matches. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumPairEquivalence"][];
+                };
+            };
+            /** @description Partial visible collection. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumPairEquivalence"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createCurriculumPairEquivalence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurriculumPairEquivalenceInsert"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumPairEquivalence"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteCurriculumPairEquivalence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed curriculum-pair equivalence rule. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listOutsideCredits: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                student_id?: components["parameters"]["studentIdQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                destination_curriculum_term_course_id?: components["parameters"]["destinationCurriculumTermCourseIdQueryParam"];
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible rows; empty array if no visible matches. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideCredit"][];
+                };
+            };
+            /** @description Partial visible collection. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideCredit"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    createOutsideCredit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutsideCreditCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideCredit"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    revokeOutsideCredit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+                credit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeCreditDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Outside credit soft-revoked atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideCredit"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    importStudentsBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudentBatchImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentBatchImportResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Filter by read state (`eq.true` or `eq.false`). */
+                is_read?: string;
+                /** @description Filter by notification icon/category kind (`eq.<kind>`). */
+                kind?: string;
+                /** @description Filter by notification trigger event type (`eq.<event_type>`). */
+                event_type?: string;
+                /** @description Filter by associated student UUID (`eq.UUID`). */
+                target_student_id?: string;
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible rows; empty array if no visible matches. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"][];
+                };
+            };
+            /** @description Partial visible collection. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    markNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkNotificationsReadRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkNotificationsReadResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    evaluateScheduledNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EvaluateAlertsRequest"];
+            };
+        };
+        responses: {
+            /** @description Scheduled alert evaluation completed idempotently. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluateAlertsResponse"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    getAdviserDashboardReport: {
+        parameters: {
+            query?: {
+                /** @description Optional adviser UUID filter when queried by Department Head, Dean, or Admin. */
+                adviser_id?: string;
+                /** @description Optional school term UUID filter for term-scoped grade distribution. */
+                school_term_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Adviser dashboard report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdviserDashboardReport"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    getDepartmentReport: {
+        parameters: {
+            query?: {
+                department_id?: string;
+                program_id?: string;
+                school_term_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Department cohort analytics report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentReport"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    getFacultyReport: {
+        parameters: {
+            query?: {
+                faculty_id?: string;
+                department_id?: string;
+                school_term_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Faculty-wide Dean analytics report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacultyReport"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    getSystemSettings: {
+        parameters: {
+            query?: {
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                id?: components["parameters"]["idQueryParam"];
+                /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
+                department_id?: components["parameters"]["departmentIdQueryParam"];
+                /** @description Only these flat safe columns. */
+                select?: string;
+                /** @description Stable ordering on published columns only. */
+                order?: string;
+                /** @description Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation. */
+                limit?: components["parameters"]["limitQueryParam"];
+                /** @description Number of rows to skip for DoS pagination mitigation */
+                offset?: components["parameters"]["offsetQueryParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible rows; empty array if no visible matches. */
+            200: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemSettings"][];
+                };
+            };
+            /** @description Partial visible collection. */
+            206: {
+                headers: {
+                    /** @description PostgREST visible item range. */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemSettings"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    updateSystemSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SystemSettingsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemSettings"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    recordCompletedBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordBackupRequest"];
+            };
+        };
+        responses: {
+            /** @description Operation completed atomically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemSettings"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    recordAuditViewEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuditViewEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Audit event recorded. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogEntry"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    uploadStudentPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudentPhotoUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Profile photo updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    deleteStudentPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Profile photo removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
+            404: components["responses"]["404NotFound"];
             429: components["responses"]["429TooManyRequests"];
             500: components["responses"]["500InternalError"];
         };
