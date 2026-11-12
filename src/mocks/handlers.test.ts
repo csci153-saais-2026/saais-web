@@ -97,7 +97,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     terms = await read()
     expect(terms.flatMap(t => t.attempts).find(a => a.id === earlier.id)?.is_repeated).toBe(true)
     expect(terms.flatMap(t => t.attempts).find(a => a.id === retakeId)?.counts_toward_cumulative_gwa).toBe(true)
-    expect(terms.find(t => t.school_term_id === MOCK_IDS.term2026Sem1Open)?.gwa).toBe(2.25)
+    expect(terms.find(t => t.school_term_id === MOCK_IDS.term2026Sem1Open)?.gwa).toBe(2.15) // (2.25 x 3 retake units + 2.0 x 2 seeded PE completion units) / 5
   })
 
   it('weights cumulative GWA by units and replaces a failure only after a numeric retake result', async () => {
@@ -196,7 +196,67 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: completion })).response.status).toBe(201)
     expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: completion })).response.status).toBe(409)
     expect((await client.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { ...completion, expected_updated_at: '2026-11-10T09:00:00Z' } })).response.status).toBe(409)
-    expect(db.incResolutions).toHaveLength(1)
+    expect(db.incResolutions.filter(r => r.attempt_id === MOCK_IDS.attemptCsci102Inc)).toHaveLength(1)
+  })
+
+  describe('INC completion correction', () => {
+    const route = '/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion' as const
+    const correction = { completion_grade: 1.75, reason: 'Recomputed per approved form', expected_updated_at: '2026-11-10T09:00:00Z' }
+    const paramsFor = (attemptId: string) => ({ path: { student_id: MOCK_IDS.studentPrimary, attempt_id: attemptId } })
+    const clientFor = () => createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+    const seededGrade = (db: ReturnType<typeof getMockDatabase>) => db.incResolutions.find(r => r.attempt_id === MOCK_IDS.attemptPhEd11IncResolved)?.completion_grade
+
+    it('corrects an existing completion in an editable term', async () => {
+      loginAsMockPersona('adviser')
+      const db = getMockDatabase()
+      const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: correction })
+      expect(response.response.status).toBe(200)
+      expect(response.data?.completion_grade).toBe(1.75)
+      expect(response.data?.updated_at).not.toBe(correction.expected_updated_at)
+      expect(seededGrade(db)).toBe(1.75)
+      expect(db.attemptResults.find(a => a.id === MOCK_IDS.attemptPhEd11IncResolved)?.completion_grade).toBe(1.75)
+    })
+
+    it('rejects a correction for an attempt without an INC completion', async () => {
+      loginAsMockPersona('adviser')
+      const db = getMockDatabase()
+      const client = clientFor()
+      expect((await client.PATCH(route, { params: paramsFor(MOCK_IDS.attemptCsci153Open), body: correction })).response.status).toBe(404)
+      expect((await client.PATCH(route, { params: paramsFor(MOCK_IDS.attemptCsci102Inc), body: correction })).response.status).toBe(404)
+      expect((await client.PATCH(route, { params: paramsFor('80000000-0000-4000-8000-0000000000ff'), body: correction })).response.status).toBe(404)
+      expect(db.incResolutions).toHaveLength(1)
+    })
+
+    it('rejects a correction from an adviser who is not the current adviser', async () => {
+      loginAsMockPersona('adviser_secondary')
+      const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: correction })
+      expect(response.response.status).toBe(403)
+    })
+
+    it('rejects a correction with a stale expected_updated_at', async () => {
+      loginAsMockPersona('adviser')
+      const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: { ...correction, expected_updated_at: '2026-01-01T00:00:00Z' } })
+      expect(response.response.status).toBe(409)
+      expect(seededGrade(getMockDatabase())).toBe(2.0)
+    })
+
+    it('stays blocked by a locked term', async () => {
+      loginAsMockPersona('adviser')
+      const db = getMockDatabase()
+      db.schoolTerms.find(t => t.id === MOCK_IDS.term2026Sem1Open)!.is_locked = true
+      const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: correction })
+      expect(response.response.status).toBe(409)
+      expect(seededGrade(db)).toBe(2.0)
+    })
+
+    it('stays blocked by a department encoding closure', async () => {
+      loginAsMockPersona('adviser')
+      const db = getMockDatabase()
+      db.departmentTermEncodings.push({ ...db.departmentTermEncodings[0], school_term_id: MOCK_IDS.term2026Sem1Open, is_closed: true })
+      const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: correction })
+      expect(response.response.status).toBe(409)
+      expect(seededGrade(db)).toBe(2.0)
+    })
   })
 
   it('rejects a first INC completion after its deadline even when encoding is closed', async () => {
@@ -207,7 +267,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     const client = createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
     const params = { path: { student_id: MOCK_IDS.studentPrimary, attempt_id: MOCK_IDS.attemptCsci102Inc } }
     expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { completion_grade: 2, reason: 'Late completion' } })).response.status).toBe(409)
-    expect(db.incResolutions).toHaveLength(0)
+    expect(db.incResolutions.filter(r => r.attempt_id === MOCK_IDS.attemptCsci102Inc)).toHaveLength(0)
   })
 
   it('rejects a new attempt after a pass but allows a failed course to be retaken', async () => {
