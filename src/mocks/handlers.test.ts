@@ -194,6 +194,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     const params = { path: { student_id: MOCK_IDS.studentPrimary, attempt_id: MOCK_IDS.attemptCsci102Inc } }
     const completion = { completion_grade: 2.0, reason: 'Completed requirements' }
     expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: completion })).response.status).toBe(201)
+    expect(db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)?.gwa_grade).toBe(2)
     expect((await client.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: completion })).response.status).toBe(409)
     expect((await client.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params, body: { ...completion, expected_updated_at: '2026-11-10T09:00:00Z' } })).response.status).toBe(409)
     expect(db.incResolutions.filter(r => r.attempt_id === MOCK_IDS.attemptCsci102Inc)).toHaveLength(1)
@@ -215,6 +216,10 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       expect(response.data?.updated_at).not.toBe(correction.expected_updated_at)
       expect(seededGrade(db)).toBe(1.75)
       expect(db.attemptResults.find(a => a.id === MOCK_IDS.attemptPhEd11IncResolved)?.completion_grade).toBe(1.75)
+      const read = unwrapApiResult(await clientFor().GET('/rest/v1/attempt_result'))
+      const attempt = read.find(a => a.id === MOCK_IDS.attemptPhEd11IncResolved)
+      expect(attempt?.completion_grade).toBe(1.75)
+      expect(attempt?.gwa_grade).toBe(1.75)
     })
 
     it('rejects a correction for an attempt without an INC completion', async () => {
@@ -231,6 +236,25 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       loginAsMockPersona('adviser_secondary')
       const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: correction })
       expect(response.response.status).toBe(403)
+    })
+
+    it('requires the current adviser assignment even for a dean, head or admin', async () => {
+      for (const persona of ['dean', 'department_head', 'admin'] as const) {
+        loginAsMockPersona(persona)
+        const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: correction })
+        expect(response.response.status).toBe(403)
+        const firstCompletion = await clientFor().POST(route, { params: paramsFor(MOCK_IDS.attemptCsci102Inc), body: { completion_grade: 2, reason: 'Completion' } })
+        expect(firstCompletion.response.status).toBe(403)
+      }
+    })
+
+    it('allows a multi-role user who is the current adviser', async () => {
+      const db = getMockDatabase()
+      const assignment = db.adviserAssignments.find(a => a.student_id === MOCK_IDS.studentPrimary && a.end_date === null)!
+      assignment.adviser_id = MOCK_IDS.deptHeadDcst
+      loginAsMockPersona('department_head')
+      const response = await clientFor().PATCH(route, { params: paramsFor(MOCK_IDS.attemptPhEd11IncResolved), body: correction })
+      expect(response.response.status).toBe(200)
     })
 
     it('rejects a correction with a stale expected_updated_at', async () => {

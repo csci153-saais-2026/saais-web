@@ -2325,12 +2325,7 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/attempts/:attempt_id/inc-completion',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
@@ -2338,7 +2333,7 @@ export const saaisMswHandlers = [
       const db = getMockDatabase()
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
       if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
-      if (!canAccessStudentRecord(auth.persona, studentId)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      if (!db.adviserAssignments.some(a => a.student_id === studentId && a.adviser_id === auth.persona.profileId && a.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may change an INC completion.')
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
       if (attempt.recorded_status !== 'inc' || !attempt.inc_deadline || attempt.inc_deadline < today || db.incResolutions.some(r => r.attempt_id === attemptId)) {
         return errorJson(409, 'INC_NOT_ELIGIBLE', 'Only an unresolved INC on or before its deadline can be completed.')
@@ -2359,6 +2354,7 @@ export const saaisMswHandlers = [
       db.attemptResults[db.attemptResults.indexOf(attempt)] = {
         ...attempt,
         completion_grade: resolution.completion_grade,
+        gwa_grade: resolution.completion_grade,
         effective_status: resolution.effective_status,
         resolved_at: resolution.resolved_at,
       }
@@ -2369,19 +2365,14 @@ export const saaisMswHandlers = [
   http.patch(
     '*/functions/v1/students/:student_id/attempts/:attempt_id/inc-completion',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
       const db = getMockDatabase()
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
       if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
-      if (!canAccessStudentRecord(auth.persona, studentId)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      if (!db.adviserAssignments.some(a => a.student_id === studentId && a.adviser_id === auth.persona.profileId && a.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may change an INC completion.')
       const resolution = db.incResolutions.find(r => r.attempt_id === attemptId)
       if (!resolution) return errorJson(404, 'NOT_FOUND', 'INC completion not found.')
       // A correction is not the first-completion exception: closures and locks both block it.
@@ -2404,7 +2395,9 @@ export const saaisMswHandlers = [
       db.attemptResults[db.attemptResults.indexOf(attempt)] = {
         ...attempt,
         completion_grade: corrected.completion_grade,
+        gwa_grade: corrected.completion_grade,
         effective_status: corrected.effective_status,
+        updated_at: updatedAt,
       }
       return HttpResponse.json(corrected, { status: 200 })
     },
