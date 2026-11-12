@@ -25,6 +25,7 @@ try {
     try { run('psql', [...args, '-d', database, '-v', 'ON_ERROR_STOP=1', '-1', '-f', file], true); }
     catch (error) { process.stderr.write(error.stdout || ''); process.stderr.write(error.stderr || ''); throw Error('Failed: ' + file); }
   }
+  cp.execFileSync(process.execPath, ['supabase/tests/concurrency.mjs', bin, database], { stdio: 'inherit' });
   console.log('All migrations and SQL test files passed.');
 } catch (error) {
   console.error(error.message);
