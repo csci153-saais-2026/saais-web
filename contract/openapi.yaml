@@ -2864,9 +2864,11 @@ paths:
       description: >-
         Department Head, Department Staff, or Admin validated transactional catalog operation.
         Supports creating a blank version or cloning terms and course slots from an existing
-        version via clone_from_version_id. Protect referenced history and required last children;
-        lock parents and commit audit with the mutation. Raw table writes are not exposed by the
-        frontend contract.
+        version via clone_from_version_id. Only a Department Head acting within their department
+        may clone an existing version; Department Staff and Admin may create a blank version but
+        cannot use clone_from_version_id without an independently assigned Department Head role.
+        Protect referenced history and required last children; lock parents and commit audit with
+        the mutation. Raw table writes are not exposed by the frontend contract.
       x-required-roles:
         - department_head
         - department_staff
@@ -2877,8 +2879,10 @@ paths:
         admin: institution-wide
       x-atomic: true
       x-request-validation: >-
-        Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
-        server-side.
+        Reject unknown fields; verify JWT and role/ownership at runtime; if clone_from_version_id
+        is non-null, require a Department Head assignment covering the source and target
+        department, including when the account also has Staff or Admin roles; derive audit
+        actor/time server-side.
       responses:
         "201":
           description: Operation completed atomically.
@@ -9773,7 +9777,7 @@ components:
             - string
             - "null"
           format: uuid
-          description: Optional existing curriculum version UUID to clone terms and slots from.
+          description: Optional existing curriculum version UUID to clone terms and slots from; only a Department Head with scope over the source and target may use it.
         version_label:
           type: string
           minLength: 1

@@ -2,7 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import rawCollection from "../../contract/postman/saais-api.postman_collection.json";
 import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
 import { saaisMockServer } from "./node";
-import { resetMockDatabase } from "./store";
+import { getMockDatabase, resetMockDatabase } from "./store";
+import { MOCK_IDS } from "./personas";
 
 interface PostmanHeader {
   key: string;
@@ -95,6 +96,19 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
 
     for (const { fullName, item } of requests) {
       resetMockDatabase();
+      // A correction is allowed only after a completion and when the term is editable.
+      if (fullName.includes("(correctINCCompletion)") && item.name.startsWith("Authorized")) {
+        const db = getMockDatabase();
+        const term = db.schoolTerms.find(value => value.id === MOCK_IDS.term2025Sem2Closed)!;
+        term.is_locked = false;
+        db.incResolutions.push({
+          id: MOCK_IDS.incResolution1, student_id: MOCK_IDS.studentPrimary,
+          attempt_id: MOCK_IDS.attemptCsci102Inc, completion_grade: 2,
+          resolved_by: MOCK_IDS.adviserPrimary, resolved_at: "2026-11-10T09:00:00Z",
+          updated_by: MOCK_IDS.adviserPrimary, updated_at: "2026-11-10T09:00:00Z",
+          effective_status: "passed",
+        });
+      }
       const req = item.request!;
       const rawUrl = interpolate(req.url.raw, env);
       const headers: Record<string, string> = {};
