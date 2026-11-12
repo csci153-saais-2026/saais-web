@@ -85,8 +85,10 @@ begin
   end if;
   after_row:=saais_private.write_row(entity,id,payload);
   perform saais_private.audit(operation,entity,(after_row->>'id')::uuid,before_row,after_row,student,coalesce(body->>'reason',body->>'justification'));
-  perform saais_private.notify(case when revoke then 'credit_decision_revoked' else 'credit_decision_recorded' end,
-    case when revoke then 'alert' else 'grade' end,
-    case when revoke then array[student,(org->>'adviser_id')::uuid] else array[student] end,entity,(after_row->>'id')::uuid,student);
+  if revoke or operation like 'create%' then
+    perform saais_private.notify(case when revoke then 'credit_decision_revoked' else 'credit_decision_recorded' end,
+      case when revoke then 'alert' else 'grade' end,
+      case when revoke then array[student,(org->>'adviser_id')::uuid] else array[student] end,entity,(after_row->>'id')::uuid,student);
+  end if;
   return after_row;
 end $$;

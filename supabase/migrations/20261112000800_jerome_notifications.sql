@@ -63,11 +63,11 @@ language sql stable set search_path=pg_catalog,public as $$
     where s.adviser_id is null and (department is null or s.department_id=department)
   union all
   select 'invitation_expiring_soon',saais_private.recipients(i.department_id,array['department_head','department_staff','admin']),
-    'profile',i.id,null::uuid,'invite:'||i.id||':'||i.invitation_expires_at::text||':'||((i.invitation_expires_at at time zone 'Asia/Manila')::date-reference_date),'Account invitation expiring soon'
+    'profile',i.id,null::uuid,'invite:'||i.id||':'||to_char(i.invitation_expires_at at time zone 'UTC','YYYYMMDDHH24MISS.US')||':'||((i.invitation_expires_at at time zone 'Asia/Manila')::date-reference_date),'Account invitation expiring soon'
     from invite_scope i where (i.invitation_expires_at at time zone 'Asia/Manila')::date-reference_date in (3,1) and (department is null or i.department_id=department)
   union all
   select 'backup_overdue_reminder',saais_private.recipients(s.department_id,array['department_head','admin']),
-    'system_settings',s.id,null::uuid,'backup:'||s.id||':'||coalesce(s.last_backup_at::text,'never'),'Academic records backup overdue'
+    'system_settings',s.id,null::uuid,'backup:'||s.id||':'||coalesce(to_char(s.last_backup_at at time zone 'UTC','YYYYMMDDHH24MISS.US'),'never'),'Academic records backup overdue'
     from public.system_settings s cross join saais_private.alert_configuration c where c.backup_overdue_days is not null and
       (s.last_backup_at is null or reference_date-(s.last_backup_at at time zone 'Asia/Manila')::date>=c.backup_overdue_days)
       and (department is null or s.department_id=department);

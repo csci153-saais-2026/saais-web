@@ -25,10 +25,13 @@ begin
   -- Recheck provisioned roles from locked records, never user_metadata.
   perform 1 from public.profile p where p.id=actor for share;
   perform 1 from public.role_assignment r where r.profile_id=actor for share;
+  perform 1 from auth.sessions s where s.id::text=auth.jwt()->>'session_id' and s.user_id=actor for share;
+  actor:=saais_private.actor();
   select o into operation from saais_private.contract c cross join lateral jsonb_array_elements(c.document->'operations') o where o->>'id'=p_operation;
   if operation is null then perform saais_private.fail(404,'Operation not found.'); end if;
   if not exists(select 1 from jsonb_array_elements_text(operation->'roles') r where saais_private.has_role(r)) then
     perform saais_private.fail(403,'Your assigned roles do not permit this operation.'); end if;
+  if octet_length(p_body::text)>1048576 or octet_length(p_params::text)>8192 then perform saais_private.fail(400,'Request exceeds the server size limit.'); end if;
   for parameter in select * from jsonb_array_elements(operation->'parameters') loop
     param_schema:=jsonb_set(param_schema,array['properties',parameter->>'name'],parameter->'schema');
     param_schema:=jsonb_set(param_schema,'{required}',(param_schema->'required')||jsonb_build_array(parameter->>'name'));
