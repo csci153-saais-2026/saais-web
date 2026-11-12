@@ -1,30 +1,15 @@
 import { fetchDocumentation } from '@/routes/docs/docs-registry'
-export const REDOC_STANDALONE_SRC =
-  'https://cdn.redocly.com/redoc/v2.5.3/bundles/redoc.standalone.js'
-
-export const REDOC_STANDALONE_INTEGRITY =
-  'sha384-xiEssMQFSpSfLbzRZCGfxxIM5QDb2DTrU6vyoZdp2sV1L6pmOMy6MpTtUoLbpC96'
-
-export interface RedocStandaloneGlobal {
-  init(
-    specOrSpecUrl: string | Record<string, unknown>,
-    options: Record<string, unknown>,
-    element: HTMLElement,
-    callback?: (error?: Error) => void,
-  ): void
-}
-
-interface WindowWithRedoc extends Window {
-  Redoc?: RedocStandaloneGlobal
-}
+import { createElement } from 'react'
+import { createRoot } from 'react-dom/client'
 
 export interface MountRedocOptions {
   readonly specUrl: string
   readonly container: HTMLElement
   readonly signal?: AbortSignal
   readonly fetchImpl?: typeof fetch
-  readonly loadScript?: () => Promise<RedocStandaloneGlobal>
 }
+
+export type RedocCleanup = () => void
 
 function readRootCssVar(name: string, fallback: string): string {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -108,116 +93,51 @@ export function buildSaaisRedocOptions(): Record<string, unknown> {
 export const SAAIS_REDOC_OPTIONS: Record<string, unknown> =
   buildSaaisRedocOptions()
 
-let inFlightScriptPromise: Promise<RedocStandaloneGlobal> | null = null
-
-function getGlobalRedoc(): RedocStandaloneGlobal | undefined {
-  if (typeof window === 'undefined') return undefined
-  return (window as WindowWithRedoc).Redoc
-}
-
-/** Resets cached script-loader state between unit tests. */
-export function resetRedocLoaderForTests(): void {
-  inFlightScriptPromise = null
-}
-
-/**
- * Dynamically injects Redoc's official standalone bundle with Subresource Integrity (SRI),
- * deduplicating concurrent loads and cleaning up failed script tags so retries succeed.
- */
-export function loadRedocStandaloneScript(
-  doc: Document = document,
-): Promise<RedocStandaloneGlobal> {
-  const existing = getGlobalRedoc()
-  if (existing && typeof existing.init === 'function') {
-    return Promise.resolve(existing)
-  }
-
-  if (inFlightScriptPromise) {
-    return inFlightScriptPromise
-  }
-
-  inFlightScriptPromise = new Promise<RedocStandaloneGlobal>((resolve, reject) => {
-    const script = doc.createElement('script')
-    script.src = REDOC_STANDALONE_SRC
-    script.integrity = REDOC_STANDALONE_INTEGRITY
-    script.crossOrigin = 'anonymous'
-    script.async = true
-    script.dataset.saaisRedoc = 'standalone'
-
-    script.onload = () => {
-      const loaded = getGlobalRedoc()
-      if (loaded && typeof loaded.init === 'function') {
-        resolve(loaded)
-      } else {
-        inFlightScriptPromise = null
-        script.remove()
-        reject(
-          new Error(
-            'Redoc standalone script loaded, but window.Redoc.init is unavailable.',
-          ),
-        )
-      }
-    }
-
-    script.onerror = () => {
-      inFlightScriptPromise = null
-      script.remove()
-      reject(
-        new Error(
-          'Unable to load the Redoc renderer script. Check your network connection and retry.',
-        ),
-      )
-    }
-
-    doc.head.appendChild(script)
-  })
-
-  return inFlightScriptPromise
-}
-
-/**
- * Verifies the canonical OpenAPI YAML asset is reachable and mounts Redoc into `container`.
- */
+/** Loads the protected contract and owns the React root used by Redoc. */
 export async function mountRedocStandalone({
-  specUrl,
-  container,
-  signal,
-  fetchImpl = fetch,
-  loadScript = () => loadRedocStandaloneScript(),
-}: MountRedocOptions): Promise<void> {
-  let rawYaml: string
-  if (specUrl === '/api/docs?document=openapi') {
-    rawYaml = await fetchDocumentation('openapi', signal)
-  } else {
-    const response = await fetchImpl(specUrl, { method: 'GET', signal })
-    if (!response.ok) throw new Error(`Failed to fetch canonical OpenAPI contract (${response.status} ${response.statusText || 'Error'}).`)
-    rawYaml = await response.text()
-  }
-  if (rawYaml.trim().length === 0) {
-    throw new Error('Canonical OpenAPI contract asset is empty.')
-  }
+  specUrl, container, signal, fetchImpl = fetch,
+}: MountRedocOptions): Promise<RedocCleanup> {
+  const rawYaml = specUrl === '/api/docs?document=openapi'
+    ? await fetchDocumentation('openapi', signal)
+    : await (async () => {
+        const response = await fetchImpl(specUrl, { method: 'GET', signal })
+        if (!response.ok) throw new Error(`Failed to fetch canonical OpenAPI contract (${response.status} ${response.statusText || 'Error'}).`)
+        return response.text()
+      })()
+  if (!rawYaml.trim()) throw new Error('Canonical OpenAPI contract asset is empty.')
+  if (signal?.aborted) return () => {}
+  const { RedocStandalone } = await import('redoc')
+  if (signal?.aborted) return () => {}
 
-  if (signal?.aborted) return
-
-  const redoc = await loadScript()
-  if (signal?.aborted) return
-
-  container.replaceChildren()
-  const redocOptions = buildSaaisRedocOptions()
-
+  const element = document.createElement('div')
+  container.appendChild(element)
+  const root = createRoot(element)
   const objectUrl = URL.createObjectURL(new Blob([rawYaml], { type: 'application/yaml' }))
+  let disposed = false
+  const cleanup = () => {
+    if (disposed) return
+    disposed = true
+    signal?.removeEventListener('abort', onAbort)
+    URL.revokeObjectURL(objectUrl)
+    // React may be completing the parent route's cleanup; unmount after that commit.
+    queueMicrotask(() => { root.unmount(); element.remove() })
+  }
+  let rejectLoad: (error: Error) => void = () => {}
+  const onAbort = () => { cleanup(); rejectLoad(new DOMException('Aborted', 'AbortError')) }
+  signal?.addEventListener('abort', onAbort, { once: true })
   try {
     await new Promise<void>((resolve, reject) => {
-      try {
-        redoc.init(objectUrl, redocOptions, container, (error?: Error) => {
-          if (error) reject(error)
-          else resolve()
-        })
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error('Failed to initialize Redoc viewer.'))
-      }
+      rejectLoad = reject
+      root.render(createElement(RedocStandalone, {
+        specUrl: objectUrl,
+        options: buildSaaisRedocOptions(),
+        onLoaded: (error?: Error) => error ? reject(error) : resolve(),
+      }))
     })
-  } finally {
-    URL.revokeObjectURL(objectUrl)
+    if (signal?.aborted) cleanup()
+    return cleanup
+  } catch (error) {
+    cleanup()
+    throw error
   }
 }
