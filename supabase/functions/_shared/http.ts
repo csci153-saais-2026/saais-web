@@ -1,7 +1,7 @@
 import contract from './contract.json' with { type: 'json' };
 
 export type Operation = (typeof contract.operations)[number];
-export type Environment = { url: string; publicKey: string; origins: string[] };
+export type Environment = { url: string; publicKey: string; publicKeys?: string[]; origins: string[] };
 export type RouteGroup = 'catalog' | 'school-terms' | 'students' | 'curriculum-transfers' | 'notifications';
 type Dependencies = { env: Environment; fetch?: typeof fetch; operations?: Operation[] };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -62,13 +62,16 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       if (!operation) return error(404, 'NOT_FOUND', 'Route not found.', headers);
       const authorization = request.headers.get('authorization');
       if (!env.url || !env.publicKey) return error(500, 'XX000', 'Server configuration is incomplete.', headers);
-      if (request.headers.get('apikey') !== env.publicKey || !authorization || !/^Bearer \S+$/i.test(authorization))
+      const projectKey = request.headers.get('apikey') || '';
+      if (!(env.publicKeys || [env.publicKey]).includes(projectKey) || !authorization || !/^Bearer \S+$/i.test(authorization))
         return error(401, 'PGRST301', 'A project key and user session are required.', headers);
       if (url.search.length) return error(400, '22023', 'Query parameters are not supported for this operation.', headers);
       const params: Record<string, string> = {};
       for (const parameter of operation.parameters) {
         const index = operation.path.split('/').indexOf(`{${parameter.name}}`);
-        const value = decodeURIComponent(segments[index]);
+        let value: string;
+        try { value = decodeURIComponent(segments[index]); }
+        catch { return error(400, '22023', 'Invalid resource identifier.', headers); }
         if (!uuid.test(value)) return error(400, '22023', 'Invalid resource identifier.', headers);
         params[parameter.name] = value;
       }
@@ -77,7 +80,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       catch { return error(400, '22023', 'A bounded valid JSON body is required.', headers); }
       if ((operation.bodyRequired && body === undefined) || (!operation.input && body !== undefined))
         return error(400, '22023', 'Request body does not match this operation.', headers);
-      const upstreamHeaders = { apikey: env.publicKey, Authorization: authorization, 'Content-Type': 'application/json' };
+      const upstreamHeaders = { apikey: projectKey, Authorization: authorization, 'Content-Type': 'application/json' };
       // Auth verifies the access token, independently of browser-provided claims.
       const user = await fetcher(`${env.url}/auth/v1/user`, { headers: upstreamHeaders, signal: AbortSignal.timeout(10000) });
       if (!user.ok) return error(user.status === 401 || user.status === 403 ? 401 : 500, 'PGRST301', 'The user session could not be verified.', headers);

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHandler, operationsFor } from '../functions/_shared/http.ts';
+import { environment } from '../functions/_shared/serve.ts';
 import snapshot from '../functions/_shared/contract.json' with { type: 'json' };
 
 const env = { url: 'https://example.supabase.co', publicKey: 'public-test-key', origins: ['https://saais.test'] };
@@ -39,6 +40,7 @@ test('authentication, CORS, invalid identifiers, query and body guards stop befo
     [new Request(env.url + '/catalog/faculty', { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } }), 401],
     [new Request(env.url + '/catalog/faculty', { method: 'POST', body: '{}', headers: { ...headers, origin: 'https://forbidden.test' } }), 403],
     [new Request(env.url + '/catalog/faculty/not-a-uuid', { method: 'PATCH', body: '{}', headers }), 400],
+    [new Request(env.url + '/catalog/faculty/%ZZ', { method: 'PATCH', body: '{}', headers }), 400],
     [new Request(env.url + '/catalog/faculty?actor=spoof', { method: 'POST', body: '{}', headers }), 400],
     [new Request(env.url + '/catalog/faculty', { method: 'POST', body: '{bad', headers }), 400],
     [new Request(env.url + '/catalog/faculty', { method: 'POST', headers }), 400],
@@ -50,6 +52,18 @@ test('authentication, CORS, invalid identifiers, query and body guards stop befo
   const preflight = await handler(new Request(env.url + '/catalog/faculty', { method: 'OPTIONS', headers: { origin: env.origins[0] } }));
   assert.equal(preflight.status, 204);
   assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), env.origins[0]);
+});
+
+test('hosted named publishable keys and legacy anon keys are accepted without secret keys', async () => {
+  const configured = environment(name => ({ SUPABASE_URL: env.url, SUPABASE_PUBLISHABLE_KEYS: '{"default":"sb_publishable_test","rotated":"sb_publishable_rotated"}', SUPABASE_ANON_KEY: 'legacy-anon', SUPABASE_SERVICE_ROLE_KEY: 'do-not-accept' })[name]);
+  assert.deepEqual(configured.publicKeys, ['sb_publishable_test', 'sb_publishable_rotated', 'legacy-anon']);
+  for (const key of configured.publicKeys) {
+    const handler = createHandler('catalog', { env: configured, fetch: async (url, options) => {
+      assert.equal(options.headers.apikey, key);
+      return url.endsWith('/user') ? identity() : Response.json({});
+    } });
+    assert.equal((await handler(new Request(env.url + '/catalog/faculty', { method: 'POST', body: '{}', headers: { ...headers, apikey: key } }))).status, 201);
+  }
 });
 
 test('expired Auth credentials, SQL conflict, rate limit and internal detail sanitization', async () => {
