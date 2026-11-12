@@ -22,10 +22,14 @@ begin
   perform test.call('updateCourse',jsonb_build_object('id',c->>'id'),'{"title":"Updated Course"}');
   s:=test.call('createCurriculumTermCourse','{}',jsonb_build_object('curriculum_term_id',t->>'id','course_id',c->>'id','is_elective_slot',false,'nominal_units',3));
   perform test.call('updateCurriculumTermCourse',jsonb_build_object('id',s->>'id'),'{"nominal_units":4}');
+  perform test.call('updateCurriculumTerm',jsonb_build_object('id',t->>'id'),'{"year_level":2}');
   perform test.assert((select total_units=4 from public.curriculum_version where id=(v->>'id')::uuid),'computed units');
   perform test.call('updateCurriculumVersion',jsonb_build_object('id',v->>'id'),'{"status":"active"}');
   clone:=test.call('createCurriculumVersion','{}',jsonb_build_object('program_id',p->>'id','version_label','clone','effective_start','2026-01-01','clone_from_version_id',v->>'id'));
   perform test.assert((clone->>'total_units')::numeric=4,'cloned units');
+  empty_version:=test.call('createCurriculumVersion','{}',jsonb_build_object('program_id',p->>'id','clone_from_version_id',v->>'id','curriculum',jsonb_build_object('version_label','nested clone','effective_start','2026-01-01','delinquency_threshold',12,'total_units',4,'terms','[]'::jsonb)));
+  perform test.assert((empty_version->>'total_units')::numeric=4,'nested-definition clone units');
+  perform test.call('deleteCurriculumVersion',jsonb_build_object('id',empty_version->>'id'));
   rule:=test.call('createCurriculumPairEquivalence','{}',jsonb_build_object('from_curriculum_version_id',v->>'id','to_curriculum_version_id',clone->>'id','source_course_id',c->>'id','target_course_id',c->>'id'));
   perform test.call('deleteCurriculumPairEquivalence',jsonb_build_object('id',rule->>'id'));
   perform test.expect('PT400','createPrerequisite','{}',jsonb_build_object('course_id',c->>'id','prerequisite_course_id',c->>'id','type','strict'));

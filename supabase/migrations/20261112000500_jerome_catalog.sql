@@ -158,7 +158,7 @@ begin
       select coalesce(jsonb_agg(jsonb_build_object('year_level',ct.year_level,'term_sequence',ct.term_sequence,'slots',
         (select coalesce(jsonb_agg(to_jsonb(cs)-'id'-'curriculum_term_id'),'[]') from public.curriculum_term_course cs where cs.curriculum_term_id=ct.id)) order by ct.year_level,ct.term_sequence),'[]') into t
         from public.curriculum_term ct where ct.curriculum_version_id=source;
-      data:=(body-'clone_from_version_id'-'program_id')||jsonb_build_object('terms',t);
+      data:=coalesce(body->'curriculum',body-'clone_from_version_id'-'program_id')||jsonb_build_object('terms',t);
     else data:=coalesce(body->'curriculum',body-'program_id'-'clone_from_version_id')||jsonb_build_object('terms',coalesce(body->'curriculum'->'terms','[]')); end if;
     after_row:=saais_private.definition((body->>'program_id')::uuid,data);
   elsif entity='curriculum_term' and verb='create' then
@@ -167,7 +167,9 @@ begin
   elsif entity='curriculum_term_course' and verb='create' then
     after_row:=saais_private.slot((body->>'curriculum_term_id')::uuid,body-'curriculum_term_id');
   else
-    if verb='update' and entity in ('curriculum_term','curriculum_term_course') and saais_private.referenced(entity,id) then
+    if verb='update' and entity in ('curriculum_term','curriculum_term_course') and
+      (saais_private.referenced(entity,id,case when entity='curriculum_term' then array['curriculum_term_course'] else '{}'::text[] end) or
+       (entity='curriculum_term' and exists(select 1 from public.curriculum_term_course cs where cs.curriculum_term_id=id and saais_private.referenced('curriculum_term_course',cs.id)))) then
       perform saais_private.fail(409,'Referenced curriculum requirements cannot be edited.'); end if;
     if entity='curriculum_term_course' and verb='update' then
       if ((data->>'is_elective_slot')::boolean and data->>'slot_type' not in ('elective','ge')) or
