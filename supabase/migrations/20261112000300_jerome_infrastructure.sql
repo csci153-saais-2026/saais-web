@@ -79,10 +79,14 @@ language sql stable security definer set search_path=pg_catalog,public as $$
     and exists(select 1 from public.profile p where p.id=r.profile_id and p.status='active'));
 $$;
 create function saais_private.require_scope(roles text[], department uuid default null, faculty uuid default null) returns void
-language plpgsql stable set search_path=pg_catalog,public as $$
+language plpgsql set search_path=pg_catalog,public as $$
+declare permitted text;
 begin
-  if not exists(select 1 from unnest(roles) r where saais_private.has_role(r,case when r in ('department_head','department_staff') then department end,case when r='dean' then faculty end)) then
+  select r into permitted from unnest(roles) r where saais_private.has_role(r,case when r in ('department_head','department_staff') then department end,case when r='dean' then faculty end)
+    order by (r='admin') desc,array_position(roles,r) limit 1;
+  if permitted is null then
     perform saais_private.fail(403,'The requested record is outside your authorized scope.'); end if;
+  perform set_config('saais.authorized_role',permitted,true);
 end $$;
 create function saais_private.organization(student uuid) returns jsonb
 language sql stable set search_path=pg_catalog,public as $$
@@ -98,13 +102,13 @@ create function saais_private.student_access(student uuid, roles text[], histori
 language plpgsql set search_path=pg_catalog,public as $$
 declare org jsonb;
 begin
-  perform 1 from public.profile where id=student and role='student' for update;
+  perform 1 from public.profile p where p.id=student and exists(select 1 from public.role_assignment r where r.profile_id=p.id and r.role='student') for update;
   if not found then perform saais_private.fail(404,'Student not found.'); end if;
   org:=saais_private.organization(student);
   if org is null then perform saais_private.fail(409,'Student has no current curriculum assignment.'); end if;
   if 'adviser'=any(roles) and saais_private.has_role('adviser') and exists(
     select 1 from public.adviser_assignment a where a.student_id=student and a.adviser_id=auth.uid() and (historical or a.end_date is null)
-  ) then return org; end if;
+  ) then perform set_config('saais.authorized_role','adviser',true); return org; end if;
   perform saais_private.require_scope(array_remove(roles,'adviser'),(org->>'department_id')::uuid,(org->>'faculty_id')::uuid);
   return org;
 end $$;
@@ -113,7 +117,8 @@ language plpgsql set search_path=pg_catalog,public as $$
 #variable_conflict use_variable
 begin
   insert into public.audit_log_entry(actor_id,actor_name,actor_role,student_id,action,action_category,entity_type,entity_id,old_value,new_value,reason)
-  select auth.uid(),p.full_name,(select r.role from public.role_assignment r where r.profile_id=auth.uid() order by (r.role='admin') desc,r.created_at,r.id limit 1),
+  select auth.uid(),p.full_name,coalesce(nullif(current_setting('saais.authorized_role',true),'')::public.role_type,
+    (select r.role from public.role_assignment r where r.profile_id=auth.uid() order by (r.role='admin') desc,r.created_at,r.id limit 1)),
     student,action,case when student is null then 'catalog_term' else 'change' end,entity,id,old_value,new_value,reason from public.profile p where p.id=auth.uid();
   if student is not null then insert into saais_private.cache_invalidation(student_id) values(student)
     on conflict(student_id) do update set revision=cache_invalidation.revision+1,updated_at=clock_timestamp(); end if;

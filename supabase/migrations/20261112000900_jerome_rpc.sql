@@ -19,7 +19,7 @@ end $$;
 create function public.jerome_operation(p_operation text, p_params jsonb default '{}', p_body jsonb default '{}') returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public set statement_timeout='20s' as $$
 declare operation jsonb; result jsonb; parameter jsonb; param_schema jsonb:='{"type":"object","properties":{},"required":[],"additionalProperties":false}';
-  actor uuid; budget integer;
+  actor uuid; budget integer; permitted text;
 begin
   actor:=saais_private.actor();
   -- Recheck provisioned roles from locked records, never user_metadata.
@@ -31,6 +31,8 @@ begin
   if operation is null then perform saais_private.fail(404,'Operation not found.'); end if;
   if not exists(select 1 from jsonb_array_elements_text(operation->'roles') r where saais_private.has_role(r)) then
     perform saais_private.fail(403,'Your assigned roles do not permit this operation.'); end if;
+  select r into permitted from jsonb_array_elements_text(operation->'roles') r where saais_private.has_role(r) order by (r='admin') desc,r limit 1;
+  perform set_config('saais.authorized_role',permitted,true);
   if octet_length(p_body::text)>1048576 or octet_length(p_params::text)>8192 then perform saais_private.fail(400,'Request exceeds the server size limit.'); end if;
   for parameter in select * from jsonb_array_elements(operation->'parameters') loop
     param_schema:=jsonb_set(param_schema,array['properties',parameter->>'name'],parameter->'schema');

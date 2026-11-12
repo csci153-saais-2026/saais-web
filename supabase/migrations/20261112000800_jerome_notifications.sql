@@ -12,7 +12,7 @@ language sql stable set search_path=pg_catalog,public as $$
   with students as (
     select p.id,coalesce((saais_private.organization(p.id)->>'department_id')::uuid,p.department_id) as department_id,
       (saais_private.organization(p.id)->>'adviser_id')::uuid as adviser_id
-    from public.profile p where p.role='student' and p.status in ('active','invited')
+    from public.profile p where exists(select 1 from public.role_assignment r where r.profile_id=p.id and r.role='student') and p.status in ('active','invited')
   ), unresolved as (
     select a.*,s.department_id,s.adviser_id from public.attempt a join students s on s.id=a.student_id
     where a.status='inc' and not exists(select 1 from public.inc_resolution i where i.attempt_id=a.id)

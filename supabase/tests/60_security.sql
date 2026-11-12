@@ -37,10 +37,13 @@ begin
   perform test.assert(not has_table_privilege('authenticated','public.elective_mapping','UPDATE'),'raw credit writes');
   perform test.assert(not has_table_privilege('authenticated','saais_private.contract','UPDATE'),'request schema write grants');
   begin update public.audit_log_entry set reason='tamper'; raise exception 'mutable audit'; exception when sqlstate 'PT403' then null; end;
+  begin truncate public.audit_log_entry; raise exception 'audit truncation allowed'; exception when sqlstate 'PT403' then null; end;
+  begin truncate saais_private.credit_history; raise exception 'credit history truncation allowed'; exception when sqlstate 'PT403' then null; end;
   perform test.login(7);
   perform test.expect('PT403','updateCourse',jsonb_build_object('id',course),'{"title":"Dean cannot edit"}');
   insert into public.role_assignment(profile_id,role,department_id) values(auth.uid(),'department_head',department);
   perform test.call('updateCourse',jsonb_build_object('id',course),'{"title":"Multi-role department edit"}');
+  perform test.assert((select a.actor_role='department_head' from public.audit_log_entry a where a.actor_id=auth.uid() and a.action='updateCourse' order by a.created_at desc,a.id limit 1),'audit used an unrelated primary role');
   perform test.expect('PT403','createCourse','{}',jsonb_build_object('department_id',other,'code','DENY2','title','Other faculty','units',3));
   perform test.login(1);
   insert into saais_private.request_budget(actor_id,window_start,count) values(auth.uid(),date_trunc('minute',now()),120)

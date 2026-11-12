@@ -9,6 +9,8 @@ create function saais_private.immutable_audit() returns trigger language plpgsql
 begin raise exception using errcode='PT403',message='Audit history is append-only.'; end $$;
 create trigger audit_is_immutable before update or delete on public.audit_log_entry for each row execute function saais_private.immutable_audit();
 create trigger credit_history_is_immutable before update or delete on saais_private.credit_history for each row execute function saais_private.immutable_audit();
+create trigger audit_cannot_be_truncated before truncate on public.audit_log_entry for each statement execute function saais_private.immutable_audit();
+create trigger credit_history_cannot_be_truncated before truncate on saais_private.credit_history for each statement execute function saais_private.immutable_audit();
 
 -- A future enrollment/grade writer cannot race a credit decision into counting
 -- the same source or destination twice. Both lock the student's profile first.
