@@ -602,7 +602,6 @@ window.SAAIS_PORTALS={
     "admin/curricula": "department-staff/curricula",
     "admin/courses": "department-staff/course-catalog",
     "admin/course-offerings": "department-staff/academic-terms",
-    "adviser/enrollment": "adviser/encode-grades",
-    "adviser/reassignment": "department-staff/adviser-assignments"
+    "adviser/enrollment": "adviser/encode-grades"
   }
 };

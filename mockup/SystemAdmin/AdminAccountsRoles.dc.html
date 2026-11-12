@@ -60,7 +60,6 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       ICON[kind] + '</svg><div>' + text + '</div></div>';
     el.hidden = false;
   }
-
   /* Saved state: System Admin changes persist in this browser (localStorage). */
   var KEY_ADM = 'saais-admin-ui-v1', ADM = {};
   try { ADM = JSON.parse(localStorage.getItem(KEY_ADM)) || {}; } catch (e) { ADM = window.__saaisAdm || {}; }
@@ -81,7 +80,6 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     body.querySelector('[data-empty]').hidden = n > 0;
     return n;
   }
-
   /* Students imported by the Department Head / Staff appear in the directory too. */
   if ($('stu-body')) {
     var impStu = []; try { impStu = (JSON.parse(localStorage.getItem('saais-mgmt-v1')) || {}).students || []; } catch (e) {}
@@ -102,7 +100,6 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     var q = this.value.trim().toLowerCase();
     $('stu-count').textContent = filterRows($('stu-body'), function (tr) { return !q || tr.dataset.q.indexOf(q) > -1; });
   });
-
   /* Audit log filters */
   if ($('aud-body')) {
     var run = function () {
@@ -115,7 +112,6 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     };
     ['aud-person', 'aud-student', 'aud-action', 'aud-from'].forEach(function (id) { $(id).addEventListener('input', run); $(id).addEventListener('change', run); });
   }
-
   /* Accounts: add account (modal) */
   if ($('acct-add')) {
     var dlg = $('acct-modal');
@@ -199,7 +195,6 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       say($('acct-done'), 'ok', esc(name) + ' was added. They can sign in as <b>' + esc(email) + '</b>.');
     });
   }
-
   /* Profile menu (sidebar) */
   if ($('me-btn')) {
     var setMenu = function (on) {
@@ -210,7 +205,6 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     document.addEventListener('click', function (e) { if (!$('me').contains(e.target)) setMenu(false); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('me-menu').hidden) { setMenu(false); $('me-btn').focus(); } });
   }
-
   /* Settings */
   if ($('th-warn') && SET.th) { ['th-warn', 'th-prob', 'th-dism'].forEach(function (id, i) { if (SET.th[i] != null) $(id).value = SET.th[i]; }); }
   if ($('em-from') && SET.email) $('em-from').value = SET.email;
@@ -237,7 +231,6 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     SET.backup = d; saveSET(); audAdm('Recorded a completed backup (' + d + ')');
     this.disabled = true; this.style.opacity = '0.55'; this.style.cursor = 'default'; this.textContent = 'Backup recorded today';
   });
-
   /* SystemAdmin: hash navigation between the four pages */
   var views = document.querySelectorAll('[data-view]');
   if (views.length > 1) {

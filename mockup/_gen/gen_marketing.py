@@ -821,7 +821,7 @@ def docs_page():
             f'<h1 class="dsp" style="font-size: 30px; margin-top: 14px">recordGrades</h1>'
             f'<p style="font-size: 14.5px; color: {MUTED}; line-height: 1.65; margin-top: 12px; max-width: 62ch">'
             f'Records a student attempt against a course offering. Runs the strict-prerequisite soft check. '
-            f'When <b>prerequisite_override</b> is true, the attempt and its AuditLogEntry are written in a '
+            f'When <b>continue_with_prerequisite_override</b> is true, the attempt and its AuditLogEntry are written in a '
             f'single transaction.</p>'
             f'<div style="display: flex; gap: 10px; margin-top: 16px">'
             f'{badge("bearerAuth", MUTED, CREAM_DP, dot=False)}{badge("Role: adviser (current adviser only)", MUTED, CREAM_DP, dot=False)}'

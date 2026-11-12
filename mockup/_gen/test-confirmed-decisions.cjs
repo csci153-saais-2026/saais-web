@@ -78,7 +78,7 @@ function submitCredit(grade, { units = '3', reason = 'Regression test reason' } 
 
   const state = JSON.parse(localStorage.getItem('saais-mgmt-v1') || '{}');
   const audit = JSON.parse(localStorage.getItem('saais-audit-v1') || '[]');
-  const message = document.querySelector('#dialog-content [data-action-message]')?.textContent || '';
+  const message = [...document.querySelectorAll('#dialog-content [data-action-message], #dialog-content [data-credit-error]')].map(el => el.textContent).join(' ');
   const result = { dom, document, state, audit, message };
   return result;
 }

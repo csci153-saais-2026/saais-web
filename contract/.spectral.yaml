@@ -1,0 +1,33 @@
+extends:
+  - "@stoplight/spectral-owasp-ruleset"
+
+# Free, deterministic OWASP API Security Top 10 (2023) static analysis of contract/openapi.yaml.
+#
+# The rules switched off below produce several hundred findings on response schemas and gateway
+# behaviour that an OpenAPI document cannot enforce. Request-body/query bounds, closed schemas,
+# role metadata, 401/403/429 coverage and student write allowlists are already asserted by
+# contract/security.check.cjs; runtime enforcement is listed in contract/SECURITY.md.
+rules:
+  # Per-field limits on server-generated RESPONSE schemas are not an attack surface (API4 is
+  # enforced on requests via bounded pagination, closed bodies and maxItems in security.check.cjs).
+  owasp:api4:2023-string-limit: off
+  owasp:api4:2023-string-restricted: off
+  owasp:api4:2023-integer-format: off
+  owasp:api4:2023-integer-limit: off
+  # Configure rate limits and CORS at the gateway before deployment; declaring 429 responses
+  # does not activate either control. security.check.cjs checks response coverage only.
+  owasp:api4:2023-rate-limit: off
+  owasp:api8:2023-define-cors-origin: off
+  # Replace the upstream blanket HTTP rule with an explicit local-sandbox exception.
+  owasp:api8:2023-no-server-http: off
+  saais-server-https-or-local-sandbox:
+    description: Hosted servers require HTTPS; HTTP is limited to the local Supabase sandbox.
+    given:
+      - $.servers[*].url
+      - $.paths[*].servers[*].url
+      - $.paths[*][get,put,post,delete,options,head,patch,trace].servers[*].url
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: '^(?:https://[^\s/]+(?:/[^\s]*)?|http://127\.0\.0\.1:54321/?)$'
