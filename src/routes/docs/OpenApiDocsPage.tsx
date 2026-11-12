@@ -14,9 +14,10 @@ import { CANONICAL_OPENAPI_SPEC_URL, fetchDocumentation } from '@/routes/docs/do
 import {
   mountRedocStandalone,
   type MountRedocOptions,
+  type RedocCleanup,
 } from '@/routes/docs/redoc-loader'
 
-export type MountRedocFn = (options: MountRedocOptions) => Promise<void>
+export type MountRedocFn = (options: MountRedocOptions) => Promise<RedocCleanup | void>
 
 export interface OpenApiDocsPageProps {
   readonly isDev?: boolean
@@ -49,13 +50,16 @@ function OpenApiContractViewer({
 
     const controller = new AbortController()
     let cancelled = false
+    let dispose: RedocCleanup | void
 
     void mountRedoc({
       specUrl,
       container,
       signal: controller.signal,
     })
-      .then(() => {
+      .then((cleanup) => {
+        dispose = cleanup
+        if (cancelled && typeof cleanup === 'function') cleanup()
         if (!cancelled && !controller.signal.aborted) {
           setViewerState({ status: 'ready' })
         }
@@ -73,6 +77,7 @@ function OpenApiContractViewer({
     return () => {
       cancelled = true
       controller.abort()
+      if (typeof dispose === 'function') dispose()
     }
   }, [attempt, mountRedoc, specUrl])
 
