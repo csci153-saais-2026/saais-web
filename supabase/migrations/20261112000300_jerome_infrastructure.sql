@@ -110,6 +110,7 @@ begin
 end $$;
 create function saais_private.audit(action text, entity text, id uuid, old_value jsonb, new_value jsonb, student uuid default null, reason text default null) returns void
 language plpgsql set search_path=pg_catalog,public as $$
+#variable_conflict use_variable
 begin
   insert into public.audit_log_entry(actor_id,actor_name,actor_role,student_id,action,action_category,entity_type,entity_id,old_value,new_value,reason)
   select auth.uid(),p.full_name,(select r.role from public.role_assignment r where r.profile_id=auth.uid() order by (r.role='admin') desc,r.created_at,r.id limit 1),
@@ -120,7 +121,7 @@ end $$;
 create function saais_private.notify(event text, kind text, recipients uuid[], entity text, id uuid, student uuid default null) returns void
 language sql set search_path=pg_catalog,public as $$
   insert into public.notification(recipient_id,event_type,kind,title,body,actor_id,entity_type,entity_id,target_student_id,email_delivery_status)
-  select distinct p.id,event,kind,replace(initcap(replace(event,'_',' ')),'  ',' '),'An academic record was updated.',auth.uid(),entity,id,student,'pending'
+  select distinct p.id,event,kind,replace(initcap(replace(event,'_',' ')),'  ',' '),'An academic record was updated.',auth.uid(),entity,notify.id,student,'pending'
   from public.profile p where p.id=any(recipients) and p.status='active';
 $$;
 create function saais_private.recipients(department uuid, roles text[]) returns uuid[]
