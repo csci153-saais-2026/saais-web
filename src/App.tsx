@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Navigate, Route, Routes, Link } from "react-router"
 import { DepartmentHeadLayout } from "@/routes/department-head/DepartmentHeadLayout"
 import { PartnerPlaceholderPage } from "@/routes/department-head/PartnerPlaceholderPage"
+import { PreviewStateProvider } from "@/routes/department-head/PreviewStateProvider"
 
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"))
 
@@ -12,6 +13,12 @@ const EquivalencePage = lazy(() => import("@/routes/department-head/EquivalenceP
 const OutsideCreditsPage = lazy(() => import("@/routes/department-head/OutsideCreditsPage"))
 const AcademicTermsPage = lazy(() => import("@/routes/department-head/AcademicTermsPage"))
 const NotificationsPage = lazy(() => import("@/routes/department-head/NotificationsPage"))
+
+const StudentsPage = lazy(() => import("@/routes/department-head/StudentsPage"))
+const AdviserAssignmentsPage = lazy(() => import("@/routes/department-head/AdviserAssignmentsPage"))
+const DepartmentReportsPage = lazy(() => import("@/routes/department-head/DepartmentReportsPage"))
+const AuditLogPage = lazy(() => import("@/routes/department-head/AuditLogPage"))
+const SettingsPage = lazy(() => import("@/routes/department-head/SettingsPage"))
 
 const LoginPage = lazy(() => import("@/routes/auth/LoginPage"))
 const DocsHubPage = lazy(() => import("@/routes/docs/DocsHubPage"))
@@ -68,7 +75,7 @@ function App() {
           <Route path="/styleguide" element={<StyleguidePage />} />
 
           {/* Department Head Module */}
-          <Route path="/department-head" element={<DepartmentHeadLayout />}>
+          <Route path="/department-head" element={<PreviewStateProvider><DepartmentHeadLayout /></PreviewStateProvider>}>
             <Route index element={<Navigate to="curriculum-transfers" replace />} />
 
             {/* Developer 1 Assigned Routes */}
@@ -79,57 +86,12 @@ function App() {
             <Route path="academic-terms" element={<AcademicTermsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
 
-            {/* Developer 2 (Partner) Reserved Routes */}
-            <Route
-              path="students"
-              element={
-                <PartnerPlaceholderPage
-                  title="Students"
-                  subtitle="Find and review students across the Department of Computer Science and Technology."
-                  screenNumber={6}
-                />
-              }
-            />
-            <Route
-              path="adviser-assignments"
-              element={
-                <PartnerPlaceholderPage
-                  title="Adviser assignments"
-                  subtitle="Keep every student connected to an adviser in your department."
-                  screenNumber={7}
-                />
-              }
-            />
-            <Route
-              path="department-reports"
-              element={
-                <PartnerPlaceholderPage
-                  title="Department reports"
-                  subtitle="A semester snapshot of student progress across your department."
-                  screenNumber={8}
-                />
-              }
-            />
-            <Route
-              path="audit-log"
-              element={
-                <PartnerPlaceholderPage
-                  title="Audit log"
-                  subtitle="Review record views, changes, and sign-ins within your department."
-                  screenNumber={9}
-                />
-              }
-            />
-            <Route
-              path="settings"
-              element={
-                <PartnerPlaceholderPage
-                  title="Settings"
-                  subtitle="Configure department standing rules, email, and backup records."
-                  screenNumber={10}
-                />
-              }
-            />
+            {/* Department Head management pages */}
+            <Route path="students" element={<StudentsPage />} />
+            <Route path="adviser-assignments" element={<AdviserAssignmentsPage />} />
+            <Route path="department-reports" element={<DepartmentReportsPage />} />
+            <Route path="audit-log" element={<AuditLogPage />} />
+            <Route path="settings" element={<SettingsPage />} />
 
             {/* Adviser sub-navigation placeholders */}
             <Route
