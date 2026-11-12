@@ -273,6 +273,20 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       expect(seededGrade(db)).toBe(2.0)
     })
 
+    it('rejects malformed bodies with INVALID_INPUT and leaves the completion unchanged', async () => {
+      loginAsMockPersona('adviser')
+      const db = getMockDatabase()
+      const url = `${BASE_URL}/functions/v1/students/${MOCK_IDS.studentPrimary}/attempts/${MOCK_IDS.attemptPhEd11IncResolved}/inc-completion`
+      const send = (body: string) => fetch(url, { method: 'PATCH', headers: { apikey: TEST_API_KEY, Authorization: `Bearer ${MOCK_PERSONAS.adviser.token}`, 'Content-Type': 'application/json' }, body })
+      const bodies = ['null', '[]', '"text"', 'not json', JSON.stringify({ ...correction, reason: 123 }), JSON.stringify({ ...correction, reason: '   ' }), JSON.stringify({ ...correction, completion_grade: '1.75' }), JSON.stringify({ ...correction, completion_grade: 1.8 })]
+      for (const body of bodies) {
+        const response = await send(body)
+        expect(response.status, body).toBe(400)
+        expect((await response.json()).code, body).toBe('INVALID_INPUT')
+      }
+      expect(seededGrade(db)).toBe(2.0)
+    })
+
     it('stays blocked by a department encoding closure', async () => {
       loginAsMockPersona('adviser')
       const db = getMockDatabase()

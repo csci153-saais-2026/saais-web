@@ -2369,6 +2369,11 @@ export const saaisMswHandlers = [
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
+      // Parse the body first: everything below reads and writes state with no further await.
+      const rawBody: unknown = await request.json().catch(() => null)
+      const body = rawBody !== null && typeof rawBody === 'object' && !Array.isArray(rawBody)
+        ? rawBody as Partial<ApiSchema<'INCCompletionCorrectionRequest'>>
+        : null
       const db = getMockDatabase()
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
       if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
@@ -2380,16 +2385,16 @@ export const saaisMswHandlers = [
       const offering = db.courseOfferings.find(o => o.id === attempt.course_offering_id)
       const term = db.schoolTerms.find(t => t.id === offering?.school_term_id)
       if (term?.is_locked && !term.override_flag) return errorJson(409, 'TERM_LOCKED', 'Corrections require an editable term.')
-      const body = (await request.json().catch(() => ({}))) as ApiSchema<'INCCompletionCorrectionRequest'>
-      if (!body.reason?.trim() || !Number.isFinite(body.completion_grade) || body.completion_grade < 1 || body.completion_grade > 5 || body.completion_grade * 4 % 1 !== 0) return errorJson(400, 'INVALID_INPUT', 'Enter a valid completion grade and reason.')
+      const grade = body?.completion_grade
+      if (typeof body?.reason !== 'string' || !body.reason.trim() || typeof grade !== 'number' || !Number.isFinite(grade) || grade < 1 || grade > 5 || grade * 4 % 1 !== 0) return errorJson(400, 'INVALID_INPUT', 'Enter a valid completion grade and reason.')
       if (body.expected_updated_at !== resolution.updated_at) return errorJson(409, 'STALE_COMPLETION', 'The INC completion changed since it was loaded.')
       const updatedAt = new Date().toISOString()
       const corrected: ApiSchema<'INCResolution'> = {
         ...resolution,
-        completion_grade: body.completion_grade,
+        completion_grade: grade,
         updated_by: auth.persona.profileId,
         updated_at: updatedAt,
-        effective_status: body.completion_grade <= 3.0 ? 'passed' : 'failed',
+        effective_status: grade <= 3.0 ? 'passed' : 'failed',
       }
       db.incResolutions[db.incResolutions.indexOf(resolution)] = corrected
       db.attemptResults[db.attemptResults.indexOf(attempt)] = {
