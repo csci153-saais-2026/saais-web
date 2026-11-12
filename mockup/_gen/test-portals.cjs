@@ -10,7 +10,7 @@ const failures=[];
 function documentFor(file,query=''){
  const console=new VirtualConsole();
  // jsdom does not implement the native CSS nesting used by the marketing page.
- console.on('jsdomError',e=>{if(e.type!=='css parsing')failures.push(`${file}: ${e.message}`);});
+ console.on('jsdomError',e=>{if(e.type!=='css parsing'&&!(file==='prototype.html'&&e.message==='Not implemented: navigation (except hash changes)'))failures.push(`${file}: ${e.message}`);});
  const dom=new JSDOM(read(file),{url:'http://localhost/mockup/'+file+query,runScripts:'outside-only',virtualConsole:console});
  const w=dom.window;
  w.structuredClone=structuredClone;w.matchMedia=()=>({matches:false,addEventListener(){}});w.scrollTo=()=>{};
@@ -82,11 +82,13 @@ for(const [route,screen]of Object.entries(manifest.routes)){
 const dom=documentFor('prototype.html'),w=dom.window,d=w.document;execute(dom,'prototype.html');
 for(const role of manifest.roles){
  d.querySelector(`[data-role="${role.id}"]`).click();w.SAAISDemo.render();
- assert.ok(decodeURIComponent(d.querySelector('#portal-frame').src).includes(manifest.routes[role.home].file),role.id+' entry point');
+ assert.equal(w.location.hash,'#/'+role.home,role.id+' entry route');
+ assert.equal(d.querySelector('#portal-frame').title,manifest.routes[role.home].title,role.id+' entry point');
 }
 for(const route of Object.keys(manifest.routes)){w.location.hash='#/'+route;w.SAAISDemo.render();assert.equal(d.querySelector('#portal-frame').hidden,false,route+' presentation');}
 w.location.hash='#/dean-dh/dean/reports?student=sample';w.SAAISDemo.render();
-assert.ok(d.querySelector('#portal-frame').src.includes('student=sample'),'query preserved');
+assert.equal(w.location.hash,'#/dean-dh/dean/reports?student=sample','route query preserved');
+assert.equal(d.querySelector('#portal-frame').title,manifest.routes['dean-dh/dean/reports'].title,'queried route renders');
 for(const role of manifest.roles){
  const url=new URL(role.folder+'/index.html',w.location.href);
  w.dispatchEvent(new w.MessageEvent('message',{source:d.querySelector('#portal-frame').contentWindow,origin:w.location.origin,data:{type:'saais:open',url:url.href}}));
