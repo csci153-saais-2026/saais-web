@@ -40,8 +40,8 @@ The table traces workflow families, not an assertion that implementation, role c
 
 | Representative | Decision | Evidence |
 | --- | --- | --- |
-| Frontend | Pending | A named representative must approve the candidate hash and version in the review. |
-| Backend | Pending | A named representative must approve the same candidate hash and version in the review. |
+| Frontend: [Htaruo](https://github.com/Htaruo) | Pending | Approval of the candidate hash and version must be recorded in the review. |
+| Backend: [Matt-cant-code](https://github.com/Matt-cant-code) | Pending | Approval of the same candidate hash and version must be recorded in the review. |
 
 After both decisions and any further discrepancies are resolved, record the names, dates, links to approvals, final contract hash, version and merged commit here. Until then do not mark issue #39 complete or call version 0.3.0 frozen.
 
