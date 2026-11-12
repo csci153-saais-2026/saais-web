@@ -1,3 +1,12 @@
+const redocLifecycle = vi.hoisted(() => ({ unmounted: vi.fn(), defer: false }))
+vi.mock('redoc', async () => {
+  const React = await import('react')
+  return { RedocStandalone: ({ onLoaded }: { onLoaded: () => void }) => {
+    React.useEffect(() => { if (!redocLifecycle.defer) onLoaded(); return redocLifecycle.unmounted }, [onLoaded])
+    return React.createElement('div', { 'data-test-redoc': true })
+  } }
+})
+
 import LoginPage from '@/routes/auth/LoginPage'
 import { getSupabaseClient, resetSupabaseClientForTests } from '@/lib/supabase/client'
 import { parseMarkdownBlocks } from '@/routes/docs/markdown-blocks'
@@ -19,27 +28,19 @@ import {
 } from '@/routes/docs/docs-registry'
 import {
   buildSaaisRedocOptions,
-  loadRedocStandaloneScript,
   mountRedocStandalone,
-  REDOC_STANDALONE_INTEGRITY,
-  REDOC_STANDALONE_SRC,
-  resetRedocLoaderForTests,
-  SAAIS_REDOC_OPTIONS,
 } from '@/routes/docs/redoc-loader'
 
 afterEach(() => {
   cleanup()
+  redocLifecycle.defer = false
+  redocLifecycle.unmounted.mockClear()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
   resetSupabaseClientForTests()
   setMockSessionToken(null)
   setAccessTokenResolver(null)
-  resetRedocLoaderForTests()
-  delete (window as unknown as Record<string, unknown>).Redoc
-  document
-    .querySelectorAll('script[data-saais-redoc="standalone"]')
-    .forEach((el) => el.remove())
 })
 
 describe('docs-registry canonical & allowlist guarantees', () => {
@@ -279,7 +280,7 @@ describe('OpenApiDocsPage (/docs/openapi)', () => {
   })
 })
 
-describe('redoc-loader standalone script & spec verification', () => {
+describe('redoc-loader rendering & spec verification', () => {
   it('fails fast with HTTP status when canonical spec URL cannot be fetched', async () => {
     const container = document.createElement('div')
     const fetchImpl = vi.fn().mockResolvedValue(
@@ -310,66 +311,32 @@ describe('redoc-loader standalone script & spec verification', () => {
     ).rejects.toThrow('Canonical OpenAPI contract asset is empty.')
   })
 
-  it('initializes Redoc with SAAIS theme options when spec and script succeed', async () => {
+  it('unmounts the owned Redoc root when the viewer is disposed', async () => {
     const container = document.createElement('div')
-    const fetchImpl = vi.fn().mockResolvedValue(
-      new Response('openapi: 3.1.0\ninfo:\n  title: SAAIS\n  version: 0.3.0\n', {
-        status: 200,
-      }),
-    )
-    const initSpy = vi.fn(
-      (
-        _specUrl: string | Record<string, unknown>,
-        _options: Record<string, unknown>,
-        target: HTMLElement,
-        cb?: (err?: Error) => void,
-      ) => {
-        target.dataset.mounted = 'true'
-        cb?.()
-      },
-    )
-
-    await mountRedocStandalone({
-      specUrl: '/assets/openapi.yaml',
-      container,
-      fetchImpl,
-      loadScript: async () => ({ init: initSpy }),
-    })
-
-    expect(initSpy).toHaveBeenCalledTimes(1)
-    expect(initSpy.mock.calls[0]?.[0]).toMatch(/^blob:/)
-    expect(initSpy.mock.calls[0]?.[1]).toEqual(SAAIS_REDOC_OPTIONS)
-    expect(container.dataset.mounted).toBe('true')
+    URL.createObjectURL = vi.fn(() => 'blob:contract')
+    URL.revokeObjectURL = vi.fn()
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('openapi: 3.1.0'))
+    const controller = new AbortController()
+    const dispose = await mountRedocStandalone({ specUrl: '/spec.yaml', container, fetchImpl, signal: controller.signal })
+    expect(container.querySelector('[data-test-redoc]')).toBeTruthy()
+    controller.abort()
+    dispose()
+    await waitFor(() => expect(container.childElementCount).toBe(0))
+    expect(redocLifecycle.unmounted).toHaveBeenCalledTimes(1)
   })
 
-  it('injects SRI-pinned script tag and recovers cleanly after a script load failure', async () => {
-    const firstAttempt = loadRedocStandaloneScript(document)
-    const injectedScript = document.querySelector<HTMLScriptElement>(
-      'script[data-saais-redoc="standalone"]',
-    )
-    expect(injectedScript).toBeTruthy()
-    expect(injectedScript?.src).toBe(REDOC_STANDALONE_SRC)
-    expect(injectedScript?.integrity).toBe(REDOC_STANDALONE_INTEGRITY)
-    expect(injectedScript?.crossOrigin).toBe('anonymous')
-
-    injectedScript?.onerror?.(new Event('error'))
-    await expect(firstAttempt).rejects.toThrow(
-      'Unable to load the Redoc renderer script',
-    )
-
-    // Retry after failure should inject a fresh script element and resolve once window.Redoc exists
-    const secondAttempt = loadRedocStandaloneScript(document)
-    const retryScript = document.querySelector<HTMLScriptElement>(
-      'script[data-saais-redoc="standalone"]',
-    )
-    expect(retryScript).toBeTruthy()
-    ;(window as unknown as Record<string, unknown>).Redoc = {
-      init: vi.fn(),
-    }
-    retryScript?.onload?.(new Event('load'))
-
-    const loadedRedoc = await secondAttempt
-    expect(typeof loadedRedoc.init).toBe('function')
+  it('cleans up a Redoc root when loading is aborted', async () => {
+    redocLifecycle.defer = true
+    URL.createObjectURL = vi.fn(() => 'blob:contract')
+    URL.revokeObjectURL = vi.fn()
+    const container = document.createElement('div')
+    const controller = new AbortController()
+    const loading = mountRedocStandalone({ specUrl: '/spec.yaml', container, fetchImpl: vi.fn().mockResolvedValue(new Response('openapi: 3.1.0')), signal: controller.signal })
+    await waitFor(() => expect(container.querySelector('[data-test-redoc]')).toBeTruthy())
+    controller.abort()
+    await expect(loading).rejects.toMatchObject({ name: 'AbortError' })
+    await waitFor(() => expect(redocLifecycle.unmounted).toHaveBeenCalledTimes(1))
+    expect(container.childElementCount).toBe(0)
   })
 
   it('reads SAAIS CSS custom properties from :root when building Redoc options', () => {
