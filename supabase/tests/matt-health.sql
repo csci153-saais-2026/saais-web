@@ -12,7 +12,9 @@ begin
   end;
 end $$;
 reset role;
-select test.login(2);
+insert into auth.users(id) values ('00000099-0000-4000-8000-000000000000');
+insert into auth.sessions(id,user_id) values ('00000099-0000-4000-8000-000000000001','00000099-0000-4000-8000-000000000000');
+select test.login(99);
 do $$
 begin
   begin
