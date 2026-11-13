@@ -33,4 +33,5 @@ export const mattRoutes = new Set([
   'listRecommendations',
   'saveAdvisingPlan',
   'askAdvisingAssistant',
+  'importGradesBatch',
 ]);

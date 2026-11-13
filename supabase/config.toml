@@ -39,3 +39,6 @@ verify_jwt = true
 
 [functions.reports]
 verify_jwt = true
+
+[functions.grades]
+verify_jwt = true
