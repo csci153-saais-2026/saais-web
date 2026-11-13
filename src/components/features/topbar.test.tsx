@@ -23,7 +23,9 @@ describe("Topbar", () => {
     expect(screen.getByRole("navigation", { name: "breadcrumb" })).toBeTruthy()
     expect(screen.getByRole("link", { name: "Home" }).getAttribute("href")).toBe("/")
     expect(screen.getByRole("link", { name: "Students" }).getAttribute("href")).toBe("/students")
-    expect(screen.getByText("Student record").getAttribute("aria-current")).toBe("page")
+    expect(screen.getAllByText("Student record").some(
+      (element) => element.getAttribute("aria-current") === "page"
+    )).toBe(true)
   })
 
   it("renders the mobile menu button only when a handler is supplied", () => {
@@ -46,6 +48,38 @@ describe("Topbar", () => {
     )
 
     expect(screen.queryByRole("button", { name: "Open navigation" })).toBeNull()
+  })
+
+  it("keeps the current page visible and exposes all ancestors in the mobile menu", () => {
+    render(
+      <MemoryRouter>
+        <Topbar
+          crumbs={[
+            { label: "Advisees", to: "/advisees" },
+            { label: "Student record", to: "/advisees/student" },
+            { label: "Grades", to: "/advisees/student/grades" },
+            { label: "Grades" },
+          ]}
+          onMenuClick={() => undefined}
+          trailing={<button type="button">Alerts</button>}
+        />
+      </MemoryRouter>
+    )
+
+    const mobileBreadcrumbs = screen.getByRole("navigation", { name: "breadcrumb" })
+      .querySelector(".md\\:hidden")
+    expect(mobileBreadcrumbs?.className).toContain("md:hidden")
+    expect(mobileBreadcrumbs?.textContent).toContain("Grades")
+    expect(screen.getAllByText("Grades").some(
+      (element) => element.getAttribute("aria-current") === "page"
+    )).toBe(true)
+
+    fireEvent.click(screen.getByRole("button", { name: "Show previous pages" }))
+    const previousPages = screen.getByRole("navigation", { name: "Previous pages" })
+    expect(previousPages.querySelectorAll("a")).toHaveLength(3)
+    expect(previousPages.textContent).toContain("Advisees")
+    expect(previousPages.textContent).toContain("Student record")
+    expect(previousPages.textContent).toContain("Grades")
   })
 
   it("renders without crashing when no breadcrumbs are provided", () => {
