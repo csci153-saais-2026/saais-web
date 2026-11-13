@@ -83,6 +83,14 @@ function sortTerms(terms: CurriculumTermBlock[]) {
   )
 }
 
+function versionReferenceReason(version: CurriculumVersionRecord) {
+  if (version.enrolled > 0) return "Students are assigned to this curriculum."
+  if (version.references?.length) {
+    return `This curriculum is referenced by ${version.references.join(" and ")}.`
+  }
+  return null
+}
+
 export default function CurriculaPage() {
   const [versions, setVersions] = React.useState<CurriculumVersionRecord[]>(
     MOCK_CURRICULA_VERSIONS
@@ -123,6 +131,51 @@ export default function CurriculaPage() {
 
   const currentVersion =
     versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null
+
+  const deleteTargetVersion =
+    dialog?.kind === "del-version"
+      ? versions.find((v) => v.id === dialog.versionId)
+      : null
+  const deleteTargetTerm =
+    dialog?.kind === "del-term" || dialog?.kind === "del-slot"
+      ? currentVersion?.terms.find((t) => t.id === dialog.termId)
+      : null
+  const deleteTargetSlot =
+    dialog?.kind === "del-slot"
+      ? deleteTargetTerm?.rows.find((r) => r.id === dialog.slotId)
+      : null
+
+  const deleteBlockReason = (() => {
+    switch (dialog?.kind) {
+      case "del-version": {
+        if (!deleteTargetVersion) return "This curriculum is no longer available."
+        const referenceReason = versionReferenceReason(deleteTargetVersion)
+        if (referenceReason) return `${referenceReason} Retire it to preserve existing records.`
+        if (deleteTargetVersion.terms.some((term) => term.rows.some((slot) => slot.hasAcademicHistory))) {
+          return "This curriculum contains slots used by academic history. Retire it to preserve those records."
+        }
+        return null
+      }
+      case "del-term":
+        if (!currentVersion || !deleteTargetTerm) return "This term is no longer available."
+        if (deleteTargetTerm.rows.some((slot) => slot.hasAcademicHistory)) {
+          return "This term contains slots used by academic history."
+        }
+        if (currentVersion.terms.length === 1 && versionReferenceReason(currentVersion)) {
+          return "A referenced curriculum must retain at least one term."
+        }
+        return null
+      case "del-slot":
+        if (!currentVersion || !deleteTargetTerm || !deleteTargetSlot) return "This slot is no longer available."
+        if (deleteTargetSlot.hasAcademicHistory) return "This slot is used by academic history."
+        if (deleteTargetTerm.rows.length === 1 && versionReferenceReason(currentVersion)) {
+          return "Each term in a referenced curriculum must retain at least one slot."
+        }
+        return null
+      default:
+        return null
+    }
+  })()
 
   const closeDialog = () => {
     setDialog(null)
@@ -198,7 +251,7 @@ export default function CurriculaPage() {
 
   const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!dialog) return
+    if (!dialog || deleteBlockReason) return
 
     if (dialog.kind === "add-version" || dialog.kind === "edit-version") {
       const year = vYear.trim()
@@ -485,19 +538,6 @@ export default function CurriculaPage() {
         return { title: "Delete record", confirmLabel: "Delete", isDelete: true }
     }
   })()
-
-  const deleteTargetVersion =
-    dialog?.kind === "del-version"
-      ? versions.find((v) => v.id === dialog.versionId)
-      : null
-  const deleteTargetTerm =
-    dialog?.kind === "del-term" || dialog?.kind === "del-slot"
-      ? currentVersion?.terms.find((t) => t.id === dialog.termId)
-      : null
-  const deleteTargetSlot =
-    dialog?.kind === "del-slot"
-      ? deleteTargetTerm?.rows.find((r) => r.id === dialog.slotId)
-      : null
 
   return (
     <div className="space-y-6">
@@ -799,7 +839,7 @@ export default function CurriculaPage() {
               </div>
             )}
 
-            {dialog?.kind === "del-version" && deleteTargetVersion && (
+            {dialog?.kind === "del-version" && deleteTargetVersion && !deleteBlockReason && (
               <p className="text-sm text-foreground">
                 Delete{" "}
                 <strong className="font-semibold">
@@ -846,7 +886,7 @@ export default function CurriculaPage() {
               </div>
             )}
 
-            {dialog?.kind === "del-term" && deleteTargetTerm && (
+            {dialog?.kind === "del-term" && deleteTargetTerm && !deleteBlockReason && (
               <p className="text-sm text-foreground">
                 Delete{" "}
                 <strong className="font-semibold">
@@ -1009,7 +1049,7 @@ export default function CurriculaPage() {
               </div>
             )}
 
-            {dialog?.kind === "del-slot" && deleteTargetTerm && deleteTargetSlot && (
+            {dialog?.kind === "del-slot" && deleteTargetTerm && deleteTargetSlot && !deleteBlockReason && (
               <p className="text-sm text-foreground">
                 Delete{" "}
                 <strong className="font-semibold">
@@ -1019,9 +1059,9 @@ export default function CurriculaPage() {
               </p>
             )}
 
-            {formError && (
+            {(formError || deleteBlockReason) && (
               <Alert variant="destructive" role="alert">
-                <AlertDescription>{formError}</AlertDescription>
+                <AlertDescription>{deleteBlockReason ?? formError}</AlertDescription>
               </Alert>
             )}
 
@@ -1032,6 +1072,7 @@ export default function CurriculaPage() {
               <Button
                 type="submit"
                 variant={dialogMeta.isDelete ? "destructive" : "default"}
+                disabled={!!deleteBlockReason}
               >
                 {dialogMeta.confirmLabel}
               </Button>

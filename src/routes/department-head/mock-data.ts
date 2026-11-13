@@ -111,6 +111,7 @@ export interface CurriculumCourseSlot {
   courseOrSlot: string
   requiredUnits: number
   type: CurriculumSlotType
+  hasAcademicHistory?: boolean
 }
 
 export interface CurriculumTermBlock {
@@ -129,6 +130,7 @@ export interface CurriculumVersionRecord {
   from: string
   status: CurriculumVersionStatus
   terms: CurriculumTermBlock[]
+  references?: ("curriculum transfer requests" | "course equivalence rules")[]
 }
 
 export const FACULTY_DEPARTMENTS: Record<string, string[]> = {
@@ -162,7 +164,7 @@ export const MOCK_CURRICULA_VERSIONS: CurriculumVersionRecord[] = [
         year: 1,
         sem: "Semester 1",
         rows: [
-          { id: "r1", courseOrSlot: "CSIT 100 — Introduction to Computing", requiredUnits: 3, type: "Required course" },
+          { id: "r1", courseOrSlot: "CSIT 100 — Introduction to Computing", requiredUnits: 3, type: "Required course", hasAcademicHistory: true },
           { id: "r2", courseOrSlot: "CSIT 101 — Fundamentals of Programming", requiredUnits: 4, type: "Required course" },
           { id: "r3", courseOrSlot: "CSci 180 — Pre-calculus for CS", requiredUnits: 3, type: "Required course" },
           { id: "r4", courseOrSlot: "Comm 11 — Purposive Communication", requiredUnits: 3, type: "Required course" },
@@ -192,6 +194,7 @@ export const MOCK_CURRICULA_VERSIONS: CurriculumVersionRecord[] = [
     enrolled: 142,
     from: "2019-06-01",
     status: "retired",
+    references: ["curriculum transfer requests"],
     terms: [
       {
         id: "bscs19-y1-s1",
