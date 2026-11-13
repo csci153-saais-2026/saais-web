@@ -10,4 +10,7 @@ export const mattRoutes = new Set([
   'updateProfile',
   'reassignAdviser',
   'bulkReassignAdvisers',
+  'addAdvisingNote',
+  'updateAdvisingNoteArchiveState',
+  'addAttemptRemark',
 ]);
