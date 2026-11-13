@@ -19,4 +19,6 @@ export const mattRoutes = new Set([
   'searchStudentCourseOfferings',
   'correctGrades',
   'correctPrerequisiteGrade',
+  'recordGrades',
+  'encodeTermGrades',
 ]);
