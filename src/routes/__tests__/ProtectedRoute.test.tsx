@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ProtectedRoute } from '../ProtectedRoute'
+import AdminRoutes from '@/routes/admin/AdminRoutes'
 import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import { AuthContext, type AuthContextValue } from '@/context/auth-context'
 
@@ -62,7 +63,7 @@ function renderPortalRoutes(
                 <Route path="/dean" element={<div>Dean Portal Content</div>} />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route path="/admin" element={<div>Admin Portal Content</div>} />
+                <Route path="/admin/*" element={<AdminRoutes />} />
               </Route>
             </Route>
           </Route>
@@ -80,6 +81,82 @@ describe('ProtectedRoute & AuthenticatedPortalLayout', () => {
   it('shows loading state while verifying session', () => {
     renderPortalRoutes({ isLoading: true }, '/admin')
     expect(screen.getByText(/Verifying session/i)).toBeTruthy()
+  })
+
+  it.each([
+    ['/admin/students', 'Student directory'],
+    ['/admin/accounts', 'Accounts and roles'],
+    ['/admin/programs', 'Programs'],
+    ['/admin/faculties', 'Faculties and departments'],
+    ['/admin/settings', 'System settings'],
+    ['/admin/audit-log', 'Audit log'],
+  ])('allows an Admin to open %s and shows its screen heading', async (path, title) => {
+    renderPortalRoutes(
+      {
+        user: {
+          id: 'admin-1',
+          email: 'admin@vsu.edu.ph',
+          fullName: 'System Admin',
+          primaryRole: 'admin',
+          roles: ['admin'],
+          status: 'active',
+        },
+        roles: ['admin'],
+        activeRole: 'admin',
+        isAllowedToEnter: true,
+      },
+      path,
+    )
+
+    expect(await screen.findByRole('heading', { name: title, level: 1 })).toBeTruthy()
+    expect(screen.getAllByText('System Admin').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(title).length).toBeGreaterThan(1)
+  })
+
+  it('preserves the existing /admin portal entry', async () => {
+    renderPortalRoutes(
+      {
+        user: {
+          id: 'admin-1',
+          email: 'admin@vsu.edu.ph',
+          fullName: 'System Admin',
+          primaryRole: 'admin',
+          roles: ['admin'],
+          status: 'active',
+        },
+        roles: ['admin'],
+        activeRole: 'admin',
+        isAllowedToEnter: true,
+      },
+      '/admin',
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'System Administration Portal',
+        level: 1,
+      }),
+    ).toBeTruthy()
+  })
+
+  it('blocks non-Admin users from Admin child routes', () => {
+    renderPortalRoutes(
+      {
+        user: {
+          id: 'adv-1',
+          email: 'adviser@vsu.edu.ph',
+          fullName: 'Marco Polo',
+          primaryRole: 'adviser',
+          roles: ['adviser'],
+          status: 'active',
+        },
+        roles: ['adviser'],
+        activeRole: 'adviser',
+        isAllowedToEnter: true,
+      },
+      '/admin/students',
+    )
+    expect(screen.getByText('Adviser Portal Content')).toBeTruthy()
   })
 
   it('fails closed with Retry / Sign out when authError occurs during hydration', () => {
