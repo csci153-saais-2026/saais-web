@@ -27,4 +27,7 @@ export const mattRoutes = new Set([
   'getChecklist',
   'getAcademicSummary',
   'getTermGrades',
+  'getAdviserDashboardReport',
+  'getDepartmentReport',
+  'getFacultyReport',
 ]);

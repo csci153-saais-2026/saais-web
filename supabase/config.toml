@@ -36,3 +36,6 @@ verify_jwt = true
 
 [functions.grade-flags]
 verify_jwt = true
+
+[functions.reports]
+verify_jwt = true
