@@ -186,7 +186,7 @@ const features: Doc[] = [
     live: "sidebar",
     summary: "The signed-in page frame: sidebar, topbar with breadcrumb, and the content area. Every portal page renders inside it. Must be inside the router.",
     props: [
-      ["sidebar", "AppSidebar props", "portalLabel, sections, user, helpHref?, profileHref?, onSignOut."],
+      ["sidebar", "AppSidebar props", "portalLabel, sections, currentPath, user, helpHref?, profileHref?, onSignOut."],
       ["crumbs", "{ label; to? }[]", "Breadcrumb trail. The last item is the current page."],
       ["topbarTrailing", "ReactNode", "Right side of the topbar, normally <NotificationBell />."],
     ],
@@ -194,16 +194,15 @@ const features: Doc[] = [
 import { GridIcon, CheckIcon } from "@/components/icons"
 
 const sections = [{
-  label: "Student",
+  title: "Student",
   items: [
-    { label: "Dashboard", to: "/student/dashboard", icon: GridIcon, end: true },
-    { label: "Curriculum checklist", to: "/student/checklist", icon: CheckIcon },
+    { label: "Dashboard", href: "/student/dashboard", icon: GridIcon, end: true },
+    { label: "Curriculum checklist", href: "/student/checklist", icon: CheckIcon },
   ],
-  // collapsible: true, defaultOpen: false   // for expandable groups
 }]
 
 <AppShell
-  sidebar={{ portalLabel: "Student portal", sections, onSignOut: signOut,
+  sidebar={{ portalLabel: "Student portal", sections, currentPath: location.pathname, onSignOut: signOut,
              user: { name: "Maria Isabel Bautista", subtitle: "23-1-04412", initials: "MI" } }}
   crumbs={[{ label: "My academic journey", to: "/student" }, { label: "Dashboard" }]}
   topbarTrailing={<NotificationBell items={items} allHref="/student/notifications" />}
