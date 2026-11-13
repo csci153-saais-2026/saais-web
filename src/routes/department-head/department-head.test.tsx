@@ -112,7 +112,7 @@ describe("Department Head Frontend Suite", () => {
       expect(screen.getByText(/Equivalencies apply to a curriculum pair/i)).toBeDefined()
       expect(screen.getAllByText("CS 101").length).toBeGreaterThan(0)
       expect(screen.getAllByText("CC 101").length).toBeGreaterThan(0)
-      expect(screen.getAllByText("BSCS 2021 → 2024").length).toBeGreaterThan(0)
+      expect(screen.getAllByText("BSCS 2021 → BSCS 2024").length).toBeGreaterThan(0)
     })
 
     it("opens Add course equivalence modal", () => {
