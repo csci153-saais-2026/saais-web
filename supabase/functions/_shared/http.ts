@@ -1,6 +1,7 @@
 import contract from './contract.json' with { type: 'json' };
 import mattContract from './matt-contract.json' with { type: 'json' };
 import { mattRoutes } from './matt-routes.ts';
+import { assistantAnswer, type AssistantConfig } from './matt-assistant.ts';
 
 type Parameter = { name: string; in: string; schema: { type?: string } };
 export type Operation = {
@@ -8,7 +9,7 @@ export type Operation = {
   bodyRequired: boolean; input: unknown; status: number; errors: number[];
   matt?: boolean;
 };
-export type Environment = { url: string; publicKey: string; publicKeys?: string[]; origins: string[] };
+export type Environment = { url: string; publicKey: string; publicKeys?: string[]; origins: string[]; assistant?: AssistantConfig };
 export type RouteGroup = string;
 type Dependencies = { env: Environment; fetch?: typeof fetch; operations?: Operation[] };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -110,9 +111,13 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       if (!identity.id || !uuid.test(identity.id)) return error(401, 'PGRST301', 'Invalid user session.', headers);
       // Use the caller JWT, never a service-role credential. SQL rechecks active
       // session/profile/role/scope at commit and makes the operation atomic.
-      const rpc = operation.matt ? 'matt_operation' : 'jerome_operation';
+      const assistant = operation.id === 'askAdvisingAssistant';
+      if (assistant && !env.assistant) return error(500, 'XX000', 'The advising assistant is unavailable.', headers);
+      const rpc = assistant ? 'matt_assistant_context' : operation.matt ? 'matt_operation' : 'jerome_operation';
+      const rpcBody = assistant ? { p_student_id: params.student_id, p_body: body ?? {} }
+        : { p_operation: operation.id, p_params: params, p_body: body ?? {} };
       const result = await fetcher(`${env.url}/rest/v1/rpc/${rpc}`, { method: 'POST', headers: upstreamHeaders,
-        body: JSON.stringify({ p_operation: operation.id, p_params: params, p_body: body ?? {} }), signal: AbortSignal.timeout(30000) });
+        body: JSON.stringify(rpcBody), signal: AbortSignal.timeout(30000) });
       if (!result.ok) {
         const status = operation.errors.includes(result.status) ? result.status : 500;
         const upstream = await result.json().catch(() => ({})) as { code?: string; message?: string; details?: string };
@@ -128,6 +133,9 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       }
       if (operation.status === 204) return new Response(null, { status: 204, headers });
       const data = await result.json();
+      if (assistant && env.assistant) {
+        return Response.json(await assistantAnswer(env.assistant, fetcher, data), { status: operation.status, headers });
+      }
       if (operation.id === 'listRecommendations') {
         headers.set('X-Excluded-Count', String(data.excluded_count));
         return Response.json(data.rows, { status: operation.status, headers });

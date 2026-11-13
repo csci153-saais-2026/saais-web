@@ -32,4 +32,5 @@ export const mattRoutes = new Set([
   'getFacultyReport',
   'listRecommendations',
   'saveAdvisingPlan',
+  'askAdvisingAssistant',
 ]);
