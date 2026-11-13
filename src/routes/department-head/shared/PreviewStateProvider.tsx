@@ -4,7 +4,7 @@ import { XIcon } from "@/components/icons"
 import { PreviewContext, todayInManila } from "./preview-state"
 import { SAMPLE_STUDENTS, type DirectoryStudent } from "./students-data"
 import { applyReassignment, type ReassignmentInput } from "../adviser-assignments/assignment-model"
-import { SAMPLE_AUDIT_EVENTS, type AuditEvent } from "../audit-data"
+import { SAMPLE_AUDIT_EVENTS, type AuditEvent } from "../audit-log/audit-data"
 import { DEFAULT_SETTINGS, type SettingsState } from "../settings-data"
 
 function initialStudents(): DirectoryStudent[] {

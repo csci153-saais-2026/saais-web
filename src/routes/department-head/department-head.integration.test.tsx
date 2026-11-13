@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import App from "@/App"
-import { SAMPLE_AUDIT_EVENTS } from "./audit-data"
+import { SAMPLE_AUDIT_EVENTS } from "./audit-log/audit-data"
 
 afterEach(cleanup)
 beforeAll(() => {
