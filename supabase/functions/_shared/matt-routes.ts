@@ -23,4 +23,8 @@ export const mattRoutes = new Set([
   'encodeTermGrades',
   'createGradeFlag',
   'resolveGradeFlag',
+  'listStudentRoster',
+  'getChecklist',
+  'getAcademicSummary',
+  'getTermGrades',
 ]);
