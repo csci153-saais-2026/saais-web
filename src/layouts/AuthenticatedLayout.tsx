@@ -8,7 +8,7 @@ import type { NavigationRole } from "@/navigation/navigation-config"
 
 type SidebarOptions = Omit<ComponentProps<typeof AppSidebar>, "sections" | "currentPath">
 
-/** Pass actual authorized role assignments from session context when auth is integrated. */
+/** Shared shell receiving authorized role assignments from the auth connector. */
 export function AuthenticatedLayout({
   assignments,
   sidebar,

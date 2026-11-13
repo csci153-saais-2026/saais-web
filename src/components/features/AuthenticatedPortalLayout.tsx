@@ -1,8 +1,7 @@
-import { Outlet, useLocation, useNavigate } from 'react-router'
-import { AppShell } from '@/components/features/app-shell'
+import { useLocation, useNavigate } from 'react-router'
+import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout'
 import { useAuth } from '@/hooks/use-auth'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
-import { getNavigationSections } from '@/navigation/navigation-config'
 import type { SaaisRole } from '@/mocks/personas'
 
 const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
@@ -62,7 +61,7 @@ function resolveRoleFromPath(
 }
 
 export function AuthenticatedPortalLayout() {
-  const { user, roles, activeRole, isLoading, signOut } = useAuth()
+  const { user, roles, roleAssignments, activeRole, isLoading, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -86,7 +85,6 @@ export function AuthenticatedPortalLayout() {
   )
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
-  const sections = getNavigationSections(roles)
 
   const handleSignOut = async () => {
     await signOut()
@@ -94,10 +92,10 @@ export function AuthenticatedPortalLayout() {
   }
 
   return (
-    <AppShell
+    <AuthenticatedLayout
+      assignments={roleAssignments}
       sidebar={{
         portalLabel,
-        sections,
         user: {
           name: user.fullName,
           subtitle: user.email,
@@ -107,8 +105,6 @@ export function AuthenticatedPortalLayout() {
         onSignOut: () => void handleSignOut(),
       }}
       crumbs={[{ label: portalLabel, to: homeHref }]}
-    >
-      <Outlet />
-    </AppShell>
+    />
   )
 }
