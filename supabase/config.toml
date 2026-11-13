@@ -1,0 +1,44 @@
+project_id = "saais"
+
+[api]
+enabled = true
+max_rows = 1000
+
+[functions.catalog]
+verify_jwt = true
+
+[functions.school-terms]
+verify_jwt = true
+
+[functions.students]
+verify_jwt = true
+
+[functions.curriculum-transfers]
+verify_jwt = true
+
+[functions.notifications]
+verify_jwt = true
+
+[functions.health]
+verify_jwt = true
+
+[functions.accounts]
+verify_jwt = true
+
+[functions.settings]
+verify_jwt = true
+
+[functions.audit]
+verify_jwt = true
+
+[functions.adviser-assignments]
+verify_jwt = true
+
+[functions.grade-flags]
+verify_jwt = true
+
+[functions.reports]
+verify_jwt = true
+
+[functions.grades]
+verify_jwt = true
