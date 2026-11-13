@@ -13,21 +13,8 @@ import {
   validatePasswordPolicy,
 } from '@/lib/auth/auth-service'
 
-function hasRecoveryUrlIndicator(): boolean {
-  if (typeof window === 'undefined') return false
-  const searchParams = new URLSearchParams(window.location.search)
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-  return (
-    searchParams.get('type') === 'recovery' ||
-    hashParams.get('type') === 'recovery' ||
-    searchParams.has('code') ||
-    hashParams.has('access_token')
-  )
-}
-
 export default function ResetPasswordPage() {
-  const { isPasswordRecovery, isMockMode, isLoading } = useAuth()
-  const [hasUrlRecovery] = React.useState<boolean>(() => hasRecoveryUrlIndicator())
+  const { isPasswordRecovery, isLoading, user } = useAuth()
   const [password, setPassword] = React.useState('')
   const [confirmPassword, setConfirmPassword] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
@@ -35,14 +22,20 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = React.useState(false)
   const [wasSimulated, setWasSimulated] = React.useState(false)
 
-  const canResetPassword = isPasswordRecovery || (hasUrlRecovery && !isMockMode) || (isMockMode && hasUrlRecovery)
+  // A verified recovery session is strictly required:
+  // - In real Supabase mode: isPasswordRecovery MUST be true (emitted by PASSWORD_RECOVERY event
+  //   after code/token exchange has verified the user with Supabase Auth).
+  // - In mock mode: requires an explicit valid recovery session or mock query indicator
+  //   without an ordinary signed-in user session attempting password reset.
+  const isOrdinarySignedInUser = Boolean(user && !isPasswordRecovery)
+  const canResetPassword = isPasswordRecovery && !isOrdinarySignedInUser
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
     if (!canResetPassword) {
-      setError('A valid password recovery link is required.')
+      setError('A verified password recovery session is required.')
       return
     }
 
@@ -98,19 +91,21 @@ export default function ResetPasswordPage() {
             <Alert variant="destructive">
               <AlertIcon />
               <AlertDescription>
-                This page requires an active password recovery link from your institutional email.
-                If you are already signed in and want to update your password, use Account Settings.
+                {isOrdinarySignedInUser
+                  ? 'You are currently signed in with an active institutional session. To change your password, use Account Settings.'
+                  : 'This page requires a verified password recovery session initiated from your institutional email link. If your link has expired or is invalid, please request a new recovery link.'}
               </AlertDescription>
             </Alert>
             <div className="flex flex-col gap-2 mt-2">
-              <Link to="/forgot-password" className="w-full">
-                <Button className="w-full">Request New Recovery Link</Button>
-              </Link>
-              <Link to="/settings" className="w-full">
-                <Button variant="outline" className="w-full">
-                  Go to Account Settings
-                </Button>
-              </Link>
+              {isOrdinarySignedInUser ? (
+                <Link to="/settings" className="w-full">
+                  <Button className="w-full">Go to Account Settings</Button>
+                </Link>
+              ) : (
+                <Link to="/forgot-password" className="w-full">
+                  <Button className="w-full">Request New Recovery Link</Button>
+                </Link>
+              )}
             </div>
           </div>
         ) : success ? (
