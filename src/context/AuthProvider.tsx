@@ -7,7 +7,6 @@ import React, {
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { ApiSchema } from '@/lib/api'
-import { getMockSessionToken } from '@/lib/api/auth-token'
 import {
   AuthHydrationError,
   evaluateAccountEntryEligibility,
@@ -64,35 +63,143 @@ function removeStoredValue(key: string): void {
   sessionStorage.removeItem(key)
 }
 
+interface InitialMockAuthState {
+  user: AuthProfile | null
+  profile: ApiSchema<'Profile'> | null
+  session: Session | null
+  roles: SaaisRole[]
+  roleAssignments: ApiSchema<'RoleAssignment'>[]
+  activeRole: SaaisRole | null
+  activePersonaKey: SyntheticPersonaKey | null
+  entryBlockedReason: string | null
+  isLoading: boolean
+}
+
+function resolveInitialMockAuthState(isMockMode: boolean): InitialMockAuthState {
+  if (!isMockMode) {
+    return {
+      user: null,
+      profile: null,
+      session: null,
+      roles: [],
+      roleAssignments: [],
+      activeRole: null,
+      activePersonaKey: null,
+      entryBlockedReason: null,
+      isLoading: true,
+    }
+  }
+
+  const storedKey = readStoredValue(MOCK_PERSONA_STORAGE_KEY) as
+    | SyntheticPersonaKey
+    | null
+  const personas = getSyntheticPersonas()
+
+  if (storedKey && storedKey in personas) {
+    const {
+      descriptor,
+      session: mockSession,
+      profile: mockProfile,
+      roleAssignments: mockAssignments,
+    } = activateMockPersonaSession(storedKey, 'password')
+
+    const roleSet = new Set<SaaisRole>()
+    for (const assignment of mockAssignments) {
+      roleSet.add(assignment.role)
+    }
+    const normalizedRoles = Array.from(roleSet)
+    const eligibility = evaluateAccountEntryEligibility(
+      mockProfile,
+      normalizedRoles,
+    )
+
+    const authProfile: AuthProfile = {
+      id: mockProfile.id,
+      email: mockProfile.email,
+      fullName: mockProfile.full_name,
+      primaryRole: mockProfile.role,
+      roles: normalizedRoles,
+      facultyId: mockProfile.faculty_id ?? null,
+      departmentId: mockProfile.department_id ?? null,
+      status: mockProfile.status,
+      studentNumber: mockProfile.student_number ?? null,
+      authProvider: descriptor.authProvider ?? 'password',
+    }
+
+    const storedRole = readStoredValue(ACTIVE_ROLE_STORAGE_KEY) as
+      | SaaisRole
+      | null
+    const defaultRole =
+      storedRole && normalizedRoles.includes(storedRole)
+        ? storedRole
+        : normalizedRoles[0] ?? mockProfile.role
+
+    return {
+      user: authProfile,
+      profile: mockProfile,
+      session: mockSession,
+      roles: normalizedRoles,
+      roleAssignments: mockAssignments,
+      activeRole: defaultRole,
+      activePersonaKey: storedKey,
+      entryBlockedReason: eligibility.reason,
+      isLoading: false,
+    }
+  }
+
+  return {
+    user: null,
+    profile: null,
+    session: null,
+    roles: [],
+    roleAssignments: [],
+    activeRole: null,
+    activePersonaKey: null,
+    entryBlockedReason: null,
+    isLoading: false,
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const envConfig = resolveSaaisEnvConfig()
   const isMockMode = envConfig.mode === 'mock' && !envConfig.configError
 
+  const [initialMockState] = useState(() =>
+    resolveInitialMockAuthState(isMockMode),
+  )
+
   const [keepSignedIn, setKeepSignedIn] = useState<boolean>(() =>
     getSupabaseSessionPersistence(),
   )
-  const [user, setUser] = useState<AuthProfile | null>(null)
-  const [profile, setProfile] = useState<ApiSchema<'Profile'> | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [roles, setRoles] = useState<SaaisRole[]>([])
+  const [user, setUser] = useState<AuthProfile | null>(initialMockState.user)
+  const [profile, setProfile] = useState<ApiSchema<'Profile'> | null>(
+    initialMockState.profile,
+  )
+  const [session, setSession] = useState<Session | null>(
+    initialMockState.session,
+  )
+  const [roles, setRoles] = useState<SaaisRole[]>(initialMockState.roles)
   const [roleAssignments, setRoleAssignments] = useState<
     ApiSchema<'RoleAssignment'>[]
-  >([])
-  const [activeRole, setActiveRoleState] = useState<SaaisRole | null>(null)
+  >(initialMockState.roleAssignments)
+  const [activeRole, setActiveRoleState] = useState<SaaisRole | null>(
+    initialMockState.activeRole,
+  )
   const [activePersonaKey, setActivePersonaKey] =
-    useState<SyntheticPersonaKey | null>(null)
+    useState<SyntheticPersonaKey | null>(initialMockState.activePersonaKey)
   const [entryBlockedReason, setEntryBlockedReason] = useState<string | null>(
-    null,
+    initialMockState.entryBlockedReason,
   )
   const [authError, setAuthError] = useState<string | null>(
     () => envConfig.configError,
   )
   const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false)
-  const [isLoading, setIsLoading] = useState<boolean>(
-    () => !isMockMode && !envConfig.configError,
-  )
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (envConfig.configError) return false
+    return initialMockState.isLoading
+  })
 
   const keepSignedInRef = useRef<boolean>(keepSignedIn)
   const hydrationRequestIdRef = useRef<number>(0)
@@ -235,28 +342,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         )
 
         if (!eligibility.isAllowedToEnter || !boundary.profile) {
+          const blockedReason =
+            eligibility.reason ??
+            'Your institutional account is not authorized to access SAAIS.'
+
           // Confirmed ineligible account: clear the dangling Supabase session so
           // a disabled/invited/unprovisioned token does not remain active.
+          // Note: clearAuthState is called with preserveBlockedReason so SIGNED_OUT
+          // does not wipe the rejection message.
+          clearAuthState({ preserveBlockedReason: blockedReason })
+          setIsLoading(false)
+
           try {
             const client = getSupabaseClient('supabase')
             await client.auth.signOut({ scope: 'local' })
           } catch {
             // Ignore signOut errors during cleanup
           }
-          if (requestId !== hydrationRequestIdRef.current) return
-
-          setUser(null)
-          setProfile(boundary.profile)
-          setSession(null)
-          setRoles([])
-          setRoleAssignments([])
-          setActiveRoleState(null)
-          setEntryBlockedReason(
-            eligibility.reason ??
-              'Your institutional account is not authorized to access SAAIS.',
-          )
-          setAuthError(null)
-          setIsLoading(false)
           return
         }
 
@@ -314,7 +416,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsLoading(false)
       }
     },
-    [],
+    [clearAuthState],
   )
 
   const retryHydration = useCallback(async () => {
@@ -330,38 +432,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     await hydrateFromRealSession(data.session ?? null)
   }, [isMockMode, envConfig.configError, hydrateFromRealSession])
 
-  // Initialize auth state (mock restore OR real Supabase listener + getSession)
+  // Initialize auth state (mock mode restores synchronously above; Supabase mode attaches listener + getSession)
   useEffect(() => {
-    if (envConfig.configError) {
-      return
-    }
-
-    if (isMockMode) {
-      const storedKey = readStoredValue(MOCK_PERSONA_STORAGE_KEY) as
-        | SyntheticPersonaKey
-        | null
-      const personas = getSyntheticPersonas()
-      if (storedKey && storedKey in personas) {
-        queueMicrotask(() => {
-          applyMockPersona(storedKey, 'password', keepSignedInRef.current)
-        })
-      } else {
-        const existingToken = getMockSessionToken()
-        if (existingToken) {
-          const matchedEntry = Object.values(personas).find(
-            (p) => p.token === existingToken,
-          )
-          if (matchedEntry) {
-            queueMicrotask(() => {
-              applyMockPersona(
-                matchedEntry.key,
-                'password',
-                keepSignedInRef.current,
-              )
-            })
-          }
-        }
-      }
+    if (envConfig.configError || isMockMode) {
       return
     }
 

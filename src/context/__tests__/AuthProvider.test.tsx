@@ -5,7 +5,10 @@ import { AuthProvider } from '../AuthProvider'
 import { useAuth } from '@/hooks/use-auth'
 import { MOCK_PERSONAS } from '@/mocks/personas'
 import { resetMockDatabase } from '@/mocks/store'
-import { getSyntheticPersonas } from '@/lib/auth/mock-auth-service'
+import {
+  clearMockPersonaSession,
+  getSyntheticPersonas,
+} from '@/lib/auth/mock-auth-service'
 import {
   AuthHydrationError,
   fetchAuthenticatedUserBoundary,
@@ -26,6 +29,7 @@ describe('AuthProvider, useAuth & Environment Config', () => {
     resetSupabaseClientForTests()
     localStorage.clear()
     sessionStorage.clear()
+    clearMockPersonaSession()
     resetMockDatabase()
     setSupabaseSessionPersistence(true)
   })
@@ -57,7 +61,6 @@ describe('AuthProvider, useAuth & Environment Config', () => {
   })
 
   it('fails closed in fetchAuthenticatedUserBoundary on API errors, unexpected shapes, or missing exact profile match', async () => {
-    // 1. Profile API error -> throws AuthHydrationError
     vi.spyOn(apiClient, 'GET')
       .mockResolvedValueOnce({
         data: undefined,
@@ -74,7 +77,6 @@ describe('AuthProvider, useAuth & Environment Config', () => {
       fetchAuthenticatedUserBoundary('user-123'),
     ).rejects.toThrow(AuthHydrationError)
 
-    // 2. Role assignment API error -> throws AuthHydrationError
     vi.spyOn(apiClient, 'GET')
       .mockResolvedValueOnce({
         data: [{ id: 'user-123', email: 'a@vsu.edu.ph', role: 'student', roles: ['student'], status: 'active' }],
@@ -91,7 +93,6 @@ describe('AuthProvider, useAuth & Environment Config', () => {
       fetchAuthenticatedUserBoundary('user-123'),
     ).rejects.toThrow(AuthHydrationError)
 
-    // 3. Mismatched profile row -> returns null profile (never falls back to row[0])
     vi.spyOn(apiClient, 'GET')
       .mockResolvedValueOnce({
         data: [{ id: 'different-user', email: 'other@vsu.edu.ph', role: 'admin', roles: ['admin'], status: 'active' }],
@@ -107,6 +108,31 @@ describe('AuthProvider, useAuth & Environment Config', () => {
     const result = await fetchAuthenticatedUserBoundary('user-123')
     expect(result.profile).toBeNull()
     expect(result.roles).toEqual([])
+  })
+
+  it('restores mock session synchronously so protected routes do not redirect on refresh', () => {
+    sessionStorage.setItem('saais_active_mock_persona', 'adviser')
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AuthProvider>{children}</AuthProvider>
+    )
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    // With synchronous restoration, initial render has isLoading: false AND restored user
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.user?.email).toBe(MOCK_PERSONAS.adviser.email)
+    expect(result.current.activeRole).toBe('adviser')
+    expect(result.current.isAllowedToEnter).toBe(true)
+  })
+
+  it('completes mock initialization with isLoading: false when storage is empty', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AuthProvider>{children}</AuthProvider>
+    )
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.user).toBeNull()
+    expect(result.current.isAuthenticated).toBe(false)
   })
 
   it('exercises Student-only, Adviser-only, Dept-Head-only, Dean-only, and Multi-role synthetic personas', () => {
@@ -153,7 +179,7 @@ describe('AuthProvider, useAuth & Environment Config', () => {
     expect(result.current.isAuthenticated).toBe(false)
   })
 
-  it('handles Supabase session initialization, confirmed disabled signOut, and transient hydration errors safely', async () => {
+  it('preserves the confirmed rejection reason across cleanup sign-out when account is disabled', async () => {
     vi.stubEnv('VITE_API_MODE', 'supabase')
     vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co')
     vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-key')
@@ -172,16 +198,22 @@ describe('AuthProvider, useAuth & Environment Config', () => {
       data: { session: mockSession as never },
       error: null,
     })
-    vi.spyOn(sdk.auth, 'onAuthStateChange').mockImplementation(() => ({
-      data: {
-        subscription: { id: 'sub-1', callback: vi.fn(), unsubscribe: vi.fn() },
-      },
-    }))
+    let authCallback: ((event: string, session: unknown) => void) | null = null
+    vi.spyOn(sdk.auth, 'onAuthStateChange').mockImplementation((handler) => {
+      authCallback = handler as never
+      return {
+        data: {
+          subscription: { id: 'sub-1', callback: handler, unsubscribe: vi.fn() },
+        },
+      }
+    })
     const localSignOutSpy = vi
       .spyOn(sdk.auth, 'signOut')
-      .mockResolvedValue({ error: null })
+      .mockImplementation(async () => {
+        authCallback?.('SIGNED_OUT', null)
+        return { error: null }
+      })
 
-    // Confirmed disabled profile -> clears session locally & exposes entryBlockedReason
     vi.spyOn(apiClient, 'GET')
       .mockResolvedValueOnce({
         data: [
