@@ -24,7 +24,7 @@ const DepartmentStaffPortal = lazy(
   () => import('@/routes/department-staff/DepartmentStaffPortal'),
 )
 const DeanPortal = lazy(() => import('@/routes/dean/DeanPortal'))
-const AdminPortal = lazy(() => import('@/routes/admin/AdminPortal'))
+const AdminRoutes = lazy(() => import('@/routes/admin/AdminRoutes'))
 
 function Home() {
   return (
@@ -97,7 +97,7 @@ function App() {
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                  <Route path="/admin/*" element={<AdminPortal />} />
+                  <Route path="/admin/*" element={<AdminRoutes />} />
                 </Route>
               </Route>
             </Route>
