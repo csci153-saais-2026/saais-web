@@ -25,6 +25,7 @@ function TestShell() {
   return <AppShell sidebar={{ sections, currentPath: pathname }} crumbs={[{ label: "Test" }]}>
     <button onClick={() => navigate("/student/records/grades")}>Go to grades</button>
     <button onClick={() => navigate("/student/dashboard")}>Go to dashboard</button>
+    <button onClick={() => navigate("/other")}>Go elsewhere</button>
   </AppShell>
 }
 
@@ -58,6 +59,20 @@ describe("AppSidebar", () => {
     expect(screen.queryByRole("link", { name: "Grades" })).toBeNull()
     fireEvent.click(screen.getByText("Go to grades"))
     expect(screen.getByRole("link", { name: "Grades" })).toBeTruthy()
+  })
+
+  it("preserves a manual group collapse until navigation reaches that group", () => {
+    setup("/student/records/grades")
+    fireEvent.click(screen.getByText("Student"))
+    expect(screen.queryByRole("link", { name: "Grades" })).toBeNull()
+    fireEvent.click(screen.getByText("Go to dashboard"))
+    expect(screen.getByRole("link", { name: "Dashboard" }).getAttribute("aria-current")).toBe("page")
+    fireEvent.click(screen.getByText("Student"))
+    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull()
+    fireEvent.click(screen.getByText("Go elsewhere"))
+    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull()
+    fireEvent.click(screen.getByText("Go to grades"))
+    expect(screen.getByRole("link", { name: "Grades" }).getAttribute("aria-current")).toBe("page")
   })
 
   it("closes the mobile drawer after nested navigation", async () => {

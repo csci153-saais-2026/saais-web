@@ -99,8 +99,13 @@ function NavEntry({ item, currentPath, onNavigate }: {
 }
 
 function NavGroup({ section, currentPath }: { section: NavSection; currentPath: string }) {
+  const active = section.items.some(item => matchesNavPath(currentPath, item) || hasActiveDescendant(currentPath, item))
+  const [group, setGroup] = React.useState({ path: currentPath, open: true })
+  if (group.path !== currentPath) {
+    setGroup({ path: currentPath, open: active || group.open })
+  }
   return (
-    <Collapsible defaultOpen className="group/collapsible">
+    <Collapsible open={group.path === currentPath ? group.open : active || group.open} onOpenChange={open => setGroup({ path: currentPath, open })} className="group/collapsible">
       <SidebarGroup>
         {section.title && <SidebarGroupLabel asChild>
           <CollapsibleTrigger className="w-full justify-between">
