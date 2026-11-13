@@ -1,4 +1,4 @@
-import type { DirectoryStudent } from "./shared/students-data"
+import type { DirectoryStudent } from "../shared/students-data"
 
 export type ReassignmentInput = {
   studentIds: string[]

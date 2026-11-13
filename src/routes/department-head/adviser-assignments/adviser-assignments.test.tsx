@@ -2,11 +2,11 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import AdviserAssignmentsPage from "./AdviserAssignmentsPage"
 import { applyReassignment, type ReassignmentInput } from "./assignment-model"
-import { SAMPLE_STUDENTS } from "./shared/students-data"
-import { useDepartmentHeadPreview } from "./shared/preview-state"
-import { DEFAULT_SETTINGS } from "./settings-data"
+import { SAMPLE_STUDENTS } from "../shared/students-data"
+import { useDepartmentHeadPreview } from "../shared/preview-state"
+import { DEFAULT_SETTINGS } from "../settings-data"
 
-vi.mock("./shared/preview-state", () => ({
+vi.mock("../shared/preview-state", () => ({
   todayInManila: () => "2026-11-06",
   useDepartmentHeadPreview: vi.fn(),
 }))
