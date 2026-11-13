@@ -85,7 +85,7 @@ export const sysAdminNav: NavSection = {
     { label: 'Programs', to: '/admin/programs', icon: ListIcon },
     { label: 'Faculties and departments', to: '/admin/faculties', icon: BookIcon },
     { label: 'Audit log', to: '/admin/audit-log', icon: NoteIcon },
-    { label: 'Settings', to: '/settings', icon: ShieldIcon },
+    { label: 'Settings', to: '/admin/settings', icon: ShieldIcon },
   ],
 }
 
