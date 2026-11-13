@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CHECKLIST_PREVIEWS } from "./checklist-preview-data"
-import type { DirectoryStudent } from "./shared/students-data"
+import type { DirectoryStudent } from "../shared/students-data"
 
 export function StudentChecklistPreviewDialog({ student, onClose }: { student: DirectoryStudent; onClose: () => void }) {
   const [courseCode, setCourseCode] = useState("")

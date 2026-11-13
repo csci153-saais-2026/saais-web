@@ -14,7 +14,7 @@ const OutsideCreditsPage = lazy(() => import("@/routes/department-head/OutsideCr
 const AcademicTermsPage = lazy(() => import("@/routes/department-head/AcademicTermsPage"))
 const NotificationsPage = lazy(() => import("@/routes/department-head/NotificationsPage"))
 
-const StudentsPage = lazy(() => import("@/routes/department-head/StudentsPage"))
+const StudentsPage = lazy(() => import("@/routes/department-head/students/StudentsPage"))
 const AdviserAssignmentsPage = lazy(() => import("@/routes/department-head/AdviserAssignmentsPage"))
 const DepartmentReportsPage = lazy(() => import("@/routes/department-head/DepartmentReportsPage"))
 const AuditLogPage = lazy(() => import("@/routes/department-head/AuditLogPage"))
