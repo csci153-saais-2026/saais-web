@@ -8,4 +8,6 @@ export const mattRoutes = new Set([
   'recordCompletedBackup',
   'recordAuditViewEvent',
   'updateProfile',
+  'reassignAdviser',
+  'bulkReassignAdvisers',
 ]);

@@ -30,3 +30,6 @@ verify_jwt = true
 
 [functions.audit]
 verify_jwt = true
+
+[functions.adviser-assignments]
+verify_jwt = true
