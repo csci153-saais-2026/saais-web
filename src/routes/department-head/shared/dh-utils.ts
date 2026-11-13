@@ -1,9 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useOutletContext } from "react-router"
-import {
-  MOCK_DEPARTMENT_NOTIFICATIONS,
-  type DepartmentNotificationRecord,
-} from "./mock-data"
 
 const MONTHS_SHORT = [
   "Jan",
@@ -19,35 +14,6 @@ const MONTHS_SHORT = [
   "Nov",
   "Dec",
 ] as const
-
-export interface DepartmentNotificationsContext {
-  notifications: DepartmentNotificationRecord[]
-  markNotificationRead: (id: string) => void
-  markAllNotificationsRead: () => void
-}
-
-/**
- * Access notification state provided by `DepartmentHeadLayout`, with a local
- * fallback when routes are rendered standalone in isolation/tests.
- */
-export function useDepartmentNotifications(): DepartmentNotificationsContext {
-  const ctx = useOutletContext<DepartmentNotificationsContext | undefined>()
-  const [fallback, setFallback] = useState<DepartmentNotificationRecord[]>(
-    MOCK_DEPARTMENT_NOTIFICATIONS
-  )
-
-  if (ctx) return ctx
-
-  return {
-    notifications: fallback,
-    markNotificationRead: (id: string) =>
-      setFallback((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
-      ),
-    markAllNotificationsRead: () =>
-      setFallback((prev) => prev.map((n) => ({ ...n, unread: false }))),
-  }
-}
 
 /**
  * Hook returning ephemeral toast state and a trigger helper matching the

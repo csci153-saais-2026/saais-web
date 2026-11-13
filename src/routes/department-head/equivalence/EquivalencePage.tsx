@@ -23,14 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "@/routes/department-head/dh-ui"
-import { useDepartmentToast } from "@/routes/department-head/dh-utils"
+import { DepartmentToast } from "../shared/dh-ui"
+import { useDepartmentToast } from "../shared/dh-utils"
 import {
   EQUIVALENCE_SOURCE_COURSES,
   EQUIVALENCE_TARGET_COURSES,
   MOCK_EQUIVALENCIES,
   type CourseEquivalence,
-} from "@/routes/department-head/mock-data"
+} from "./preview-data"
 
 const FROM_CURRICULA = [
   { id: "bscs-2021", label: "BSCS 2021" },

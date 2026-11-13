@@ -25,13 +25,13 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "@/routes/department-head/dh-ui"
+import { DepartmentToast } from "../shared/dh-ui"
 import {
   formatDisplayDate,
   formatTermDateRange,
   useDepartmentToast,
-} from "@/routes/department-head/dh-utils"
-import { MOCK_ACADEMIC_TERMS, type AcademicTermRecord } from "@/routes/department-head/mock-data"
+} from "../shared/dh-utils"
+import { MOCK_ACADEMIC_TERMS, type AcademicTermRecord } from "./preview-data"
 
 const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const
 

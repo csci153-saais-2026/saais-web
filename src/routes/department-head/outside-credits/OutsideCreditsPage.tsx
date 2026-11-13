@@ -28,9 +28,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "@/routes/department-head/dh-ui"
-import { useDepartmentToast } from "@/routes/department-head/dh-utils"
-import { MOCK_OUTSIDE_CREDITS, MOCK_STUDENTS, type OutsideCreditRecord } from "@/routes/department-head/mock-data"
+import { DepartmentToast } from "../shared/dh-ui"
+import { useDepartmentToast } from "../shared/dh-utils"
+import { MOCK_OUTSIDE_CREDITS, type OutsideCreditRecord } from "./preview-data"
+import { MOCK_STUDENTS } from "../shared/mock-students"
 
 const STUDENT_OPTIONS = MOCK_STUDENTS.filter((student) =>
   ["24-1-00124", "24-1-00316", "25-1-00087"].includes(student.id)

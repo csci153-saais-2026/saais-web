@@ -5,8 +5,7 @@ import { NotificationBell } from "@/components/features/notification-bell"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth"
 import { deptHeadNav } from "@/navigation/navigation-config"
-import type { DepartmentNotificationsContext } from "./dh-utils"
-import { MOCK_DEPARTMENT_NOTIFICATIONS } from "./mock-data"
+import { MOCK_DEPARTMENT_NOTIFICATIONS, type DepartmentNotificationsContext } from "./notifications/preview-data"
 import { PreviewStateProvider } from "./shared/PreviewStateProvider"
 
 function DepartmentHeadWorkspace() {

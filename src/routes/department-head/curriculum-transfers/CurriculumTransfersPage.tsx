@@ -20,14 +20,14 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "@/routes/department-head/dh-ui"
-import { useDepartmentToast } from "@/routes/department-head/dh-utils"
+import { DepartmentToast } from "../shared/dh-ui"
+import { useDepartmentToast } from "../shared/dh-utils"
 import {
   MOCK_TRANSFER_REQUESTS,
   MOCK_TRANSFER_HISTORY,
   type TransferRequest,
   type TransferDecisionHistory,
-} from "@/routes/department-head/mock-data"
+} from "./preview-data"
 
 export default function CurriculumTransfersPage() {
   const [searchParams, setSearchParams] = useSearchParams()

@@ -30,11 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { DepartmentToast } from "@/routes/department-head/dh-ui"
+import { DepartmentToast } from "../shared/dh-ui"
 import {
   formatDisplayDate,
   useDepartmentToast,
-} from "@/routes/department-head/dh-utils"
+} from "../shared/dh-utils"
 import {
   CURRICULUM_SEMESTERS,
   FACULTY_DEPARTMENTS,
@@ -45,7 +45,7 @@ import {
   type CurriculumTermBlock,
   type CurriculumVersionRecord,
   type CurriculumVersionStatus,
-} from "@/routes/department-head/mock-data"
+} from "./preview-data"
 
 type CurriculaDialogState =
   | { kind: "add-version" }

@@ -1,12 +1,11 @@
 import * as React from "react"
-import { Link } from "react-router"
+import { Link, useOutletContext } from "react-router"
 import { AlertIcon, NoteIcon, SwapIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { PageHeading } from "@/components/features/page-heading"
 import { SampleFooter } from "@/components/features/sample-footer"
 import { cn } from "@/lib/utils"
-import { useDepartmentNotifications } from "./dh-utils"
-import type { DepartmentNotificationRecord } from "./mock-data"
+import type { DepartmentNotificationRecord, DepartmentNotificationsContext } from "./preview-data"
 
 const KIND_ICONS: Record<
   DepartmentNotificationRecord["kind"],
@@ -19,7 +18,7 @@ const KIND_ICONS: Record<
 
 export default function NotificationsPage() {
   const { notifications, markNotificationRead, markAllNotificationsRead } =
-    useDepartmentNotifications()
+    useOutletContext<DepartmentNotificationsContext>()
   const [filter, setFilter] = React.useState<"all" | "unread">("all")
 
   const unreadCount = notifications.filter((n) => n.unread).length
