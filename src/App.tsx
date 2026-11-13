@@ -17,6 +17,13 @@ const OpenApiDocsPage = lazy(() => import('@/routes/docs/OpenApiDocsPage'))
 
 const StudentPortal = lazy(() => import('@/routes/student/StudentPortal'))
 const AdviserPortal = lazy(() => import('@/routes/adviser/AdviserPortal'))
+const DepartmentHeadPortal = lazy(
+  () => import('@/routes/department-head/DepartmentHeadPortal'),
+)
+const DepartmentStaffPortal = lazy(
+  () => import('@/routes/department-staff/DepartmentStaffPortal'),
+)
+const DeanPortal = lazy(() => import('@/routes/dean/DeanPortal'))
 const AdminPortal = lazy(() => import('@/routes/admin/AdminPortal'))
 
 function Home() {
@@ -76,17 +83,17 @@ function App() {
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={['department_head']} />}>
-                  <Route path="/department-head/*" element={<AdviserPortal />} />
+                  <Route path="/department-head/*" element={<DepartmentHeadPortal />} />
                   <Route path="/dept-head/*" element={<Navigate to="/department-head" replace />} />
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={['department_staff']} />}>
-                  <Route path="/department-staff/*" element={<AdviserPortal />} />
+                  <Route path="/department-staff/*" element={<DepartmentStaffPortal />} />
                   <Route path="/staff/*" element={<Navigate to="/department-staff" replace />} />
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={['dean']} />}>
-                  <Route path="/dean/*" element={<AdviserPortal />} />
+                  <Route path="/dean/*" element={<DeanPortal />} />
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
