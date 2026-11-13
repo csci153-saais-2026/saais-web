@@ -25,7 +25,7 @@ Head sidebar or open these paths directly.
 | --- | --- | --- |
 | Students | `/department-head/students` | Search by name or student ID, filter the roster, and open a read-only sample checklist. Choose a CSV or XLSX file to see example validation results. |
 | Adviser Assignments | `/department-head/adviser-assignments` | Filter and select students, then reassign them with a reason and an effective date. Select-all applies to the visible rows. |
-| Department Reports | `/department-head/department-reports` | Change the term and program, open a cohort’s student details, and download a PDF for the selected report. |
+| Department Reports | `/department-head/reports` | Change the term and program, open a cohort’s student details, and download a PDF for the selected report. |
 | Audit Log | `/department-head/audit-log` | Filter the sample events by actor, student, action, or date. Dates and timestamps use Philippine time. |
 | Settings | `/department-head/settings` | Edit sample scholastic standing thresholds and sender preferences, or record sample backup details. |
 

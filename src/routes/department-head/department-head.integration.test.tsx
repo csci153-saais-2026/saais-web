@@ -36,7 +36,7 @@ describe("Department Head preview integration", () => {
   it.each([
     ["students", "Students"],
     ["adviser-assignments", "Adviser assignments"],
-    ["department-reports", "Department reports"],
+    ["reports", "Department reports"],
     ["audit-log", "Audit log"],
     ["settings", "Settings"],
     ["notifications", "Notifications"],
@@ -44,6 +44,16 @@ describe("Department Head preview integration", () => {
     openPortal(`/department-head/${path}`)
     expect(await screen.findByRole("heading", { name: heading })).toBeTruthy()
     expect(screen.getByRole("link", { name: "Curriculum transfers" })).toBeTruthy()
+  })
+
+  it("opens reports from the sidebar at the canonical URL", async () => {
+    openPortal("/department-head/students")
+    await screen.findByRole("heading", { name: "Students" })
+    const reportsLink = screen.getByRole("link", { name: "Department reports" })
+    expect(reportsLink.getAttribute("href")).toBe("/department-head/reports")
+    fireEvent.click(reportsLink)
+    expect(await screen.findByRole("heading", { name: "Department reports" })).toBeTruthy()
+    expect(window.location.pathname).toBe("/department-head/reports")
   })
 
   it("opens the read-only checklist without adding an audit event", async () => {

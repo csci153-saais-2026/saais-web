@@ -52,7 +52,7 @@ Through comprehensive inspection of `mockup/Department Head` (`*.dc.html`, `curr
   - *Complexity*: **High** (batch table selection state, indeterminate checkbox management, multi-student reassignment modal).
 
 ### Group D: Analytics, Governance, Audit & Department Settings
-- **Screen 8: Department Reports** (`/department-head/department-reports`)
+- **Screen 8: Department Reports** (`/department-head/reports`)
   - *Description*: Department academic performance snapshot. Features term and program selectors, 4 high-level stat cards, custom grade distribution visual bars, curriculum enrollment breakdown, cohort GWA table, full batch drill-down modal, and PDF export.
   - *Complexity*: **High** (data analytics visualization, multi-panel layout, cohort drill-down modal with full student lists, PDF export).
 - **Screen 9: Audit Log** (`/department-head/audit-log`)
@@ -147,7 +147,7 @@ graph TD
    - Table with multi-select row checkboxes, select-all header, and indeterminate state.
    - Active selection counter and toolbar actions.
    - "Reassign selected students" modal with new adviser selection and rationale.
-3. **Screen 8: Department Reports** (`/department-head/department-reports`):
+3. **Screen 8: Department Reports** (`/department-head/reports`):
    - Term and program selectors.
    - 4 departmental performance statistics cards.
    - Grade distribution visual bar chart (1.00–1.75, 1.76–2.50, etc.).

@@ -89,7 +89,7 @@ function App() {
             {/* Department Head management pages */}
             <Route path="students" element={<StudentsPage />} />
             <Route path="adviser-assignments" element={<AdviserAssignmentsPage />} />
-            <Route path="department-reports" element={<DepartmentReportsPage />} />
+            <Route path="reports" element={<DepartmentReportsPage />} />
             <Route path="audit-log" element={<AuditLogPage />} />
             <Route path="settings" element={<SettingsPage />} />
 
