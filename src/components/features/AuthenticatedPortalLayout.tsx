@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { AppShell } from '@/components/features/app-shell'
 import { useAuth } from '@/hooks/use-auth'
@@ -61,7 +62,17 @@ function resolveRoleFromPath(
   return assignedRoles.includes(fallbackRole) ? fallbackRole : assignedRoles[0] ?? fallbackRole
 }
 
-export function AuthenticatedPortalLayout() {
+interface AuthenticatedPortalLayoutProps {
+  currentPage?: string
+  topbarTrailing?: ReactNode
+  children?: ReactNode
+}
+
+export function AuthenticatedPortalLayout({
+  currentPage,
+  topbarTrailing,
+  children,
+}: AuthenticatedPortalLayoutProps) {
   const { user, roles, activeRole, isLoading, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -87,6 +98,7 @@ export function AuthenticatedPortalLayout() {
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
   const sections = getNavigationSections(roles)
+  const crumbs = [{ label: portalLabel, to: homeHref }, ...(currentPage ? [{ label: currentPage }] : [])]
 
   const handleSignOut = async () => {
     await signOut()
@@ -106,9 +118,10 @@ export function AuthenticatedPortalLayout() {
         profileHref: '/settings',
         onSignOut: () => void handleSignOut(),
       }}
-      crumbs={[{ label: portalLabel, to: homeHref }]}
+      crumbs={crumbs}
+      topbarTrailing={topbarTrailing}
     >
-      <Outlet />
+      {children ?? <Outlet />}
     </AppShell>
   )
 }

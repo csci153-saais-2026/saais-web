@@ -42,15 +42,16 @@ export const adviserNav: NavSection = {
 export const deptHeadNav: NavSection = {
   label: 'Department Head',
   items: [
-    { label: 'Department overview', to: '/department-head', icon: ChartIcon, end: true },
-    { label: 'Curriculum transfers', to: '/department-head/transfers', icon: SwapIcon },
+    { label: 'Curriculum transfers', to: '/department-head/curriculum-transfers', icon: SwapIcon },
     { label: 'Curricula', to: '/department-head/curricula', icon: BookIcon },
     { label: 'Equivalence', to: '/department-head/equivalence', icon: ListIcon },
+    { label: 'Outside credits', to: '/department-head/outside-credits', icon: CheckIcon },
     { label: 'Students', to: '/department-head/students', icon: UsersIcon },
     { label: 'Adviser assignments', to: '/department-head/adviser-assignments', icon: SwapIcon },
+    { label: 'Academic terms', to: '/department-head/academic-terms', icon: CalendarIcon },
     { label: 'Department reports', to: '/department-head/reports', icon: ChartIcon },
     { label: 'Audit log', to: '/department-head/audit-log', icon: NoteIcon },
-    { label: 'Settings', to: '/settings', icon: ShieldIcon },
+    { label: 'Settings', to: '/department-head/settings', icon: ShieldIcon },
   ],
 }
 
