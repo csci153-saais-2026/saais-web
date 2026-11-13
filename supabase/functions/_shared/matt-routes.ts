@@ -17,4 +17,6 @@ export const mattRoutes = new Set([
   'correctINCCompletion',
   'deleteOpenTermAttempt',
   'searchStudentCourseOfferings',
+  'correctGrades',
+  'correctPrerequisiteGrade',
 ]);
