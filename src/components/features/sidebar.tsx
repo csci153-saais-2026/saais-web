@@ -1,4 +1,5 @@
 import { BookIcon, ChevronDownIcon, LogoutIcon, type IconComponent } from "@/components/icons"
+import * as React from "react"
 import { Link, NavLink } from "react-router"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { BrandMark } from "@/components/ui/brand-mark"
@@ -39,6 +40,10 @@ function matchesNavPath(pathname: string, item: NavItem): boolean {
   return pathname === item.href || (!item.end && pathname.startsWith(`${item.href}/`))
 }
 
+function hasActiveDescendant(pathname: string, item: NavItem): boolean {
+  return item.children?.some(child => matchesNavPath(pathname, child) || hasActiveDescendant(pathname, child)) ?? false
+}
+
 function NavItems({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
   const { setOpenMobile } = useSidebar()
   return (
@@ -55,6 +60,14 @@ function NavEntry({ item, currentPath, onNavigate }: {
 }) {
   const { label, href, icon: Icon, end, badge, children } = item
   const active = matchesNavPath(currentPath, item)
+  const activeBranch = active || hasActiveDescendant(currentPath, item)
+  const [submenu, setSubmenu] = React.useState({ path: currentPath, open: activeBranch })
+  // Record every route transition, including an intermediate route away from
+  // an intentionally collapsed active branch. This guarded render update keeps
+  // the active child visible when navigation returns to that branch.
+  if (submenu.path !== currentPath) {
+    setSubmenu({ path: currentPath, open: activeBranch || submenu.open })
+  }
   const link = (
     <div className="relative">
       <SidebarMenuButton asChild>
@@ -69,7 +82,7 @@ function NavEntry({ item, currentPath, onNavigate }: {
   return (
     <SidebarMenuItem>
       {children?.length ? (
-        <Collapsible defaultOpen={active || children.some(child => matchesNavPath(currentPath, child))}>
+        <Collapsible open={submenu.path === currentPath ? submenu.open : activeBranch || submenu.open} onOpenChange={open => setSubmenu({ path: currentPath, open })}>
           <div className="flex items-center">
             <div className="min-w-0 flex-1">{link}</div>
             <CollapsibleTrigger className="rounded p-2 hover:bg-sidebar-accent focus-visible:outline-gold" aria-label={`Toggle ${label} submenu`}>
