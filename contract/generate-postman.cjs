@@ -448,6 +448,16 @@ function resolveRef(spec, refObj) {
 function toPostmanPathVariableUrl(openApiRoute, method = 'get') {
   const isDelete = method.toLowerCase() === 'delete'
   return openApiRoute.replace(/\{([^}]+)\}/g, (_, paramName) => {
+    // Correcting an INC completion needs an attempt that already has an INC
+    // completion in an editable term. The shared {{attempt_id}} is an
+    // unresolved INC in a locked term (409 TERM_LOCKED).
+    if (
+      paramName === 'attempt_id' &&
+      method.toLowerCase() === 'patch' &&
+      openApiRoute.endsWith('/inc-completion')
+    ) {
+      return '{{editable_term_attempt_id}}'
+    }
     if (paramName === 'id' || paramName === 'mapping_id') {
       if (openApiRoute.includes('/catalog/faculty/')) {
         return isDelete ? '{{faculty_empty_id}}' : '{{faculty_id}}'
@@ -1160,6 +1170,11 @@ function generatePostmanArtifacts() {
       {
         key: 'attempt_id',
         value: '80000000-0000-4000-8000-000000000002',
+        enabled: true,
+      },
+      {
+        key: 'editable_term_attempt_id',
+        value: '80000000-0000-4000-8000-000000000004',
         enabled: true,
       },
       {
