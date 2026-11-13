@@ -299,20 +299,39 @@ export const saaisMswHandlers = [
     if (!body?.token || body.token.trim().length < 8) {
       return errorJson(400, 'INVALID_TOKEN', 'Invitation token is invalid.')
     }
-    if (body.token === 'expired-invite-token') {
+    const token = body.token.trim()
+    if (token === 'expired-invite-token') {
       return errorJson(409, 'INVITE_EXPIRED', 'Invitation token has expired.')
     }
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (!matchedProfile) {
+      return errorJson(404, 'INVITE_NOT_FOUND', 'Invitation not found.')
+    }
+    if (matchedProfile.status !== 'invited') {
+      return errorJson(409, 'INVITE_ALREADY_USED', 'Invitation has already been activated.')
+    }
+    const dept = db.departments.find((d) => d.id === matchedProfile.department_id)
+    const faculty = db.faculties.find((f) => f.id === matchedProfile.faculty_id)
     const response: ApiSchema<'PreviewInviteResponse'> = {
       valid: true,
-      status: 'pending',
-      email: MOCK_PERSONAS.student_secondary.email,
-      full_name: MOCK_PERSONAS.student_secondary.fullName,
-      role: 'student',
-      roles: ['student'],
-      faculty_name: 'Faculty of Computing',
-      department_name: 'Department of Computer Science and Technology',
-      program_code: 'BSCS',
-      expires_at: '2026-12-31T23:59:59Z',
+      status: matchedProfile.invitation_status ?? 'pending',
+      email: matchedProfile.email,
+      full_name: matchedProfile.full_name,
+      role: matchedProfile.role,
+      roles: matchedProfile.roles,
+      faculty_name: faculty?.name ?? 'Faculty of Computing',
+      department_name: dept?.name ?? 'Department of Computer Science and Technology',
+      program_code: matchedProfile.role === 'student' ? 'BSCS' : null,
+      expires_at: matchedProfile.invitation_expires_at ?? '2026-12-31T23:59:59Z',
     }
     return HttpResponse.json(response, { status: 200 })
   }),
@@ -333,6 +352,25 @@ export const saaisMswHandlers = [
         'Password must be between 12 and 128 characters.',
       )
     }
+    const token = body.token.trim()
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (matchedProfile) {
+      db.profiles = db.profiles.map((p) =>
+        p.id === matchedProfile.id
+          ? { ...p, status: 'active', invitation_status: 'accepted' }
+          : p,
+      )
+    }
+
     const response: ApiSchema<'VerifyInviteResponse'> = {
       success: true,
       message: 'Account successfully activated.',
@@ -349,6 +387,25 @@ export const saaisMswHandlers = [
     if (!body?.token) {
       return errorJson(400, 'INVALID_TOKEN', 'Invitation token is required.')
     }
+    const token = body.token.trim()
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (matchedProfile) {
+      db.profiles = db.profiles.map((p) =>
+        p.id === matchedProfile.id
+          ? { ...p, invitation_status: 'declined' }
+          : p,
+      )
+    }
+
     const response: ApiSchema<'DeclineInviteResponse'> = {
       success: true,
       message: 'Invitation declined.',
@@ -2325,12 +2382,7 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/attempts/:attempt_id/inc-completion',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
@@ -2338,7 +2390,7 @@ export const saaisMswHandlers = [
       const db = getMockDatabase()
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
       if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
-      if (!canAccessStudentRecord(auth.persona, studentId)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      if (!db.adviserAssignments.some(a => a.student_id === studentId && a.adviser_id === auth.persona.profileId && a.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may change an INC completion.')
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
       if (attempt.recorded_status !== 'inc' || !attempt.inc_deadline || attempt.inc_deadline < today || db.incResolutions.some(r => r.attempt_id === attemptId)) {
         return errorJson(409, 'INC_NOT_ELIGIBLE', 'Only an unresolved INC on or before its deadline can be completed.')
@@ -2359,6 +2411,7 @@ export const saaisMswHandlers = [
       db.attemptResults[db.attemptResults.indexOf(attempt)] = {
         ...attempt,
         completion_grade: resolution.completion_grade,
+        gwa_grade: resolution.completion_grade,
         effective_status: resolution.effective_status,
         resolved_at: resolution.resolved_at,
       }
@@ -2369,34 +2422,46 @@ export const saaisMswHandlers = [
   http.patch(
     '*/functions/v1/students/:student_id/attempts/:attempt_id/inc-completion',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
-      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
+      // Parse the body first: everything below reads and writes state with no further await.
+      const rawBody: unknown = await request.json().catch(() => null)
+      const body = rawBody !== null && typeof rawBody === 'object' && !Array.isArray(rawBody)
+        ? rawBody as Partial<ApiSchema<'INCCompletionCorrectionRequest'>>
+        : null
       const db = getMockDatabase()
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
-      const offering = db.courseOfferings.find(o => o.id === attempt?.course_offering_id)
+      if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
+      if (!db.adviserAssignments.some(a => a.student_id === studentId && a.adviser_id === auth.persona.profileId && a.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may change an INC completion.')
+      const resolution = db.incResolutions.find(r => r.attempt_id === attemptId)
+      if (!resolution) return errorJson(404, 'NOT_FOUND', 'INC completion not found.')
+      // A correction is not the first-completion exception: closures and locks both block it.
+      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
+      const offering = db.courseOfferings.find(o => o.id === attempt.course_offering_id)
       const term = db.schoolTerms.find(t => t.id === offering?.school_term_id)
       if (term?.is_locked && !term.override_flag) return errorJson(409, 'TERM_LOCKED', 'Corrections require an editable term.')
-      const body = (await request.json().catch(() => ({}))) as ApiSchema<'INCCompletionCorrectionRequest'>
-      const resolution: ApiSchema<'INCResolution'> = {
-        id: MOCK_IDS.incResolution1,
-        student_id: studentId,
-        attempt_id: attemptId,
-        completion_grade: body.completion_grade ?? 1.75,
-        resolved_by: auth.persona.profileId,
-        resolved_at: '2026-11-10T09:00:00Z',
+      const grade = body?.completion_grade
+      if (typeof body?.reason !== 'string' || !body.reason.trim() || typeof grade !== 'number' || !Number.isFinite(grade) || grade < 1 || grade > 5 || grade * 4 % 1 !== 0) return errorJson(400, 'INVALID_INPUT', 'Enter a valid completion grade and reason.')
+      if (body.expected_updated_at !== resolution.updated_at) return errorJson(409, 'STALE_COMPLETION', 'The INC completion changed since it was loaded.')
+      const updatedAt = new Date().toISOString()
+      const corrected: ApiSchema<'INCResolution'> = {
+        ...resolution,
+        completion_grade: grade,
         updated_by: auth.persona.profileId,
-        updated_at: '2026-11-10T09:05:00Z',
-        effective_status: (body.completion_grade ?? 1.75) <= 3.0 ? 'passed' : 'failed',
+        updated_at: updatedAt,
+        effective_status: grade <= 3.0 ? 'passed' : 'failed',
       }
-      return HttpResponse.json(resolution, { status: 200 })
+      db.incResolutions[db.incResolutions.indexOf(resolution)] = corrected
+      db.attemptResults[db.attemptResults.indexOf(attempt)] = {
+        ...attempt,
+        completion_grade: corrected.completion_grade,
+        gwa_grade: corrected.completion_grade,
+        effective_status: corrected.effective_status,
+        updated_at: updatedAt,
+      }
+      return HttpResponse.json(corrected, { status: 200 })
     },
   ),
 
