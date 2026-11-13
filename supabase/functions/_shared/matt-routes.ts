@@ -30,4 +30,6 @@ export const mattRoutes = new Set([
   'getAdviserDashboardReport',
   'getDepartmentReport',
   'getFacultyReport',
+  'listRecommendations',
+  'saveAdvisingPlan',
 ]);
