@@ -14,6 +14,15 @@ const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
   admin: 'System Admin',
 }
 
+const ADMIN_ROUTE_LABELS: Readonly<Record<string, string>> = {
+  '/admin/students': 'Student directory',
+  '/admin/accounts': 'Accounts and roles',
+  '/admin/programs': 'Programs',
+  '/admin/faculties': 'Faculties and departments',
+  '/admin/settings': 'System settings',
+  '/admin/audit-log': 'Audit log',
+}
+
 function getInitials(fullName: string): string {
   const parts = fullName
     .replace(/,/g, ' ')
@@ -87,6 +96,13 @@ export function AuthenticatedPortalLayout() {
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
   const sections = getNavigationSections(roles)
+  const adminPageLabel =
+    currentRole === 'admin'
+      ? ADMIN_ROUTE_LABELS[location.pathname.replace(/\/+$/, '')]
+      : undefined
+  const crumbs = adminPageLabel
+    ? [{ label: portalLabel, to: homeHref }, { label: adminPageLabel }]
+    : [{ label: portalLabel, to: homeHref }]
 
   const handleSignOut = async () => {
     await signOut()
@@ -106,7 +122,7 @@ export function AuthenticatedPortalLayout() {
         profileHref: '/settings',
         onSignOut: () => void handleSignOut(),
       }}
-      crumbs={[{ label: portalLabel, to: homeHref }]}
+      crumbs={crumbs}
     >
       <Outlet />
     </AppShell>
