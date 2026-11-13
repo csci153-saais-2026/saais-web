@@ -7,4 +7,5 @@ export const mattRoutes = new Set([
   'updateSystemSettings',
   'recordCompletedBackup',
   'recordAuditViewEvent',
+  'updateProfile',
 ]);
