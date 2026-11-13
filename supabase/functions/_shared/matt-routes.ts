@@ -21,4 +21,6 @@ export const mattRoutes = new Set([
   'correctPrerequisiteGrade',
   'recordGrades',
   'encodeTermGrades',
+  'createGradeFlag',
+  'resolveGradeFlag',
 ]);

@@ -33,3 +33,6 @@ verify_jwt = true
 
 [functions.adviser-assignments]
 verify_jwt = true
+
+[functions.grade-flags]
+verify_jwt = true
