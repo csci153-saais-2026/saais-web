@@ -2,19 +2,18 @@
 
 ## 1. Overview of the Department Head Module
 
-The **Department Head** portal in SAAIS provides department-level academic management, curriculum configuration, student and faculty oversight, term administration, and institutional reporting. In our project structure, the Department Head (represented in mockups by **Dr. Andrea Dela Cruz**, Department Head · DCST) possesses an elevated dual-role scope:
-1. **Adviser Capabilities**: Standard advisee advising, checklist review, and grade encoding.
-2. **Department Management Capabilities**: Administrative oversight spanning 10 dedicated management domains:
-   - Curriculum Transfers
-   - Curricula Builder (Versions, Terms & Courses/Slots)
-   - Course Equivalencies
-   - Outside Credits Recognition
-   - Department Student Directory
-   - Adviser Faculty Allocations & Reassignments
-   - Academic Terms & Grade Encoding Windows
-   - Department Academic Analytics & Reports
-   - Department Activity Audit Trail
-   - Department Settings & Scholastic Thresholds
+The **Department Head** portal in SAAIS provides department-level academic management, curriculum configuration, student and faculty oversight, term administration, and institutional reporting. An account with a separate Adviser assignment can also use the Adviser portal.
+
+- Curriculum Transfers
+- Curricula Builder (Versions, Terms & Courses/Slots)
+- Course Equivalencies
+- Outside Credits Recognition
+- Department Student Directory
+- Adviser Faculty Allocations & Reassignments
+- Academic Terms & Grade Encoding Windows
+- Department Academic Analytics & Reports
+- Department Activity Audit Trail
+- Department Settings & Scholastic Thresholds
 
 The module is implemented as a React Single-Page Application (SPA) using Vite, Tailwind CSS v4, and Radix UI / shadcn-based design tokens adhering strictly to `mockup/Department Head`, `mockup/DESIGN.md`, and the merged production components in `src/components/`.
 
@@ -104,7 +103,7 @@ graph TD
 
 ### A. Assigned to Me (Developer 1 — Jerome)
 1. **Department Head Shared Infrastructure & Shell**:
-   - `DepartmentHeadLayout`: Configured `AppShell` with dual collapsible navigation (`Adviser` and `Department Head` sections) and stateful `NotificationBell`.
+- `DepartmentHeadLayout`: Renders the preview with a Department Head navigation section and stateful `NotificationBell`. Shared authenticated layout integration is pending.
    - `NotificationsPage` (`/department-head/notifications`) matching `mockup/notifications-page.js`.
    - Route configuration in `src/App.tsx` and route tree under `src/routes/department-head/`.
    - Dynamic breadcrumb generation and user trigger (`Dr. Andrea Dela Cruz`, Department Head · DCST).
@@ -174,7 +173,7 @@ The implementation strictly reuses the pre-built, production-tested components m
 | Shared Component | Source Location | Usage in Department Head |
 |---|---|---|
 | `AppShell` | `@/components/features/app-shell` | Main layout container with sidebar, topbar, and content gutter |
-| `AppSidebar` | `@/components/features/sidebar` | Collapsible navigation with `Adviser` and `Department Head` sections |
+| `AppSidebar` | `@/components/features/sidebar` | Collapsible Department Head navigation in the preview |
 | `Topbar` | `@/components/features/topbar` | Header with breadcrumbs and notification trigger |
 | `PageHeading` | `@/components/features/page-heading` | Display title, subtitle, and primary header action buttons |
 | `Panel` | `@/components/features/panel` | Content sections with headers and borders |
@@ -197,17 +196,17 @@ The implementation strictly reuses the pre-built, production-tested components m
 
 | Screen / Feature | Assigned To | Status | Implementation Details |
 |---|---|---|---|
-| **DH Portal Shell & Notifications** | Jerome (Me) | **Completed** | `DepartmentHeadLayout.tsx`, `NotificationsPage.tsx`, stateful bell, breadcrumbs, dual-role nav |
+| **DH Portal Shell & Notifications** | Jerome (Me) | **Preview** | Department Head navigation, notifications, and breadcrumbs. Shared authenticated layout integration is pending. |
 | **Curriculum Transfers** | Jerome (Me) | **Completed** | `CurriculumTransfersPage.tsx`: `RecordTabs`, 3-stat grid, review modal with approve/reject |
 | **Curricula Builder** | Jerome (Me) | **Completed** | `CurriculaPage.tsx`: Version selector, 4-stat grid, term panels, version/term/course/slot dialogs |
 | **Equivalence** | Jerome (Me) | **Completed** | `EquivalencePage.tsx`: Curriculum pair selectors, equivalency table, add modal |
 | **Outside Credits** | Jerome (Me) | **Completed** | `OutsideCreditsPage.tsx`: Stats, outside credits table, credit course modal |
 | **Academic Terms** | Jerome (Me) | **Completed** | `AcademicTermsPage.tsx`: Term table, add term modal, term details modal, close encoding modal |
-| **Students Directory** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 6) |
-| **Adviser Assignments** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 7) |
-| **Department Reports** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 8) |
-| **Audit Log** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 9) |
-| **Settings** | Matt (Partner) | **Reserved** | Route scaffolded with `PartnerPlaceholderPage` (Screen 10) |
+| **Students Directory** | Matt (Partner) | **Preview** | Search and filters, read-only checklist, spreadsheet preview |
+| **Adviser Assignments** | Matt (Partner) | **Preview** | Bulk selection and sample reassignment |
+| **Department Reports** | Matt (Partner) | **Preview** | Report filters, cohort details, and local PDF export |
+| **Audit Log** | Matt (Partner) | **Preview** | Search and filters for sample events |
+| **Settings** | Matt (Partner) | **Preview** | Sample standing rules, notification settings, and backup metadata |
 
 ---
 
@@ -215,7 +214,7 @@ The implementation strictly reuses the pre-built, production-tested components m
 
 1. **Strict UI Only**: All interactive forms, modal actions, and filters operate entirely in client-side memory using static mock data derived from `mockup/Department Head`. No backend, API, Supabase, or persistence logic is invoked.
 2. **Design Fidelity**: Spacing (32px gutter, 16px below breakpoint), typography (Syne display headings, IBM Plex Sans body, IBM Plex Mono numeric values), color scheme (Forest `#2F4A12`, Cream `#FBF8EF`, Gold `#E0A82E`), and borders (6px panels, 4px inputs, 8px buttons) strictly mirror `mockup/DesignSystem.dc.html`.
-3. **Graceful Partner Route Navigation**: Routes assigned to Developer 2 are configured with structured placeholder views within the Department Head layout, ensuring navigation links work smoothly during development and testing without 404 errors.
+3. **Adviser Navigation**: The Adviser portal uses its own routes and requires a separate Adviser role assignment. Adviser Assignments stays within Department Head.
 4. **PDF Export Action**: The "Export PDF" buttons trigger a clean user-feedback toast and client-side printable view, preserving the prototype's export action without requiring external backend PDF generators.
 
 ---

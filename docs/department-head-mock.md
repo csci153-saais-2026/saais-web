@@ -6,10 +6,11 @@ events stay in browser memory as you move between screens. Reload the app to
 restore the sample data.
 
 Adviser Assignments is the Department Head's tool for assigning students to
-advisers. The Adviser sidebar group is separate. Its links currently open
-placeholders for the Adviser team's shared screens. The Students checklist
-preview uses a shared checklist component and follows the read-only workflow in
-the SRS. Opening it leaves the audit event count unchanged.
+advisers. The separate Adviser portal will use the Adviser team's routes and
+requires an independent Adviser role assignment. This preview shows Department
+Head navigation. The Students checklist preview uses a shared checklist component
+and follows the read-only workflow in the SRS. Opening it leaves the audit event count
+unchanged.
 
 ## Run locally
 

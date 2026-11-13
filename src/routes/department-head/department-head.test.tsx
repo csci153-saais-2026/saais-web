@@ -7,7 +7,6 @@ import EquivalencePage from "./EquivalencePage"
 import OutsideCreditsPage from "./OutsideCreditsPage"
 import AcademicTermsPage from "./AcademicTermsPage"
 import NotificationsPage from "./NotificationsPage"
-import { PartnerPlaceholderPage } from "./PartnerPlaceholderPage"
 import { DepartmentHeadLayout } from "./DepartmentHeadLayout"
 
 beforeAll(() => {
@@ -30,7 +29,7 @@ afterEach(cleanup)
 
 describe("Department Head Frontend Suite", () => {
   describe("DepartmentHeadLayout & Notifications", () => {
-    it("renders dual-role navigation headers, user identity, and bell state", () => {
+    it("renders Department Head navigation, user identity, and bell state", () => {
       render(
         <MemoryRouter initialEntries={["/department-head/notifications"]}>
           <Routes>
@@ -43,7 +42,9 @@ describe("Department Head Frontend Suite", () => {
 
       expect(screen.getByText("Dr. Andrea Dela Cruz")).toBeDefined()
       expect(screen.getByText("Department Head · DCST")).toBeDefined()
-      expect(screen.getByText("Adviser")).toBeDefined()
+      expect(screen.queryByText("Adviser", { exact: true })).toBeNull()
+      expect(screen.getByRole("link", { name: "Adviser assignments" }).getAttribute("href"))
+        .toBe("/department-head/adviser-assignments")
       expect(screen.getByText("Department Head")).toBeDefined()
       expect(screen.getByRole("heading", { name: "Notifications" })).toBeDefined()
       expect(screen.getByText("2 unread of 3 notifications.")).toBeDefined()
@@ -210,22 +211,6 @@ describe("Department Head Frontend Suite", () => {
       fireEvent.click(screen.getByRole("button", { name: /Close encoding/i }))
       expect(screen.getByRole("heading", { name: "Close grade encoding" })).toBeDefined()
       expect(screen.getByText(/New grade entries will be closed for this term/i)).toBeDefined()
-    })
-  })
-
-  describe("Partner Placeholder Page", () => {
-    it("renders isolation notice and citation of work split", () => {
-      render(
-        <PartnerPlaceholderPage
-          title="Students Directory"
-          subtitle="Department student directory."
-          screenNumber={6}
-        />
-      )
-
-      expect(screen.getByText("Students Directory")).toBeDefined()
-      expect(screen.getByText(/Assigned to Partner \(Developer 2 — Matt\)/i)).toBeDefined()
-      expect(screen.getByText("DEPARTMENT_HEAD_WORK_SPLIT.md")).toBeDefined()
     })
   })
 })

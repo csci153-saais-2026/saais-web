@@ -2,7 +2,6 @@
 import { lazy, Suspense } from "react"
 import { BrowserRouter, Navigate, Route, Routes, Link } from "react-router"
 import { DepartmentHeadLayout } from "@/routes/department-head/DepartmentHeadLayout"
-import { PartnerPlaceholderPage } from "@/routes/department-head/PartnerPlaceholderPage"
 import { PreviewStateProvider } from "@/routes/department-head/shared/PreviewStateProvider"
 
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"))
@@ -92,28 +91,6 @@ function App() {
             <Route path="reports" element={<DepartmentReportsPage />} />
             <Route path="audit-log" element={<AuditLogPage />} />
             <Route path="settings" element={<SettingsPage />} />
-
-            {/* Adviser sub-navigation placeholders */}
-            <Route
-              path="adviser/dashboard"
-              element={
-                <PartnerPlaceholderPage
-                  title="Adviser Dashboard"
-                  subtitle="Adviser workspace overview (Adviser role module)."
-                  screenNumber={0}
-                />
-              }
-            />
-            <Route
-              path="adviser/*"
-              element={
-                <PartnerPlaceholderPage
-                  title="Adviser Workspace"
-                  subtitle="Adviser view (Adviser role module)."
-                  screenNumber={0}
-                />
-              }
-            />
           </Route>
 
           {/* Authentication */}

@@ -7,14 +7,10 @@ import {
   CalendarIcon,
   ChartIcon,
   CheckIcon,
-  FlagIcon,
-  GridIcon,
   ListIcon,
   NoteIcon,
-  PencilIcon,
   ShieldIcon,
   SwapIcon,
-  UploadIcon,
   UsersIcon,
 } from "@/components/icons"
 import type { NavSection, SidebarUser } from "@/components/features/sidebar"
@@ -31,18 +27,6 @@ const USER_HEAD: SidebarUser = {
 }
 
 const SECTIONS: NavSection[] = [
-  {
-    label: "Adviser",
-    collapsible: true,
-    defaultOpen: false,
-    items: [
-      { label: "Dashboard", to: "/department-head/adviser/dashboard", icon: GridIcon, end: true },
-      { label: "Advisees", to: "/department-head/adviser/advisees", icon: UsersIcon },
-      { label: "Encode grades", to: "/department-head/adviser/encode-grades", icon: PencilIcon },
-      { label: "Import grades", to: "/department-head/adviser/import-grades", icon: UploadIcon },
-      { label: "Grade flags", to: "/department-head/adviser/grade-flags", icon: FlagIcon },
-    ],
-  },
   {
     label: "Department Head",
     collapsible: true,
@@ -75,11 +59,6 @@ const PATH_TITLES: Record<string, string> = {
   "/department-head/audit-log": "Audit log",
   "/department-head/settings": "Settings",
   "/department-head/notifications": "Notifications",
-  "/department-head/adviser/dashboard": "Dashboard",
-  "/department-head/adviser/advisees": "Advisees",
-  "/department-head/adviser/encode-grades": "Encode grades",
-  "/department-head/adviser/import-grades": "Import grades",
-  "/department-head/adviser/grade-flags": "Grade flags",
 }
 
 export function DepartmentHeadLayout() {
