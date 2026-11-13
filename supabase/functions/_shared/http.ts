@@ -1,8 +1,15 @@
 import contract from './contract.json' with { type: 'json' };
+import mattContract from './matt-contract.json' with { type: 'json' };
+import { mattRoutes } from './matt-routes.ts';
 
-export type Operation = (typeof contract.operations)[number];
+type Parameter = { name: string; in: string; schema: { type?: string } };
+export type Operation = {
+  id: string; method: string; path: string; parameters: Parameter[];
+  bodyRequired: boolean; input: unknown; status: number; errors: number[];
+  matt?: boolean;
+};
 export type Environment = { url: string; publicKey: string; publicKeys?: string[]; origins: string[] };
-export type RouteGroup = 'catalog' | 'school-terms' | 'students' | 'curriculum-transfers' | 'notifications';
+export type RouteGroup = string;
 type Dependencies = { env: Environment; fetch?: typeof fetch; operations?: Operation[] };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 1024 * 1024;
@@ -37,7 +44,10 @@ async function readJson(request: Request): Promise<unknown> {
 // Each prefix owns its route list. Matt can compose his students routes with
 // jeromeStudentOperations without replacing handlers or registering duplicates.
 export function operationsFor(group: RouteGroup): Operation[] {
-  return contract.operations.filter(operation => operation.path.split('/')[3] === group);
+  const matchesGroup = (operation: Operation) => operation.path.split('/')[3] === group;
+  return [...contract.operations.filter(matchesGroup), ...mattContract.operations
+    .filter(operation => mattRoutes.has(operation.id) && !operation.public && matchesGroup(operation))
+    .map(operation => ({ ...operation, matt: true }))];
 }
 
 export function createHandler(group: RouteGroup, dependencies: Dependencies) {
@@ -46,7 +56,8 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
   const operations = dependencies.operations || operationsFor(group);
   return async (request: Request): Promise<Response> => {
     const headers = new Headers({ 'Cache-Control': 'no-store', Vary: 'Origin',
-      'Access-Control-Allow-Methods': 'POST, PATCH, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
+      'Access-Control-Expose-Headers': 'X-Excluded-Count, Retry-After',
       'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info' });
     const origin = request.headers.get('origin');
     if (origin && !env.origins.includes(origin)) return error(403, '42501', 'Origin is not allowed.', headers);
@@ -65,15 +76,26 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       const projectKey = request.headers.get('apikey') || '';
       if (!(env.publicKeys || [env.publicKey]).includes(projectKey) || !authorization || !/^Bearer \S+$/i.test(authorization))
         return error(401, 'PGRST301', 'A project key and user session are required.', headers);
-      if (url.search.length) return error(400, '22023', 'Query parameters are not supported for this operation.', headers);
-      const params: Record<string, string> = {};
-      for (const parameter of operation.parameters) {
+      const params: Record<string, string | number | boolean> = Object.create(null);
+      for (const parameter of operation.parameters.filter(parameter => parameter.in === 'path')) {
         const index = operation.path.split('/').indexOf(`{${parameter.name}}`);
         let value: string;
         try { value = decodeURIComponent(segments[index]); }
         catch { return error(400, '22023', 'Invalid resource identifier.', headers); }
         if (!uuid.test(value)) return error(400, '22023', 'Invalid resource identifier.', headers);
         params[parameter.name] = value;
+      }
+      for (const [name, value] of url.searchParams) {
+        const parameter = operation.parameters.find(candidate => candidate.in === 'query' && candidate.name === name);
+        if (!parameter || Object.hasOwn(params, name)) return error(400, '22023', 'Invalid or repeated query parameter.', headers);
+        if (parameter.schema.type === 'integer') {
+          const number = Number(value);
+          if (!/^-?\d+$/.test(value) || !Number.isSafeInteger(number)) return error(400, '22023', 'Invalid integer query parameter.', headers);
+          params[name] = number;
+        } else if (parameter.schema.type === 'boolean') {
+          if (value !== 'true' && value !== 'false') return error(400, '22023', 'Invalid boolean query parameter.', headers);
+          params[name] = value === 'true';
+        } else params[name] = value;
       }
       let body: unknown;
       try { body = await readJson(request); }
@@ -88,20 +110,29 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       if (!identity.id || !uuid.test(identity.id)) return error(401, 'PGRST301', 'Invalid user session.', headers);
       // Use the caller JWT, never a service-role credential. SQL rechecks active
       // session/profile/role/scope at commit and makes the operation atomic.
-      const result = await fetcher(`${env.url}/rest/v1/rpc/jerome_operation`, { method: 'POST', headers: upstreamHeaders,
+      const rpc = operation.matt ? 'matt_operation' : 'jerome_operation';
+      const result = await fetcher(`${env.url}/rest/v1/rpc/${rpc}`, { method: 'POST', headers: upstreamHeaders,
         body: JSON.stringify({ p_operation: operation.id, p_params: params, p_body: body ?? {} }), signal: AbortSignal.timeout(30000) });
       if (!result.ok) {
         const status = operation.errors.includes(result.status) ? result.status : 500;
-        const upstream = await result.json().catch(() => ({})) as { code?: string; message?: string };
+        const upstream = await result.json().catch(() => ({})) as { code?: string; message?: string; details?: string };
         // Only controlled PT errors contain reviewed public messages. Database
         // constraint details and SQL row dumps never leave the function.
         const controlled = /^PT(400|401|403|404|409|429)$/.test(upstream.code || '');
         if (status === 429) headers.set('Retry-After', '60');
-        return error(status, controlled ? upstream.code! : status === 409 ? '23505' : 'XX000',
+        const conflict = operation.matt && status === 409 && controlled &&
+          ['ENROLLMENT_CONFIRMATION_REQUIRED', 'GRADE_ALREADY_RECORDED', 'ALREADY_ENROLLED'].includes(upstream.details || '')
+          ? upstream.details : undefined;
+        return error(status, conflict ?? (controlled ? upstream.code! : status === 409 ? '23505' : 'XX000'),
           controlled ? (upstream.message || 'Request rejected.').slice(0, 1000) : 'The operation could not be completed.', headers);
       }
       if (operation.status === 204) return new Response(null, { status: 204, headers });
-      return Response.json(await result.json(), { status: operation.status, headers });
+      const data = await result.json();
+      if (operation.id === 'listRecommendations') {
+        headers.set('X-Excluded-Count', String(data.excluded_count));
+        return Response.json(data.rows, { status: operation.status, headers });
+      }
+      return Response.json(data, { status: operation.status, headers });
     } catch {
       return error(500, 'XX000', 'The operation could not be completed.', headers);
     }

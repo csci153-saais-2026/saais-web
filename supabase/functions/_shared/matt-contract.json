@@ -1,0 +1,6874 @@
+{
+  "revision": "cfa620c97c2a506537825edc1323f37ee5f843b3",
+  "operations": [
+    {
+      "id": "inviteUser",
+      "path": "/functions/v1/auth/invite",
+      "method": "POST",
+      "roles": [
+        "department_head",
+        "department_staff",
+        "admin"
+      ],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/InviteRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/InviteResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "verifyInviteToken",
+      "path": "/functions/v1/auth/verify-invite",
+      "method": "POST",
+      "roles": [],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/VerifyInviteRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/VerifyInviteResponse"
+      },
+      "errors": [
+        400,
+        401,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": true
+    },
+    {
+      "id": "previewInviteToken",
+      "path": "/functions/v1/auth/preview-invite",
+      "method": "POST",
+      "roles": [],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/PreviewInviteRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/PreviewInviteResponse"
+      },
+      "errors": [
+        400,
+        401,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": true
+    },
+    {
+      "id": "declineInviteToken",
+      "path": "/functions/v1/auth/decline-invite",
+      "method": "POST",
+      "roles": [],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/DeclineInviteRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/DeclineInviteResponse"
+      },
+      "errors": [
+        400,
+        401,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": true
+    },
+    {
+      "id": "getHealthStatus",
+      "path": "/functions/v1/health",
+      "method": "GET",
+      "roles": [
+        "student",
+        "adviser",
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "parameters": [],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "updateProfile",
+      "path": "/functions/v1/accounts/{profile_id}",
+      "method": "PATCH",
+      "roles": [
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "profile_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/AdminProfileUpdate"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/Profile"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "resendAccountInvite",
+      "path": "/functions/v1/accounts/{profile_id}/resend-invite",
+      "method": "POST",
+      "roles": [
+        "department_head",
+        "department_staff",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "profile_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/ResendInviteResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "revokeAccountInvite",
+      "path": "/functions/v1/accounts/{profile_id}/revoke-invite",
+      "method": "POST",
+      "roles": [
+        "department_head",
+        "department_staff",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "profile_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": {
+        "$ref": "#/components/schemas/RevokeInviteRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/Profile"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "reassignAdviser",
+      "path": "/functions/v1/students/{student_id}/adviser",
+      "method": "PUT",
+      "roles": [
+        "department_head",
+        "department_staff"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/AdviserReassignmentRequest"
+      },
+      "status": 200,
+      "output": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "$ref": "#/components/schemas/AdviserAssignment"
+        }
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "bulkReassignAdvisers",
+      "path": "/functions/v1/adviser-assignments/bulk-reassign",
+      "method": "POST",
+      "roles": [
+        "department_head",
+        "department_staff"
+      ],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/BulkAdviserReassignmentRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/BulkAdviserReassignmentResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "recordGrades",
+      "path": "/functions/v1/students/{student_id}/record-grades",
+      "method": "POST",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/RecordGradesRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AttemptResult"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "encodeTermGrades",
+      "path": "/functions/v1/students/{student_id}/encode-grades",
+      "method": "POST",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/EncodeTermGradesRequest"
+      },
+      "status": 200,
+      "output": {
+        "type": "array",
+        "maxItems": 100,
+        "items": {
+          "$ref": "#/components/schemas/AttemptResult"
+        }
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "correctGrades",
+      "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/grades",
+      "method": "PATCH",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attempt_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/GradeCorrectionRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AttemptResult"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "deleteOpenTermAttempt",
+      "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}",
+      "method": "DELETE",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attempt_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 204,
+      "output": null,
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "correctPrerequisiteGrade",
+      "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/prerequisite-grade",
+      "method": "POST",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attempt_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/PrerequisiteGradeCorrectionRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AttemptResult"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "completeINC",
+      "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion",
+      "method": "POST",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attempt_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/INCCompletionRequest"
+      },
+      "status": 201,
+      "output": {
+        "$ref": "#/components/schemas/INCResolution"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "correctINCCompletion",
+      "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion",
+      "method": "PATCH",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attempt_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/INCCompletionCorrectionRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/INCResolution"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "saveAdvisingPlan",
+      "path": "/functions/v1/students/{student_id}/plans/{school_term_id}",
+      "method": "PUT",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "school_term_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/AdvisingPlanSaveRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AdvisingPlanResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "addAdvisingNote",
+      "path": "/functions/v1/students/{student_id}/notes",
+      "method": "POST",
+      "roles": [
+        "adviser",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/NoteRequest"
+      },
+      "status": 201,
+      "output": {
+        "$ref": "#/components/schemas/AdvisingNote"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "updateAdvisingNoteArchiveState",
+      "path": "/functions/v1/students/{student_id}/notes/{note_id}",
+      "method": "PATCH",
+      "roles": [
+        "adviser",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "note_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/NoteArchiveUpdateRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AdvisingNote"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "addAttemptRemark",
+      "path": "/functions/v1/students/{student_id}/remarks",
+      "method": "POST",
+      "roles": [
+        "adviser",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/RemarkRequest"
+      },
+      "status": 201,
+      "output": {
+        "$ref": "#/components/schemas/AttemptRemark"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "askAdvisingAssistant",
+      "path": "/functions/v1/students/{student_id}/assistant",
+      "method": "POST",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/AdvisingAIRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AdvisingAIResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "getAcademicSummary",
+      "path": "/functions/v1/students/{student_id}/academic-summary",
+      "method": "GET",
+      "roles": [
+        "student",
+        "adviser",
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AcademicSummary"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "listAccounts",
+      "path": "/functions/v1/accounts",
+      "method": "GET",
+      "roles": [
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation.",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "example": 20
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "description": "Number of rows to skip for DoS pagination mitigation",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "example": 0,
+            "maximum": 100000
+          }
+        },
+        {
+          "name": "search",
+          "in": "query",
+          "required": false,
+          "description": "Search text. Server uses parameterized queries; no client-defined query language.",
+          "schema": {
+            "type": "string",
+            "maxLength": 150
+          }
+        },
+        {
+          "name": "role",
+          "in": "query",
+          "required": false,
+          "description": "Filter account role.",
+          "schema": {
+            "$ref": "#/components/schemas/RoleType"
+          }
+        },
+        {
+          "name": "faculty_id",
+          "in": "query",
+          "required": false,
+          "description": "Derived student College or assigned staff College.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "department_id",
+          "in": "query",
+          "required": false,
+          "description": "Derived student Department or assigned staff Department.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "type": "array",
+        "maxItems": 1000,
+        "items": {
+          "$ref": "#/components/schemas/AccountSummary"
+        }
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "listStudentRoster",
+      "path": "/functions/v1/students",
+      "method": "GET",
+      "roles": [
+        "adviser",
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation.",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "example": 20
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "description": "Number of rows to skip for DoS pagination mitigation",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "example": 0,
+            "maximum": 100000
+          }
+        },
+        {
+          "name": "search",
+          "in": "query",
+          "required": false,
+          "description": "Search text. Server uses parameterized queries; no client-defined query language.",
+          "schema": {
+            "type": "string",
+            "maxLength": 150
+          }
+        },
+        {
+          "name": "assignment_scope",
+          "in": "query",
+          "required": false,
+          "description": "Filter by caller advisee relationship (`all` visible students in caller scope, `current` / `my_active_advisees`, `past` / `my_handed_over_advisees`, `unassigned`).",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "all",
+              "current",
+              "past",
+              "my_active_advisees",
+              "my_handed_over_advisees",
+              "unassigned"
+            ],
+            "default": "all"
+          }
+        },
+        {
+          "name": "adviser_id",
+          "in": "query",
+          "required": false,
+          "description": "Filter by active assigned adviser UUID.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "unassigned_only",
+          "in": "query",
+          "required": false,
+          "description": "When true, return only students without an active adviser assignment.",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "faculty_id",
+          "in": "query",
+          "required": false,
+          "description": "Filter by student's derived faculty/college UUID.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "department_id",
+          "in": "query",
+          "required": false,
+          "description": "Filter by student's derived department UUID.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "program_id",
+          "in": "query",
+          "required": false,
+          "description": "Filter by student's active degree program UUID.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "curriculum_version_id",
+          "in": "query",
+          "required": false,
+          "description": "Filter by student's active curriculum version UUID.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "entry_year",
+          "in": "query",
+          "required": false,
+          "description": "Filter by student cohort/entry academic year (e.g. `2023`).",
+          "schema": {
+            "type": "integer",
+            "minimum": 1900,
+            "maximum": 2100
+          }
+        },
+        {
+          "name": "year_level",
+          "in": "query",
+          "required": false,
+          "description": "Filter by derived student year level (`1` to `6`).",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          }
+        },
+        {
+          "name": "standing",
+          "in": "query",
+          "required": false,
+          "description": "Filter by derived academic standing (`good_standing`, `warning`, `probation`, `dismissed`).",
+          "schema": {
+            "$ref": "#/components/schemas/AcademicStanding"
+          }
+        },
+        {
+          "name": "has_deficiencies",
+          "in": "query",
+          "required": false,
+          "description": "Filter students who currently have (`true`) or do not have (`false`) active failed/INC/dropped deficiencies.",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "has_open_inc",
+          "in": "query",
+          "required": false,
+          "description": "Filter students who currently have (`true`) or do not have (`false`) open incomplete (`INC`) attempts.",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "has_open_flags",
+          "in": "query",
+          "required": false,
+          "description": "Filter students who currently have (`true`) or do not have (`false`) open student-submitted grade flags.",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "school_term_id",
+          "in": "query",
+          "required": false,
+          "description": "Optional school term context for term-specific advising/encoding status.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "sort_by",
+          "in": "query",
+          "required": false,
+          "description": "Sort column for the student roster.",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "full_name",
+              "student_number",
+              "year_level",
+              "gwa",
+              "units_earned",
+              "standing",
+              "last_activity_at"
+            ],
+            "default": "full_name"
+          }
+        },
+        {
+          "name": "sort_dir",
+          "in": "query",
+          "required": false,
+          "description": "Sort direction (`asc` or `desc`).",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "default": "asc"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/StudentRosterResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "searchStudentCourseOfferings",
+      "path": "/functions/v1/students/{student_id}/course-offerings",
+      "method": "GET",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "school_term_id",
+          "in": "query",
+          "required": true,
+          "description": "Actual school-term UUID, not a curriculum position or term-type label.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "search",
+          "in": "query",
+          "required": false,
+          "description": "Search text. Server uses parameterized queries; no client-defined query language.",
+          "schema": {
+            "type": "string",
+            "maxLength": 150
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation.",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "example": 20
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "description": "Number of rows to skip for DoS pagination mitigation",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "example": 0,
+            "maximum": 100000
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "type": "array",
+        "maxItems": 1000,
+        "items": {
+          "$ref": "#/components/schemas/CourseOfferingOption"
+        }
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "listRecommendations",
+      "path": "/functions/v1/students/{student_id}/recommendations",
+      "method": "GET",
+      "roles": [
+        "adviser",
+        "department_head",
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation.",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "example": 20
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "description": "Number of rows to skip for DoS pagination mitigation",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "example": 0,
+            "maximum": 100000
+          }
+        },
+        {
+          "name": "school_term_id",
+          "in": "query",
+          "required": true,
+          "description": "Actual school-term UUID, not a curriculum position or term-type label.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "type": "array",
+        "maxItems": 1000,
+        "items": {
+          "$ref": "#/components/schemas/Recommendation"
+        }
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "getChecklist",
+      "path": "/functions/v1/students/{student_id}/checklist",
+      "method": "GET",
+      "roles": [
+        "student",
+        "adviser",
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation.",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "example": 20
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "description": "Number of rows to skip for DoS pagination mitigation",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "example": 0,
+            "maximum": 100000
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "type": "array",
+        "maxItems": 1000,
+        "items": {
+          "$ref": "#/components/schemas/ChecklistSlotResult"
+        }
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "getTermGrades",
+      "path": "/functions/v1/students/{student_id}/grades",
+      "method": "GET",
+      "roles": [
+        "student",
+        "adviser",
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit or bypass contract validation.",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "example": 20
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "description": "Number of rows to skip for DoS pagination mitigation",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "example": 0,
+            "maximum": 100000
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "type": "array",
+        "maxItems": 1000,
+        "items": {
+          "$ref": "#/components/schemas/TermGrades"
+        }
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "createGradeFlag",
+      "path": "/functions/v1/students/{student_id}/grade-flags",
+      "method": "POST",
+      "roles": [
+        "student"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/GradeFlagCreateRequest"
+      },
+      "status": 201,
+      "output": {
+        "$ref": "#/components/schemas/GradeFlag"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "resolveGradeFlag",
+      "path": "/functions/v1/grade-flags/{flag_id}/resolve",
+      "method": "POST",
+      "roles": [
+        "adviser",
+        "department_head",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "flag_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/GradeFlagResolveRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/GradeFlag"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "importGradesBatch",
+      "path": "/functions/v1/grades/import",
+      "method": "POST",
+      "roles": [
+        "adviser"
+      ],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/GradeBatchImportRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/GradeBatchImportResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "importStudentsBatch",
+      "path": "/functions/v1/students/import",
+      "method": "POST",
+      "roles": [
+        "department_head",
+        "department_staff",
+        "admin"
+      ],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/StudentBatchImportRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/StudentBatchImportResponse"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "getAdviserDashboardReport",
+      "path": "/functions/v1/reports/adviser-dashboard",
+      "method": "GET",
+      "roles": [
+        "adviser",
+        "department_head",
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "adviser_id",
+          "in": "query",
+          "required": false,
+          "description": "Optional adviser UUID filter when queried by Department Head, Dean, or Admin.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "school_term_id",
+          "in": "query",
+          "required": false,
+          "description": "Optional school term UUID filter for term-scoped grade distribution.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/AdviserDashboardReport"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "getDepartmentReport",
+      "path": "/functions/v1/reports/department",
+      "method": "GET",
+      "roles": [
+        "department_head",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "department_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "program_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "school_term_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/DepartmentReport"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "getFacultyReport",
+      "path": "/functions/v1/reports/faculty",
+      "method": "GET",
+      "roles": [
+        "dean",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "faculty_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "department_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "school_term_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/FacultyReport"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "updateSystemSettings",
+      "path": "/functions/v1/settings",
+      "method": "PUT",
+      "roles": [
+        "department_head",
+        "admin"
+      ],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/SystemSettingsUpdateRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/SystemSettings"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        409,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "recordCompletedBackup",
+      "path": "/functions/v1/settings/record-backup",
+      "method": "POST",
+      "roles": [
+        "department_head",
+        "admin"
+      ],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/RecordBackupRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/SystemSettings"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "recordAuditViewEvent",
+      "path": "/functions/v1/audit/view-event",
+      "method": "POST",
+      "roles": [
+        "student",
+        "adviser",
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "parameters": [],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/AuditViewEventRequest"
+      },
+      "status": 201,
+      "output": {
+        "$ref": "#/components/schemas/AuditLogEntry"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "uploadStudentPhoto",
+      "path": "/functions/v1/students/{student_id}/photo",
+      "method": "PUT",
+      "roles": [
+        "student",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": true,
+      "input": {
+        "$ref": "#/components/schemas/StudentPhotoUpdateRequest"
+      },
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/Profile"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        429,
+        500
+      ],
+      "public": false
+    },
+    {
+      "id": "deleteStudentPhoto",
+      "path": "/functions/v1/students/{student_id}/photo",
+      "method": "DELETE",
+      "roles": [
+        "student",
+        "admin"
+      ],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "$ref": "#/components/schemas/Profile"
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404,
+        429,
+        500
+      ],
+      "public": false
+    }
+  ],
+  "schemas": {
+    "InviteRequest": {
+      "oneOf": [
+        {
+          "$ref": "#/components/schemas/StudentInviteRequest"
+        },
+        {
+          "$ref": "#/components/schemas/AdviserInviteRequest"
+        },
+        {
+          "$ref": "#/components/schemas/AdminInviteRequest"
+        },
+        {
+          "$ref": "#/components/schemas/StaffRoleInviteRequest"
+        }
+      ],
+      "description": "Admin or Department Staff/Head provisions identity and role-specific academic assignments atomically before invitation completion. Students require matching program/curriculum and an required eligible active adviser; advisers and staff roles require organizational scope. When any requested role is student, use StudentInviteRequest with the required student details and adviser; other invite variants cannot add a student role. Department Head and Department Staff may provision Students, Advisers, Department Staff, and Department Heads within their own department (`admin` and `dean` grants remain Admin-only). Unified provisioning creates the pre-registered `Profile` (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link."
+    },
+    "StudentInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "pattern": "\\S"
+        },
+        "role": {
+          "type": "string",
+          "const": "student"
+        },
+        "student_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "\\S"
+        },
+        "program_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_version_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "adviser_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Eligible active adviser assigned atomically during student provisioning."
+        },
+        "entry_year": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1900,
+          "maximum": 3000
+        },
+        "role_assignments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/components/schemas/RoleAssignmentInput"
+          },
+          "description": "Optional multi-role assignments when a provisioned student account also holds an explicitly authorized secondary role assignment."
+        }
+      },
+      "required": [
+        "email",
+        "full_name",
+        "role",
+        "student_number",
+        "program_id",
+        "curriculum_version_id",
+        "adviser_id"
+      ]
+    },
+    "RoleAssignmentInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role"
+      ],
+      "properties": {
+        "role": {
+          "$ref": "#/components/schemas/RoleType"
+        },
+        "faculty_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      }
+    },
+    "RoleType": {
+      "type": "string",
+      "enum": [
+        "student",
+        "adviser",
+        "department_head",
+        "department_staff",
+        "dean",
+        "admin"
+      ],
+      "description": "User role within SAAIS"
+    },
+    "AdviserInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "not": {
+        "required": [
+          "role_assignments"
+        ],
+        "properties": {
+          "role_assignments": {
+            "contains": {
+              "required": [
+                "role"
+              ],
+              "properties": {
+                "role": {
+                  "const": "student"
+                }
+              }
+            }
+          }
+        }
+      },
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "pattern": "\\S"
+        },
+        "role": {
+          "type": "string",
+          "const": "adviser"
+        },
+        "faculty_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "role_assignments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/components/schemas/RoleAssignmentInput"
+          }
+        }
+      },
+      "required": [
+        "email",
+        "full_name",
+        "role",
+        "faculty_id"
+      ]
+    },
+    "AdminInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "not": {
+        "required": [
+          "role_assignments"
+        ],
+        "properties": {
+          "role_assignments": {
+            "contains": {
+              "required": [
+                "role"
+              ],
+              "properties": {
+                "role": {
+                  "const": "student"
+                }
+              }
+            }
+          }
+        }
+      },
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "pattern": "\\S"
+        },
+        "role": {
+          "type": "string",
+          "const": "admin"
+        },
+        "role_assignments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/components/schemas/RoleAssignmentInput"
+          }
+        }
+      },
+      "required": [
+        "email",
+        "full_name",
+        "role"
+      ]
+    },
+    "StaffRoleInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "not": {
+        "required": [
+          "role_assignments"
+        ],
+        "properties": {
+          "role_assignments": {
+            "contains": {
+              "required": [
+                "role"
+              ],
+              "properties": {
+                "role": {
+                  "const": "student"
+                }
+              }
+            }
+          }
+        }
+      },
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "pattern": "\\S"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "department_head",
+            "department_staff",
+            "dean"
+          ]
+        },
+        "faculty_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "role_assignments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/components/schemas/RoleAssignmentInput"
+          }
+        }
+      },
+      "required": [
+        "email",
+        "full_name",
+        "role"
+      ]
+    },
+    "InviteResponse": {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "profile_id"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Invitation email dispatched successfully."
+        },
+        "profile_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "invitation_status": {
+          "$ref": "#/components/schemas/InvitationStatus"
+        },
+        "invitation_sent_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "invitation_expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "InvitationStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "expired",
+        "declined",
+        "revoked"
+      ],
+      "description": "Lifecycle status of an account invitation without exposing raw invitation tokens"
+    },
+    "VerifyInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "writeOnly": true,
+          "pattern": "\\S",
+          "description": "Opaque application invitation token, not a user JWT, OAuth authorization code, refresh token or Supabase token_hash. Validate expiry and single-use redemption server-side; never log the token or password."
+        },
+        "password": {
+          "type": "string",
+          "format": "password",
+          "minLength": 12,
+          "maxLength": 128,
+          "writeOnly": true,
+          "description": "Initial account password: 12 to 128 characters, requiring at least one uppercase letter, one lowercase letter, and one digit. Validated server-side before activating the account."
+        }
+      },
+      "required": [
+        "token",
+        "password"
+      ]
+    },
+    "VerifyInviteResponse": {
+      "type": "object",
+      "required": [
+        "success",
+        "message"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Account successfully activated."
+        }
+      },
+      "description": "Application activation acknowledgement only. Does not create a browser Supabase session or contain Auth access/refresh tokens."
+    },
+    "PreviewInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "writeOnly": true,
+          "pattern": "\\S",
+          "description": "Opaque application invitation token passed in the JSON request body (never in query strings) to preview invitation details without consuming the token."
+        }
+      }
+    },
+    "PreviewInviteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid",
+        "status",
+        "email",
+        "full_name",
+        "role",
+        "roles",
+        "expires_at"
+      ],
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "description": "True when the invitation is still pending and unredeemed/unexpired."
+        },
+        "status": {
+          "$ref": "#/components/schemas/InvitationStatus"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Invited institutional email address (`@vsu.edu.ph`)."
+        },
+        "full_name": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "role": {
+          "$ref": "#/components/schemas/RoleType"
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/components/schemas/RoleType"
+          }
+        },
+        "faculty_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250,
+          "description": "Display name of the invited account's assigned or derived College/Faculty."
+        },
+        "department_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250,
+          "description": "Display name of the invited account's assigned or derived Department."
+        },
+        "program_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100,
+          "description": "Student degree program code when the invitation is for a student."
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the invitation link expires."
+        }
+      }
+    },
+    "DeclineInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "writeOnly": true,
+          "pattern": "\\S",
+          "description": "Opaque application invitation token passed in the JSON request body to decline a pending invitation without creating a session."
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        }
+      }
+    },
+    "DeclineInviteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "success",
+        "message",
+        "invitation_status"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Invitation declined."
+        },
+        "invitation_status": {
+          "$ref": "#/components/schemas/InvitationStatus"
+        }
+      }
+    },
+    "AdminProfileUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "pattern": "\\S"
+        },
+        "role": {
+          "$ref": "#/components/schemas/RoleType"
+        },
+        "role_assignments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/components/schemas/RoleAssignmentInput"
+          }
+        },
+        "status": {
+          "$ref": "#/components/schemas/ProfileStatus"
+        },
+        "faculty_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "avatar_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "consultation_hours": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250
+        },
+        "student_number": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "minProperties": 1,
+      "description": "Admin-only account fields; role-specific organization and retained-history checks apply server-side. Student program changes use the curriculum-assignment transaction. Auth identity and profile must remain consistent. Students have no profile mutation operation."
+    },
+    "ProfileStatus": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "active",
+        "disabled"
+      ],
+      "description": "Account status"
+    },
+    "Profile": {
+      "type": "object",
+      "required": [
+        "id",
+        "role",
+        "email",
+        "full_name",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "role": {
+          "$ref": "#/components/schemas/RoleType"
+        },
+        "roles": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/components/schemas/RoleType"
+          }
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "student_number": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "status": {
+          "$ref": "#/components/schemas/ProfileStatus"
+        },
+        "invitation_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/InvitationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "readOnly": true,
+          "description": "Token-free invitation lifecycle state for account directory views."
+        },
+        "invitation_sent_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "readOnly": true
+        },
+        "invitation_expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "readOnly": true
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "faculty_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "avatar_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "consultation_hours": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250,
+          "description": "Adviser or faculty consultation schedule displayed on Student Dashboard / Mobile Student Home."
+        }
+      }
+    },
+    "ResendInviteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "success",
+        "message",
+        "profile_id",
+        "invitation_status",
+        "invitation_sent_at",
+        "invitation_expires_at"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Invitation regenerated and dispatched."
+        },
+        "profile_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "invitation_status": {
+          "$ref": "#/components/schemas/InvitationStatus"
+        },
+        "invitation_sent_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "invitation_expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "RevokeInviteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        }
+      }
+    },
+    "AdviserReassignmentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adviser_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "adviser_id",
+        "start_date",
+        "reason"
+      ]
+    },
+    "AdviserAssignment": {
+      "type": "object",
+      "required": [
+        "id",
+        "adviser_id",
+        "student_id",
+        "start_date",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "adviser_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "adviser_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150,
+          "readOnly": true,
+          "description": "Adviser display name safe for Student Profile and advisee history views."
+        },
+        "adviser_email": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "email",
+          "readOnly": true,
+          "description": "Adviser institutional email safe for Student Dashboard and Mobile Student Home contact cards."
+        },
+        "adviser_faculty_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250,
+          "readOnly": true,
+          "description": "Adviser faculty/college display name safe for Student Dashboard contact cards."
+        },
+        "adviser_consultation_hours": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250,
+          "readOnly": true,
+          "example": "Tue & Thu, 13:00–16:00",
+          "description": "Adviser consultation hours displayed on Student Dashboard and Mobile Student Home."
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2025-08-01"
+        },
+        "end_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "example": null
+        },
+        "handed_over_to_adviser_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "readOnly": true,
+          "description": "Succeeding adviser UUID when this assignment was closed by a handover."
+        },
+        "handed_over_to_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150,
+          "readOnly": true,
+          "description": "Succeeding adviser display name when this assignment was closed by a handover."
+        },
+        "handover_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200,
+          "readOnly": true,
+          "example": "Handed over to Prof. Reyes (Jan 2026)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "BulkAdviserReassignmentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "student_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "adviser_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "effective_since": {
+          "type": "string",
+          "format": "date"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "student_ids",
+        "adviser_id",
+        "effective_since",
+        "reason"
+      ]
+    },
+    "BulkAdviserReassignmentResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reassigned_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assignments": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/AdviserAssignment"
+          }
+        }
+      },
+      "required": [
+        "reassigned_count",
+        "assignments"
+      ]
+    },
+    "RecordGradesRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "course_offering_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "Optional target curriculum slot UUID. When an elective course is recorded directly into an elective slot (`is_elective_slot=true`), the server atomically creates the corresponding `ElectiveMapping` row in the same transaction."
+        },
+        "elective_mapping_justification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000,
+          "description": "Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during grade recording."
+        },
+        "midterm_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MidtermStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "midterm_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "final_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "inc",
+            "dr",
+            "na",
+            null
+          ]
+        },
+        "instructor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "remark": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000,
+          "description": "Optional staff remark appended as an `AttemptRemark` row when non-empty and not duplicating the latest remark on the attempt."
+        },
+        "confirmed_enrollment": {
+          "type": "boolean",
+          "default": false
+        },
+        "continue_with_prerequisite_override": {
+          "type": "boolean",
+          "default": false
+        },
+        "prerequisite_override_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "school_term_id",
+        "course_offering_id"
+      ],
+      "description": "Omitted/null grades mean blank. Server derives student from path, actor from verified session, actual units and direct slot from records (or maps to `curriculum_term_course_id` when an elective slot is selected). Under the VSU DR midterm rule, midterm_status=dr automatically sets status=dr and final_grade=null. For a new offering with midterm supplied, first return 409 ENROLLMENT_CONFIRMATION_REQUIRED until confirmed_enrollment=true. Existing populated submitted grade always rejects the whole request and directs to Grades; blank/blank on existing offering rejects duplicate. Unmet strict prerequisites require explicit audited override or prerequisite grade correction."
+    },
+    "MidtermStatus": {
+      "type": "string",
+      "enum": [
+        "graded",
+        "dr"
+      ],
+      "description": "Midterm outcome status (graded numeric midterm vs VSU DR midterm drop)"
+    },
+    "AttemptResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "course_offering_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "recorded_status": {
+          "$ref": "#/components/schemas/AttemptStatus"
+        },
+        "midterm_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MidtermStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "midterm_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "final_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "inc_deadline": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "instructor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "prerequisite_override": {
+          "type": "boolean"
+        },
+        "prerequisite_grade_override": {
+          "type": "boolean"
+        },
+        "grade_fix_history": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/components/schemas/GradeFixHistoryEntry"
+          }
+        },
+        "units_attempted": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.25,
+          "readOnly": true
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "readOnly": true
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "completion_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "resolved_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "readOnly": true
+        },
+        "effective_status": {
+          "$ref": "#/components/schemas/AttemptStatus"
+        },
+        "gwa_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "is_lapsed_inc": {
+          "type": "boolean"
+        },
+        "is_repeated": {
+          "type": "boolean",
+          "readOnly": true,
+          "description": "True when this failing attempt is superseded by a later numeric retake result; show Repeated on the transcript."
+        },
+        "counts_toward_cumulative_gwa": {
+          "type": "boolean",
+          "readOnly": true,
+          "description": "True when this attempt contributes to cumulative GWA after retake replacement rules."
+        }
+      },
+      "required": [
+        "id",
+        "student_id",
+        "course_offering_id",
+        "recorded_status",
+        "effective_status",
+        "units_attempted",
+        "revision",
+        "midterm_grade",
+        "final_grade",
+        "completion_grade",
+        "gwa_grade",
+        "is_lapsed_inc",
+        "is_repeated",
+        "counts_toward_cumulative_gwa"
+      ]
+    },
+    "AttemptStatus": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "currently_enrolled",
+        "inc",
+        "dr",
+        "na"
+      ],
+      "description": "Student enrollment attempt outcome"
+    },
+    "GradeFixHistoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "changed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "old_grade": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "new_grade": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "actor_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "changed_at",
+        "old_grade",
+        "new_grade"
+      ]
+    },
+    "EncodeTermGradesRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/components/schemas/EncodeTermGradeRowInput"
+          }
+        },
+        "remove_attempt_ids": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Open-term attempt UUIDs removed during encoding workspace save."
+        }
+      },
+      "required": [
+        "school_term_id",
+        "rows"
+      ]
+    },
+    "EncodeTermGradeRowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "course_offering_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "Target curriculum slot UUID (required or elective slot). When pointing to an elective slot (`is_elective_slot=true`), the server atomically creates or updates the corresponding `ElectiveMapping` row in the same transaction."
+        },
+        "elective_mapping_justification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000,
+          "description": "Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during term encoding."
+        },
+        "midterm_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MidtermStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "midterm_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "final_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "status": {
+          "$ref": "#/components/schemas/AttemptStatus"
+        },
+        "instructor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "remark": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000,
+          "description": "Optional staff remark. Because `AttemptRemark` is an append-only log, the server appends a new `AttemptRemark` row only when `remark` is non-empty and differs from the most recent remark on that attempt."
+        },
+        "continue_with_prerequisite_override": {
+          "type": "boolean",
+          "default": false
+        },
+        "prerequisite_override_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "course_offering_id"
+      ]
+    },
+    "GradeCorrectionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "$ref": "#/components/schemas/AttemptStatus"
+        },
+        "midterm_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MidtermStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "midterm_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "final_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "instructor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "expected_revision",
+        "reason"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "status"
+          ]
+        },
+        {
+          "required": [
+            "midterm_status"
+          ]
+        },
+        {
+          "required": [
+            "midterm_grade"
+          ]
+        },
+        {
+          "required": [
+            "final_grade"
+          ]
+        },
+        {
+          "required": [
+            "instructor"
+          ]
+        }
+      ],
+      "description": "Current-adviser correction under term lock/revision guards. Omitted values preserve existing data; explicit null clears an optional grade. The complete resulting record must satisfy final-derived Passed/Failed and INC/DR/NA rules. INC defaults use actual term ends_on; completed INC uses its completion-correction operation. Never bypass strict prerequisites."
+    },
+    "PrerequisiteGradeCorrectionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "final_grade": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "multipleOf": 0.25
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "expected_revision",
+        "final_grade",
+        "reason"
+      ]
+    },
+    "INCCompletionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "completion_grade": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "completion_grade",
+        "reason"
+      ]
+    },
+    "INCResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "completion_grade": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "resolved_by": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_by": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "effective_status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "student_id",
+        "attempt_id",
+        "completion_grade",
+        "resolved_by",
+        "resolved_at",
+        "updated_by",
+        "updated_at",
+        "effective_status"
+      ]
+    },
+    "INCCompletionCorrectionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "completion_grade": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        },
+        "expected_updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "completion_grade",
+        "reason",
+        "expected_updated_at"
+      ]
+    },
+    "AdvisingPlanSaveRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Null means expect no existing plan; integer matches the existing revision."
+        },
+        "expected_curriculum_assignment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/components/schemas/AdvisingPlanItemRequest"
+          }
+        }
+      },
+      "required": [
+        "expected_revision",
+        "expected_curriculum_assignment_id",
+        "items"
+      ]
+    },
+    "AdvisingPlanItemRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "course_offering_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "course_offering_id"
+      ]
+    },
+    "AdvisingPlanResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "plan": {
+          "$ref": "#/components/schemas/AdvisingPlan"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/components/schemas/AdvisingPlanItem"
+          }
+        }
+      },
+      "required": [
+        "plan",
+        "items"
+      ]
+    },
+    "AdvisingPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_curriculum_assignment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_by": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "updated_by": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "student_id",
+        "school_term_id",
+        "student_curriculum_assignment_id",
+        "created_by",
+        "updated_by",
+        "created_at",
+        "updated_at",
+        "revision"
+      ]
+    },
+    "AdvisingPlanItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "advising_plan_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "course_offering_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "display_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "advising_plan_id",
+        "student_id",
+        "school_term_id",
+        "course_offering_id",
+        "display_order",
+        "created_at"
+      ]
+    },
+    "NoteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "body_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "body_text"
+      ]
+    },
+    "AdvisingNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "authored_by": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "author_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150,
+          "readOnly": true,
+          "description": "Display name of the staff author, safe for Student Notes and staff advising views."
+        },
+        "author_role_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100,
+          "readOnly": true,
+          "description": "Role label of the staff author (e.g. `Adviser`, `Department Head`)."
+        },
+        "body_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "pattern": "\\S"
+        },
+        "is_archived": {
+          "type": "boolean",
+          "default": false
+        },
+        "archived_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "readOnly": true
+        },
+        "archived_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "readOnly": true
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "student_id",
+        "authored_by",
+        "body_text",
+        "created_at"
+      ]
+    },
+    "NoteArchiveUpdateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "is_archived": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "is_archived"
+      ]
+    },
+    "RemarkRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "body_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "pattern": "\\S"
+        },
+        "attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "body_text"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "attempt_id"
+          ],
+          "not": {
+            "required": [
+              "curriculum_term_course_id"
+            ],
+            "properties": {
+              "curriculum_term_course_id": {}
+            }
+          }
+        },
+        {
+          "required": [
+            "curriculum_term_course_id"
+          ],
+          "not": {
+            "required": [
+              "attempt_id"
+            ],
+            "properties": {
+              "attempt_id": {}
+            }
+          }
+        }
+      ]
+    },
+    "AttemptRemark": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "authored_by": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "body_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "pattern": "\\S"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "attempt_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "id",
+        "student_id",
+        "authored_by",
+        "body_text",
+        "created_at",
+        "attempt_id",
+        "curriculum_term_course_id"
+      ]
+    },
+    "AdvisingAIRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        },
+        "history": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/components/schemas/AdvisingAIMessage"
+          },
+          "description": "Optional bounded prior chat turns in the active AI advising drawer session for multi-turn follow-up questions."
+        }
+      },
+      "required": [
+        "message"
+      ]
+    },
+    "AdvisingAIMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "content"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant"
+          ]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "AdvisingAIResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "pattern": "\\S"
+        },
+        "verification_notice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "\\S"
+        },
+        "grounded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "mutates_records": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "required": [
+        "answer",
+        "verification_notice",
+        "grounded_at",
+        "mutates_records"
+      ]
+    },
+    "AcademicSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "earned_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "required_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "counted_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "failed_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "in_progress_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "remaining_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "failure_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "standing": {
+          "$ref": "#/components/schemas/AcademicStanding"
+        },
+        "year_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "slots_satisfied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_slots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lapsed_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_flags_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deficiencies_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deficiencies": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/components/schemas/StudentDeficiencyItem"
+          }
+        },
+        "is_delinquent": {
+          "type": "boolean"
+        },
+        "computed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "student_id",
+        "gwa",
+        "earned_units",
+        "required_units",
+        "is_delinquent",
+        "computed_at"
+      ]
+    },
+    "AcademicStanding": {
+      "type": "string",
+      "enum": [
+        "good_standing",
+        "warning",
+        "probation",
+        "dismissed"
+      ],
+      "description": "Computed academic standing classification against department failure-percentage thresholds"
+    },
+    "StudentDeficiencyItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "failed",
+            "open_inc",
+            "lapsed_inc",
+            "open_flag",
+            "unmet_prerequisite"
+          ]
+        },
+        "attempt_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "course_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "course_title": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "term_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "inc_deadline": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "days_remaining": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "kind",
+        "course_code",
+        "course_title"
+      ]
+    },
+    "AccountSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "$ref": "#/components/schemas/Profile"
+        },
+        "role_assignments": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/components/schemas/RoleAssignment"
+          }
+        },
+        "student_organization": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/StudentOrganization"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "profile",
+        "student_organization"
+      ]
+    },
+    "RoleAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "profile_id",
+        "role",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "profile_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "role": {
+          "$ref": "#/components/schemas/RoleType"
+        },
+        "faculty_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "StudentOrganization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_curriculum_assignment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_version_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "program_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "department_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "faculty_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "adviser_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "entry_year": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1900,
+          "maximum": 3000
+        }
+      },
+      "required": [
+        "student_id",
+        "student_curriculum_assignment_id",
+        "curriculum_version_id",
+        "program_id",
+        "department_id",
+        "faculty_id"
+      ]
+    },
+    "StudentRosterResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_count",
+        "unassigned_count",
+        "with_deficiencies_count",
+        "items"
+      ],
+      "properties": {
+        "total_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unassigned_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "with_deficiencies_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of students in the roster matching scope who have open grade flags or delinquent standing flags."
+        },
+        "open_inc_students_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of students in the roster matching scope who have at least one open INC attempt."
+        },
+        "standing_counts": {
+          "$ref": "#/components/schemas/StandingCounts"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/components/schemas/StudentRosterItem"
+          }
+        }
+      }
+    },
+    "StandingCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "good_standing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warning": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "probation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dismissed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "good_standing",
+        "warning",
+        "probation",
+        "dismissed"
+      ]
+    },
+    "StudentRosterItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "student_id",
+        "student_number",
+        "full_name",
+        "email",
+        "status",
+        "faculty_id",
+        "faculty_name",
+        "department_id",
+        "department_name",
+        "program_id",
+        "program_code",
+        "program_name",
+        "curriculum_version_id",
+        "curriculum_label",
+        "year_level",
+        "earned_units",
+        "required_units",
+        "standing",
+        "deficiencies_count",
+        "open_inc_count",
+        "open_flags_count"
+      ],
+      "properties": {
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_number": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "full_name": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "avatar_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "status": {
+          "$ref": "#/components/schemas/ProfileStatus"
+        },
+        "faculty_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "faculty_name": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "department_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "department_name": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "program_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "program_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "program_name": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "curriculum_version_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_label": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "entry_year": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1900,
+          "maximum": 3000
+        },
+        "year_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "earned_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "required_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "standing": {
+          "$ref": "#/components/schemas/AcademicStanding"
+        },
+        "is_delinquent": {
+          "type": "boolean"
+        },
+        "deficiencies_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lapsed_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nearest_inc_deadline": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "nearest_inc_days_remaining": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "open_flags_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assignment_status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "past",
+            "unassigned"
+          ]
+        },
+        "adviser_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "adviser_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "adviser_assigned_since": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "handover_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "last_activity_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "CourseOfferingOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "offering": {
+          "$ref": "#/components/schemas/CourseOffering"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250,
+          "pattern": "\\S"
+        },
+        "units": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.25
+        },
+        "group": {
+          "type": "string",
+          "enum": [
+            "program",
+            "cross_program"
+          ]
+        },
+        "direct_curriculum_slot_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "instructor_options": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "description": "Available instructor suggestions for this course offering in the selected term, allowing the UI to populate instructor dropdowns while still accepting custom instructor text."
+        },
+        "has_unmet_strict_prerequisites": {
+          "type": "boolean",
+          "default": false,
+          "description": "True when the student has at least one unmet strict prerequisite for this course in the selected school term, enabling immediate prerequisite warning/override prompts upon course selection before form submission."
+        },
+        "unmet_prerequisites": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/components/schemas/UnmetPrerequisitePreview"
+          }
+        }
+      },
+      "required": [
+        "offering",
+        "code",
+        "title",
+        "units",
+        "group",
+        "direct_curriculum_slot_id"
+      ]
+    },
+    "CourseOffering": {
+      "type": "object",
+      "required": [
+        "id",
+        "school_term_id",
+        "course_id",
+        "is_by_request"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "course_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "section": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "schedule": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "instructor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150,
+          "description": "Default instructor name for this course offering/section."
+        },
+        "is_by_request": {
+          "type": "boolean",
+          "example": false
+        }
+      }
+    },
+    "UnmetPrerequisitePreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prerequisite_course_id",
+        "code",
+        "title",
+        "type",
+        "current_status"
+      ],
+      "properties": {
+        "prerequisite_course_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "type": {
+          "$ref": "#/components/schemas/PrerequisiteType"
+        },
+        "current_status": {
+          "type": "string",
+          "enum": [
+            "not_taken",
+            "failed",
+            "inc",
+            "lapsed_inc",
+            "dr",
+            "currently_enrolled"
+          ]
+        },
+        "latest_attempt_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "latest_final_grade": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "PrerequisiteType": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "co_requisite",
+        "recommended"
+      ],
+      "description": "Prerequisite linkage enforcement type"
+    },
+    "Recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "course_offering_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250,
+          "pattern": "\\S"
+        },
+        "units": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.25
+        },
+        "why": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        },
+        "badges": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "Elective",
+              "By request",
+              "Retake"
+            ]
+          }
+        },
+        "excluded_summary": {
+          "$ref": "#/components/schemas/RecommendationExclusionSummary"
+        }
+      },
+      "required": [
+        "course_offering_id",
+        "code",
+        "title",
+        "units",
+        "why",
+        "badges"
+      ]
+    },
+    "RecommendationExclusionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_excluded"
+      ],
+      "properties": {
+        "total_excluded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "completed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enrolled_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "not_offered_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Breakdown of curriculum courses excluded from the recommendation list (`completed`, `currently_enrolled`, or `not_offered` in the selected school term)."
+    },
+    "ChecklistSlotResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "curriculum_term_course_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_taken",
+            "currently_enrolled",
+            "passed",
+            "failed",
+            "inc",
+            "dr",
+            "na"
+          ]
+        },
+        "required_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "earned_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "source_attempt_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "satisfaction_source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "Direct",
+            "Elective mapping",
+            "Transfer equivalency",
+            "Discontinued equivalency",
+            "Outside credit",
+            null
+          ]
+        },
+        "credited_course_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "credited_course_title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250
+        },
+        "attempts": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/components/schemas/ChecklistSlotAttemptSummary"
+          }
+        },
+        "grade_fix_history": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/components/schemas/GradeFixHistoryEntry"
+          }
+        }
+      },
+      "required": [
+        "curriculum_term_course_id",
+        "status",
+        "required_units",
+        "earned_units",
+        "source_attempt_id",
+        "satisfaction_source"
+      ]
+    },
+    "ChecklistSlotAttemptSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "term_label": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "midterm_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MidtermStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "midterm_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "final_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "recorded_status": {
+          "$ref": "#/components/schemas/AttemptStatus"
+        },
+        "completion_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "effective_status": {
+          "$ref": "#/components/schemas/AttemptStatus"
+        },
+        "inc_deadline": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "instructor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        }
+      },
+      "required": [
+        "attempt_id",
+        "school_term_id",
+        "term_label",
+        "recorded_status",
+        "effective_status"
+      ]
+    },
+    "TermGrades": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "school_year": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20,
+          "pattern": "\\S"
+        },
+        "term_type": {
+          "$ref": "#/components/schemas/SchoolTermType"
+        },
+        "chronological_key": {
+          "type": "integer",
+          "readOnly": true
+        },
+        "gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "attempts": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/components/schemas/AttemptResult"
+          }
+        }
+      },
+      "required": [
+        "school_term_id",
+        "school_year",
+        "term_type",
+        "chronological_key",
+        "gwa",
+        "attempts"
+      ]
+    },
+    "SchoolTermType": {
+      "type": "string",
+      "enum": [
+        "1st Semester",
+        "2nd Semester",
+        "Summer"
+      ],
+      "description": "Semester or summer academic session"
+    },
+    "GradeFlagCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reported_stage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "midterm",
+            "final",
+            null
+          ]
+        },
+        "reported_grade_text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "issue_type": {
+          "type": "string",
+          "enum": [
+            "wrong_grade",
+            "incorrect_grade",
+            "missing_grade",
+            "wrong_course_credited",
+            "wrong_status",
+            "missing_completion",
+            "other"
+          ]
+        },
+        "details": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "issue_type",
+        "details"
+      ]
+    },
+    "GradeFlag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reported_stage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "midterm",
+            "final",
+            null
+          ]
+        },
+        "reported_grade_text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "issue_type": {
+          "type": "string",
+          "enum": [
+            "wrong_grade",
+            "incorrect_grade",
+            "missing_grade",
+            "wrong_course_credited",
+            "wrong_status",
+            "missing_completion",
+            "other"
+          ]
+        },
+        "details": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "corrected",
+            "rejected"
+          ]
+        },
+        "resolution_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "correct",
+            "reject",
+            null
+          ]
+        },
+        "corrected_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "corrected_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/AttemptStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolution_note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "resolved_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "readOnly": true
+        },
+        "resolved_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "readOnly": true
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "student_id",
+        "attempt_id",
+        "issue_type",
+        "details",
+        "status",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "GradeFlagResolveRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resolution_action": {
+          "type": "string",
+          "enum": [
+            "correct",
+            "reject"
+          ]
+        },
+        "corrected_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "corrected_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/AttemptStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "corrected_midterm_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MidtermStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolution_note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        },
+        "expected_revision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "resolution_action",
+        "resolution_note"
+      ]
+    },
+    "GradeBatchImportRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "commit"
+          ]
+        },
+        "school_term_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/GradeBatchImportRowInput"
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "school_term_id",
+        "rows"
+      ]
+    },
+    "GradeBatchImportRowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "row_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "student_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "\\S"
+        },
+        "course_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        },
+        "curriculum_term_course_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "Optional target curriculum slot UUID when importing an elective course directly into an elective curriculum slot (`is_elective_slot=true`)."
+        },
+        "elective_mapping_justification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000,
+          "description": "Optional justification recorded when `curriculum_term_course_id` maps an imported elective attempt to an elective curriculum slot."
+        },
+        "midterm_status": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/MidtermStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "midterm_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "final_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "multipleOf": 0.25
+        },
+        "status": {
+          "$ref": "#/components/schemas/AttemptStatus"
+        },
+        "instructor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "remark": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "row_number",
+        "student_number",
+        "course_code"
+      ]
+    },
+    "GradeBatchImportResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "commit"
+          ]
+        },
+        "valid_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warning_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "imported_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "results": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/GradeBatchImportRowResult"
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "valid_count",
+        "warning_count",
+        "error_count",
+        "imported_count",
+        "results"
+      ]
+    },
+    "GradeBatchImportRowResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "row_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "student_number": {
+          "type": "string"
+        },
+        "course_code": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "warning",
+            "error",
+            "imported"
+          ]
+        },
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "row_number",
+        "student_number",
+        "course_code",
+        "outcome"
+      ]
+    },
+    "StudentBatchImportRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "commit"
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/StudentBatchImportRowInput"
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "rows"
+      ]
+    },
+    "StudentBatchImportRowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "row_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "student_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "\\S"
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "pattern": "\\S"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "program_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_version_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "adviser_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Eligible active initial adviser for the imported student."
+        },
+        "entry_year": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1900,
+          "maximum": 3000
+        }
+      },
+      "required": [
+        "row_number",
+        "student_number",
+        "full_name",
+        "email",
+        "program_id",
+        "curriculum_version_id",
+        "adviser_id"
+      ]
+    },
+    "StudentBatchImportResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "commit"
+          ]
+        },
+        "valid_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warning_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "imported_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "results": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/StudentBatchImportRowResult"
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "valid_count",
+        "warning_count",
+        "error_count",
+        "imported_count",
+        "results"
+      ]
+    },
+    "StudentBatchImportRowResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "row_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "student_number": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "warning",
+            "error",
+            "imported"
+          ]
+        },
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "row_number",
+        "student_number",
+        "email",
+        "outcome"
+      ]
+    },
+    "AdviserDashboardReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adviser_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "total_advisees": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "standing_counts": {
+          "$ref": "#/components/schemas/StandingCounts"
+        },
+        "open_grade_flags_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expiring_inc_soon_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lapsed_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mean_gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "year_level_counts": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "year_level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "student_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "year_level",
+              "student_count"
+            ]
+          }
+        },
+        "grade_distribution": {
+          "$ref": "#/components/schemas/GradeDistributionBreakdown"
+        },
+        "batch_curriculum_gwa": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/BatchCurriculumGwaRow"
+          },
+          "description": "Mean GWA and standing breakdown by advisee entry batch and curriculum version for the Adviser Reports view."
+        },
+        "advisees_with_deficiencies": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/DeficiencyStudentSummary"
+          }
+        },
+        "computed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "adviser_id",
+        "total_advisees",
+        "standing_counts",
+        "open_grade_flags_count",
+        "pending_inc_count",
+        "computed_at"
+      ]
+    },
+    "GradeDistributionBreakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "total_graded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dr_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "na_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currently_enrolled_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "buckets": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/components/schemas/GradeDistributionBucket"
+          }
+        }
+      },
+      "required": [
+        "total_graded",
+        "inc_count",
+        "dr_count",
+        "na_count",
+        "currently_enrolled_count",
+        "buckets"
+      ]
+    },
+    "GradeDistributionBucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "min_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "max_grade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "status_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 32
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "label",
+        "count",
+        "percentage"
+      ]
+    },
+    "BatchCurriculumGwaRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry_year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 3000
+        },
+        "program_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "program_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "curriculum_version_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "curriculum_label": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "student_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mean_gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "good_standing_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "at_risk_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "entry_year",
+        "program_id",
+        "program_code",
+        "curriculum_version_id",
+        "curriculum_label",
+        "student_count",
+        "mean_gwa",
+        "good_standing_count",
+        "at_risk_count"
+      ]
+    },
+    "DeficiencyStudentSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_number": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "full_name": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "program_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "curriculum_label": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "year_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "adviser_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "adviser_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150
+        },
+        "gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "standing": {
+          "$ref": "#/components/schemas/AcademicStanding"
+        },
+        "failed_units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "open_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lapsed_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_flags_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deficiencies": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/components/schemas/StudentDeficiencyItem"
+          }
+        }
+      },
+      "required": [
+        "student_id",
+        "student_number",
+        "full_name",
+        "program_code",
+        "curriculum_label",
+        "year_level",
+        "standing",
+        "failed_units",
+        "open_inc_count",
+        "lapsed_inc_count",
+        "open_flags_count",
+        "deficiencies"
+      ]
+    },
+    "DepartmentReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "department_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "total_students": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "with_deficiencies_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of students in the department who have at least one active academic deficiency (failed units, open INC, lapsed INC, or open grade flag), unclipped by the bounded `at_risk_roster` array."
+        },
+        "unassigned_students_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_grade_flags_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending_transfers_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "encoding_progress_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "average_gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "standing_counts": {
+          "$ref": "#/components/schemas/StandingCounts"
+        },
+        "year_level_counts": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "year_level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "student_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "year_level",
+              "student_count"
+            ]
+          }
+        },
+        "adviser_caseloads": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "adviser_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "adviser_name": {
+                "type": "string"
+              },
+              "student_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "at_risk_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "adviser_id",
+              "adviser_name",
+              "student_count",
+              "at_risk_count"
+            ]
+          }
+        },
+        "curriculum_summaries": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "curriculum_version_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "program_code": {
+                "type": "string"
+              },
+              "version_label": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/components/schemas/CurriculumVersionStatus"
+              },
+              "student_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "average_gwa": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 5
+              },
+              "at_risk_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "curriculum_version_id",
+              "program_code",
+              "version_label",
+              "status",
+              "student_count",
+              "average_gwa",
+              "at_risk_count"
+            ]
+          }
+        },
+        "batch_curriculum_gwa": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/BatchCurriculumGwaRow"
+          }
+        },
+        "grade_distribution": {
+          "$ref": "#/components/schemas/GradeDistributionBreakdown"
+        },
+        "bottleneck_courses": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "course_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "code": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "fail_or_inc_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "affected_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "course_id",
+              "code",
+              "title",
+              "fail_or_inc_rate",
+              "affected_count"
+            ]
+          }
+        },
+        "at_risk_roster": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/DeficiencyStudentSummary"
+          }
+        },
+        "computed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "department_id",
+        "total_students",
+        "standing_counts",
+        "adviser_caseloads",
+        "bottleneck_courses",
+        "computed_at"
+      ]
+    },
+    "CurriculumVersionStatus": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "retired",
+        "teach_out",
+        "closed"
+      ],
+      "description": "Curriculum version lifecycle status"
+    },
+    "FacultyReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "faculty_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "total_students": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "with_deficiencies_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of students in the faculty/college who have at least one active academic deficiency, unclipped by the bounded `at_risk_roster` array."
+        },
+        "average_gwa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "standing_counts": {
+          "$ref": "#/components/schemas/StandingCounts"
+        },
+        "open_inc_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "at_risk_total_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "encoding_progress_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "department_summaries": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "department_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "department_name": {
+                "type": "string"
+              },
+              "student_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "average_gwa": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 5
+              },
+              "at_risk_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "department_id",
+              "department_name",
+              "student_count",
+              "average_gwa",
+              "at_risk_count"
+            ]
+          }
+        },
+        "batch_curriculum_gwa": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/BatchCurriculumGwaRow"
+          }
+        },
+        "grade_distribution": {
+          "$ref": "#/components/schemas/GradeDistributionBreakdown"
+        },
+        "at_risk_roster": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/components/schemas/DeficiencyStudentSummary"
+          }
+        },
+        "computed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "faculty_id",
+        "total_students",
+        "average_gwa",
+        "department_summaries",
+        "computed_at"
+      ]
+    },
+    "SystemSettingsUpdateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "warning_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "probation_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dismissal_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "sender_email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        }
+      },
+      "minProperties": 1
+    },
+    "SystemSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "warning_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "probation_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dismissal_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "sender_email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "last_backup_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "readOnly": true
+        },
+        "last_backup_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "readOnly": true
+        },
+        "last_backup_reference": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250
+        },
+        "last_backup_location": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        },
+        "last_backup_scope": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "department_records",
+            "department_records_and_audit_log",
+            "institution_wide",
+            null
+          ]
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "warning_pct",
+        "probation_pct",
+        "dismissal_pct",
+        "sender_email",
+        "updated_at"
+      ]
+    },
+    "RecordBackupRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "department_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "backup_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250
+        },
+        "backup_reference": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250
+        },
+        "storage_location": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "department_records",
+            "department_records_and_audit_log",
+            "institution_wide",
+            null
+          ]
+        },
+        "completed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "AuditViewEventRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "student_record_viewed",
+            "report_viewed",
+            "pdf_exported",
+            "csv_exported",
+            "report_exported"
+          ],
+          "description": "Authenticated client view/export audit event type. Auth-lifecycle events (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase Auth hooks and Edge Functions."
+        },
+        "student_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "report_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "adviser_dashboard",
+            "department",
+            "faculty",
+            "institution",
+            null
+          ]
+        },
+        "report_filters": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "school_term_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "faculty_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "department_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "program_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          }
+        },
+        "details": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "event_type"
+      ]
+    },
+    "AuditLogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "actor_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150,
+          "readOnly": true,
+          "description": "Display name of the actor at the time of the audited action."
+        },
+        "actor_role": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/RoleType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "readOnly": true,
+          "description": "Role of the actor for the audited action."
+        },
+        "student_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "student_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 150,
+          "readOnly": true,
+          "description": "Target student display name when the audit entry pertains to a student record."
+        },
+        "student_number": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64,
+          "readOnly": true,
+          "description": "Target student number when the audit entry pertains to a student record."
+        },
+        "target_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250,
+          "readOnly": true,
+          "description": "Human-readable target/record label displayed in the Audit Log `Student / record` column (e.g. `24-1-00124 · Own record`, `BSCS · Batch 2024`, or `DCST · Adviser assignments`)."
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        },
+        "action_category": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/AuditActionCategory"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "readOnly": true,
+          "description": "UI filter category (`view`, `change`, `sign_in`, `record_view`, `grade_update`, `plan_save`, `note_change`, `override`, `export`, `auth_account`, `catalog_term`)."
+        },
+        "entity_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        },
+        "entity_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "details_summary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1000,
+          "readOnly": true,
+          "description": "Human-readable summary line rendered in the Audit Log table and CSV export."
+        },
+        "old_value": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "new_value": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 8000
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "actor_id",
+        "student_id",
+        "action",
+        "entity_type",
+        "entity_id",
+        "created_at"
+      ]
+    },
+    "AuditActionCategory": {
+      "type": "string",
+      "enum": [
+        "view",
+        "change",
+        "sign_in",
+        "record_view",
+        "grade_update",
+        "plan_save",
+        "note_change",
+        "override",
+        "export",
+        "auth_account",
+        "catalog_term"
+      ],
+      "description": "High-level (`view`, `change`, `sign_in`) and granular audit action filter category for Audit Log views"
+    },
+    "StudentPhotoUpdateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "storage_object_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "\\S",
+          "description": "Object key inside the private `student-photos` Supabase Storage bucket (e.g. `students/<student_id>/avatar.png`) verified server-side for MIME type and byte size before updating the profile photo URL."
+        },
+        "avatar_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "\\S"
+        },
+        "mime_type": {
+          "type": "string",
+          "enum": [
+            "image/jpeg",
+            "image/png"
+          ],
+          "description": "Supported student profile photo MIME types (PNG or JPG only, matching the UI control)."
+        },
+        "file_size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2097152,
+          "description": "File size in bytes; maximum 2 MB (`2,097,152` bytes)."
+        }
+      },
+      "required": [
+        "avatar_url",
+        "mime_type",
+        "file_size_bytes"
+      ]
+    }
+  }
+}
