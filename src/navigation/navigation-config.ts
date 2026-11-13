@@ -80,7 +80,7 @@ export const deanNav: NavSection = {
 export const sysAdminNav: NavSection = {
   label: 'System Admin',
   items: [
-    { label: 'System directory', to: '/admin', icon: UsersIcon, end: true },
+    { label: 'Student directory', to: '/admin/students', icon: UsersIcon, end: true },
     { label: 'Accounts and roles', to: '/admin/accounts', icon: ShieldIcon },
     { label: 'Programs', to: '/admin/programs', icon: ListIcon },
     { label: 'Audit log', to: '/admin/audit-log', icon: NoteIcon },
