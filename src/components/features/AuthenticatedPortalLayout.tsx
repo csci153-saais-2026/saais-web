@@ -1,23 +1,16 @@
-import { Outlet, useNavigate } from 'react-router'
+import { Outlet, useLocation, useNavigate } from 'react-router'
 import { AppShell } from '@/components/features/app-shell'
-import type { NavSection } from '@/components/features/sidebar'
-import {
-  BellIcon,
-  BookIcon,
-  CalendarIcon,
-  ChartIcon,
-  CheckIcon,
-} from '@/components/icons'
 import { useAuth } from '@/hooks/use-auth'
-import { ROLE_DEFAULT_ROUTE, type RoleScope } from '@/lib/auth/auth-service'
+import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
+import { getNavigationSections } from '@/navigation/navigation-config'
 import type { SaaisRole } from '@/mocks/personas'
 
-const ROLE_LABELS: Readonly<Record<SaaisRole, string>> = {
+const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
   student: 'Student Portal',
-  adviser: 'Adviser',
+  adviser: 'Adviser Portal',
   department_head: 'Department Head',
   department_staff: 'Department Staff',
-  dean: 'Dean',
+  dean: 'Office of the Dean',
   admin: 'System Admin',
 }
 
@@ -31,101 +24,46 @@ function getInitials(fullName: string): string {
   return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase()
 }
 
-function buildNavSectionsForRoles(
-  roles: readonly SaaisRole[],
-  roleScopes: readonly RoleScope[],
-): NavSection[] {
-  const isMultiRole = roles.length > 1
-  const sections: NavSection[] = []
-
-  if (roles.includes('student')) {
-    sections.push({
-      label: 'STUDENT',
-      collapsible: isMultiRole,
-      defaultOpen: true,
-      items: [
-        { label: 'Dashboard', to: '/student', icon: ChartIcon, end: true },
-        { label: 'Account Settings', to: '/settings', icon: CheckIcon },
-      ],
-    })
+/**
+ * Dynamically resolves the portal role matching the active route pathname
+ * so multi-role users see the correct shell title and breadcrumb when navigating
+ * between their assigned portals.
+ */
+function resolveRoleFromPath(
+  pathname: string,
+  assignedRoles: readonly SaaisRole[],
+  fallbackRole: SaaisRole,
+): SaaisRole {
+  if (pathname.startsWith('/student') && assignedRoles.includes('student')) {
+    return 'student'
   }
-
-  if (roles.includes('adviser')) {
-    sections.push({
-      label: 'ADVISER',
-      collapsible: isMultiRole,
-      defaultOpen: true,
-      items: [
-        { label: 'Advisees', to: '/adviser', icon: BookIcon, end: true },
-        { label: 'Account Settings', to: '/settings', icon: CheckIcon },
-      ],
-    })
+  if (pathname.startsWith('/adviser') && assignedRoles.includes('adviser')) {
+    return 'adviser'
   }
-
-  if (roles.includes('department_head')) {
-    const scope = roleScopes.find((s) => s.role === 'department_head')
-    sections.push({
-      label: scope?.departmentId ? 'DEPARTMENT HEAD' : 'DEPARTMENT HEAD',
-      collapsible: isMultiRole,
-      defaultOpen: true,
-      items: [
-        {
-          label: 'Department Overview',
-          to: '/department-head',
-          icon: ChartIcon,
-          end: true,
-        },
-        { label: 'Account Settings', to: '/settings', icon: CheckIcon },
-      ],
-    })
+  if (
+    (pathname.startsWith('/department-head') || pathname.startsWith('/dept-head')) &&
+    assignedRoles.includes('department_head')
+  ) {
+    return 'department_head'
   }
-
-  if (roles.includes('department_staff')) {
-    sections.push({
-      label: 'DEPARTMENT STAFF',
-      collapsible: isMultiRole,
-      defaultOpen: true,
-      items: [
-        {
-          label: 'Encoding & Operations',
-          to: '/department-staff',
-          icon: CalendarIcon,
-          end: true,
-        },
-        { label: 'Account Settings', to: '/settings', icon: CheckIcon },
-      ],
-    })
+  if (
+    (pathname.startsWith('/department-staff') || pathname.startsWith('/staff')) &&
+    assignedRoles.includes('department_staff')
+  ) {
+    return 'department_staff'
   }
-
-  if (roles.includes('dean')) {
-    sections.push({
-      label: 'DEAN',
-      collapsible: isMultiRole,
-      defaultOpen: true,
-      items: [
-        { label: 'College Overview', to: '/dean', icon: ChartIcon, end: true },
-        { label: 'Account Settings', to: '/settings', icon: CheckIcon },
-      ],
-    })
+  if (pathname.startsWith('/dean') && assignedRoles.includes('dean')) {
+    return 'dean'
   }
-
-  if (roles.includes('admin')) {
-    sections.push({
-      label: 'ADMIN',
-      collapsible: isMultiRole,
-      defaultOpen: true,
-      items: [
-        { label: 'Administration', to: '/admin', icon: BellIcon, end: true },
-        { label: 'Account Settings', to: '/settings', icon: CheckIcon },
-      ],
-    })
+  if (pathname.startsWith('/admin') && assignedRoles.includes('admin')) {
+    return 'admin'
   }
-
-  return sections
+  return assignedRoles.includes(fallbackRole) ? fallbackRole : assignedRoles[0] ?? fallbackRole
 }
 
 export function AuthenticatedPortalLayout() {
-  const { user, roles, roleScopes, activeRole, isLoading, signOut } = useAuth()
+  const { user, roles, activeRole, isLoading, signOut } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
 
   if (isLoading || !user) {
@@ -141,10 +79,14 @@ export function AuthenticatedPortalLayout() {
     )
   }
 
-  const currentRole = activeRole ?? roles[0] ?? user.primaryRole
-  const portalLabel = ROLE_LABELS[currentRole] ?? 'SAAIS'
+  const currentRole = resolveRoleFromPath(
+    location.pathname,
+    roles,
+    activeRole ?? roles[0] ?? user.primaryRole,
+  )
+  const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
-  const sections = buildNavSectionsForRoles(roles, roleScopes)
+  const sections = getNavigationSections(roles)
 
   const handleSignOut = async () => {
     await signOut()

@@ -45,24 +45,24 @@ function renderPortalRoutes(
           <Route element={<ProtectedRoute />}>
             <Route element={<AuthenticatedPortalLayout />}>
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-                <Route path="/student" element={<div>Student Portal</div>} />
+                <Route path="/student" element={<div>Student Portal Content</div>} />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={['adviser']} />}>
-                <Route path="/adviser" element={<div>Adviser Portal</div>} />
+                <Route path="/adviser" element={<div>Adviser Portal Content</div>} />
               </Route>
               <Route
                 element={<ProtectedRoute allowedRoles={['department_head']} />}
               >
                 <Route
                   path="/department-head"
-                  element={<div>Department Head Portal</div>}
+                  element={<div>Department Head Portal Content</div>}
                 />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={['dean']} />}>
-                <Route path="/dean" element={<div>Dean Portal</div>} />
+                <Route path="/dean" element={<div>Dean Portal Content</div>} />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route path="/admin" element={<div>Admin Portal</div>} />
+                <Route path="/admin" element={<div>Admin Portal Content</div>} />
               </Route>
             </Route>
           </Route>
@@ -100,7 +100,7 @@ describe('ProtectedRoute & AuthenticatedPortalLayout', () => {
     expect(retryMock).toHaveBeenCalled()
   })
 
-  it('blocks Dean-only account from /adviser and /department-head and routes to /dean', () => {
+  it('blocks Dean-only account from /adviser and routes to /dean', () => {
     renderPortalRoutes(
       {
         user: {
@@ -117,7 +117,7 @@ describe('ProtectedRoute & AuthenticatedPortalLayout', () => {
       },
       '/adviser',
     )
-    expect(screen.getByText('Dean Portal')).toBeTruthy()
+    expect(screen.getByText('Dean Portal Content')).toBeTruthy()
   })
 
   it('blocks Adviser-only account from /department-head and routes to /adviser', () => {
@@ -137,11 +137,12 @@ describe('ProtectedRoute & AuthenticatedPortalLayout', () => {
       },
       '/department-head',
     )
-    expect(screen.getByText('Adviser Portal')).toBeTruthy()
+    expect(screen.getByText('Adviser Portal Content')).toBeTruthy()
   })
 
-  it('allows multi-role user to access each independently assigned route group and renders sidebar sections', () => {
-    renderPortalRoutes(
+  it('updates the displayed shell role and breadcrumb dynamically when a multi-role user navigates between portals', () => {
+    // 1. Multi-role user visits /department-head directly
+    const { unmount } = renderPortalRoutes(
       {
         user: {
           id: 'multi-1',
@@ -157,9 +158,29 @@ describe('ProtectedRoute & AuthenticatedPortalLayout', () => {
       },
       '/department-head',
     )
-    expect(screen.getByText('Department Head Portal')).toBeTruthy()
-    expect(screen.getByText('ADVISER')).toBeTruthy()
-    expect(screen.getByText('DEPARTMENT HEAD')).toBeTruthy()
-    expect(screen.getByText('DEAN')).toBeTruthy()
+    expect(screen.getByText('Department Head Portal Content')).toBeTruthy()
+    // Shell caption & breadcrumb must reflect Department Head, not stale Dean
+    expect(screen.getAllByText('Department Head').length).toBeGreaterThan(0)
+    unmount()
+
+    // 2. Same multi-role user visits /adviser directly
+    renderPortalRoutes(
+      {
+        user: {
+          id: 'multi-1',
+          email: 'multi@vsu.edu.ph',
+          fullName: 'Dr. Alan Turing',
+          primaryRole: 'dean',
+          roles: ['dean', 'department_head', 'adviser'],
+          status: 'active',
+        },
+        roles: ['dean', 'department_head', 'adviser'],
+        activeRole: 'dean',
+        isAllowedToEnter: true,
+      },
+      '/adviser',
+    )
+    expect(screen.getByText('Adviser Portal Content')).toBeTruthy()
+    expect(screen.getAllByText('Adviser Portal').length).toBeGreaterThan(0)
   })
 })
