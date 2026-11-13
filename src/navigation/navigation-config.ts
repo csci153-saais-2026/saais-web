@@ -83,6 +83,7 @@ export const sysAdminNav: NavSection = {
     { label: 'Student directory', to: '/admin/students', icon: UsersIcon, end: true },
     { label: 'Accounts and roles', to: '/admin/accounts', icon: ShieldIcon },
     { label: 'Programs', to: '/admin/programs', icon: ListIcon },
+    { label: 'Faculties and departments', to: '/admin/faculties', icon: BookIcon },
     { label: 'Audit log', to: '/admin/audit-log', icon: NoteIcon },
     { label: 'Settings', to: '/settings', icon: ShieldIcon },
   ],
