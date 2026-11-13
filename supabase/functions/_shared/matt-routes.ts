@@ -4,4 +4,7 @@ export const mattRoutes = new Set([
   'listAccounts',
   'uploadStudentPhoto',
   'deleteStudentPhoto',
+  'updateSystemSettings',
+  'recordCompletedBackup',
+  'recordAuditViewEvent',
 ]);

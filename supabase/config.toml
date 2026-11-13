@@ -24,3 +24,9 @@ verify_jwt = true
 
 [functions.accounts]
 verify_jwt = true
+
+[functions.settings]
+verify_jwt = true
+
+[functions.audit]
+verify_jwt = true
