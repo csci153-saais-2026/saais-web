@@ -57,7 +57,7 @@ describe("Students directory", () => {
 
   it("rejects absent or unsupported spreadsheet selections", () => {
     openDirectory()
-    fireEvent.click(screen.getByRole("button", { name: "Import spreadsheet" }))
+    fireEvent.click(screen.getByRole("button", { name: "Preview spreadsheet import" }))
     fireEvent.click(screen.getByRole("button", { name: "Show validation example" }))
     expect(screen.getByText("Choose a .xlsx or .csv file first.")).toBeTruthy()
     fireEvent.change(screen.getByLabelText("Student spreadsheet"), { target: { files: [new File(["example"], "notes.txt")] } })
@@ -67,8 +67,10 @@ describe("Students directory", () => {
 
   it.each(["sample.csv", "sample.XLSX"])("shows illustrative results for %s without importing any rows", async (filename) => {
     openDirectory()
-    fireEvent.click(screen.getByRole("button", { name: "Import spreadsheet" }))
-    fireEvent.change(screen.getByLabelText("Student spreadsheet"), { target: { files: [new File(["contents are not parsed"], filename)] } })
+    fireEvent.click(screen.getByRole("button", { name: "Preview spreadsheet import" }))
+    const dialog = screen.getByRole("dialog", { name: "Spreadsheet import preview" })
+    expect(within(dialog).getByText("Sample results only. The selected file is not uploaded or read, and no student records will be added.")).toBeTruthy()
+    fireEvent.change(within(dialog).getByLabelText("Student spreadsheet"), { target: { files: [new File(["contents are not parsed"], filename)] } })
     fireEvent.click(screen.getByRole("button", { name: "Show validation example" }))
     const results = screen.getByRole("region", { name: "Sample validation results" })
     expect(within(results).getByText("Valid")).toBeTruthy()

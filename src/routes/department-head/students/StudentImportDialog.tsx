@@ -29,7 +29,7 @@ export function StudentImportDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-        <DialogHeader><DialogTitle>Import spreadsheet</DialogTitle><DialogDescription>Select a .xlsx or .csv file to demonstrate the validation screen.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Spreadsheet import preview</DialogTitle><DialogDescription>Select a .xlsx or .csv file to see example validation results.</DialogDescription></DialogHeader>
         <Alert variant="advisory"><AlertDescription>Sample results only. The selected file is not uploaded or read, and no student records will be added.</AlertDescription></Alert>
         <FormField label="Student spreadsheet" htmlFor="student-import-file" error={error}>
           <Input id="student-import-file" type="file" accept=".xlsx,.csv" aria-invalid={!!error}

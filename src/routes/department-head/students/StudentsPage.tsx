@@ -28,7 +28,7 @@ export default function StudentsPage() {
   return (
     <>
       <PageHeading title="Students" subtitle="Find and review students across the Department of Computer Science and Technology."
-        actions={<Button onClick={() => setImportOpen(true)}><UploadIcon />Import spreadsheet</Button>} />
+        actions={<Button onClick={() => setImportOpen(true)}><UploadIcon />Preview spreadsheet import</Button>} />
       <Panel title="Department directory" description="Select a student to open a read-only checklist preview." flush>
         <StudentDirectoryFilters students={students} search={search} curriculum={curriculum} adviser={adviser}
           onSearchChange={setSearch} onCurriculumChange={setCurriculum} onAdviserChange={setAdviser}

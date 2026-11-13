@@ -44,7 +44,7 @@ Through comprehensive inspection of `mockup/Department Head` (`*.dc.html`, `curr
 
 ### Group C: Student Directory & Faculty Advising Allocation
 - **Screen 6: Students (Directory)** (`/department-head/students`)
-  - *Description*: Department-wide student lookup and cohort browsing. Features multi-parameter search/filters (search input, curriculum select, adviser select, reset), student stats, row-click navigation to student records, and a spreadsheet import modal with file upload and validation error preview.
+  - *Description*: Department-wide student lookup and cohort browsing. Features multi-parameter search/filters (search input, curriculum select, adviser select, reset), student stats, a read-only checklist preview, and a spreadsheet dialog with fixed validation examples.
   - *Complexity*: **High** (live multi-field search and filtering, spreadsheet import modal with mock validation matrix, row click actions).
 - **Screen 7: Adviser Assignments** (`/department-head/adviser-assignments`)
   - *Description*: Manage adviser-to-student load and allocations. Features batch row selection checkboxes, select-all and indeterminate state handling, allocation statistics, and a batch reassignment modal with new adviser selection and rationale.
@@ -140,7 +140,7 @@ graph TD
    - Student directory stats and active enrollments.
    - Search input, curriculum dropdown, adviser dropdown, reset filters button.
    - Responsive student directory table with row-click preview.
-   - "Import spreadsheet" modal with file uploader and validation error sample matrix.
+   - "Preview spreadsheet import" dialog with fixed validation results. It does not read or upload the selected file.
 2. **Screen 7: Adviser Assignments** (`/department-head/adviser-assignments`):
    - Faculty allocation statistics.
    - Table with multi-select row checkboxes, select-all header, and indeterminate state.
