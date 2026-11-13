@@ -103,7 +103,7 @@ graph TD
 
 ### A. Assigned to Me (Developer 1 — Jerome)
 1. **Department Head Shared Infrastructure & Shell**:
-- `DepartmentHeadLayout`: Renders the preview with a Department Head navigation section and stateful `NotificationBell`. Shared authenticated layout integration is pending.
+- `DepartmentHeadLayout`: Passes page breadcrumbs and the stateful `NotificationBell` to the shared authenticated layout. The signed-in role assignments supply the navigation.
    - `NotificationsPage` (`/department-head/notifications`) matching `mockup/notifications-page.js`.
    - Route configuration in `src/App.tsx` and route tree under `src/routes/department-head/`.
    - Dynamic breadcrumb generation and user trigger (`Dr. Andrea Dela Cruz`, Department Head · DCST).
@@ -173,7 +173,7 @@ The implementation strictly reuses the pre-built, production-tested components m
 | Shared Component | Source Location | Usage in Department Head |
 |---|---|---|
 | `AppShell` | `@/components/features/app-shell` | Main layout container with sidebar, topbar, and content gutter |
-| `AppSidebar` | `@/components/features/sidebar` | Collapsible Department Head navigation in the preview |
+| `AppSidebar` | `@/components/features/sidebar` | Shared role menus from the signed-in account’s assignments |
 | `Topbar` | `@/components/features/topbar` | Header with breadcrumbs and notification trigger |
 | `PageHeading` | `@/components/features/page-heading` | Display title, subtitle, and primary header action buttons |
 | `Panel` | `@/components/features/panel` | Content sections with headers and borders |
@@ -196,7 +196,7 @@ The implementation strictly reuses the pre-built, production-tested components m
 
 | Screen / Feature | Assigned To | Status | Implementation Details |
 |---|---|---|---|
-| **DH Portal Shell & Notifications** | Jerome (Me) | **Preview** | Department Head navigation, notifications, and breadcrumbs. Shared authenticated layout integration is pending. |
+| **DH Portal Shell & Notifications** | Jerome (Me) | **Preview** | Shared authenticated navigation with Department Head notifications and breadcrumbs. |
 | **Curriculum Transfers** | Jerome (Me) | **Completed** | `CurriculumTransfersPage.tsx`: `RecordTabs`, 3-stat grid, review modal with approve/reject |
 | **Curricula Builder** | Jerome (Me) | **Completed** | `CurriculaPage.tsx`: Version selector, 4-stat grid, term panels, version/term/course/slot dialogs |
 | **Equivalence** | Jerome (Me) | **Completed** | `EquivalencePage.tsx`: Curriculum pair selectors, equivalency table, add modal |

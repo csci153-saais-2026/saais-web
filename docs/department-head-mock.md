@@ -1,14 +1,14 @@
 # Department Head mock screens
 
-These five screens run inside the shared Department Head layout and use the
-team’s fictional student roster. Adviser changes, settings, and demo audit
+Department Head pages run inside the shared authenticated layout and use
+fictional records for the workflows below. Adviser changes, settings, and demo audit
 events stay in browser memory as you move between screens. Reload the app to
 restore the sample data.
 
 Adviser Assignments is the Department Head's tool for assigning students to
-advisers. The separate Adviser portal will use the Adviser team's routes and
-requires an independent Adviser role assignment. This preview shows Department
-Head navigation. The Students checklist preview uses a shared checklist component
+advisers. The Adviser sidebar group links to the shared `/adviser` portal for
+accounts with an independent Adviser assignment. The current Adviser portal is
+the auth team's scaffold. The Students checklist preview uses a shared checklist component
 and follows the read-only workflow in the SRS. Opening it leaves the audit event count
 unchanged.
 
@@ -16,11 +16,13 @@ unchanged.
 
 ```sh
 npm ci
-npm run dev
+VITE_API_MODE=mock npm run dev
 ```
 
-Open the URL printed by Vite. After the routes are wired, use the Department
-Head sidebar or open these paths directly.
+Open the URL printed by Vite. In the Dev Persona switcher, select **Dept Head
+Only** or **Dept Head + Adviser**, then use the sidebar or open these paths
+directly. The Adviser group appears for the second persona. The breadcrumbs
+and notification bell are in the shared top bar.
 
 | Screen | Path | What to try |
 | --- | --- | --- |
@@ -45,8 +47,8 @@ The spreadsheet dialog shows fixed validation examples. Report totals and GWA
 use sample data, and the PDF is generated locally. Settings shows proposed
 notification triggers for adviser reassignment, curriculum-transfer decisions,
 and grade-encoding closure. Saving a setting only updates the demo. The backup
-form records metadata in memory. The mock makes no API calls and performs no
-real imports, email delivery, or backups.
+form records metadata in memory. The Department Head preview actions use browser memory. They perform no real
+imports, email delivery, or backups.
 
 ```sh
 npm run typecheck

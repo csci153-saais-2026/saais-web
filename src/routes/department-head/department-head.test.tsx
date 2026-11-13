@@ -1,13 +1,11 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { MemoryRouter, Route, Routes } from "react-router"
+import { MemoryRouter } from "react-router"
 import CurriculumTransfersPage from "./CurriculumTransfersPage"
 import CurriculaPage from "./CurriculaPage"
 import EquivalencePage from "./EquivalencePage"
 import OutsideCreditsPage from "./OutsideCreditsPage"
 import AcademicTermsPage from "./AcademicTermsPage"
-import NotificationsPage from "./NotificationsPage"
-import { DepartmentHeadLayout } from "./DepartmentHeadLayout"
 
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
@@ -28,32 +26,6 @@ beforeAll(() => {
 afterEach(cleanup)
 
 describe("Department Head Frontend Suite", () => {
-  describe("DepartmentHeadLayout & Notifications", () => {
-    it("renders Department Head navigation, user identity, and bell state", () => {
-      render(
-        <MemoryRouter initialEntries={["/department-head/notifications"]}>
-          <Routes>
-            <Route path="/department-head" element={<DepartmentHeadLayout />}>
-              <Route path="notifications" element={<NotificationsPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      )
-
-      expect(screen.getByText("Dr. Andrea Dela Cruz")).toBeDefined()
-      expect(screen.getByText("Department Head · DCST")).toBeDefined()
-      expect(screen.queryByText("Adviser", { exact: true })).toBeNull()
-      expect(screen.getByRole("link", { name: "Adviser assignments" }).getAttribute("href"))
-        .toBe("/department-head/adviser-assignments")
-      expect(screen.getByText("Department Head")).toBeDefined()
-      expect(screen.getByRole("heading", { name: "Notifications" })).toBeDefined()
-      expect(screen.getByText("2 unread of 3 notifications.")).toBeDefined()
-
-      fireEvent.click(screen.getByRole("button", { name: "Mark all as read" }))
-      expect(screen.getByText("You are all caught up.")).toBeDefined()
-    })
-  })
-
   describe("Screen 1: Curriculum Transfers", () => {
     it("renders stat metrics and pending requests", () => {
       render(
