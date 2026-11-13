@@ -21,3 +21,6 @@ verify_jwt = true
 
 [functions.health]
 verify_jwt = true
+
+[functions.accounts]
+verify_jwt = true
