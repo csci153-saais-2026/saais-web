@@ -1,4 +1,4 @@
-# Jerome's SAAIS Edge Functions
+# SAAIS Edge Functions
 
 This implementation targets OpenAPI **0.3.0 at `cfa620c97c2a506537825edc1323f37ee5f843b3`**. The checked-in `contract/` remains at 0.2.1, as explicitly requested. Integrate the approved 0.3.0 contract, generated client and frontend before deployment. The generated runtime snapshot deliberately reads the assigned Git object, not the working-tree YAML.
 
@@ -51,9 +51,22 @@ Only `public.jerome_operation` is an authenticated write RPC. Private domain fun
 
 Audit and credit history reject update/delete/truncate. Credit edits retain the previous row in `saais_private.credit_history` with effective dates. Revocation preserves source attempts and current/historical decision values. Writes bump `saais_private.cache_invalidation` for the affected student. Report/cache consumers must read fresh data or use that revision; no existing cache implementation was present to modify.
 
-## Matt's shared students entry point
+## Matt's routes
 
-No existing `students/index.ts` or Matt handlers were present in the starting checkout. The new entry point serves Jerome's routes; `students/jerome-routes.ts` exports their separate 11-operation list. Matt should compose his handlers at this entry point and retain Jerome's routes. `createHandler` in `_shared/http.ts` is exported for composition; unknown routes return 404 rather than placeholders. Matt's roster, grade, adviser, advising, import and other assigned handlers were not implemented or replaced.
+The shared `students/index.ts` serves both sets of student routes. The Matt route
+registry in `functions/_shared/matt-routes.ts` lists the active operations.
+`matt_operation` verifies the active profile and role, validates requests and
+responses against the pinned contract, and calls private SQL handlers.
+
+- The assistant uses `SAAIS_ASSISTANT_ENDPOINT`, `SAAIS_ASSISTANT_API_KEY`, and
+  `SAAIS_ASSISTANT_MODEL` for a compatible chat completions provider. Configure
+  the team's approved provider before enabling the feature. The provider test
+  uses a stub. The context query omits account details, names, and private notes.
+- Profile photo routes verify object metadata in the private `student-photos`
+  bucket and store an authenticated Storage path. The deployment needs the
+  bucket and its policies. The photo SQL test uses an isolated Storage fixture.
+- The invitation lifecycle and student import need the shared Auth provisioning
+  and invitation delivery workflow. Their contract entries are reserved.
 
 All student/credit writers must lock the student's profile row before changing decisions, attempts, assignments or completions. Jerome's public write boundary also takes transaction advisory lock `(531201, 1)` before domain writes. Preserve that lock order when composing multi-step transactions. Shared triggers prevent a passing direct attempt or INC completion from duplicating live credit. A conflicting decision must be resolved through the authorized audited workflow; grade routes must handle the resulting 409. These are shared integrity dependencies, not replacements for Matt's grade handlers.
 
