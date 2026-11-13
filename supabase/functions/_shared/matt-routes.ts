@@ -13,4 +13,7 @@ export const mattRoutes = new Set([
   'addAdvisingNote',
   'updateAdvisingNoteArchiveState',
   'addAttemptRemark',
+  'completeINC',
+  'correctINCCompletion',
+  'deleteOpenTermAttempt',
 ]);

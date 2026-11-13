@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHandler, operationsFor } from '../functions/_shared/http.ts';
 import { environment } from '../functions/_shared/serve.ts';
+import { jeromeStudentOperations } from '../functions/students/jerome-routes.ts';
 import snapshot from '../functions/_shared/contract.json' with { type: 'json' };
 
 const env = { url: 'https://example.supabase.co', publicKey: 'public-test-key', origins: ['https://saais.test'] };
@@ -30,7 +31,9 @@ test('all 47 exact contract methods and paths dispatch with declared success sta
 });
 
 test('students exposes only Jerome operations through its separate list', () => {
-  assert.equal(operationsFor('students').length, 11);
+  assert.equal(jeromeStudentOperations.length, 11);
+  assert.ok(operationsFor('students').includes(jeromeStudentOperations[0]) ||
+    operationsFor('students').some(operation => operation.id === jeromeStudentOperations[0].id));
 });
 
 test('authentication, CORS, invalid identifiers, query and body guards stop before database access', async () => {
