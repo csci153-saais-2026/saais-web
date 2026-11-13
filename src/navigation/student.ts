@@ -7,7 +7,7 @@ export const studentNav: NavSection = {
     { label: "Dashboard", href: "/student/dashboard", icon: GridIcon },
     { label: "Curriculum checklist", href: "/student/checklist", icon: CheckIcon },
     { label: "Grades", href: "/student/grades", icon: ChartIcon },
-    { label: "Enrollment history", href: "/student/history", icon: ClockIcon },
+    { label: "Enrollment history", href: "/student/enrollment-history", icon: ClockIcon },
     { label: "My profile", href: "/student/profile", icon: UserIcon },
   ],
 }

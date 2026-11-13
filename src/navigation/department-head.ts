@@ -11,7 +11,7 @@ export const deptHeadNav: NavSection = {
     { label: "Students", href: "/department-head/students", icon: UsersIcon },
     { label: "Adviser assignments", href: "/department-head/adviser-assignments", icon: SwapIcon },
     { label: "Academic terms", href: "/department-head/academic-terms", icon: CalendarIcon },
-    { label: "Department reports", href: "/department-head/department-reports", icon: ChartIcon },
+    { label: "Department reports", href: "/department-head/reports", icon: ChartIcon },
     { label: "Audit log", href: "/department-head/audit-log", icon: NoteIcon },
     { label: "Settings", href: "/department-head/settings", icon: ShieldIcon },
   ],
