@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import SettingsPage from "./SettingsPage"
-import { PreviewStateProvider } from "./shared/PreviewStateProvider"
-import { useDepartmentHeadPreview } from "./shared/preview-state"
+import { PreviewStateProvider } from "../shared/PreviewStateProvider"
+import { useDepartmentHeadPreview } from "../shared/preview-state"
 
 afterEach(cleanup)
 

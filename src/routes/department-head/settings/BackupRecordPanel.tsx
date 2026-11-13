@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BACKUP_SCOPE_LABELS, LAST_ENCODING_CLOSED_AT } from "./settings-data"
-import { useDepartmentHeadPreview } from "./shared/preview-state"
+import { useDepartmentHeadPreview } from "../shared/preview-state"
 
 /** datetime-local is explicitly interpreted in Philippine time (UTC+08:00). */
 function manilaInputValue(now: Date) {

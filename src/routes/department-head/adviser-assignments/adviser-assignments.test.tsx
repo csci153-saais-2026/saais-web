@@ -4,7 +4,7 @@ import AdviserAssignmentsPage from "./AdviserAssignmentsPage"
 import { applyReassignment, type ReassignmentInput } from "./assignment-model"
 import { SAMPLE_STUDENTS } from "../shared/students-data"
 import { useDepartmentHeadPreview } from "../shared/preview-state"
-import { DEFAULT_SETTINGS } from "../settings-data"
+import { DEFAULT_SETTINGS } from "../settings/settings-data"
 
 vi.mock("../shared/preview-state", () => ({
   todayInManila: () => "2026-11-06",

@@ -5,7 +5,7 @@ import { FormField } from "@/components/features/form-field"
 import { Panel } from "@/components/features/panel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useDepartmentHeadPreview } from "./shared/preview-state"
+import { useDepartmentHeadPreview } from "../shared/preview-state"
 
 const percentage = z.string().trim().min(1, "Enter a whole percentage from 0 to 100.")
   .regex(/^\d+$/, "Enter a whole percentage from 0 to 100.")

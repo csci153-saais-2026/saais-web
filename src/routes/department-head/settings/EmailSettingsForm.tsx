@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useDepartmentHeadPreview } from "./shared/preview-state"
+import { useDepartmentHeadPreview } from "../shared/preview-state"
 
 const emailSchema = z.object({
   senderEmail: z.string().trim().regex(/^[^\s@]+@vsu\.edu\.ph$/i, "Use a VSU sender address ending in @vsu.edu.ph."),
