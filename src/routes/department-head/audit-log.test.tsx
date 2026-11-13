@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import AuditLogPage from "./AuditLogPage"
-import { PreviewStateProvider } from "./PreviewStateProvider"
+import { PreviewStateProvider } from "./shared/PreviewStateProvider"
 import { SAMPLE_AUDIT_EVENTS, type AuditEvent } from "./audit-data"
 import { EMPTY_AUDIT_FILTERS, filterAuditEvents } from "./audit-model"
 

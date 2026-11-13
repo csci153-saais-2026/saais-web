@@ -6,7 +6,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { todayInManila } from "./preview-state"
+import { todayInManila } from "./shared/preview-state"
 import type { ReassignmentInput } from "./assignment-model"
 
 type Props = {

@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button"
 import { XIcon } from "@/components/icons"
 import { PreviewContext, todayInManila } from "./preview-state"
 import { SAMPLE_STUDENTS, type DirectoryStudent } from "./students-data"
-import { applyReassignment, type ReassignmentInput } from "./assignment-model"
-import { SAMPLE_AUDIT_EVENTS, type AuditEvent } from "./audit-data"
-import { DEFAULT_SETTINGS, type SettingsState } from "./settings-data"
+import { applyReassignment, type ReassignmentInput } from "../assignment-model"
+import { SAMPLE_AUDIT_EVENTS, type AuditEvent } from "../audit-data"
+import { DEFAULT_SETTINGS, type SettingsState } from "../settings-data"
 
 function initialStudents(): DirectoryStudent[] {
   return SAMPLE_STUDENTS.map((student) => ({

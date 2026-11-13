@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import StudentsPage from "./StudentsPage"
-import { PreviewStateProvider } from "./PreviewStateProvider"
+import { PreviewStateProvider } from "./shared/PreviewStateProvider"
 
 afterEach(cleanup)
 beforeAll(() => {

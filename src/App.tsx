@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Navigate, Route, Routes, Link } from "react-router"
 import { DepartmentHeadLayout } from "@/routes/department-head/DepartmentHeadLayout"
 import { PartnerPlaceholderPage } from "@/routes/department-head/PartnerPlaceholderPage"
-import { PreviewStateProvider } from "@/routes/department-head/PreviewStateProvider"
+import { PreviewStateProvider } from "@/routes/department-head/shared/PreviewStateProvider"
 
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"))
 

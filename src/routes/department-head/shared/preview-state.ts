@@ -1,8 +1,8 @@
 import { createContext, useContext } from "react"
 import type { DirectoryStudent } from "./students-data"
-import type { ReassignmentInput } from "./assignment-model"
-import type { AuditEvent } from "./audit-data"
-import type { SettingsState } from "./settings-data"
+import type { ReassignmentInput } from "../assignment-model"
+import type { AuditEvent } from "../audit-data"
+import type { SettingsState } from "../settings-data"
 
 export type DepartmentHeadPreviewState = {
   students: DirectoryStudent[]

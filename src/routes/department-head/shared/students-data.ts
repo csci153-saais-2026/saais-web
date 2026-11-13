@@ -1,4 +1,4 @@
-import { MOCK_STUDENTS } from "./mock-data"
+import { MOCK_STUDENTS } from "../mock-data"
 
 /** Local UI fixtures, separate from the API contract and database seed. */
 export type DirectoryStudent = {

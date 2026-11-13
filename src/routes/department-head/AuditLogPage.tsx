@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EMPTY_AUDIT_FILTERS, filterAuditEvents } from "./audit-model"
 import type { AuditAction, AuditEvent } from "./audit-data"
-import { useDepartmentHeadPreview } from "./preview-state"
+import { useDepartmentHeadPreview } from "./shared/preview-state"
 
 const actionClasses: Record<AuditAction, string> = {
   View: "bg-status-enrolled-bg text-status-enrolled",

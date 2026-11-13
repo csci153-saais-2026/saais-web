@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ReassignAdviserDialog } from "./ReassignAdviserDialog"
-import { StudentDirectoryFilters } from "./StudentDirectoryFilters"
+import { StudentDirectoryFilters } from "./shared/StudentDirectoryFilters"
 import { assignmentDateLabel, type ReassignmentInput } from "./assignment-model"
-import { todayInManila, useDepartmentHeadPreview } from "./preview-state"
-import { SAMPLE_STUDENTS, type DirectoryStudent } from "./students-data"
+import { todayInManila, useDepartmentHeadPreview } from "./shared/preview-state"
+import { SAMPLE_STUDENTS, type DirectoryStudent } from "./shared/students-data"
 
 type Filters = { search: string; curriculum: string; adviser: string }
 

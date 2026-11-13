@@ -5,11 +5,11 @@ import { UploadIcon } from "@/components/icons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { StudentDirectoryFilters } from "./StudentDirectoryFilters"
+import { StudentDirectoryFilters } from "./shared/StudentDirectoryFilters"
 import { StudentChecklistPreviewDialog } from "./StudentChecklistPreviewDialog"
 import { StudentImportDialog } from "./StudentImportDialog"
-import { useDepartmentHeadPreview } from "./preview-state"
-import type { DirectoryStudent } from "./students-data"
+import { useDepartmentHeadPreview } from "./shared/preview-state"
+import type { DirectoryStudent } from "./shared/students-data"
 
 export default function StudentsPage() {
   const { students } = useDepartmentHeadPreview()
