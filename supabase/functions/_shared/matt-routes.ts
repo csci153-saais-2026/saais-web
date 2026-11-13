@@ -2,4 +2,6 @@
 export const mattRoutes = new Set([
   'getHealthStatus',
   'listAccounts',
+  'uploadStudentPhoto',
+  'deleteStudentPhoto',
 ]);
