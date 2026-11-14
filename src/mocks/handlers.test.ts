@@ -614,6 +614,50 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(confirmed.curriculum_term_course_id).toBe(MOCK_IDS.slotFreeElective1)
   })
 
+  it('filters and paginates the student roster server-side', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+    const filtered = unwrapApiResult(
+      await client.GET('/functions/v1/students', {
+        params: {
+          query: {
+            search: '24-1-01798',
+            faculty_id: MOCK_IDS.facultyComputing,
+            program_id: MOCK_IDS.programBscs,
+            has_deficiencies: true,
+            has_open_flags: true,
+            limit: 1,
+            offset: 0,
+          },
+        },
+      }),
+    )
+    expect(filtered.total_count).toBe(1)
+    expect(filtered.items).toHaveLength(1)
+    expect(filtered.items[0]?.student_id).toBe(MOCK_IDS.studentPrimary)
+
+    const secondPage = unwrapApiResult(
+      await client.GET('/functions/v1/students', {
+        params: {
+          query: {
+            sort_by: 'student_number',
+            sort_dir: 'asc',
+            limit: 1,
+            offset: 1,
+          },
+        },
+      }),
+    )
+    expect(secondPage.total_count).toBe(2)
+    expect(secondPage.items).toHaveLength(1)
+    expect(secondPage.items[0]?.student_number).toBe('24-1-01798')
+  })
+
   it('supports Department Head, Dean, and Admin catalog/reporting/audit flows and resets state cleanly', async () => {
     loginAsMockPersona('department_head')
     const client = createSaaisApiClient({
