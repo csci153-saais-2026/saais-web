@@ -281,4 +281,38 @@ describe('AdminStudentsPage', () => {
       )
     })
   })
+
+  it('filters by academic standing, deficiencies, INC, and open flags', async () => {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Academic standing' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Warning' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Deficiencies' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Has deficiencies' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Open INC' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Has open INC' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Open flags' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Has open flags' }))
+
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({
+              standing: 'warning',
+              has_deficiencies: true,
+              has_open_inc: true,
+              has_open_flags: true,
+            }),
+          },
+        }),
+      )
+    })
+  })
 })
