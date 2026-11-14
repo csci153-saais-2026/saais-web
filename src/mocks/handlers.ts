@@ -1796,6 +1796,7 @@ export const saaisMswHandlers = [
     if ('response' in auth) return auth.response
     const url = new URL(request.url)
     const scope = url.searchParams.get('assignment_scope') ?? 'all'
+    const search = url.searchParams.get('search')?.trim().toLocaleLowerCase()
 
     const items: ApiSchema<'StudentRosterItem'>[] = [
       {
@@ -1874,17 +1875,64 @@ export const saaisMswHandlers = [
 
     const filtered = items.filter((item) => {
       if (scope === 'current' || scope === 'my_active_advisees') {
-        return item.assignment_status === 'active'
+        if (item.assignment_status !== 'active') return false
+      } else if (scope === 'past' || scope === 'my_handed_over_advisees') {
+        if (item.assignment_status !== 'past') return false
+      } else if (scope === 'unassigned' && item.assignment_status !== 'unassigned') {
+        return false
       }
-      if (scope === 'past' || scope === 'my_handed_over_advisees') {
-        return item.assignment_status === 'past'
-      }
-      if (scope === 'unassigned') {
-        return item.assignment_status === 'unassigned'
-      }
+
+      if (
+        search &&
+        ![item.full_name, item.student_number, item.email]
+          .some((value) => value.toLocaleLowerCase().includes(search))
+      ) return false
+      if (url.searchParams.has('faculty_id') && item.faculty_id !== url.searchParams.get('faculty_id')) return false
+      if (url.searchParams.has('department_id') && item.department_id !== url.searchParams.get('department_id')) return false
+      if (url.searchParams.has('program_id') && item.program_id !== url.searchParams.get('program_id')) return false
+      if (url.searchParams.has('curriculum_version_id') && item.curriculum_version_id !== url.searchParams.get('curriculum_version_id')) return false
+      if (url.searchParams.has('entry_year') && item.entry_year !== Number(url.searchParams.get('entry_year'))) return false
+      if (url.searchParams.has('year_level') && item.year_level !== Number(url.searchParams.get('year_level'))) return false
+      if (url.searchParams.has('standing') && item.standing !== url.searchParams.get('standing')) return false
+      if (url.searchParams.has('has_deficiencies') && (item.deficiencies_count > 0) !== (url.searchParams.get('has_deficiencies') === 'true')) return false
+      if (url.searchParams.has('has_open_inc') && (item.open_inc_count > 0) !== (url.searchParams.get('has_open_inc') === 'true')) return false
+      if (url.searchParams.has('has_open_flags') && (item.open_flags_count > 0) !== (url.searchParams.get('has_open_flags') === 'true')) return false
+      if (url.searchParams.get('unassigned_only') === 'true' && item.assignment_status !== 'unassigned') return false
+      if (url.searchParams.has('adviser_id') && item.adviser_id !== url.searchParams.get('adviser_id')) return false
       return true
     })
 
+    const sortBy = url.searchParams.get('sort_by') ?? 'full_name'
+    const sortDirection = url.searchParams.get('sort_dir') === 'desc' ? -1 : 1
+    const sorted = [...filtered].sort((left, right) => {
+      const comparison = (() => {
+        switch (sortBy) {
+          case 'student_number':
+            return left.student_number.localeCompare(right.student_number)
+          case 'year_level':
+            return left.year_level - right.year_level
+          case 'gwa':
+            return (left.gwa ?? Number.POSITIVE_INFINITY) - (right.gwa ?? Number.POSITIVE_INFINITY)
+          case 'units_earned':
+            return left.earned_units - right.earned_units
+          case 'standing':
+            return left.standing.localeCompare(right.standing)
+          case 'last_activity_at':
+            return (left.last_activity_at ?? '').localeCompare(right.last_activity_at ?? '')
+          default:
+            return left.full_name.localeCompare(right.full_name)
+        }
+      })()
+      return comparison * sortDirection
+    })
+    const requestedLimit = Number(url.searchParams.get('limit') ?? 20)
+    const limit = Number.isSafeInteger(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 1000)
+      : 20
+    const requestedOffset = Number(url.searchParams.get('offset') ?? 0)
+    const offset = Number.isSafeInteger(requestedOffset)
+      ? Math.max(requestedOffset, 0)
+      : 0
     const response: ApiSchema<'StudentRosterResponse'> = {
       total_count: filtered.length,
       unassigned_count: filtered.filter(
@@ -1892,16 +1940,18 @@ export const saaisMswHandlers = [
       ).length,
       with_deficiencies_count: filtered.filter((i) => i.deficiencies_count > 0)
         .length,
-      flagged_count: filtered.filter((i) => i.open_flags_count > 0).length,
+      flagged_count: filtered.filter(
+        (i) => i.open_flags_count > 0 || i.is_delinquent,
+      ).length,
       open_inc_students_count: filtered.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
-        good_standing: filtered.length,
-        warning: 0,
-        probation: 0,
-        dismissed: 0,
+        good_standing: filtered.filter((i) => i.standing === 'good_standing').length,
+        warning: filtered.filter((i) => i.standing === 'warning').length,
+        probation: filtered.filter((i) => i.standing === 'probation').length,
+        dismissed: filtered.filter((i) => i.standing === 'dismissed').length,
       },
-      items: filtered,
+      items: sorted.slice(offset, offset + limit),
     }
     return HttpResponse.json(response, { status: 200 })
   }),
