@@ -350,4 +350,44 @@ describe('AdminStudentsPage', () => {
       )
     })
   })
+
+  it('keeps pagination bounded and returns to the previous page', async () => {
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === '/functions/v1/students'
+            ? roster([student], 21)
+            : path === '/rest/v1/faculty'
+              ? faculties
+              : programs,
+        response: new Response(),
+      }),
+    )
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+    expect(screen.getByText('Showing 1–1 of 21 students')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Previous' }).hasAttribute('disabled')).toBe(
+      true,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: { query: expect.objectContaining({ limit: 20, offset: 20 }) },
+        }),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }))
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: { query: expect.objectContaining({ limit: 20, offset: 0 }) },
+        }),
+      )
+    })
+  })
 })
