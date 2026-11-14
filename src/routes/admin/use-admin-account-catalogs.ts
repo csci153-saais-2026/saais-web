@@ -14,7 +14,7 @@ type DepartmentOption = Pick<
 >
 type ProgramOption = Pick<
   ApiSchema<'Program'>,
-  'id' | 'code' | 'name' | 'department_id'
+  'id' | 'code' | 'name' | 'department_id' | 'status'
 >
 type CurriculumOption = Pick<
   ApiSchema<'CurriculumVersion'>,
@@ -83,7 +83,7 @@ export function useAdminAccountCatalogs() {
         .GET('/rest/v1/program', {
           params: {
             query: {
-              select: 'id,code,name,department_id',
+              select: 'id,code,name,department_id,status',
               order: 'name.asc',
               limit: 1000,
             },

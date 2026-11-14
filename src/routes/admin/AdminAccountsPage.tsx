@@ -6,6 +6,14 @@ import { SearchInput } from '@/components/features/search-input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -13,6 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { useAuth } from '@/hooks/use-auth'
+import { apiClient, unwrapApiResult, type ApiSchema } from '@/lib/api'
 import {
   Table,
   TableBody,
@@ -21,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { ApiSchema } from '@/lib/api'
 import {
   ACCOUNT_PAGE_SIZE,
   ALL_ACCOUNTS_FILTER,
@@ -33,6 +42,8 @@ import {
 } from './admin-accounts-model'
 import { useAdminAccountCatalogs } from './use-admin-account-catalogs'
 import { useAdminAccounts } from './use-admin-accounts'
+import { AdminAccountEditDialog } from './AdminAccountEditDialog'
+import { AdminAccountProvisionDialog } from './AdminAccountProvisionDialog'
 
 type Faculty = ApiSchema<'Faculty'>
 type Department = ApiSchema<'Department'>
@@ -73,7 +84,7 @@ function getOrganization(
   const profile = account.profile
   const assignment = account.role_assignments?.find(
     (roleAssignment) => roleAssignment.role === profile.role,
-  )
+  ) ?? account.role_assignments?.[0]
   const departmentId =
     account.student_organization?.department_id ??
     assignment?.department_id ??
@@ -99,6 +110,7 @@ function getInvitationStatusLabel(
 }
 
 export default function AdminAccountsPage() {
+  const { user } = useAuth()
   const [search, setSearch] = useState('')
   const [role, setRole] = useState<AccountRole | typeof ALL_ACCOUNTS_FILTER>(
     ALL_ACCOUNTS_FILTER,
@@ -106,6 +118,19 @@ export default function AdminAccountsPage() {
   const [facultyId, setFacultyId] = useState(ALL_ACCOUNTS_FILTER)
   const [departmentId, setDepartmentId] = useState(ALL_ACCOUNTS_FILTER)
   const [page, setPage] = useState(0)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteSubmitting, setInviteSubmitting] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [revokeTarget, setRevokeTarget] = useState<Account | null>(null)
+  const [accountActionId, setAccountActionId] = useState<string | null>(null)
+  const [accountActionError, setAccountActionError] = useState<string | null>(
+    null,
+  )
+  const [accountActionSuccess, setAccountActionSuccess] = useState<
+    string | null
+  >(null)
   const query = useMemo(
     () => buildAccountQuery({ search, role, facultyId, departmentId }, page),
     [search, role, facultyId, departmentId, page],
@@ -119,6 +144,9 @@ export default function AdminAccountsPage() {
   const {
     faculties,
     departments,
+    programs,
+    curricula,
+    advisers,
     error: catalogsError,
     loading: catalogsLoading,
     reload: reloadCatalogs,
@@ -150,13 +178,147 @@ export default function AdminAccountsPage() {
     setDepartmentId(ALL_ACCOUNTS_FILTER)
   }
 
+  async function submitInvitation(request: ApiSchema<'InviteRequest'>) {
+    setInviteSubmitting(true)
+    setInviteError(null)
+    setInviteSuccess(null)
+
+    try {
+      const result = await apiClient.POST('/functions/v1/auth/invite', {
+        body: request,
+      })
+      const response = unwrapApiResult(result)
+      setInviteSuccess(response.message || 'Invitation sent successfully.')
+      setInviteOpen(false)
+      reloadAccounts()
+    } catch (requestError: unknown) {
+      setInviteError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'The invitation could not be sent. Please try again.',
+      )
+    } finally {
+      setInviteSubmitting(false)
+    }
+  }
+
+  async function updateAccount(
+    account: Account,
+    request: ApiSchema<'AdminProfileUpdate'>,
+  ) {
+    setAccountActionId(account.profile.id)
+    setAccountActionError(null)
+    setAccountActionSuccess(null)
+
+    try {
+      await unwrapApiResult(
+        await apiClient.PATCH('/functions/v1/accounts/{profile_id}', {
+          params: { path: { profile_id: account.profile.id } },
+          body: request,
+        }),
+      )
+      setAccountActionSuccess(
+        `Updated account details for ${account.profile.full_name}.`,
+      )
+      setEditingAccount(null)
+      reloadAccounts()
+    } catch (requestError: unknown) {
+      setAccountActionError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Account changes could not be saved.',
+      )
+    } finally {
+      setAccountActionId(null)
+    }
+  }
+
+  async function runInvitationAction(
+    account: Account,
+    action: 'resend' | 'revoke',
+  ) {
+    setAccountActionId(account.profile.id)
+    setAccountActionError(null)
+    setAccountActionSuccess(null)
+
+    try {
+      if (action === 'resend') {
+        const response = await unwrapApiResult(
+          await apiClient.POST(
+            '/functions/v1/accounts/{profile_id}/resend-invite',
+            { params: { path: { profile_id: account.profile.id } } },
+          ),
+        )
+        setAccountActionSuccess(
+          response.message || 'Invitation resent successfully.',
+        )
+      } else {
+        await unwrapApiResult(
+          await apiClient.POST(
+            '/functions/v1/accounts/{profile_id}/revoke-invite',
+            { params: { path: { profile_id: account.profile.id } } },
+          ),
+        )
+        setAccountActionSuccess(
+          `Invitation revoked for ${account.profile.full_name}.`,
+        )
+        setRevokeTarget(null)
+      }
+      reloadAccounts()
+    } catch (requestError: unknown) {
+      setAccountActionError(
+        requestError instanceof Error
+          ? requestError.message
+          : `The invitation could not be ${action === 'resend' ? 'resent' : 'revoked'}.`,
+      )
+    } finally {
+      setAccountActionId(null)
+    }
+  }
+
   return (
     <main className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
       <PageHeading
         title="Accounts and roles"
         subtitle="Manage institution-wide accounts, role assignments, and invitations."
+        actions={
+          <Button
+            type="button"
+            onClick={() => {
+              setInviteError(null)
+              setInviteSuccess(null)
+              setInviteOpen(true)
+            }}
+          >
+            Add account
+          </Button>
+        }
       />
 
+      {inviteSuccess && (
+        <div
+          role="status"
+          className="mb-3 rounded-md border border-primary/30 bg-card px-4 py-3 text-sm"
+        >
+          {inviteSuccess}
+        </div>
+      )}
+      {accountActionSuccess && (
+        <div
+          role="status"
+          className="mb-3 rounded-md border border-primary/30 bg-card px-4 py-3 text-sm"
+        >
+          {accountActionSuccess}
+        </div>
+      )}
+      {accountActionError && (
+        <div
+          role="alert"
+          className="mb-3 rounded-md border border-destructive/30 bg-card px-4 py-3 text-sm text-destructive"
+        >
+          {accountActionError}
+        </div>
+      )}
       {catalogsError && (
         <div
           role="alert"
@@ -211,14 +373,12 @@ export default function AdminAccountsPage() {
             id="account-role-filter"
             label="Role"
             value={role}
-            onChange={(value) =>
-              resetPageAnd(
-                setRole,
-                value === ALL_ACCOUNTS_FILTER
-                  ? ALL_ACCOUNTS_FILTER
-                  : (value as AccountRole),
-              )
-            }
+            onChange={(value) => {
+              const selectedRole = accountRoles.find(
+                (option) => option.value === value,
+              )?.value
+              resetPageAnd(setRole, selectedRole ?? ALL_ACCOUNTS_FILTER)
+            }}
           >
             <SelectItem value={ALL_ACCOUNTS_FILTER}>All roles</SelectItem>
             {accountRoles.map((option) => (
@@ -276,13 +436,14 @@ export default function AdminAccountsPage() {
               <TableHead>Roles</TableHead>
               <TableHead>Account status</TableHead>
               <TableHead>Invitation</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {accountsLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="px-5 py-8 text-center text-muted-foreground"
                 >
                   Loading accounts…
@@ -291,7 +452,7 @@ export default function AdminAccountsPage() {
             ) : accountsError ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="px-5 py-8 text-center text-muted-foreground"
                 >
                   Account records are unavailable until the request succeeds.
@@ -300,7 +461,7 @@ export default function AdminAccountsPage() {
             ) : visibleAccounts.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="px-5 py-8 text-center text-muted-foreground"
                 >
                   No accounts match these search and filter values.
@@ -310,6 +471,21 @@ export default function AdminAccountsPage() {
               visibleAccounts.map((account) => {
                 const profile = account.profile
                 const roles = getAccountRoles(account)
+                const invitationStatus = profile.invitation_status
+                const canResendInvitation =
+                  profile.status === 'invited' &&
+                  [
+                    'pending',
+                    'expired',
+                    'revoked',
+                    'declined',
+                  ].includes(invitationStatus ?? '')
+                const canRevokeInvitation =
+                  invitationStatus === 'pending' && profile.status === 'invited'
+                const isCurrentAccount =
+                  profile.id === user?.id ||
+                  profile.email.trim().toLowerCase() ===
+                    user?.email?.trim().toLowerCase()
                 return (
                   <TableRow key={profile.id}>
                     <TableCell label="Name" className="whitespace-normal">
@@ -354,6 +530,49 @@ export default function AdminAccountsPage() {
                         {getInvitationStatusLabel(profile.invitation_status)}
                       </span>
                     </TableCell>
+                    <TableCell label="Actions">
+                      <div className="flex flex-wrap gap-2">
+                        {!isCurrentAccount && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={accountActionId === profile.id}
+                            onClick={() => {
+                              setAccountActionError(null)
+                              setEditingAccount(account)
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        )}
+                        {canResendInvitation && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={accountActionId === profile.id}
+                            onClick={() => void runInvitationAction(account, 'resend')}
+                          >
+                            Resend
+                          </Button>
+                        )}
+                        {canRevokeInvitation && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={accountActionId === profile.id}
+                            onClick={() => {
+                              setAccountActionError(null)
+                              setRevokeTarget(account)
+                            }}
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 )
               })
@@ -386,6 +605,79 @@ export default function AdminAccountsPage() {
           </div>
         </div>
       </Panel>
+      {inviteOpen && (
+        <AdminAccountProvisionDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          currentEmail={user?.email ?? ''}
+          faculties={faculties}
+          departments={departments}
+          programs={programs}
+          curricula={curricula}
+          advisers={advisers}
+          catalogsLoading={catalogsLoading}
+          submitting={inviteSubmitting}
+          submissionError={inviteError}
+          onSubmit={submitInvitation}
+        />
+      )}
+      {editingAccount && (
+        <AdminAccountEditDialog
+          account={editingAccount}
+          faculties={faculties}
+          departments={departments}
+          submitting={accountActionId === editingAccount.profile.id}
+          submissionError={accountActionError}
+          onOpenChange={(open) => {
+            if (!open) setEditingAccount(null)
+          }}
+          onSubmit={(request) => updateAccount(editingAccount, request)}
+        />
+      )}
+      {revokeTarget && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setRevokeTarget(null)
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Revoke invitation?</DialogTitle>
+              <DialogDescription>
+                This invalidates the invitation for {revokeTarget.profile.email}.
+                The account holder will no longer be able to use this invitation
+                link.
+              </DialogDescription>
+            </DialogHeader>
+            {accountActionError && (
+              <p role="alert" className="text-sm text-destructive">
+                {accountActionError}
+              </p>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={accountActionId === revokeTarget.profile.id}
+                onClick={() => setRevokeTarget(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={accountActionId === revokeTarget.profile.id}
+                onClick={() => void runInvitationAction(revokeTarget, 'revoke')}
+              >
+                {accountActionId === revokeTarget.profile.id
+                  ? 'Revoking…'
+                  : 'Revoke invitation'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </main>
   )
 }

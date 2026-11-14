@@ -161,7 +161,9 @@ export function validateAccountInvite(
     }
 
     const program = programs.find((option) => option.id === values.programId)
-    if (!program) errors.programId = 'Select a program.'
+    if (!program || program.status !== 'active') {
+      errors.programId = 'Select an active program.'
+    }
 
     const curriculum = curricula.find(
       (option) => option.id === values.curriculumVersionId,
