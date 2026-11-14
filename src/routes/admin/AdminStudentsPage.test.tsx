@@ -315,4 +315,39 @@ describe('AdminStudentsPage', () => {
       )
     })
   })
+
+  it('sorts the roster by supported table columns', async () => {
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Student number' }))
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({
+              sort_by: 'student_number',
+              sort_dir: 'asc',
+            }),
+          },
+        }),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Sort by Student number/ }))
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({
+              sort_by: 'student_number',
+              sort_dir: 'desc',
+            }),
+          },
+        }),
+      )
+    })
+  })
 })
