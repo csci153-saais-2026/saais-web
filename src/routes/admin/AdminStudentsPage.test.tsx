@@ -390,4 +390,44 @@ describe('AdminStudentsPage', () => {
       )
     })
   })
+
+  it('resets the page offset when search criteria change', async () => {
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === '/functions/v1/students'
+            ? roster([student], 21)
+            : path === '/rest/v1/faculty'
+              ? faculties
+              : programs,
+        response: new Response(),
+      }),
+    )
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: { query: expect.objectContaining({ offset: 20 }) },
+        }),
+      )
+    })
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search students' }), {
+      target: { value: 'alex' },
+    })
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({ search: 'alex', offset: 0 }),
+          },
+        }),
+      )
+    })
+  })
 })
