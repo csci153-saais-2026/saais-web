@@ -57,7 +57,9 @@ const departments = [
   { id: 'department-1', faculty_id: 'faculty-1' },
   { id: 'department-2', faculty_id: 'faculty-2' },
 ]
-const programs = [{ id: 'program-1', department_id: 'department-1' }]
+const programs = [
+  { id: 'program-1', department_id: 'department-1', status: 'active' },
+]
 const curricula = [
   {
     id: 'curriculum-1',
@@ -175,9 +177,24 @@ describe('admin accounts model', () => {
       ),
     ).toEqual({
       email: 'You cannot assign roles to your own account.',
-      programId: 'Select a program.',
+      programId: 'Select an active program.',
       curriculumVersionId:
         'Select a curriculum version for the chosen program.',
+    })
+  })
+
+  it('rejects invitations to inactive programs', () => {
+    expect(
+      validateAccountInvite(
+        studentInvite,
+        '',
+        departments,
+        programs.map((program) => ({ ...program, status: 'inactive' })),
+        curricula,
+        advisers,
+      ),
+    ).toMatchObject({
+      programId: 'Select an active program.',
     })
   })
 
