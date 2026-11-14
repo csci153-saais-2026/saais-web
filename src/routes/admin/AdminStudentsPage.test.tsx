@@ -204,4 +204,32 @@ describe('AdminStudentsPage', () => {
       await screen.findByText('No students are available in the roster.'),
     ).toBeTruthy()
   })
+
+  it('shows a no-match state when a search has no results', async () => {
+    let matching = true
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === '/functions/v1/students'
+            ? matching
+              ? roster()
+              : roster([], 0)
+            : path === '/rest/v1/faculty'
+              ? faculties
+              : programs,
+        response: new Response(),
+      }),
+    )
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+
+    matching = false
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search students' }), {
+      target: { value: 'nobody' },
+    })
+
+    expect(
+      await screen.findByText('No students match these search criteria.'),
+    ).toBeTruthy()
+  })
 })
