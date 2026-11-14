@@ -37,6 +37,92 @@ afterAll(() => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('filters and bounds account directory results', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const target = getMockDatabase().profiles.find(
+      (profile) => profile.id === MOCK_IDS.studentPrimary,
+    )
+    if (!target) throw new Error('Expected seeded student account.')
+
+    const searched = unwrapApiResult(
+      await client.GET('/functions/v1/accounts', {
+        params: {
+          query: {
+            limit: 20,
+            offset: 0,
+            search: target.student_number ?? target.full_name,
+            role: 'student',
+            faculty_id: MOCK_IDS.facultyComputing,
+            department_id: MOCK_IDS.deptDcst,
+          },
+        },
+      }),
+    )
+    expect(searched.some((account) => account.profile.id === target.id)).toBe(
+      true,
+    )
+
+    const firstPage = unwrapApiResult(
+      await client.GET('/functions/v1/accounts', {
+        params: { query: { limit: 1, offset: 0 } },
+      }),
+    )
+    const secondPage = unwrapApiResult(
+      await client.GET('/functions/v1/accounts', {
+        params: { query: { limit: 1, offset: 1 } },
+      }),
+    )
+    expect(firstPage).toHaveLength(1)
+    expect(secondPage).toHaveLength(1)
+    expect(firstPage[0]?.profile.id).not.toBe(secondPage[0]?.profile.id)
+  })
+
+  it('updates account profile and role assignments atomically in the mock', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.adviserPrimary
+    const updated = unwrapApiResult(
+      await client.PATCH('/functions/v1/accounts/{profile_id}', {
+        params: { path: { profile_id: profileId } },
+        body: {
+          full_name: 'Updated Adviser',
+          role: 'adviser',
+          role_assignments: [
+            {
+              role: 'adviser',
+              faculty_id: MOCK_IDS.facultyComputing,
+              department_id: MOCK_IDS.deptDcst,
+            },
+            {
+              role: 'department_head',
+              faculty_id: MOCK_IDS.facultyComputing,
+              department_id: MOCK_IDS.deptDcst,
+            },
+          ],
+          status: 'disabled',
+        },
+      }),
+    )
+
+    expect(updated.full_name).toBe('Updated Adviser')
+    expect(updated.roles).toEqual(['adviser', 'department_head'])
+    expect(updated.status).toBe('disabled')
+    expect(
+      getMockDatabase().roleAssignments.filter(
+        (assignment) => assignment.profile_id === profileId,
+      ),
+    ).toHaveLength(2)
+  })
+
   it('keeps an earlier failure selected until a retake has a numeric result', async () => {
     const db = getMockDatabase()
     const earlier = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
@@ -502,18 +588,44 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
           full_name: 'Prof. New Adviser',
           faculty_id: MOCK_IDS.facultyComputing,
           department_id: MOCK_IDS.deptDcst,
+          role_assignments: [
+            {
+              role: 'department_staff',
+              faculty_id: MOCK_IDS.facultyComputing,
+              department_id: MOCK_IDS.deptDcst,
+            },
+          ],
         },
       }),
     )
     expect(allowedInvite.success).toBe(true)
     expect(allowedInvite.invitation_status).toBe('pending')
+    expect(
+      getMockDatabase().roleAssignments.some(
+        (assignment) =>
+          assignment.profile_id === allowedInvite.profile_id &&
+          assignment.role === 'department_staff',
+      ),
+    ).toBe(true)
 
     for (const operation of ['resend-invite', 'revoke-invite'] as const) {
       const response = await fetch(`${BASE_URL}/functions/v1/accounts/${allowedInvite.profile_id}/${operation}`, {
         method: 'POST', headers: { apikey: TEST_API_KEY, Authorization: `Bearer ${MOCK_PERSONAS.department_staff.token}` },
       })
       expect(response.status).toBe(200)
+      if (operation === 'resend-invite') {
+        const resentProfile = getMockDatabase().profiles.find(
+          (profile) => profile.id === allowedInvite.profile_id,
+        )
+        expect(resentProfile?.invitation_status).toBe('pending')
+        expect(resentProfile?.invitation_sent_at).toBe('2026-11-10T09:00:00Z')
+      }
     }
+    const revokedProfile = getMockDatabase().profiles.find(
+      (profile) => profile.id === allowedInvite.profile_id,
+    )
+    expect(revokedProfile?.status).toBe('invited')
+    expect(revokedProfile?.invitation_status).toBe('revoked')
 
     // Denied: Department Staff attempting to provision an Admin or Dean
     const deniedAdminInvite = await client.POST('/functions/v1/auth/invite', {
