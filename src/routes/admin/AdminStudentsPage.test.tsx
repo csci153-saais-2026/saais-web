@@ -185,4 +185,23 @@ describe('AdminStudentsPage', () => {
       'Loading student roster',
     )
   })
+
+  it('distinguishes an empty roster from an empty filtered result', async () => {
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === '/functions/v1/students'
+            ? roster([], 0)
+            : path === '/rest/v1/faculty'
+              ? faculties
+              : programs,
+        response: new Response(),
+      }),
+    )
+    render(<AdminStudentsPage />)
+
+    expect(
+      await screen.findByText('No students are available in the roster.'),
+    ).toBeTruthy()
+  })
 })
