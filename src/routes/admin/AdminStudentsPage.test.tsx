@@ -176,4 +176,13 @@ describe('AdminStudentsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('Alex Student')).toBeTruthy()
   })
+
+  it('shows a loading state while the roster request is pending', () => {
+    getMock.mockImplementation(() => new Promise(() => {}))
+    render(<AdminStudentsPage />)
+
+    expect(screen.getByRole('status').textContent).toContain(
+      'Loading student roster',
+    )
+  })
 })
