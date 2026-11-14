@@ -490,6 +490,14 @@ export const saaisMswHandlers = [
     }
 
     const newProfileId = nextSyntheticUuid()
+    const assignedFacultyId =
+      'faculty_id' in body
+        ? body.faculty_id ?? null
+        : persona.facultyId ?? MOCK_IDS.facultyComputing
+    const assignedDepartmentId =
+      'department_id' in body
+        ? body.department_id ?? null
+        : persona.departmentId ?? MOCK_IDS.deptDcst
     db.profiles.push({
       id: newProfileId,
       role: body.role,
@@ -506,11 +514,22 @@ export const saaisMswHandlers = [
       invitation_expires_at: '2026-11-17T08:00:00Z',
       created_at: '2026-11-10T08:00:00Z',
       updated_at: '2026-11-10T08:00:00Z',
-      faculty_id: persona.facultyId ?? MOCK_IDS.facultyComputing,
-      department_id: persona.departmentId ?? MOCK_IDS.deptDcst,
+      faculty_id: assignedFacultyId,
+      department_id: assignedDepartmentId,
       avatar_url: null,
       consultation_hours: null,
     })
+
+    db.roleAssignments.push(
+      ...(body.role_assignments ?? []).map((assignment) => ({
+        id: nextSyntheticUuid(),
+        profile_id: newProfileId,
+        role: assignment.role,
+        faculty_id: assignment.faculty_id ?? null,
+        department_id: assignment.department_id ?? null,
+        created_at: '2026-11-10T08:00:00Z',
+      })),
+    )
 
     if (body.role === 'student') {
       const adviser = db.profiles.find(p => p.id === body.adviser_id)!
@@ -976,7 +995,82 @@ export const saaisMswHandlers = [
           null,
       }),
     )
-    return HttpResponse.json(summaries, { status: 200 })
+    const url = new URL(request.url)
+    const search = url.searchParams.get('search')?.trim().toLowerCase()
+    const role = url.searchParams.get('role')
+    const facultyId = url.searchParams.get('faculty_id')
+    const departmentId = url.searchParams.get('department_id')
+    const filtered = summaries.filter((summary) => {
+      const { profile, role_assignments: assignments, student_organization } =
+        summary
+      const roles = new Set([
+        profile.role,
+        ...(profile.roles ?? []),
+        ...assignments.map((assignment) => assignment.role),
+      ])
+      if (
+        role &&
+        !Array.from(roles).some((assignedRole) => assignedRole === role)
+      ) {
+        return false
+      }
+
+      if (
+        search &&
+        ![
+          profile.full_name,
+          profile.email,
+          profile.student_number ?? '',
+        ].some((value) => value.toLowerCase().includes(search))
+      ) {
+        return false
+      }
+
+      if (
+        departmentId &&
+        student_organization?.department_id !== departmentId &&
+        profile.department_id !== departmentId &&
+        !assignments.some(
+          (assignment) => assignment.department_id === departmentId,
+        )
+      ) {
+        return false
+      }
+      if (facultyId) {
+        const assignedDepartmentIds = [
+          profile.department_id,
+          ...assignments.map((assignment) => assignment.department_id),
+          student_organization?.department_id,
+        ].filter((id): id is string => Boolean(id))
+        const assignedFacultyIds = [
+          profile.faculty_id,
+          ...assignments.map((assignment) => assignment.faculty_id),
+          student_organization?.faculty_id,
+          ...db.departments
+            .filter((department) =>
+              assignedDepartmentIds.includes(department.id),
+            )
+            .map((department) => department.faculty_id),
+        ].filter((id): id is string => Boolean(id))
+        if (!assignedFacultyIds.includes(facultyId)) return false
+      }
+      return true
+    })
+    const limitValue = Number.parseInt(
+      url.searchParams.get('limit') ?? '1000',
+      10,
+    )
+    const offsetValue = Number.parseInt(
+      url.searchParams.get('offset') ?? '0',
+      10,
+    )
+    const limit = Number.isFinite(limitValue)
+      ? Math.min(1000, Math.max(1, limitValue))
+      : 1000
+    const offset = Number.isFinite(offsetValue) ? Math.max(0, offsetValue) : 0
+    return HttpResponse.json(filtered.slice(offset, offset + limit), {
+      status: 200,
+    })
   }),
 
   http.patch('*/functions/v1/accounts/:profile_id', async ({ request, params }) => {
@@ -988,12 +1082,56 @@ export const saaisMswHandlers = [
     if (!profile) {
       return errorJson(404, 'NOT_FOUND', 'Profile not found.')
     }
-    const body = (await request.json().catch(() => ({}))) as ApiSchema<'AdminProfileUpdate'>
+    let body: ApiSchema<'AdminProfileUpdate'>
+    try {
+      body = (await request.json()) as ApiSchema<'AdminProfileUpdate'>
+    } catch {
+      return errorJson(400, 'INVALID_INPUT', 'Expected a JSON account update.')
+    }
+    if (body.role_assignments) {
+      db.roleAssignments = db.roleAssignments.filter(
+        (assignment) => assignment.profile_id !== profileId,
+      )
+      db.roleAssignments.push(
+        ...body.role_assignments.map((assignment) => ({
+          id: nextSyntheticUuid(),
+          profile_id: profileId,
+          role: assignment.role,
+          faculty_id: assignment.faculty_id ?? null,
+          department_id: assignment.department_id ?? null,
+          created_at: '2026-11-10T09:00:00Z',
+        })),
+      )
+    }
     const updated: ApiSchema<'Profile'> = {
       ...profile,
       ...(body.full_name !== undefined ? { full_name: body.full_name } : {}),
       ...(body.role !== undefined ? { role: body.role } : {}),
+      ...(body.role !== undefined || body.role_assignments !== undefined
+        ? {
+            roles: [
+              ...new Set([
+                body.role ?? profile.role,
+                ...(body.role_assignments ?? []).map(
+                  (assignment) => assignment.role,
+                ),
+              ]),
+            ],
+          }
+        : {}),
       ...(body.status !== undefined ? { status: body.status } : {}),
+      ...(body.faculty_id !== undefined
+        ? { faculty_id: body.faculty_id }
+        : {}),
+      ...(body.department_id !== undefined
+        ? { department_id: body.department_id }
+        : {}),
+      ...(body.student_number !== undefined
+        ? { student_number: body.student_number }
+        : {}),
+      ...(body.avatar_url !== undefined
+        ? { avatar_url: body.avatar_url }
+        : {}),
       ...(body.consultation_hours !== undefined
         ? { consultation_hours: body.consultation_hours }
         : {}),
@@ -1030,6 +1168,14 @@ export const saaisMswHandlers = [
         invitation_sent_at: '2026-11-10T09:00:00Z',
         invitation_expires_at: '2026-11-17T09:00:00Z',
       }
+      const updated: ApiSchema<'Profile'> = {
+        ...profile,
+        invitation_status: 'pending',
+        invitation_sent_at: res.invitation_sent_at,
+        invitation_expires_at: res.invitation_expires_at,
+      }
+      const index = db.profiles.findIndex((item) => item.id === profileId)
+      db.profiles[index] = updated
       return HttpResponse.json(res, { status: 200 })
     },
   ),
@@ -1054,7 +1200,6 @@ export const saaisMswHandlers = [
       }
       const updated: ApiSchema<'Profile'> = {
         ...profile,
-        status: 'disabled',
         invitation_status: 'revoked',
       }
       const idx = db.profiles.findIndex((p) => p.id === profileId)
