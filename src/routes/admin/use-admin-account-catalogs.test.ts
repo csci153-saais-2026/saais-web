@@ -29,7 +29,12 @@ describe('useAdminAccountCatalogs', () => {
     ]
     getMock.mockImplementation((path: string) =>
       Promise.resolve({
-        data: path.endsWith('/faculty') ? faculties : departments,
+        data:
+          path === '/rest/v1/faculty'
+            ? faculties
+            : path === '/rest/v1/department'
+              ? departments
+              : [],
         response: new Response(),
       }),
     )
@@ -39,7 +44,7 @@ describe('useAdminAccountCatalogs', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.faculties).toEqual(faculties)
     expect(result.current.departments).toEqual(departments)
-    expect(getMock).toHaveBeenCalledTimes(2)
+    expect(getMock).toHaveBeenCalledTimes(5)
     expect(getMock).toHaveBeenCalledWith(
       '/rest/v1/department',
       expect.objectContaining({
@@ -49,6 +54,14 @@ describe('useAdminAccountCatalogs', () => {
             order: 'name.asc',
             limit: 1000,
           },
+        },
+      }),
+    )
+    expect(getMock).toHaveBeenCalledWith(
+      '/functions/v1/accounts',
+      expect.objectContaining({
+        params: {
+          query: { role: 'adviser', limit: 1000, offset: 0 },
         },
       }),
     )
