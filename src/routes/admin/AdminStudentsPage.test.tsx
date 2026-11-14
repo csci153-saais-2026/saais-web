@@ -232,4 +232,15 @@ describe('AdminStudentsPage', () => {
       await screen.findByText('No students match these search criteria.'),
     ).toBeTruthy()
   })
+
+  it('uses the responsive table layout for narrow screens', async () => {
+    const { container } = render(<AdminStudentsPage />)
+
+    await screen.findByText('Alex Student')
+    expect(container.querySelector('table')?.classList.contains('stack-table')).toBe(
+      true,
+    )
+    expect(screen.getByText('1 open')).toBeTruthy()
+    expect(screen.getByText('(1 INC)')).toBeTruthy()
+  })
 })
