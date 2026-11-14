@@ -8,11 +8,19 @@ import {
 } from '@testing-library/react'
 import AdminAccountsPage from './AdminAccountsPage'
 
-const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }))
+const { getMock, postMock, patchMock } = vi.hoisted(() => ({
+  getMock: vi.fn(),
+  postMock: vi.fn(),
+  patchMock: vi.fn(),
+}))
 
 vi.mock('@/lib/api', () => ({
-  apiClient: { GET: getMock },
+  apiClient: { GET: getMock, POST: postMock, PATCH: patchMock },
   unwrapApiResult: (result: { data: unknown }) => result.data,
+}))
+
+vi.mock('@/hooks/use-auth', () => ({
+  useAuth: () => ({ user: { email: 'admin@vsu.edu.ph' } }),
 }))
 
 const account = {
@@ -68,6 +76,33 @@ const departments = [
 describe('AdminAccountsPage', () => {
   beforeEach(() => {
     getMock.mockReset()
+    postMock.mockReset()
+    patchMock.mockReset()
+    postMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data: path.endsWith('resend-invite')
+          ? {
+              success: true,
+              message: 'Invitation resent.',
+              profile_id: 'profile-1',
+              invitation_status: 'pending',
+              invitation_sent_at: '2026-01-02T00:00:00Z',
+              invitation_expires_at: '2026-01-09T00:00:00Z',
+            }
+          : path.endsWith('revoke-invite')
+            ? account.profile
+            : {
+                success: true,
+                message: 'Invitation dispatched.',
+                profile_id: 'profile-new',
+              },
+        response: new Response(),
+      }),
+    )
+    patchMock.mockResolvedValue({
+      data: account.profile,
+      response: new Response(),
+    })
     HTMLElement.prototype.scrollIntoView = vi.fn()
     getMock.mockImplementation((path: string) =>
       Promise.resolve({
@@ -153,8 +188,12 @@ describe('AdminAccountsPage', () => {
         : Promise.resolve({ data: [], response: new Response() }),
     )
     render(<AdminAccountsPage />)
-    const error = await screen.findByRole('alert')
-    expect(error.textContent).toContain('Accounts unavailable')
+    const errors = await screen.findAllByRole('alert')
+    expect(
+      errors.some((error) =>
+        error.textContent?.includes('Accounts unavailable'),
+      ),
+    ).toBe(true)
   })
 
   it('requests the next bounded page only when another row exists', async () => {
@@ -192,5 +231,130 @@ describe('AdminAccountsPage', () => {
         }),
       )
     })
+  })
+
+  it('submits a valid account invitation and reports success', async () => {
+    render(<AdminAccountsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add account' }))
+
+    fireEvent.change(await screen.findByLabelText('Full name'), {
+      target: { value: 'New Administrator' },
+    })
+    fireEvent.change(screen.getByLabelText('VSU email'), {
+      target: { value: 'new.admin@vsu.edu.ph' },
+    })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'System Admin' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith(
+        '/functions/v1/auth/invite',
+        expect.objectContaining({
+          body: {
+            email: 'new.admin@vsu.edu.ph',
+            full_name: 'New Administrator',
+            role: 'admin',
+          },
+        }),
+      )
+    })
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Invitation dispatched.',
+    )
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('keeps the provisioning dialog open and reports API failures', async () => {
+    postMock.mockRejectedValueOnce(new Error('Duplicate email conflict'))
+    render(<AdminAccountsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add account' }))
+
+    fireEvent.change(await screen.findByLabelText('Full name'), {
+      target: { value: 'Existing Administrator' },
+    })
+    fireEvent.change(screen.getByLabelText('VSU email'), {
+      target: { value: 'existing.admin@vsu.edu.ph' },
+    })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'System Admin' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Duplicate email conflict',
+    )
+    expect(screen.getByRole('dialog')).toBeTruthy()
+  })
+
+  it('updates account details through the typed Admin operation', async () => {
+    render(<AdminAccountsPage />)
+    await screen.findByText('Alex Adviser')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    fireEvent.change(await screen.findByLabelText('Full name'), {
+      target: { value: 'Alex Updated' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => {
+      expect(patchMock).toHaveBeenCalledWith(
+        '/functions/v1/accounts/{profile_id}',
+        expect.objectContaining({
+          params: { path: { profile_id: 'profile-1' } },
+          body: expect.objectContaining({
+            full_name: 'Alex Updated',
+            role: 'adviser',
+          }),
+        }),
+      )
+    })
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Updated account details',
+    )
+  })
+
+  it('resends an eligible invitation and requires confirmation to revoke', async () => {
+    const pendingAccount = {
+      ...account,
+      profile: {
+        ...account.profile,
+        status: 'invited' as const,
+        invitation_status: 'pending' as const,
+      },
+    }
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === '/functions/v1/accounts'
+            ? [pendingAccount]
+            : path === '/rest/v1/faculty'
+              ? faculties
+              : departments,
+        response: new Response(),
+      }),
+    )
+
+    render(<AdminAccountsPage />)
+    await screen.findByText('Alex Adviser')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resend' }))
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Invitation resent.',
+    )
+    expect(postMock).toHaveBeenCalledWith(
+      '/functions/v1/accounts/{profile_id}/resend-invite',
+      { params: { path: { profile_id: 'profile-1' } } },
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke invitation' }))
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Invitation revoked for Alex Adviser.',
+    )
+    expect(postMock).toHaveBeenCalledWith(
+      '/functions/v1/accounts/{profile_id}/revoke-invite',
+      { params: { path: { profile_id: 'profile-1' } } },
+    )
   })
 })
