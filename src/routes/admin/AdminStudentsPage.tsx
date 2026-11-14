@@ -452,46 +452,86 @@ export default function AdminStudentsPage() {
           description="Read-only academic roster. Student records are managed through their authorized workflows."
           flush
         >
-          <Table responsive>
+          <Table responsive className="table-fixed">
+            <colgroup>
+              <col className="w-[23%]" />
+              <col className="w-[14%]" />
+              <col className="w-[19%]" />
+              <col className="w-[6%]" />
+              <col className="w-[7%]" />
+              <col className="w-[12%]" />
+              <col className="w-[9%]" />
+              <col className="w-[10%]" />
+            </colgroup>
             <TableHeader className="bg-secondary">
               <TableRow>
-                <TableHead>{sortHeading('Student', 'full_name')}</TableHead>
-                <TableHead>{sortHeading('Student number', 'student_number')}</TableHead>
-                <TableHead>Curriculum</TableHead>
-                <TableHead>{sortHeading('Year', 'year_level')}</TableHead>
-                <TableHead className="text-right">{sortHeading('GWA', 'gwa')}</TableHead>
-                <TableHead>{sortHeading('Standing', 'standing')}</TableHead>
-                <TableHead>Open flags</TableHead>
-                <TableHead>Deficiencies</TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                  {sortHeading('Student', 'full_name')}
+                </TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                  {sortHeading('Student number', 'student_number')}
+                </TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                  Curriculum
+                </TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                  {sortHeading('Year', 'year_level')}
+                </TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-right text-xs leading-tight sm:px-2 sm:text-sm">
+                  {sortHeading('GWA', 'gwa')}
+                </TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                  {sortHeading('Standing', 'standing')}
+                </TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                  Open flags
+                </TableHead>
+                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                  Deficiencies
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {roster.items.map((student) => (
                 <TableRow key={student.student_id}>
-                  <TableCell label="Student" className="min-w-52">
-                    <div className="font-semibold">{student.full_name}</div>
-                    <div className="text-xs text-muted-foreground">{student.email}</div>
+                  <TableCell label="Student" className="whitespace-normal px-1.5 sm:px-2">
+                    <div className="break-words font-semibold leading-tight">
+                      {student.full_name}
+                    </div>
+                    <div className="break-all text-xs leading-tight text-muted-foreground">
+                      {student.email}
+                    </div>
                   </TableCell>
-                  <TableCell label="Student number" className="font-mono text-xs">
+                  <TableCell
+                    label="Student number"
+                    className="whitespace-normal break-words px-1.5 font-mono text-xs sm:px-2"
+                  >
                     {student.student_number}
                   </TableCell>
-                  <TableCell label="Curriculum" className="min-w-44">
-                    <div>{student.curriculum_label}</div>
-                    <div className="text-xs text-muted-foreground">
+                  <TableCell label="Curriculum" className="whitespace-normal px-1.5 sm:px-2">
+                    <div className="break-words leading-tight">
+                      {student.curriculum_label}
+                    </div>
+                    <div className="break-words text-xs leading-tight text-muted-foreground">
                       {student.program_code} ·{' '}
                       {student.entry_year ?? 'Entry year unavailable'}
                     </div>
                   </TableCell>
-                  <TableCell label="Year">{student.year_level}</TableCell>
-                  <TableCell label="GWA" className="text-right font-mono">
+                  <TableCell label="Year" className="whitespace-normal px-1.5 text-center sm:px-2">
+                    {student.year_level}
+                  </TableCell>
+                  <TableCell
+                    label="GWA"
+                    className="whitespace-normal px-1.5 text-right font-mono sm:px-2"
+                  >
                     {formatGwa(student.gwa)}
                   </TableCell>
-                  <TableCell label="Standing">
+                  <TableCell label="Standing" className="whitespace-normal px-1.5 sm:px-2">
                     <Badge variant={getStandingVariant(student.standing)}>
                       {getStandingLabel(student.standing)}
                     </Badge>
                   </TableCell>
-                  <TableCell label="Open flags">
+                  <TableCell label="Open flags" className="whitespace-normal px-1.5 sm:px-2">
                     {student.open_flags_count > 0 ? (
                       <StatusBadge status="flagged">
                         {student.open_flags_count} open
@@ -500,7 +540,10 @@ export default function AdminStudentsPage() {
                       <span className="text-muted-foreground">0</span>
                     )}
                   </TableCell>
-                  <TableCell label="Deficiencies">
+                  <TableCell
+                    label="Deficiencies"
+                    className="whitespace-normal px-1.5 sm:px-2"
+                  >
                     {student.deficiencies_count > 0 ? (
                       <Badge variant="secondary">
                         {student.deficiencies_count}
