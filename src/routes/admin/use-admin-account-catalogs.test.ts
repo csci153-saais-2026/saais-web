@@ -27,14 +27,23 @@ describe('useAdminAccountCatalogs', () => {
         faculty_id: 'faculty-1',
       },
     ]
+    const programs = [
+      {
+        id: 'program-1',
+        code: 'BSCS',
+        name: 'Computer Science',
+        department_id: 'department-1',
+        status: 'active',
+      },
+    ]
+    const dataByPath: Record<string, unknown> = {
+      '/rest/v1/faculty': faculties,
+      '/rest/v1/department': departments,
+      '/rest/v1/program': programs,
+    }
     getMock.mockImplementation((path: string) =>
       Promise.resolve({
-        data:
-          path === '/rest/v1/faculty'
-            ? faculties
-            : path === '/rest/v1/department'
-              ? departments
-              : [],
+        data: dataByPath[path] ?? [],
         response: new Response(),
       }),
     )
@@ -44,6 +53,7 @@ describe('useAdminAccountCatalogs', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.faculties).toEqual(faculties)
     expect(result.current.departments).toEqual(departments)
+    expect(result.current.programs).toEqual(programs)
     expect(getMock).toHaveBeenCalledTimes(5)
     expect(getMock).toHaveBeenCalledWith(
       '/rest/v1/department',
@@ -51,6 +61,18 @@ describe('useAdminAccountCatalogs', () => {
         params: {
           query: {
             select: 'id,name,faculty_id',
+            order: 'name.asc',
+            limit: 1000,
+          },
+        },
+      }),
+    )
+    expect(getMock).toHaveBeenCalledWith(
+      '/rest/v1/program',
+      expect.objectContaining({
+        params: {
+          query: {
+            select: 'id,code,name,department_id,status',
             order: 'name.asc',
             limit: 1000,
           },
