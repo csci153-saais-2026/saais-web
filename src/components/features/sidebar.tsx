@@ -1,4 +1,5 @@
 import { BookIcon, ChevronDownIcon, LogoutIcon, type IconComponent } from "@/components/icons"
+import * as React from "react"
 import { Link, NavLink } from "react-router"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { BrandMark } from "@/components/ui/brand-mark"
@@ -14,70 +15,107 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
+  SidebarMenuBadge,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
 
 export type NavItem = {
   label: string
-  to: string
-  icon: IconComponent
-  /** Match the path exactly (e.g. dashboards), instead of also matching child routes. */
+  href: string
+  icon?: IconComponent
+  badge?: number | string
+  children?: NavItem[]
   end?: boolean
 }
 
 export type NavSection = {
-  label: string
+  title?: string
   items: NavItem[]
-  /** Render the section label as an expandable header (e.g. ADVISER / DEPARTMENT HEAD groups). */
-  collapsible?: boolean
-  defaultOpen?: boolean
 }
 
 export type SidebarUser = { name: string; subtitle: string; initials: string }
 
-function NavItems({ items }: { items: NavItem[] }) {
+function matchesNavPath(pathname: string, item: NavItem): boolean {
+  return pathname === item.href || (!item.end && pathname.startsWith(`${item.href}/`))
+}
+
+function hasActiveDescendant(pathname: string, item: NavItem): boolean {
+  return item.children?.some(child => matchesNavPath(pathname, child) || hasActiveDescendant(pathname, child)) ?? false
+}
+
+function NavItems({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
   const { setOpenMobile } = useSidebar()
   return (
     <SidebarMenu className="gap-0.5">
-      {items.map(({ label, to, icon: Icon, end }) => (
-        <SidebarMenuItem key={to}>
-          {/* NavLink sets aria-current="page" on the active route, which the menu button styles. */}
-          <SidebarMenuButton asChild>
-            <NavLink to={to} end={end} onClick={() => setOpenMobile(false)}>
-              <Icon aria-hidden />
-              <span>{label}</span>
-            </NavLink>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
+      {items.map(item => <NavEntry key={item.href} item={item} currentPath={currentPath} onNavigate={() => setOpenMobile(false)} />)}
     </SidebarMenu>
   )
 }
 
-function NavGroup({ section }: { section: NavSection }) {
-  if (!section.collapsible) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <NavItems items={section.items} />
-        </SidebarGroupContent>
-      </SidebarGroup>
-    )
+function NavEntry({ item, currentPath, onNavigate }: {
+  item: NavItem
+  currentPath: string
+  onNavigate: () => void
+}) {
+  const { label, href, icon: Icon, end, badge, children } = item
+  const active = matchesNavPath(currentPath, item)
+  const activeBranch = active || hasActiveDescendant(currentPath, item)
+  const [submenu, setSubmenu] = React.useState({ path: currentPath, open: activeBranch })
+  // Record every route transition, including an intermediate route away from
+  // an intentionally collapsed active branch. This guarded render update keeps
+  // the active child visible when navigation returns to that branch.
+  if (submenu.path !== currentPath) {
+    setSubmenu({ path: currentPath, open: activeBranch || submenu.open })
+  }
+  const link = (
+    <div className="relative">
+      <SidebarMenuButton asChild>
+        <NavLink to={href} end={end} onClick={onNavigate} className={badge !== undefined ? "pr-12" : undefined}>
+          {Icon && <Icon aria-hidden />}
+          <span>{label}</span>
+        </NavLink>
+      </SidebarMenuButton>
+      {badge !== undefined && <SidebarMenuBadge>{badge}</SidebarMenuBadge>}
+    </div>
+  )
+  return (
+    <SidebarMenuItem>
+      {children?.length ? (
+        <Collapsible open={submenu.path === currentPath ? submenu.open : activeBranch || submenu.open} onOpenChange={open => setSubmenu({ path: currentPath, open })}>
+          <div className="flex items-center">
+            <div className="min-w-0 flex-1">{link}</div>
+            <CollapsibleTrigger className="rounded p-2 hover:bg-sidebar-accent focus-visible:outline-gold" aria-label={`Toggle ${label} submenu`}>
+              <ChevronDownIcon className="size-4" />
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="ml-4 border-l border-sidebar-border pl-2">
+            <NavItems items={children} currentPath={currentPath} />
+          </CollapsibleContent>
+        </Collapsible>
+      ) : link}
+    </SidebarMenuItem>
+  )
+}
+
+function NavGroup({ section, currentPath }: { section: NavSection; currentPath: string }) {
+  const active = section.items.some(item => matchesNavPath(currentPath, item) || hasActiveDescendant(currentPath, item))
+  const [group, setGroup] = React.useState({ path: currentPath, open: true })
+  if (group.path !== currentPath) {
+    setGroup({ path: currentPath, open: active || group.open })
   }
   return (
-    <Collapsible defaultOpen={section.defaultOpen} className="group/collapsible">
+    <Collapsible open={group.path === currentPath ? group.open : active || group.open} onOpenChange={open => setGroup({ path: currentPath, open })} className="group/collapsible">
       <SidebarGroup>
-        <SidebarGroupLabel asChild>
+        {section.title && <SidebarGroupLabel asChild>
           <CollapsibleTrigger className="w-full justify-between">
-            {section.label}
+            {section.title}
             <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]/collapsible:rotate-180" aria-hidden />
           </CollapsibleTrigger>
-        </SidebarGroupLabel>
+        </SidebarGroupLabel>}
         <CollapsibleContent>
           <SidebarGroupContent>
-            <NavItems items={section.items} />
+            <NavItems items={section.items} currentPath={currentPath} />
           </SidebarGroupContent>
         </CollapsibleContent>
       </SidebarGroup>
@@ -133,19 +171,21 @@ function AccountMenu({
  * Must be rendered inside <SidebarProvider> (AppShell does this).
  */
 function AppSidebar({
-  portalLabel,
+  portalLabel = "SAAIS workspace",
   sections,
+  currentPath,
   user,
   helpHref = "/docs",
   profileHref,
   onSignOut,
 }: {
-  portalLabel: string
+  portalLabel?: string
   sections: NavSection[]
-  user: SidebarUser
+  currentPath: string
+  user?: SidebarUser
   helpHref?: string
   profileHref?: string
-  onSignOut: () => void
+  onSignOut?: () => void
 }) {
   const { setOpenMobile } = useSidebar()
   return (
@@ -156,8 +196,8 @@ function AppSidebar({
         </Link>
       </SidebarHeader>
       <SidebarContent className="px-3">
-        {sections.map((section) => (
-          <NavGroup key={section.label} section={section} />
+        {sections.map((section, index) => (
+          <NavGroup key={section.title ?? index} section={section} currentPath={currentPath} />
         ))}
       </SidebarContent>
       <SidebarFooter className="gap-1 border-t border-sidebar-border px-3 pt-3 pb-4">
@@ -171,7 +211,7 @@ function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <AccountMenu user={user} profileHref={profileHref} onSignOut={onSignOut} />
+        {user && onSignOut && <AccountMenu user={user} profileHref={profileHref} onSignOut={onSignOut} />}
       </SidebarFooter>
     </Sidebar>
   )
