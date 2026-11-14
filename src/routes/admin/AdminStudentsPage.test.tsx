@@ -243,4 +243,42 @@ describe('AdminStudentsPage', () => {
     expect(screen.getByText('1 open')).toBeTruthy()
     expect(screen.getByText('(1 INC)')).toBeTruthy()
   })
+
+  it('filters the roster by faculty and program', async () => {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Faculty / college' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Faculty of Computing' }))
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({ faculty_id: 'faculty-1' }),
+          },
+        }),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Program' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'BSCS · Computer Science' }))
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({
+              faculty_id: 'faculty-1',
+              program_id: 'program-1',
+            }),
+          },
+        }),
+      )
+    })
+  })
 })
