@@ -167,6 +167,79 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     ).toHaveLength(2)
   })
 
+  it('retains existing role assignments when an account PATCH omits them', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.adviserPrimary
+    const initialProfile = getMockDatabase().profiles.find(
+      (profile) => profile.id === profileId,
+    )
+    if (!initialProfile) throw new Error('Expected seeded adviser account.')
+    const initialAssignments = getMockDatabase().roleAssignments.filter(
+      (assignment) => assignment.profile_id === profileId,
+    )
+
+    const updated = unwrapApiResult(
+      await client.PATCH('/functions/v1/accounts/{profile_id}', {
+        params: { path: { profile_id: profileId } },
+        body: {
+          full_name: 'Updated Adviser Name',
+          role: 'department_head',
+        },
+      }),
+    )
+
+    expect(updated.roles).toEqual([
+      ...new Set([
+        'department_head',
+        ...initialAssignments.map((assignment) => assignment.role),
+      ]),
+    ])
+    expect(
+      getMockDatabase().roleAssignments.filter(
+        (assignment) => assignment.profile_id === profileId,
+      ),
+    ).toEqual(initialAssignments)
+  })
+
+  it('rejects invalid role assignments without partially updating the account', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.adviserPrimary
+    const initialProfile = getMockDatabase().profiles.find(
+      (profile) => profile.id === profileId,
+    )
+    if (!initialProfile) throw new Error('Expected seeded adviser account.')
+    const initialAssignments = getMockDatabase().roleAssignments.filter(
+      (assignment) => assignment.profile_id === profileId,
+    )
+    const response = await client.PATCH('/functions/v1/accounts/{profile_id}', {
+      params: { path: { profile_id: profileId } },
+      body: {
+        full_name: 'Must Not Be Applied',
+        role_assignments: [{ role: 'not-a-role' }],
+      } as never,
+    })
+
+    expect(response.response.status).toBe(400)
+    expect(
+      getMockDatabase().profiles.find((profile) => profile.id === profileId),
+    ).toEqual(initialProfile)
+    expect(
+      getMockDatabase().roleAssignments.filter(
+        (assignment) => assignment.profile_id === profileId,
+      ),
+    ).toEqual(initialAssignments)
+  })
+
   it('keeps an earlier failure selected until a retake has a numeric result', async () => {
     const db = getMockDatabase()
     const earlier = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
@@ -608,6 +681,39 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(decline.invitation_status).toBe('declined')
   })
 
+  it('rejects preview and activation for a revoked invitation', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.studentSecondary
+    const revoked = await client.POST(
+      '/functions/v1/accounts/{profile_id}/revoke-invite',
+      { params: { path: { profile_id: profileId } } },
+    )
+    expect(revoked.response.status).toBe(200)
+
+    const preview = await client.POST('/functions/v1/auth/preview-invite', {
+      body: { token: `invite:${profileId}` },
+    })
+    const verify = await client.POST('/functions/v1/auth/verify-invite', {
+      body: {
+        token: `invite:${profileId}`,
+        password: 'ValidStrongPassword2026!',
+      },
+    })
+
+    expect(preview.response.status).toBe(409)
+    expect(verify.response.status).toBe(409)
+    const profile = getMockDatabase().profiles.find(
+      (item) => item.id === profileId,
+    )
+    expect(profile?.status).toBe('invited')
+    expect(profile?.invitation_status).toBe('revoked')
+  })
+
   it('enforces Student self-only access on PostgREST projections and student Edge Functions', async () => {
     loginAsMockPersona('student')
     const client = createSaaisApiClient({
@@ -692,6 +798,23 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
           assignment.role === 'department_staff',
       ),
     ).toBe(true)
+
+    const nullDepartmentInvite = unwrapApiResult(
+      await client.POST('/functions/v1/auth/invite', {
+        body: {
+          role: 'department_head',
+          email: 'null.department.mock@vsu.edu.ph',
+          full_name: 'Department Head',
+          faculty_id: MOCK_IDS.facultyComputing,
+          department_id: null,
+        },
+      }),
+    )
+    expect(
+      getMockDatabase().profiles.find(
+        (profile) => profile.id === nullDepartmentInvite.profile_id,
+      )?.department_id,
+    ).toBe(MOCK_IDS.deptDcst)
 
     for (const operation of ['resend-invite', 'revoke-invite'] as const) {
       const response = await fetch(`${BASE_URL}/functions/v1/accounts/${allowedInvite.profile_id}/${operation}`, {

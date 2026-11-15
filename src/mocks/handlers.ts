@@ -45,6 +45,50 @@ function markRetakeResults(attempts: ApiSchema<'AttemptResult'>[]): ApiSchema<'A
 
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
 
+const roleTypes = new Set([
+  'student',
+  'adviser',
+  'department_head',
+  'department_staff',
+  'dean',
+  'admin',
+])
+
+function isRoleAssignmentInput(
+  value: unknown,
+): value is ApiSchema<'RoleAssignmentInput'> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const assignment = value as Record<string, unknown>
+  if (
+    Object.keys(assignment).some(
+      (key) => !['role', 'faculty_id', 'department_id'].includes(key),
+    ) ||
+    typeof assignment.role !== 'string' ||
+    !roleTypes.has(assignment.role)
+  ) {
+    return false
+  }
+  const validId = (id: unknown) =>
+    id === undefined ||
+    id === null ||
+    (typeof id === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      ))
+  return validId(assignment.faculty_id) && validId(assignment.department_id)
+}
+
+function isRoleAssignmentList(
+  value: unknown,
+): value is ApiSchema<'RoleAssignmentInput'>[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= 6 &&
+    value.every(isRoleAssignmentInput)
+  )
+}
+
 function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
   if (persona.roles.includes('admin')) return true
   const roles = profile.roles?.length ? profile.roles : [profile.role]
@@ -368,6 +412,9 @@ export const saaisMswHandlers = [
     if (matchedProfile.status !== 'invited') {
       return errorJson(409, 'INVITE_ALREADY_USED', 'Invitation has already been activated.')
     }
+    if (matchedProfile.invitation_status === 'revoked') {
+      return errorJson(409, 'INVITE_REVOKED', 'Invitation has been revoked.')
+    }
     const dept = db.departments.find((d) => d.id === matchedProfile.department_id)
     const faculty = db.faculties.find((f) => f.id === matchedProfile.faculty_id)
     const response: ApiSchema<'PreviewInviteResponse'> = {
@@ -412,13 +459,20 @@ export const saaisMswHandlers = [
       db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
       invitedProfiles[0]
 
-    if (matchedProfile) {
-      db.profiles = db.profiles.map((p) =>
-        p.id === matchedProfile.id
-          ? { ...p, status: 'active', invitation_status: 'accepted' }
-          : p,
-      )
+    if (!matchedProfile) {
+      return errorJson(404, 'INVITE_NOT_FOUND', 'Invitation not found.')
     }
+    if (matchedProfile.invitation_status === 'revoked') {
+      return errorJson(409, 'INVITE_REVOKED', 'Invitation has been revoked.')
+    }
+    if (matchedProfile.status !== 'invited') {
+      return errorJson(409, 'INVITE_ALREADY_USED', 'Invitation has already been activated.')
+    }
+    db.profiles = db.profiles.map((p) =>
+      p.id === matchedProfile.id
+        ? { ...p, status: 'active', invitation_status: 'accepted' }
+        : p,
+    )
 
     const response: ApiSchema<'VerifyInviteResponse'> = {
       success: true,
@@ -502,6 +556,17 @@ export const saaisMswHandlers = [
           'Cannot provision accounts outside your assigned department.',
         )
       }
+      if (
+        'department_id' in body &&
+        body.department_id === null &&
+        !persona.departmentId
+      ) {
+        return errorJson(
+          400,
+          'INVALID_INPUT',
+          'A department invitation requires an assigned department.',
+        )
+      }
       const program = body.role === 'student'
         ? getMockDatabase().programs.find(p => p.id === body.program_id)
         : undefined
@@ -544,7 +609,11 @@ export const saaisMswHandlers = [
         ? body.faculty_id ?? null
         : persona.facultyId ?? MOCK_IDS.facultyComputing
     const assignedDepartmentId =
-      'department_id' in body
+      !persona.roles.includes('admin') &&
+      'department_id' in body &&
+      body.department_id === null
+        ? persona.departmentId ?? null
+        : 'department_id' in body
         ? body.department_id ?? null
         : persona.departmentId ?? MOCK_IDS.deptDcst
     db.profiles.push({
@@ -1140,27 +1209,40 @@ export const saaisMswHandlers = [
     if (!profile) {
       return errorJson(404, 'NOT_FOUND', 'Profile not found.')
     }
-    let body: ApiSchema<'AdminProfileUpdate'>
+    let parsedBody: unknown
     try {
-      body = (await request.json()) as ApiSchema<'AdminProfileUpdate'>
+      parsedBody = await request.json()
     } catch {
       return errorJson(400, 'INVALID_INPUT', 'Expected a JSON account update.')
     }
-    if (body.role_assignments) {
-      db.roleAssignments = db.roleAssignments.filter(
-        (assignment) => assignment.profile_id !== profileId,
+    if (
+      !parsedBody ||
+      typeof parsedBody !== 'object' ||
+      Array.isArray(parsedBody)
+    ) {
+      return errorJson(400, 'INVALID_INPUT', 'Expected a JSON account update.')
+    }
+    const body = parsedBody as ApiSchema<'AdminProfileUpdate'>
+    if (
+      Object.prototype.hasOwnProperty.call(parsedBody, 'role_assignments') &&
+      !isRoleAssignmentList(
+        (parsedBody as Record<string, unknown>).role_assignments,
       )
-      db.roleAssignments.push(
-        ...body.role_assignments.map((assignment) => ({
+    ) {
+      return errorJson(400, 'INVALID_INPUT', 'Role assignments are invalid.')
+    }
+    const requestedAssignments = body.role_assignments
+    const existingRoleAssignments = db.roleAssignments.filter(
+      (assignment) => assignment.profile_id === profileId,
+    )
+    const replacementAssignments = requestedAssignments?.map((assignment) => ({
           id: nextSyntheticUuid(),
           profile_id: profileId,
           role: assignment.role,
           faculty_id: assignment.faculty_id ?? null,
           department_id: assignment.department_id ?? null,
           created_at: '2026-11-10T09:00:00Z',
-        })),
-      )
-    }
+        }))
     const updated: ApiSchema<'Profile'> = {
       ...profile,
       ...(body.full_name !== undefined ? { full_name: body.full_name } : {}),
@@ -1170,7 +1252,7 @@ export const saaisMswHandlers = [
             roles: [
               ...new Set([
                 body.role ?? profile.role,
-                ...(body.role_assignments ?? []).map(
+                ...(requestedAssignments ?? existingRoleAssignments).map(
                   (assignment) => assignment.role,
                 ),
               ]),
@@ -1194,6 +1276,12 @@ export const saaisMswHandlers = [
         ? { consultation_hours: body.consultation_hours }
         : {}),
       updated_at: '2026-11-10T09:00:00Z',
+    }
+    if (replacementAssignments) {
+      db.roleAssignments = db.roleAssignments.filter(
+        (assignment) => assignment.profile_id !== profileId,
+      )
+      db.roleAssignments.push(...replacementAssignments)
     }
     const idx = db.profiles.findIndex((p) => p.id === profileId)
     db.profiles[idx] = updated
