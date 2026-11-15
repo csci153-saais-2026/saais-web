@@ -1,20 +1,54 @@
-import { AdviserPage } from "../../Adviser"
-import { notes } from "@/mocks/adviser.mock"
-import { Panel } from "@/components/features/panel"
-import { FormField } from "@/components/features/form-field"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"
-import { PlusIcon } from "@/components/icons"
+﻿import { useState } from 'react'
+import { useParams } from 'react-router'
+import { AdviserPage } from '../../Adviser'
+import { useAuth } from '@/hooks/use-auth'
+import { useScopedRequest } from '../use-scoped-request'
+import { addNote, getNotes, setNoteArchived } from './notes.api'
+import { Panel } from '@/components/features/panel'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
-export default function AdviseeNotes({ archived = false }: { archived?: boolean }) {
-  return <AdviserPage title="Notes" tab="notes">
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex gap-1 rounded-md bg-muted p-1" role="group" aria-label="Note archive"><Button variant={archived ? "ghost" : "default"} size="sm" aria-pressed={!archived}>Active (3)</Button><Button variant={archived ? "default" : "ghost"} size="sm" aria-pressed={archived}>Archived (2)</Button></div>
-      <Dialog><DialogTrigger asChild><Button><PlusIcon />Write a note</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Write a note</DialogTitle><DialogDescription>Visible to the student. Write what they and the next adviser should know.</DialogDescription></DialogHeader><FormField htmlFor="new-note" label="Note"><Textarea id="new-note" rows={6} value="" readOnly /></FormField><DialogFooter><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button>Save note</Button></DialogFooter></DialogContent></Dialog>
-    </div>
-    <Panel title="Notes" description={`${archived ? "Archived" : "Active"} notes · visible to the student`} flush>
-      {notes.filter(note => note.archived === archived).map(note => <article key={note.id} className="border-b border-line-soft px-5 py-5 last:border-0"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-sm"><b>{note.author}</b><span className="text-muted-foreground"> · {note.date}</span></p><Button variant="outline" size="sm">{archived ? "Restore" : "Archive"}</Button></div><p className="text-sm">{note.body}</p></article>)}
-    </Panel>
-  </AdviserPage>
+function NotesContent({ id, userId, isAdmin, isMockMode }: { id: string; userId: string; isAdmin: boolean; isMockMode: boolean }) {
+  const [archived, setArchived] = useState(false)
+  const [revision, setRevision] = useState(0)
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [mutationError, setMutationError] = useState('')
+  const [message, setMessage] = useState('')
+  const [writing, setWriting] = useState(false)
+  const { data, error } = useScopedRequest(JSON.stringify([userId, id, revision]), true, () => getNotes(id))
+  const canEdit = !!data && (data.isCurrent || isAdmin)
+  const notes = data?.notes.filter(note => note.is_archived === archived) ?? []
+  async function save() {
+    if (!text.trim()) return
+    setSaving(true); setMutationError(''); setMessage('')
+    try { await addNote(id, text.trim()); setText(''); setWriting(false); setMessage('Note added.'); setRevision(n => n + 1) }
+    catch (e) { setMutationError(e instanceof Error ? e.message : 'Unable to add note.') }
+    finally { setSaving(false) }
+  }
+  async function toggle(noteId: string, next: boolean) {
+    setSaving(true); setMutationError(''); setMessage('')
+    try { await setNoteArchived(id, noteId, next); setMessage(next ? 'Note archived.' : 'Note restored.'); setRevision(n => n + 1) }
+    catch (e) { setMutationError(e instanceof Error ? e.message : 'Unable to update note.') }
+    finally { setSaving(false) }
+  }
+  return <>
+    {!data && !error && <p role="status">Loading notes…</p>}
+    {error && <div role="alert"><p>{error}</p><Button variant="outline" onClick={() => setRevision(n => n + 1)}>Try again</Button></div>}
+    {message && <p role="status">{message}</p>}{mutationError && <p role="alert">{mutationError}</p>}
+    {data && <><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex gap-1 rounded-md bg-muted p-1" role="group" aria-label="Note archive"><Button variant={!archived ? 'default' : 'ghost'} size="sm" aria-pressed={!archived} onClick={() => setArchived(false)}>Active ({data.notes.filter(n => !n.is_archived).length})</Button><Button variant={archived ? 'default' : 'ghost'} size="sm" aria-pressed={archived} onClick={() => setArchived(true)}>Archived ({data.notes.filter(n => n.is_archived).length})</Button></div>{canEdit && <Button onClick={() => setWriting(true)}>Write a note</Button>}</div>
+      {!canEdit && <p className="mb-4">Historical record: read-only.</p>}
+      <Panel title="Notes" description={`${archived ? 'Archived' : 'Active'} notes · visible to the student`} flush>
+        {!notes.length && <p className="px-5 py-5">No {archived ? 'archived' : 'active'} notes.</p>}
+        {notes.map(note => <article key={note.id} className="border-b border-line-soft px-5 py-5 last:border-0"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-sm"><b>{note.author_name ?? 'Adviser'}</b><span className="text-muted-foreground"> · {new Date(note.created_at).toLocaleDateString()}</span></p>{canEdit && <Button variant="outline" size="sm" disabled={saving} onClick={() => void toggle(note.id, !note.is_archived)}>{note.is_archived ? 'Restore' : 'Archive'}</Button>}</div><p className="whitespace-pre-wrap text-sm">{note.body_text}</p></article>)}
+      </Panel>
+      {canEdit && <Dialog open={writing} onOpenChange={setWriting}><DialogContent><DialogHeader><DialogTitle>Write a note</DialogTitle><DialogDescription>Visible to the student and their advisers.</DialogDescription></DialogHeader><label htmlFor="new-note" className="text-sm font-medium">Advising note</label><Textarea id="new-note" rows={4} maxLength={5000} placeholder="Write what the student and the next adviser should know." value={text} onChange={e => setText(e.target.value)} />{isMockMode && <p className="text-sm text-muted-foreground">Saving notes is unavailable in mock mode until the shared handler checks adviser ownership.</p>}<div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => { setWriting(false); setText('') }}>Cancel</Button><Button disabled={isMockMode || saving || !text.trim()} onClick={() => void save()}>{saving ? 'Saving…' : 'Save note'}</Button></div></DialogContent></Dialog>}
+    </>}
+  </>
+}
+export default function AdviseeNotes() {
+  const { id } = useParams<{ id: string }>()
+  const { user, roles, isMockMode } = useAuth()
+  return <AdviserPage title="Notes" tab="notes" sample={false}>{id && user && <NotesContent key={`${user.id}:${id}`} id={id} userId={user.id} isAdmin={roles.includes('admin')} isMockMode={isMockMode} />}</AdviserPage>
 }
