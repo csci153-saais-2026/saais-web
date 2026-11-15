@@ -4,6 +4,7 @@ import { FilterBar } from '@/components/features/filter-bar'
 import { PageHeading } from '@/components/features/page-heading'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
+import { AdminProgramDialog } from './AdminProgramDialog'
 import {
   apiClient,
   parseContentRange,
@@ -44,6 +45,9 @@ export default function AdminProgramsPage() {
   const [catalogsLoaded, setCatalogsLoaded] = useState(false)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [catalogReloadCount, setCatalogReloadCount] = useState(0)
+  const [dialogProgram, setDialogProgram] = useState<Program | null | undefined>(
+    undefined,
+  )
 
   const { query, error: searchError } = useMemo(
     () => buildProgramListQuery(search, status, offset),
@@ -140,6 +144,32 @@ export default function AdminProgramsPage() {
     setReloadCount((count) => count + 1)
   }, [])
 
+  async function saveProgram(
+    program: Program | null,
+    request: Pick<
+      ApiSchema<'ProgramInsert'>,
+      'code' | 'name' | 'nominal_duration' | 'status' | 'department_id'
+    >,
+  ) {
+    if (program) {
+      await unwrapApiResult(
+        await apiClient.PATCH('/functions/v1/catalog/program/{id}', {
+          params: { path: { id: program.id } },
+          body: request,
+        }),
+      )
+    } else {
+      await unwrapApiResult(
+        await apiClient.POST('/functions/v1/catalog/program', {
+          body: request,
+        }),
+      )
+    }
+
+    setDialogProgram(undefined)
+    retryPrograms()
+  }
+
   const departmentsById = useMemo(
     () => new Map(departments.map((department) => [department.id, department])),
     [departments],
@@ -201,6 +231,21 @@ export default function AdminProgramsPage() {
         </StatusBadge>
       ),
     },
+    {
+      header: 'Actions',
+      className: 'whitespace-nowrap',
+      cell: (program: Program) => (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!catalogsLoaded || Boolean(catalogError)}
+          onClick={() => setDialogProgram(program)}
+          aria-label={`Edit ${program.name}`}
+        >
+          Edit
+        </Button>
+      ),
+    },
   ]
 
   return (
@@ -208,6 +253,14 @@ export default function AdminProgramsPage() {
       <PageHeading
         title="Programs"
         subtitle="Maintain degree program catalog records and their organization and status."
+        actions={
+          <Button
+            disabled={!catalogsLoaded || Boolean(catalogError)}
+            onClick={() => setDialogProgram(null)}
+          >
+            Add program
+          </Button>
+        }
       />
 
       {catalogError && (
@@ -319,6 +372,20 @@ export default function AdminProgramsPage() {
         <span className="sr-only" aria-live="polite">
           Loading faculty and department details…
         </span>
+      )}
+
+      {dialogProgram !== undefined && (
+        <AdminProgramDialog
+          key={dialogProgram?.id ?? 'new'}
+          program={dialogProgram}
+          faculties={faculties}
+          departments={departments}
+          catalogsLoading={!catalogsLoaded || Boolean(catalogError)}
+          onOpenChange={(open) => {
+            if (!open) setDialogProgram(undefined)
+          }}
+          onSubmit={(request) => saveProgram(dialogProgram, request)}
+        />
       )}
     </div>
   )
