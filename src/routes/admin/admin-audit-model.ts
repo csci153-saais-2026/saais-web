@@ -4,7 +4,7 @@ export const AUDIT_PAGE_SIZE = 25
 export const MAX_AUDIT_OFFSET = 1_000_000
 
 export const AUDIT_LOG_SELECT =
-  'id,actor_id,actor_name,actor_role,student_id,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at'
+  'id,actor_name,actor_role,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at'
 
 export type AuditActionCategory = NonNullable<
   ApiSchema<'AuditLogEntry'>['action_category']
@@ -12,10 +12,8 @@ export type AuditActionCategory = NonNullable<
 export type AuditLogRow = Pick<
   ApiSchema<'AuditLogEntry'>,
   | 'id'
-  | 'actor_id'
   | 'actor_name'
   | 'actor_role'
-  | 'student_id'
   | 'student_name'
   | 'student_number'
   | 'target_label'
@@ -82,7 +80,10 @@ export function buildAuditListQuery(
     if (value.length > 100) {
       return { query: null, error: `${label} search must be 100 characters or fewer.` }
     }
-    if (/[\u0000-\u001f(),."\\]/.test(value)) {
+    if (
+      [...value].some((character) => character.charCodeAt(0) <= 0x1f) ||
+      /[(),."\\]/.test(value)
+    ) {
       return { query: null, error: `${label} search contains unsupported characters.` }
     }
   }
