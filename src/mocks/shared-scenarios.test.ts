@@ -159,6 +159,152 @@ describe("shared role scenarios", () => {
     ).toBe(403);
   });
 
+  it("advances from the second semester to the next existing year and recognizes an unmapped prerequisite pass", async () => {
+    const db = getMockDatabase();
+    const studentId = MOCK_PERSONAS.student_sample_1.profileId;
+    const template = db.attemptResults.find(
+      (item) => item.student_id === studentId,
+    )!;
+    db.curriculumTerms.push({
+      id: "41000000-0000-4000-8009-000000000001",
+      curriculum_version_id: MOCK_IDS.curriculumBscs2024,
+      year_level: 2,
+      term_sequence: 1,
+    });
+    db.curriculumTermCourses.find(
+      (slot) => slot.id === MOCK_IDS.slotCsci153,
+    )!.curriculum_term_id = "41000000-0000-4000-8009-000000000001";
+    template.curriculum_term_course_id = MOCK_IDS.slotCsci102;
+    const unmappedPass: (typeof db.attemptResults)[number] = {
+      ...template,
+      id: "80000000-0000-4000-8009-000000000001",
+      course_offering_id: MOCK_IDS.offeringCsci102,
+      curriculum_term_course_id: null,
+      effective_status: "passed" as const,
+      recorded_status: "passed" as const,
+      final_grade: 2,
+      gwa_grade: 2,
+    };
+    db.attemptResults.push(unmappedPass);
+    loginAsMockPersona("adviser");
+    const getRecommendations = () =>
+      client().GET("/functions/v1/students/{student_id}/recommendations", {
+        params: {
+          path: { student_id: studentId },
+          query: { school_term_id: MOCK_IDS.term2026Sem1Open },
+        },
+      });
+    const withPass = await getRecommendations();
+    expect(
+      withPass.data?.some(
+        (item) => item.curriculum_term_course_id === MOCK_IDS.slotCsci153,
+      ),
+    ).toBe(true);
+    expect(
+      withPass.data?.some(
+        (item) => item.curriculum_term_course_id === MOCK_IDS.slotCsci102,
+      ),
+    ).toBe(false);
+    unmappedPass.effective_status = "failed";
+    const withoutPass = await getRecommendations();
+    expect(
+      withoutPass.data?.some(
+        (item) => item.curriculum_term_course_id === MOCK_IDS.slotCsci153,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not recommend a passed course whose attempt has no curriculum slot", async () => {
+    const db = getMockDatabase();
+    const studentId = MOCK_PERSONAS.student_sample_1.profileId;
+    const prior = db.attemptResults.find(
+      (item) =>
+        item.student_id === studentId &&
+        item.course_offering_id === MOCK_IDS.offeringCsci101,
+    )!;
+    prior.curriculum_term_course_id = null;
+    prior.effective_status = "passed";
+    prior.recorded_status = "passed";
+    prior.final_grade = 2;
+    const offering = db.courseOfferings.find(
+      (item) => item.id === MOCK_IDS.offeringCsci101,
+    )!;
+    db.courseOfferings.unshift({
+      ...offering,
+      id: "62000000-0000-4000-8009-000000000002",
+    });
+    loginAsMockPersona("adviser");
+    const response = await client().GET(
+      "/functions/v1/students/{student_id}/recommendations",
+      {
+        params: {
+          path: { student_id: studentId },
+          query: { school_term_id: MOCK_IDS.term2026Sem1Open },
+        },
+      },
+    );
+    expect(
+      response.data?.some(
+        (item) => item.curriculum_term_course_id === MOCK_IDS.slotCsci101,
+      ),
+    ).toBe(false);
+  });
+
+  it("selects the latest prerequisite attempt by term before recording order", async () => {
+    const db = getMockDatabase();
+    const studentId = MOCK_PERSONAS.student_sample_1.profileId;
+    const template = db.attemptResults.find(
+      (item) => item.student_id === studentId,
+    )!;
+    const oldOffering = db.courseOfferings.find(
+      (item) => item.id === MOCK_IDS.offeringCsci102,
+    )!;
+    const newOffering = {
+      ...oldOffering,
+      id: "62000000-0000-4000-8009-000000000001",
+      school_term_id: MOCK_IDS.term2026Sem1Open,
+    };
+    db.courseOfferings.push(newOffering);
+    db.attemptResults.push({
+      ...template,
+      id: "80000000-0000-4000-8009-000000000002",
+      course_offering_id: newOffering.id,
+      effective_status: "inc",
+      recorded_status: "inc",
+      final_grade: null,
+      is_lapsed_inc: false,
+      created_at: "2026-08-01T00:00:00Z",
+    });
+    db.attemptResults.push({
+      ...template,
+      id: "80000000-0000-4000-8009-000000000003",
+      course_offering_id: oldOffering.id,
+      effective_status: "failed",
+      recorded_status: "failed",
+      final_grade: 5,
+      is_lapsed_inc: false,
+      created_at: "2026-10-01T00:00:00Z",
+    });
+    loginAsMockPersona("adviser");
+    const response = await client().GET(
+      "/functions/v1/students/{student_id}/course-offerings",
+      {
+        params: {
+          path: { student_id: studentId },
+          query: { school_term_id: MOCK_IDS.term2026Sem1Open },
+        },
+      },
+    );
+    const prerequisite = response.data?.find(
+      (item) => item.offering.id === MOCK_IDS.offeringCsci153,
+    )?.unmet_prerequisites?.[0];
+    expect(prerequisite).toMatchObject({
+      current_status: "inc",
+      latest_attempt_id: "80000000-0000-4000-8009-000000000002",
+      latest_final_grade: null,
+    });
+  });
+
   it("recommends available courses for the connected reference transcript", async () => {
     loginAsMockPersona("adviser");
     const response = await client().GET(

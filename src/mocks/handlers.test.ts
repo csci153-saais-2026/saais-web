@@ -1220,9 +1220,11 @@ describe("MSW contract handlers & role-based authorization (Issue #43)", () => {
         },
       },
     );
-    const excludedCount = Number(
-      recsResponse.response.headers.get("X-Excluded-Count"),
-    );
+    const excludedHeader =
+      recsResponse.response.headers.get("X-Excluded-Count");
+    expect(excludedHeader).toMatch(/^\d+$/);
+    const excludedCount = Number(excludedHeader);
+    expect(Number.isSafeInteger(excludedCount)).toBe(true);
     expect(excludedCount).toBeGreaterThanOrEqual(0);
     const recs = unwrapApiResult(recsResponse);
     expect(

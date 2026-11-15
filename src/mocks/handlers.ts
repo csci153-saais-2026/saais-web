@@ -37,6 +37,27 @@ function alreadyPassedCourse(
   );
 }
 
+function compareAttemptChronology(
+  left: ApiSchema<"AttemptResult">,
+  right: ApiSchema<"AttemptResult">,
+): number {
+  const db = getMockDatabase();
+  const termOrder = (attempt: ApiSchema<"AttemptResult">) => {
+    const offering = db.courseOfferings.find(
+      (item) => item.id === attempt.course_offering_id,
+    );
+    return (
+      db.schoolTerms.find((term) => term.id === offering?.school_term_id)
+        ?.chronological_key ?? 0
+    );
+  };
+  return (
+    termOrder(left) - termOrder(right) ||
+    (left.created_at ?? "").localeCompare(right.created_at ?? "") ||
+    left.id.localeCompare(right.id)
+  );
+}
+
 function markRetakeResults(
   attempts: ApiSchema<"AttemptResult">[],
 ): ApiSchema<"AttemptResult">[] {
@@ -44,15 +65,6 @@ function markRetakeResults(
   const courseId = (attempt: ApiSchema<"AttemptResult">) =>
     db.courseOfferings.find((o) => o.id === attempt.course_offering_id)
       ?.course_id;
-  const termOrder = (attempt: ApiSchema<"AttemptResult">) => {
-    const offering = db.courseOfferings.find(
-      (o) => o.id === attempt.course_offering_id,
-    );
-    return (
-      db.schoolTerms.find((term) => term.id === offering?.school_term_id)
-        ?.chronological_key ?? 0
-    );
-  };
   const numericGrade = (attempt: ApiSchema<"AttemptResult">) =>
     attempt.completion_grade ?? attempt.final_grade;
   const overrides = new Map(attempts.map((attempt) => [attempt.id, attempt]));
@@ -70,12 +82,7 @@ function markRetakeResults(
           course &&
           courseId(other) === course,
       )
-      .sort(
-        (left, right) =>
-          termOrder(left) - termOrder(right) ||
-          (left.created_at ?? "").localeCompare(right.created_at ?? "") ||
-          left.id.localeCompare(right.id),
-      );
+      .sort(compareAttemptChronology);
     const numeric = same.filter((other) => numericGrade(other) != null);
     const selected =
       numeric.at(-1) ?? same.find((other) => other.is_lapsed_inc);
@@ -2862,7 +2869,9 @@ export const saaisMswHandlers = [
                   )
                 )
                   return [];
-                const latest = requiredAttempts.at(-1);
+                const latest = requiredAttempts
+                  .sort(compareAttemptChronology)
+                  .at(-1);
                 const state = latest?.is_lapsed_inc
                   ? "lapsed_inc"
                   : latest?.effective_status === "passed" ||
@@ -2948,18 +2957,26 @@ export const saaisMswHandlers = [
         const results = db.attemptResults.filter(
           (item) => item.student_id === studentId,
         );
-        const previousPositions = results.flatMap((result) => {
+        const orderedTerms = [...terms].sort(
+          (left, right) =>
+            left.year_level - right.year_level ||
+            left.term_sequence - right.term_sequence,
+        );
+        const previousTermIndices = results.flatMap((result) => {
           const slot = slots.find(
             (item) => item.id === result.curriculum_term_course_id,
           );
-          const term = terms.find(
-            (item) => item.id === slot?.curriculum_term_id,
+          const index = orderedTerms.findIndex(
+            (term) => term.id === slot?.curriculum_term_id,
           );
-          return term ? [term.year_level * 3 + term.term_sequence] : [];
+          return index < 0 ? [] : [index];
         });
-        const horizon = previousPositions.length
-          ? Math.max(...previousPositions) + 1
-          : 4;
+        const horizonIndex = previousTermIndices.length
+          ? Math.min(
+              Math.max(...previousTermIndices) + 1,
+              orderedTerms.length - 1,
+            )
+          : 0;
         let excluded = 0;
         const recommendations: ApiSchema<"Recommendation">[] = [];
         for (const slot of slots) {
@@ -2967,15 +2984,21 @@ export const saaisMswHandlers = [
             (item) => item.id === slot.curriculum_term_id,
           )!;
           if (
-            curriculumTerm.year_level * 3 + curriculumTerm.term_sequence >
-              horizon ||
+            orderedTerms.indexOf(curriculumTerm) > horizonIndex ||
             !slot.course_id
           )
             continue;
           const course = db.courses.find((item) => item.id === slot.course_id);
           if (!course) continue;
           const prior = results.filter(
-            (item) => item.curriculum_term_course_id === slot.id,
+            (item) =>
+              item.curriculum_term_course_id === slot.id ||
+              (item.curriculum_term_course_id === null &&
+                db.courseOfferings.some(
+                  (offering) =>
+                    offering.id === item.course_offering_id &&
+                    offering.course_id === course.id,
+                )),
           );
           const credited = db.outsideCredits.some(
             (item) =>
@@ -3007,8 +3030,15 @@ export const saaisMswHandlers = [
               return (
                 results.some(
                   (item) =>
-                    item.curriculum_term_course_id === requiredSlot?.id &&
-                    item.effective_status === "passed",
+                    item.effective_status === "passed" &&
+                    (item.curriculum_term_course_id === requiredSlot?.id ||
+                      (item.curriculum_term_course_id === null &&
+                        db.courseOfferings.some(
+                          (offering) =>
+                            offering.id === item.course_offering_id &&
+                            offering.course_id ===
+                              prerequisite.prerequisite_course_id,
+                        ))),
                 ) ||
                 db.outsideCredits.some(
                   (item) =>
