@@ -7,19 +7,26 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import { ApiClientError } from '@/lib/api'
 import AdminFacultiesPage from './AdminFacultiesPage'
 
-const { getMock, postMock, patchMock } = vi.hoisted(() => ({
+const { getMock, postMock, patchMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
   patchMock: vi.fn(),
+  deleteMock: vi.fn(),
 }))
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    apiClient: { GET: getMock, POST: postMock, PATCH: patchMock },
+    apiClient: {
+      GET: getMock,
+      POST: postMock,
+      PATCH: patchMock,
+      DELETE: deleteMock,
+    },
   }
 })
 
@@ -48,6 +55,7 @@ describe('AdminFacultiesPage', () => {
     getMock.mockReset()
     postMock.mockReset()
     patchMock.mockReset()
+    deleteMock.mockReset()
     getMock.mockImplementation((path: string) =>
       Promise.resolve(
         result(path === '/rest/v1/faculty' ? faculties : departments),
@@ -55,6 +63,7 @@ describe('AdminFacultiesPage', () => {
     )
     postMock.mockResolvedValue(result(faculties[0]))
     patchMock.mockResolvedValue(result(faculties[0]))
+    deleteMock.mockResolvedValue(result(undefined))
   })
 
   afterEach(() => {
@@ -229,6 +238,67 @@ describe('AdminFacultiesPage', () => {
           },
         },
       )
+    })
+  })
+
+  it('explains faculty deletion conflicts without cascading to departments', async () => {
+    deleteMock.mockRejectedValueOnce(
+      new ApiClientError({
+        status: 409,
+        code: 'DEPENDENT_RECORDS_EXIST',
+        message: 'Conflict',
+        details: null,
+        hint: null,
+        retryAfterSeconds: null,
+        isAuthError: false,
+        isForbidden: false,
+        isNotFound: false,
+        isConflict: true,
+        isRateLimited: false,
+        isNetworkError: false,
+      }),
+    )
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete Faculty of Computing' }),
+    )
+    expect(await screen.findByText(/currently has 1 department/)).toBeTruthy()
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Delete faculty',
+      }),
+    )
+
+    expect(
+      await screen.findByText(
+        'This faculty cannot be deleted while departments, role assignments, or historical academic records still reference it. No related records were deleted.',
+      ),
+    ).toBeTruthy()
+    expect(deleteMock).toHaveBeenCalledWith(
+      '/functions/v1/catalog/faculty/{id}',
+      { params: { path: { id: 'faculty-1' } } },
+    )
+  })
+
+  it('deletes an unreferenced faculty through the catalog operation', async () => {
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete Faculty of Computing' }),
+    )
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Delete faculty',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(deleteMock).toHaveBeenCalledWith(
+        '/functions/v1/catalog/faculty/{id}',
+        { params: { path: { id: 'faculty-1' } } },
+      )
+      expect(getMock.mock.calls.length).toBeGreaterThan(2)
     })
   })
 })

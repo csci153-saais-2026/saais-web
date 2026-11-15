@@ -9,6 +9,7 @@ import {
   type OperationQuery,
 } from '@/lib/api'
 import { AdminDepartmentDialog } from './AdminDepartmentDialog'
+import { AdminFacultyDeleteDialog } from './AdminFacultyDeleteDialog'
 import { AdminFacultyDialog } from './AdminFacultyDialog'
 import { FACULTY_CATALOG_LIMIT } from './admin-faculties-model'
 
@@ -39,6 +40,7 @@ export default function AdminFacultiesPage() {
   const [facultyDialog, setFacultyDialog] = useState<
     Faculty | null | undefined
   >(undefined)
+  const [deleteFaculty, setDeleteFaculty] = useState<Faculty | null>(null)
   const [departmentDialog, setDepartmentDialog] = useState<
     Department | null | undefined
   >(undefined)
@@ -117,14 +119,24 @@ export default function AdminFacultiesPage() {
       header: 'Actions',
       className: 'whitespace-nowrap',
       cell: (faculty: Faculty) => (
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label={`Edit ${faculty.name}`}
-          onClick={() => setFacultyDialog(faculty)}
-        >
-          Edit
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Edit ${faculty.name}`}
+            onClick={() => setFacultyDialog(faculty)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            aria-label={`Delete ${faculty.name}`}
+            onClick={() => setDeleteFaculty(faculty)}
+          >
+            Delete
+          </Button>
+        </div>
       ),
     },
   ]
@@ -221,6 +233,25 @@ export default function AdminFacultiesPage() {
               : 'No departments have been added to the catalog.'
         }
       />
+
+      {deleteFaculty && (
+        <AdminFacultyDeleteDialog
+          faculty={deleteFaculty}
+          departmentCount={departmentCounts.get(deleteFaculty.id) ?? 0}
+          onOpenChange={(open) => {
+            if (!open) setDeleteFaculty(null)
+          }}
+          onConfirm={async (id) => {
+            await unwrapApiResult(
+              await apiClient.DELETE('/functions/v1/catalog/faculty/{id}', {
+                params: { path: { id } },
+              }),
+            )
+            setDeleteFaculty(null)
+            setReloadCount((count) => count + 1)
+          }}
+        />
+      )}
 
       {facultyDialog !== undefined && (
         <AdminFacultyDialog
