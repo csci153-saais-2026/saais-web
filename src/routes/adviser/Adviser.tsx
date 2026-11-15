@@ -6,6 +6,7 @@ import { StudentRecordHeader } from "@/components/features/student-record-header
 import { FormField } from "@/components/features/form-field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { student } from "@/mocks/adviser.mock"
+import { adviserRecordSections } from "@/navigation/adviser"
 
 const pages = {
   dashboard: lazy(() => import("./dashboard/AdviserDashboard")),
@@ -25,10 +26,7 @@ const detailPages = {
   history: lazy(() => import("./advisees/history/AdviseeHistory")),
 }
 
-const tabs = [
-  ["checklist", "Checklist"], ["grades", "Grades"], ["curriculum", "Curriculum"],
-  ["advising", "Advising"], ["notes", "Notes"], ["history", "Audit log"],
-]
+const tabs = Object.entries(adviserRecordSections)
 export const recordPath = "/adviser/advisee/2023-04412"
 
 /** Shared page composition kept within the Adviser route boundary. */
