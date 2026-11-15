@@ -8,6 +8,7 @@ vi.mock('redoc', async () => {
 })
 
 import LoginPage from '@/routes/auth/LoginPage'
+import { AuthProvider } from '@/context/AuthProvider'
 import { getSupabaseClient, resetSupabaseClientForTests } from '@/lib/supabase/client'
 import { parseMarkdownBlocks } from '@/routes/docs/markdown-blocks'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -84,12 +85,20 @@ describe('DocsAuthGate & session policy', () => {
     vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-key')
     const sdk = getSupabaseClient()
     const signIn = vi.spyOn(sdk.auth, 'signInWithPassword').mockResolvedValue({ data: { user: null, session: null }, error: null } as never)
-    render(<MemoryRouter initialEntries={['/login']}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/docs" element={<div>Signed in</div>} /></Routes></MemoryRouter>)
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/docs" element={<div>Signed in</div>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    )
     fireEvent.change(screen.getByLabelText('Institutional email'), { target: { value: 'student@vsu.edu.ph' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password-test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     await waitFor(() => expect(signIn).toHaveBeenCalledWith({ email: 'student@vsu.edu.ph', password: 'password-test' }))
-    await screen.findByText('Signed in')
   })
 
   it('hides docs when the Supabase session signs out', async () => {

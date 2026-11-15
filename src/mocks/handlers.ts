@@ -76,6 +76,31 @@ function nextSyntheticUuid(): string {
   return `99999999-0000-4000-8000-${hex}`
 }
 
+function isIncCompletionCorrectionRequest(
+  value: unknown,
+): value is ApiSchema<'INCCompletionCorrectionRequest'> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const body = value as Record<string, unknown>
+  const allowedKeys = new Set(['completion_grade', 'reason', 'expected_updated_at'])
+  if (Object.keys(body).some(key => !allowedKeys.has(key))) return false
+
+  const grade = body.completion_grade
+  const reason = body.reason
+  const expectedUpdatedAt = body.expected_updated_at
+  return typeof grade === 'number' &&
+    Number.isFinite(grade) &&
+    grade >= 1 &&
+    grade <= 5 &&
+    grade * 4 % 1 === 0 &&
+    typeof reason === 'string' &&
+    reason.trim().length > 0 &&
+    reason.length <= 4000 &&
+    Array.from(reason).length <= 2000 &&
+    typeof expectedUpdatedAt === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(expectedUpdatedAt) &&
+    Number.isFinite(Date.parse(expectedUpdatedAt))
+}
+
 function errorJson(
   status: number,
   code: string,
@@ -299,20 +324,39 @@ export const saaisMswHandlers = [
     if (!body?.token || body.token.trim().length < 8) {
       return errorJson(400, 'INVALID_TOKEN', 'Invitation token is invalid.')
     }
-    if (body.token === 'expired-invite-token') {
+    const token = body.token.trim()
+    if (token === 'expired-invite-token') {
       return errorJson(409, 'INVITE_EXPIRED', 'Invitation token has expired.')
     }
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (!matchedProfile) {
+      return errorJson(404, 'INVITE_NOT_FOUND', 'Invitation not found.')
+    }
+    if (matchedProfile.status !== 'invited') {
+      return errorJson(409, 'INVITE_ALREADY_USED', 'Invitation has already been activated.')
+    }
+    const dept = db.departments.find((d) => d.id === matchedProfile.department_id)
+    const faculty = db.faculties.find((f) => f.id === matchedProfile.faculty_id)
     const response: ApiSchema<'PreviewInviteResponse'> = {
       valid: true,
-      status: 'pending',
-      email: MOCK_PERSONAS.student_secondary.email,
-      full_name: MOCK_PERSONAS.student_secondary.fullName,
-      role: 'student',
-      roles: ['student'],
-      faculty_name: 'Faculty of Computing',
-      department_name: 'Department of Computer Science and Technology',
-      program_code: 'BSCS',
-      expires_at: '2026-12-31T23:59:59Z',
+      status: matchedProfile.invitation_status ?? 'pending',
+      email: matchedProfile.email,
+      full_name: matchedProfile.full_name,
+      role: matchedProfile.role,
+      roles: matchedProfile.roles,
+      faculty_name: faculty?.name ?? 'Faculty of Computing',
+      department_name: dept?.name ?? 'Department of Computer Science and Technology',
+      program_code: matchedProfile.role === 'student' ? 'BSCS' : null,
+      expires_at: matchedProfile.invitation_expires_at ?? '2026-12-31T23:59:59Z',
     }
     return HttpResponse.json(response, { status: 200 })
   }),
@@ -333,6 +377,25 @@ export const saaisMswHandlers = [
         'Password must be between 12 and 128 characters.',
       )
     }
+    const token = body.token.trim()
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (matchedProfile) {
+      db.profiles = db.profiles.map((p) =>
+        p.id === matchedProfile.id
+          ? { ...p, status: 'active', invitation_status: 'accepted' }
+          : p,
+      )
+    }
+
     const response: ApiSchema<'VerifyInviteResponse'> = {
       success: true,
       message: 'Account successfully activated.',
@@ -349,6 +412,25 @@ export const saaisMswHandlers = [
     if (!body?.token) {
       return errorJson(400, 'INVALID_TOKEN', 'Invitation token is required.')
     }
+    const token = body.token.trim()
+    const db = getMockDatabase()
+    const invitedProfiles = db.profiles.filter((p) => p.status === 'invited')
+    const matchedProfile =
+      (token.startsWith('invite:')
+        ? db.profiles.find((p) => p.id === token.slice('invite:'.length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
+      invitedProfiles[0]
+
+    if (matchedProfile) {
+      db.profiles = db.profiles.map((p) =>
+        p.id === matchedProfile.id
+          ? { ...p, invitation_status: 'declined' }
+          : p,
+      )
+    }
+
     const response: ApiSchema<'DeclineInviteResponse'> = {
       success: true,
       message: 'Invitation declined.',
@@ -2369,11 +2451,12 @@ export const saaisMswHandlers = [
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
-      // Parse the body first: everything below reads and writes state with no further await.
       const rawBody: unknown = await request.json().catch(() => null)
-      const body = rawBody !== null && typeof rawBody === 'object' && !Array.isArray(rawBody)
-        ? rawBody as Partial<ApiSchema<'INCCompletionCorrectionRequest'>>
-        : null
+      if (!isIncCompletionCorrectionRequest(rawBody)) {
+        return errorJson(400, 'INVALID_INPUT', 'Enter a valid completion grade, reason, and expected_updated_at.')
+      }
+      const body = rawBody
+
       const db = getMockDatabase()
       const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
       if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found.')
@@ -2385,16 +2468,19 @@ export const saaisMswHandlers = [
       const offering = db.courseOfferings.find(o => o.id === attempt.course_offering_id)
       const term = db.schoolTerms.find(t => t.id === offering?.school_term_id)
       if (term?.is_locked && !term.override_flag) return errorJson(409, 'TERM_LOCKED', 'Corrections require an editable term.')
-      const grade = body?.completion_grade
-      if (typeof body?.reason !== 'string' || !body.reason.trim() || typeof grade !== 'number' || !Number.isFinite(grade) || grade < 1 || grade > 5 || grade * 4 % 1 !== 0) return errorJson(400, 'INVALID_INPUT', 'Enter a valid completion grade and reason.')
       if (body.expected_updated_at !== resolution.updated_at) return errorJson(409, 'STALE_COMPLETION', 'The INC completion changed since it was loaded.')
+
+      const oldValue = {
+        completion_grade: resolution.completion_grade,
+        effective_status: resolution.effective_status,
+      }
       const updatedAt = new Date().toISOString()
       const corrected: ApiSchema<'INCResolution'> = {
         ...resolution,
-        completion_grade: grade,
+        completion_grade: body.completion_grade,
         updated_by: auth.persona.profileId,
         updated_at: updatedAt,
-        effective_status: grade <= 3.0 ? 'passed' : 'failed',
+        effective_status: body.completion_grade <= 3.0 ? 'passed' : 'failed',
       }
       db.incResolutions[db.incResolutions.indexOf(resolution)] = corrected
       db.attemptResults[db.attemptResults.indexOf(attempt)] = {
@@ -2404,6 +2490,32 @@ export const saaisMswHandlers = [
         effective_status: corrected.effective_status,
         updated_at: updatedAt,
       }
+      const student = db.profiles.find(profile => profile.id === studentId)
+      const auditEntry: ApiSchema<'AuditLogEntry'> = {
+        id: nextSyntheticUuid(),
+        actor_id: auth.persona.profileId,
+        actor_name: auth.persona.fullName,
+        actor_role: auth.persona.primaryRole,
+        student_id: studentId,
+        student_name: student?.full_name ?? null,
+        student_number: student?.student_number ?? null,
+        target_label: student?.student_number
+          ? `${student.student_number} · ${student.full_name}`
+          : student?.full_name ?? 'Student INC completion',
+        action: 'inc_completion_corrected',
+        action_category: 'grade_update',
+        entity_type: 'inc_resolution',
+        entity_id: resolution.id,
+        details_summary: `Corrected INC completion grade from ${oldValue.completion_grade} to ${corrected.completion_grade}.`,
+        old_value: oldValue,
+        new_value: {
+          completion_grade: corrected.completion_grade,
+          effective_status: corrected.effective_status,
+        },
+        reason: body.reason,
+        created_at: updatedAt,
+      }
+      db.auditLogEntries.push(auditEntry)
       return HttpResponse.json(corrected, { status: 200 })
     },
   ),

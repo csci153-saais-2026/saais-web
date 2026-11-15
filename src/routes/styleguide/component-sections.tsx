@@ -841,7 +841,7 @@ function SidebarSection() {
         </SidebarProvider>
       </Specimen>
       <Code>{`<AppShell
-  sidebar={{ portalLabel: "Student portal", sections, user, onSignOut }}
+  sidebar={{ portalLabel: "Student portal", sections, currentPath: location.pathname, user, onSignOut }}
   crumbs={[{ label: "My academic journey", to: "/" }, { label: "Dashboard" }]}
   topbarTrailing={<NotificationBell … />}
 >{children}</AppShell>`}</Code>
