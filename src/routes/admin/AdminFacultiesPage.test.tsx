@@ -41,6 +41,10 @@ function result(data: unknown) {
 
 describe('AdminFacultiesPage', () => {
   beforeEach(() => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    })
     getMock.mockReset()
     postMock.mockReset()
     patchMock.mockReset()
@@ -53,7 +57,10 @@ describe('AdminFacultiesPage', () => {
     patchMock.mockResolvedValue(result(faculties[0]))
   })
 
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
+  })
 
   it('loads bounded read-only projections and displays the faculty hierarchy', async () => {
     render(<AdminFacultiesPage />)
@@ -157,6 +164,68 @@ describe('AdminFacultiesPage', () => {
           body: {
             name: 'Faculty of Computing and Design',
             code: 'FC',
+          },
+        },
+      )
+    })
+  })
+
+  it('requires a parent faculty and creates departments through the catalog operation', async () => {
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(screen.getByRole('button', { name: 'Add department' }))
+
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Department name'), {
+      target: { value: 'Information Systems' },
+    })
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Add department' }),
+    )
+    expect(await screen.findByText('Select a faculty.')).toBeTruthy()
+    expect(postMock).not.toHaveBeenCalled()
+
+    fireEvent.click(within(dialog).getByRole('combobox', { name: 'Parent faculty' }))
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Faculty of Computing' }),
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Add department' }),
+    )
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith(
+        '/functions/v1/catalog/department',
+        {
+          body: {
+            faculty_id: 'faculty-1',
+            name: 'Information Systems',
+            code: null,
+          },
+        },
+      )
+    })
+  })
+
+  it('updates the department parent through the catalog operation', async () => {
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Computer Science' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Department name'), {
+      target: { value: 'Computing' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save department' }))
+
+    await waitFor(() => {
+      expect(patchMock).toHaveBeenCalledWith(
+        '/functions/v1/catalog/department/{id}',
+        {
+          params: { path: { id: 'department-1' } },
+          body: {
+            faculty_id: 'faculty-1',
+            name: 'Computing',
+            code: 'CS',
           },
         },
       )

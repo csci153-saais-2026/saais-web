@@ -8,6 +8,7 @@ import {
   type ApiSchema,
   type OperationQuery,
 } from '@/lib/api'
+import { AdminDepartmentDialog } from './AdminDepartmentDialog'
 import { AdminFacultyDialog } from './AdminFacultyDialog'
 import { FACULTY_CATALOG_LIMIT } from './admin-faculties-model'
 
@@ -29,17 +30,21 @@ const DEPARTMENT_QUERY: OperationQuery<'listDepartments'> = {
 export default function AdminFacultiesPage() {
   const [faculties, setFaculties] = useState<Faculty[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
-  const [loaded, setLoaded] = useState(false)
   const [reloadCount, setReloadCount] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  const [loadedRequest, setLoadedRequest] = useState(-1)
+  const [requestError, setRequestError] = useState<{
+    readonly request: number
+    readonly message: string
+  } | null>(null)
   const [facultyDialog, setFacultyDialog] = useState<
     Faculty | null | undefined
+  >(undefined)
+  const [departmentDialog, setDepartmentDialog] = useState<
+    Department | null | undefined
   >(undefined)
 
   useEffect(() => {
     let active = true
-    setLoaded(false)
-    setError(null)
 
     void Promise.all([
       apiClient
@@ -53,17 +58,20 @@ export default function AdminFacultiesPage() {
         if (!active) return
         setFaculties(nextFaculties)
         setDepartments(nextDepartments)
+        setRequestError(null)
       })
       .catch((requestError: unknown) => {
         if (!active) return
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : 'The faculty and department catalogs could not be loaded.',
-        )
+        setRequestError({
+          request: reloadCount,
+          message:
+            requestError instanceof Error
+              ? requestError.message
+              : 'The faculty and department catalogs could not be loaded.',
+        })
       })
       .finally(() => {
-        if (active) setLoaded(true)
+        if (active) setLoadedRequest(reloadCount)
       })
 
     return () => {
@@ -71,6 +79,9 @@ export default function AdminFacultiesPage() {
     }
   }, [reloadCount])
 
+  const loading = loadedRequest !== reloadCount
+  const error =
+    requestError?.request === reloadCount ? requestError.message : null
   const departmentCounts = useMemo(() => {
     const departmentCounts = new Map<string, number>()
     for (const department of departments) {
@@ -132,6 +143,20 @@ export default function AdminFacultiesPage() {
       cell: (department: Department) =>
         facultiesById.get(department.faculty_id)?.name ?? 'Unknown faculty',
     },
+    {
+      header: 'Actions',
+      className: 'whitespace-nowrap',
+      cell: (department: Department) => (
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={`Edit ${department.name}`}
+          onClick={() => setDepartmentDialog(department)}
+        >
+          Edit
+        </Button>
+      ),
+    },
   ]
 
   return (
@@ -163,10 +188,10 @@ export default function AdminFacultiesPage() {
         title="Faculties"
         description="Institutional colleges and divisions, with department totals."
         columns={facultyColumns}
-        rows={loaded && !error ? faculties : []}
+        rows={!loading && !error ? faculties : []}
         rowKey={(faculty) => faculty.id}
         empty={
-          !loaded
+          loading
             ? 'Loading faculties…'
             : error
               ? 'Faculties are unavailable.'
@@ -177,11 +202,19 @@ export default function AdminFacultiesPage() {
       <DataTablePanel
         title="Departments"
         description="Academic departments and their parent faculties."
+        action={
+          <Button
+            onClick={() => setDepartmentDialog(null)}
+            disabled={faculties.length === 0}
+          >
+            Add department
+          </Button>
+        }
         columns={departmentColumns}
-        rows={loaded && !error ? departments : []}
+        rows={!loading && !error ? departments : []}
         rowKey={(department) => department.id}
         empty={
-          !loaded
+          loading
             ? 'Loading departments…'
             : error
               ? 'Departments are unavailable.'
@@ -212,6 +245,34 @@ export default function AdminFacultiesPage() {
               )
             }
             setFacultyDialog(undefined)
+            setReloadCount((count) => count + 1)
+          }}
+        />
+      )}
+      {departmentDialog !== undefined && (
+        <AdminDepartmentDialog
+          key={departmentDialog?.id ?? 'new'}
+          department={departmentDialog}
+          faculties={faculties}
+          onOpenChange={(open) => {
+            if (!open) setDepartmentDialog(undefined)
+          }}
+          onSubmit={async (request) => {
+            if (departmentDialog) {
+              await unwrapApiResult(
+                await apiClient.PATCH('/functions/v1/catalog/department/{id}', {
+                  params: { path: { id: departmentDialog.id } },
+                  body: request,
+                }),
+              )
+            } else {
+              await unwrapApiResult(
+                await apiClient.POST('/functions/v1/catalog/department', {
+                  body: request,
+                }),
+              )
+            }
+            setDepartmentDialog(undefined)
             setReloadCount((count) => count + 1)
           }}
         />
