@@ -3447,8 +3447,12 @@ export interface components {
             entity_id: string | null;
             /** @description Human-readable summary line rendered in the Audit Log table and CSV export. */
             readonly details_summary?: string | null;
-            old_value?: Record<string, never> | null;
-            new_value?: Record<string, never> | null;
+            old_value?: {
+                [key: string]: unknown;
+            } | null;
+            new_value?: {
+                [key: string]: unknown;
+            } | null;
             reason?: string | null;
             /** Format: date-time */
             readonly created_at: string;
