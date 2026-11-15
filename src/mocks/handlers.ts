@@ -2357,51 +2357,92 @@ export const saaisMswHandlers = [
   http.patch(
     '*/functions/v1/students/:student_id/attempts/:attempt_id/grades',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const attemptId = String(params.attempt_id)
-      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
-      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
-      const result: ApiSchema<'AttemptResult'> = {
-        id: attemptId,
-        student_id: studentId,
-        course_offering_id: MOCK_IDS.offeringCsci153,
-        curriculum_term_course_id: MOCK_IDS.slotCsci153,
-        recorded_status: 'passed',
-        midterm_status: 'graded',
-        midterm_grade: Number(body.midterm_grade ?? 1.75),
-        final_grade: Number(body.final_grade ?? 1.5),
-        inc_deadline: null,
-        instructor: 'Dr. Jose Rizalino Gomez',
-        prerequisite_override: false,
-        prerequisite_grade_override: false,
-        grade_fix_history: [
-          {
-            changed_at: '2026-11-10T09:00:00Z',
-            old_grade: 1.75,
-            new_grade: Number(body.final_grade ?? 1.5),
-            actor_name: auth.persona.fullName,
-            summary: String(body.reason ?? 'Grade correction'),
-          },
-        ],
-        units_attempted: 3,
-        revision: Number(body.expected_revision ?? 1) + 1,
-        created_at: '2026-08-15T08:00:00Z',
-        updated_at: '2026-11-10T09:00:00Z',
-        completion_grade: null,
-        resolved_at: null,
-        effective_status: 'passed',
-        gwa_grade: Number(body.final_grade ?? 1.5),
-        is_lapsed_inc: false,
-        is_repeated: false,
-        counts_toward_cumulative_gwa: false,
+      const db = getMockDatabase()
+      if (!db.adviserAssignments.some(a => a.student_id === studentId && a.adviser_id === auth.persona.profileId && a.end_date == null)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may correct grades.')
       }
+      const attempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
+      if (!attempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found for this student.')
+      const offering = db.courseOfferings.find(o => o.id === attempt.course_offering_id)
+      const term = db.schoolTerms.find(t => t.id === offering?.school_term_id)
+      if (!term) return errorJson(404, 'NOT_FOUND', 'School term not found.')
+      if (attemptEncodingClosed(studentId, attemptId)) return encodingClosedResponse()
+      if (term.is_locked && !term.override_flag) return errorJson(409, 'TERM_LOCKED', 'Corrections require an editable term.')
+      const body = await request.json().catch(() => null) as Record<string, unknown> | null
+      const allowed = ['expected_revision', 'status', 'midterm_status', 'midterm_grade', 'final_grade', 'instructor', 'reason']
+      const changed = ['status', 'midterm_status', 'midterm_grade', 'final_grade', 'instructor']
+      const validGrade = (value: unknown) => value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 1 && value <= 5 && value * 4 % 1 === 0)
+      if (!body || Object.keys(body).some(key => !allowed.includes(key)) || !changed.some(key => key in body) ||
+          !Number.isInteger(body.expected_revision) || (body.expected_revision as number) < 0 ||
+          typeof body.reason !== 'string' || !body.reason.trim() || body.reason.length > 2000 ||
+          ('final_grade' in body && !validGrade(body.final_grade)) || ('midterm_grade' in body && !validGrade(body.midterm_grade)) ||
+          ('status' in body && !['passed', 'failed', 'currently_enrolled', 'inc', 'dr', 'na'].includes(String(body.status))) ||
+          ('midterm_status' in body && body.midterm_status !== null && !['graded', 'dr'].includes(String(body.midterm_status))) ||
+          ('instructor' in body && body.instructor !== null && (typeof body.instructor !== 'string' || body.instructor.length > 150))) {
+        return errorJson(400, 'INVALID_INPUT', 'Provide valid correction fields, revision and reason.')
+      }
+      if (body.expected_revision !== attempt.revision) return errorJson(409, 'STALE_ATTEMPT', 'The attempt changed since it was loaded.')
+      if (attempt.completion_grade != null) return errorJson(409, 'INC_COMPLETION_EXISTS', 'Use the INC completion correction operation.')
+      if (attempt.recorded_status === 'inc' && body.final_grade != null) return errorJson(409, 'INC_COMPLETION_REQUIRED', 'Use the INC completion operation for an incomplete grade.')
+      if (!attempt.prerequisite_override && ('final_grade' in body || 'status' in body)) {
+        const required = db.prerequisites.filter(p => p.course_id === offering?.course_id && p.type === 'strict')
+        const unmet = required.some(prerequisite => {
+          const slots = db.curriculumTermCourses.filter(s => s.course_id === prerequisite.prerequisite_course_id).map(s => s.id)
+          const passed = (candidate: ApiSchema<'AttemptResult'>) => {
+            const priorOffering = db.courseOfferings.find(o => o.id === candidate.course_offering_id)
+            const priorTerm = db.schoolTerms.find(t => t.id === priorOffering?.school_term_id)
+            return candidate.student_id === studentId && candidate.effective_status === 'passed' && !!priorTerm && priorTerm.chronological_key < term.chronological_key
+          }
+          const direct = db.attemptResults.some(a => passed(a) && db.courseOfferings.some(o => o.id === a.course_offering_id && o.course_id === prerequisite.prerequisite_course_id))
+          const credit = db.outsideCredits.some(c => c.student_id === studentId && c.revoked_at == null && slots.includes(c.destination_curriculum_term_course_id) && c.decided_at.slice(0, 10) <= term.ends_on)
+          const equivalent = db.equivalencyDecisions.some(d => d.student_id === studentId && d.revoked_at == null && slots.includes(d.destination_curriculum_term_course_id) && d.decided_at.slice(0, 10) <= term.ends_on && db.attemptResults.some(a => a.id === d.attempt_id && passed(a)))
+          return !direct && !credit && !equivalent
+        })
+        if (unmet) return errorJson(409, 'PREREQUISITE_NOT_MET', 'A strict prerequisite is not satisfied and this attempt has no override.')
+      }
+      let finalGrade = ('final_grade' in body ? body.final_grade : attempt.final_grade) as number | null
+      const midtermGrade = ('midterm_grade' in body ? body.midterm_grade : attempt.midterm_grade) as number | null
+      const midtermStatus = ('midterm_status' in body ? body.midterm_status : attempt.midterm_status) as ApiSchema<'MidtermStatus'> | null | undefined
+      let status = ('status' in body ? body.status : attempt.recorded_status) as ApiSchema<'AttemptStatus'>
+      if (attempt.midterm_status === 'dr' && midtermStatus !== 'dr' && !('status' in body)) status = 'currently_enrolled'
+      if (midtermStatus === 'dr') {
+        if (body.final_grade != null || (body.status != null && body.status !== 'dr')) return errorJson(400, 'INVALID_INPUT', 'A dropped midterm requires a dropped final.')
+        status = 'dr'; finalGrade = null
+      } else if (status === 'dr') {
+        return errorJson(400, 'INVALID_INPUT', 'A dropped final requires a dropped midterm.')
+      } else if (finalGrade != null) {
+        const derived = finalGrade <= 3 ? 'passed' : 'failed'
+        if ('status' in body && status !== derived) return errorJson(400, 'INVALID_INPUT', 'Status must match the final grade.')
+        status = derived
+      } else if (status === 'passed' || status === 'failed') {
+        return errorJson(400, 'INVALID_INPUT', 'Passed or failed status requires a numeric final grade.')
+      }
+      if (midtermStatus === 'dr' && midtermGrade != null) return errorJson(400, 'INVALID_INPUT', 'A dropped midterm cannot have a numeric grade.')
+      const updatedAt = new Date().toISOString()
+      const instructor = ('instructor' in body ? body.instructor : attempt.instructor) as string | null | undefined
+      const oldValue = { status: attempt.recorded_status, midterm_status: attempt.midterm_status, midterm_grade: attempt.midterm_grade, final_grade: attempt.final_grade, instructor: attempt.instructor }
+      const newValue = { status, midterm_status: midtermStatus, midterm_grade: midtermGrade, final_grade: finalGrade, instructor }
+      const history = [...(attempt.grade_fix_history ?? [])]
+      if (attempt.midterm_grade !== midtermGrade) history.push({ changed_at: updatedAt, old_grade: attempt.midterm_grade, new_grade: midtermGrade, actor_name: auth.persona.fullName, summary: 'Midterm grade corrected' })
+      if (attempt.final_grade !== finalGrade) history.push({ changed_at: updatedAt, old_grade: attempt.final_grade, new_grade: finalGrade, actor_name: auth.persona.fullName, summary: 'Final grade corrected' })
+      const incDeadline = status === 'inc' ? attempt.inc_deadline ?? term.default_inc_deadline : null
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+      const lapsed = status === 'inc' && !!incDeadline && incDeadline < today
+      const result: ApiSchema<'AttemptResult'> = { ...attempt, recorded_status: status, effective_status: status, midterm_status: midtermStatus,
+        midterm_grade: midtermGrade, final_grade: finalGrade, instructor, inc_deadline: incDeadline,
+        gwa_grade: finalGrade ?? (lapsed ? 5 : null), is_lapsed_inc: lapsed, revision: attempt.revision + 1, updated_at: updatedAt, grade_fix_history: history }
+      db.attemptResults[db.attemptResults.indexOf(attempt)] = result
+      const base = db.attempts.find(a => a.id === attemptId && a.student_id === studentId)
+      if (base) Object.assign(base, { ...newValue, inc_deadline: result.inc_deadline, revision: result.revision, updated_at: updatedAt, updated_by: auth.persona.profileId })
+      const student = db.profiles.find(p => p.id === studentId)
+      db.auditLogEntries.push({ id: nextSyntheticUuid(), actor_id: auth.persona.profileId, actor_name: auth.persona.fullName,
+        actor_role: auth.persona.primaryRole, student_id: studentId, student_name: student?.full_name ?? null, student_number: student?.student_number ?? null,
+        target_label: student?.full_name ?? 'Student grade', action: 'grade_corrected', action_category: 'grade_update', entity_type: 'attempt', entity_id: attemptId,
+        details_summary: 'Corrected course grade or status.', old_value: oldValue, new_value: newValue, reason: body.reason.trim(), created_at: updatedAt })
       return HttpResponse.json(markRetakeResults([result])[0], { status: 200 })
     },
   ),
