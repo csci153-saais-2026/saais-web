@@ -1025,17 +1025,17 @@ describe("MSW contract handlers & role-based authorization (Issue #43)", () => {
         ?.key,
     ).toBe("adviser");
     expect(
-      resolveMockPersonaFromAuthHeader('Bearer mock-jwt:dean_dept_head')?.key,
-    ).toBe('dean_dept_head')
-    expect(resolveMockPersonaFromAuthHeader('Bearer admin-jwt')?.key).toBe(
-      'admin',
-    )
-    expect(MOCK_PERSONAS.admin.email).toBe('23-1-01457@vsu.edu.ph')
-    expect(MOCK_PERSONAS.admin.fullName).toBe('Lelis, Nietzchan Jake')
-    expect(MOCK_PERSONAS.admin.roles).toEqual(['admin', 'adviser'])
-    expect(MOCK_PERSONAS.student_sample_1.primaryRole).toBe('student')
-    expect(resolveMockPersonaFromAuthHeader(null)).toBeNull()
-  })
+      resolveMockPersonaFromAuthHeader("Bearer mock-jwt:dean_dept_head")?.key,
+    ).toBe("dean_dept_head");
+    expect(resolveMockPersonaFromAuthHeader("Bearer admin-jwt")?.key).toBe(
+      "admin",
+    );
+    expect(MOCK_PERSONAS.admin.email).toBe("23-1-01457@vsu.edu.ph");
+    expect(MOCK_PERSONAS.admin.fullName).toBe("Lelis, Nietzchan Jake");
+    expect(MOCK_PERSONAS.admin.roles).toEqual(["admin", "adviser"]);
+    expect(MOCK_PERSONAS.student_sample_1.primaryRole).toBe("student");
+    expect(resolveMockPersonaFromAuthHeader(null)).toBeNull();
+  });
 
   it("handles pre-session invitation preview, verify (12-128 char policy), and decline without Bearer token", async () => {
     const client = createSaaisApiClient({
@@ -1205,9 +1205,11 @@ describe("MSW contract handlers & role-based authorization (Issue #43)", () => {
       await client.GET("/functions/v1/students", {
         params: { query: { assignment_scope: "current" } },
       }),
-    )
-    expect(roster.total_count).toBe(13)
-    expect(roster.items.some((item) => item.student_number === '24-1-01798')).toBe(true)
+    );
+    expect(roster.total_count).toBe(13);
+    expect(
+      roster.items.some((item) => item.student_number === "24-1-01798"),
+    ).toBe(true);
 
     const recsResponse = await client.GET(
       "/functions/v1/students/{student_id}/recommendations",
