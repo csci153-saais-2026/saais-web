@@ -383,7 +383,7 @@ export default function AdminProgramsPage() {
         <Button
           variant="outline"
           size="sm"
-          disabled={!hasNextPage || loading || Boolean(searchError)}
+          disabled={!hasNextPage || loading || Boolean(error) || Boolean(searchError)}
           onClick={() => setOffset((current) => current + PROGRAM_PAGE_SIZE)}
         >
           Next
