@@ -44,6 +44,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
       apiKey: TEST_API_KEY,
       mode: 'mock',
     })
+
     const target = getMockDatabase().profiles.find(
       (profile) => profile.id === MOCK_IDS.studentPrimary,
     )
@@ -846,5 +847,74 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     // Resetting restores initial database state
     resetMockDatabase()
     expect(getMockDatabase().faculties).toHaveLength(3)
+  })
+})
+
+describe('system settings mock scope', () => {
+  const client = () =>
+    createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+  it('reads and updates institution settings without changing department settings', async () => {
+    loginAsMockPersona('admin')
+    const api = client()
+    const query = {
+      select:
+        'id,department_id,warning_pct,probation_pct,dismissal_pct,sender_email,last_backup_at,last_backup_reference,last_backup_location,last_backup_scope,updated_at',
+      order: 'department_id.asc.nullsfirst,id.asc',
+      limit: 1000,
+    }
+
+    const rows = unwrapApiResult(
+      await api.GET('/rest/v1/system_settings', { params: { query } }),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.department_id).toBeNull()
+
+    const update = unwrapApiResult(
+      await api.PUT('/functions/v1/settings', {
+        body: {
+          warning_pct: 20,
+          probation_pct: 40,
+          dismissal_pct: 80,
+        },
+      }),
+    )
+    expect(update.department_id).toBeNull()
+    expect(update.warning_pct).toBe(20)
+    expect(
+      getMockDatabase().systemSettings.find(
+        (setting) => setting.department_id === MOCK_IDS.deptDcst,
+      )?.warning_pct,
+    ).toBe(25)
+
+    const backup = unwrapApiResult(
+      await api.POST('/functions/v1/settings/record-backup', {
+        body: { scope: 'institution_wide' },
+      }),
+    )
+    expect(backup.department_id).toBeNull()
+    expect(backup.last_backup_by).toBe(MOCK_IDS.systemAdmin)
+    expect(backup.last_backup_at).toBeTruthy()
+  })
+
+  it('keeps Department Head updates within its department scope', async () => {
+    loginAsMockPersona('department_head')
+    const update = unwrapApiResult(
+      await client().PUT('/functions/v1/settings', {
+        body: { warning_pct: 10 },
+      }),
+    )
+
+    expect(update.department_id).toBe(MOCK_IDS.deptDcst)
+    expect(update.warning_pct).toBe(10)
+    expect(
+      getMockDatabase().systemSettings.find(
+        (setting) => setting.department_id === null,
+      )?.warning_pct,
+    ).toBe(25)
   })
 })
