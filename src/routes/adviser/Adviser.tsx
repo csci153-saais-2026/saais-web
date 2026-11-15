@@ -1,5 +1,6 @@
-import { lazy, Suspense, type ReactNode } from "react"
-import { Link, Route, Routes, useParams } from "react-router"
+import { lazy, type ReactNode } from "react"
+import { Link, Navigate, Route, Routes, useParams } from "react-router"
+import { AdviserLayout } from "./AdviserLayout"
 import { SampleFooter } from "@/components/features/sample-footer"
 import { StudentRecordHeader } from "@/components/features/student-record-header"
 import { FormField } from "@/components/features/form-field"
@@ -40,7 +41,7 @@ export function AdviserPage({ title, tab, children }: {
   const { id } = useParams<{ id: string }>()
   const detailPath = id ? `/adviser/advisee/${encodeURIComponent(id)}` : recordPath
   return (
-    <main aria-label={title}>
+    <section aria-label={title} className="min-w-0 max-w-full">
         {tab && (
           <>
             <StudentRecordHeader {...student} />
@@ -50,7 +51,7 @@ export function AdviserPage({ title, tab, children }: {
                   key={key}
                   to={`${detailPath}/${key}`}
                   aria-current={tab === key ? "page" : undefined}
-                  className={`border-b-2 px-0.5 py-3 text-sm ${tab === key ? "border-gold font-semibold text-foreground" : "border-transparent text-muted-2"}`}
+                  className={`shrink-0 border-b-2 px-0.5 py-3 text-sm ${tab === key ? "border-gold font-semibold text-foreground" : "border-transparent text-muted-2"}`}
                 >
                   {label}
                 </Link>
@@ -60,7 +61,7 @@ export function AdviserPage({ title, tab, children }: {
         )}
         {children}
         <SampleFooter>Sample records for presentation · Reference date: 19 September 2026</SampleFooter>
-    </main>
+    </section>
   )
 }
 
@@ -86,12 +87,11 @@ export function StaticSelect({ id, label, value, options, className }: {
 
 /** Mount at /adviser/* inside the host application's existing router. */
 export default function Adviser() {
-  const Dashboard = pages.dashboard
   const Checklist = detailPages.checklist
   return (
-    <Suspense fallback={<p className="p-8 text-muted-foreground">Loading adviser preview…</p>}>
-      <Routes>
-        <Route index element={<Dashboard />} />
+    <Routes>
+      <Route element={<AdviserLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
         {Object.entries(pages).map(([path, Page]) => <Route key={path} path={path} element={<Page />} />)}
         <Route path="advisee/:id">
           <Route index element={<Checklist />} />
@@ -103,7 +103,7 @@ export default function Adviser() {
             <Link to="/adviser/dashboard">Return to dashboard</Link>
           </AdviserPage>
         } />
-      </Routes>
-    </Suspense>
+      </Route>
+    </Routes>
   )
 }
