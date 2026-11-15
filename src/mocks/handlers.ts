@@ -63,7 +63,19 @@ function studentMetrics(studentId: string, departmentId: string) {
       const standing: ApiSchema<'AcademicStanding'> = settings && failurePct >= settings.dismissal_pct ? 'dismissed'
         : settings && failurePct >= settings.probation_pct ? 'probation'
           : settings && failurePct >= settings.warning_pct ? 'warning' : 'good_standing'
-  return { results, counted, countedUnits, gwa, earnedUnits, openInc, lapsed, flags, failed, failedUnits, failurePct, standing }
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const isDelinquent = db.schoolTerms.some(term => {
+    const assignment = db.studentCurriculumAssignments
+      .filter(a => a.student_id === studentId && a.start_date <= term.ends_on && (!a.end_date || a.end_date >= term.ends_on))
+      .sort((a, b) => b.start_date.localeCompare(a.start_date))[0]
+    const curriculum = db.curriculumVersions.find(c => c.id === assignment?.curriculum_version_id)
+    if (!curriculum) return false
+    const failedInTerm = results.filter(a => db.courseOfferings.some(o => o.id === a.course_offering_id && o.school_term_id === term.id))
+      .filter(a => (a.completion_grade ?? a.final_grade ?? (a.recorded_status === 'inc' && a.inc_deadline && a.inc_deadline < today ? 5 : null) ?? 0) > 3)
+      .reduce((sum, a) => sum + a.units_attempted, 0)
+    return failedInTerm >= curriculum.delinquency_threshold
+  })
+  return { results, counted, countedUnits, gwa, earnedUnits, openInc, lapsed, flags, failed, failedUnits, failurePct, standing, isDelinquent }
 }
 
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
@@ -1874,7 +1886,7 @@ export const saaisMswHandlers = [
         (auth.persona.roles.some(role => role === 'department_head' || role === 'department_staff') && canAccessDepartment(auth.persona, org.department_id)) ||
         (auth.persona.roles.includes('adviser') && !!ownAssignment)
       if (!visible) continue
-      const { gwa, earnedUnits, openInc, lapsed, flags, failed, standing } = studentMetrics(org.student_id, org.department_id)
+      const { gwa, earnedUnits, openInc, lapsed, flags, failed, standing, isDelinquent } = studentMetrics(org.student_id, org.department_id)
       const adviser = activeAssignment && db.profiles.find(p => p.id === activeAssignment.adviser_id)
       items.push({
         student_id: org.student_id, student_number: profile.student_number ?? '', full_name: profile.full_name,
@@ -1884,7 +1896,7 @@ export const saaisMswHandlers = [
         curriculum_version_id: curriculum.id, curriculum_label: curriculum.version_label, entry_year: org.entry_year,
         year_level: earnedUnits >= 110 ? 4 : earnedUnits >= 72 ? 3 : earnedUnits >= 36 ? 2 : 1,
         gwa, earned_units: earnedUnits, required_units: curriculum.total_units, standing,
-        is_delinquent: false, deficiencies_count: failed.length + openInc.length + lapsed.length + flags.length,
+        is_delinquent: isDelinquent, deficiencies_count: failed.length + openInc.length + lapsed.length + flags.length,
         open_inc_count: openInc.length, lapsed_inc_count: lapsed.length, open_flags_count: flags.length,
         nearest_inc_deadline: openInc.map(row => row.inc_deadline).filter((date): date is string => !!date).sort()[0] ?? null,
         assignment_status: activeAssignment ? 'active' : ownAssignment ? 'past' : 'unassigned',
@@ -1911,7 +1923,7 @@ export const saaisMswHandlers = [
       ).length,
       with_deficiencies_count: filtered.filter((i) => i.deficiencies_count > 0)
         .length,
-      flagged_count: filtered.filter((i) => i.open_flags_count > 0).length,
+      flagged_count: filtered.filter((i) => i.open_flags_count > 0 || i.is_delinquent).length,
       open_inc_students_count: filtered.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
@@ -1961,7 +1973,7 @@ export const saaisMswHandlers = [
           slots_satisfied: slots.filter(slot => passedSlots.has(slot.id)).length, total_slots: slots.length,
           open_inc_count: metrics.openInc.length, lapsed_inc_count: metrics.lapsed.length, open_flags_count: metrics.flags.length,
           deficiencies_count: metrics.failed.length + metrics.openInc.length + metrics.lapsed.length + metrics.flags.length,
-          is_delinquent: false, computed_at: '2026-11-10T08:00:00Z',
+          is_delinquent: metrics.isDelinquent, computed_at: '2026-11-10T08:00:00Z',
         }
         return HttpResponse.json(summary)
       }
@@ -1995,7 +2007,10 @@ export const saaisMswHandlers = [
             detail: 'Missing final laboratory project submission.',
           },
         ],
-        is_delinquent: false,
+        is_delinquent: (() => {
+          const organization = db.studentOrganizations.find(item => item.student_id === studentId)
+          return organization ? studentMetrics(studentId, organization.department_id).isDelinquent : false
+        })(),
         computed_at: '2026-11-10T08:00:00Z',
       }
       return HttpResponse.json(summary, { status: 200 })

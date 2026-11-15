@@ -65,7 +65,7 @@ logoutMockPersona()
 
 ### Additional sample students
 
-`student_sample_1` through `student_sample_24` are synthetic active accounts, with addresses `sample.student01@vsu.edu.ph` through `sample.student24@vsu.edu.ph`. Odd-numbered samples are assigned to `adviser`; even-numbered samples to `adviser_secondary`. Each has CSCI 101 and PHED 11 enrollment attempts linked to the instructors on their respective offerings, plus an adviser-authored note and a student notification. Some notes are archived and remain visible to their student. Use `loginAsMockPersona('student_sample_1')` to select one in mock mode. These accounts contain no real student data.
+`student_sample_1` through `student_sample_24` are synthetic active accounts, with addresses `sample.student01@vsu.edu.ph` through `sample.student24@vsu.edu.ph`. Odd-numbered samples are assigned to `adviser`; even-numbered samples to `adviser_secondary`. Each has CSCI 101 and PHED 11 attempts linked to the instructors on their respective offerings, plus an adviser-authored note and a student notification. Sample 4 has nine failed attempts totalling 26 units in one term, exceeding its curriculum's 24-unit delinquency threshold; the others start with the two courses in progress. Some notes are archived and remain visible to their student. Use `loginAsMockPersona('student_sample_1')` to select one in mock mode. These accounts contain no real student data.
 
 ### Persona Tokens Reference
 

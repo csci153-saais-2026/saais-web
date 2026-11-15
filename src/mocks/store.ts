@@ -1147,6 +1147,35 @@ function buildInitialMockDatabase(): MockDatabaseState {
         is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: false })
     }
   }
+  // Sample student 4 has 26 failed units in one term, above this curriculum's 24-unit threshold.
+  const delinquentStudent = MOCK_PERSONAS.student_sample_4!
+  const initialAttempts = db.attempts.filter(a => a.student_id === delinquentStudent.profileId)
+  for (const attempt of initialAttempts) {
+    attempt.status = 'failed'
+    attempt.final_grade = 5
+    const result = db.attemptResults.find(a => a.id === attempt.id)!
+    Object.assign(result, { recorded_status: 'failed', effective_status: 'failed', final_grade: 5, gwa_grade: 5, counts_toward_cumulative_gwa: true })
+  }
+  const extraCourseIds: string[] = [MOCK_IDS.courseCsci102, MOCK_IDS.courseCsci153, MOCK_IDS.courseCsci198, MOCK_IDS.courseNstp11]
+  for (let index = 1; index <= 3; index += 1) {
+    const id = `44000000-0000-4000-8004-${String(index).padStart(12, '0')}`
+    db.courses.push({ id, department_id: MOCK_IDS.deptDcst, code: `MATH ${120 + index}`, title: `Mathematics ${index}`, category: 'major', units: 3, is_elective: false, status: 'active', repeatable_type: 'none' })
+    extraCourseIds.push(id)
+  }
+  for (const [index, courseId] of extraCourseIds.entries()) {
+    const suffix = String(index + 1).padStart(12, '0')
+    const offeringId = `66000000-0000-4000-8004-${suffix}`
+    const course = db.courses.find(c => c.id === courseId)!
+    db.courseOfferings.push({ id: offeringId, course_id: courseId, school_term_id: MOCK_IDS.term2026Sem1Open, section: 'D', instructor: MOCK_PERSONAS.adviser_secondary.fullName, is_by_request: false })
+    const common = { id: `80000000-0000-4000-8004-${suffix}`, student_id: delinquentStudent.profileId, course_offering_id: offeringId,
+      curriculum_term_course_id: db.curriculumTermCourses.find(s => s.course_id === courseId)?.id ?? null,
+      midterm_status: null, midterm_grade: null, final_grade: 5, inc_deadline: null, instructor: MOCK_PERSONAS.adviser_secondary.fullName,
+      prerequisite_override: courseId === MOCK_IDS.courseCsci102 || courseId === MOCK_IDS.courseCsci153, prerequisite_grade_override: false, units_attempted: course.units, revision: 1,
+      created_at: '2026-08-15T08:00:00Z', updated_at: '2026-11-01T08:00:00Z' }
+    db.attempts.push({ ...common, status: 'failed', created_by: MOCK_IDS.adviserSecondary, updated_by: MOCK_IDS.adviserSecondary })
+    db.attemptResults.push({ ...common, recorded_status: 'failed', effective_status: 'failed', completion_grade: null, resolved_at: null,
+      gwa_grade: 5, is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: true })
+  }
   return db
 }
 
