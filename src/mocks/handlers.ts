@@ -2923,46 +2923,36 @@ export const saaisMswHandlers = [
   ),
 
   http.post('*/functions/v1/grades/import', async ({ request }) => {
-    const auth = authenticateRequest(request, [
-      'admin',
-      'dean',
-      'department_head',
-      'adviser',
-    ])
+    const auth = authenticateRequest(request, ['adviser'])
     if ('response' in auth) return auth.response
-    const body = (await request.json().catch(() => null)) as
-      | ApiSchema<'GradeBatchImportRequest'>
-      | null
-    if (!body?.mode || !body?.school_term_id || !Array.isArray(body.rows)) {
-      return errorJson(400, 'INVALID_INPUT', 'mode, school_term_id, and rows are required.')
-    }
+    const body = await request.json().catch(() => null) as ApiSchema<'GradeBatchImportRequest'> | null
+    if (!body || !body.school_term_id || !Array.isArray(body.rows) || !body.rows.length || body.rows.length > 500) return errorJson(400, 'INVALID_INPUT', 'Provide a term and 1 to 500 grade rows.')
     const db = getMockDatabase()
-    if (body.rows.some(row => {
-      const student = db.profiles.find(p => p.student_number === row.student_number)
-      return student && departmentEncodingClosed(student.id, body.school_term_id)
-    })) return encodingClosedResponse()
-    const passed = (row: ApiSchema<'GradeBatchImportRequest'>['rows'][number]) => {
-      const student = db.profiles.find(p => p.student_number === row.student_number)
-      const course = db.courses.find(c => c.code === row.course_code)
-      const offering = db.courseOfferings.find(o => o.course_id === course?.id && o.school_term_id === body.school_term_id)
-      return Boolean(student && offering && alreadyPassedCourse(student.id, offering.id))
+    const getRow = (row: ApiSchema<'GradeBatchImportRequest'>['rows'][number]) => {
+      const student = db.profiles.find((profile) => profile.student_number === row.student_number)
+      const course = db.courses.find((item) => item.code.toLowerCase() === row.course_code.toLowerCase())
+      const offering = db.courseOfferings.find((item) => item.course_id === course?.id && item.school_term_id === body.school_term_id)
+      const assigned = Boolean(student && db.adviserAssignments.some((item) => item.student_id === student.id && item.adviser_id === auth.persona.profileId && item.end_date === null))
+      const reason = !student || !course || !offering ? 'Student, course, or term offering not found.' : !assigned ? 'Student is not currently assigned to this adviser.' : alreadyPassedCourse(student.id, offering.id) ? 'A passed course cannot be retaken.' : departmentEncodingClosed(student.id, body.school_term_id) ? 'The student department encoding is closed.' : ''
+      return { student, course, offering, reason }
     }
-    const validCount = body.rows.filter(row => !passed(row)).length
-    const response: ApiSchema<'GradeBatchImportResponse'> = {
-      mode: body.mode,
-      valid_count: validCount,
-      warning_count: 0,
-      error_count: body.rows.length - validCount,
-      imported_count: body.mode === 'commit' ? validCount : 0,
-      results: body.rows.map((r) => ({
-        row_number: r.row_number,
-        student_number: r.student_number,
-        course_code: r.course_code,
-        outcome: passed(r) ? 'error' : body.mode === 'commit' ? 'imported' : 'valid',
-        message: passed(r) ? 'A passed course cannot be retaken.' : 'Validated successfully.',
-      })),
+    const checks = body.rows.map((row) => getRow(row))
+    const results: ApiSchema<'GradeBatchImportResponse'>['results'] = body.rows.map((row, index) => ({ row_number: row.row_number, student_number: row.student_number, course_code: row.course_code, outcome: checks[index].reason ? 'error' : body.mode === 'commit' ? 'imported' : 'valid', message: checks[index].reason || 'Validated successfully.' }))
+    const valid = body.rows.map((row, index) => ({ row, check: checks[index] })).filter(({ check }) => !check.reason)
+    if (body.mode === 'commit') for (const { row, check } of valid) {
+      const { student, course, offering } = check
+      if (!student || !course || !offering) continue
+      const old = db.attemptResults.find((attempt) => attempt.student_id === student.id && attempt.course_offering_id === offering.id)
+      const final = row.final_grade ?? old?.final_grade ?? null
+      const status = row.status ?? (final == null ? 'currently_enrolled' : final <= 3 ? 'passed' : 'failed')
+      const slotId = row.curriculum_term_course_id ?? db.curriculumTermCourses.find((slot) => slot.course_id === course.id)?.id ?? null
+      const now = new Date().toISOString()
+      const result: ApiSchema<'AttemptResult'> = { id: old?.id ?? nextSyntheticUuid(), student_id: student.id, course_offering_id: offering.id, curriculum_term_course_id: slotId, recorded_status: status, effective_status: status, midterm_status: row.midterm_status ?? old?.midterm_status ?? 'graded', midterm_grade: row.midterm_grade ?? old?.midterm_grade ?? null, final_grade: final, instructor: row.instructor ?? old?.instructor ?? offering.instructor, inc_deadline: old?.inc_deadline ?? null, prerequisite_override: old?.prerequisite_override ?? false, prerequisite_grade_override: old?.prerequisite_grade_override ?? false, grade_fix_history: old?.grade_fix_history ?? [], units_attempted: old?.units_attempted ?? course.units, revision: (old?.revision ?? 0) + 1, created_at: old?.created_at ?? now, updated_at: now, completion_grade: old?.completion_grade ?? null, resolved_at: old?.resolved_at ?? null, gwa_grade: final, is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: false }
+      if (old) db.attemptResults[db.attemptResults.indexOf(old)] = result
+      else db.attemptResults.push(result)
+      if (row.remark?.trim()) db.attemptRemarks.push({ id: nextSyntheticUuid(), student_id: student.id, authored_by: auth.persona.profileId, body_text: row.remark, created_at: now, attempt_id: result.id, curriculum_term_course_id: slotId })
     }
-    return HttpResponse.json(response, { status: 200 })
+    return HttpResponse.json({ mode: body.mode, valid_count: valid.length, warning_count: 0, error_count: results.length - valid.length, imported_count: body.mode === 'commit' ? valid.length : 0, results }, { status: 200 })
   }),
 
   // ===========================================================================
@@ -3314,31 +3304,23 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/curriculum-transfers',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      const body = (await request.json().catch(() => ({}))) as ApiSchema<'CurriculumTransferEndorseRequest'>
-      const req: ApiSchema<'CurriculumTransferRequest'> = {
-        id: nextSyntheticUuid(),
-        student_id: studentId,
-        from_curriculum_version_id: MOCK_IDS.curriculumBscs2020,
-        to_curriculum_version_id:
-          body.to_curriculum_version_id ?? MOCK_IDS.curriculumBscs2024,
-        endorsed_by: auth.persona.profileId,
-        endorsement_note: body.endorsement_note ?? 'Endorsed by adviser.',
-        status: 'pending',
-        decided_by: null,
-        decided_at: null,
-        decision_note: null,
-        carried_units: 36,
-        created_at: '2026-11-10T09:00:00Z',
-        updated_at: '2026-11-10T09:00:00Z',
-      }
+      const db = getMockDatabase()
+      if (!db.adviserAssignments.some((item) => item.student_id === studentId && item.adviser_id === auth.persona.profileId && item.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may endorse a transfer.')
+      const body = await request.json().catch(() => null) as ApiSchema<'CurriculumTransferEndorseRequest'> | null
+      const org = db.studentOrganizations.find((item) => item.student_id === studentId)
+      const target = db.curriculumVersions.find((item) => item.id === body?.to_curriculum_version_id && item.status === 'active')
+      if (!org || !target) return errorJson(404, 'NOT_FOUND', 'Student or active target curriculum not found.')
+      if (!body?.endorsement_note?.trim() || body.endorsement_note.length > 2000 || target.id === org.curriculum_version_id) return errorJson(400, 'INVALID_INPUT', 'Choose a different active curriculum and provide a reason.')
+      if (db.curriculumTransferRequests.some((item) => item.student_id === studentId && item.status === 'pending')) return errorJson(409, 'TRANSFER_ALREADY_PENDING', 'A transfer request is already pending.')
+      const targetSlots = db.curriculumTermCourses.filter((slot) => db.curriculumTerms.some((term) => term.id === slot.curriculum_term_id && term.curriculum_version_id === target.id))
+      const passedCourseIds = new Set(db.attemptResults.filter((attempt) => attempt.student_id === studentId && attempt.effective_status === 'passed').map((attempt) => db.courseOfferings.find((offering) => offering.id === attempt.course_offering_id)?.course_id).filter(Boolean))
+      const carried = targetSlots.filter((slot) => slot.course_id && passedCourseIds.has(slot.course_id)).reduce((sum, slot) => sum + slot.nominal_units, 0)
+      const now = new Date().toISOString()
+      const req: ApiSchema<'CurriculumTransferRequest'> = { id: nextSyntheticUuid(), student_id: studentId, from_curriculum_version_id: org.curriculum_version_id, to_curriculum_version_id: target.id, endorsed_by: auth.persona.profileId, endorsement_note: body.endorsement_note.trim(), status: 'pending', decided_by: null, decided_at: null, decision_note: null, carried_units: carried, created_at: now, updated_at: now }
+      db.curriculumTransferRequests.push(req)
       return HttpResponse.json(req, { status: 201 })
     },
   ),
@@ -3550,21 +3532,25 @@ export const saaisMswHandlers = [
 
   http.post(
     '*/functions/v1/students/:student_id/shift-preview',
-    ({ request }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+    async ({ request, params }) => {
+      const auth = authenticateRequest(request, ['admin', 'department_head', 'adviser'])
       if ('response' in auth) return auth.response
-      const preview: ApiSchema<'ShiftPreviewResponse'> = {
-        carried_units: 33,
-        lost_units: 3,
-        projected_gwa: 1.72,
-        mutates_records: false,
-      }
-      return HttpResponse.json(preview, { status: 200 })
+      const studentId = String(params.student_id)
+      if (!canAccessStudentRecord(auth.persona, studentId, true)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      const body = await request.json().catch(() => null) as ApiSchema<'ShiftPreviewRequest'> | null
+      const db = getMockDatabase()
+      const org = db.studentOrganizations.find((item) => item.student_id === studentId)
+      const target = db.curriculumVersions.find((item) => item.id === body?.curriculum_version_id && item.status === 'active')
+      if (!org || !target) return errorJson(404, 'NOT_FOUND', 'Student or active target curriculum not found.')
+      const targetSlots = db.curriculumTermCourses.filter((slot) => db.curriculumTerms.some((term) => term.id === slot.curriculum_term_id && term.curriculum_version_id === target.id))
+      const passed = db.attemptResults.filter((attempt) => attempt.student_id === studentId && attempt.effective_status === 'passed')
+      const passedCourses = new Set(passed.map((attempt) => db.courseOfferings.find((offering) => offering.id === attempt.course_offering_id)?.course_id).filter(Boolean))
+      const carried = targetSlots.filter((slot) => slot.course_id && passedCourses.has(slot.course_id)).reduce((sum, slot) => sum + slot.nominal_units, 0)
+      const totalEarned = passed.reduce((sum, attempt) => sum + attempt.units_attempted, 0)
+      const grades = passed.filter((attempt) => attempt.final_grade != null)
+      const gradeUnits = grades.reduce((sum, attempt) => sum + attempt.units_attempted, 0)
+      const projected = gradeUnits ? grades.reduce((sum, attempt) => sum + (attempt.final_grade ?? 0) * attempt.units_attempted, 0) / gradeUnits : null
+      return HttpResponse.json({ carried_units: carried, lost_units: Math.max(0, totalEarned - carried), projected_gwa: projected, mutates_records: false }, { status: 200 })
     },
   ),
 
