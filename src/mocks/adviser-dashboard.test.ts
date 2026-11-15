@@ -99,4 +99,73 @@ describe('shared adviser dashboard mock', () => {
     expect((await client().GET('/rest/v1/advising_note')).data?.some(note => note.student_id === student.id)).toBe(true)
   })
 
+  it('updates the sample summary and roster after encoding grades', async () => {
+    loginAsMockPersona('adviser')
+    const db = getMockDatabase()
+    const student = db.profiles.find(row => row.email === 'sample.student01@vsu.edu.ph')!
+    const path = { student_id: student.id }
+    const encoded = await client().POST('/functions/v1/students/{student_id}/encode-grades', {
+      params: { path }, body: { school_term_id: MOCK_IDS.term2026Sem1Open, rows: [{ course_offering_id: MOCK_IDS.offeringCsci101, final_grade: 2, continue_with_prerequisite_override: false }] },
+    })
+    expect(encoded.response.status).toBe(200)
+    const summary = await client().GET('/functions/v1/students/{student_id}/academic-summary', { params: { path } })
+    const roster = await client().GET('/functions/v1/students', { params: { query: { assignment_scope: 'current' } } })
+    const row = roster.data?.items.find(item => item.student_id === student.id)
+    expect(summary.data?.earned_units).toBe(3)
+    expect(summary.data?.earned_units).toBe(row?.earned_units)
+    expect(summary.data?.remaining_units).toBe(summary.data!.required_units - 3)
+    expect(summary.data?.slots_satisfied).toBe(1)
+    expect(summary.data?.gwa).toBe(row?.gwa)
+    db.gradeFlags.push({ ...db.gradeFlags[0]!, id: '89000000-0000-4000-8001-000000000001', student_id: student.id })
+    expect((await client().GET('/functions/v1/students/{student_id}/academic-summary', { params: { path } })).data?.open_flags_count).toBe(1)
+  })
+
+  it('keeps every retake on the checklist and uses the passing result', async () => {
+    loginAsMockPersona('adviser')
+    const db = getMockDatabase()
+    const student = db.profiles.find(row => row.email === 'sample.student01@vsu.edu.ph')!
+    const original = db.attemptResults.find(row => row.student_id === student.id && row.course_offering_id === MOCK_IDS.offeringCsci101)!
+    Object.assign(original, { recorded_status: 'failed', effective_status: 'failed', final_grade: 5 })
+    const retakeOfferingId = '62000000-0000-4000-8001-000000000099'
+    db.courseOfferings.push({ ...db.courseOfferings.find(row => row.id === MOCK_IDS.offeringCsci101)!, id: retakeOfferingId })
+    const retake = { ...original, id: '80000000-0000-4000-8001-000000000099', course_offering_id: retakeOfferingId, recorded_status: 'passed' as const, effective_status: 'passed' as const, final_grade: 2, created_at: '2026-11-11T00:00:00Z' }
+    db.attemptResults.push({ ...retake, recorded_status: 'currently_enrolled', effective_status: 'currently_enrolled', final_grade: null })
+    const path = { student_id: student.id }
+    const pendingSummary = await client().GET('/functions/v1/students/{student_id}/academic-summary', { params: { path } })
+    expect(pendingSummary.data?.gwa).toBe(5)
+    expect(pendingSummary.data?.failed_units).toBe(3)
+    db.attemptResults[db.attemptResults.length - 1] = retake
+    const checklist = await client().GET('/functions/v1/students/{student_id}/checklist', { params: { path } })
+    const slot = checklist.data?.find(row => row.curriculum_term_course_id === MOCK_IDS.slotCsci101)
+    expect(slot?.status).toBe('passed')
+    expect(slot?.earned_units).toBe(3)
+    expect(slot?.source_attempt_id).toBe(retake.id)
+    expect(slot?.attempts?.map(row => row.attempt_id)).toEqual([original.id, retake.id])
+    const summary = await client().GET('/functions/v1/students/{student_id}/academic-summary', { params: { path } })
+    expect(summary.data?.gwa).toBe(2)
+    expect(summary.data?.earned_units).toBe(3)
+  })
+
+  it('limits note archive and restore to the current adviser and admin while students can read archived notes', async () => {
+    const db = getMockDatabase()
+    const student = db.profiles.find(row => row.email === 'sample.student01@vsu.edu.ph')!
+    const note = db.advisingNotes.find(row => row.student_id === student.id)!
+    const path = { student_id: student.id, note_id: note.id }
+    const patch = (is_archived: boolean) => client().PATCH('/functions/v1/students/{student_id}/notes/{note_id}', { params: { path }, body: { is_archived } })
+    loginAsMockPersona('adviser_secondary')
+    expect((await patch(false)).response.status).toBe(403)
+    loginAsMockPersona('department_head')
+    expect((await patch(false)).response.status).toBe(403)
+    loginAsMockPersona('adviser')
+    expect((await patch(false)).data?.is_archived).toBe(false)
+    expect((await patch(true)).data?.is_archived).toBe(true)
+    loginAsMockPersona('student_sample_1')
+    expect((await client().GET('/rest/v1/advising_note')).data?.find(row => row.id === note.id)?.is_archived).toBe(true)
+    loginAsMockPersona('admin')
+    expect((await patch(false)).data?.is_archived).toBe(false)
+    loginAsMockPersona('adviser')
+    db.adviserAssignments.find(row => row.student_id === student.id)!.end_date = '2026-11-01'
+    expect((await patch(true)).response.status).toBe(403)
+  })
+
 })
