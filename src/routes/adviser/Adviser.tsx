@@ -2,11 +2,10 @@ import { lazy, type ReactNode } from "react"
 import { Link, Navigate, Route, Routes, useParams } from "react-router"
 import { AdviserLayout } from "./AdviserLayout"
 import { SampleFooter } from "@/components/features/sample-footer"
-import { StudentRecordHeader } from "@/components/features/student-record-header"
 import { FormField } from "@/components/features/form-field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { student } from "@/mocks/adviser.mock"
 import { adviserRecordSections } from "@/navigation/adviser"
+import { SelectedStudentHeader } from "./advisees/SelectedStudentHeader"
 
 const pages = {
   dashboard: lazy(() => import("./dashboard/AdviserDashboard")),
@@ -26,7 +25,6 @@ const detailPages = {
 }
 
 const tabs = Object.entries(adviserRecordSections)
-export const recordPath = "/adviser/advisee/2023-04412"
 
 /** Shared page composition kept within the Adviser route boundary. */
 export function AdviserPage({ title, tab, children, sample = true }: {
@@ -35,17 +33,15 @@ export function AdviserPage({ title, tab, children, sample = true }: {
   children: ReactNode
   sample?: boolean
 }) {
-  // The legacy sample record is not a shared-data identity.
   const { id } = useParams<{ id: string }>()
-  const detailPath = id ? `/adviser/advisee/${encodeURIComponent(id)}` : recordPath
-  const sharedRecord = !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+  const detailPath = id ? `/adviser/advisee/${encodeURIComponent(id)}` : "/adviser/advisees"
+  const sharedRecord = !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  if (tab && !sharedRecord) return <section aria-label={title}><p role="alert">This student record URL is invalid.</p><Link to="/adviser/advisees">Return to advisees</Link></section>
   return (
     <section aria-label={title} className="min-w-0 max-w-full">
         {tab && (
           <>
-            {sharedRecord
-              ? <div className="mb-5"><h1 className="text-2xl">Student record</h1><p className="text-sm text-muted-foreground">Record ID: {id}</p></div>
-              : <StudentRecordHeader {...student} />}
+            {id && <SelectedStudentHeader id={id} />}
             <nav aria-label="Student record" className="mb-6 flex gap-6 overflow-x-auto border-b border-border whitespace-nowrap">
               {tabs.map(([key, label]) => (
                 <Link
@@ -60,8 +56,8 @@ export function AdviserPage({ title, tab, children, sample = true }: {
             </nav>
           </>
         )}
-        {sharedRecord && tab && tab !== "advising" ? <p>This section is not yet connected to this student record.</p> : children}
-        {sample && !sharedRecord && <SampleFooter>Sample records for presentation · Reference date: 19 September 2026</SampleFooter>}
+        {sharedRecord && tab && !["advising", "checklist", "grades", "curriculum", "notes", "history"].includes(tab) ? <p>This section is not yet connected to this student record.</p> : children}
+        {sample && !tab && <SampleFooter>Sample records for presentation · Reference date: 19 September 2026</SampleFooter>}
     </section>
   )
 }
