@@ -5,6 +5,8 @@ import { useStudentRecordLabel } from '@/hooks/use-student-record-label'
 import { getPortalBreadcrumbs } from '@/navigation/portal-breadcrumbs'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
 import type { SaaisRole } from '@/mocks/personas'
+import { useNotifications } from '@/hooks/use-notifications'
+import { NotificationBell } from '@/components/features/notification-bell'
 
 const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
   student: 'Student Portal',
@@ -63,16 +65,19 @@ function resolveRoleFromPath(
 }
 
 export function AuthenticatedPortalLayout() {
-  const { user, roles, roleAssignments, activeRole, isLoading, signOut } = useAuth()
+  const { user, roles, roleAssignments, activeRole, isLoading, isAllowedToEnter, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const currentRole = resolveRoleFromPath(location.pathname, roles, activeRole ?? roles[0] ?? user?.primaryRole ?? 'student')
+  const notificationRoute = currentRole === 'adviser' ? '/adviser/notifications' : undefined
+  const notifications = useNotifications(user?.id, isLoading || isAllowedToEnter === false, currentRole, notificationRoute)
   const recordMatch = matchPath('/adviser/advisee/:id/*', location.pathname)
   const studentLabel = useStudentRecordLabel(
     !isLoading && roles.includes('adviser') ? user?.id : undefined,
     recordMatch?.params.id,
   )
 
-  if (isLoading || !user) {
+  if (isLoading || !user || isAllowedToEnter === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-primary">
@@ -85,13 +90,9 @@ export function AuthenticatedPortalLayout() {
     )
   }
 
-  const currentRole = resolveRoleFromPath(
-    location.pathname,
-    roles,
-    activeRole ?? roles[0] ?? user.primaryRole,
-  )
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
+  const crumbs = getBreadcrumbs(location.pathname, currentRole, homeHref)
 
   const handleSignOut = async () => {
     await signOut()
@@ -111,7 +112,30 @@ export function AuthenticatedPortalLayout() {
         profileHref: '/settings',
         onSignOut: () => void handleSignOut(),
       }}
-      crumbs={getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)}
+      crumbs={crumbs}
+      topbarTrailing={<NotificationBell items={notifications.bellItems} allHref={notifications.allHref} onMarkAllRead={notifications.markAllRead} loading={notifications.loading} error={notifications.error} showUnreadCount={!notifications.capped} />}
     />
   )
+}
+
+function getBreadcrumbs(pathname: string, role: SaaisRole, homeHref: string) {
+  const portalLabel = ROLE_PORTAL_LABELS[role]
+  if (role === 'adviser') {
+    const dashboard = { label: 'Dashboard', to: '/adviser/dashboard' }
+    if (pathname === '/adviser/dashboard' || pathname === '/adviser') return [{ label: portalLabel, to: homeHref }, { ...dashboard, to: undefined }]
+    if (pathname === '/adviser/advisees') return [{ label: portalLabel, to: homeHref }, { label: 'Advisees' }]
+    const record = matchPath('/adviser/advisee/:id/*', pathname)
+    if (record?.params.id) {
+      const sections: Record<string, string> = { checklist: 'Checklist', grades: 'Grades', curriculum: 'Curriculum', advising: 'Advising', notes: 'Notes', history: 'Audit log' }
+      const section = pathname.split('/').at(-1)
+      return [{ label: portalLabel, to: homeHref }, { label: 'Advisees', to: '/adviser/advisees' }, { label: `Student ${record.params.id}`, to: pathname.slice(0, pathname.lastIndexOf('/')) }, ...(section && sections[section] ? [{ label: sections[section] }] : [])]
+    }
+    const adviserLabels: Record<string, string> = {
+      '/adviser/encode-grades': 'Encode grades', '/adviser/import-grades': 'Import grades',
+      '/adviser/grade-flags': 'Grade flags', '/adviser/notifications': 'Notifications',
+    }
+    const label = adviserLabels[pathname]
+    if (label) return [{ label: portalLabel, to: homeHref }, { label }]
+  }
+  return [{ label: portalLabel, to: homeHref }]
 }

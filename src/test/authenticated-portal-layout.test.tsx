@@ -56,7 +56,7 @@ describe('AuthenticatedPortalLayout integration', () => {
     expect(screen.getByText('Ada Example')).toBeTruthy()
     expect(screen.getByText('ada@example.edu.ph')).toBeTruthy()
     expect(screen.getByText('AE')).toBeTruthy()
-    expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getByText('Office of the Dean')).toBeTruthy()
+    expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getAllByText('Office of the Dean')).toHaveLength(2)
     expect(screen.getByText('Report content')).toBeTruthy()
     expect(container.querySelectorAll('[data-slot="sidebar"]')).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Open navigation' })).toHaveLength(1)

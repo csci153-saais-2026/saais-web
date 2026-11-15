@@ -10,10 +10,16 @@ function NotificationBell({
   items,
   allHref,
   onMarkAllRead,
+  loading = false,
+  error,
+  showUnreadCount = true,
 }: {
   items: NotificationItem[]
-  allHref: string
+  allHref?: string
   onMarkAllRead?: () => void
+  loading?: boolean
+  error?: string | null
+  showUnreadCount?: boolean
 }) {
   const unread = items.filter((i) => i.unread).length
   return (
@@ -23,7 +29,7 @@ function NotificationBell({
         className="relative inline-flex size-11 items-center justify-center rounded-lg border border-transparent text-muted-2 hover:border-border hover:bg-background hover:text-primary data-[state=open]:border-border data-[state=open]:bg-background data-[state=open]:text-primary"
       >
         <BellIcon className="size-[19px]" />
-        {unread > 0 && (
+        {showUnreadCount && unread > 0 && (
           <span className="absolute top-1 right-0.5 min-w-4 rounded-full bg-destructive px-1 text-center text-[10.5px] leading-4 font-semibold text-white">
             {unread}
           </span>
@@ -38,13 +44,17 @@ function NotificationBell({
             </button>
           )}
         </div>
-        {items.length === 0 ? (
+        {loading ? (
+          <p role="status" className="border-t border-line-soft px-4 py-4 text-sm text-muted-foreground">Loading notifications…</p>
+        ) : error ? (
+          <p role="alert" className="border-t border-line-soft px-4 py-4 text-sm text-destructive">{error}</p>
+        ) : items.length === 0 ? (
           <p className="border-t border-line-soft px-4 py-4 text-sm text-muted-foreground">You are all caught up.</p>
         ) : (
           <ul className="border-t border-line-soft">
             {items.map((n) => (
               <li key={n.id} className="border-b border-line-soft last:border-b-0">
-                <Link to={n.to ?? allHref} className="flex items-start gap-2.5 px-4 py-3 hover:bg-secondary/60">
+                  <Link to={n.to ?? allHref ?? '#'} onClick={event => { if (!n.to && !allHref) event.preventDefault() }} className="flex items-start gap-2.5 px-4 py-3 hover:bg-secondary/60">
                   <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", n.unread ? "bg-gold" : "bg-transparent")} />
                   <span>
                     <strong className={cn("block text-[13.5px]", n.unread ? "font-semibold" : "font-medium")}>{n.title}</strong>
@@ -55,9 +65,7 @@ function NotificationBell({
             ))}
           </ul>
         )}
-        <Link to={allHref} className="block border-t border-line-soft px-4 py-3 text-center text-[13.5px] font-semibold text-primary hover:bg-secondary/60">
-          See all notifications
-        </Link>
+        {allHref && <Link to={allHref} className="block border-t border-line-soft px-4 py-3 text-center text-[13.5px] font-semibold text-primary hover:bg-secondary/60">See all notifications</Link>}
       </PopoverContent>
     </Popover>
   )
