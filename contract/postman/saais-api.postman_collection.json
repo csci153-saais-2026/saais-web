@@ -10328,7 +10328,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/grades",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{grade_correction_attempt_id}}/grades",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10338,7 +10338,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{grade_correction_attempt_id}}",
                     "grades"
                   ],
                   "query": []
@@ -10398,7 +10398,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/grades",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{grade_correction_attempt_id}}/grades",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10408,7 +10408,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{grade_correction_attempt_id}}",
                     "grades"
                   ],
                   "query": []
