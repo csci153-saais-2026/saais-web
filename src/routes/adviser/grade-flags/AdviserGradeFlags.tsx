@@ -1,18 +1,25 @@
-import { gradeFlags } from "@/mocks/adviser.mock"
-import { AdviserPage, StaticSelect } from "../Adviser"
-import { PageHeading } from "@/components/features/page-heading"
-import { DataTablePanel } from "@/components/features/data-table-panel"
-import { FormField } from "@/components/features/form-field"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"
-
-
-export default function AdviserGradeFlags() {
-  return <AdviserPage title="Grade flags"><PageHeading title="Grade flags" subtitle="Grades your advisees reported as wrong" />
-    <DataTablePanel title="Open flags" description="1 open" rows={gradeFlags} rowKey={r => r.id} columns={[
-      { header: "Student", cell: r => <><b className="block">{r.student}</b><span className="font-mono text-xs text-muted-foreground">{r.number}</span></> }, { header: "Course", cell: r => r.course }, { header: "Grade", cell: r => <span className="font-mono">{r.grade}</span> }, { header: "Comment", cell: r => r.comment }, { header: "Raised", cell: r => r.raised },
-      { header: "Action", cell: () => <div className="flex gap-2">{[false, true].map(reject => <Dialog key={String(reject)}><DialogTrigger asChild><Button size="sm" variant="outline">{reject ? "Reject" : "Fix grade"}</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{reject ? "Reject flag" : "Fix grade"}</DialogTitle><DialogDescription>Ana Reyes · CSci 33 · midterm grade 2.25</DialogDescription></DialogHeader>{!reject && <StaticSelect id="corrected-grade" label="Corrected grade" value="Choose the corrected grade" options={["Choose the corrected grade", "1.00", "1.25", "1.50", "1.75", "2.00", "2.25", "2.50", "2.75", "3.00", "5.00", "INC", "DR"]} />}<FormField htmlFor={reject ? "flag-reply" : "flag-reason"} label={reject ? "Reply to the student" : "Reason for change"}><Textarea id={reject ? "flag-reply" : "flag-reason"} value="" readOnly /></FormField><DialogFooter><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button>{reject ? "Reject flag" : "Save correction"}</Button></DialogFooter></DialogContent></Dialog>)}</div> },
-    ]} />
-  </AdviserPage>
+﻿import { useState } from 'react'
+import { AdviserPage } from '../Adviser'
+import { useAuth } from '@/hooks/use-auth'
+import { useScopedRequest } from '../advisees/use-scoped-request'
+import { getFlags, resolveFlag } from './grade-flags.api'
+import { PageHeading } from '@/components/features/page-heading'
+import { DataTablePanel } from '@/components/features/data-table-panel'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import type { ApiSchema } from '@/lib/api'
+function Resolve({flag,attempt,student,course,onSaved}:{flag:ApiSchema<'GradeFlag'>;attempt:ApiSchema<'AttemptResult'>;student:string;course:string;onSaved:()=>void}){
+  const [open,setOpen]=useState(false);const [action,setAction]=useState<'correct'|'reject'>('correct');const [grade,setGrade]=useState('');const [reason,setReason]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('')
+  async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{await resolveFlag(flag.id,{resolution_action:action,resolution_note:reason.trim(),expected_revision:attempt.revision,...(action==='correct'?{corrected_grade:Number(grade)}:{})});setOpen(false);onSaved()}catch(e){setError(e instanceof Error?e.message:'Unable to resolve flag.')}finally{setBusy(false)}}
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button size="sm" variant="outline">Review flag</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Review grade flag</DialogTitle><DialogDescription>{student} · {course} · {flag.reported_stage ?? 'grade'} · reported {flag.reported_grade_text ?? '—'}</DialogDescription></DialogHeader><p>{flag.details}</p><form className="grid gap-3" onSubmit={save}><label className="grid gap-1">Action<select className="rounded-md border px-3 py-2" value={action} onChange={e=>setAction(e.target.value as 'correct'|'reject')}><option value="correct">Correct grade</option><option value="reject">Reject</option></select></label>{action==='correct'&&<label className="grid gap-1">Corrected grade<input className="rounded-md border px-3 py-2" type="number" min="1" max="5" step="0.25" required value={grade} onChange={e=>setGrade(e.target.value)}/></label>}<label className="grid gap-1">Reply / reason<textarea className="rounded-md border px-3 py-2" required value={reason} onChange={e=>setReason(e.target.value)}/></label>{error&&<p role="alert">{error}</p>}<Button disabled={busy||!reason.trim()}>{busy?'Saving…':'Submit resolution'}</Button></form></DialogContent></Dialog>
 }
+function FlagList({userId,isMockMode}:{userId:string;isMockMode:boolean}){
+ const [revision,setRevision]=useState(0);const [message,setMessage]=useState('');const {data,error}=useScopedRequest(JSON.stringify([userId,revision]),true,getFlags)
+ return <><PageHeading title="Grade flags" subtitle="Grades your current advisees reported."/>{!data&&!error&&<p role="status">Loading flags…</p>}{error&&<div role="alert"><p>{error}</p><Button onClick={()=>setRevision(n=>n+1)}>Try again</Button></div>}{message&&<p role="status">{message}</p>}{data&&<DataTablePanel title="Open flags" description={`${data.flags.length} open`} rows={data.flags} rowKey={r=>r.id} columns={[
+ {header:'Student',cell:r=>{const student=data.roster.find(s=>s.student_id===r.student_id);return <>{student?.full_name ?? 'Unavailable'}<span className="block text-xs">{student?.student_number}</span></>}},
+ {header:'Course',cell:r=>{const a=data.attempts.find(a=>a.id===r.attempt_id&&a.student_id===r.student_id);const o=data.offerings.find(o=>o.id===a?.course_offering_id);const c=data.courses.find(c=>c.id===o?.course_id);return c?`${c.code} · ${c.title}`:'Course unavailable'}},
+ {header:'Reported grade',cell:r=>r.reported_grade_text??'—'},{header:'Comment',cell:r=>r.details},{header:'Raised',cell:r=>new Date(r.created_at).toLocaleDateString()},
+ {header:'Action',cell:r=>{const a=data.attempts.find(a=>a.id===r.attempt_id&&a.student_id===r.student_id);const student=data.roster.find(s=>s.student_id===r.student_id);const o=data.offerings.find(o=>o.id===a?.course_offering_id);const c=data.courses.find(c=>c.id===o?.course_id);if(isMockMode)return 'Resolution unavailable in mock mode';return a&&student?<Resolve key={r.id} flag={r} attempt={a} student={student.full_name} course={c?`${c.code} · ${c.title}`:'Course unavailable'} onSaved={()=>{setMessage('Flag resolved.');setRevision(n=>n+1)}}/>:'Attempt unavailable'}}
+ ]}/> }</>
+}
+export default function AdviserGradeFlags(){const {user,isMockMode}=useAuth();return <AdviserPage title="Grade flags" sample={false}>{user&&<FlagList key={user.id} userId={user.id} isMockMode={isMockMode}/>}</AdviserPage>}
