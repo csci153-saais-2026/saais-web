@@ -179,6 +179,46 @@ describe('AdminSettingsPage', () => {
     ).toBeTruthy()
   })
 
+  it('does not let a delayed threshold response replace newer backup metadata', async () => {
+    let resolveThreshold:
+      | ((value: ReturnType<typeof result>) => void)
+      | undefined
+    putMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveThreshold = resolve
+        }),
+    )
+    postMock.mockResolvedValueOnce(
+      result({
+        ...institutionSettings,
+        last_backup_reference: 'BKP-newer',
+        last_backup_at: '2026-11-11T09:00:00Z',
+      }),
+    )
+    render(<AdminSettingsPage />)
+    await screen.findByText('BKP-2026-11-10-001')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save thresholds' }))
+    await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record completed backup' }),
+    )
+    expect(await screen.findByText('BKP-newer')).toBeTruthy()
+
+    resolveThreshold?.(
+      result({
+        ...institutionSettings,
+        warning_pct: 20,
+        last_backup_reference: 'BKP-2026-11-10-001',
+      }),
+    )
+    expect(
+      await screen.findByText('Academic-standing thresholds saved.'),
+    ).toBeTruthy()
+    expect(screen.getByText('BKP-newer')).toBeTruthy()
+  })
+
   it('surfaces errors from the completed-backup metadata operation', async () => {
     postMock.mockRejectedValueOnce(new Error('Backup record rejected.'))
     render(<AdminSettingsPage />)

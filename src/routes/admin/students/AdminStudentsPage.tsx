@@ -177,6 +177,9 @@ export default function AdminStudentsPage() {
       .then((result) => {
         if (!active) return
         setRoster(result)
+        setRequestError((current) =>
+          current?.key === requestKey ? null : current,
+        )
       })
       .catch((requestError: unknown) => {
         if (!active) return
@@ -316,8 +319,17 @@ export default function AdminStudentsPage() {
           items={[
             { label: 'Matching students', value: roster.total_count },
             { label: 'With deficiencies', value: roster.with_deficiencies_count },
-            { label: 'Open flags', value: roster.flagged_count ?? 0 },
-            { label: 'Open INC', value: roster.open_inc_students_count ?? 0 },
+            ...(roster.flagged_count != null
+              ? [{ label: 'Open flags', value: roster.flagged_count }]
+              : []),
+            ...(roster.open_inc_students_count != null
+              ? [
+                  {
+                    label: 'Open INC',
+                    value: roster.open_inc_students_count,
+                  },
+                ]
+              : []),
           ]}
         />
       )}

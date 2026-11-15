@@ -46,7 +46,12 @@ const student = {
   last_activity_at: null,
 } as const
 
-function roster(items = [student], totalCount = items.length) {
+function roster(
+  items: Array<Omit<typeof student, 'full_name'> & { full_name: string }> = [
+    student,
+  ],
+  totalCount = items.length,
+) {
   return {
     total_count: totalCount,
     unassigned_count: 0,
@@ -149,6 +154,76 @@ describe('AdminStudentsPage', () => {
         }),
       )
     })
+  })
+
+  it('clears a retained query error after that query succeeds on a later visit', async () => {
+    let failedQueryAttempts = 0
+    getMock.mockImplementation(
+      (
+        path: string,
+        options?: { params?: { query?: { search?: string } } },
+      ) => {
+        if (path !== '/functions/v1/students') {
+          return Promise.resolve({
+            data: path === '/rest/v1/faculty' ? faculties : programs,
+            response: new Response(),
+          })
+        }
+        const search = options?.params?.query?.search
+        if (search === 'recover') {
+          failedQueryAttempts += 1
+          return failedQueryAttempts === 1
+            ? Promise.reject(new Error('Roster temporarily unavailable.'))
+            : Promise.resolve({
+                data: roster([{ ...student, full_name: 'Recovered Student' }]),
+                response: new Response(),
+              })
+        }
+        return Promise.resolve({
+          data:
+            search === 'other'
+              ? roster([{ ...student, full_name: 'Other Student' }])
+              : roster(),
+          response: new Response(),
+        })
+      },
+    )
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+
+    const search = screen.getByRole('searchbox', { name: 'Search students' })
+    fireEvent.change(search, { target: { value: 'recover' } })
+    expect(await screen.findByText('Roster temporarily unavailable.')).toBeTruthy()
+
+    fireEvent.change(search, { target: { value: 'other' } })
+    expect(await screen.findByText('Other Student')).toBeTruthy()
+    fireEvent.change(search, { target: { value: 'recover' } })
+
+    expect(await screen.findByText('Recovered Student')).toBeTruthy()
+    expect(screen.queryByText('Roster temporarily unavailable.')).toBeNull()
+  })
+
+  it('does not present absent roster counts as zero', async () => {
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === '/functions/v1/students'
+            ? {
+                ...roster(),
+                flagged_count: undefined,
+                open_inc_students_count: undefined,
+              }
+            : path === '/rest/v1/faculty'
+              ? faculties
+              : programs,
+        response: new Response(),
+      }),
+    )
+    render(<AdminStudentsPage />)
+
+    await screen.findByText('Alex Student')
+    expect(screen.getAllByText('Open flags')).toHaveLength(2)
+    expect(screen.getAllByText('Open INC')).toHaveLength(1)
   })
 
   it('shows the request error and allows retrying', async () => {

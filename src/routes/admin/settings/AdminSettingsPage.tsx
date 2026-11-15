@@ -405,7 +405,26 @@ export default function AdminSettingsPage() {
     )
     setRequestState((current) =>
       current?.request === reloadCount
-        ? { ...current, settings: updated }
+        ? {
+            ...current,
+            settings: current.settings
+              ? {
+                  ...current.settings,
+                  ...(request.warning_pct !== undefined
+                    ? { warning_pct: updated.warning_pct }
+                    : {}),
+                  ...(request.probation_pct !== undefined
+                    ? { probation_pct: updated.probation_pct }
+                    : {}),
+                  ...(request.dismissal_pct !== undefined
+                    ? { dismissal_pct: updated.dismissal_pct }
+                    : {}),
+                  ...(request.sender_email !== undefined
+                    ? { sender_email: updated.sender_email }
+                    : {}),
+                }
+              : updated,
+          }
         : current,
     )
   }
@@ -418,7 +437,19 @@ export default function AdminSettingsPage() {
     )
     setRequestState((current) =>
       current?.request === reloadCount
-        ? { ...current, settings: updated }
+        ? {
+            ...current,
+            settings: current.settings
+              ? {
+                  ...current.settings,
+                  last_backup_at: updated.last_backup_at,
+                  last_backup_by: updated.last_backup_by,
+                  last_backup_reference: updated.last_backup_reference,
+                  last_backup_location: updated.last_backup_location,
+                  last_backup_scope: updated.last_backup_scope,
+                }
+              : updated,
+          }
         : current,
     )
   }
