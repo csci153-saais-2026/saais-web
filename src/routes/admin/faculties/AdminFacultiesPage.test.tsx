@@ -124,6 +124,14 @@ describe('AdminFacultiesPage', () => {
   it('validates faculty creation and sends it through the catalog operation', async () => {
     render(<AdminFacultiesPage />)
     await screen.findByText('Computer Science')
+    const facultiesPanel = screen.getByText('Institutional colleges and divisions, with department totals.')
+      .closest('[data-slot="card"]')
+    expect(facultiesPanel).toBeTruthy()
+    expect(
+      within(facultiesPanel as HTMLElement).getByRole('button', {
+        name: 'Add faculty',
+      }),
+    ).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Add faculty' }))
 
     fireEvent.click(

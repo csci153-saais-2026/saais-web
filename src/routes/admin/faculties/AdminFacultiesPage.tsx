@@ -189,7 +189,6 @@ export default function AdminFacultiesPage() {
       <PageHeading
         title="Faculties and departments"
         subtitle="Maintain the institutional faculty and department hierarchy."
-        actions={<Button onClick={() => setFacultyDialog(null)}>Add faculty</Button>}
       />
 
       {error && (
@@ -212,6 +211,14 @@ export default function AdminFacultiesPage() {
       <DataTablePanel
         title="Faculties"
         description="Institutional colleges and divisions, with department totals."
+        action={
+          <Button
+            onClick={() => setFacultyDialog(null)}
+            disabled={loading || Boolean(error)}
+          >
+            Add faculty
+          </Button>
+        }
         columns={facultyColumns}
         rows={!loading && !error ? faculties : []}
         rowKey={(faculty) => faculty.id}
