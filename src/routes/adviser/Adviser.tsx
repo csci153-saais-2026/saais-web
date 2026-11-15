@@ -38,14 +38,17 @@ export function AdviserPage({ title, tab, children, sample = true }: {
   children: ReactNode
   sample?: boolean
 }) {
-  // Route identity affects navigation only; academic data remains the fixed fixture.
+  // The legacy sample record is not a shared-data identity.
   const { id } = useParams<{ id: string }>()
   const detailPath = id ? `/adviser/advisee/${encodeURIComponent(id)}` : recordPath
+  const sharedRecord = !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
   return (
     <section aria-label={title} className="min-w-0 max-w-full">
         {tab && (
           <>
-            <StudentRecordHeader {...student} />
+            {sharedRecord
+              ? <div className="mb-5"><h1 className="text-2xl">Student record</h1><p className="text-sm text-muted-foreground">Record ID: {id}</p></div>
+              : <StudentRecordHeader {...student} />}
             <nav aria-label="Student record" className="mb-6 flex gap-6 overflow-x-auto border-b border-border whitespace-nowrap">
               {tabs.map(([key, label]) => (
                 <Link
@@ -60,8 +63,8 @@ export function AdviserPage({ title, tab, children, sample = true }: {
             </nav>
           </>
         )}
-        {children}
-        {sample && <SampleFooter>Sample records for presentation · Reference date: 19 September 2026</SampleFooter>}
+        {sharedRecord && tab && tab !== "advising" ? <p>This section is not yet connected to this student record.</p> : children}
+        {sample && !sharedRecord && <SampleFooter>Sample records for presentation · Reference date: 19 September 2026</SampleFooter>}
     </section>
   )
 }
