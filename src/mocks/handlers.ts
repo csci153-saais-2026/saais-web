@@ -937,8 +937,15 @@ export const saaisMswHandlers = [
       'adviser',
     ])
     if ('response' in auth) return auth.response
+    const visibleSettings = auth.persona.roles.includes('admin')
+      ? getMockDatabase().systemSettings.filter(
+          (setting) => setting.department_id === null,
+        )
+      : getMockDatabase().systemSettings.filter(
+          (setting) => setting.department_id === auth.persona.departmentId,
+        )
     return applyPostgrestQuery(
-      getMockDatabase().systemSettings,
+      visibleSettings,
       new URL(request.url),
     )
   }),
@@ -2804,7 +2811,7 @@ export const saaisMswHandlers = [
         adviser_name: adviser.full_name,
         adviser_email: adviser.email,
         adviser_faculty_name: 'Faculty of Computing',
-        adviser_consultation_hours: 'Tue & Thu, 13:00–16:00',
+        adviser_consultation_hours: 'Tue & Thu, 13:00â€“16:00',
         student_id: studentId,
         start_date: body.start_date ?? '2026-11-10',
         end_date: null,
@@ -3656,7 +3663,16 @@ export const saaisMswHandlers = [
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'SystemSettingsUpdateRequest'>
     const db = getMockDatabase()
-    const current = db.systemSettings[0]!
+    const departmentId = auth.persona.roles.includes('admin')
+      ? null
+      : body.department_id ?? auth.persona.departmentId
+    const settingsIndex = db.systemSettings.findIndex(
+      (setting) => setting.department_id === departmentId,
+    )
+    if (settingsIndex === -1) {
+      return errorJson(404, 'NOT_FOUND', 'System settings were not found.')
+    }
+    const current = db.systemSettings[settingsIndex]!
     const warning = body.warning_pct ?? current.warning_pct
     const probation = body.probation_pct ?? current.probation_pct
     const dismissal = body.dismissal_pct ?? current.dismissal_pct
@@ -3675,7 +3691,7 @@ export const saaisMswHandlers = [
       sender_email: body.sender_email ?? current.sender_email,
       updated_at: '2026-11-10T09:00:00Z',
     }
-    db.systemSettings[0] = updated
+    db.systemSettings[settingsIndex] = updated
     return HttpResponse.json(updated, { status: 200 })
   }),
 
@@ -3684,7 +3700,16 @@ export const saaisMswHandlers = [
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'RecordBackupRequest'>
     const db = getMockDatabase()
-    const current = db.systemSettings[0]!
+    const departmentId = auth.persona.roles.includes('admin')
+      ? null
+      : body.department_id ?? auth.persona.departmentId
+    const settingsIndex = db.systemSettings.findIndex(
+      (setting) => setting.department_id === departmentId,
+    )
+    if (settingsIndex === -1) {
+      return errorJson(404, 'NOT_FOUND', 'System settings were not found.')
+    }
+    const current = db.systemSettings[settingsIndex]!
     const updated: ApiSchema<'SystemSettings'> = {
       ...current,
       last_backup_at: body.completed_at ?? '2026-11-10T09:00:00Z',
@@ -3692,10 +3717,14 @@ export const saaisMswHandlers = [
       last_backup_reference: body.backup_reference ?? 'BKP-2026-11-10-001',
       last_backup_location:
         body.storage_location ?? 'vsu-saais-backups/2026-11-10.dump',
-      last_backup_scope: body.scope ?? 'institution_wide',
+      last_backup_scope:
+        body.scope ??
+        (auth.persona.roles.includes('admin')
+          ? 'institution_wide'
+          : 'department_records'),
       updated_at: '2026-11-10T09:00:00Z',
     }
-    db.systemSettings[0] = updated
+    db.systemSettings[settingsIndex] = updated
     return HttpResponse.json(updated, { status: 200 })
   }),
 
