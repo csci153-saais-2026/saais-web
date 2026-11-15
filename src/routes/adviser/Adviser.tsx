@@ -32,10 +32,11 @@ const tabs = [
 export const recordPath = "/adviser/advisee/2023-04412"
 
 /** Shared page composition kept within the Adviser route boundary. */
-export function AdviserPage({ title, tab, children }: {
+export function AdviserPage({ title, tab, children, sample = true }: {
   title: string
   tab?: string
   children: ReactNode
+  sample?: boolean
 }) {
   // Route identity affects navigation only; academic data remains the fixed fixture.
   const { id } = useParams<{ id: string }>()
@@ -60,7 +61,7 @@ export function AdviserPage({ title, tab, children }: {
           </>
         )}
         {children}
-        <SampleFooter>Sample records for presentation · Reference date: 19 September 2026</SampleFooter>
+        {sample && <SampleFooter>Sample records for presentation · Reference date: 19 September 2026</SampleFooter>}
     </section>
   )
 }
