@@ -5,6 +5,7 @@ import { PageHeading } from '@/components/features/page-heading'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { AdminProgramDialog } from './AdminProgramDialog'
+import { AdminProgramDeleteDialog } from './AdminProgramDeleteDialog'
 import {
   apiClient,
   parseContentRange,
@@ -48,6 +49,7 @@ export default function AdminProgramsPage() {
   const [dialogProgram, setDialogProgram] = useState<Program | null | undefined>(
     undefined,
   )
+  const [deleteProgram, setDeleteProgram] = useState<Program | null>(null)
 
   const { query, error: searchError } = useMemo(
     () => buildProgramListQuery(search, status, offset),
@@ -170,6 +172,16 @@ export default function AdminProgramsPage() {
     retryPrograms()
   }
 
+  async function removeProgram(id: string) {
+    await unwrapApiResult(
+      await apiClient.DELETE('/functions/v1/catalog/program/{id}', {
+        params: { path: { id } },
+      }),
+    )
+    setDeleteProgram(null)
+    retryPrograms()
+  }
+
   const departmentsById = useMemo(
     () => new Map(departments.map((department) => [department.id, department])),
     [departments],
@@ -235,15 +247,25 @@ export default function AdminProgramsPage() {
       header: 'Actions',
       className: 'whitespace-nowrap',
       cell: (program: Program) => (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!catalogsLoaded || Boolean(catalogError)}
-          onClick={() => setDialogProgram(program)}
-          aria-label={`Edit ${program.name}`}
-        >
-          Edit
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!catalogsLoaded || Boolean(catalogError)}
+            onClick={() => setDialogProgram(program)}
+            aria-label={`Edit ${program.name}`}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteProgram(program)}
+            aria-label={`Delete ${program.name}`}
+          >
+            Delete
+          </Button>
+        </div>
       ),
     },
   ]
@@ -385,6 +407,15 @@ export default function AdminProgramsPage() {
             if (!open) setDialogProgram(undefined)
           }}
           onSubmit={(request) => saveProgram(dialogProgram, request)}
+        />
+      )}
+      {deleteProgram && (
+        <AdminProgramDeleteDialog
+          program={deleteProgram}
+          onOpenChange={(open) => {
+            if (!open) setDeleteProgram(null)
+          }}
+          onConfirm={removeProgram}
         />
       )}
     </div>
