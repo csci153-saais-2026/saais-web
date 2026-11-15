@@ -83,6 +83,49 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(firstPage[0]?.profile.id).not.toBe(secondPage[0]?.profile.id)
   })
 
+  it('filters audit history across student identifiers and returns newest entries first', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+    const allEntries = unwrapApiResult(
+      await client.GET('/rest/v1/audit_log_entry', {
+        params: {
+          query: {
+            select:
+              'id,actor_name,actor_role,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at',
+            order: 'created_at.desc,id.desc',
+            limit: 25,
+            offset: 0,
+          },
+        },
+      }),
+    )
+    expect(allEntries[0]?.id).toBe(MOCK_IDS.auditLog2)
+
+    const studentEntries = unwrapApiResult(
+      await client.GET('/rest/v1/audit_log_entry', {
+        params: {
+          query: {
+            select:
+              'id,actor_name,actor_role,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at',
+            order: 'created_at.desc,id.desc',
+            limit: 25,
+            offset: 0,
+            or: '(student_name.ilike.%Juan%,student_number.ilike.%Juan%,target_label.ilike.%Juan%)',
+            and: '(created_at.gte.2026-08-12T00:00:00.000Z,created_at.lte.2026-08-12T23:59:59.999Z)',
+          },
+        },
+      }),
+    )
+    expect(studentEntries.map((entry) => entry.id)).toEqual([
+      MOCK_IDS.auditLog1,
+    ])
+  })
+
   it('updates account profile and role assignments atomically in the mock', async () => {
     loginAsMockPersona('admin')
     const client = createSaaisApiClient({
