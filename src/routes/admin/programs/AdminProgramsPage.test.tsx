@@ -114,6 +114,62 @@ describe('AdminProgramsPage', () => {
     )
   })
 
+  it('keeps forms unavailable until every organization catalog page loads', async () => {
+    const firstDepartmentPage = Array.from({ length: 1000 }, (_, index) => ({
+      id: `department-${index}`,
+      name: `Department ${index}`,
+      faculty_id: 'faculty-1',
+    }))
+    const firstFacultyPage = Array.from({ length: 1000 }, (_, index) => ({
+      id: `faculty-${index}`,
+      name: `Faculty ${index}`,
+    }))
+    getMock.mockImplementation(
+      (
+        path: string,
+        options?: { params?: { query?: { offset?: number } } },
+      ) => {
+        const offset = options?.params?.query?.offset ?? 0
+        if (path === '/rest/v1/program') {
+          return Promise.resolve(result([program], '0-0/1'))
+        }
+        if (path === '/rest/v1/department') {
+          return offset === 0
+            ? Promise.resolve(result(firstDepartmentPage))
+            : new Promise(() => {})
+        }
+        return offset === 0
+          ? Promise.resolve(result(firstFacultyPage))
+          : new Promise(() => {})
+      },
+    )
+    const { unmount } = render(<AdminProgramsPage />)
+
+    await screen.findByText('Computer Science')
+    const addButton = screen.getByRole('button', { name: 'Add program' })
+    expect(addButton.hasAttribute('disabled')).toBe(true)
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith(
+        '/rest/v1/department',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({ limit: 1000, offset: 1000 }),
+          },
+        }),
+      )
+      expect(getMock).toHaveBeenCalledWith(
+        '/rest/v1/faculty',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({ limit: 1000, offset: 1000 }),
+          },
+        }),
+      )
+    })
+    expect(addButton.hasAttribute('disabled')).toBe(true)
+    unmount()
+  })
+
   it('surfaces catalog request errors and retries the failed request', async () => {
     let failFirstRequest = true
     getMock.mockImplementation((path: string) => {

@@ -22,6 +22,19 @@ type Program = ApiSchema<'Program'>
 type Department = Pick<ApiSchema<'Department'>, 'id' | 'name' | 'faculty_id'>
 type Faculty = Pick<ApiSchema<'Faculty'>, 'id' | 'name'>
 
+const ORGANIZATION_CATALOG_PAGE_SIZE = 1000
+
+async function loadAllPages<T>(
+  loadPage: (offset: number) => Promise<readonly T[]>,
+): Promise<T[]> {
+  const records: T[] = []
+  for (let offset = 0; ; offset += ORGANIZATION_CATALOG_PAGE_SIZE) {
+    const page = await loadPage(offset)
+    records.push(...page)
+    if (page.length < ORGANIZATION_CATALOG_PAGE_SIZE) return records
+  }
+}
+
 const STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
   { value: 'active', label: 'Active' },
@@ -43,13 +56,18 @@ export default function AdminProgramsPage() {
     readonly key: string
     readonly message: string
   } | null>(null)
-  const [catalogsLoaded, setCatalogsLoaded] = useState(false)
-  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [loadedCatalogRequest, setLoadedCatalogRequest] = useState(-1)
+  const [catalogErrorState, setCatalogErrorState] = useState<{
+    readonly key: number
+    readonly message: string
+  } | null>(null)
   const [catalogReloadCount, setCatalogReloadCount] = useState(0)
   const [dialogProgram, setDialogProgram] = useState<Program | null | undefined>(
     undefined,
   )
   const [deleteProgram, setDeleteProgram] = useState<Program | null>(null)
+  const [dialogMutationPending, setDialogMutationPending] = useState(false)
+  const [deletingProgramId, setDeletingProgramId] = useState<string | null>(null)
 
   const { query, error: searchError } = useMemo(
     () => buildProgramListQuery(search, status, offset),
@@ -62,44 +80,60 @@ export default function AdminProgramsPage() {
     rangeTotal !== null
       ? offset + PROGRAM_PAGE_SIZE < rangeTotal
       : programs.length === PROGRAM_PAGE_SIZE
+  const catalogsLoaded = loadedCatalogRequest === catalogReloadCount
+  const catalogError =
+    catalogErrorState?.key === catalogReloadCount
+      ? catalogErrorState.message
+      : null
 
   useEffect(() => {
     let active = true
     void Promise.all([
-      apiClient
-        .GET('/rest/v1/department', {
-          params: {
-            query: {
+      loadAllPages((offset) =>
+        apiClient
+          .GET('/rest/v1/department', {
+            params: {
+              query: {
               select: 'id,name,faculty_id',
               order: 'name.asc,id.asc',
-              limit: 1000,
+              limit: ORGANIZATION_CATALOG_PAGE_SIZE,
+              offset,
+              },
             },
-          },
-        })
-        .then(unwrapApiResult),
-      apiClient
-        .GET('/rest/v1/faculty', {
-          params: {
-            query: { select: 'id,name', order: 'name.asc,id.asc', limit: 1000 },
-          },
-        })
-        .then(unwrapApiResult),
+          })
+          .then(unwrapApiResult),
+      ),
+      loadAllPages((offset) =>
+        apiClient
+          .GET('/rest/v1/faculty', {
+            params: {
+              query: {
+                select: 'id,name',
+                order: 'name.asc,id.asc',
+                limit: ORGANIZATION_CATALOG_PAGE_SIZE,
+                offset,
+              },
+            },
+          })
+          .then(unwrapApiResult),
+      ),
     ])
       .then(([nextDepartments, nextFaculties]) => {
         if (!active) return
         setDepartments(nextDepartments)
         setFaculties(nextFaculties)
-        setCatalogError(null)
-        setCatalogsLoaded(true)
+        setLoadedCatalogRequest(catalogReloadCount)
       })
       .catch((catalogRequestError: unknown) => {
         if (!active) return
-        setCatalogError(
-          catalogRequestError instanceof Error
-            ? catalogRequestError.message
-            : 'Faculty and department information could not be loaded.',
-        )
-        setCatalogsLoaded(true)
+        setCatalogErrorState({
+          key: catalogReloadCount,
+          message:
+            catalogRequestError instanceof Error
+              ? catalogRequestError.message
+              : 'Faculty and department information could not be loaded.',
+        })
+        setLoadedCatalogRequest(catalogReloadCount)
       })
 
     return () => {
@@ -153,33 +187,43 @@ export default function AdminProgramsPage() {
       'code' | 'name' | 'nominal_duration' | 'status' | 'department_id'
     >,
   ) {
-    if (program) {
-      await unwrapApiResult(
-        await apiClient.PATCH('/functions/v1/catalog/program/{id}', {
-          params: { path: { id: program.id } },
-          body: request,
-        }),
-      )
-    } else {
-      await unwrapApiResult(
-        await apiClient.POST('/functions/v1/catalog/program', {
-          body: request,
-        }),
-      )
-    }
+    setDialogMutationPending(true)
+    try {
+      if (program) {
+        await unwrapApiResult(
+          await apiClient.PATCH('/functions/v1/catalog/program/{id}', {
+            params: { path: { id: program.id } },
+            body: request,
+          }),
+        )
+      } else {
+        await unwrapApiResult(
+          await apiClient.POST('/functions/v1/catalog/program', {
+            body: request,
+          }),
+        )
+      }
 
-    setDialogProgram(undefined)
-    retryPrograms()
+      setDialogProgram(undefined)
+      retryPrograms()
+    } finally {
+      setDialogMutationPending(false)
+    }
   }
 
   async function removeProgram(id: string) {
-    await unwrapApiResult(
-      await apiClient.DELETE('/functions/v1/catalog/program/{id}', {
-        params: { path: { id } },
-      }),
-    )
-    setDeleteProgram(null)
-    retryPrograms()
+    setDeletingProgramId(id)
+    try {
+      await unwrapApiResult(
+        await apiClient.DELETE('/functions/v1/catalog/program/{id}', {
+          params: { path: { id } },
+        }),
+      )
+      setDeleteProgram(null)
+      retryPrograms()
+    } finally {
+      setDeletingProgramId(null)
+    }
   }
 
   const departmentsById = useMemo(
@@ -404,7 +448,7 @@ export default function AdminProgramsPage() {
           departments={departments}
           catalogsLoading={!catalogsLoaded || Boolean(catalogError)}
           onOpenChange={(open) => {
-            if (!open) setDialogProgram(undefined)
+            if (!open && !dialogMutationPending) setDialogProgram(undefined)
           }}
           onSubmit={(request) => saveProgram(dialogProgram, request)}
         />
@@ -413,7 +457,9 @@ export default function AdminProgramsPage() {
         <AdminProgramDeleteDialog
           program={deleteProgram}
           onOpenChange={(open) => {
-            if (!open) setDeleteProgram(null)
+            if (!open && deletingProgramId !== deleteProgram.id) {
+              setDeleteProgram(null)
+            }
           }}
           onConfirm={removeProgram}
         />

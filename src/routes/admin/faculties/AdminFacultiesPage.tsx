@@ -29,6 +29,17 @@ const DEPARTMENT_QUERY: OperationQuery<'listDepartments'> = {
   limit: FACULTY_CATALOG_LIMIT,
 }
 
+async function loadAllPages<T>(
+  loadPage: (offset: number) => Promise<readonly T[]>,
+): Promise<T[]> {
+  const records: T[] = []
+  for (let offset = 0; ; offset += FACULTY_CATALOG_LIMIT) {
+    const page = await loadPage(offset)
+    records.push(...page)
+    if (page.length < FACULTY_CATALOG_LIMIT) return records
+  }
+}
+
 export default function AdminFacultiesPage() {
   const [faculties, setFaculties] = useState<Faculty[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
@@ -47,17 +58,31 @@ export default function AdminFacultiesPage() {
   >(undefined)
   const [deleteDepartment, setDeleteDepartment] =
     useState<Department | null>(null)
+  const [savingFaculty, setSavingFaculty] = useState(false)
+  const [savingDepartment, setSavingDepartment] = useState(false)
+  const [deletingFacultyId, setDeletingFacultyId] = useState<string | null>(null)
+  const [deletingDepartmentId, setDeletingDepartmentId] = useState<
+    string | null
+  >(null)
 
   useEffect(() => {
     let active = true
 
     void Promise.all([
-      apiClient
-        .GET('/rest/v1/faculty', { params: { query: FACULTY_QUERY } })
-        .then(unwrapApiResult),
-      apiClient
-        .GET('/rest/v1/department', { params: { query: DEPARTMENT_QUERY } })
-        .then(unwrapApiResult),
+      loadAllPages((offset) =>
+        apiClient
+          .GET('/rest/v1/faculty', {
+            params: { query: { ...FACULTY_QUERY, offset } },
+          })
+          .then(unwrapApiResult),
+      ),
+      loadAllPages((offset) =>
+        apiClient
+          .GET('/rest/v1/department', {
+            params: { query: { ...DEPARTMENT_QUERY, offset } },
+          })
+          .then(unwrapApiResult),
+      ),
     ])
       .then(([nextFaculties, nextDepartments]) => {
         if (!active) return
@@ -259,16 +284,23 @@ export default function AdminFacultiesPage() {
           faculty={deleteFaculty}
           departmentCount={departmentCounts.get(deleteFaculty.id) ?? 0}
           onOpenChange={(open) => {
-            if (!open) setDeleteFaculty(null)
+            if (!open && deletingFacultyId !== deleteFaculty.id) {
+              setDeleteFaculty(null)
+            }
           }}
           onConfirm={async (id) => {
-            await unwrapApiResult(
-              await apiClient.DELETE('/functions/v1/catalog/faculty/{id}', {
-                params: { path: { id } },
-              }),
-            )
-            setDeleteFaculty(null)
-            setReloadCount((count) => count + 1)
+            setDeletingFacultyId(id)
+            try {
+              await unwrapApiResult(
+                await apiClient.DELETE('/functions/v1/catalog/faculty/{id}', {
+                  params: { path: { id } },
+                }),
+              )
+              setDeleteFaculty(null)
+              setReloadCount((count) => count + 1)
+            } finally {
+              setDeletingFacultyId(null)
+            }
           }}
         />
       )}
@@ -281,16 +313,23 @@ export default function AdminFacultiesPage() {
             'an unknown faculty'
           }
           onOpenChange={(open) => {
-            if (!open) setDeleteDepartment(null)
+            if (!open && deletingDepartmentId !== deleteDepartment.id) {
+              setDeleteDepartment(null)
+            }
           }}
           onConfirm={async (id) => {
-            await unwrapApiResult(
-              await apiClient.DELETE('/functions/v1/catalog/department/{id}', {
-                params: { path: { id } },
-              }),
-            )
-            setDeleteDepartment(null)
-            setReloadCount((count) => count + 1)
+            setDeletingDepartmentId(id)
+            try {
+              await unwrapApiResult(
+                await apiClient.DELETE('/functions/v1/catalog/department/{id}', {
+                  params: { path: { id } },
+                }),
+              )
+              setDeleteDepartment(null)
+              setReloadCount((count) => count + 1)
+            } finally {
+              setDeletingDepartmentId(null)
+            }
           }}
         />
       )}
@@ -300,25 +339,30 @@ export default function AdminFacultiesPage() {
           key={facultyDialog?.id ?? 'new'}
           faculty={facultyDialog}
           onOpenChange={(open) => {
-            if (!open) setFacultyDialog(undefined)
+            if (!open && !savingFaculty) setFacultyDialog(undefined)
           }}
           onSubmit={async (request) => {
-            if (facultyDialog) {
-              await unwrapApiResult(
-                await apiClient.PATCH('/functions/v1/catalog/faculty/{id}', {
-                  params: { path: { id: facultyDialog.id } },
-                  body: request,
-                }),
-              )
-            } else {
-              await unwrapApiResult(
-                await apiClient.POST('/functions/v1/catalog/faculty', {
-                  body: request,
-                }),
-              )
+            setSavingFaculty(true)
+            try {
+              if (facultyDialog) {
+                await unwrapApiResult(
+                  await apiClient.PATCH('/functions/v1/catalog/faculty/{id}', {
+                    params: { path: { id: facultyDialog.id } },
+                    body: request,
+                  }),
+                )
+              } else {
+                await unwrapApiResult(
+                  await apiClient.POST('/functions/v1/catalog/faculty', {
+                    body: request,
+                  }),
+                )
+              }
+              setFacultyDialog(undefined)
+              setReloadCount((count) => count + 1)
+            } finally {
+              setSavingFaculty(false)
             }
-            setFacultyDialog(undefined)
-            setReloadCount((count) => count + 1)
           }}
         />
       )}
@@ -328,25 +372,30 @@ export default function AdminFacultiesPage() {
           department={departmentDialog}
           faculties={faculties}
           onOpenChange={(open) => {
-            if (!open) setDepartmentDialog(undefined)
+            if (!open && !savingDepartment) setDepartmentDialog(undefined)
           }}
           onSubmit={async (request) => {
-            if (departmentDialog) {
-              await unwrapApiResult(
-                await apiClient.PATCH('/functions/v1/catalog/department/{id}', {
-                  params: { path: { id: departmentDialog.id } },
-                  body: request,
-                }),
-              )
-            } else {
-              await unwrapApiResult(
-                await apiClient.POST('/functions/v1/catalog/department', {
-                  body: request,
-                }),
-              )
+            setSavingDepartment(true)
+            try {
+              if (departmentDialog) {
+                await unwrapApiResult(
+                  await apiClient.PATCH('/functions/v1/catalog/department/{id}', {
+                    params: { path: { id: departmentDialog.id } },
+                    body: request,
+                  }),
+                )
+              } else {
+                await unwrapApiResult(
+                  await apiClient.POST('/functions/v1/catalog/department', {
+                    body: request,
+                  }),
+                )
+              }
+              setDepartmentDialog(undefined)
+              setReloadCount((count) => count + 1)
+            } finally {
+              setSavingDepartment(false)
             }
-            setDepartmentDialog(undefined)
-            setReloadCount((count) => count + 1)
           }}
         />
       )}

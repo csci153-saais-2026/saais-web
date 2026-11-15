@@ -86,6 +86,7 @@ describe('AdminFacultiesPage', () => {
           select: 'id,name,code',
           order: 'name.asc,id.asc',
           limit: 1000,
+          offset: 0,
         },
       },
     })
@@ -95,9 +96,60 @@ describe('AdminFacultiesPage', () => {
           select: 'id,faculty_id,name,code',
           order: 'name.asc,id.asc',
           limit: 1000,
+          offset: 0,
         },
       },
     })
+  })
+
+  it('requests subsequent catalog pages before completing the load', async () => {
+    const firstFacultyPage = Array.from({ length: 1000 }, (_, index) => ({
+      id: `faculty-${index}`,
+      name: `Faculty ${index}`,
+    }))
+    const firstDepartmentPage = Array.from({ length: 1000 }, (_, index) => ({
+      id: `department-${index}`,
+      faculty_id: 'faculty-0',
+      name: `Department ${index}`,
+    }))
+    getMock.mockImplementation(
+      (
+        path: string,
+        options?: { params?: { query?: { offset?: number } } },
+      ) => {
+        const offset = options?.params?.query?.offset ?? 0
+        if (path === '/rest/v1/faculty') {
+          return offset === 0
+            ? Promise.resolve(result(firstFacultyPage))
+            : new Promise(() => {})
+        }
+        return offset === 0
+          ? Promise.resolve(result(firstDepartmentPage))
+          : new Promise(() => {})
+      },
+    )
+
+    const { unmount } = render(<AdminFacultiesPage />)
+
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith(
+        '/rest/v1/faculty',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({ limit: 1000, offset: 1000 }),
+          },
+        }),
+      )
+      expect(getMock).toHaveBeenCalledWith(
+        '/rest/v1/department',
+        expect.objectContaining({
+          params: {
+            query: expect.objectContaining({ limit: 1000, offset: 1000 }),
+          },
+        }),
+      )
+    })
+    unmount()
   })
 
   it('shows an explicit catalog error and retries the reads', async () => {
