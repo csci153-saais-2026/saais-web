@@ -47,7 +47,7 @@ export default function AdviseeChecklist() {
   return (
     <AdviserPage title="Checklist" tab="checklist">
       <StatGrid items={adviseeChecklistMetrics} />
-      <div className="mb-5 flex items-end justify-between gap-4">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <StaticSelect id="requirements" label="Show requirements" value="All statuses" options={["All statuses", "Not yet taken", "Passed / credited", "INC", "Currently enrolled"]} className="w-56" />
         <Button variant="outline">Collapse all</Button>
       </div>
