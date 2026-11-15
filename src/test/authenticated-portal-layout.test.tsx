@@ -50,7 +50,9 @@ describe('AuthenticatedPortalLayout integration', () => {
     expect(screen.getByText('Dean')).toBeTruthy()
     // A derived role list must not introduce a menu absent from actual assignments.
     expect(screen.queryByText('Adviser')).toBeNull()
-    expect(screen.getByRole('link', { name: 'Faculty reports' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getAllByRole('link', { name: 'Faculty reports' }).some(link =>
+      link.getAttribute('href') === '/dean/reports' && link.getAttribute('aria-current') === 'page'
+    )).toBe(true)
     expect(screen.getByText('Ada Example')).toBeTruthy()
     expect(screen.getByText('ada@example.edu.ph')).toBeTruthy()
     expect(screen.getByText('AE')).toBeTruthy()

@@ -1,6 +1,8 @@
-import { useLocation, useNavigate } from 'react-router'
+import { matchPath, useLocation, useNavigate } from 'react-router'
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout'
 import { useAuth } from '@/hooks/use-auth'
+import { useStudentRecordLabel } from '@/hooks/use-student-record-label'
+import { getPortalBreadcrumbs } from '@/navigation/portal-breadcrumbs'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
 import type { SaaisRole } from '@/mocks/personas'
 
@@ -64,6 +66,11 @@ export function AuthenticatedPortalLayout() {
   const { user, roles, roleAssignments, activeRole, isLoading, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const recordMatch = matchPath('/adviser/advisee/:id/*', location.pathname)
+  const studentLabel = useStudentRecordLabel(
+    !isLoading && roles.includes('adviser') ? user?.id : undefined,
+    recordMatch?.params.id,
+  )
 
   if (isLoading || !user) {
     return (
@@ -104,7 +111,7 @@ export function AuthenticatedPortalLayout() {
         profileHref: '/settings',
         onSignOut: () => void handleSignOut(),
       }}
-      crumbs={[{ label: portalLabel, to: homeHref }]}
+      crumbs={getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)}
     />
   )
 }
