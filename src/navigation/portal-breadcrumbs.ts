@@ -11,6 +11,7 @@ export function getPortalBreadcrumbs(
   studentLabel: string,
 ): Crumb[] {
   const root = { label: role === 'adviser' ? adviserNav.title! : portalLabel, to: homeHref }
+  if (pathname === '/notifications') return [root, { label: 'Notifications' }]
   if (pathname === '/settings') return [root, { label: 'Settings' }]
 
   if (role === 'adviser') {
@@ -28,7 +29,7 @@ export function getPortalBreadcrumbs(
     const item = adviserNav.items.find(item => matchPath(item.href, pathname))
     const label = item?.label
       ?? (matchPath('/adviser', pathname) ? 'Dashboard'
-        : matchPath('/adviser/notifications', pathname) ? 'Notifications' : 'Page not found')
+        : 'Page not found')
     return [{ ...root, to: '/adviser/dashboard' }, { label }]
   }
 

@@ -14,7 +14,6 @@ const pages = {
   "encode-grades": lazy(() => import("./record-grades/AdviserEncodeGrades")),
   "import-grades": lazy(() => import("./import-grades/AdviserImportGrades")),
   "grade-flags": lazy(() => import("./grade-flags/AdviserGradeFlags")),
-  notifications: lazy(() => import("./notifications/AdviserNotifications")),
 }
 
 const detailPages = {

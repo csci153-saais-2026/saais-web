@@ -6,6 +6,7 @@ import { AdviserLayout } from '@/routes/adviser/AdviserLayout'
 import { AdviserPage } from '@/routes/adviser/Adviser'
 import AdviserDashboard from '@/routes/adviser/dashboard/AdviserDashboard'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const auth = vi.hoisted(() => ({
   user: { id: 'adviser-one', fullName: 'Ada Example', email: 'ada@example.edu.ph', primaryRole: 'adviser' },
@@ -18,10 +19,11 @@ const auth = vi.hoisted(() => ({
   setActiveRole: vi.fn(),
 }))
 const getProfile = vi.hoisted(() => vi.fn())
+const getNotifications = vi.hoisted(() => vi.fn().mockResolvedValue({ data: [], response: new Response() }))
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => auth }))
 vi.mock('@/lib/api', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/api')>(),
-  apiClient: { GET: getProfile },
+  apiClient: { GET: (path: string, ...args: unknown[]) => path === '/rest/v1/notification' ? getNotifications(path, ...args) : getProfile(path, ...args) },
 }))
 vi.mock('@/routes/adviser/dashboard/adviser-dashboard.api', () => ({
   getSchoolTerms: vi.fn().mockResolvedValue([]),
@@ -45,7 +47,12 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
 function setup(path = '/adviser/dashboard') {
-  return render(viewRoot(path))
+  return render(withQueryClient(viewRoot(path)))
+}
+
+function withQueryClient(node: React.ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
+  return <QueryClientProvider client={client}>{node}</QueryClientProvider>
 }
 
 function viewRoot(path: string) {
@@ -53,10 +60,11 @@ function viewRoot(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route element={<AuthenticatedPortalLayout />}>
+          <Route path="/notifications" element={<p>Notifications content</p>} />
           <Route element={<ProtectedRoute allowedRoles={['adviser']} />}>
             <Route path="/adviser" element={<AdviserLayout />}>
               <Route path="dashboard" element={<AdviserDashboard />} />
-              {['advisees', 'encode-grades', 'import-grades', 'grade-flags', 'notifications'].map(path =>
+              {['advisees', 'encode-grades', 'import-grades', 'grade-flags'].map(path =>
                 <Route key={path} path={path} element={<p>{path} content</p>} />
               )}
               <Route path="advisee/:id">
@@ -104,11 +112,19 @@ describe('Adviser breadcrumbs in the shared top bar', () => {
 
   it.each([
     ['advisees', 'Advisees'], ['encode-grades', 'Encode grades'], ['import-grades', 'Import grades'],
-    ['grade-flags', 'Grade flags'], ['notifications', 'Notifications'],
+    ['grade-flags', 'Grade flags'],
   ])('derives the %s breadcrumb from the route', (route, label) => {
     const { container } = setup(`/adviser/${route}`)
     expectOneBreadcrumb(container)
     expect(trail().querySelector('[aria-current="page"]')?.textContent).toBe(label)
+  })
+
+  it('uses the shared universal notifications route and breadcrumb', () => {
+    const { container } = setup('/notifications')
+    expect(screen.getByText('Notifications content')).toBeTruthy()
+    expectOneBreadcrumb(container)
+    expect(Array.from(trail().querySelectorAll('[data-slot="breadcrumb-item"]')).map(item => item.textContent))
+      .toEqual(['Adviser', 'Notifications'])
   })
 
   it('resolves the selected student, exposes all parents, and navigates between routes', async () => {
@@ -160,7 +176,7 @@ describe('Adviser breadcrumbs in the shared top bar', () => {
     await within(trail()).findByRole('link', { name: 'Student record' })
     expect(within(trail()).queryByText('Elena Santos')).toBeNull()
     auth.user.id = 'adviser-two'
-    view.rerender(viewRoot('/adviser/advisee/2022-01188/notes'))
+    view.rerender(withQueryClient(viewRoot('/adviser/advisee/2022-01188/notes')))
     expect(getProfile.mock.calls[1][1].signal.aborted).toBe(true)
     await within(trail()).findByRole('link', { name: 'Jordan Flores' })
     act(() => resolve(profileResult('Previous account student', '2022-01188')))

@@ -69,15 +69,15 @@ export function AuthenticatedPortalLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const currentRole = resolveRoleFromPath(location.pathname, roles, activeRole ?? roles[0] ?? user?.primaryRole ?? 'student')
-  const notificationRoute = currentRole === 'adviser' ? '/adviser/notifications' : undefined
+  const notificationRoute = '/notifications'
   const notifications = useNotifications(user?.id, isLoading || isAllowedToEnter === false, currentRole, notificationRoute)
   const recordMatch = matchPath('/adviser/advisee/:id/*', location.pathname)
   const studentLabel = useStudentRecordLabel(
-    !isLoading && roles.includes('adviser') ? user?.id : undefined,
+    !isLoading && isAllowedToEnter !== false && roles.includes('adviser') ? user?.id : undefined,
     recordMatch?.params.id,
   )
 
-  if (isLoading || !user || isAllowedToEnter === false) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-primary">
@@ -90,9 +90,13 @@ export function AuthenticatedPortalLayout() {
     )
   }
 
+  if (!user || isAllowedToEnter === false) {
+    return <main className="mx-auto grid min-h-screen max-w-lg content-center gap-3 px-6"><h1 className="text-xl font-semibold">Workspace unavailable</h1><p className="text-muted-foreground">{!user ? 'Sign in with an authorized account to continue.' : 'This account is inactive or is not authorized to access this workspace.'}</p><a className="text-primary underline" href="/login">Return to sign in</a></main>
+  }
+
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
-  const crumbs = getBreadcrumbs(location.pathname, currentRole, homeHref)
+  const crumbs = getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)
 
   const handleSignOut = async () => {
     await signOut()
@@ -116,26 +120,4 @@ export function AuthenticatedPortalLayout() {
       topbarTrailing={<NotificationBell items={notifications.bellItems} allHref={notifications.allHref} onMarkAllRead={notifications.markAllRead} loading={notifications.loading} error={notifications.error} showUnreadCount={!notifications.capped} />}
     />
   )
-}
-
-function getBreadcrumbs(pathname: string, role: SaaisRole, homeHref: string) {
-  const portalLabel = ROLE_PORTAL_LABELS[role]
-  if (role === 'adviser') {
-    const dashboard = { label: 'Dashboard', to: '/adviser/dashboard' }
-    if (pathname === '/adviser/dashboard' || pathname === '/adviser') return [{ label: portalLabel, to: homeHref }, { ...dashboard, to: undefined }]
-    if (pathname === '/adviser/advisees') return [{ label: portalLabel, to: homeHref }, { label: 'Advisees' }]
-    const record = matchPath('/adviser/advisee/:id/*', pathname)
-    if (record?.params.id) {
-      const sections: Record<string, string> = { checklist: 'Checklist', grades: 'Grades', curriculum: 'Curriculum', advising: 'Advising', notes: 'Notes', history: 'Audit log' }
-      const section = pathname.split('/').at(-1)
-      return [{ label: portalLabel, to: homeHref }, { label: 'Advisees', to: '/adviser/advisees' }, { label: `Student ${record.params.id}`, to: pathname.slice(0, pathname.lastIndexOf('/')) }, ...(section && sections[section] ? [{ label: sections[section] }] : [])]
-    }
-    const adviserLabels: Record<string, string> = {
-      '/adviser/encode-grades': 'Encode grades', '/adviser/import-grades': 'Import grades',
-      '/adviser/grade-flags': 'Grade flags', '/adviser/notifications': 'Notifications',
-    }
-    const label = adviserLabels[pathname]
-    if (label) return [{ label: portalLabel, to: homeHref }, { label }]
-  }
-  return [{ label: portalLabel, to: homeHref }]
 }
