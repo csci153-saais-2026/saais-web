@@ -1,14 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import AdminFacultiesPage from './AdminFacultiesPage'
 
-const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }))
+const { getMock, postMock, patchMock } = vi.hoisted(() => ({
+  getMock: vi.fn(),
+  postMock: vi.fn(),
+  patchMock: vi.fn(),
+}))
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    apiClient: { GET: getMock },
+    apiClient: { GET: getMock, POST: postMock, PATCH: patchMock },
   }
 })
 
@@ -31,11 +42,15 @@ function result(data: unknown) {
 describe('AdminFacultiesPage', () => {
   beforeEach(() => {
     getMock.mockReset()
+    postMock.mockReset()
+    patchMock.mockReset()
     getMock.mockImplementation((path: string) =>
       Promise.resolve(
         result(path === '/rest/v1/faculty' ? faculties : departments),
       ),
     )
+    postMock.mockResolvedValue(result(faculties[0]))
+    patchMock.mockResolvedValue(result(faculties[0]))
   })
 
   afterEach(() => cleanup())
@@ -88,5 +103,63 @@ describe('AdminFacultiesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('Computer Science')).toBeTruthy()
     await waitFor(() => expect(getMock).toHaveBeenCalledTimes(4))
+  })
+
+  it('validates faculty creation and sends it through the catalog operation', async () => {
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(screen.getByRole('button', { name: 'Add faculty' }))
+
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Add faculty',
+      }),
+    )
+    expect(
+      await screen.findByText('Enter a name between 2 and 250 characters.'),
+    ).toBeTruthy()
+    expect(postMock).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Faculty name'), {
+      target: { value: 'Faculty of Arts' },
+    })
+    fireEvent.change(screen.getByLabelText('Faculty code'), {
+      target: { value: 'FA' },
+    })
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Add faculty',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith(
+        '/functions/v1/catalog/faculty',
+        { body: { name: 'Faculty of Arts', code: 'FA' } },
+      )
+    })
+  })
+
+  it('updates a faculty through its transactional catalog operation', async () => {
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Faculty of Computing' }))
+    fireEvent.change(await screen.findByLabelText('Faculty name'), {
+      target: { value: 'Faculty of Computing and Design' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save faculty' }))
+
+    await waitFor(() => {
+      expect(patchMock).toHaveBeenCalledWith(
+        '/functions/v1/catalog/faculty/{id}',
+        {
+          params: { path: { id: 'faculty-1' } },
+          body: {
+            name: 'Faculty of Computing and Design',
+            code: 'FC',
+          },
+        },
+      )
+    })
   })
 })

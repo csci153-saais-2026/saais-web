@@ -8,6 +8,7 @@ import {
   type ApiSchema,
   type OperationQuery,
 } from '@/lib/api'
+import { AdminFacultyDialog } from './AdminFacultyDialog'
 import { FACULTY_CATALOG_LIMIT } from './admin-faculties-model'
 
 type Faculty = ApiSchema<'Faculty'>
@@ -31,6 +32,9 @@ export default function AdminFacultiesPage() {
   const [loaded, setLoaded] = useState(false)
   const [reloadCount, setReloadCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [facultyDialog, setFacultyDialog] = useState<
+    Faculty | null | undefined
+  >(undefined)
 
   useEffect(() => {
     let active = true
@@ -98,6 +102,20 @@ export default function AdminFacultiesPage() {
       cell: (faculty: Faculty) =>
         departmentCounts.get(faculty.id) ?? 0,
     },
+    {
+      header: 'Actions',
+      className: 'whitespace-nowrap',
+      cell: (faculty: Faculty) => (
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={`Edit ${faculty.name}`}
+          onClick={() => setFacultyDialog(faculty)}
+        >
+          Edit
+        </Button>
+      ),
+    },
   ]
   const departmentColumns = [
     {
@@ -121,6 +139,7 @@ export default function AdminFacultiesPage() {
       <PageHeading
         title="Faculties and departments"
         subtitle="Maintain the institutional faculty and department hierarchy."
+        actions={<Button onClick={() => setFacultyDialog(null)}>Add faculty</Button>}
       />
 
       {error && (
@@ -169,6 +188,34 @@ export default function AdminFacultiesPage() {
               : 'No departments have been added to the catalog.'
         }
       />
+
+      {facultyDialog !== undefined && (
+        <AdminFacultyDialog
+          key={facultyDialog?.id ?? 'new'}
+          faculty={facultyDialog}
+          onOpenChange={(open) => {
+            if (!open) setFacultyDialog(undefined)
+          }}
+          onSubmit={async (request) => {
+            if (facultyDialog) {
+              await unwrapApiResult(
+                await apiClient.PATCH('/functions/v1/catalog/faculty/{id}', {
+                  params: { path: { id: facultyDialog.id } },
+                  body: request,
+                }),
+              )
+            } else {
+              await unwrapApiResult(
+                await apiClient.POST('/functions/v1/catalog/faculty', {
+                  body: request,
+                }),
+              )
+            }
+            setFacultyDialog(undefined)
+            setReloadCount((count) => count + 1)
+          }}
+        />
+      )}
     </div>
   )
 }
