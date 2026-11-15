@@ -9,6 +9,7 @@ import {
   type OperationQuery,
 } from '@/lib/api'
 import { AdminDepartmentDialog } from './AdminDepartmentDialog'
+import { AdminDepartmentDeleteDialog } from './AdminDepartmentDeleteDialog'
 import { AdminFacultyDeleteDialog } from './AdminFacultyDeleteDialog'
 import { AdminFacultyDialog } from './AdminFacultyDialog'
 import { FACULTY_CATALOG_LIMIT } from './admin-faculties-model'
@@ -44,6 +45,8 @@ export default function AdminFacultiesPage() {
   const [departmentDialog, setDepartmentDialog] = useState<
     Department | null | undefined
   >(undefined)
+  const [deleteDepartment, setDeleteDepartment] =
+    useState<Department | null>(null)
 
   useEffect(() => {
     let active = true
@@ -159,14 +162,24 @@ export default function AdminFacultiesPage() {
       header: 'Actions',
       className: 'whitespace-nowrap',
       cell: (department: Department) => (
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label={`Edit ${department.name}`}
-          onClick={() => setDepartmentDialog(department)}
-        >
-          Edit
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Edit ${department.name}`}
+            onClick={() => setDepartmentDialog(department)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            aria-label={`Delete ${department.name}`}
+            onClick={() => setDeleteDepartment(department)}
+          >
+            Delete
+          </Button>
+        </div>
       ),
     },
   ]
@@ -248,6 +261,28 @@ export default function AdminFacultiesPage() {
               }),
             )
             setDeleteFaculty(null)
+            setReloadCount((count) => count + 1)
+          }}
+        />
+      )}
+
+      {deleteDepartment && (
+        <AdminDepartmentDeleteDialog
+          department={deleteDepartment}
+          facultyName={
+            facultiesById.get(deleteDepartment.faculty_id)?.name ??
+            'an unknown faculty'
+          }
+          onOpenChange={(open) => {
+            if (!open) setDeleteDepartment(null)
+          }}
+          onConfirm={async (id) => {
+            await unwrapApiResult(
+              await apiClient.DELETE('/functions/v1/catalog/department/{id}', {
+                params: { path: { id } },
+              }),
+            )
+            setDeleteDepartment(null)
             setReloadCount((count) => count + 1)
           }}
         />

@@ -301,4 +301,65 @@ describe('AdminFacultiesPage', () => {
       expect(getMock.mock.calls.length).toBeGreaterThan(2)
     })
   })
+
+  it('explains department deletion conflicts and does not cascade', async () => {
+    deleteMock.mockRejectedValueOnce(
+      new ApiClientError({
+        status: 409,
+        code: 'DEPENDENT_RECORDS_EXIST',
+        message: 'Conflict',
+        details: null,
+        hint: null,
+        retryAfterSeconds: null,
+        isAuthError: false,
+        isForbidden: false,
+        isNotFound: false,
+        isConflict: true,
+        isRateLimited: false,
+        isNetworkError: false,
+      }),
+    )
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete Computer Science' }),
+    )
+    expect(await screen.findByText(/currently under Faculty of Computing/)).toBeTruthy()
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Delete department',
+      }),
+    )
+
+    expect(
+      await screen.findByText(
+        'This department cannot be deleted while programs, courses, role assignments, or student records still reference it. No related records were deleted.',
+      ),
+    ).toBeTruthy()
+    expect(deleteMock).toHaveBeenCalledWith(
+      '/functions/v1/catalog/department/{id}',
+      { params: { path: { id: 'department-1' } } },
+    )
+  })
+
+  it('deletes an unreferenced department through the catalog operation', async () => {
+    render(<AdminFacultiesPage />)
+    await screen.findByText('Computer Science')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete Computer Science' }),
+    )
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Delete department',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(deleteMock).toHaveBeenCalledWith(
+        '/functions/v1/catalog/department/{id}',
+        { params: { path: { id: 'department-1' } } },
+      )
+      expect(getMock.mock.calls.length).toBeGreaterThan(2)
+    })
+  })
 })
