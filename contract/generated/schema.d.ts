@@ -4413,7 +4413,7 @@ export interface components {
         destinationCurriculumTermCourseIdQueryParam: string;
         /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
         courseOfferingIdQueryParam: string;
-        /** @description Filter by student number (e.g. `eq.2023-04412`) */
+        /** @description Filter by student number (e.g. `eq.23-1-04412`) */
         studentNumberQueryParam: string;
         /** @description Filter by name equality or pattern matching */
         nameQueryParam: string;
@@ -4577,7 +4577,7 @@ export interface operations {
                 role?: components["parameters"]["roleQueryParam"];
                 /** @description Filter this entity’s valid status. */
                 status?: string;
-                /** @description Filter by student number (e.g. `eq.2023-04412`) */
+                /** @description Filter by student number (e.g. `eq.23-1-04412`) */
                 student_number?: components["parameters"]["studentNumberQueryParam"];
                 /** @description Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults. */
                 select?: string;

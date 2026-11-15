@@ -169,6 +169,128 @@ function studentMetrics(studentId: string, departmentId: string) {
   };
 }
 
+function studentDeficiencies(
+  metrics: ReturnType<typeof studentMetrics>,
+): ApiSchema<"StudentDeficiencyItem">[] {
+  const db = getMockDatabase();
+  return [
+    ...metrics.openInc.map((attempt) => {
+      const offering = db.courseOfferings.find(
+        (item) => item.id === attempt.course_offering_id,
+      );
+      const course = db.courses.find((item) => item.id === offering?.course_id);
+      const schoolTerm = db.schoolTerms.find(
+        (item) => item.id === offering?.school_term_id,
+      );
+      return {
+        kind: "open_inc" as const,
+        attempt_id: attempt.id,
+        course_code: course?.code ?? "Unknown",
+        course_title: course?.title ?? "Course unavailable",
+        term_label: schoolTerm
+          ? `${schoolTerm.term_type} ${schoolTerm.school_year}`
+          : null,
+        inc_deadline: attempt.inc_deadline,
+        detail: null,
+      };
+    }),
+    ...metrics.lapsed.map((attempt) => {
+      const offering = db.courseOfferings.find(
+        (item) => item.id === attempt.course_offering_id,
+      );
+      const course = db.courses.find((item) => item.id === offering?.course_id);
+      return {
+        kind: "lapsed_inc" as const,
+        attempt_id: attempt.id,
+        course_code: course?.code ?? "Unknown",
+        course_title: course?.title ?? "Course unavailable",
+        inc_deadline: attempt.inc_deadline,
+      };
+    }),
+    ...metrics.flags.map((flag) => {
+      const attempt = metrics.results.find(
+        (item) => item.id === flag.attempt_id,
+      );
+      const offering = db.courseOfferings.find(
+        (item) => item.id === attempt?.course_offering_id,
+      );
+      const course = db.courses.find((item) => item.id === offering?.course_id);
+      return {
+        kind: "open_flag" as const,
+        attempt_id: flag.attempt_id,
+        course_code: course?.code ?? "Unknown",
+        course_title: course?.title ?? "Course unavailable",
+        detail: flag.details,
+      };
+    }),
+    ...metrics.results
+      .filter(
+        (attempt) =>
+          attempt.effective_status === "failed" &&
+          attempt.counts_toward_cumulative_gwa,
+      )
+      .map((attempt) => {
+        const offering = db.courseOfferings.find(
+          (item) => item.id === attempt.course_offering_id,
+        );
+        const course = db.courses.find(
+          (item) => item.id === offering?.course_id,
+        );
+        return {
+          kind: "failed" as const,
+          attempt_id: attempt.id,
+          course_code: course?.code ?? "Unknown",
+          course_title: course?.title ?? "Course unavailable",
+        };
+      }),
+  ];
+}
+
+function deficiencySummary(
+  studentId: string,
+): ApiSchema<"DeficiencyStudentSummary"> | null {
+  const db = getMockDatabase();
+  const org = db.studentOrganizations.find(
+    (item) => item.student_id === studentId,
+  );
+  const profile = db.profiles.find((item) => item.id === studentId);
+  const program = db.programs.find((item) => item.id === org?.program_id);
+  const curriculum = db.curriculumVersions.find(
+    (item) => item.id === org?.curriculum_version_id,
+  );
+  if (!org || !profile || !program || !curriculum) return null;
+  const metrics = studentMetrics(studentId, org.department_id);
+  const deficiencies = studentDeficiencies(metrics);
+  if (!deficiencies.length) return null;
+  const adviser = db.adviserAssignments.find(
+    (item) => item.student_id === studentId && item.end_date === null,
+  );
+  return {
+    student_id: studentId,
+    student_number: profile.student_number ?? "",
+    full_name: profile.full_name,
+    program_code: program.code,
+    curriculum_label: curriculum.version_label,
+    year_level:
+      metrics.earnedUnits >= 110
+        ? 4
+        : metrics.earnedUnits >= 72
+          ? 3
+          : metrics.earnedUnits >= 36
+            ? 2
+            : 1,
+    adviser_id: adviser?.adviser_id ?? null,
+    adviser_name: adviser?.adviser_name ?? null,
+    gwa: metrics.gwa,
+    standing: metrics.standing,
+    failed_units: metrics.failedUnits,
+    open_inc_count: metrics.openInc.length,
+    lapsed_inc_count: metrics.lapsed.length,
+    open_flags_count: metrics.flags.length,
+    deficiencies,
+  };
+}
+
 const departmentInviteRoles = new Set([
   "student",
   "adviser",
@@ -1069,9 +1191,9 @@ export const saaisMswHandlers = [
     if ("response" in auth) return auth.response;
     const { persona } = auth;
     const db = getMockDatabase();
-    const rows = persona.roles.includes("student")
-      ? db.advisingPlans.filter((a) => a.student_id === persona.profileId)
-      : db.advisingPlans;
+    const rows = db.advisingPlans.filter((a) =>
+      canAccessStudentRecord(persona, a.student_id, true),
+    );
     return applyPostgrestQuery(rows, new URL(request.url));
   }),
 
@@ -1086,9 +1208,9 @@ export const saaisMswHandlers = [
     if ("response" in auth) return auth.response;
     const { persona } = auth;
     const db = getMockDatabase();
-    const rows = persona.roles.includes("student")
-      ? db.advisingPlanItems.filter((a) => a.student_id === persona.profileId)
-      : db.advisingPlanItems;
+    const rows = db.advisingPlanItems.filter((a) =>
+      canAccessStudentRecord(persona, a.student_id, true),
+    );
     return applyPostgrestQuery(rows, new URL(request.url));
   }),
 
@@ -1097,7 +1219,6 @@ export const saaisMswHandlers = [
       "student",
       "adviser",
       "department_head",
-      "dean",
       "admin",
     ]);
     if ("response" in auth) return auth.response;
@@ -1185,10 +1306,15 @@ export const saaisMswHandlers = [
       "adviser",
     ]);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().auditLogEntries,
-      new URL(request.url),
-    );
+    const db = getMockDatabase();
+    const rows = auth.persona.roles.includes("admin")
+      ? db.auditLogEntries
+      : db.auditLogEntries.filter(
+          (entry) =>
+            entry.student_id &&
+            canAccessStudentRecord(auth.persona, entry.student_id, true),
+        );
+    return applyPostgrestQuery(rows, new URL(request.url));
   }),
 
   // ===========================================================================
@@ -2398,140 +2524,85 @@ export const saaisMswHandlers = [
           "Not authorized to view this student academic summary.",
         );
       }
-      const countedAttempts = markRetakeResults(
-        getMockDatabase().attemptResults.filter(
-          (a) => a.student_id === studentId,
-        ),
-      ).filter((a) => a.counts_toward_cumulative_gwa);
-      const weighted = countedAttempts
-        .map((a) => ({
-          grade:
-            a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null),
-          units: a.units_attempted,
-        }))
-        .filter((a) => a.grade != null && a.units > 0);
-      const countedUnits = weighted.reduce((sum, item) => sum + item.units, 0);
-      const cumulativeGwa = countedUnits
-        ? Number(
-            (
-              weighted.reduce(
-                (sum, item) => sum + item.grade! * item.units,
-                0,
-              ) / countedUnits
-            ).toFixed(2),
-          )
-        : null;
       const db = getMockDatabase();
-      const isAdditionalSample = db.profiles.some(
-        (profile) =>
-          profile.id === studentId &&
-          profile.email.startsWith("sample.student"),
+      if (
+        !db.studentOrganizations.some((item) => item.student_id === studentId)
+      )
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Student academic record not found.",
+        );
+      const organization = db.studentOrganizations.find(
+        (item) => item.student_id === studentId,
+      )!;
+      const curriculum = db.curriculumVersions.find(
+        (item) => item.id === organization.curriculum_version_id,
+      )!;
+      const metrics = studentMetrics(studentId, organization.department_id);
+      const inProgress = metrics.results.filter(
+        (item) => item.recorded_status === "currently_enrolled",
       );
-      if (isAdditionalSample) {
-        const organization = db.studentOrganizations.find(
-          (item) => item.student_id === studentId,
-        )!;
-        const curriculum = db.curriculumVersions.find(
-          (item) => item.id === organization.curriculum_version_id,
-        )!;
-        const metrics = studentMetrics(studentId, organization.department_id);
-        const inProgress = metrics.results.filter(
-          (item) => item.recorded_status === "currently_enrolled",
-        );
-        const termIds = db.curriculumTerms
-          .filter((term) => term.curriculum_version_id === curriculum.id)
-          .map((term) => term.id);
-        const slots = db.curriculumTermCourses.filter((slot) =>
-          termIds.includes(slot.curriculum_term_id),
-        );
-        const passedSlots = new Set(
-          metrics.results
-            .filter(
-              (item) =>
-                item.effective_status === "passed" &&
-                item.curriculum_term_course_id,
-            )
-            .map((item) => item.curriculum_term_course_id),
-        );
-        for (const credit of db.outsideCredits.filter(
-          (item) => item.student_id === studentId && item.revoked_at == null,
-        ))
-          passedSlots.add(credit.destination_curriculum_term_course_id);
-        const summary: ApiSchema<"AcademicSummary"> = {
-          student_id: studentId,
-          gwa: metrics.gwa,
-          earned_units: metrics.earnedUnits,
-          required_units: curriculum.total_units,
-          counted_units: metrics.countedUnits,
-          failed_units: metrics.failedUnits,
-          in_progress_units: inProgress.reduce(
-            (sum, item) => sum + item.units_attempted,
-            0,
-          ),
-          remaining_units: Math.max(
-            0,
-            curriculum.total_units - metrics.earnedUnits,
-          ),
-          failure_pct: metrics.failurePct,
-          standing: metrics.standing,
-          year_level:
-            metrics.earnedUnits >= 110
-              ? 4
-              : metrics.earnedUnits >= 72
-                ? 3
-                : metrics.earnedUnits >= 36
-                  ? 2
-                  : 1,
-          slots_satisfied: slots.filter((slot) => passedSlots.has(slot.id))
-            .length,
-          total_slots: slots.length,
-          open_inc_count: metrics.openInc.length,
-          lapsed_inc_count: metrics.lapsed.length,
-          open_flags_count: metrics.flags.length,
-          deficiencies_count:
-            metrics.failed.length +
-            metrics.openInc.length +
-            metrics.lapsed.length +
-            metrics.flags.length,
-          is_delinquent: false,
-          computed_at: "2026-11-10T08:00:00Z",
-        };
-        return HttpResponse.json(summary);
-      }
+      const termIds = db.curriculumTerms
+        .filter((term) => term.curriculum_version_id === curriculum.id)
+        .map((term) => term.id);
+      const slots = db.curriculumTermCourses.filter((slot) =>
+        termIds.includes(slot.curriculum_term_id),
+      );
+      const passedSlots = new Set(
+        metrics.results
+          .filter(
+            (item) =>
+              item.effective_status === "passed" &&
+              item.curriculum_term_course_id,
+          )
+          .map((item) => item.curriculum_term_course_id),
+      );
+      for (const credit of db.outsideCredits.filter(
+        (item) => item.student_id === studentId && item.revoked_at == null,
+      ))
+        passedSlots.add(credit.destination_curriculum_term_course_id);
       const summary: ApiSchema<"AcademicSummary"> = {
         student_id: studentId,
-        gwa: cumulativeGwa,
-        earned_units: 36,
-        required_units: 162,
-        counted_units: countedUnits,
-        failed_units: 0,
-        in_progress_units: 3,
-        remaining_units: 126,
-        failure_pct: 0,
-        standing: "good_standing",
-        year_level: 3,
-        slots_satisfied: 12,
-        total_slots: 54,
-        open_inc_count: 1,
-        lapsed_inc_count: 0,
-        open_flags_count: 1,
-        deficiencies_count: 1,
-        deficiencies: [
-          {
-            kind: "open_inc",
-            attempt_id: MOCK_IDS.attemptCsci102Inc,
-            course_code: "CSCI 102",
-            course_title: "Computer Programming 1",
-            term_label: "2nd Sem 2025-2026",
-            inc_deadline: "2027-05-30",
-            days_remaining: 201,
-            detail: "Missing final laboratory project submission.",
-          },
-        ],
+        gwa: metrics.gwa,
+        earned_units: metrics.earnedUnits,
+        required_units: curriculum.total_units,
+        counted_units: metrics.countedUnits,
+        failed_units: metrics.failedUnits,
+        in_progress_units: inProgress.reduce(
+          (sum, item) => sum + item.units_attempted,
+          0,
+        ),
+        remaining_units: Math.max(
+          0,
+          curriculum.total_units - metrics.earnedUnits,
+        ),
+        failure_pct: metrics.failurePct,
+        standing: metrics.standing,
+        year_level:
+          metrics.earnedUnits >= 110
+            ? 4
+            : metrics.earnedUnits >= 72
+              ? 3
+              : metrics.earnedUnits >= 36
+                ? 2
+                : 1,
+        slots_satisfied: slots.filter((slot) => passedSlots.has(slot.id))
+          .length,
+        total_slots: slots.length,
+        open_inc_count: metrics.openInc.length,
+        lapsed_inc_count: metrics.lapsed.length,
+        open_flags_count: metrics.flags.length,
+        deficiencies_count:
+          metrics.failed.length +
+          metrics.openInc.length +
+          metrics.lapsed.length +
+          metrics.flags.length,
+        deficiencies: studentDeficiencies(metrics),
         is_delinquent: false,
         computed_at: "2026-11-10T08:00:00Z",
       };
-      return HttpResponse.json(summary, { status: 200 });
+      return HttpResponse.json(summary);
     },
   ),
 
@@ -2548,141 +2619,101 @@ export const saaisMswHandlers = [
           "Not authorized to view this student checklist.",
         );
       }
-      if (studentId !== MOCK_IDS.studentPrimary) {
-        const db = getMockDatabase();
-        const organization = db.studentOrganizations.find(
-          (item) => item.student_id === studentId,
-        );
-        if (!organization) return HttpResponse.json([]);
-        const termIds = db.curriculumTerms
-          .filter(
-            (term) =>
-              term.curriculum_version_id === organization.curriculum_version_id,
-          )
-          .map((term) => term.id);
-        const slots: ApiSchema<"ChecklistSlotResult">[] =
-          db.curriculumTermCourses
-            .filter((slot) => termIds.includes(slot.curriculum_term_id))
-            .map((slot) => {
-              const matching = db.attemptResults
-                .filter(
-                  (item) =>
-                    item.student_id === studentId &&
-                    item.curriculum_term_course_id === slot.id,
-                )
-                .sort((a, b) => {
-                  const order = (item: ApiSchema<"AttemptResult">) =>
-                    db.schoolTerms.find(
-                      (term) =>
-                        term.id ===
-                        db.courseOfferings.find(
-                          (offering) => offering.id === item.course_offering_id,
-                        )?.school_term_id,
-                    )?.chronological_key ?? 0;
-                  return (
-                    order(a) - order(b) ||
-                    (a.created_at ?? "").localeCompare(b.created_at ?? "") ||
-                    a.id.localeCompare(b.id)
-                  );
-                });
-              const attempt =
-                matching.find((item) => item.effective_status === "passed") ??
-                matching.at(-1);
-              const attempts = matching.flatMap((item) => {
-                const offering = db.courseOfferings.find(
-                  (row) => row.id === item.course_offering_id,
-                );
-                const term = db.schoolTerms.find(
-                  (row) => row.id === offering?.school_term_id,
-                );
-                return term
-                  ? [
-                      {
-                        attempt_id: item.id,
-                        school_term_id: term.id,
-                        term_label: `${term.term_type} ${term.school_year}`,
-                        recorded_status: item.recorded_status,
-                        effective_status: item.effective_status,
-                        midterm_status: item.midterm_status,
-                        midterm_grade: item.midterm_grade,
-                        final_grade: item.final_grade,
-                        completion_grade: item.completion_grade,
-                        inc_deadline: item.inc_deadline,
-                        instructor: item.instructor,
-                      },
-                    ]
-                  : [];
-              });
-              const credit = db.outsideCredits.find(
-                (item) =>
-                  item.student_id === studentId &&
-                  item.destination_curriculum_term_course_id === slot.id &&
-                  item.revoked_at == null,
+      const db = getMockDatabase();
+      const organization = db.studentOrganizations.find(
+        (item) => item.student_id === studentId,
+      );
+      if (!organization) return HttpResponse.json([]);
+      const termIds = db.curriculumTerms
+        .filter(
+          (term) =>
+            term.curriculum_version_id === organization.curriculum_version_id,
+        )
+        .map((term) => term.id);
+      const slots: ApiSchema<"ChecklistSlotResult">[] = db.curriculumTermCourses
+        .filter((slot) => termIds.includes(slot.curriculum_term_id))
+        .map((slot) => {
+          const matching = db.attemptResults
+            .filter(
+              (item) =>
+                item.student_id === studentId &&
+                item.curriculum_term_course_id === slot.id,
+            )
+            .sort((a, b) => {
+              const order = (item: ApiSchema<"AttemptResult">) =>
+                db.schoolTerms.find(
+                  (term) =>
+                    term.id ===
+                    db.courseOfferings.find(
+                      (offering) => offering.id === item.course_offering_id,
+                    )?.school_term_id,
+                )?.chronological_key ?? 0;
+              return (
+                order(a) - order(b) ||
+                (a.created_at ?? "").localeCompare(b.created_at ?? "") ||
+                a.id.localeCompare(b.id)
               );
-              return {
-                curriculum_term_course_id: slot.id,
-                status: credit
-                  ? "passed"
-                  : (attempt?.effective_status ?? "not_taken"),
-                required_units: slot.nominal_units,
-                earned_units: credit
-                  ? credit.units_credited
-                  : attempt?.effective_status === "passed"
-                    ? attempt.units_attempted
-                    : 0,
-                source_attempt_id: credit ? null : (attempt?.id ?? null),
-                satisfaction_source: credit
-                  ? "Outside credit"
-                  : attempt?.effective_status === "passed"
-                    ? "Direct"
-                    : null,
-                attempts,
-                grade_fix_history: matching.flatMap(
-                  (item) => item.grade_fix_history ?? [],
-                ),
-              };
             });
-        return HttpResponse.json(slots);
-      }
-      const checklist: ApiSchema<"ChecklistSlotResult">[] = [
-        {
-          curriculum_term_course_id: MOCK_IDS.slotCsci101,
-          status: "passed",
-          required_units: 3,
-          earned_units: 3,
-          source_attempt_id: null,
-          satisfaction_source: "Outside credit",
-          credited_course_code: "CMSC 11",
-          credited_course_title: "Introduction to Computer Science",
-          attempts: [],
-          grade_fix_history: [],
-        },
-        {
-          curriculum_term_course_id: MOCK_IDS.slotCsci102,
-          status: "inc",
-          required_units: 3,
-          earned_units: 0,
-          source_attempt_id: MOCK_IDS.attemptCsci102Inc,
-          satisfaction_source: null,
-          attempts: [
-            {
-              attempt_id: MOCK_IDS.attemptCsci102Inc,
-              school_term_id: MOCK_IDS.term2025Sem2Closed,
-              term_label: "2nd Sem 2025-2026",
-              midterm_status: "graded",
-              midterm_grade: 2.0,
-              final_grade: null,
-              recorded_status: "inc",
-              completion_grade: null,
-              effective_status: "inc",
-              inc_deadline: "2027-05-30",
-              instructor: "Prof. Maria Clara Santos",
-            },
-          ],
-          grade_fix_history: [],
-        },
-      ];
-      return HttpResponse.json(checklist, { status: 200 });
+          const attempt =
+            matching.find((item) => item.effective_status === "passed") ??
+            matching.at(-1);
+          const attempts = matching.flatMap((item) => {
+            const offering = db.courseOfferings.find(
+              (row) => row.id === item.course_offering_id,
+            );
+            const term = db.schoolTerms.find(
+              (row) => row.id === offering?.school_term_id,
+            );
+            return term
+              ? [
+                  {
+                    attempt_id: item.id,
+                    school_term_id: term.id,
+                    term_label: `${term.term_type} ${term.school_year}`,
+                    recorded_status: item.recorded_status,
+                    effective_status: item.effective_status,
+                    midterm_status: item.midterm_status,
+                    midterm_grade: item.midterm_grade,
+                    final_grade: item.final_grade,
+                    completion_grade: item.completion_grade,
+                    inc_deadline: item.inc_deadline,
+                    instructor: item.instructor,
+                  },
+                ]
+              : [];
+          });
+          const credit = db.outsideCredits.find(
+            (item) =>
+              item.student_id === studentId &&
+              item.destination_curriculum_term_course_id === slot.id &&
+              item.revoked_at == null,
+          );
+          return {
+            curriculum_term_course_id: slot.id,
+            status: credit
+              ? "passed"
+              : (attempt?.effective_status ?? "not_taken"),
+            required_units: slot.nominal_units,
+            earned_units: credit
+              ? credit.units_credited
+              : attempt?.effective_status === "passed"
+                ? attempt.units_attempted
+                : 0,
+            source_attempt_id: credit ? null : (attempt?.id ?? null),
+            satisfaction_source: credit
+              ? "Outside credit"
+              : attempt?.effective_status === "passed"
+                ? "Direct"
+                : null,
+            credited_course_code: credit?.original_course_code ?? null,
+            credited_course_title: credit?.original_course_title ?? null,
+            attempts,
+            grade_fix_history: matching.flatMap(
+              (item) => item.grade_fix_history ?? [],
+            ),
+          };
+        });
+      return HttpResponse.json(slots);
     },
   ),
 
@@ -2758,33 +2789,124 @@ export const saaisMswHandlers = [
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       }
       const db = getMockDatabase();
-      const options: ApiSchema<"CourseOfferingOption">[] = [
-        {
-          offering: db.courseOfferings[1]!,
-          code: "CSCI 153",
-          title: "Software Engineering",
-          units: 3,
-          group: "program",
-          direct_curriculum_slot_id: MOCK_IDS.slotCsci153,
-          instructor_options: [
-            "Dr. Jose Rizalino Gomez",
-            "Prof. Maria Clara Santos",
-          ],
-          has_unmet_strict_prerequisites: true,
-          unmet_prerequisites: [
+      const query = new URL(request.url).searchParams;
+      const schoolTermId = query.get("school_term_id");
+      const search = query.get("search")?.trim().toLowerCase();
+      const organization = db.studentOrganizations.find(
+        (item) => item.student_id === studentId,
+      );
+      if (!organization)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Student academic record not found.",
+        );
+      const terms = db.curriculumTerms.filter(
+        (item) =>
+          item.curriculum_version_id === organization.curriculum_version_id,
+      );
+      const slots = db.curriculumTermCourses.filter((item) =>
+        terms.some((term) => term.id === item.curriculum_term_id),
+      );
+      const results = db.attemptResults.filter(
+        (item) => item.student_id === studentId,
+      );
+      const options: ApiSchema<"CourseOfferingOption">[] =
+        db.courseOfferings.flatMap((offering) => {
+          if (schoolTermId && offering.school_term_id !== schoolTermId)
+            return [];
+          const course = db.courses.find(
+            (item) => item.id === offering.course_id,
+          );
+          if (
+            !course ||
+            (search &&
+              !`${course.code} ${course.title}`.toLowerCase().includes(search))
+          )
+            return [];
+          const slot = slots.find((item) => item.course_id === course.id);
+          const unmet: ApiSchema<"UnmetPrerequisitePreview">[] =
+            db.prerequisites
+              .filter(
+                (item) =>
+                  item.course_id === course.id && item.type === "strict",
+              )
+              .flatMap((prerequisite) => {
+                const requiredCourse = db.courses.find(
+                  (item) => item.id === prerequisite.prerequisite_course_id,
+                );
+                if (!requiredCourse) return [];
+                const requiredAttempts = results.filter((item) =>
+                  db.courseOfferings.some(
+                    (row) =>
+                      row.id === item.course_offering_id &&
+                      row.course_id === requiredCourse.id,
+                  ),
+                );
+                const requiredSlots = slots.filter(
+                  (item) => item.course_id === requiredCourse.id,
+                );
+                if (
+                  requiredAttempts.some(
+                    (item) => item.effective_status === "passed",
+                  ) ||
+                  db.outsideCredits.some(
+                    (item) =>
+                      item.student_id === studentId &&
+                      item.revoked_at === null &&
+                      requiredSlots.some(
+                        (slotRow) =>
+                          slotRow.id ===
+                          item.destination_curriculum_term_course_id,
+                      ),
+                  )
+                )
+                  return [];
+                const latest = requiredAttempts.at(-1);
+                const state = latest?.is_lapsed_inc
+                  ? "lapsed_inc"
+                  : latest?.effective_status === "passed" ||
+                      latest?.effective_status === "na"
+                    ? "not_taken"
+                    : (latest?.effective_status ?? "not_taken");
+                return [
+                  {
+                    prerequisite_course_id: requiredCourse.id,
+                    code: requiredCourse.code,
+                    title: requiredCourse.title,
+                    type: prerequisite.type,
+                    current_status: state,
+                    latest_attempt_id: latest?.id ?? null,
+                    latest_final_grade: latest?.final_grade ?? null,
+                  },
+                ];
+              });
+          return [
             {
-              prerequisite_course_id: MOCK_IDS.courseCsci102,
-              code: "CSCI 102",
-              title: "Computer Programming 1",
-              type: "strict",
-              current_status: "inc",
-              latest_attempt_id: MOCK_IDS.attemptCsci102Inc,
-              latest_final_grade: null,
+              offering,
+              code: course.code,
+              title: course.title,
+              units: course.units,
+              group: slot ? "program" : "cross_program",
+              direct_curriculum_slot_id: slot?.id ?? null,
+              instructor_options: offering.instructor
+                ? [offering.instructor]
+                : [],
+              has_unmet_strict_prerequisites: unmet.length > 0,
+              unmet_prerequisites: unmet,
             },
-          ],
-        },
-      ];
-      return HttpResponse.json(options, { status: 200 });
+          ];
+        });
+      options.sort(
+        (a, b) =>
+          Number(a.group === "cross_program") -
+            Number(b.group === "cross_program") || a.code.localeCompare(b.code),
+      );
+      const offset = Number(query.get("offset") ?? 0);
+      const limit = Math.min(100, Number(query.get("limit") ?? 100));
+      return HttpResponse.json(options.slice(offset, offset + limit), {
+        status: 200,
+      });
     },
   ),
 
@@ -2802,31 +2924,135 @@ export const saaisMswHandlers = [
       if (!canAccessStudentRecord(auth.persona, studentId, true)) {
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       }
-      if (studentId !== MOCK_IDS.studentPrimary)
-        return HttpResponse.json([], { status: 200 });
-      const recs: ApiSchema<"Recommendation">[] = [
-        {
-          course_offering_id: MOCK_IDS.offeringCsci198,
-          curriculum_term_course_id: MOCK_IDS.slotFreeElective1,
-          code: "CSCI 198",
-          title: "Special Topics in Artificial Intelligence",
-          units: 3,
-          why: "Satisfies CS Elective 1 slot in 3rd Year 1st Semester.",
-          badges: ["Elective"],
-          excluded_summary: {
-            total_excluded: 3,
-            completed_count: 1,
-            enrolled_count: 1,
-            not_offered_count: 1,
-          },
-        },
-      ];
-      return HttpResponse.json(recs, {
-        status: 200,
-        headers: {
-          "X-Excluded-Count": "3",
-        },
-      });
+      {
+        const db = getMockDatabase();
+        const organization = db.studentOrganizations.find(
+          (item) => item.student_id === studentId,
+        );
+        if (!organization)
+          return errorJson(
+            404,
+            "NOT_FOUND",
+            "Student academic record not found.",
+          );
+        const selectedTerm = new URL(request.url).searchParams.get(
+          "school_term_id",
+        );
+        const terms = db.curriculumTerms.filter(
+          (item) =>
+            item.curriculum_version_id === organization.curriculum_version_id,
+        );
+        const slots = db.curriculumTermCourses.filter((item) =>
+          terms.some((term) => term.id === item.curriculum_term_id),
+        );
+        const results = db.attemptResults.filter(
+          (item) => item.student_id === studentId,
+        );
+        const previousPositions = results.flatMap((result) => {
+          const slot = slots.find(
+            (item) => item.id === result.curriculum_term_course_id,
+          );
+          const term = terms.find(
+            (item) => item.id === slot?.curriculum_term_id,
+          );
+          return term ? [term.year_level * 3 + term.term_sequence] : [];
+        });
+        const horizon = previousPositions.length
+          ? Math.max(...previousPositions) + 1
+          : 4;
+        let excluded = 0;
+        const recommendations: ApiSchema<"Recommendation">[] = [];
+        for (const slot of slots) {
+          const curriculumTerm = terms.find(
+            (item) => item.id === slot.curriculum_term_id,
+          )!;
+          if (
+            curriculumTerm.year_level * 3 + curriculumTerm.term_sequence >
+              horizon ||
+            !slot.course_id
+          )
+            continue;
+          const course = db.courses.find((item) => item.id === slot.course_id);
+          if (!course) continue;
+          const prior = results.filter(
+            (item) => item.curriculum_term_course_id === slot.id,
+          );
+          const credited = db.outsideCredits.some(
+            (item) =>
+              item.student_id === studentId &&
+              item.destination_curriculum_term_course_id === slot.id &&
+              item.revoked_at === null,
+          );
+          if (
+            credited ||
+            prior.some(
+              (item) =>
+                item.effective_status === "passed" ||
+                item.effective_status === "currently_enrolled" ||
+                (item.effective_status === "inc" && !item.is_lapsed_inc),
+            )
+          ) {
+            excluded++;
+            continue;
+          }
+          const eligible = db.prerequisites
+            .filter(
+              (item) => item.course_id === course.id && item.type === "strict",
+            )
+            .every((prerequisite) => {
+              const requiredSlot = slots.find(
+                (item) =>
+                  item.course_id === prerequisite.prerequisite_course_id,
+              );
+              return (
+                results.some(
+                  (item) =>
+                    item.curriculum_term_course_id === requiredSlot?.id &&
+                    item.effective_status === "passed",
+                ) ||
+                db.outsideCredits.some(
+                  (item) =>
+                    item.student_id === studentId &&
+                    item.destination_curriculum_term_course_id ===
+                      requiredSlot?.id &&
+                    item.revoked_at === null,
+                )
+              );
+            });
+          if (!eligible) continue;
+          const offering = db.courseOfferings.find(
+            (item) =>
+              item.course_id === course.id &&
+              (!selectedTerm || item.school_term_id === selectedTerm) &&
+              !prior.some((attempt) => attempt.course_offering_id === item.id),
+          );
+          if (!offering) {
+            excluded++;
+            continue;
+          }
+          const badges: ApiSchema<"Recommendation">["badges"] = [];
+          if (
+            prior.some(
+              (item) =>
+                item.effective_status === "failed" || item.is_lapsed_inc,
+            )
+          )
+            badges.push("Retake");
+          if (offering.is_by_request) badges.push("By request");
+          recommendations.push({
+            course_offering_id: offering.id,
+            curriculum_term_course_id: slot.id,
+            code: course.code,
+            title: course.title,
+            units: course.units,
+            why: "Offered in the selected term and satisfies an unfinished curriculum requirement.",
+            badges,
+          });
+        }
+        return HttpResponse.json(recommendations, {
+          headers: { "X-Excluded-Count": String(excluded) },
+        });
+      }
     },
   ),
 
@@ -4246,33 +4472,85 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/students/:student_id/notes",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["admin", "adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      const body = (await request
-        .json()
-        .catch(() => null)) as ApiSchema<"NoteRequest"> | null;
-      if (!body?.body_text) {
-        return errorJson(400, "INVALID_INPUT", "body_text is required.");
+      const db = getMockDatabase();
+      const isAdmin = auth.persona.roles.includes("admin");
+      if (
+        !isAdmin &&
+        !db.adviserAssignments.some(
+          (assignment) =>
+            assignment.student_id === studentId &&
+            assignment.adviser_id === auth.persona.profileId &&
+            assignment.end_date === null,
+        )
+      ) {
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Only the current adviser or an administrator may add a note.",
+        );
       }
+      if (
+        !db.studentOrganizations.some(
+          (student) => student.student_id === studentId,
+        )
+      ) {
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Student academic record not found.",
+        );
+      }
+      const body: unknown = await request.json().catch(() => null);
+      if (
+        !body ||
+        typeof body !== "object" ||
+        Array.isArray(body) ||
+        Object.keys(body).some((key) => key !== "body_text") ||
+        typeof (body as { body_text?: unknown }).body_text !== "string" ||
+        !(body as { body_text: string }).body_text.trim() ||
+        (body as { body_text: string }).body_text.length > 8000
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "A valid body_text is required.",
+        );
+      }
+      const createdAt = new Date().toISOString();
       const note: ApiSchema<"AdvisingNote"> = {
         id: nextSyntheticUuid(),
         student_id: studentId,
         authored_by: auth.persona.profileId,
         author_name: auth.persona.fullName,
-        author_role_label: "Adviser",
-        body_text: body.body_text,
+        author_role_label: isAdmin ? "Administrator" : "Adviser",
+        body_text: (body as { body_text: string }).body_text,
         is_archived: false,
         archived_at: null,
         archived_by: null,
-        created_at: "2026-11-10T09:00:00Z",
+        created_at: createdAt,
       };
-      getMockDatabase().advisingNotes.push(note);
+      db.advisingNotes.push(note);
+      db.notifications.push({
+        id: nextSyntheticUuid(),
+        recipient_id: studentId,
+        kind: "note",
+        event_type: "advising_note_added",
+        title: "New advising note",
+        body: "A note was added to your advising record.",
+        target_route: "/student/dashboard",
+        target_student_id: studentId,
+        actor_id: auth.persona.profileId,
+        entity_type: "advising_note",
+        entity_id: note.id,
+        dedupe_key: null,
+        email_delivery_status: "pending",
+        is_read: false,
+        read_at: null,
+        created_at: createdAt,
+      });
       return HttpResponse.json(note, { status: 201 });
     },
   ),
@@ -4516,7 +4794,12 @@ export const saaisMswHandlers = [
           body.notification_id === n.id ||
           body.notification_ids?.includes(n.id)
         ) {
-          n.is_read = body.is_read ?? true;
+          const isRead = body.is_read ?? true;
+          db.notifications[db.notifications.indexOf(n)] = {
+            ...n,
+            is_read: isRead,
+            read_at: isRead ? (n.read_at ?? "2026-11-10T10:00:00Z") : null,
+          };
           updatedCount += 1;
         }
       }
@@ -4781,84 +5064,256 @@ export const saaisMswHandlers = [
         }),
       },
       batch_curriculum_gwa: [...batches.values()].map((batch) => batch.row),
+      advisees_with_deficiencies: studentIds
+        .map(deficiencySummary)
+        .filter(
+          (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
+            item !== null,
+        ),
       computed_at: "2026-11-10T09:00:00Z",
     };
     return HttpResponse.json(report, { status: 200 });
   }),
 
   http.get("*/functions/v1/reports/department", ({ request }) => {
-    const auth = authenticateRequest(request, [
-      "admin",
-      "dean",
-      "department_head",
-    ]);
+    const auth = authenticateRequest(request, ["admin", "department_head"]);
     if ("response" in auth) return auth.response;
+    const db = getMockDatabase();
+    const query = new URL(request.url).searchParams;
+    const departmentId =
+      query.get("department_id") ??
+      auth.persona.departmentId ??
+      MOCK_IDS.deptDcst;
+    if (
+      !auth.persona.roles.includes("admin") &&
+      !canAccessDepartment(auth.persona, departmentId)
+    )
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "Department is out of scope.",
+      );
+    const programId = query.get("program_id");
+    const orgs = db.studentOrganizations.filter(
+      (item) =>
+        item.department_id === departmentId &&
+        (!programId || item.program_id === programId),
+    );
+    const metrics = orgs.map((item) =>
+      studentMetrics(item.student_id, item.department_id),
+    );
+    const ids = new Set(orgs.map((item) => item.student_id));
+    const grades = metrics
+      .map((item) => item.gwa)
+      .filter((value): value is number => value !== null);
+    const standingCounts = {
+      good_standing: metrics.filter((item) => item.standing === "good_standing")
+        .length,
+      warning: metrics.filter((item) => item.standing === "warning").length,
+      probation: metrics.filter((item) => item.standing === "probation").length,
+      dismissed: metrics.filter((item) => item.standing === "dismissed").length,
+    };
+    const caseloads = db.adviserAssignments.filter(
+      (item) => ids.has(item.student_id) && item.end_date === null,
+    );
+    const adviserIds = [...new Set(caseloads.map((item) => item.adviser_id))];
+    const attempts = db.attemptResults.filter(
+      (item) =>
+        ids.has(item.student_id) &&
+        (!query.get("school_term_id") ||
+          db.courseOfferings.some(
+            (offering) =>
+              offering.id === item.course_offering_id &&
+              offering.school_term_id === query.get("school_term_id"),
+          )),
+    );
     const report: ApiSchema<"DepartmentReport"> = {
-      department_id: MOCK_IDS.deptDcst,
-      total_students: 2,
-      with_deficiencies_count: 1,
-      unassigned_students_count: 1,
-      open_grade_flags_count: 1,
-      pending_transfers_count: 1,
-      encoding_progress_pct: 85,
-      average_gwa: 1.75,
-      standing_counts: {
-        good_standing: 2,
-        warning: 0,
-        probation: 0,
-        dismissed: 0,
-      },
-      adviser_caseloads: [
-        {
-          adviser_id: MOCK_IDS.adviserPrimary,
-          adviser_name: MOCK_PERSONAS.adviser.fullName,
-          student_count: 1,
-          at_risk_count: 0,
-        },
-      ],
-      bottleneck_courses: [
-        {
-          course_id: MOCK_IDS.courseCsci102,
-          code: "CSCI 102",
-          title: "Computer Programming 1",
-          fail_or_inc_rate: 12.5,
-          affected_count: 1,
-        },
-      ],
+      department_id: departmentId,
+      total_students: orgs.length,
+      with_deficiencies_count: metrics.filter(
+        (item) =>
+          item.failed.length +
+            item.openInc.length +
+            item.lapsed.length +
+            item.flags.length >
+          0,
+      ).length,
+      unassigned_students_count: orgs.filter(
+        (item) =>
+          !caseloads.some(
+            (assignment) => assignment.student_id === item.student_id,
+          ),
+      ).length,
+      open_grade_flags_count: db.gradeFlags.filter(
+        (item) => ids.has(item.student_id) && item.status === "open",
+      ).length,
+      pending_transfers_count: db.curriculumTransferRequests.filter(
+        (item) => ids.has(item.student_id) && item.status === "pending",
+      ).length,
+      average_gwa: grades.length
+        ? Number(
+            (
+              grades.reduce((sum, grade) => sum + grade, 0) / grades.length
+            ).toFixed(2),
+          )
+        : null,
+      standing_counts: standingCounts,
+      adviser_caseloads: adviserIds.map((id) => ({
+        adviser_id: id,
+        adviser_name:
+          db.profiles.find((profile) => profile.id === id)?.full_name ??
+          "Unknown adviser",
+        student_count: caseloads.filter((item) => item.adviser_id === id)
+          .length,
+        at_risk_count: caseloads.filter(
+          (item) =>
+            item.adviser_id === id &&
+            studentMetrics(item.student_id, departmentId).standing !==
+              "good_standing",
+        ).length,
+      })),
+      at_risk_roster: orgs
+        .map((item) => deficiencySummary(item.student_id))
+        .filter(
+          (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
+            item !== null,
+        ),
+      bottleneck_courses: db.courses.flatMap((course) => {
+        const courseAttempts = attempts.filter((item) =>
+          db.courseOfferings.some(
+            (offering) =>
+              offering.id === item.course_offering_id &&
+              offering.course_id === course.id,
+          ),
+        );
+        const affected = courseAttempts.filter(
+          (item) =>
+            item.effective_status === "failed" ||
+            item.effective_status === "inc",
+        );
+        return affected.length
+          ? [
+              {
+                course_id: course.id,
+                code: course.code,
+                title: course.title,
+                affected_count: affected.length,
+                fail_or_inc_rate: Number(
+                  ((affected.length * 100) / courseAttempts.length).toFixed(2),
+                ),
+              },
+            ]
+          : [];
+      }),
       computed_at: "2026-11-10T09:00:00Z",
     };
-    return HttpResponse.json(report, { status: 200 });
+    return HttpResponse.json(report);
   }),
 
   http.get("*/functions/v1/reports/faculty", ({ request }) => {
     const auth = authenticateRequest(request, ["admin", "dean"]);
     if ("response" in auth) return auth.response;
+    const db = getMockDatabase();
+    const query = new URL(request.url).searchParams;
+    const facultyId =
+      query.get("faculty_id") ??
+      auth.persona.facultyId ??
+      MOCK_IDS.facultyComputing;
+    if (
+      !auth.persona.roles.includes("admin") &&
+      !canAccessFaculty(auth.persona, facultyId)
+    )
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "Faculty is out of scope.",
+      );
+    const departmentId = query.get("department_id");
+    const orgs = db.studentOrganizations.filter(
+      (item) =>
+        item.faculty_id === facultyId &&
+        (!departmentId || item.department_id === departmentId),
+    );
+    const metrics = orgs.map((item) =>
+      studentMetrics(item.student_id, item.department_id),
+    );
+    const grades = metrics
+      .map((item) => item.gwa)
+      .filter((value): value is number => value !== null);
     const report: ApiSchema<"FacultyReport"> = {
-      faculty_id: MOCK_IDS.facultyComputing,
-      total_students: 2,
-      with_deficiencies_count: 1,
-      average_gwa: 1.75,
+      faculty_id: facultyId,
+      total_students: orgs.length,
+      with_deficiencies_count: metrics.filter(
+        (item) =>
+          item.failed.length +
+            item.openInc.length +
+            item.lapsed.length +
+            item.flags.length >
+          0,
+      ).length,
+      average_gwa: grades.length
+        ? Number(
+            (
+              grades.reduce((sum, value) => sum + value, 0) / grades.length
+            ).toFixed(2),
+          )
+        : null,
       standing_counts: {
-        good_standing: 2,
-        warning: 0,
-        probation: 0,
-        dismissed: 0,
+        good_standing: metrics.filter(
+          (item) => item.standing === "good_standing",
+        ).length,
+        warning: metrics.filter((item) => item.standing === "warning").length,
+        probation: metrics.filter((item) => item.standing === "probation")
+          .length,
+        dismissed: metrics.filter((item) => item.standing === "dismissed")
+          .length,
       },
-      open_inc_count: 1,
-      at_risk_total_count: 0,
-      encoding_progress_pct: 85,
-      department_summaries: [
-        {
-          department_id: MOCK_IDS.deptDcst,
-          department_name: "Department of Computer Science and Technology",
-          student_count: 2,
-          average_gwa: 1.75,
-          at_risk_count: 0,
-        },
-      ],
+      open_inc_count: metrics.reduce(
+        (sum, item) => sum + item.openInc.length,
+        0,
+      ),
+      at_risk_total_count: metrics.filter(
+        (item) => item.standing !== "good_standing",
+      ).length,
+      at_risk_roster: orgs
+        .map((item) => deficiencySummary(item.student_id))
+        .filter(
+          (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
+            item !== null,
+        ),
+      department_summaries: db.departments
+        .filter(
+          (dept) =>
+            dept.faculty_id === facultyId &&
+            (!departmentId || dept.id === departmentId),
+        )
+        .map((dept) => {
+          const departmentMetrics = orgs
+            .filter((org) => org.department_id === dept.id)
+            .map((org) => studentMetrics(org.student_id, org.department_id));
+          const departmentGrades = departmentMetrics
+            .map((item) => item.gwa)
+            .filter((value): value is number => value !== null);
+          return {
+            department_id: dept.id,
+            department_name: dept.name,
+            student_count: departmentMetrics.length,
+            average_gwa: departmentGrades.length
+              ? Number(
+                  (
+                    departmentGrades.reduce((sum, value) => sum + value, 0) /
+                    departmentGrades.length
+                  ).toFixed(2),
+                )
+              : null,
+            at_risk_count: departmentMetrics.filter(
+              (item) => item.standing !== "good_standing",
+            ).length,
+          };
+        }),
       computed_at: "2026-11-10T09:00:00Z",
     };
-    return HttpResponse.json(report, { status: 200 });
+    return HttpResponse.json(report);
   }),
 
   http.put("*/functions/v1/settings", async ({ request }) => {

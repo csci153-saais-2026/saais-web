@@ -66,7 +66,10 @@ logoutMockPersona();
 
 ### Additional sample students
 
-`student_sample_1` through `student_sample_24` are synthetic active accounts, with addresses `sample.student01@vsu.edu.ph` through `sample.student24@vsu.edu.ph`. Odd-numbered samples are assigned to `adviser`; even-numbered samples to `adviser_secondary`. Each has CSCI 101 and PHED 11 enrollment attempts linked to the instructors on their respective offerings, plus an adviser-authored note and a student notification. Some notes are archived and remain visible to their student. Use `loginAsMockPersona('student_sample_1')` to select one in mock mode. These accounts contain no real student data.
+`student_sample_1` through `student_sample_29` are fictional active student accounts with distinct names. The stable persona keys, UUIDs, and `sample.studentNN@vsu.edu.ph` development-only email addresses are kept for compatibility with existing integrations. Samples 1–24 alternate between the two primary advisers; samples 25–28 are assigned to the Department Head, Dean, Dean/Department Head, and System Administrator personas in their Adviser capacity. Sample 29 is assigned to the primary Adviser and uses the separate 52-slot reference curriculum modeled on the routed student checklist, including linked prior grades, an INC and current enrollments. Each sample has an initial adviser, curriculum assignment, course attempts, a plan, a note, and an account notification. Grades include currently enrolled, passed, failed, and INC scenarios. Some notes are archived and remain visible to the student. Use `loginAsMockPersona("student_sample_1")` to select one in mock mode.
+
+Sample 10 is a transferee with student number `26-2-10010`: the middle digit records the year level on entry and does not change with the student’s current standing. Other new samples use entry year level 1. A separate Engineering adviser and student illustrate department and faculty scope. The staff personas also have recipient-owned notifications. Sample names and email addresses are synthetic; never treat them as real contacts.
+
 
 ### Persona Tokens Reference
 

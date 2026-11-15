@@ -1,5 +1,6 @@
 import type { ApiSchema } from "@/lib/api/types";
 import { MOCK_IDS, MOCK_PERSONAS } from "./personas";
+import { REFERENCE_CURRICULUM } from "./reference-curriculum";
 
 export interface MockDatabaseState {
   faculties: ApiSchema<"Faculty">[];
@@ -1024,7 +1025,7 @@ function buildInitialMockDatabase(): MockDatabaseState {
         event_type: "advising_note_added",
         title: "New advising note from Prof. Maria Clara Santos",
         body: "Your adviser added a note regarding your 1st Semester 2026-2027 advising plan.",
-        target_route: "/student/notes",
+        target_route: "/student/dashboard",
         target_student_id: MOCK_IDS.studentPrimary,
         actor_id: MOCK_IDS.adviserPrimary,
         entity_type: "advising_note",
@@ -1060,8 +1061,8 @@ function buildInitialMockDatabase(): MockDatabaseState {
         actor_role: "adviser",
         student_id: MOCK_IDS.studentPrimary,
         student_name: MOCK_PERSONAS.student.fullName,
-        student_number: "24-1-00101",
-        target_label: "24-1-00101 · Juan M. Dela Cruz",
+        student_number: "24-1-01798",
+        target_label: `24-1-01798 · ${MOCK_PERSONAS.student.fullName}`,
         action: "advising_plan_saved",
         action_category: "plan_save",
         entity_type: "advising_plan",
@@ -1094,6 +1095,215 @@ function buildInitialMockDatabase(): MockDatabaseState {
       },
     ],
   };
+  const engineeringAdviser = MOCK_PERSONAS.adviser_engineering;
+  db.profiles.push({
+    id: engineeringAdviser.profileId,
+    role: "adviser",
+    roles: ["adviser"],
+    email: engineeringAdviser.email,
+    full_name: engineeringAdviser.fullName,
+    student_number: null,
+    status: "active",
+    invitation_status: "accepted",
+    faculty_id: MOCK_IDS.facultyEngineering,
+    department_id: MOCK_IDS.deptDabe,
+    created_at: "2026-07-01T08:00:00Z",
+    updated_at: "2026-07-01T08:00:00Z",
+  });
+  db.roleAssignments.push({
+    id: "92000000-0000-4000-8002-000000000001",
+    profile_id: engineeringAdviser.profileId,
+    role: "adviser",
+    faculty_id: MOCK_IDS.facultyEngineering,
+    department_id: MOCK_IDS.deptDabe,
+    created_at: "2026-07-01T08:00:00Z",
+  });
+  db.programs.push({
+    id: MOCK_IDS.programBsabe,
+    department_id: MOCK_IDS.deptDabe,
+    code: "BSABE",
+    name: "Bachelor of Science in Agricultural and Biosystems Engineering",
+    nominal_duration: 4,
+    status: "active",
+  });
+  db.curriculumVersions.push({
+    id: MOCK_IDS.curriculumBsabe,
+    program_id: MOCK_IDS.programBsabe,
+    version_label: "BSABE 2024-2025 v1",
+    effective_start: "2024-08-01",
+    effective_end: null,
+    delinquency_threshold: 24,
+    total_units: 160,
+    status: "active",
+    enrolled_student_count: 1,
+  });
+  const engineeringAssignment = "71000000-0000-4000-8002-000000000001";
+  db.studentCurriculumAssignments.push({
+    id: engineeringAssignment,
+    student_id: MOCK_IDS.studentOtherDept,
+    curriculum_version_id: MOCK_IDS.curriculumBsabe,
+    start_date: "2024-08-01",
+    end_date: null,
+    change_note: "Initial curriculum assignment",
+    created_at: "2024-08-01T08:00:00Z",
+  });
+  db.studentOrganizations.push({
+    student_id: MOCK_IDS.studentOtherDept,
+    student_curriculum_assignment_id: engineeringAssignment,
+    curriculum_version_id: MOCK_IDS.curriculumBsabe,
+    program_id: MOCK_IDS.programBsabe,
+    department_id: MOCK_IDS.deptDabe,
+    faculty_id: MOCK_IDS.facultyEngineering,
+    adviser_id: engineeringAdviser.profileId,
+    entry_year: 2024,
+  });
+  db.adviserAssignments.push({
+    id: "70000000-0000-4000-8002-000000000001",
+    student_id: MOCK_IDS.studentOtherDept,
+    adviser_id: engineeringAdviser.profileId,
+    adviser_name: engineeringAdviser.fullName,
+    adviser_email: engineeringAdviser.email,
+    start_date: "2024-08-01",
+    end_date: null,
+    created_at: "2024-08-01T08:00:00Z",
+  });
+  db.studentOrganizations.find(
+    (item) => item.student_id === MOCK_IDS.studentSecondary,
+  )!.adviser_id = MOCK_IDS.adviserSecondary;
+  db.adviserAssignments.push({
+    id: "70000000-0000-4000-8002-000000000002",
+    student_id: MOCK_IDS.studentSecondary,
+    adviser_id: MOCK_IDS.adviserSecondary,
+    adviser_name: MOCK_PERSONAS.adviser_secondary.fullName,
+    adviser_email: MOCK_PERSONAS.adviser_secondary.email,
+    start_date: "2024-08-01",
+    end_date: null,
+    created_at: "2024-08-01T08:00:00Z",
+  });
+  const engineeringTerm = "41000000-0000-4000-8002-000000000001";
+  const engineeringSlot = "42000000-0000-4000-8002-000000000001";
+  const engineeringCourse = "50000000-0000-4000-8002-000000000001";
+  const engineeringOffering = "62000000-0000-4000-8002-000000000001";
+  const engineeringAttempt = "80000000-0000-4000-8002-000000000001";
+  db.curriculumTerms.push({
+    id: engineeringTerm,
+    curriculum_version_id: MOCK_IDS.curriculumBsabe,
+    year_level: 1,
+    term_sequence: 1,
+  });
+  db.courses.push({
+    id: engineeringCourse,
+    department_id: MOCK_IDS.deptDabe,
+    code: "ABE 101",
+    title: "Introduction to Biosystems Engineering",
+    category: "major",
+    units: 3,
+    is_elective: false,
+    status: "active",
+    repeatable_type: "none",
+  });
+  db.curriculumTermCourses.push({
+    id: engineeringSlot,
+    curriculum_term_id: engineeringTerm,
+    course_id: engineeringCourse,
+    is_elective_slot: false,
+    slot_type: "required",
+    slot_label: null,
+    nominal_units: 3,
+  });
+  db.courseOfferings.push({
+    id: engineeringOffering,
+    school_term_id: MOCK_IDS.term2026Sem1Open,
+    course_id: engineeringCourse,
+    section: "A",
+    schedule: "MWF 10:00-11:00",
+    instructor: engineeringAdviser.fullName,
+    is_by_request: false,
+  });
+  const engineeringAttemptCommon = {
+    id: engineeringAttempt,
+    student_id: MOCK_IDS.studentOtherDept,
+    course_offering_id: engineeringOffering,
+    curriculum_term_course_id: engineeringSlot,
+    midterm_status: "graded" as const,
+    midterm_grade: 2,
+    final_grade: 1.75,
+    inc_deadline: null,
+    instructor: engineeringAdviser.fullName,
+    prerequisite_override: false,
+    prerequisite_grade_override: false,
+    units_attempted: 3,
+    revision: 1,
+    created_at: "2026-08-15T08:00:00Z",
+    updated_at: "2026-11-10T08:00:00Z",
+  };
+  db.attempts.push({
+    ...engineeringAttemptCommon,
+    status: "passed",
+    created_by: engineeringAdviser.profileId,
+    updated_by: engineeringAdviser.profileId,
+  });
+  db.attemptResults.push({
+    ...engineeringAttemptCommon,
+    recorded_status: "passed",
+    effective_status: "passed",
+    grade_fix_history: [],
+    completion_grade: null,
+    resolved_at: null,
+    gwa_grade: 1.75,
+    is_lapsed_inc: false,
+    is_repeated: false,
+    counts_toward_cumulative_gwa: true,
+  });
+  const engineeringNoteId = "87000000-0000-4000-8002-000000000001";
+  db.advisingNotes.push({
+    id: engineeringNoteId,
+    student_id: MOCK_IDS.studentOtherDept,
+    authored_by: engineeringAdviser.profileId,
+    author_name: engineeringAdviser.fullName,
+    author_role_label: "Adviser",
+    body_text: "Review your course progress before the next advising meeting.",
+    is_archived: false,
+    archived_at: null,
+    archived_by: null,
+    created_at: "2026-11-10T08:00:00Z",
+  });
+  db.notifications.push({
+    id: "90000000-0000-4000-8003-000000000001",
+    recipient_id: MOCK_IDS.studentOtherDept,
+    kind: "note",
+    event_type: "advising_note_added",
+    title: "New advising note",
+    body: "Your adviser added a note to your record.",
+    target_route: "/student/dashboard",
+    target_student_id: MOCK_IDS.studentOtherDept,
+    actor_id: engineeringAdviser.profileId,
+    entity_type: "advising_note",
+    entity_id: engineeringNoteId,
+    dedupe_key: null,
+    email_delivery_status: "sent",
+    is_read: false,
+    read_at: null,
+    created_at: "2026-11-10T08:00:00Z",
+  });
+  db.notifications.push({
+    id: "90000000-0000-4000-8003-000000000002",
+    recipient_id: engineeringAdviser.profileId,
+    kind: "person",
+    event_type: "adviser_assigned",
+    title: "A student was assigned to you",
+    body: `${MOCK_PERSONAS.student_other_dept.fullName} is on your advising list.`,
+    target_route: "/adviser/advisees",
+    target_student_id: MOCK_IDS.studentOtherDept,
+    actor_id: null,
+    entity_type: "adviser_assignment",
+    entity_id: "70000000-0000-4000-8002-000000000001",
+    dedupe_key: null,
+    email_delivery_status: "sent",
+    is_read: false,
+    read_at: null,
+    created_at: "2026-11-10T08:00:00Z",
+  });
   db.courseOfferings.push({
     id: MOCK_IDS.offeringCsci101,
     school_term_id: MOCK_IDS.term2026Sem1Open,
@@ -1103,14 +1313,34 @@ function buildInitialMockDatabase(): MockDatabaseState {
     instructor: MOCK_PERSONAS.adviser.fullName,
     is_by_request: false,
   });
-  for (let index = 0; index < 24; index += 1) {
+  db.courseOfferings.push({
+    id: MOCK_IDS.offeringNstp11,
+    school_term_id: MOCK_IDS.term2026Sem1Open,
+    course_id: MOCK_IDS.courseNstp11,
+    section: "N1",
+    schedule: "Sat 10:00-12:00",
+    instructor: MOCK_PERSONAS.adviser.fullName,
+    is_by_request: false,
+  });
+  for (let index = 0; index < 29; index += 1) {
     const serial = index + 1;
     const suffix = String(serial).padStart(12, "0");
     const persona = MOCK_PERSONAS[`student_sample_${serial}`]!;
     const adviser =
-      index % 2 === 0 ? MOCK_PERSONAS.adviser : MOCK_PERSONAS.adviser_secondary;
+      index === 28
+        ? MOCK_PERSONAS.adviser
+        : index < 24
+          ? index % 2 === 0
+            ? MOCK_PERSONAS.adviser
+            : MOCK_PERSONAS.adviser_secondary
+          : [
+              MOCK_PERSONAS.department_head,
+              MOCK_PERSONAS.dean,
+              MOCK_PERSONAS.dean_dept_head,
+              MOCK_PERSONAS.admin,
+            ][index - 24]!;
     const curriculumAssignmentId = `71000000-0000-4000-8001-${suffix}`;
-    const studentNumber = `26-1-${String(10001 + index)}`;
+    const studentNumber = `26-${serial === 10 ? 2 : 1}-${String(10001 + index)}`;
     db.profiles.push({
       id: persona.profileId,
       role: "student",
@@ -1183,7 +1413,7 @@ function buildInitialMockDatabase(): MockDatabaseState {
       event_type: "advising_note_added",
       title: "New advising note",
       body: "Your adviser added a note to your record.",
-      target_route: "/student/notes",
+      target_route: "/student/dashboard",
       target_student_id: persona.profileId,
       actor_id: adviser.profileId,
       entity_type: "advising_note",
@@ -1202,16 +1432,27 @@ function buildInitialMockDatabase(): MockDatabaseState {
         (item) => item.id === offeringId,
       )!;
       const attemptId = `80000000-0000-4000-800${courseIndex + 2}-${suffix}`;
+      const scenario =
+        index < 4 || courseIndex === 1
+          ? "currently_enrolled"
+          : ["passed", "failed", "inc", "currently_enrolled"][index % 4]!;
+      const finalGrade =
+        scenario === "passed"
+          ? [1.25, 1.75, 2.25, 2.75][Math.floor(index / 4) % 4]!
+          : scenario === "failed"
+            ? 5
+            : null;
       const common = {
         id: attemptId,
         student_id: persona.profileId,
         course_offering_id: offeringId,
         curriculum_term_course_id:
           courseIndex === 0 ? MOCK_IDS.slotCsci101 : MOCK_IDS.slotPe1,
-        midterm_status: null,
-        midterm_grade: null,
-        final_grade: null,
-        inc_deadline: null,
+        midterm_status:
+          scenario === "currently_enrolled" ? null : ("graded" as const),
+        midterm_grade: scenario === "currently_enrolled" ? null : 2.25,
+        final_grade: finalGrade,
+        inc_deadline: scenario === "inc" ? "2027-12-18" : null,
         instructor: offering.instructor ?? null,
         prerequisite_override: false,
         prerequisite_grade_override: false,
@@ -1222,24 +1463,600 @@ function buildInitialMockDatabase(): MockDatabaseState {
       };
       db.attempts.push({
         ...common,
-        status: "currently_enrolled",
+        status: scenario as ApiSchema<"AttemptStatus">,
         created_by: adviser.profileId,
         updated_by: adviser.profileId,
       });
       db.attemptResults.push({
         ...common,
-        recorded_status: "currently_enrolled",
-        effective_status: "currently_enrolled",
+        recorded_status: scenario as ApiSchema<"AttemptStatus">,
+        effective_status: scenario as ApiSchema<"AttemptStatus">,
         grade_fix_history: [],
         completion_grade: null,
         resolved_at: null,
-        gwa_grade: null,
+        gwa_grade: finalGrade,
         is_lapsed_inc: false,
         is_repeated: false,
-        counts_toward_cumulative_gwa: false,
+        counts_toward_cumulative_gwa: finalGrade !== null,
+      });
+    }
+    const planId = `86000000-0000-4000-8001-${suffix}`;
+    db.advisingPlans.push({
+      id: planId,
+      student_id: persona.profileId,
+      school_term_id: MOCK_IDS.term2026Sem1Open,
+      student_curriculum_assignment_id: curriculumAssignmentId,
+      created_by: adviser.profileId,
+      updated_by: adviser.profileId,
+      created_at: "2026-09-01T08:00:00Z",
+      updated_at: "2026-09-01T08:00:00Z",
+      revision: 1,
+    });
+    db.advisingPlanItems.push({
+      id: `86100000-0000-4000-8001-${suffix}`,
+      advising_plan_id: planId,
+      student_id: persona.profileId,
+      school_term_id: MOCK_IDS.term2026Sem1Open,
+      course_offering_id: MOCK_IDS.offeringPhEd11,
+      curriculum_term_course_id: MOCK_IDS.slotPe1,
+      display_order: 1,
+      created_at: "2026-09-01T08:00:00Z",
+    });
+    db.auditLogEntries.push({
+      id: `91000000-0000-4000-8001-${suffix}`,
+      actor_id: adviser.profileId,
+      actor_name: adviser.fullName,
+      actor_role: "adviser",
+      student_id: persona.profileId,
+      student_name: persona.fullName,
+      student_number: studentNumber,
+      target_label: `${studentNumber} · ${persona.fullName}`,
+      action: "advising_plan_saved",
+      action_category: "plan_save",
+      entity_type: "advising_plan",
+      entity_id: planId,
+      details_summary: "Saved a first-semester advising plan.",
+      old_value: null,
+      new_value: null,
+      reason: null,
+      created_at: "2026-09-01T08:00:00Z",
+    });
+  }
+  for (const serial of [5, 6, 9]) {
+    const student = MOCK_PERSONAS[`student_sample_${serial}`]!;
+    const attemptId = `80000000-0000-4000-8002-${String(serial).padStart(12, "0")}`;
+    db.gradeFlags.push({
+      id: `89000000-0000-4000-8001-${String(serial).padStart(12, "0")}`,
+      student_id: student.profileId,
+      attempt_id: attemptId,
+      reported_stage: "midterm",
+      reported_grade_text: "2.00",
+      issue_type: "wrong_grade",
+      details:
+        "Please review the posted midterm grade against the class record.",
+      status: "open",
+      resolution_action: null,
+      corrected_grade: null,
+      corrected_status: null,
+      resolution_note: null,
+      resolved_by: null,
+      resolved_at: null,
+      created_at: "2026-10-10T08:00:00Z",
+      updated_at: "2026-10-10T08:00:00Z",
+    });
+  }
+  db.outsideCredits.push({
+    id: "84000000-0000-4000-8001-000000000010",
+    student_id: MOCK_PERSONAS.student_sample_10.profileId,
+    entry_type: "transferee",
+    origin_school: "Eastern Visayas College",
+    original_course_code: "NSTP 101",
+    original_course_title: "National Service Training Program I",
+    units: 3,
+    grade: "1.75",
+    destination_curriculum_term_course_id: MOCK_IDS.slotNstp1,
+    units_credited: 3,
+    decided_by: MOCK_IDS.deptHeadDcst,
+    decided_at: "2026-08-10T08:00:00Z",
+    revoked_at: null,
+    updated_at: "2026-08-10T08:00:00Z",
+  });
+  db.curriculumTransferRequests.push({
+    id: "85000000-0000-4000-8001-000000000007",
+    student_id: MOCK_PERSONAS.student_sample_7.profileId,
+    from_curriculum_version_id: MOCK_IDS.curriculumBscs2024,
+    to_curriculum_version_id: MOCK_IDS.curriculumBsabe,
+    endorsed_by: MOCK_IDS.adviserPrimary,
+    endorsement_note: "Endorsed for review by the destination department.",
+    status: "pending",
+    decided_by: null,
+    decided_at: null,
+    decision_note: null,
+    carried_units: 0,
+    created_at: "2026-10-01T08:00:00Z",
+    updated_at: "2026-10-01T08:00:00Z",
+  });
+  // A separate full checklist scenario preserves the existing catalog's titles for shared course codes.
+  db.curriculumVersions.push({
+    id: MOCK_IDS.curriculumReference,
+    program_id: MOCK_IDS.programBscs,
+    version_label: "BSCS reference 2025 v1",
+    effective_start: "2025-08-01",
+    effective_end: null,
+    delinquency_threshold: 24,
+    total_units: REFERENCE_CURRICULUM.reduce(
+      (sum, item) => sum + item.units,
+      0,
+    ),
+    status: "active",
+    enrolled_student_count: 1,
+  });
+  const referenceTerms = new Map<string, string>();
+  REFERENCE_CURRICULUM.forEach((item, index) => {
+    const termKey = `${item.year}-${item.term}`;
+    if (!referenceTerms.has(termKey)) {
+      const termId = `41000000-0000-4000-8004-${String(referenceTerms.size + 1).padStart(12, "0")}`;
+      referenceTerms.set(termKey, termId);
+      db.curriculumTerms.push({
+        id: termId,
+        curriculum_version_id: MOCK_IDS.curriculumReference,
+        year_level: item.year,
+        term_sequence: item.term,
+      });
+    }
+    let course = db.courses.find(
+      (entry) => entry.code.toUpperCase() === item.code,
+    );
+    if (!item.elective && !course) {
+      const category: ApiSchema<"CourseCategory"> = item.code.startsWith(
+        "PHED ",
+      )
+        ? "pe"
+        : item.code.startsWith("NSTP ")
+          ? "nstp"
+          : /^(CSCI|CSIT) /.test(item.code)
+            ? "major"
+            : "ge";
+      course = {
+        id: `50000000-0000-4000-8004-${String(index + 1).padStart(12, "0")}`,
+        department_id: MOCK_IDS.deptDcst,
+        code: item.code,
+        title: item.title,
+        category,
+        units: item.units,
+        is_elective: false,
+        status: "active",
+        repeatable_type: "none",
+      };
+      db.courses.push(course);
+    }
+    const slotId = `42000000-0000-4000-8004-${String(index + 1).padStart(12, "0")}`;
+    db.curriculumTermCourses.push({
+      id: slotId,
+      curriculum_term_id: referenceTerms.get(termKey)!,
+      course_id: item.elective ? null : course!.id,
+      is_elective_slot: item.elective,
+      slot_type: item.elective
+        ? "elective"
+        : item.code.startsWith("PHED ")
+          ? "pe"
+          : item.code.startsWith("NSTP ")
+            ? "nstp"
+            : "required",
+      slot_label: item.elective ? item.code : null,
+      nominal_units: item.units,
+    });
+  });
+  // These offerings populate the next eligible curriculum term in the reference advising scenario.
+  ["CSCI 126", "CSCI 154", "CSCI 183", "HUMN 11"].forEach((code, index) => {
+    const course = db.courses.find((item) => item.code === code)!;
+    db.courseOfferings.push({
+      id: `62000000-0000-4000-8006-${String(index + 1).padStart(12, "0")}`,
+      school_term_id: MOCK_IDS.term2026Sem1Open,
+      course_id: course.id,
+      section: "R1",
+      schedule: "Schedule available from department",
+      instructor: MOCK_PERSONAS.adviser.fullName,
+      is_by_request: false,
+    });
+  });
+  const referenceStudent = MOCK_PERSONAS.student_sample_29;
+  const org = db.studentOrganizations.find(
+    (item) => item.student_id === referenceStudent.profileId,
+  )!;
+  const assignment = db.studentCurriculumAssignments.find(
+    (item) =>
+      item.student_id === referenceStudent.profileId && item.end_date === null,
+  )!;
+  org.curriculum_version_id = MOCK_IDS.curriculumReference;
+  assignment.curriculum_version_id = MOCK_IDS.curriculumReference;
+  const referenceId = referenceStudent.profileId;
+  const referenceProfile = db.profiles.find((item) => item.id === referenceId)!;
+  referenceProfile.student_number = "25-1-10029";
+  org.entry_year = 2025;
+  assignment.start_date = "2025-08-01";
+  const initialAdviser = db.adviserAssignments.find(
+    (item) => item.student_id === referenceId && item.end_date === null,
+  )!;
+  initialAdviser.start_date = "2025-08-01";
+  const referenceAudit = db.auditLogEntries.find(
+    (item) => item.student_id === referenceId,
+  )!;
+  db.auditLogEntries[db.auditLogEntries.indexOf(referenceAudit)] = {
+    ...referenceAudit,
+    student_number: referenceProfile.student_number,
+    target_label: `${referenceProfile.student_number} · ${referenceStudent.fullName}`,
+  };
+  db.attempts = db.attempts.filter((item) => item.student_id !== referenceId);
+  db.attemptResults = db.attemptResults.filter(
+    (item) => item.student_id !== referenceId,
+  );
+  const firstTermId = "60000000-0000-4000-8004-000000000001";
+  db.schoolTerms.push({
+    id: firstTermId,
+    start_year: 2025,
+    end_year: 2026,
+    term_type: "1st Semester",
+    school_year: "2025 - 2026",
+    is_locked: true,
+    override_flag: false,
+    override_actor_id: null,
+    override_at: null,
+    starts_on: "2025-08-04",
+    ends_on: "2025-12-19",
+    encoding_deadline: "2026-01-05",
+    closed_by: MOCK_IDS.systemAdmin,
+    closed_at: "2026-01-05T09:00:00Z",
+    closure_note: null,
+    default_inc_deadline: "2026-12-19",
+    chronological_key: 20251,
+  });
+  const priorGrades: Record<string, number> = {
+    "CSIT 100": 1.5,
+    "CSIT 101": 1.75,
+    "CSCI 180": 2,
+    "COMM 11": 1.25,
+    "ENTR 11": 1.5,
+    "ITEC 11": 1.75,
+    "SCSC 11": 2,
+    "PHED 11": 1,
+    "NSTP 11": 1,
+    "CSIT 102": 1.5,
+    "CSCI 121": 2,
+    "CSCI 181": 1.75,
+    "MATH 11": 2,
+    "SCSC 12": 1.5,
+    "PHED 12": 1,
+    "NSTP 12": 1,
+  };
+  const currentCourses = new Set([
+    "CSIT 103",
+    "CSIT 104",
+    "CSIT 105",
+    "CSCI 103",
+    "CSCI 122",
+    "CSCI 182",
+    "SCSC 13",
+    "PHED 13",
+  ]);
+  let currentPlanOffering = "";
+  let currentPlanSlot = "";
+  REFERENCE_CURRICULUM.forEach((item, index) => {
+    const grade = priorGrades[item.code];
+    const incomplete = item.code === "CSCI 102";
+    const enrolled = currentCourses.has(item.code);
+    if (grade === undefined && !incomplete && !enrolled) return;
+    const slot = db.curriculumTermCourses.find(
+      (row) =>
+        row.id ===
+        `42000000-0000-4000-8004-${String(index + 1).padStart(12, "0")}`,
+    )!;
+    const course = db.courses.find((row) => row.id === slot.course_id)!;
+    const termId =
+      item.year === 1 && item.term === 1
+        ? firstTermId
+        : item.year === 1
+          ? MOCK_IDS.term2025Sem2Closed
+          : MOCK_IDS.term2026Sem1Open;
+    const offeringId = `62000000-0000-4000-8005-${String(index + 1).padStart(12, "0")}`;
+    const attemptId = `80000000-0000-4000-8005-${String(index + 1).padStart(12, "0")}`;
+    const status: ApiSchema<"AttemptStatus"> = enrolled
+      ? "currently_enrolled"
+      : incomplete
+        ? "inc"
+        : "passed";
+    const createdAt =
+      termId === firstTermId
+        ? "2025-08-15T08:00:00Z"
+        : termId === MOCK_IDS.term2025Sem2Closed
+          ? "2026-01-15T08:00:00Z"
+          : "2026-08-15T08:00:00Z";
+    db.courseOfferings.push({
+      id: offeringId,
+      school_term_id: termId,
+      course_id: course.id,
+      section: "R1",
+      schedule: "Schedule available from department",
+      instructor: MOCK_PERSONAS.adviser.fullName,
+      is_by_request: false,
+    });
+    const common = {
+      id: attemptId,
+      student_id: referenceId,
+      course_offering_id: offeringId,
+      curriculum_term_course_id: slot.id,
+      midterm_status: "graded" as const,
+      midterm_grade: grade ?? 2,
+      final_grade: grade ?? null,
+      inc_deadline: incomplete ? "2027-05-30" : null,
+      instructor: MOCK_PERSONAS.adviser.fullName,
+      prerequisite_override: incomplete,
+      prerequisite_grade_override: false,
+      units_attempted: slot.nominal_units,
+      revision: 1,
+      created_at: createdAt,
+      updated_at: createdAt,
+    };
+    db.attempts.push({
+      ...common,
+      status,
+      created_by: MOCK_IDS.adviserPrimary,
+      updated_by: MOCK_IDS.adviserPrimary,
+    });
+    db.attemptResults.push({
+      ...common,
+      recorded_status: status,
+      effective_status: status,
+      grade_fix_history: [],
+      completion_grade: null,
+      resolved_at: null,
+      gwa_grade: grade ?? null,
+      is_lapsed_inc: false,
+      is_repeated: false,
+      counts_toward_cumulative_gwa: grade !== undefined,
+    });
+    if (incomplete) {
+      db.auditLogEntries.push({
+        id: "91000000-0000-4000-8004-000000000001",
+        actor_id: MOCK_IDS.adviserPrimary,
+        actor_name: MOCK_PERSONAS.adviser.fullName,
+        actor_role: "adviser",
+        student_id: referenceId,
+        student_name: MOCK_PERSONAS.student_sample_29.fullName,
+        student_number: "25-1-10029",
+        target_label: `25-1-10029 · ${MOCK_PERSONAS.student_sample_29.fullName}`,
+        action: "prerequisite_override_recorded",
+        action_category: "override",
+        entity_type: "attempt",
+        entity_id: attemptId,
+        details_summary: "Recorded an approved prerequisite override.",
+        old_value: null,
+        new_value: null,
+        reason:
+          "Department approved entry after reviewing the student's prior preparation.",
+        created_at: createdAt,
+      });
+    }
+    if (item.code === "CSIT 103") {
+      currentPlanOffering = offeringId;
+      currentPlanSlot = slot.id;
+    }
+  });
+  for (const item of db.advisingPlanItems.filter(
+    (row) => row.student_id === referenceId,
+  )) {
+    item.course_offering_id = currentPlanOffering;
+    item.curriculum_term_course_id = currentPlanSlot;
+  }
+  let missingRoleIndex = 0;
+  for (const persona of Object.values(MOCK_PERSONAS)) {
+    if (!db.profiles.some((profile) => profile.id === persona.profileId))
+      continue;
+    for (const scope of persona.roleScopes) {
+      if (
+        db.roleAssignments.some(
+          (assignment) =>
+            assignment.profile_id === persona.profileId &&
+            assignment.role === scope.role,
+        )
+      )
+        continue;
+      missingRoleIndex += 1;
+      db.roleAssignments.push({
+        id: `92000000-0000-4000-8003-${String(missingRoleIndex).padStart(12, "0")}`,
+        profile_id: persona.profileId,
+        role: scope.role,
+        faculty_id:
+          scope.scope_type === "institution" ? null : persona.facultyId,
+        department_id:
+          scope.scope_type === "department" ? scope.scope_id : null,
+        created_at: "2026-07-01T08:00:00Z",
       });
     }
   }
+  // Shared, recipient-owned notifications mirror the role workflows in the prototype.
+  const roleNotifications: Array<
+    Omit<ApiSchema<"Notification">, "id" | "is_read" | "read_at" | "created_at">
+  > = [
+    {
+      recipient_id: MOCK_IDS.adviserPrimary,
+      kind: "flag",
+      event_type: "grade_flag_submitted",
+      title: "An advisee reported a grade",
+      body: `${MOCK_PERSONAS.student.fullName} submitted a grade question.`,
+      target_route: "/adviser/grade-flags",
+      target_student_id: MOCK_IDS.studentPrimary,
+      actor_id: MOCK_IDS.studentPrimary,
+      entity_type: "grade_flag",
+      entity_id: MOCK_IDS.gradeFlag1,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.adviserPrimary,
+      kind: "alert",
+      event_type: "inc_deadline_approaching",
+      title: "INC completion reminder",
+      body: `${MOCK_PERSONAS.student.fullName} has an incomplete course requiring follow-up.`,
+      target_route: `/adviser/advisee/${MOCK_IDS.studentPrimary}/grades`,
+      target_student_id: MOCK_IDS.studentPrimary,
+      actor_id: null,
+      entity_type: "attempt",
+      entity_id: MOCK_IDS.attemptCsci102Inc,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.adviserSecondary,
+      kind: "person",
+      event_type: "adviser_assigned",
+      title: "A student was assigned to you",
+      body: `${MOCK_PERSONAS.student_sample_2.fullName} is on your advising list.`,
+      target_route: "/adviser/advisees",
+      target_student_id: MOCK_PERSONAS.student_sample_2.profileId,
+      actor_id: MOCK_IDS.deptHeadDcst,
+      entity_type: "adviser_assignment",
+      entity_id: "70000000-0000-4000-8001-000000000002",
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.deptHeadDcst,
+      kind: "transfer",
+      event_type: "curriculum_transfer_endorsed",
+      title: "Curriculum transfer awaiting review",
+      body: `An adviser endorsed a request for ${MOCK_PERSONAS.student.fullName}.`,
+      target_route: "/department-head/curriculum-transfers",
+      target_student_id: MOCK_IDS.studentPrimary,
+      actor_id: MOCK_IDS.adviserPrimary,
+      entity_type: "curriculum_transfer_request",
+      entity_id: MOCK_IDS.transferRequest1,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.deptHeadDcst,
+      kind: "alert",
+      event_type: "encoding_deadline_approaching",
+      title: "Grade encoding deadline approaching",
+      body: "Review the current term's department encoding schedule.",
+      target_route: "/department-head/academic-terms",
+      target_student_id: null,
+      actor_id: null,
+      entity_type: "school_term",
+      entity_id: MOCK_IDS.term2026Sem1Open,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.deptStaffDcst,
+      kind: "person",
+      event_type: "adviser_assigned",
+      title: "Adviser assignment recorded",
+      body: `An adviser assignment was recorded for ${MOCK_PERSONAS.student_sample_1.fullName}.`,
+      target_route: "/department-staff/adviser-assignments",
+      target_student_id: MOCK_PERSONAS.student_sample_1.profileId,
+      actor_id: MOCK_IDS.deptHeadDcst,
+      entity_type: "adviser_assignment",
+      entity_id: "70000000-0000-4000-8001-000000000001",
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.deptStaffDcst,
+      kind: "report",
+      event_type: "catalog_updated",
+      title: "Course catalog updated",
+      body: "Review the shared CSCI 101 course record.",
+      target_route: "/department-staff/course-catalog",
+      target_student_id: null,
+      actor_id: MOCK_IDS.deptHeadDcst,
+      entity_type: "course",
+      entity_id: MOCK_IDS.courseCsci101,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.deanComputing,
+      kind: "report",
+      event_type: "report_snapshot_ready",
+      title: "Faculty report available",
+      body: "The Faculty of Computing report is available for review.",
+      target_route: "/dean/reports",
+      target_student_id: null,
+      actor_id: null,
+      entity_type: "faculty",
+      entity_id: MOCK_IDS.facultyComputing,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.deanDeptHeadComputing,
+      kind: "transfer",
+      event_type: "curriculum_transfer_endorsed",
+      title: "Curriculum transfer awaiting review",
+      body: `An adviser endorsed a request for ${MOCK_PERSONAS.student.fullName}.`,
+      target_route: "/department-head/curriculum-transfers",
+      target_student_id: MOCK_IDS.studentPrimary,
+      actor_id: MOCK_IDS.adviserPrimary,
+      entity_type: "curriculum_transfer_request",
+      entity_id: MOCK_IDS.transferRequest1,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.deanDeptHeadComputing,
+      kind: "report",
+      event_type: "report_snapshot_ready",
+      title: "Faculty report available",
+      body: "The Faculty of Computing report is available for review.",
+      target_route: "/dean/reports",
+      target_student_id: null,
+      actor_id: null,
+      entity_type: "faculty",
+      entity_id: MOCK_IDS.facultyComputing,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.systemAdmin,
+      kind: "person",
+      event_type: "invitation_accepted",
+      title: "Student invitation accepted",
+      body: `${MOCK_PERSONAS.student_sample_1.fullName} accepted their invitation.`,
+      target_route: "/admin/accounts",
+      target_student_id: MOCK_PERSONAS.student_sample_1.profileId,
+      actor_id: MOCK_PERSONAS.student_sample_1.profileId,
+      entity_type: "profile",
+      entity_id: MOCK_PERSONAS.student_sample_1.profileId,
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+    {
+      recipient_id: MOCK_IDS.systemAdmin,
+      kind: "alert",
+      event_type: "backup_overdue_reminder",
+      title: "Backup needs review",
+      body: "Check the most recent backup reference in system settings.",
+      target_route: "/admin/settings",
+      target_student_id: null,
+      actor_id: null,
+      entity_type: "system_settings",
+      entity_id: "93000000-0000-4000-8000-000000000001",
+      dedupe_key: null,
+      email_delivery_status: "sent",
+    },
+  ];
+  roleNotifications.forEach((notification, index) => {
+    const isRead = index % 3 === 1;
+    db.notifications.push({
+      ...notification,
+      id: `90000000-0000-4000-8002-${String(index + 1).padStart(12, "0")}`,
+      is_read: isRead,
+      read_at: isRead ? "2026-11-10T10:00:00Z" : null,
+      created_at: "2026-11-09T09:00:00Z",
+    });
+  });
   return db;
 }
 

@@ -30,18 +30,46 @@ describe("shared adviser dashboard mock", () => {
     const report = await client().GET(route);
     expect(report.response.status).toBe(200);
     expect(report.data?.adviser_id).toBe(MOCK_IDS.adviserPrimary);
-    expect(report.data?.total_advisees).toBe(13);
-    expect(report.data?.pending_inc_count).toBe(1);
-    expect(report.data?.grade_distribution?.total_graded).toBe(1);
+    expect(report.data?.total_advisees).toBe(14);
+    const db = getMockDatabase();
+    const assigned = new Set(
+      db.adviserAssignments
+        .filter(
+          (row) =>
+            row.adviser_id === MOCK_IDS.adviserPrimary && row.end_date === null,
+        )
+        .map((row) => row.student_id),
+    );
+    const attempts = db.attemptResults.filter((row) =>
+      assigned.has(row.student_id),
+    );
+    const numericGrades = attempts
+      .map((row) => row.completion_grade ?? row.final_grade)
+      .filter((grade): grade is number => grade != null);
+    expect(report.data?.pending_inc_count).toBe(
+      attempts.filter(
+        (row) =>
+          row.recorded_status === "inc" &&
+          row.completion_grade == null &&
+          !row.is_lapsed_inc,
+      ).length,
+    );
+    expect(report.data?.grade_distribution?.total_graded).toBe(
+      numericGrades.length,
+    );
     expect(
       report.data?.grade_distribution?.buckets.find(
         (bucket) => bucket.label === "1.75–2.25",
       )?.count,
-    ).toBe(1);
+    ).toBe(
+      numericGrades.filter((grade) => grade >= 1.75 && grade <= 2.25).length,
+    );
     getMockDatabase().adviserAssignments[0]!.end_date = "2026-01-01";
     const afterHandover = await client().GET(route);
-    expect(afterHandover.data?.total_advisees).toBe(12);
-    expect(afterHandover.data?.grade_distribution?.total_graded).toBe(0);
+    expect(afterHandover.data?.total_advisees).toBe(13);
+    expect(afterHandover.data?.grade_distribution?.total_graded).toBe(
+      numericGrades.length - 1,
+    );
   });
 
   it("uses the selected term for grade distribution and keeps other advisers separate", async () => {
@@ -49,10 +77,36 @@ describe("shared adviser dashboard mock", () => {
     const term = await client().GET(route, {
       params: { query: { school_term_id: MOCK_IDS.term2025Sem2Closed } },
     });
-    expect(term.data?.grade_distribution?.total_graded).toBe(0);
-    expect(term.data?.grade_distribution?.inc_count).toBe(1);
+    const db = getMockDatabase();
+    const assigned = new Set(
+      db.adviserAssignments
+        .filter(
+          (row) =>
+            row.adviser_id === MOCK_IDS.adviserPrimary && row.end_date === null,
+        )
+        .map((row) => row.student_id),
+    );
+    const attempts = db.attemptResults.filter(
+      (row) =>
+        assigned.has(row.student_id) &&
+        db.courseOfferings.some(
+          (offering) =>
+            offering.id === row.course_offering_id &&
+            offering.school_term_id === MOCK_IDS.term2025Sem2Closed,
+        ),
+    );
+    expect(term.data?.grade_distribution?.total_graded).toBe(
+      attempts.filter(
+        (row) => row.completion_grade != null || row.final_grade != null,
+      ).length,
+    );
+    expect(term.data?.grade_distribution?.inc_count).toBe(
+      attempts.filter(
+        (row) => row.recorded_status === "inc" && row.completion_grade == null,
+      ).length,
+    );
     loginAsMockPersona("adviser_secondary");
-    expect((await client().GET(route)).data?.total_advisees).toBe(12);
+    expect((await client().GET(route)).data?.total_advisees).toBe(13);
     expect(
       (
         await client().GET(route, {
@@ -68,7 +122,7 @@ describe("shared adviser dashboard mock", () => {
       params: { query: { adviser_id: MOCK_IDS.adviserPrimary } },
     });
     expect(report.response.status).toBe(200);
-    expect(report.data?.total_advisees).toBe(13);
+    expect(report.data?.total_advisees).toBe(14);
     loginAsMockPersona("student");
     expect((await client().GET(route)).response.status).toBe(403);
   });
@@ -78,7 +132,7 @@ describe("shared adviser dashboard mock", () => {
     const students = db.profiles.filter((profile) =>
       profile.email.startsWith("sample.student"),
     );
-    expect(students).toHaveLength(24);
+    expect(students).toHaveLength(29);
     for (const student of students) {
       expect(
         db.adviserAssignments.filter(
@@ -88,7 +142,7 @@ describe("shared adviser dashboard mock", () => {
       const attempts = db.attempts.filter(
         (row) => row.student_id === student.id,
       );
-      expect(attempts).toHaveLength(2);
+      expect(attempts.length).toBeGreaterThanOrEqual(2);
       for (const attempt of attempts) {
         const offering = db.courseOfferings.find(
           (row) => row.id === attempt.course_offering_id,
@@ -101,7 +155,7 @@ describe("shared adviser dashboard mock", () => {
       params: { query: { assignment_scope: "current" } },
     });
     const report = await client().GET(route);
-    expect(roster.data?.total_count).toBe(13);
+    expect(roster.data?.total_count).toBe(14);
     expect(report.data?.total_advisees).toBe(roster.data?.total_count);
     expect(
       roster.data?.items.some(
@@ -112,7 +166,7 @@ describe("shared adviser dashboard mock", () => {
     const otherRoster = await client().GET("/functions/v1/students", {
       params: { query: { assignment_scope: "current" } },
     });
-    expect(otherRoster.data?.total_count).toBe(12);
+    expect(otherRoster.data?.total_count).toBe(13);
     expect(
       otherRoster.data?.items.some(
         (row) => row.full_name === students[0]?.full_name,
