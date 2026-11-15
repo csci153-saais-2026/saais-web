@@ -43,6 +43,29 @@ function markRetakeResults(attempts: ApiSchema<'AttemptResult'>[]): ApiSchema<'A
   })
 }
 
+function studentMetrics(studentId: string, departmentId: string) {
+  const db = getMockDatabase()
+  const results = markRetakeResults(db.attemptResults.filter(a => a.student_id === studentId))
+      const counted = results.filter(a => a.counts_toward_cumulative_gwa)
+        .map(a => ({ grade: a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null), units: a.units_attempted }))
+        .filter(a => a.grade != null && a.units > 0)
+      const countedUnits = counted.reduce((sum, row) => sum + row.units, 0)
+      const gwa = countedUnits ? Number((counted.reduce((sum, row) => sum + row.grade! * row.units, 0) / countedUnits).toFixed(2)) : null
+      const earnedUnits = results.filter(a => a.effective_status === 'passed' && a.counts_toward_cumulative_gwa)
+        .reduce((sum, row) => sum + row.units_attempted, 0) + db.outsideCredits.filter(credit => credit.student_id === studentId && credit.revoked_at == null).reduce((sum, credit) => sum + credit.units_credited, 0)
+      const openInc = results.filter(a => a.recorded_status === 'inc' && a.completion_grade == null && !a.is_lapsed_inc)
+      const lapsed = results.filter(a => a.is_lapsed_inc)
+      const flags = db.gradeFlags.filter(flag => flag.student_id === studentId && flag.status === 'open')
+      const failed = counted.filter(row => row.grade! > 3)
+      const failedUnits = failed.reduce((sum, row) => sum + row.units, 0)
+      const settings = db.systemSettings.find(setting => setting.department_id === departmentId)
+      const failurePct = countedUnits ? failedUnits * 100 / countedUnits : 0
+      const standing: ApiSchema<'AcademicStanding'> = settings && failurePct >= settings.dismissal_pct ? 'dismissed'
+        : settings && failurePct >= settings.probation_pct ? 'probation'
+          : settings && failurePct >= settings.warning_pct ? 'warning' : 'good_standing'
+  return { results, counted, countedUnits, gwa, earnedUnits, openInc, lapsed, flags, failed, failedUnits, failurePct, standing }
+}
+
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
 
 function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
@@ -1851,24 +1874,7 @@ export const saaisMswHandlers = [
         (auth.persona.roles.some(role => role === 'department_head' || role === 'department_staff') && canAccessDepartment(auth.persona, org.department_id)) ||
         (auth.persona.roles.includes('adviser') && !!ownAssignment)
       if (!visible) continue
-      const results = markRetakeResults(db.attemptResults.filter(a => a.student_id === org.student_id))
-      const counted = results.filter(a => a.counts_toward_cumulative_gwa)
-        .map(a => ({ grade: a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null), units: a.units_attempted }))
-        .filter(a => a.grade != null && a.units > 0)
-      const countedUnits = counted.reduce((sum, row) => sum + row.units, 0)
-      const gwa = countedUnits ? Number((counted.reduce((sum, row) => sum + row.grade! * row.units, 0) / countedUnits).toFixed(2)) : null
-      const earnedUnits = results.filter(a => a.effective_status === 'passed' && a.counts_toward_cumulative_gwa)
-        .reduce((sum, row) => sum + row.units_attempted, 0) + db.outsideCredits.filter(credit => credit.student_id === org.student_id && credit.revoked_at == null).reduce((sum, credit) => sum + credit.units_credited, 0)
-      const openInc = results.filter(a => a.recorded_status === 'inc' && a.completion_grade == null && !a.is_lapsed_inc)
-      const lapsed = results.filter(a => a.is_lapsed_inc)
-      const flags = db.gradeFlags.filter(flag => flag.student_id === org.student_id && flag.status === 'open')
-      const failed = counted.filter(row => row.grade! > 3)
-      const failedUnits = failed.reduce((sum, row) => sum + row.units, 0)
-      const settings = db.systemSettings.find(setting => setting.department_id === org.department_id)
-      const failurePct = countedUnits ? failedUnits * 100 / countedUnits : 0
-      const standing: ApiSchema<'AcademicStanding'> = settings && failurePct >= settings.dismissal_pct ? 'dismissed'
-        : settings && failurePct >= settings.probation_pct ? 'probation'
-          : settings && failurePct >= settings.warning_pct ? 'warning' : 'good_standing'
+      const { gwa, earnedUnits, openInc, lapsed, flags, failed, standing } = studentMetrics(org.student_id, org.department_id)
       const adviser = activeAssignment && db.profiles.find(p => p.id === activeAssignment.adviser_id)
       items.push({
         student_id: org.student_id, student_number: profile.student_number ?? '', full_name: profile.full_name,
@@ -1941,14 +1947,21 @@ export const saaisMswHandlers = [
       if (isAdditionalSample) {
         const organization = db.studentOrganizations.find(item => item.student_id === studentId)!
         const curriculum = db.curriculumVersions.find(item => item.id === organization.curriculum_version_id)!
-        const inProgress = db.attemptResults.filter(item => item.student_id === studentId && item.recorded_status === 'currently_enrolled')
+        const metrics = studentMetrics(studentId, organization.department_id)
+        const inProgress = metrics.results.filter(item => item.recorded_status === 'currently_enrolled')
+        const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === curriculum.id).map(term => term.id)
+        const slots = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id))
+        const passedSlots = new Set(metrics.results.filter(item => item.effective_status === 'passed' && item.curriculum_term_course_id).map(item => item.curriculum_term_course_id))
+        for (const credit of db.outsideCredits.filter(item => item.student_id === studentId && item.revoked_at == null)) passedSlots.add(credit.destination_curriculum_term_course_id)
         const summary: ApiSchema<'AcademicSummary'> = {
-          student_id: studentId, gwa: cumulativeGwa, earned_units: 0, required_units: curriculum.total_units,
-          counted_units: countedUnits, failed_units: 0, in_progress_units: inProgress.reduce((sum, item) => sum + item.units_attempted, 0),
-          remaining_units: curriculum.total_units, failure_pct: 0, standing: 'good_standing', year_level: 1,
-          slots_satisfied: 0, total_slots: db.curriculumTermCourses.filter(slot => db.curriculumTerms.some(term => term.id === slot.curriculum_term_id && term.curriculum_version_id === curriculum.id)).length,
-          open_inc_count: 0, lapsed_inc_count: 0, open_flags_count: 0, deficiencies_count: 0,
-          deficiencies: [], is_delinquent: false, computed_at: '2026-11-10T08:00:00Z',
+          student_id: studentId, gwa: metrics.gwa, earned_units: metrics.earnedUnits, required_units: curriculum.total_units,
+          counted_units: metrics.countedUnits, failed_units: metrics.failedUnits, in_progress_units: inProgress.reduce((sum, item) => sum + item.units_attempted, 0),
+          remaining_units: Math.max(0, curriculum.total_units - metrics.earnedUnits), failure_pct: metrics.failurePct,
+          standing: metrics.standing, year_level: metrics.earnedUnits >= 110 ? 4 : metrics.earnedUnits >= 72 ? 3 : metrics.earnedUnits >= 36 ? 2 : 1,
+          slots_satisfied: slots.filter(slot => passedSlots.has(slot.id)).length, total_slots: slots.length,
+          open_inc_count: metrics.openInc.length, lapsed_inc_count: metrics.lapsed.length, open_flags_count: metrics.flags.length,
+          deficiencies_count: metrics.failed.length + metrics.openInc.length + metrics.lapsed.length + metrics.flags.length,
+          is_delinquent: false, computed_at: '2026-11-10T08:00:00Z',
         }
         return HttpResponse.json(summary)
       }
@@ -2008,18 +2021,25 @@ export const saaisMswHandlers = [
         if (!organization) return HttpResponse.json([])
         const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === organization.curriculum_version_id).map(term => term.id)
         const slots: ApiSchema<'ChecklistSlotResult'>[] = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id)).map(slot => {
-          const attempt = db.attemptResults.find(item => item.student_id === studentId && item.curriculum_term_course_id === slot.id)
-          const offering = attempt && db.courseOfferings.find(item => item.id === attempt.course_offering_id)
-          const schoolTerm = offering && db.schoolTerms.find(item => item.id === offering.school_term_id)
-          const attempts = attempt && schoolTerm ? [{ attempt_id: attempt.id, school_term_id: schoolTerm.id,
-            term_label: `${schoolTerm.term_type} ${schoolTerm.school_year}`, recorded_status: attempt.recorded_status,
-            effective_status: attempt.effective_status, midterm_status: attempt.midterm_status, midterm_grade: attempt.midterm_grade,
-            final_grade: attempt.final_grade, completion_grade: attempt.completion_grade, inc_deadline: attempt.inc_deadline,
-            instructor: attempt.instructor }] : []
-          return { curriculum_term_course_id: slot.id, status: attempt?.effective_status ?? 'not_taken', required_units: slot.nominal_units,
-            earned_units: attempt?.effective_status === 'passed' ? attempt.units_attempted : 0,
-            source_attempt_id: attempt?.id ?? null, satisfaction_source: attempt?.effective_status === 'passed' ? 'Direct' : null,
-            attempts, grade_fix_history: [] }
+          const matching = db.attemptResults.filter(item => item.student_id === studentId && item.curriculum_term_course_id === slot.id)
+            .sort((a, b) => {
+              const order = (item: ApiSchema<'AttemptResult'>) => db.schoolTerms.find(term => term.id === db.courseOfferings.find(offering => offering.id === item.course_offering_id)?.school_term_id)?.chronological_key ?? 0
+              return order(a) - order(b) || (a.created_at ?? '').localeCompare(b.created_at ?? '') || a.id.localeCompare(b.id)
+            })
+          const attempt = matching.find(item => item.effective_status === 'passed') ?? matching.at(-1)
+          const attempts = matching.flatMap(item => {
+            const offering = db.courseOfferings.find(row => row.id === item.course_offering_id)
+            const term = db.schoolTerms.find(row => row.id === offering?.school_term_id)
+            return term ? [{ attempt_id: item.id, school_term_id: term.id, term_label: `${term.term_type} ${term.school_year}`,
+              recorded_status: item.recorded_status, effective_status: item.effective_status, midterm_status: item.midterm_status,
+              midterm_grade: item.midterm_grade, final_grade: item.final_grade, completion_grade: item.completion_grade,
+              inc_deadline: item.inc_deadline, instructor: item.instructor }] : []
+          })
+          const credit = db.outsideCredits.find(item => item.student_id === studentId && item.destination_curriculum_term_course_id === slot.id && item.revoked_at == null)
+          return { curriculum_term_course_id: slot.id, status: credit ? 'passed' : attempt?.effective_status ?? 'not_taken', required_units: slot.nominal_units,
+            earned_units: credit ? credit.units_credited : attempt?.effective_status === 'passed' ? attempt.units_attempted : 0,
+            source_attempt_id: credit ? null : attempt?.id ?? null, satisfaction_source: credit ? 'Outside credit' : attempt?.effective_status === 'passed' ? 'Direct' : null,
+            attempts, grade_fix_history: matching.flatMap(item => item.grade_fix_history ?? []) }
         })
         return HttpResponse.json(slots)
       }
@@ -3197,29 +3217,25 @@ export const saaisMswHandlers = [
   http.patch(
     '*/functions/v1/students/:student_id/notes/:note_id',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['admin', 'adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
       const noteId = String(params.note_id)
-      const body = (await request.json().catch(() => ({ is_archived: true }))) as ApiSchema<'NoteArchiveUpdateRequest'>
-      const note: ApiSchema<'AdvisingNote'> = {
-        id: noteId,
-        student_id: studentId,
-        authored_by: auth.persona.profileId,
-        author_name: auth.persona.fullName,
-        author_role_label: 'Adviser',
-        body_text: 'Archived advising note.',
-        is_archived: Boolean(body.is_archived),
-        archived_at: body.is_archived ? '2026-11-10T09:00:00Z' : null,
-        archived_by: body.is_archived ? auth.persona.profileId : null,
-        created_at: '2026-08-12T09:00:00Z',
+      const db = getMockDatabase()
+      if (!auth.persona.roles.includes('admin') && !db.adviserAssignments.some(assignment =>
+        assignment.student_id === studentId && assignment.adviser_id === auth.persona.profileId && assignment.end_date === null)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser or an administrator may archive or restore a note.')
       }
-      return HttpResponse.json(note, { status: 200 })
+      const body: unknown = await request.json().catch(() => null)
+      if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(key => key !== 'is_archived') || typeof (body as { is_archived?: unknown }).is_archived !== 'boolean') {
+        return errorJson(400, 'INVALID_INPUT', 'A valid is_archived value is required.')
+      }
+      const note = db.advisingNotes.find(item => item.id === noteId && item.student_id === studentId)
+      if (!note) return errorJson(404, 'NOT_FOUND', 'Advising note not found.')
+      const archived = (body as { is_archived: boolean }).is_archived
+      const updated = { ...note, is_archived: archived, archived_at: archived ? '2026-11-10T09:00:00Z' : null, archived_by: archived ? auth.persona.profileId : null }
+      db.advisingNotes[db.advisingNotes.indexOf(note)] = updated
+      return HttpResponse.json(updated, { status: 200 })
     },
   ),
 
