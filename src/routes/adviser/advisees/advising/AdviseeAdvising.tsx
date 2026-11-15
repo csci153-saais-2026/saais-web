@@ -41,7 +41,7 @@ function PlanEditor({ data, id, term, onSaved }: { data: PlanData; id: string; t
   </>
 }
 
-function RecentNotes({ id, userId, isAdmin, isMockMode }: { id: string; userId: string; isAdmin: boolean; isMockMode: boolean }) {
+function RecentNotes({ id, userId, isAdmin }: { id: string; userId: string; isAdmin: boolean }) {
   const [revision, setRevision] = useState(0)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -61,7 +61,7 @@ function RecentNotes({ id, userId, isAdmin, isMockMode }: { id: string; userId: 
     {error && <div role="alert" className="space-y-3 p-5"><p>{error}</p><Button variant="outline" onClick={() => setRevision(n => n + 1)}>Try again</Button></div>}
     {data && <>{active.slice(0, 3).map(note => <article key={note.id} className="border-b border-line-soft px-5 py-4"><div className="flex flex-wrap justify-between gap-2 text-xs"><strong>{note.author_name ?? 'Adviser'}</strong><time className="text-muted-foreground" dateTime={note.created_at}>{new Date(note.created_at).toLocaleDateString()}</time></div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{note.body_text}</p></article>)}
       {!active.length && <p className="px-5 py-4 text-sm text-muted-foreground">No active notes yet.</p>}
-      <div className="space-y-3 p-5">{(data.isCurrent || isAdmin) && <><label htmlFor="advising-note" className="block text-sm font-medium">Write an advising note</label><Textarea id="advising-note" rows={4} maxLength={5000} placeholder="Visible to the student. Write what they and the next adviser should know." value={text} onChange={e => setText(e.target.value)} />{isMockMode && <p className="text-sm text-muted-foreground">Saving notes is unavailable in mock mode until the shared handler checks adviser ownership.</p>}<div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setText('')}>Cancel</Button><Button disabled={isMockMode || busy || !text.trim()} onClick={() => void save()}>{busy ? 'Saving…' : 'Save note'}</Button></div></>}
+      <div className="space-y-3 p-5">{(data.isCurrent || isAdmin) && <><label htmlFor="advising-note" className="block text-sm font-medium">Write an advising note</label><Textarea id="advising-note" rows={4} maxLength={5000} placeholder="Visible to the student. Write what they and the next adviser should know." value={text} onChange={e => setText(e.target.value)} /><div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setText('')}>Cancel</Button><Button disabled={busy || !text.trim()} onClick={() => void save()}>{busy ? 'Saving…' : 'Save note'}</Button></div></>}
         {!data.isCurrent && !isAdmin && <p className="text-sm text-muted-foreground">Historical record: read-only.</p>}{message && <p role="status" className="text-sm">{message}</p>}{saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}<Link className="inline-block text-sm font-semibold text-primary underline" to={`/adviser/advisee/${encodeURIComponent(id)}/notes`}>View all notes</Link>
       </div></>}
   </Panel>
@@ -77,7 +77,7 @@ function AdvisingContent({ id, userId, isAdmin, isMockMode }: { id: string; user
   return <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(280px,1fr)]"><Panel title="Course recommendations" description={selectedTerm ? `${selectedTerm.school_year} · ${selectedTerm.term_type}` : 'Select a school term to review the plan.'} flush action={terms.data && <label className="grid gap-1 text-xs font-medium">Term<select aria-label="School term" className="max-w-48 rounded-md border border-border bg-white px-3 py-2 text-sm" value={term} onChange={e => { setTerm(e.target.value); setMessage('') }}><option value="">Select term</option>{terms.data.map(t => <option key={t.id} value={t.id}>{t.school_year} · {t.term_type}</option>)}</select></label>}>
     {terms.error && <p role="alert" className="p-5">{terms.error}</p>}{!terms.data && !terms.error && <p role="status" className="p-5">Loading terms…</p>}{terms.data && terms.data.length === 0 && <p className="p-5 text-sm text-muted-foreground">No school terms available.</p>}
     {!term && terms.data && terms.data.length > 0 && <div className="flex flex-wrap items-center gap-3 p-5"><span className="text-sm">0 selected</span><Button disabled>Add selected to plan</Button></div>}{term && !data.data && !data.error && <p role="status" className="p-5">Loading advising plan…</p>}{data.error && <div role="alert" className="space-y-3 p-5"><p>{data.error}</p><Button variant="outline" onClick={() => setRevision(n => n + 1)}>Try again</Button></div>}{message && <p role="status" className="px-5 pt-4">{message}</p>}{data.data && <PlanEditor key={`${term}:${revision}`} data={data.data} id={id} term={term} onSaved={() => { setMessage('Plan saved.'); setRevision(n => n + 1) }} />}
-  </Panel><div className="min-w-0"><RecentNotes id={id} userId={userId} isAdmin={isAdmin} isMockMode={isMockMode} /><AdvisingAssistant key={`${userId}:${id}`} studentId={id} isMockMode={isMockMode} /></div></div>
+  </Panel><div className="min-w-0"><RecentNotes id={id} userId={userId} isAdmin={isAdmin} /><AdvisingAssistant key={`${userId}:${id}`} studentId={id} isMockMode={isMockMode} /></div></div>
 }
 export default function AdviseeAdvising() {
   const { id } = useParams<{ id: string }>()

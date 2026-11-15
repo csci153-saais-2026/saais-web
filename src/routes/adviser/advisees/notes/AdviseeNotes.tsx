@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
-function NotesContent({ id, userId, isAdmin, isMockMode }: { id: string; userId: string; isAdmin: boolean; isMockMode: boolean }) {
+function NotesContent({ id, userId, isAdmin }: { id: string; userId: string; isAdmin: boolean }) {
   const [archived, setArchived] = useState(false)
   const [revision, setRevision] = useState(0)
   const [text, setText] = useState('')
@@ -43,12 +43,12 @@ function NotesContent({ id, userId, isAdmin, isMockMode }: { id: string; userId:
         {!notes.length && <p className="px-5 py-5">No {archived ? 'archived' : 'active'} notes.</p>}
         {notes.map(note => <article key={note.id} className="border-b border-line-soft px-5 py-5 last:border-0"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-sm"><b>{note.author_name ?? 'Adviser'}</b><span className="text-muted-foreground"> · {new Date(note.created_at).toLocaleDateString()}</span></p>{canEdit && <Button variant="outline" size="sm" disabled={saving} onClick={() => void toggle(note.id, !note.is_archived)}>{note.is_archived ? 'Restore' : 'Archive'}</Button>}</div><p className="whitespace-pre-wrap text-sm">{note.body_text}</p></article>)}
       </Panel>
-      {canEdit && <Dialog open={writing} onOpenChange={setWriting}><DialogContent><DialogHeader><DialogTitle>Write a note</DialogTitle><DialogDescription>Visible to the student and their advisers.</DialogDescription></DialogHeader><label htmlFor="new-note" className="text-sm font-medium">Advising note</label><Textarea id="new-note" rows={4} maxLength={5000} placeholder="Write what the student and the next adviser should know." value={text} onChange={e => setText(e.target.value)} />{isMockMode && <p className="text-sm text-muted-foreground">Saving notes is unavailable in mock mode until the shared handler checks adviser ownership.</p>}<div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => { setWriting(false); setText('') }}>Cancel</Button><Button disabled={isMockMode || saving || !text.trim()} onClick={() => void save()}>{saving ? 'Saving…' : 'Save note'}</Button></div></DialogContent></Dialog>}
+      {canEdit && <Dialog open={writing} onOpenChange={setWriting}><DialogContent><DialogHeader><DialogTitle>Write a note</DialogTitle><DialogDescription>Visible to the student and their advisers.</DialogDescription></DialogHeader><label htmlFor="new-note" className="text-sm font-medium">Advising note</label><Textarea id="new-note" rows={4} maxLength={5000} placeholder="Write what the student and the next adviser should know." value={text} onChange={e => setText(e.target.value)} /><div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => { setWriting(false); setText('') }}>Cancel</Button><Button disabled={saving || !text.trim()} onClick={() => void save()}>{saving ? 'Saving…' : 'Save note'}</Button></div></DialogContent></Dialog>}
     </>}
   </>
 }
 export default function AdviseeNotes() {
   const { id } = useParams<{ id: string }>()
-  const { user, roles, isMockMode } = useAuth()
-  return <AdviserPage title="Notes" tab="notes" sample={false}>{id && user && <NotesContent key={`${user.id}:${id}`} id={id} userId={user.id} isAdmin={roles.includes('admin')} isMockMode={isMockMode} />}</AdviserPage>
+  const { user, roles } = useAuth()
+  return <AdviserPage title="Notes" tab="notes" sample={false}>{id && user && <NotesContent key={`${user.id}:${id}`} id={id} userId={user.id} isAdmin={roles.includes('admin')} />}</AdviserPage>
 }

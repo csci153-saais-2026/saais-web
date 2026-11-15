@@ -3239,33 +3239,44 @@ export const saaisMswHandlers = [
   http.post(
     '*/functions/v1/students/:student_id/notes',
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['admin', 'adviser'])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      const body = (await request.json().catch(() => null)) as
-        | ApiSchema<'NoteRequest'>
-        | null
-      if (!body?.body_text) {
-        return errorJson(400, 'INVALID_INPUT', 'body_text is required.')
+      const db = getMockDatabase()
+      const isAdmin = auth.persona.roles.includes('admin')
+      if (!isAdmin && !db.adviserAssignments.some(assignment =>
+        assignment.student_id === studentId && assignment.adviser_id === auth.persona.profileId && assignment.end_date === null)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser or an administrator may add a note.')
       }
+      if (!db.studentOrganizations.some(student => student.student_id === studentId)) {
+        return errorJson(404, 'NOT_FOUND', 'Student academic record not found.')
+      }
+      const body: unknown = await request.json().catch(() => null)
+      if (!body || typeof body !== 'object' || Array.isArray(body) ||
+        Object.keys(body).some(key => key !== 'body_text') ||
+        typeof (body as { body_text?: unknown }).body_text !== 'string' ||
+        !(body as { body_text: string }).body_text.trim() ||
+        (body as { body_text: string }).body_text.length > 8000) {
+        return errorJson(400, 'INVALID_INPUT', 'A valid body_text is required.')
+      }
+      const createdAt = new Date().toISOString()
       const note: ApiSchema<'AdvisingNote'> = {
-        id: nextSyntheticUuid(),
-        student_id: studentId,
-        authored_by: auth.persona.profileId,
-        author_name: auth.persona.fullName,
-        author_role_label: 'Adviser',
-        body_text: body.body_text,
-        is_archived: false,
-        archived_at: null,
-        archived_by: null,
-        created_at: '2026-11-10T09:00:00Z',
+        id: nextSyntheticUuid(), student_id: studentId,
+        authored_by: auth.persona.profileId, author_name: auth.persona.fullName,
+        author_role_label: isAdmin ? 'Administrator' : 'Adviser',
+        body_text: (body as { body_text: string }).body_text,
+        is_archived: false, archived_at: null, archived_by: null, created_at: createdAt,
       }
-      getMockDatabase().advisingNotes.push(note)
+      db.advisingNotes.push(note)
+      db.notifications.push({
+        id: nextSyntheticUuid(), recipient_id: studentId, kind: 'note',
+        event_type: 'advising_note_added', title: 'New advising note',
+        body: 'A note was added to your advising record.',
+        target_route: '/student/dashboard', target_student_id: studentId,
+        actor_id: auth.persona.profileId, entity_type: 'advising_note', entity_id: note.id,
+        dedupe_key: null, email_delivery_status: 'pending', is_read: false,
+        read_at: null, created_at: createdAt,
+      })
       return HttpResponse.json(note, { status: 201 })
     },
   ),
