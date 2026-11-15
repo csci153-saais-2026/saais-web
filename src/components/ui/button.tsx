@@ -13,8 +13,7 @@ const buttonVariants = cva(
           "border-border bg-card text-foreground hover:border-primary aria-expanded:border-primary",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
-        ghost:
-          "text-primary hover:bg-muted aria-expanded:bg-muted",
+        ghost: "text-primary hover:bg-muted aria-expanded:bg-muted",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
@@ -23,10 +22,8 @@ const buttonVariants = cva(
         default:
           "gap-[7px] px-4 py-[9px] in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-3.5 has-data-[icon=inline-start]:pl-3.5",
         xs: "h-6 gap-1 rounded-[min(var(--radius-md),8px)] px-2 text-xs in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm:
-          "gap-[7px] px-3 py-1.5 text-[13px] in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
-        lg:
-          "gap-[7px] px-[26px] py-[13px] text-[15.5px] has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5",
+        sm: "gap-[7px] px-3 py-1.5 text-[13px] in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
+        lg: "gap-[7px] px-[26px] py-[13px] text-[15.5px] has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5",
         icon: "size-9",
         "icon-xs":
           "size-6 rounded-[min(var(--radius-md),8px)] in-data-[slot=button-group]:rounded-md [&_svg:not([class*='size-'])]:size-3",

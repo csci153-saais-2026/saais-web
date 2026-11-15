@@ -46,13 +46,13 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
 ### Simulating Login, Role Switching, and Logout in Mock Mode
 
 ```ts
-import { setMockSessionToken } from '@/lib/api'
+import { setMockSessionToken } from "@/lib/api";
 
 // On mock login / dev role switch:
-setMockSessionToken('mock-jwt:adviser:adv-uuid-001')
+setMockSessionToken("mock-jwt:adviser:adv-uuid-001");
 
 // On mock logout:
-setMockSessionToken(null)
+setMockSessionToken(null);
 ```
 
 ---
@@ -62,33 +62,33 @@ setMockSessionToken(null)
 ### A. Reading PostgREST Projections with TanStack Query
 
 ```ts
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 import {
   apiClient,
   postgrestFilter,
   unwrapApiResult,
   type ApiSchema,
-} from '@/lib/api'
+} from "@/lib/api";
 
-export type Course = ApiSchema<'Course'>
+export type Course = ApiSchema<"Course">;
 
 export function useActiveCourses(departmentId: string) {
   return useQuery({
-    queryKey: ['courses', departmentId],
+    queryKey: ["courses", departmentId],
     queryFn: async () =>
       unwrapApiResult(
-        await apiClient.GET('/rest/v1/course', {
+        await apiClient.GET("/rest/v1/course", {
           params: {
             query: {
               department_id: postgrestFilter.eq(departmentId),
-              status: postgrestFilter.eq('active'),
-              order: 'code.asc',
+              status: postgrestFilter.eq("active"),
+              order: "code.asc",
               limit: 100,
             },
           },
         }),
       ),
-  })
+  });
 }
 ```
 
@@ -103,25 +103,28 @@ import {
   hasApiErrorCode,
   isApiClientError,
   unwrapApiResult,
-} from '@/lib/api'
+} from "@/lib/api";
 
 export async function recordStudentGrade(
   studentId: string,
   payload: {
-    school_term_id: string
-    course_offering_id: string
-    midterm_grade?: number | null
-    confirmed_enrollment: boolean
-    continue_with_prerequisite_override: boolean
+    school_term_id: string;
+    course_offering_id: string;
+    midterm_grade?: number | null;
+    confirmed_enrollment: boolean;
+    continue_with_prerequisite_override: boolean;
   },
 ) {
   try {
     return unwrapApiResult(
-      await apiClient.POST('/functions/v1/students/{student_id}/record-grades', {
-        params: { path: { student_id: studentId } },
-        body: payload,
-      }),
-    )
+      await apiClient.POST(
+        "/functions/v1/students/{student_id}/record-grades",
+        {
+          params: { path: { student_id: studentId } },
+          body: payload,
+        },
+      ),
+    );
   } catch (err) {
     if (
       isApiClientError(err) &&
@@ -129,7 +132,7 @@ export async function recordStudentGrade(
     ) {
       // Prompt adviser to confirm new enrollment before re-submitting with confirmed_enrollment: true
     }
-    throw err
+    throw err;
   }
 }
 ```
@@ -137,14 +140,14 @@ export async function recordStudentGrade(
 ### C. Parsing Pagination Totals (`Content-Range`)
 
 ```ts
-import { apiClient, parseContentRange, unwrapApiResult } from '@/lib/api'
+import { apiClient, parseContentRange, unwrapApiResult } from "@/lib/api";
 
-const result = await apiClient.GET('/rest/v1/audit_log_entry', {
+const result = await apiClient.GET("/rest/v1/audit_log_entry", {
   params: { query: { limit: 20, offset: 0 } },
-  headers: { Prefer: 'count=exact' },
-})
-const rows = unwrapApiResult(result)
-const range = parseContentRange(result.response.headers.get('Content-Range'))
+  headers: { Prefer: "count=exact" },
+});
+const rows = unwrapApiResult(result);
+const range = parseContentRange(result.response.headers.get("Content-Range"));
 // range => { start: 0, end: 19, total: 142 }
 ```
 

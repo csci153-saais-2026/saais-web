@@ -312,9 +312,21 @@
 
 @layer components {
   /* .display-* mirror the design sheet's Syne display styles. */
-  .display-xl { @apply font-heading text-display-xl font-bold; }
-  .display-l { @apply font-heading text-display-l font-bold; }
-  .display-m { @apply font-heading text-display-m font-bold; }
-  .kicker { @apply text-kicker font-semibold uppercase; letter-spacing: var(--tracking-kicker); }
-  .mono { @apply font-mono text-code font-medium; font-variant-ligatures: none; }
+  .display-xl {
+    @apply font-heading text-display-xl font-bold;
+  }
+  .display-l {
+    @apply font-heading text-display-l font-bold;
+  }
+  .display-m {
+    @apply font-heading text-display-m font-bold;
+  }
+  .kicker {
+    @apply text-kicker font-semibold uppercase;
+    letter-spacing: var(--tracking-kicker);
+  }
+  .mono {
+    @apply font-mono text-code font-medium;
+    font-variant-ligatures: none;
+  }
 }

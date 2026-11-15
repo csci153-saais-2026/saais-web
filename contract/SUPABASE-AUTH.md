@@ -4,19 +4,19 @@ Version 0.3.0 documents the boundary between Supabase-managed authentication and
 
 ## Ownership
 
-| Operation | Owner |
-| --- | --- |
-| Email/password login | Supabase SDK: `auth.signInWithPassword` |
-| Google login | Supabase SDK: `auth.signInWithOAuth({ provider: 'google' })` with explicit PKCE configuration |
-| OAuth callback/code exchange | Supabase SDK URL detection or `auth.exchangeCodeForSession`, exactly once |
-| Session persistence, refresh and browser state | Supabase SDK and `auth.onAuthStateChange` |
-| Logout | Supabase SDK: `auth.signOut` |
-| Password recovery/reset | Supabase SDK: `auth.resetPasswordForEmail`, then `auth.updateUser` under a valid recovery session |
-| Authenticated password change (`/*/change-password`) | Supabase SDK: verify `current_password` and update in one `auth.updateUser` call, then revoke other sessions via `auth.signOut({ scope: 'others' })` |
-| Admin / Department Staff / Head provisioning & invitation | Contract: `POST /functions/v1/auth/invite` (unified Google OAuth pre-registration + password invite email) |
-| Account invitation resend / revoke | Contract: `POST /functions/v1/accounts/{profile_id}/resend-invite` and `/revoke-invite` |
-| Pre-session invitation preview / redemption / decline | Contract: `POST /functions/v1/auth/preview-invite`, `/verify-invite`, and `/decline-invite` |
-| Profiles and academic operations | Contract: `/rest/v1/*` and the documented `/functions/v1/*` operations |
+| Operation                                                 | Owner                                                                                                                                                |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email/password login                                      | Supabase SDK: `auth.signInWithPassword`                                                                                                              |
+| Google login                                              | Supabase SDK: `auth.signInWithOAuth({ provider: 'google' })` with explicit PKCE configuration                                                        |
+| OAuth callback/code exchange                              | Supabase SDK URL detection or `auth.exchangeCodeForSession`, exactly once                                                                            |
+| Session persistence, refresh and browser state            | Supabase SDK and `auth.onAuthStateChange`                                                                                                            |
+| Logout                                                    | Supabase SDK: `auth.signOut`                                                                                                                         |
+| Password recovery/reset                                   | Supabase SDK: `auth.resetPasswordForEmail`, then `auth.updateUser` under a valid recovery session                                                    |
+| Authenticated password change (`/*/change-password`)      | Supabase SDK: verify `current_password` and update in one `auth.updateUser` call, then revoke other sessions via `auth.signOut({ scope: 'others' })` |
+| Admin / Department Staff / Head provisioning & invitation | Contract: `POST /functions/v1/auth/invite` (unified Google OAuth pre-registration + password invite email)                                           |
+| Account invitation resend / revoke                        | Contract: `POST /functions/v1/accounts/{profile_id}/resend-invite` and `/revoke-invite`                                                              |
+| Pre-session invitation preview / redemption / decline     | Contract: `POST /functions/v1/auth/preview-invite`, `/verify-invite`, and `/decline-invite`                                                          |
+| Profiles and academic operations                          | Contract: `/rest/v1/*` and the documented `/functions/v1/*` operations                                                                               |
 
 Supabase's managed `/auth/v1/*` APIs are intentionally not duplicated as application paths. The SDK owns their provider-specific payloads and session handling. Passwords and Google provider credentials must not be submitted to academic endpoints. [Supabase Google sign-in documentation](https://supabase.com/docs/guides/auth/social-login/auth-google)
 
@@ -36,16 +36,16 @@ The typed client must obtain the current SDK session token per request so refres
 Illustrative client integration, not production code added by this change:
 
 ```ts
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import createApiClient from 'openapi-fetch';
-import type { paths } from './generated/schema'; // Adjust to the future client module's location.
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import createApiClient from "openapi-fetch";
+import type { paths } from "./generated/schema"; // Adjust to the future client module's location.
 
 const supabase = createSupabaseClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
   {
     auth: {
-      flowType: 'pkce',
+      flowType: "pkce",
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
@@ -59,9 +59,12 @@ const api = createApiClient<paths>({
 });
 
 async function loadOwnProfile() {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if (error || !session) throw new Error('Sign in required');
-  return api.GET('/rest/v1/profile', {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+  if (error || !session) throw new Error("Sign in required");
+  return api.GET("/rest/v1/profile", {
     params: { query: { id: `eq.${session.user.id}`, limit: 1 } },
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
@@ -85,6 +88,7 @@ The PostgreSQL `authenticated` role is not the SAAIS `student`, `adviser`, `depa
 All password creation (`POST /functions/v1/auth/verify-invite`), password recovery, and authenticated password changes (`supabase.auth.updateUser({ password })`) must enforce **12 to 128 characters** (`minLength: 12`, `maxLength: 128`) with at least one uppercase letter, one lowercase letter, and one digit, and must reject reusing the current password on change.
 
 On the authenticated Change Password routes (`/student/change-password`, `/adviser/change-password`, `/dept-head/change-password`, `/staff/change-password`, `/dean/change-password`, `/dean-dh/change-password`, `/admin/change-password`):
+
 1. **Current-password verification**: Enable Supabase Auth’s current-password requirement and validate the current password as part of `updateUser`, without signing in again or replacing the current session.
 2. **Password update & complexity check**: Validate that `newPassword !== currentPassword` and meets the 12–128 character policy, then call `supabase.auth.updateUser({ current_password: currentPassword, password: newPassword })` (accounts that authenticate exclusively via Google OAuth manage their password in Google and do not mutate a local password here).
 3. **Sign out other devices**: After `updateUser` succeeds, call `supabase.auth.signOut({ scope: 'others' })` to revoke other sessions while preserving the current session. A previously issued access JWT may remain usable until it expires if protected requests validate only the JWT. If immediate cutoff is required, the server must also verify that the JWT's `session_id` still identifies an active session on each relevant protected request.
