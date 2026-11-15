@@ -2134,40 +2134,139 @@ export const saaisMswHandlers = [
         'dean',
         'department_head',
         'adviser',
-      ])
-      if ('response' in auth) return auth.response
-      const studentId = String(params.student_id)
+      ]);
+      if ('response' in auth) return auth.response;
+      const studentId = String(params.student_id);
       if (!canAccessStudentRecord(auth.persona, studentId, true)) {
-        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.');
       }
-      const db = getMockDatabase()
-      const options: ApiSchema<'CourseOfferingOption'>[] = [
-        {
-          offering: db.courseOfferings[1]!,
-          code: 'CSCI 153',
-          title: 'Software Engineering',
-        units: 3,
-          group: 'program',
-          direct_curriculum_slot_id: MOCK_IDS.slotCsci153,
-          instructor_options: [
-            'Dr. Jose Rizalino Gomez',
-            'Prof. Maria Clara Santos',
-          ],
-          has_unmet_strict_prerequisites: true,
-          unmet_prerequisites: [
+      const db = getMockDatabase();
+      const query = new URL(request.url).searchParams;
+      const schoolTermId = query.get('school_term_id');
+      const search = query.get('search')?.trim().toLowerCase();
+      const organization = db.studentOrganizations.find(
+        (item) => item.student_id === studentId,
+      );
+      if (!organization)
+        return errorJson(
+          404,
+          'NOT_FOUND',
+          'Student academic record not found.',
+        );
+      const terms = db.curriculumTerms.filter(
+        (item) =>
+          item.curriculum_version_id === organization.curriculum_version_id,
+      );
+      const slots = db.curriculumTermCourses.filter((item) =>
+        terms.some((term) => term.id === item.curriculum_term_id),
+      );
+      const results = db.attemptResults.filter(
+        (item) => item.student_id === studentId,
+      );
+      const options: ApiSchema<'CourseOfferingOption'>[] =
+        db.courseOfferings.flatMap((offering) => {
+          if (schoolTermId && offering.school_term_id !== schoolTermId)
+            return [];
+          const course = db.courses.find(
+            (item) => item.id === offering.course_id,
+          );
+          if (
+            !course ||
+            (search &&
+              !`${course.code} ${course.title}`.toLowerCase().includes(search))
+          )
+            return [];
+          const slot = slots.find((item) => item.course_id === course.id);
+          const unmet: ApiSchema<'UnmetPrerequisitePreview'>[] =
+            db.prerequisites
+              .filter(
+                (item) =>
+                  item.course_id === course.id && item.type === 'strict',
+              )
+              .flatMap((prerequisite) => {
+                const requiredCourse = db.courses.find(
+                  (item) => item.id === prerequisite.prerequisite_course_id,
+                );
+                if (!requiredCourse) return [];
+                const requiredAttempts = results.filter((item) =>
+                  db.courseOfferings.some(
+                    (row) =>
+                      row.id === item.course_offering_id &&
+                      row.course_id === requiredCourse.id,
+                  ),
+                );
+                const requiredSlots = slots.filter(
+                  (item) => item.course_id === requiredCourse.id,
+                );
+                if (
+                  requiredAttempts.some(
+                    (item) => item.effective_status === 'passed',
+                  ) ||
+                  db.outsideCredits.some(
+                    (item) =>
+                      item.student_id === studentId &&
+                      item.revoked_at === null &&
+                      requiredSlots.some(
+                        (slotRow) =>
+                          slotRow.id ===
+                          item.destination_curriculum_term_course_id,
+                      ),
+                  )
+                )
+                  return [];
+                const latest = requiredAttempts
+                  .sort((left, right) => {
+                    const termOrder = (attempt: ApiSchema<'AttemptResult'>) => {
+                      const offering = db.courseOfferings.find((row) => row.id === attempt.course_offering_id);
+                      return db.schoolTerms.find((term) => term.id === offering?.school_term_id)?.chronological_key ?? 0;
+                    };
+                    return termOrder(left) - termOrder(right) || left.created_at.localeCompare(right.created_at) || left.id.localeCompare(right.id);
+                  })
+                  .at(-1);
+                const state = latest?.is_lapsed_inc
+                  ? 'lapsed_inc'
+                  : latest?.effective_status === 'passed' ||
+                      latest?.effective_status === 'na'
+                    ? 'not_taken'
+                    : (latest?.effective_status ?? 'not_taken');
+                return [
+                  {
+                    prerequisite_course_id: requiredCourse.id,
+                    code: requiredCourse.code,
+                    title: requiredCourse.title,
+                    type: prerequisite.type,
+                    current_status: state,
+                    latest_attempt_id: latest?.id ?? null,
+                    latest_final_grade: latest?.final_grade ?? null,
+                  },
+                ];
+              });
+          return [
             {
-              prerequisite_course_id: MOCK_IDS.courseCsci102,
-              code: 'CSCI 102',
-              title: 'Computer Programming 1',
-              type: 'strict',
-              current_status: 'inc',
-              latest_attempt_id: MOCK_IDS.attemptCsci102Inc,
-              latest_final_grade: null,
+              offering,
+              code: course.code,
+              title: course.title,
+              units: course.units,
+              group: slot ? 'program' : 'cross_program',
+              direct_curriculum_slot_id: slot?.id ?? null,
+              instructor_options: offering.instructor
+                ? [offering.instructor]
+                : [],
+              has_unmet_strict_prerequisites: unmet.length > 0,
+              unmet_prerequisites: unmet,
             },
-          ],
-        },
-      ]
-      return HttpResponse.json(options, { status: 200 })
+          ];
+        });
+      options.sort(
+        (a, b) =>
+          Number(a.group === 'cross_program') -
+            Number(b.group === 'cross_program') || a.code.localeCompare(b.code),
+      );
+      const offset = Number(query.get('offset') ?? 0);
+      const limit = Math.min(100, Number(query.get('limit') ?? 100));
+      return HttpResponse.json(options.slice(offset, offset + limit), {
+        status: 200,
+      });
     },
   ),
 
