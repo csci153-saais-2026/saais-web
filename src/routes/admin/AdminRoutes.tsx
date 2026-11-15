@@ -1,13 +1,13 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
-import AdminPortal from './AdminPortal'
+import AdminPortal from './shared/AdminPortal'
 
-const AdminStudentsPage = lazy(() => import('./AdminStudentsPage'))
-const AdminAccountsPage = lazy(() => import('./AdminAccountsPage'))
-const AdminProgramsPage = lazy(() => import('./AdminProgramsPage'))
-const AdminFacultiesPage = lazy(() => import('./AdminFacultiesPage'))
-const AdminSettingsPage = lazy(() => import('./AdminSettingsPage'))
-const AdminAuditLogPage = lazy(() => import('./AdminAuditLogPage'))
+const AdminStudentsPage = lazy(() => import('./students/AdminStudentsPage'))
+const AdminAccountsPage = lazy(() => import('./accounts/AdminAccountsPage'))
+const AdminProgramsPage = lazy(() => import('./programs/AdminProgramsPage'))
+const AdminFacultiesPage = lazy(() => import('./faculties/AdminFacultiesPage'))
+const AdminSettingsPage = lazy(() => import('./settings/AdminSettingsPage'))
+const AdminAuditLogPage = lazy(() => import('./audit-log/AdminAuditLogPage'))
 
 export default function AdminRoutes() {
   return (

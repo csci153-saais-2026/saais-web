@@ -51,6 +51,41 @@ window.SAAIS_PORTALS={
     }
   ],
   "routes": {
+    "student/notifications": {
+      "file": "Student/StudentNotifications.html",
+      "title": "Notifications · SAAIS",
+      "role": "student"
+    },
+    "adviser/notifications": {
+      "file": "Adviser/AdviserNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "adviser"
+    },
+    "department-head/notifications": {
+      "file": "Department Head/Notifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "department-head"
+    },
+    "department-staff/notifications": {
+      "file": "Department Staff/Notifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "department-staff"
+    },
+    "system-admin/notifications": {
+      "file": "SystemAdmin/AdminNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "system-admin"
+    },
+    "dean-adviser/notifications": {
+      "file": "Dean/DeanAdviser/DeanAdviserNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "dean-adviser"
+    },
+    "dean-dh/notifications": {
+      "file": "Dean/DeanDH/DHAdviserNotifications.dc.html",
+      "title": "Notifications · SAAIS",
+      "role": "dean-dh"
+    },
     "student/workspace": {
       "file": "Student/Student.html",
       "title": "Student portal · SAAIS",
@@ -81,11 +116,6 @@ window.SAAIS_PORTALS={
       "title": "Enrollment history · SAAIS",
       "role": "student"
     },
-    "student/notifications": {
-      "file": "Student/StudentNotifications.html",
-      "title": "Notifications · SAAIS",
-      "role": "student"
-    },
     "student/profile": {
       "file": "Student/StudentProfile.html",
       "title": "My profile · SAAIS",
@@ -113,7 +143,7 @@ window.SAAIS_PORTALS={
     },
     "adviser/advisees/history": {
       "file": "Adviser/AdviseeHistory.dc.html",
-      "title": "Audit log · SAAIS",
+      "title": "Student history · SAAIS",
       "role": "adviser"
     },
     "adviser/advisees/notes": {
@@ -156,11 +186,6 @@ window.SAAIS_PORTALS={
       "title": "Import grades · SAAIS",
       "role": "adviser"
     },
-    "adviser/notifications": {
-      "file": "Adviser/AdviserNotifications.dc.html",
-      "title": "Notifications · SAAIS",
-      "role": "adviser"
-    },
     "department-head/academic-terms": {
       "file": "Department Head/AcademicTerms.dc.html",
       "title": "Academic terms · Department Head · SAAIS",
@@ -188,7 +213,7 @@ window.SAAIS_PORTALS={
     },
     "department-head/adviser/advisees/history": {
       "file": "Department Head/AdviseeHistory.dc.html",
-      "title": "Audit log · SAAIS",
+      "title": "Student history · SAAIS",
       "role": "department-head"
     },
     "department-head/adviser/advisees/notes": {
@@ -261,11 +286,6 @@ window.SAAIS_PORTALS={
       "title": "Equivalence · Department Head · SAAIS",
       "role": "department-head"
     },
-    "department-head/notifications": {
-      "file": "Department Head/Notifications.dc.html",
-      "title": "Notifications · SAAIS",
-      "role": "department-head"
-    },
     "department-head/outside-credits": {
       "file": "Department Head/OutsideCredits.dc.html",
       "title": "Outside credits · Department Head · SAAIS",
@@ -311,11 +331,6 @@ window.SAAIS_PORTALS={
       "title": "Curricula · Department Staff · SAAIS",
       "role": "department-staff"
     },
-    "department-staff/notifications": {
-      "file": "Department Staff/Notifications.dc.html",
-      "title": "Notifications | Department Staff | SAAIS",
-      "role": "department-staff"
-    },
     "department-staff/students": {
       "file": "Department Staff/Students.dc.html",
       "title": "Students · Department Staff · SAAIS",
@@ -339,11 +354,6 @@ window.SAAIS_PORTALS={
     "system-admin/faculty-departments": {
       "file": "SystemAdmin/AdminFacultyDepartments.dc.html",
       "title": "Faculty & departments · SAAIS",
-      "role": "system-admin"
-    },
-    "system-admin/notifications": {
-      "file": "SystemAdmin/AdminNotifications.dc.html",
-      "title": "Notifications · SAAIS",
       "role": "system-admin"
     },
     "system-admin/programs": {
@@ -388,7 +398,7 @@ window.SAAIS_PORTALS={
     },
     "dean-adviser/adviser/advisees/history": {
       "file": "Dean/DeanAdviser/DeanAdviseeHistory.dc.html",
-      "title": "Audit log · SAAIS",
+      "title": "Student history · SAAIS",
       "role": "dean-adviser"
     },
     "dean-adviser/adviser/advisees/notes": {
@@ -429,11 +439,6 @@ window.SAAIS_PORTALS={
     "dean-adviser/adviser/import-grades": {
       "file": "Dean/DeanAdviser/DeanAdviserImportGrades.dc.html",
       "title": "Import grades · SAAIS",
-      "role": "dean-adviser"
-    },
-    "dean-adviser/adviser/notifications": {
-      "file": "Dean/DeanAdviser/DeanAdviserNotifications.dc.html",
-      "title": "Notifications · SAAIS",
       "role": "dean-adviser"
     },
     "dean-adviser/audit": {
@@ -478,7 +483,7 @@ window.SAAIS_PORTALS={
     },
     "dean-dh/adviser/advisees/history": {
       "file": "Dean/DeanDH/DHAdviseeHistory.dc.html",
-      "title": "Audit log · SAAIS",
+      "title": "Student history · SAAIS",
       "role": "dean-dh"
     },
     "dean-dh/adviser/advisees/notes": {
@@ -524,11 +529,6 @@ window.SAAIS_PORTALS={
     "dean-dh/adviser/import-grades": {
       "file": "Dean/DeanDH/DHAdviserImportGrades.dc.html",
       "title": "Import grades · SAAIS",
-      "role": "dean-dh"
-    },
-    "dean-dh/adviser/notifications": {
-      "file": "Dean/DeanDH/DHAdviserNotifications.dc.html",
-      "title": "Notifications · SAAIS",
       "role": "dean-dh"
     },
     "dean-dh/audit-log": {
@@ -602,6 +602,7 @@ window.SAAIS_PORTALS={
     "admin/curricula": "department-staff/curricula",
     "admin/courses": "department-staff/course-catalog",
     "admin/course-offerings": "department-staff/academic-terms",
-    "adviser/enrollment": "adviser/encode-grades"
+    "adviser/enrollment": "adviser/encode-grades",
+    "adviser/reassignment": "department-staff/adviser-assignments"
   }
 };
