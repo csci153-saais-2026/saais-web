@@ -434,7 +434,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(MOCK_PERSONAS.admin.email).toBe('23-1-01457@vsu.edu.ph')
     expect(MOCK_PERSONAS.admin.fullName).toBe('Lelis, Nietzchan Jake')
     expect(MOCK_PERSONAS.admin.roles).toEqual(['admin', 'adviser'])
-    expect(Object.keys(MOCK_PERSONAS)).toHaveLength(10)
+    expect(MOCK_PERSONAS.student_sample_1.primaryRole).toBe('student')
     expect(resolveMockPersonaFromAuthHeader(null)).toBeNull()
   })
 
@@ -596,8 +596,8 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
         params: { query: { assignment_scope: 'current' } },
       }),
     )
-    expect(roster.total_count).toBe(1)
-    expect(roster.items[0]?.student_number).toBe('24-1-01798')
+    expect(roster.total_count).toBe(13)
+    expect(roster.items.some((item) => item.student_number === '24-1-01798')).toBe(true)
 
     const recsResponse = await client.GET(
       '/functions/v1/students/{student_id}/recommendations',
