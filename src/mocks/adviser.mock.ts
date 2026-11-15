@@ -941,13 +941,13 @@ export const history = [
   }
 ]
 
-export const student = { name: "Maria Isabel Bautista", initials: "MI", studentNumber: "2023-04412", program: "BS Computer Science", yearLabel: "2nd Year", email: "maria.bautista@example.edu.ph", standing: "good" as const }
+export const student = { name: "Maria Isabel Bautista", initials: "MI", studentNumber: "23-1-04412", program: "BS Computer Science", yearLabel: "2nd Year", email: "maria.bautista@example.edu.ph", standing: "good" as const }
 export const advisees: { id: string; name: string; year: string; curriculum: string; gwa: string; flags: number; standing: Status; deficiencies: string }[] = [
-  { id: "2023-04412", name: student.name, year: "2nd year", curriculum: "2025–present", gwa: "1.58", flags: 0, standing: "good", deficiencies: "CSci 102" },
-  { id: "2022-01188", name: "Angelo Cruz", year: "3rd year", curriculum: "2022–2023", gwa: "4.50", flags: 1, standing: "flagged", deficiencies: "CSIT 101, CSci 104" },
-  { id: "2023-02940", name: "Joshua Lim", year: "2nd year", curriculum: "2023–2024", gwa: "1.50", flags: 0, standing: "good", deficiencies: "CSci 102" },
-  { id: "2026-00142", name: "Carlo Dominguez", year: "1st year", curriculum: "2025–2026", gwa: "—", flags: 0, standing: "good", deficiencies: "CSIT 101" },
-  { id: "2024-00871", name: "Andrea Villanueva", year: "2nd year", curriculum: "2024–2025", gwa: "1.75", flags: 0, standing: "good", deficiencies: "None" },
+  { id: "23-1-04412", name: student.name, year: "2nd year", curriculum: "2025–present", gwa: "1.58", flags: 0, standing: "good", deficiencies: "CSci 102" },
+  { id: "23-1-01188", name: "Angelo Cruz", year: "3rd year", curriculum: "2022–2023", gwa: "4.50", flags: 1, standing: "flagged", deficiencies: "CSIT 101, CSci 104" },
+  { id: "23-1-02940", name: "Joshua Lim", year: "2nd year", curriculum: "2023–2024", gwa: "1.50", flags: 0, standing: "good", deficiencies: "CSci 102" },
+  { id: "23-1-00142", name: "Carlo Dominguez", year: "1st year", curriculum: "2025–2026", gwa: "—", flags: 0, standing: "good", deficiencies: "CSIT 101" },
+  { id: "23-1-00871", name: "Andrea Villanueva", year: "2nd year", curriculum: "2024–2025", gwa: "1.75", flags: 0, standing: "good", deficiencies: "None" },
 ]
 export const notes = [
   { id: "n1", author: "Prof. Ramon Reyes", date: "17 Sept 2026", body: "Discussed a manageable course load. Review the CSci 102 (Discrete Structures I) completion requirements before the October deadline.", archived: false },
