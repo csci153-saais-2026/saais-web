@@ -1,12 +1,325 @@
-import { AdminPageScaffold } from './AdminPageScaffold'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { DataTablePanel } from '@/components/features/data-table-panel'
+import { FilterBar } from '@/components/features/filter-bar'
+import { PageHeading } from '@/components/features/page-heading'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Button } from '@/components/ui/button'
+import {
+  apiClient,
+  parseContentRange,
+  unwrapApiResult,
+  type ApiSchema,
+} from '@/lib/api'
+import {
+  buildProgramListQuery,
+  PROGRAM_PAGE_SIZE,
+  type ProgramStatusFilter,
+} from './admin-programs-model'
+
+type Program = ApiSchema<'Program'>
+type Department = Pick<ApiSchema<'Department'>, 'id' | 'name' | 'faculty_id'>
+type Faculty = Pick<ApiSchema<'Faculty'>, 'id' | 'name'>
+
+const STATUS_FILTERS = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'archived', label: 'Archived' },
+]
 
 export default function AdminProgramsPage() {
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<ProgramStatusFilter>('all')
+  const [offset, setOffset] = useState(0)
+  const [reloadCount, setReloadCount] = useState(0)
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [rangeTotal, setRangeTotal] = useState<number | null>(null)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [faculties, setFaculties] = useState<Faculty[]>([])
+  const [loadedRequestKey, setLoadedRequestKey] = useState('')
+  const [requestError, setRequestError] = useState<{
+    readonly key: string
+    readonly message: string
+  } | null>(null)
+  const [catalogsLoaded, setCatalogsLoaded] = useState(false)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [catalogReloadCount, setCatalogReloadCount] = useState(0)
+
+  const { query, error: searchError } = useMemo(
+    () => buildProgramListQuery(search, status, offset),
+    [offset, search, status],
+  )
+  const requestKey = `${JSON.stringify(query)}:${reloadCount}`
+  const loading = Boolean(query) && loadedRequestKey !== requestKey
+  const error = requestError?.key === requestKey ? requestError.message : null
+  const hasNextPage =
+    rangeTotal !== null
+      ? offset + PROGRAM_PAGE_SIZE < rangeTotal
+      : programs.length === PROGRAM_PAGE_SIZE
+
+  useEffect(() => {
+    let active = true
+    void Promise.all([
+      apiClient
+        .GET('/rest/v1/department', {
+          params: {
+            query: {
+              select: 'id,name,faculty_id',
+              order: 'name.asc,id.asc',
+              limit: 1000,
+            },
+          },
+        })
+        .then(unwrapApiResult),
+      apiClient
+        .GET('/rest/v1/faculty', {
+          params: {
+            query: { select: 'id,name', order: 'name.asc,id.asc', limit: 1000 },
+          },
+        })
+        .then(unwrapApiResult),
+    ])
+      .then(([nextDepartments, nextFaculties]) => {
+        if (!active) return
+        setDepartments(nextDepartments)
+        setFaculties(nextFaculties)
+        setCatalogError(null)
+        setCatalogsLoaded(true)
+      })
+      .catch((catalogRequestError: unknown) => {
+        if (!active) return
+        setCatalogError(
+          catalogRequestError instanceof Error
+            ? catalogRequestError.message
+            : 'Faculty and department information could not be loaded.',
+        )
+        setCatalogsLoaded(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [catalogReloadCount])
+
+  useEffect(() => {
+    if (!query) return
+
+    let active = true
+    void apiClient
+      .GET('/rest/v1/program', { params: { query } })
+      .then((result) => {
+        const nextPrograms = unwrapApiResult(result)
+        if (!active) return
+        setPrograms(nextPrograms)
+        setRangeTotal(
+          parseContentRange(result.response.headers.get('Content-Range'))?.total ??
+            null,
+        )
+        setRequestError(null)
+      })
+      .catch((programRequestError: unknown) => {
+        if (!active) return
+        setRequestError({
+          key: requestKey,
+          message:
+            programRequestError instanceof Error
+              ? programRequestError.message
+              : 'The program catalog could not be loaded.',
+        })
+      })
+      .finally(() => {
+        if (active) setLoadedRequestKey(requestKey)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [query, requestKey])
+
+  const retryPrograms = useCallback(() => {
+    setReloadCount((count) => count + 1)
+  }, [])
+
+  const departmentsById = useMemo(
+    () => new Map(departments.map((department) => [department.id, department])),
+    [departments],
+  )
+  const facultiesById = useMemo(
+    () => new Map(faculties.map((faculty) => [faculty.id, faculty])),
+    [faculties],
+  )
+
+  function updateSearch(value: string) {
+    setOffset(0)
+    setSearch(value)
+  }
+
+  function updateStatus(value: string) {
+    if (
+      value !== 'all' &&
+      value !== 'active' &&
+      value !== 'inactive' &&
+      value !== 'archived'
+    ) {
+      return
+    }
+    setOffset(0)
+    setStatus(value)
+  }
+
+  const columns = [
+    {
+      header: 'Code',
+      className: 'font-mono font-semibold',
+      cell: (program: Program) => program.code,
+    },
+    {
+      header: 'Program name',
+      cell: (program: Program) => program.name,
+    },
+    {
+      header: 'Faculty',
+      cell: (program: Program) => {
+        const department = departmentsById.get(program.department_id)
+        return department
+          ? facultiesById.get(department.faculty_id)?.name ?? 'Unknown faculty'
+          : 'Unknown faculty'
+      },
+    },
+    {
+      header: 'Duration',
+      numeric: true,
+      cell: (program: Program) => `${program.nominal_duration} years`,
+    },
+    {
+      header: 'Status',
+      cell: (program: Program) => (
+        <StatusBadge
+          status={program.status === 'inactive' ? 'disabled' : program.status}
+        >
+          {program.status[0]!.toUpperCase() + program.status.slice(1)}
+        </StatusBadge>
+      ),
+    },
+  ]
+
   return (
-    <AdminPageScaffold
-      title="Programs"
-      subtitle="Maintain degree program catalog records."
-      panelTitle="Program catalog"
-      description="Review program details, organization, and lifecycle status."
-    />
+    <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
+      <PageHeading
+        title="Programs"
+        subtitle="Maintain degree program catalog records and their organization and status."
+      />
+
+      {catalogError && (
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-card px-4 py-3"
+        >
+          <p className="text-sm">{catalogError}</p>
+          <Button
+            className="mt-2"
+            variant="outline"
+            size="sm"
+            onClick={() => setCatalogReloadCount((count) => count + 1)}
+          >
+            Retry organization details
+          </Button>
+        </div>
+      )}
+
+      <FilterBar
+        searchLabel="Search programs"
+        searchPlaceholder="Search by code or program name"
+        search={search}
+        onSearchChange={updateSearch}
+        filterLabel="Status"
+        filterOptions={STATUS_FILTERS}
+        filter={status}
+        onFilterChange={updateStatus}
+      />
+
+      {searchError && (
+        <p role="alert" className="-mt-3 mb-3 text-sm text-destructive">
+          {searchError}
+        </p>
+      )}
+      {error && (
+        <div
+          role="alert"
+          className="mb-3 rounded-md border border-destructive/30 bg-card px-4 py-3"
+        >
+          <p className="text-sm">{error}</p>
+          <Button
+            className="mt-2"
+            variant="outline"
+            size="sm"
+            onClick={retryPrograms}
+          >
+            Try again
+          </Button>
+        </div>
+      )}
+
+      <DataTablePanel
+        title="Program catalog"
+        description="Degree programs with their faculty, nominal duration, and lifecycle status."
+        columns={columns}
+        rows={loading || error || searchError ? [] : programs}
+        rowKey={(program) => program.id}
+        empty={
+          loading
+            ? 'Loading programs…'
+            : searchError
+              ? 'Enter a valid search to view programs.'
+              : error
+                ? 'Programs are unavailable.'
+                : search.trim() || status !== 'all'
+                  ? 'No programs match this search and status.'
+                  : 'No programs have been added to the catalog.'
+        }
+        footer={
+          loading
+            ? undefined
+            : `Page ${Math.floor(offset / PROGRAM_PAGE_SIZE) + 1}${
+                rangeTotal === null ? '' : ` · ${rangeTotal} programs`
+              }`
+        }
+      />
+
+      <nav
+        aria-label="Program catalog pages"
+        className="flex items-center justify-between"
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={offset === 0 || loading}
+          onClick={() =>
+            setOffset((current) => Math.max(0, current - PROGRAM_PAGE_SIZE))
+          }
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground" aria-live="polite">
+          {loading
+            ? 'Loading programs…'
+            : `Page ${Math.floor(offset / PROGRAM_PAGE_SIZE) + 1}`}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!hasNextPage || loading || Boolean(searchError)}
+          onClick={() => setOffset((current) => current + PROGRAM_PAGE_SIZE)}
+        >
+          Next
+        </Button>
+      </nav>
+
+      {!catalogsLoaded && (
+        <span className="sr-only" aria-live="polite">
+          Loading faculty and department details…
+        </span>
+      )}
+    </div>
   )
 }
