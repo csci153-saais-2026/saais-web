@@ -202,6 +202,23 @@ function matchesPostgrestOperator(
   return true
 }
 
+function matchesPostgrestDisjunction<T extends object>(
+  row: T,
+  filterExpr: string,
+): boolean {
+  if (!filterExpr.startsWith('(') || !filterExpr.endsWith(')')) return false
+  const clauses = filterExpr.slice(1, -1).split(',')
+  if (clauses.length === 0 || clauses.length > 10) return false
+
+  const record = row as Record<string, unknown>
+  return clauses.some((clause) => {
+    const match = /^([a-z_]+)\.(ilike|like)\.(.*)$/.exec(clause)
+    if (!match) return false
+    const [, field, operator, pattern] = match
+    return matchesPostgrestOperator(record[field!], `${operator}.${pattern}`)
+  })
+}
+
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
   url: URL,
@@ -216,6 +233,13 @@ function applyPostgrestQuery<T extends object>(
       return matchesPostgrestOperator(record[key], value)
     })
   })
+
+  const orParam = url.searchParams.get('or')
+  if (orParam) {
+    filtered = filtered.filter((row) =>
+      matchesPostgrestDisjunction(row, orParam),
+    )
+  }
 
   const andParam = url.searchParams.get('and')
   if (andParam) {
@@ -972,10 +996,12 @@ export const saaisMswHandlers = [
       'adviser',
     ])
     if ('response' in auth) return auth.response
-    return applyPostgrestQuery(
-      getMockDatabase().auditLogEntries,
-      new URL(request.url),
+    const sortedEntries = [...getMockDatabase().auditLogEntries].sort(
+      (left, right) =>
+        right.created_at.localeCompare(left.created_at) ||
+        right.id.localeCompare(left.id),
     )
+    return applyPostgrestQuery(sortedEntries, new URL(request.url))
   }),
 
   // ===========================================================================
