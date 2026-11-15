@@ -78,6 +78,8 @@ export function AdminAccountEditDialog({
   const needsDepartment = roles.some((role) =>
     ['department_head', 'department_staff'].includes(role),
   )
+  const showDepartmentSelector =
+    needsDepartment || roles.includes('adviser')
   const visibleDepartments = departments.filter(
     (department) =>
       !facultyId || department.faculty_id === facultyId,
@@ -114,14 +116,28 @@ export function AdminAccountEditDialog({
     }
 
     setValidationError(null)
+    const assignmentsByRole = new Map(
+      account.role_assignments?.map((assignment) => [
+        assignment.role,
+        assignment,
+      ]) ?? [],
+    )
     const request: ApiSchema<'AdminProfileUpdate'> = {
       full_name: name,
       role: primaryRole,
-      role_assignments: roles.map((role) => ({
-        role,
-        faculty_id: facultyId || null,
-        department_id: departmentId || null,
-      })),
+      role_assignments: roles.map((role) => {
+        const existingAssignment = assignmentsByRole.get(role)
+        const isEditedScope = role === primaryRole
+        return {
+          role,
+          faculty_id: isEditedScope || !existingAssignment
+            ? facultyId || null
+            : existingAssignment.faculty_id,
+          department_id: isEditedScope || !existingAssignment
+            ? departmentId || null
+            : existingAssignment.department_id,
+        }
+      }),
       status,
     }
     void onSubmit(request)
@@ -261,7 +277,7 @@ export function AdminAccountEditDialog({
                   </SelectContent>
                 </Select>
               </FormField>
-              {needsDepartment && (
+              {showDepartmentSelector && (
                 <FormField label="Department" htmlFor="edit-account-department">
                   <Select
                     value={departmentId}

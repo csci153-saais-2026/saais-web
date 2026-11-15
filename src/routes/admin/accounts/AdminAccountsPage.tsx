@@ -220,7 +220,9 @@ export default function AdminAccountsPage() {
       setAccountActionSuccess(
         `Updated account details for ${account.profile.full_name}.`,
       )
-      setEditingAccount(null)
+      setEditingAccount((current) =>
+        current?.profile.id === account.profile.id ? null : current,
+      )
       reloadAccounts()
     } catch (requestError: unknown) {
       setAccountActionError(
@@ -284,9 +286,10 @@ export default function AdminAccountsPage() {
         actions={
           <Button
             type="button"
-            onClick={() => {
-              setInviteError(null)
-              setInviteSuccess(null)
+          disabled={inviteSubmitting}
+          onClick={() => {
+            setInviteError(null)
+            setInviteSuccess(null)
               setInviteOpen(true)
             }}
           >
@@ -608,7 +611,9 @@ export default function AdminAccountsPage() {
       {inviteOpen && (
         <AdminAccountProvisionDialog
           open={inviteOpen}
-          onOpenChange={setInviteOpen}
+          onOpenChange={(open) => {
+            if (open || !inviteSubmitting) setInviteOpen(open)
+          }}
           currentEmail={user?.email ?? ''}
           faculties={faculties}
           departments={departments}
@@ -629,7 +634,12 @@ export default function AdminAccountsPage() {
           submitting={accountActionId === editingAccount.profile.id}
           submissionError={accountActionError}
           onOpenChange={(open) => {
-            if (!open) setEditingAccount(null)
+            if (
+              !open &&
+              accountActionId !== editingAccount.profile.id
+            ) {
+              setEditingAccount(null)
+            }
           }}
           onSubmit={(request) => updateAccount(editingAccount, request)}
         />
