@@ -74,8 +74,12 @@ describe('AdminAuditLogPage', () => {
         },
       },
     )
-    expect(screen.getByRole('button', { name: 'Previous' }).hasAttribute('disabled'))
-    expect(screen.getByRole('button', { name: 'Next' }).hasAttribute('disabled'))
+    expect(
+      screen.getByRole('button', { name: 'Previous' }).hasAttribute('disabled'),
+    ).toBe(true)
+    expect(
+      screen.getByRole('button', { name: 'Next' }).hasAttribute('disabled'),
+    ).toBe(true)
   })
 
   it('submits person, student, action, and bounded date filters', async () => {
@@ -142,7 +146,12 @@ describe('AdminAuditLogPage', () => {
     getMock
       .mockResolvedValueOnce(result(pageRows, '0-24/26'))
       .mockRejectedValueOnce(new Error('Audit service unavailable.'))
-      .mockResolvedValueOnce(result([{ ...entry, id: 'audit-last' }], '25-25/26'))
+      .mockResolvedValueOnce(
+        result(
+          [{ ...entry, id: 'audit-last', student_name: 'Retry-only student' }],
+          '25-25/26',
+        ),
+      )
     render(<AdminAuditLogPage />)
 
     expect(await screen.findByText('Page 1 · 26 entries')).toBeTruthy()
@@ -150,14 +159,18 @@ describe('AdminAuditLogPage', () => {
     expect(await screen.findByText('Audit service unavailable.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByText('Page 2 · 26 entries')).toBeTruthy()
+    expect(await screen.findByText('Retry-only student')).toBeTruthy()
+    expect(screen.getByText('Page 2 · 26 entries')).toBeTruthy()
+    expect(screen.queryByText('Audit service unavailable.')).toBeNull()
     expect(getMock.mock.calls[1]?.[1]).toMatchObject({
       params: { query: { offset: 25 } },
     })
     expect(getMock.mock.calls[2]?.[1]).toMatchObject({
       params: { query: { offset: 25 } },
     })
-    expect(screen.getByRole('button', { name: 'Next' }).hasAttribute('disabled'))
+    expect(
+      screen.getByRole('button', { name: 'Next' }).hasAttribute('disabled'),
+    ).toBe(true)
   })
 
   it('shows an explicit empty state', async () => {
