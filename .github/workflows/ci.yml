@@ -2,21 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main, staging, dev, feat/contract-mock, feat/backend]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
   pull_request:
-    branches: [main, staging, dev, feat/contract-mock, feat/backend]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
 
 permissions:
   contents: read
@@ -78,6 +80,9 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
+
+      - name: Check Prettier Formatting
+        run: npm run format:check
 
       - name: Build Production Bundle
         run: npm run build
