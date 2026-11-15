@@ -2,13 +2,13 @@ import { apiClient, postgrestFilter, unwrapApiResult } from '@/lib/api'
 import type { ApiSchema } from '@/lib/api'
 import { getRoster, getSelectedStudent } from '../advisees.api'
 export async function getAdvisingTerms(){return unwrapApiResult(await apiClient.GET('/rest/v1/school_term',{params:{query:{limit:1000}}}))}
-export async function getAdvisingData(studentId:string,termId:string,isMockMode:boolean){
+export async function getAdvisingData(studentId:string,termId:string){
   await getSelectedStudent(studentId)
   const [plans,items,current,recommendations,assignments]=await Promise.all([
     apiClient.GET('/rest/v1/advising_plan',{params:{query:{student_id:postgrestFilter.eq(studentId),school_term_id:postgrestFilter.eq(termId),select:'id,student_id,school_term_id,student_curriculum_assignment_id,created_by,updated_by,created_at,updated_at,revision',limit:100}}}).then(unwrapApiResult),
     apiClient.GET('/rest/v1/advising_plan_item',{params:{query:{student_id:postgrestFilter.eq(studentId),school_term_id:postgrestFilter.eq(termId),select:'id,advising_plan_id,student_id,school_term_id,course_offering_id,curriculum_term_course_id,display_order,created_at',order:'display_order.asc',limit:1000}}}).then(unwrapApiResult),
     getRoster('current'),
-    isMockMode ? Promise.resolve(null) : apiClient.GET('/functions/v1/students/{student_id}/recommendations',{params:{path:{student_id:studentId},query:{school_term_id:termId,limit:1000}}}).then(result=>({items:unwrapApiResult(result),excluded:result.response.headers.get('X-Excluded-Count')})),
+    apiClient.GET('/functions/v1/students/{student_id}/recommendations',{params:{path:{student_id:studentId},query:{school_term_id:termId,limit:1000}}}).then(result=>({items:unwrapApiResult(result),excluded:result.response.headers.get('X-Excluded-Count')})),
     apiClient.GET('/rest/v1/student_curriculum_assignment',{params:{query:{student_id:postgrestFilter.eq(studentId),select:'id,student_id,curriculum_version_id,start_date,end_date,change_note,created_at',limit:1000}}}).then(unwrapApiResult),
   ])
   if(plans.some(p=>p.student_id!==studentId||p.school_term_id!==termId)||items.some(i=>i.student_id!==studentId||i.school_term_id!==termId||i.advising_plan_id!==plans[0]?.id)||plans.length>1)throw new Error('The advising plan response did not match the selected student and term.')
