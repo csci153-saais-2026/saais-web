@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { FormField } from '@/components/features/form-field'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -8,10 +8,17 @@ import { Input } from '@/components/ui/input'
 import { apiClient, unwrapApiResult } from '@/lib/api'
 import {
   BACKUP_AGE_REVIEW_DAYS,
+  buildSenderEmailUpdate,
+  buildThresholdUpdate,
   getInstitutionSettings,
   SYSTEM_SETTINGS_QUERY,
   toSettingsFormValues,
+  validateSenderEmail,
+  validateThresholds,
+  type SettingsFormErrors,
+  type SettingsFormValues,
   type SystemSettings,
+  type SettingsUpdateRequest,
 } from './admin-settings-model'
 
 function backupAge(settings: SystemSettings): number | null {
@@ -43,6 +50,245 @@ function backupScopeLabel(scope: SystemSettings['last_backup_scope']): string {
     default:
       return 'Not specified'
   }
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
+
+function SettingsEditor({
+  settings,
+  onSave,
+}: {
+  settings: SystemSettings
+  onSave: (request: SettingsUpdateRequest) => Promise<void>
+}) {
+  const [values, setValues] = useState<SettingsFormValues>(() =>
+    toSettingsFormValues(settings),
+  )
+  const [thresholdErrors, setThresholdErrors] = useState<SettingsFormErrors>({})
+  const [emailErrors, setEmailErrors] = useState<SettingsFormErrors>({})
+  const [thresholdFeedback, setThresholdFeedback] = useState<{
+    readonly kind: 'success' | 'error'
+    readonly message: string
+  } | null>(null)
+  const [emailFeedback, setEmailFeedback] = useState<{
+    readonly kind: 'success' | 'error'
+    readonly message: string
+  } | null>(null)
+  const [savingThresholds, setSavingThresholds] = useState(false)
+  const [savingEmail, setSavingEmail] = useState(false)
+
+  function update<K extends keyof SettingsFormValues>(
+    key: K,
+    value: SettingsFormValues[K],
+  ) {
+    setValues((current) => ({ ...current, [key]: value }))
+    setThresholdErrors((current) => ({ ...current, [key]: undefined }))
+    setEmailErrors((current) => ({ ...current, [key]: undefined }))
+    setThresholdFeedback(null)
+    setEmailFeedback(null)
+  }
+
+  async function saveThresholds(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const errors = validateThresholds(values)
+    setThresholdErrors(errors)
+    setThresholdFeedback(null)
+    if (Object.keys(errors).length > 0) return
+
+    setSavingThresholds(true)
+    try {
+      await onSave(buildThresholdUpdate(values))
+      setThresholdFeedback({
+        kind: 'success',
+        message: 'Academic-standing thresholds saved.',
+      })
+    } catch (error: unknown) {
+      setThresholdFeedback({
+        kind: 'error',
+        message: getErrorMessage(error, 'Thresholds could not be saved.'),
+      })
+    } finally {
+      setSavingThresholds(false)
+    }
+  }
+
+  async function saveEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const errors = validateSenderEmail(values.senderEmail)
+    setEmailErrors(errors)
+    setEmailFeedback(null)
+    if (Object.keys(errors).length > 0) return
+
+    setSavingEmail(true)
+    try {
+      await onSave(buildSenderEmailUpdate(values.senderEmail))
+      setEmailFeedback({
+        kind: 'success',
+        message: 'Notification sender email saved.',
+      })
+    } catch (error: unknown) {
+      setEmailFeedback({
+        kind: 'error',
+        message: getErrorMessage(error, 'Sender email could not be saved.'),
+      })
+    } finally {
+      setSavingEmail(false)
+    }
+  }
+
+  return (
+    <>
+      <Panel
+        title="Scholastic standing thresholds"
+        description="Percentage of term units failed. Thresholds must satisfy 0 < warning < probation < dismissal ≤ 100."
+      >
+        <form className="grid gap-5" onSubmit={saveThresholds} noValidate>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <FormField
+              label="Warning from (%)"
+              htmlFor="settings-warning"
+              error={thresholdErrors.warning}
+            >
+              <Input
+                id="settings-warning"
+                type="number"
+                min={0}
+                max={100}
+                step="any"
+                value={values.warning}
+                aria-invalid={Boolean(thresholdErrors.warning)}
+                disabled={savingThresholds}
+                onChange={(event) => update('warning', event.currentTarget.value)}
+              />
+            </FormField>
+            <FormField
+              label="Probation from (%)"
+              htmlFor="settings-probation"
+              error={thresholdErrors.probation}
+            >
+              <Input
+                id="settings-probation"
+                type="number"
+                min={0}
+                max={100}
+                step="any"
+                value={values.probation}
+                aria-invalid={Boolean(thresholdErrors.probation)}
+                disabled={savingThresholds}
+                onChange={(event) => update('probation', event.currentTarget.value)}
+              />
+            </FormField>
+            <FormField
+              label="Dismissal from (%)"
+              htmlFor="settings-dismissal"
+              error={thresholdErrors.dismissal}
+            >
+              <Input
+                id="settings-dismissal"
+                type="number"
+                min={0}
+                max={100}
+                step="any"
+                value={values.dismissal}
+                aria-invalid={Boolean(thresholdErrors.dismissal)}
+                disabled={savingThresholds}
+                onChange={(event) => update('dismissal', event.currentTarget.value)}
+              />
+            </FormField>
+          </div>
+          {thresholdFeedback && (
+            <p
+              role={thresholdFeedback.kind === 'error' ? 'alert' : 'status'}
+              className={
+                thresholdFeedback.kind === 'error'
+                  ? 'text-sm text-destructive'
+                  : 'text-sm text-notice-success'
+              }
+            >
+              {thresholdFeedback.message}
+            </p>
+          )}
+          <div>
+            <Button type="submit" disabled={savingThresholds}>
+              {savingThresholds ? 'Saving…' : 'Save thresholds'}
+            </Button>
+          </div>
+        </form>
+      </Panel>
+
+      <div className="grid gap-0 lg:grid-cols-2 lg:gap-4">
+        <Panel
+          title="Notification email"
+          description="Notifications to students and advisers are sent from this address."
+        >
+          <form className="grid gap-5" onSubmit={saveEmail} noValidate>
+            <FormField
+              label="Sender email"
+              htmlFor="settings-email"
+              error={emailErrors.senderEmail}
+            >
+              <Input
+                id="settings-email"
+                type="email"
+                maxLength={254}
+                value={values.senderEmail}
+                aria-invalid={Boolean(emailErrors.senderEmail)}
+                disabled={savingEmail}
+                onChange={(event) =>
+                  update('senderEmail', event.currentTarget.value)
+                }
+              />
+            </FormField>
+            {emailFeedback && (
+              <p
+                role={emailFeedback.kind === 'error' ? 'alert' : 'status'}
+                className={
+                  emailFeedback.kind === 'error'
+                    ? 'text-sm text-destructive'
+                    : 'text-sm text-notice-success'
+                }
+              >
+                {emailFeedback.message}
+              </p>
+            )}
+            <div>
+              <Button type="submit" disabled={savingEmail}>
+                {savingEmail ? 'Saving…' : 'Save sender email'}
+              </Button>
+            </div>
+          </form>
+        </Panel>
+
+        <BackupMetadataPanel settings={settings} />
+      </div>
+    </>
+  )
+}
+
+function BackupMetadataPanel({ settings }: { settings: SystemSettings }) {
+  return (
+    <Panel
+      title="Backups"
+      description="Backup execution and storage are handled outside this settings screen."
+    >
+      <dl className="grid gap-3 text-sm sm:grid-cols-[minmax(8rem,auto)_1fr]">
+        <dt className="font-medium text-muted-foreground">Last recorded</dt>
+        <dd>{backupDate(settings.last_backup_at)}</dd>
+        <dt className="font-medium text-muted-foreground">Scope</dt>
+        <dd>{backupScopeLabel(settings.last_backup_scope)}</dd>
+        <dt className="font-medium text-muted-foreground">Reference</dt>
+        <dd className="break-all">
+          {settings.last_backup_reference || 'Not specified'}
+        </dd>
+        <dt className="font-medium text-muted-foreground">Storage location</dt>
+        <dd className="break-all">
+          {settings.last_backup_location || 'Not specified'}
+        </dd>
+      </dl>
+    </Panel>
+  )
 }
 
 export default function AdminSettingsPage() {
@@ -93,8 +339,18 @@ export default function AdminSettingsPage() {
   const settings = currentRequest?.settings ?? null
   const error = currentRequest?.error ?? null
   const loading = currentRequest === null
-  const values = settings ? toSettingsFormValues(settings) : null
   const ageDays = settings ? backupAge(settings) : null
+
+  async function saveSettings(request: SettingsUpdateRequest) {
+    const updated = unwrapApiResult(
+      await apiClient.PUT('/functions/v1/settings', { body: request }),
+    )
+    setRequestState((current) =>
+      current?.request === reloadCount
+        ? { ...current, settings: updated }
+        : current,
+    )
+  }
 
   return (
     <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
@@ -142,98 +398,46 @@ export default function AdminSettingsPage() {
         </AlertDescription>
       </Alert>
 
-      <Panel
-        title="Scholastic standing thresholds"
-        description="Percentage of term units failed. Thresholds must rise in order."
-      >
-        {values ? (
-          <div className="grid gap-5">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <FormField label="Warning from (%)" htmlFor="settings-warning">
-                <Input
-                  id="settings-warning"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="any"
-                  value={values.warning}
-                  readOnly
-                />
-              </FormField>
-              <FormField label="Probation from (%)" htmlFor="settings-probation">
-                <Input
-                  id="settings-probation"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="any"
-                  value={values.probation}
-                  readOnly
-                />
-              </FormField>
-              <FormField label="Dismissal from (%)" htmlFor="settings-dismissal">
-                <Input
-                  id="settings-dismissal"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="any"
-                  value={values.dismissal}
-                  readOnly
-                />
-              </FormField>
-            </div>
+      {settings ? (
+        <SettingsEditor
+          key={settings.id}
+          settings={settings}
+          onSave={saveSettings}
+        />
+      ) : (
+        <>
+          <Panel
+            title="Scholastic standing thresholds"
+            description="Percentage of term units failed."
+          >
+            <p className="text-sm text-muted-foreground">
+              {loading
+                ? 'Loading threshold settings…'
+                : 'Threshold settings are unavailable.'}
+            </p>
+          </Panel>
+          <div className="grid gap-0 lg:grid-cols-2 lg:gap-4">
+            <Panel
+              title="Notification email"
+              description="Notifications to students and advisers are sent from this address."
+            >
+              <p className="text-sm text-muted-foreground">
+                {loading ? 'Loading sender email…' : 'Sender email is unavailable.'}
+              </p>
+            </Panel>
+            <Panel
+              title="Backups"
+              description="Backup execution and storage are handled outside this settings screen."
+            >
+              <p className="text-sm text-muted-foreground">
+                {loading
+                  ? 'Loading backup metadata…'
+                  : 'Backup metadata is unavailable.'}
+              </p>
+            </Panel>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {loading ? 'Loading threshold settings…' : 'Threshold settings are unavailable.'}
-          </p>
-        )}
-      </Panel>
-
-      <div className="grid gap-0 lg:grid-cols-2 lg:gap-4">
-        <Panel
-          title="Notification email"
-          description="Notifications to students and advisers are sent from this address."
-        >
-          {values ? (
-            <FormField label="Sender email" htmlFor="settings-email">
-              <Input
-                id="settings-email"
-                type="email"
-                value={values.senderEmail}
-                readOnly
-              />
-            </FormField>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {loading ? 'Loading sender email…' : 'Sender email is unavailable.'}
-            </p>
-          )}
-        </Panel>
-
-        <Panel
-          title="Backups"
-          description="Backup execution and storage are handled outside this settings screen."
-        >
-          {settings ? (
-            <dl className="grid gap-3 text-sm sm:grid-cols-[minmax(8rem,auto)_1fr]">
-              <dt className="font-medium text-muted-foreground">Last recorded</dt>
-              <dd>{backupDate(settings.last_backup_at)}</dd>
-              <dt className="font-medium text-muted-foreground">Scope</dt>
-              <dd>{backupScopeLabel(settings.last_backup_scope)}</dd>
-              <dt className="font-medium text-muted-foreground">Reference</dt>
-              <dd className="break-all">{settings.last_backup_reference || 'Not specified'}</dd>
-              <dt className="font-medium text-muted-foreground">Storage location</dt>
-              <dd className="break-all">{settings.last_backup_location || 'Not specified'}</dd>
-            </dl>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {loading ? 'Loading backup metadata…' : 'Backup metadata is unavailable.'}
-            </p>
-          )}
-        </Panel>
-      </div>
+        </>
+      )}
     </div>
   )
 }
