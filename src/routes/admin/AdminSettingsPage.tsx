@@ -17,6 +17,7 @@ import {
   validateThresholds,
   type SettingsFormErrors,
   type SettingsFormValues,
+  type BackupRecordRequest,
   type SystemSettings,
   type SettingsUpdateRequest,
 } from './admin-settings-model'
@@ -59,9 +60,11 @@ function getErrorMessage(error: unknown, fallback: string): string {
 function SettingsEditor({
   settings,
   onSave,
+  onRecord,
 }: {
   settings: SystemSettings
   onSave: (request: SettingsUpdateRequest) => Promise<void>
+  onRecord: (request: BackupRecordRequest) => Promise<void>
 }) {
   const [values, setValues] = useState<SettingsFormValues>(() =>
     toSettingsFormValues(settings),
@@ -261,13 +264,45 @@ function SettingsEditor({
           </form>
         </Panel>
 
-        <BackupMetadataPanel settings={settings} />
+        <BackupMetadataPanel settings={settings} onRecord={onRecord} />
       </div>
     </>
   )
 }
 
-function BackupMetadataPanel({ settings }: { settings: SystemSettings }) {
+function BackupMetadataPanel({
+  settings,
+  onRecord,
+}: {
+  settings: SystemSettings
+  onRecord: (request: BackupRecordRequest) => Promise<void>
+}) {
+  const [recording, setRecording] = useState(false)
+  const [feedback, setFeedback] = useState<{
+    readonly kind: 'success' | 'error'
+    readonly message: string
+  } | null>(null)
+
+  async function recordBackup() {
+    setRecording(true)
+    setFeedback(null)
+    try {
+      await onRecord({ scope: 'institution_wide' })
+      setFeedback({
+        kind: 'success',
+        message:
+          'Completed backup metadata recorded. This action did not create or run a backup.',
+      })
+    } catch (error: unknown) {
+      setFeedback({
+        kind: 'error',
+        message: getErrorMessage(error, 'Backup metadata could not be recorded.'),
+      })
+    } finally {
+      setRecording(false)
+    }
+  }
+
   return (
     <Panel
       title="Backups"
@@ -287,6 +322,29 @@ function BackupMetadataPanel({ settings }: { settings: SystemSettings }) {
           {settings.last_backup_location || 'Not specified'}
         </dd>
       </dl>
+      <p className="mt-4 text-sm text-muted-foreground">
+        Run and verify an encrypted backup in institutional storage before
+        recording that it completed.
+      </p>
+      {feedback && (
+        <p
+          role={feedback.kind === 'error' ? 'alert' : 'status'}
+          className={`mt-3 text-sm ${
+            feedback.kind === 'error'
+              ? 'text-destructive'
+              : 'text-notice-success'
+          }`}
+        >
+          {feedback.message}
+        </p>
+      )}
+      <Button
+        className="mt-4"
+        disabled={recording}
+        onClick={() => void recordBackup()}
+      >
+        {recording ? 'Recording…' : 'Record completed backup'}
+      </Button>
     </Panel>
   )
 }
@@ -352,6 +410,19 @@ export default function AdminSettingsPage() {
     )
   }
 
+  async function recordCompletedBackup(request: BackupRecordRequest) {
+    const updated = unwrapApiResult(
+      await apiClient.POST('/functions/v1/settings/record-backup', {
+        body: request,
+      }),
+    )
+    setRequestState((current) =>
+      current?.request === reloadCount
+        ? { ...current, settings: updated }
+        : current,
+    )
+  }
+
   return (
     <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
       <PageHeading
@@ -399,11 +470,14 @@ export default function AdminSettingsPage() {
       </Alert>
 
       {settings ? (
-        <SettingsEditor
-          key={settings.id}
-          settings={settings}
-          onSave={saveSettings}
-        />
+        <>
+          <SettingsEditor
+            key={settings.id}
+            settings={settings}
+            onSave={saveSettings}
+            onRecord={recordCompletedBackup}
+          />
+        </>
       ) : (
         <>
           <Panel
@@ -425,10 +499,7 @@ export default function AdminSettingsPage() {
                 {loading ? 'Loading sender email…' : 'Sender email is unavailable.'}
               </p>
             </Panel>
-            <Panel
-              title="Backups"
-              description="Backup execution and storage are handled outside this settings screen."
-            >
+            <Panel title="Backups" description="Backup execution and storage are handled outside this settings screen.">
               <p className="text-sm text-muted-foreground">
                 {loading
                   ? 'Loading backup metadata…'
