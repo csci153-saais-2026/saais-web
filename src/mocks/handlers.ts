@@ -94,12 +94,30 @@ function markRetakeResults(
   });
 }
 
-const departmentInviteRoles = new Set([
-  "student",
-  "adviser",
-  "department_staff",
-  "department_head",
-]);
+function studentMetrics(studentId: string, departmentId: string) {
+  const db = getMockDatabase()
+  const results = markRetakeResults(db.attemptResults.filter(a => a.student_id === studentId))
+      const counted = results.filter(a => a.counts_toward_cumulative_gwa)
+        .map(a => ({ grade: a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null), units: a.units_attempted }))
+        .filter(a => a.grade != null && a.units > 0)
+      const countedUnits = counted.reduce((sum, row) => sum + row.units, 0)
+      const gwa = countedUnits ? Number((counted.reduce((sum, row) => sum + row.grade! * row.units, 0) / countedUnits).toFixed(2)) : null
+      const earnedUnits = results.filter(a => a.effective_status === 'passed' && a.counts_toward_cumulative_gwa)
+        .reduce((sum, row) => sum + row.units_attempted, 0) + db.outsideCredits.filter(credit => credit.student_id === studentId && credit.revoked_at == null).reduce((sum, credit) => sum + credit.units_credited, 0)
+      const openInc = results.filter(a => a.recorded_status === 'inc' && a.completion_grade == null && !a.is_lapsed_inc)
+      const lapsed = results.filter(a => a.is_lapsed_inc)
+      const flags = db.gradeFlags.filter(flag => flag.student_id === studentId && flag.status === 'open')
+      const failed = counted.filter(row => row.grade! > 3)
+      const failedUnits = failed.reduce((sum, row) => sum + row.units, 0)
+      const settings = db.systemSettings.find(setting => setting.department_id === departmentId)
+      const failurePct = countedUnits ? failedUnits * 100 / countedUnits : 0
+      const standing: ApiSchema<'AcademicStanding'> = settings && failurePct >= settings.dismissal_pct ? 'dismissed'
+        : settings && failurePct >= settings.probation_pct ? 'probation'
+          : settings && failurePct >= settings.warning_pct ? 'warning' : 'good_standing'
+  return { results, counted, countedUnits, gwa, earnedUnits, openInc, lapsed, flags, failed, failedUnits, failurePct, standing }
+}
+
+const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
 
 function canManageDepartmentInvite(
   persona: MockPersona,
@@ -154,6 +172,23 @@ function nextSyntheticUuid(): string {
   syntheticUuidCounter += 1;
   const hex = syntheticUuidCounter.toString(16).padStart(12, "0");
   return `99999999-0000-4000-8000-${hex}`;
+}
+
+function isAdvisingAIRequest(value: unknown): value is ApiSchema<'AdvisingAIRequest'> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const request = value as Record<string, unknown>
+  if (Object.keys(request).some(key => key !== 'message' && key !== 'history')) return false
+  const validText = (text: unknown) => typeof text === 'string' &&
+    text.trim().length > 0 && Array.from(text).length <= 4000
+  if (!validText(request.message)) return false
+  if (request.history === undefined) return true
+  if (!Array.isArray(request.history) || request.history.length > 20) return false
+  return request.history.every((item: unknown) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return false
+    const message = item as Record<string, unknown>
+    return Object.keys(message).every(key => key === 'role' || key === 'content') &&
+      (message.role === 'user' || message.role === 'assistant') && validText(message.content)
+  })
 }
 
 function errorJson(
@@ -989,19 +1024,17 @@ export const saaisMswHandlers = [
 
   http.get("*/rest/v1/advising_note", ({ request }) => {
     const auth = authenticateRequest(request, [
-      "student",
-      "adviser",
-      "department_head",
-      "dean",
-      "admin",
-    ]);
-    if ("response" in auth) return auth.response;
-    const { persona } = auth;
-    const db = getMockDatabase();
-    const rows = persona.roles.includes("student")
-      ? db.advisingNotes.filter((a) => a.student_id === persona.profileId)
-      : db.advisingNotes;
-    return applyPostgrestQuery(rows, new URL(request.url));
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
+    if ('response' in auth) return auth.response
+    const { persona } = auth
+    const db = getMockDatabase()
+    const rows = db.advisingNotes.filter((a) => canAccessStudentRecord(persona, a.student_id, true))
+    return applyPostgrestQuery(rows, new URL(request.url))
   }),
 
   http.get("*/rest/v1/attempt_remark", ({ request }) => {
@@ -1018,19 +1051,17 @@ export const saaisMswHandlers = [
 
   http.get("*/rest/v1/grade_flag", ({ request }) => {
     const auth = authenticateRequest(request, [
-      "student",
-      "adviser",
-      "department_head",
-      "dean",
-      "admin",
-    ]);
-    if ("response" in auth) return auth.response;
-    const { persona } = auth;
-    const db = getMockDatabase();
-    const rows = persona.roles.includes("student")
-      ? db.gradeFlags.filter((a) => a.student_id === persona.profileId)
-      : db.gradeFlags;
-    return applyPostgrestQuery(rows, new URL(request.url));
+      'student',
+      'adviser',
+      'department_head',
+      'dean',
+      'admin',
+    ])
+    if ('response' in auth) return auth.response
+    const { persona } = auth
+    const db = getMockDatabase()
+    const rows = db.gradeFlags.filter((a) => canAccessStudentRecord(persona, a.student_id, true))
+    return applyPostgrestQuery(rows, new URL(request.url))
   }),
 
   http.get("*/rest/v1/notification", ({ request }) => {
@@ -2135,93 +2166,51 @@ export const saaisMswHandlers = [
     const url = new URL(request.url);
     const scope = url.searchParams.get("assignment_scope") ?? "all";
 
-    const items: ApiSchema<"StudentRosterItem">[] = [
-      {
-        student_id: MOCK_IDS.studentPrimary,
-        student_number: "24-1-01798",
-        full_name: MOCK_PERSONAS.student.fullName,
-        email: MOCK_PERSONAS.student.email,
-        avatar_url: null,
-        status: "active",
-        faculty_id: MOCK_IDS.facultyComputing,
-        faculty_name: "Faculty of Computing",
-        department_id: MOCK_IDS.deptDcst,
-        department_name: "Department of Computer Science and Technology",
-        program_id: MOCK_IDS.programBscs,
-        program_code: "BSCS",
-        program_name: "Bachelor of Science in Computer Science",
-        curriculum_version_id: MOCK_IDS.curriculumBscs2024,
-        curriculum_label: "BSCS 2024-2025 v1",
-        entry_year: 2024,
-        year_level: 3,
-        gwa: 1.75,
-        earned_units: 36,
-        required_units: 162,
-        standing: "good_standing",
-        is_delinquent: false,
-        deficiencies_count: 1,
-        open_inc_count: 1,
-        lapsed_inc_count: 0,
-        nearest_inc_deadline: "2027-05-30",
-        nearest_inc_days_remaining: 201,
-        open_flags_count: 1,
-        assignment_status: "active",
-        adviser_id: MOCK_IDS.adviserPrimary,
-        adviser_name: MOCK_PERSONAS.adviser.fullName,
-        adviser_assigned_since: "2024-08-01",
-        handover_label: null,
-        last_activity_at: "2026-10-10T08:00:00Z",
-      },
-      {
-        student_id: MOCK_IDS.studentSecondary,
-        student_number: "23-1-02121",
-        full_name: MOCK_PERSONAS.student_secondary.fullName,
-        email: MOCK_PERSONAS.student_secondary.email,
-        avatar_url: null,
-        status: "invited",
-        faculty_id: MOCK_IDS.facultyComputing,
-        faculty_name: "Faculty of Computing",
-        department_id: MOCK_IDS.deptDcst,
-        department_name: "Department of Computer Science and Technology",
-        program_id: MOCK_IDS.programBscs,
-        program_code: "BSCS",
-        program_name: "Bachelor of Science in Computer Science",
-        curriculum_version_id: MOCK_IDS.curriculumBscs2024,
-        curriculum_label: "BSCS 2024-2025 v1",
-        entry_year: 2024,
-        year_level: 1,
-        gwa: null,
-        earned_units: 0,
-        required_units: 162,
-        standing: "good_standing",
-        is_delinquent: false,
-        deficiencies_count: 0,
-        open_inc_count: 0,
-        lapsed_inc_count: 0,
-        nearest_inc_deadline: null,
-        nearest_inc_days_remaining: null,
-        open_flags_count: 0,
-        assignment_status: "unassigned",
-        adviser_id: null,
-        adviser_name: null,
-        adviser_assigned_since: null,
-        handover_label: null,
-        last_activity_at: null,
-      },
-    ];
-
-    const filtered = items.filter((item) => {
-      if (scope === "current" || scope === "my_active_advisees") {
-        return item.assignment_status === "active";
-      }
-      if (scope === "past" || scope === "my_handed_over_advisees") {
-        return item.assignment_status === "past";
-      }
-      if (scope === "unassigned") {
-        return item.assignment_status === "unassigned";
-      }
-      return true;
-    });
+    const db = getMockDatabase()
+    const items: ApiSchema<'StudentRosterItem'>[] = []
+    for (const org of db.studentOrganizations) {
+      const profile = db.profiles.find(p => p.id === org.student_id)
+      const department = db.departments.find(d => d.id === org.department_id)
+      const faculty = db.faculties.find(f => f.id === org.faculty_id)
+      const program = db.programs.find(p => p.id === org.program_id)
+      const curriculum = db.curriculumVersions.find(c => c.id === org.curriculum_version_id)
+      if (!profile || !department || !faculty || !program || !curriculum) continue
+      const activeAssignment = db.adviserAssignments.find(a => a.student_id === org.student_id && a.end_date === null)
+      const ownAssignment = db.adviserAssignments.find(a => a.student_id === org.student_id && a.adviser_id === auth.persona.profileId)
+      const visible = auth.persona.roles.includes('admin') ||
+        (auth.persona.roles.includes('dean') && canAccessFaculty(auth.persona, org.faculty_id)) ||
+        (auth.persona.roles.some(role => role === 'department_head' || role === 'department_staff') && canAccessDepartment(auth.persona, org.department_id)) ||
+        (auth.persona.roles.includes('adviser') && !!ownAssignment)
+      if (!visible) continue
+      const { gwa, earnedUnits, openInc, lapsed, flags, failed, standing } = studentMetrics(org.student_id, org.department_id)
+      const adviser = activeAssignment && db.profiles.find(p => p.id === activeAssignment.adviser_id)
+      items.push({
+        student_id: org.student_id, student_number: profile.student_number ?? '', full_name: profile.full_name,
+        email: profile.email, avatar_url: profile.avatar_url, status: profile.status,
+        faculty_id: faculty.id, faculty_name: faculty.name, department_id: department.id, department_name: department.name,
+        program_id: program.id, program_code: program.code, program_name: program.name,
+        curriculum_version_id: curriculum.id, curriculum_label: curriculum.version_label, entry_year: org.entry_year,
+        year_level: earnedUnits >= 110 ? 4 : earnedUnits >= 72 ? 3 : earnedUnits >= 36 ? 2 : 1,
+        gwa, earned_units: earnedUnits, required_units: curriculum.total_units, standing,
+        is_delinquent: false, deficiencies_count: failed.length + openInc.length + lapsed.length + flags.length,
+        open_inc_count: openInc.length, lapsed_inc_count: lapsed.length, open_flags_count: flags.length,
+        nearest_inc_deadline: openInc.map(row => row.inc_deadline).filter((date): date is string => !!date).sort()[0] ?? null,
+        assignment_status: activeAssignment ? 'active' : ownAssignment ? 'past' : 'unassigned',
+        adviser_id: activeAssignment?.adviser_id ?? null, adviser_name: adviser?.full_name ?? null,
+        adviser_assigned_since: activeAssignment?.start_date ?? null, handover_label: null, last_activity_at: null,
+      })
+    }
+    const search = url.searchParams.get('search')?.trim().toLowerCase()
+    const filtered = items.filter(item => {
+      const ownAssignments = db.adviserAssignments.filter(a => a.student_id === item.student_id && a.adviser_id === auth.persona.profileId)
+      if ((scope === 'current' || scope === 'my_active_advisees') && !ownAssignments.some(a => a.end_date === null)) return false
+      if ((scope === 'past' || scope === 'my_handed_over_advisees') && (!ownAssignments.some(a => a.end_date !== null) || ownAssignments.some(a => a.end_date === null))) return false
+      if (scope === 'unassigned' && item.assignment_status !== 'unassigned') return false
+      if (search && !`${item.full_name} ${item.student_number}`.toLowerCase().includes(search)) return false
+      const standing = url.searchParams.get('standing')
+      if (standing && item.standing !== standing) return false
+      return true
+    })
 
     const response: ApiSchema<"StudentRosterResponse"> = {
       total_count: filtered.length,
@@ -2234,14 +2223,14 @@ export const saaisMswHandlers = [
       open_inc_students_count: filtered.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
-        good_standing: filtered.length,
-        warning: 0,
-        probation: 0,
-        dismissed: 0,
+        good_standing: filtered.filter(i => i.standing === 'good_standing').length,
+        warning: filtered.filter(i => i.standing === 'warning').length,
+        probation: filtered.filter(i => i.standing === 'probation').length,
+        dismissed: filtered.filter(i => i.standing === 'dismissed').length,
       },
-      items: filtered,
-    };
-    return HttpResponse.json(response, { status: 200 });
+      items: filtered.slice(Number(url.searchParams.get('offset') ?? 0), Number(url.searchParams.get('offset') ?? 0) + Math.min(100, Number(url.searchParams.get('limit') ?? 100))),
+    }
+    return HttpResponse.json(response, { status: 200 })
   }),
 
   http.get(
@@ -2257,30 +2246,34 @@ export const saaisMswHandlers = [
           "Not authorized to view this student academic summary.",
         );
       }
-      const countedAttempts = markRetakeResults(
-        getMockDatabase().attemptResults.filter(
-          (a) => a.student_id === studentId,
-        ),
-      ).filter((a) => a.counts_toward_cumulative_gwa);
-      const weighted = countedAttempts
-        .map((a) => ({
-          grade:
-            a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null),
-          units: a.units_attempted,
-        }))
-        .filter((a) => a.grade != null && a.units > 0);
-      const countedUnits = weighted.reduce((sum, item) => sum + item.units, 0);
-      const cumulativeGwa = countedUnits
-        ? Number(
-            (
-              weighted.reduce(
-                (sum, item) => sum + item.grade! * item.units,
-                0,
-              ) / countedUnits
-            ).toFixed(2),
-          )
-        : null;
-      const summary: ApiSchema<"AcademicSummary"> = {
+      const countedAttempts = markRetakeResults(getMockDatabase().attemptResults.filter(a => a.student_id === studentId)).filter(a => a.counts_toward_cumulative_gwa)
+      const weighted = countedAttempts.map(a => ({ grade: a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null), units: a.units_attempted })).filter(a => a.grade != null && a.units > 0)
+      const countedUnits = weighted.reduce((sum, item) => sum + item.units, 0)
+      const cumulativeGwa = countedUnits ? Number((weighted.reduce((sum, item) => sum + item.grade! * item.units, 0) / countedUnits).toFixed(2)) : null
+      const db = getMockDatabase()
+      const isAdditionalSample = db.profiles.some(profile => profile.id === studentId && profile.email.startsWith('sample.student'))
+      if (isAdditionalSample) {
+        const organization = db.studentOrganizations.find(item => item.student_id === studentId)!
+        const curriculum = db.curriculumVersions.find(item => item.id === organization.curriculum_version_id)!
+        const metrics = studentMetrics(studentId, organization.department_id)
+        const inProgress = metrics.results.filter(item => item.recorded_status === 'currently_enrolled')
+        const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === curriculum.id).map(term => term.id)
+        const slots = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id))
+        const passedSlots = new Set(metrics.results.filter(item => item.effective_status === 'passed' && item.curriculum_term_course_id).map(item => item.curriculum_term_course_id))
+        for (const credit of db.outsideCredits.filter(item => item.student_id === studentId && item.revoked_at == null)) passedSlots.add(credit.destination_curriculum_term_course_id)
+        const summary: ApiSchema<'AcademicSummary'> = {
+          student_id: studentId, gwa: metrics.gwa, earned_units: metrics.earnedUnits, required_units: curriculum.total_units,
+          counted_units: metrics.countedUnits, failed_units: metrics.failedUnits, in_progress_units: inProgress.reduce((sum, item) => sum + item.units_attempted, 0),
+          remaining_units: Math.max(0, curriculum.total_units - metrics.earnedUnits), failure_pct: metrics.failurePct,
+          standing: metrics.standing, year_level: metrics.earnedUnits >= 110 ? 4 : metrics.earnedUnits >= 72 ? 3 : metrics.earnedUnits >= 36 ? 2 : 1,
+          slots_satisfied: slots.filter(slot => passedSlots.has(slot.id)).length, total_slots: slots.length,
+          open_inc_count: metrics.openInc.length, lapsed_inc_count: metrics.lapsed.length, open_flags_count: metrics.flags.length,
+          deficiencies_count: metrics.failed.length + metrics.openInc.length + metrics.lapsed.length + metrics.flags.length,
+          is_delinquent: false, computed_at: '2026-11-10T08:00:00Z',
+        }
+        return HttpResponse.json(summary)
+      }
+      const summary: ApiSchema<'AcademicSummary'> = {
         student_id: studentId,
         gwa: cumulativeGwa,
         earned_units: 36,
@@ -2330,7 +2323,35 @@ export const saaisMswHandlers = [
           "Not authorized to view this student checklist.",
         );
       }
-      const checklist: ApiSchema<"ChecklistSlotResult">[] = [
+      if (studentId !== MOCK_IDS.studentPrimary) {
+        const db = getMockDatabase()
+        const organization = db.studentOrganizations.find(item => item.student_id === studentId)
+        if (!organization) return HttpResponse.json([])
+        const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === organization.curriculum_version_id).map(term => term.id)
+        const slots: ApiSchema<'ChecklistSlotResult'>[] = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id)).map(slot => {
+          const matching = db.attemptResults.filter(item => item.student_id === studentId && item.curriculum_term_course_id === slot.id)
+            .sort((a, b) => {
+              const order = (item: ApiSchema<'AttemptResult'>) => db.schoolTerms.find(term => term.id === db.courseOfferings.find(offering => offering.id === item.course_offering_id)?.school_term_id)?.chronological_key ?? 0
+              return order(a) - order(b) || (a.created_at ?? '').localeCompare(b.created_at ?? '') || a.id.localeCompare(b.id)
+            })
+          const attempt = matching.find(item => item.effective_status === 'passed') ?? matching.at(-1)
+          const attempts = matching.flatMap(item => {
+            const offering = db.courseOfferings.find(row => row.id === item.course_offering_id)
+            const term = db.schoolTerms.find(row => row.id === offering?.school_term_id)
+            return term ? [{ attempt_id: item.id, school_term_id: term.id, term_label: `${term.term_type} ${term.school_year}`,
+              recorded_status: item.recorded_status, effective_status: item.effective_status, midterm_status: item.midterm_status,
+              midterm_grade: item.midterm_grade, final_grade: item.final_grade, completion_grade: item.completion_grade,
+              inc_deadline: item.inc_deadline, instructor: item.instructor }] : []
+          })
+          const credit = db.outsideCredits.find(item => item.student_id === studentId && item.destination_curriculum_term_course_id === slot.id && item.revoked_at == null)
+          return { curriculum_term_course_id: slot.id, status: credit ? 'passed' : attempt?.effective_status ?? 'not_taken', required_units: slot.nominal_units,
+            earned_units: credit ? credit.units_credited : attempt?.effective_status === 'passed' ? attempt.units_attempted : 0,
+            source_attempt_id: credit ? null : attempt?.id ?? null, satisfaction_source: credit ? 'Outside credit' : attempt?.effective_status === 'passed' ? 'Direct' : null,
+            attempts, grade_fix_history: matching.flatMap(item => item.grade_fix_history ?? []) }
+        })
+        return HttpResponse.json(slots)
+      }
+      const checklist: ApiSchema<'ChecklistSlotResult'>[] = [
         {
           curriculum_term_course_id: MOCK_IDS.slotCsci101,
           status: "passed",
@@ -2488,7 +2509,8 @@ export const saaisMswHandlers = [
       if (!canAccessStudentRecord(auth.persona, studentId, true)) {
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       }
-      const recs: ApiSchema<"Recommendation">[] = [
+      if (studentId !== MOCK_IDS.studentPrimary) return HttpResponse.json([], { status: 200 })
+      const recs: ApiSchema<'Recommendation'>[] = [
         {
           course_offering_id: MOCK_IDS.offeringCsci198,
           curriculum_term_course_id: MOCK_IDS.slotFreeElective1,
@@ -3964,31 +3986,25 @@ export const saaisMswHandlers = [
   http.patch(
     "*/functions/v1/students/:student_id/notes/:note_id",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
-      if ("response" in auth) return auth.response;
-      const studentId = String(params.student_id);
-      const noteId = String(params.note_id);
-      const body = (await request.json().catch(() => ({
-        is_archived: true,
-      }))) as ApiSchema<"NoteArchiveUpdateRequest">;
-      const note: ApiSchema<"AdvisingNote"> = {
-        id: noteId,
-        student_id: studentId,
-        authored_by: auth.persona.profileId,
-        author_name: auth.persona.fullName,
-        author_role_label: "Adviser",
-        body_text: "Archived advising note.",
-        is_archived: Boolean(body.is_archived),
-        archived_at: body.is_archived ? "2026-11-10T09:00:00Z" : null,
-        archived_by: body.is_archived ? auth.persona.profileId : null,
-        created_at: "2026-08-12T09:00:00Z",
-      };
-      return HttpResponse.json(note, { status: 200 });
+      const auth = authenticateRequest(request, ['admin', 'adviser'])
+      if ('response' in auth) return auth.response
+      const studentId = String(params.student_id)
+      const noteId = String(params.note_id)
+      const db = getMockDatabase()
+      if (!auth.persona.roles.includes('admin') && !db.adviserAssignments.some(assignment =>
+        assignment.student_id === studentId && assignment.adviser_id === auth.persona.profileId && assignment.end_date === null)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser or an administrator may archive or restore a note.')
+      }
+      const body: unknown = await request.json().catch(() => null)
+      if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(key => key !== 'is_archived') || typeof (body as { is_archived?: unknown }).is_archived !== 'boolean') {
+        return errorJson(400, 'INVALID_INPUT', 'A valid is_archived value is required.')
+      }
+      const note = db.advisingNotes.find(item => item.id === noteId && item.student_id === studentId)
+      if (!note) return errorJson(404, 'NOT_FOUND', 'Advising note not found.')
+      const archived = (body as { is_archived: boolean }).is_archived
+      const updated = { ...note, is_archived: archived, archived_at: archived ? '2026-11-10T09:00:00Z' : null, archived_by: archived ? auth.persona.profileId : null }
+      db.advisingNotes[db.advisingNotes.indexOf(note)] = updated
+      return HttpResponse.json(updated, { status: 200 })
     },
   ),
 
@@ -4044,24 +4060,26 @@ export const saaisMswHandlers = [
   ),
 
   http.post(
-    "*/functions/v1/students/:student_id/assistant",
-    async ({ request }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
-      if ("response" in auth) return auth.response;
-      const body = (await request
-        .json()
-        .catch(() => null)) as ApiSchema<"AdvisingAIRequest"> | null;
-      if (!body?.message) {
-        return errorJson(400, "INVALID_INPUT", "message is required.");
+    '*/functions/v1/students/:student_id/assistant',
+    async ({ request, params }) => {
+      const auth = authenticateRequest(request, ['adviser'])
+      if ('response' in auth) return auth.response
+      const body: unknown = await request.json().catch(() => null)
+      if (!isAdvisingAIRequest(body)) {
+        return errorJson(400, 'INVALID_INPUT', 'Enter a valid message and conversation history.')
       }
-      const res: ApiSchema<"AdvisingAIResponse"> = {
-        answer:
-          "Juan M. Dela Cruz has 1 open INC in CSCI 102 (deadline 2027-05-30) and is eligible to take CSCI 198 as CS Elective 1.",
+      const studentId = String(params.student_id)
+      const db = getMockDatabase()
+      const student = db.profiles.find(profile => profile.id === studentId &&
+        (profile.role === 'student' || profile.roles?.includes('student')))
+      if (!student) return errorJson(404, 'NOT_FOUND', 'Student not found.')
+      const assigned = db.adviserAssignments.some(assignment =>
+        assignment.student_id === studentId && assignment.adviser_id === auth.persona.profileId)
+      if (!assigned) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Student is not assigned to this adviser.')
+      const unresolved = db.attemptResults.filter(attempt => attempt.student_id === studentId &&
+        attempt.recorded_status === 'inc' && attempt.completion_grade == null).length
+      const res: ApiSchema<'AdvisingAIResponse'> = {
+        answer: `Simulated response for ${student.full_name}: this sample record has ${unresolved} unresolved INC attempt${unresolved === 1 ? '' : 's'}. Review the student's official record before advising.`,
         verification_notice:
           "Verify all prerequisite and standing decisions against the official curriculum checklist.",
         grounded_at: "2026-11-10T09:00:00Z",
@@ -4198,44 +4216,108 @@ export const saaisMswHandlers = [
 
   http.get("*/functions/v1/reports/adviser-dashboard", ({ request }) => {
     const auth = authenticateRequest(request, [
-      "admin",
-      "dean",
-      "department_head",
-      "adviser",
-    ]);
-    if ("response" in auth) return auth.response;
-    const report: ApiSchema<"AdviserDashboardReport"> = {
-      adviser_id: auth.persona.profileId,
-      total_advisees: 1,
+      'admin',
+      'dean',
+      'department_head',
+      'adviser',
+    ])
+    if ('response' in auth) return auth.response
+    const db = getMockDatabase()
+    const url = new URL(request.url)
+    const adviserId = url.searchParams.get('adviser_id') ?? auth.persona.profileId
+    const selectedAdviser = db.profiles.find(profile => profile.id === adviserId)
+    if (!selectedAdviser) return errorJson(404, 'NOT_FOUND', 'Adviser not found.')
+    if (adviserId !== auth.persona.profileId) {
+      const inScope = auth.persona.roles.includes('admin') ||
+        (auth.persona.roles.includes('dean') && !!selectedAdviser.faculty_id && canAccessFaculty(auth.persona, selectedAdviser.faculty_id)) ||
+        (auth.persona.roles.includes('department_head') && !!selectedAdviser.department_id && canAccessDepartment(auth.persona, selectedAdviser.department_id))
+      if (!inScope) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Adviser is outside your scope.')
+    }
+    const studentIds = [...new Set(db.adviserAssignments
+      .filter(assignment => assignment.adviser_id === adviserId && assignment.end_date === null)
+      .map(assignment => assignment.student_id))]
+    const attempts = db.attemptResults.filter(attempt => studentIds.includes(attempt.student_id))
+    const studentMetrics = studentIds.map(studentId => {
+      const counted = markRetakeResults(attempts.filter(attempt => attempt.student_id === studentId))
+        .filter(attempt => attempt.counts_toward_cumulative_gwa)
+        .map(attempt => ({ grade: attempt.completion_grade ?? attempt.final_grade ?? (attempt.is_lapsed_inc ? 5 : null), units: attempt.units_attempted }))
+        .filter(item => item.grade !== null && item.units > 0)
+      const units = counted.reduce((sum, item) => sum + item.units, 0)
+      const failedUnits = counted.filter(item => item.grade! > 3).reduce((sum, item) => sum + item.units, 0)
+      const organization = db.studentOrganizations.find(item => item.student_id === studentId)
+      const settings = db.systemSettings.find(item => item.department_id === organization?.department_id)
+      const failurePct = units ? failedUnits * 100 / units : 0
+      const standing = settings && failurePct >= settings.dismissal_pct ? 'dismissed'
+        : settings && failurePct >= settings.probation_pct ? 'probation'
+          : settings && failurePct >= settings.warning_pct ? 'warning' : 'good_standing'
+      return { gwa: units ? counted.reduce((sum, item) => sum + item.grade! * item.units, 0) / units : null, standing }
+    })
+    const gwas = studentMetrics.map(metric => metric.gwa).filter((value): value is number => value !== null)
+    const batches = new Map<string, { row: ApiSchema<'BatchCurriculumGwaRow'>; grades: number[] }>()
+    studentIds.forEach((studentId, index) => {
+      const organization = db.studentOrganizations.find(item => item.student_id === studentId)
+      const curriculum = db.curriculumVersions.find(item => item.id === organization?.curriculum_version_id)
+      const program = db.programs.find(item => item.id === organization?.program_id)
+      if (!organization?.entry_year || !curriculum || !program) return
+      const key = `${organization.entry_year}:${curriculum.id}`
+      const batch = batches.get(key) ?? {
+        row: {
+          entry_year: organization.entry_year, program_id: program.id, program_code: program.code,
+          curriculum_version_id: curriculum.id, curriculum_label: curriculum.version_label,
+          student_count: 0, mean_gwa: null, good_standing_count: 0, at_risk_count: 0,
+        }, grades: [],
+      }
+      batch.row.student_count += 1
+      const metric = studentMetrics[index]
+      if (metric?.standing === 'good_standing') batch.row.good_standing_count += 1
+      else batch.row.at_risk_count += 1
+      const grade = metric?.gwa
+      if (grade != null) batch.grades.push(grade)
+      batch.row.mean_gwa = batch.grades.length ? Number((batch.grades.reduce((sum, value) => sum + value, 0) / batch.grades.length).toFixed(2)) : null
+      batches.set(key, batch)
+    })
+    const termId = url.searchParams.get('school_term_id')
+    const termAttempts = termId
+      ? attempts.filter(attempt => db.courseOfferings.some(offering => offering.id === attempt.course_offering_id && offering.school_term_id === termId))
+      : attempts
+    const graded = termAttempts.map(attempt => attempt.completion_grade ?? attempt.final_grade)
+      .filter((grade): grade is number => grade !== null && grade !== undefined)
+    const bands = [
+      { label: '1.00–1.50', min_grade: 1, max_grade: 1.5 },
+      { label: '1.75–2.25', min_grade: 1.75, max_grade: 2.25 },
+      { label: '2.50–3.00', min_grade: 2.5, max_grade: 3 },
+      { label: '3.25–5.00', min_grade: 3.25, max_grade: 5 },
+    ]
+    const pendingInc = attempts.filter(attempt => attempt.recorded_status === 'inc' && attempt.completion_grade == null && !attempt.is_lapsed_inc).length
+    const report: ApiSchema<'AdviserDashboardReport'> = {
+      adviser_id: adviserId,
+      total_advisees: studentIds.length,
       standing_counts: {
-        good_standing: 1,
-        warning: 0,
-        probation: 0,
-        dismissed: 0,
+        good_standing: studentMetrics.filter(metric => metric.standing === 'good_standing').length,
+        warning: studentMetrics.filter(metric => metric.standing === 'warning').length,
+        probation: studentMetrics.filter(metric => metric.standing === 'probation').length,
+        dismissed: studentMetrics.filter(metric => metric.standing === 'dismissed').length,
       },
-      open_grade_flags_count: 1,
-      pending_inc_count: 1,
+      open_grade_flags_count: db.gradeFlags.filter(flag => studentIds.includes(flag.student_id) && flag.status === 'open').length,
+      pending_inc_count: pendingInc,
       expiring_inc_soon_count: 0,
-      lapsed_inc_count: 0,
-      mean_gwa: 1.75,
-      year_level_counts: [{ year_level: 3, student_count: 1 }],
-      batch_curriculum_gwa: [
-        {
-          entry_year: 2024,
-          program_id: MOCK_IDS.programBscs,
-          program_code: "BSCS",
-          curriculum_version_id: MOCK_IDS.curriculumBscs2024,
-          curriculum_label: "BSCS 2024-2025 v1",
-          student_count: 1,
-          mean_gwa: 1.75,
-          good_standing_count: 1,
-          at_risk_count: 0,
-        },
-      ],
-      advisees_with_deficiencies: [],
-      computed_at: "2026-11-10T09:00:00Z",
-    };
-    return HttpResponse.json(report, { status: 200 });
+      lapsed_inc_count: attempts.filter(attempt => attempt.is_lapsed_inc).length,
+      mean_gwa: gwas.length ? Number((gwas.reduce((sum, value) => sum + value, 0) / gwas.length).toFixed(2)) : null,
+      grade_distribution: {
+        total_graded: graded.length,
+        inc_count: termAttempts.filter(attempt => attempt.recorded_status === 'inc' && attempt.completion_grade == null).length,
+        dr_count: termAttempts.filter(attempt => attempt.effective_status === 'dr').length,
+        na_count: termAttempts.filter(attempt => attempt.effective_status === 'na').length,
+        currently_enrolled_count: termAttempts.filter(attempt => attempt.effective_status === 'currently_enrolled').length,
+        buckets: bands.map(band => {
+          const count = graded.filter(grade => grade >= band.min_grade && grade <= band.max_grade).length
+          return { ...band, count, percentage: graded.length ? Number((count * 100 / graded.length).toFixed(2)) : 0 }
+        }),
+      },
+      batch_curriculum_gwa: [...batches.values()].map(batch => batch.row),
+      computed_at: '2026-11-10T09:00:00Z',
+    }
+    return HttpResponse.json(report, { status: 200 })
   }),
 
   http.get("*/functions/v1/reports/department", ({ request }) => {

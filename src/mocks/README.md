@@ -1,5 +1,9 @@
 # SAAIS Contract Mocks — Prism & MSW (`src/mocks`)
 
+## Shared mock ownership
+
+The contract/mock owners maintain the shared synthetic data, personas, and MSW handlers in this directory. Feature screens should consume the shared contract endpoints rather than add separate academic-record datasets. When a screen needs a new scenario, coordinate the fixture or handler change with those owners so roles and pages use consistent records. Component tests may use small local test-only inputs; these are not a second application dataset.
+
 Contract-faithful mock infrastructure generated from [`contract/openapi.yaml`](../../contract/openapi.yaml) so frontend development and automated tests can run against all **119 OpenAPI operations** and **6 roles** using 100% synthetic VSU data.
 
 ---
@@ -59,6 +63,10 @@ loginAsMockPersona("admin"); // Lelis, Nietzchan Jake (23-1-01457@vsu.edu.ph, Sy
 // Sign out:
 logoutMockPersona();
 ```
+
+### Additional sample students
+
+`student_sample_1` through `student_sample_24` are synthetic active accounts, with addresses `sample.student01@vsu.edu.ph` through `sample.student24@vsu.edu.ph`. Odd-numbered samples are assigned to `adviser`; even-numbered samples to `adviser_secondary`. Each has CSCI 101 and PHED 11 enrollment attempts linked to the instructors on their respective offerings, plus an adviser-authored note and a student notification. Some notes are archived and remain visible to their student. Use `loginAsMockPersona('student_sample_1')` to select one in mock mode. These accounts contain no real student data.
 
 ### Persona Tokens Reference
 
