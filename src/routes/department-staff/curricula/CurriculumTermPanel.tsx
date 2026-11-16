@@ -2,10 +2,11 @@ import { DataTablePanel, type Column } from '@/components/features/data-table-pa
 import type { Course, CurriculumSlot, CurriculumTerm } from './curricula.api'
 import { Button } from '@/components/ui/button'
 
-export function CurriculumTermPanel({ term, slots, courses, onEdit, onDelete, actionsDisabled = false }: {
+export function CurriculumTermPanel({ term, slots, courses, onAddRequirement, onEdit, onDelete, actionsDisabled = false }: {
   term: CurriculumTerm
   slots: CurriculumSlot[]
   courses: Course[]
+  onAddRequirement?: () => void
   onEdit?: () => void
   onDelete?: () => void
   actionsDisabled?: boolean
@@ -26,6 +27,7 @@ export function CurriculumTermPanel({ term, slots, courses, onEdit, onDelete, ac
   ]
   const label = `Year ${term.year_level} - Term ${term.term_sequence}`
   return <DataTablePanel title={label} description="Curriculum position; course units and nominal requirement units are shown separately." action={<div className="flex flex-wrap gap-2">
+    {onAddRequirement && <Button type="button" size="sm" variant="outline" disabled={actionsDisabled} aria-label={`Add requirement to ${label}`} onClick={onAddRequirement}>Add requirement</Button>}
     {onEdit && <Button type="button" size="sm" variant="outline" disabled={actionsDisabled} aria-label={`Edit ${label}`} onClick={onEdit}>Edit term</Button>}
     {onDelete && <Button type="button" size="sm" variant="destructive" disabled={actionsDisabled} aria-label={`Delete ${label}`} onClick={onDelete}>Delete term</Button>}
   </div>} rows={slots} columns={columns} rowKey={slot => slot.id} empty="No requirements are available for this term." />
