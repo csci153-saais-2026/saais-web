@@ -32,6 +32,26 @@ const adviserAssignmentHistorySchema = z.object({
   handover_label: z.string().nullable().optional(),
   created_at: z.iso.datetime(),
 }).strict()
+const reassignmentResponseSchema = z.object({
+  reassigned_count: z.number().int().min(0),
+  assignments: z.array(
+    z.object({
+      id: z.uuid(),
+      adviser_id: z.uuid(),
+      adviser_name: z.string().nullable().optional(),
+      adviser_email: z.string().nullable().optional(),
+      adviser_faculty_name: z.string().nullable().optional(),
+      adviser_consultation_hours: z.string().nullable().optional(),
+      student_id: z.uuid(),
+      start_date: z.iso.date(),
+      end_date: z.iso.date().nullable().optional(),
+      handed_over_to_adviser_id: z.uuid().nullable().optional(),
+      handed_over_to_name: z.string().nullable().optional(),
+      handover_label: z.string().nullable().optional(),
+      created_at: z.iso.datetime(),
+    }),
+  ),
+}).strict()
 
 function completeRead(
   result: { data?: unknown; error?: unknown; response: Response },
@@ -90,15 +110,48 @@ export async function bulkReassignAdvisers(
   body: BulkAdviserReassignmentRequest,
   signal?: AbortSignal,
 ): Promise<BulkAdviserReassignmentResponse> {
+  const requestedIds = new Set(body.student_ids)
+  if (
+    body.student_ids.length === 0 ||
+    body.student_ids.length > 500 ||
+    requestedIds.size !== body.student_ids.length
+  ) {
+    throw new Error(
+      'A reassignment requires between one and 500 unique students.',
+    )
+  }
+
   const result = await apiClient.POST('/functions/v1/adviser-assignments/bulk-reassign', {
     body,
     signal,
   })
 
-  const payload = unwrapApiResult<BulkAdviserReassignmentResponse>(result)
-  if (!payload || typeof payload !== 'object' || !Array.isArray(payload.assignments)) {
-    throw new Error('The adviser reassignment service returned an invalid response.')
+  const payload = unwrapApiResult<unknown>(result)
+  const parsedPayload = reassignmentResponseSchema.safeParse(payload)
+  if (!parsedPayload.success) {
+    throw new Error(
+      'The adviser reassignment service returned an invalid response.',
+    )
   }
 
-  return payload
+  const assignments = parsedPayload.data.assignments
+  const returnedIds = new Set(assignments.map((assignment) => assignment.student_id))
+  const isCompleteAtomicResult =
+    parsedPayload.data.reassigned_count === body.student_ids.length &&
+    assignments.length === body.student_ids.length &&
+    returnedIds.size === body.student_ids.length &&
+    assignments.every(
+      (assignment) =>
+        requestedIds.has(assignment.student_id) &&
+        assignment.adviser_id === body.adviser_id &&
+        assignment.start_date === body.effective_since &&
+        assignment.end_date == null,
+    )
+  if (!isCompleteAtomicResult) {
+    throw new Error(
+      'The adviser reassignment service did not confirm the complete atomic reassignment.',
+    )
+  }
+
+  return parsedPayload.data
 }
