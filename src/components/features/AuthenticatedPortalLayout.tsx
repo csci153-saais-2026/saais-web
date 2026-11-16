@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router'
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout'
+import type { Crumb } from '@/components/features/topbar'
 import { useAuth } from '@/hooks/use-auth'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
 import type { SaaisRole } from '@/mocks/personas'
@@ -60,6 +61,27 @@ function resolveRoleFromPath(
   return assignedRoles.includes(fallbackRole) ? fallbackRole : assignedRoles[0] ?? fallbackRole
 }
 
+function resolveCrumbs(pathname: string, portalLabel: string, homeHref: string): Crumb[] {
+  if (pathname.startsWith('/dean/reports')) {
+    return [{ label: portalLabel, to: homeHref }, { label: 'Faculty reports' }]
+  }
+  if (pathname.startsWith('/dean/students/')) {
+    const studentNumber = decodeURIComponent(pathname.slice('/dean/students/'.length))
+    return [
+      { label: portalLabel, to: homeHref },
+      { label: 'Students', to: '/dean/students' },
+      { label: studentNumber || 'Student record' },
+    ]
+  }
+  if (pathname.startsWith('/dean/students')) {
+    return [{ label: portalLabel, to: homeHref }, { label: 'Students' }]
+  }
+  if (pathname.startsWith('/dean/audit-log')) {
+    return [{ label: portalLabel, to: homeHref }, { label: 'Audit log' }]
+  }
+  return [{ label: portalLabel, to: homeHref }]
+}
+
 export function AuthenticatedPortalLayout() {
   const { user, roles, roleAssignments, activeRole, isLoading, signOut } = useAuth()
   const location = useLocation()
@@ -104,7 +126,7 @@ export function AuthenticatedPortalLayout() {
         profileHref: '/settings',
         onSignOut: () => void handleSignOut(),
       }}
-      crumbs={[{ label: portalLabel, to: homeHref }]}
+      crumbs={resolveCrumbs(location.pathname, portalLabel, homeHref)}
     />
   )
 }
