@@ -26,14 +26,14 @@ describe('encoding workspace identity',()=>{
    expect(getGrades).not.toHaveBeenCalled()
  })
  it('loads attempts and submits the selected student and INC attempt',async()=>{
-   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(completeInc).mockResolvedValue({} as ApiSchema<'INCResolution'>)
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue([]);vi.mocked(completeInc).mockResolvedValue({} as ApiSchema<'INCResolution'>)
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
    expect(await screen.findAllByText(/CS 1/)).toHaveLength(2)
    fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Complete INC'}))
    await waitFor(()=>expect(completeInc).toHaveBeenCalledWith('student-one',attempt,2.25,'Completed'))
  })
  it('clears prior attempts when switching students or accounts',async()=>{
-   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValueOnce(data).mockImplementation(()=>new Promise(()=>{}))
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getTermOfferings).mockResolvedValue([]);vi.mocked(getGrades).mockResolvedValueOnce(data).mockImplementation(()=>new Promise(()=>{}))
    const view=render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}});expect((await screen.findAllByText(/CS 1/)).length).toBeGreaterThan(0)
    fireEvent.change(screen.getByLabelText('Advisee'),{target:{value:'student-two'}});expect(screen.queryByText('Completion grade')).toBeNull();expect(screen.getByRole('status').textContent).toContain('Loading')
    auth.user={id:'adviser-two'};view.rerender(<MemoryRouter><Encode/></MemoryRouter>);expect(screen.queryByText('CS 1 · Computing')).toBeNull()
