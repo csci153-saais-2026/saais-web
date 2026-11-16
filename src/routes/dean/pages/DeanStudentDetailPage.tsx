@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { DeanReadOnlyNotice } from "@/routes/dean/components/DeanReadOnlyNotice"
 import { DeanStudentChecklistTab } from "@/routes/dean/components/DeanStudentChecklistTab"
+import { DeanStudentGradesTab } from "@/routes/dean/components/DeanStudentGradesTab"
 import { getDeanStudentDetail } from "@/routes/dean/data/faculty-students"
 
 const DEAN_RECORD_TABS = [
@@ -66,11 +67,7 @@ export default function DeanStudentDetailPage() {
 
       {activeTab === "checklist" && <DeanStudentChecklistTab student={student} />}
 
-      {activeTab === "grades" && (
-        <Panel title="Grade history" description="Read-only term grades.">
-          <p className="text-sm text-muted-foreground">Grades loading…</p>
-        </Panel>
-      )}
+      {activeTab === "grades" && <DeanStudentGradesTab student={student} />}
 
       {activeTab === "audit" && (
         <Panel title="Record audit trail" description="View and grade change history for this student.">
