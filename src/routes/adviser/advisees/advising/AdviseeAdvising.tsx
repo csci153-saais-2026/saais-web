@@ -57,12 +57,12 @@ function RecentNotes({ id, userId, isAdmin }: { id: string; userId: string; isAd
     finally { setBusy(false) }
   }
   const active = data?.notes.filter(note => !note.is_archived) ?? []
-  return <Panel title="Advising notes" description="Recent notes · visible to the student" flush>
+  return <Panel title="Advising notes" description="Recent notes" flush>
     {!data && !error && <p role="status" className="p-5 text-sm">Loading notes…</p>}
     {error && <div role="alert" className="space-y-3 p-5"><p>{error}</p><Button variant="outline" onClick={() => setRevision(n => n + 1)}>Try again</Button></div>}
     {data && <>{active.slice(0, 3).map(note => <article key={note.id} className="border-b border-line-soft px-5 py-4"><div className="flex flex-wrap justify-between gap-2 text-xs"><strong>{note.author_name ?? 'Adviser'}</strong><time className="text-muted-foreground" dateTime={note.created_at}>{new Date(note.created_at).toLocaleDateString()}</time></div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{note.body_text}</p></article>)}
       {!active.length && <p className="px-5 py-4 text-sm text-muted-foreground">No active notes yet.</p>}
-      <div className="space-y-3 p-5">{(data.isCurrent || isAdmin) && <><label htmlFor="advising-note" className="block text-sm font-medium">Write an advising note</label><Textarea id="advising-note" rows={4} maxLength={5000} placeholder="Visible to the student. Write what they and the next adviser should know." value={text} onChange={e => setText(e.target.value)} /><div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setText('')}>Cancel</Button><Button disabled={busy || !text.trim()} onClick={() => void save()}>{busy ? 'Saving…' : 'Save note'}</Button></div></>}
+      <div className="space-y-3 p-5">{(data.isCurrent || isAdmin) && <><label htmlFor="advising-note" className="block text-sm font-medium">Write an advising note</label><Textarea id="advising-note" rows={4} maxLength={5000} placeholder="Write what the student and the next adviser should know." value={text} onChange={e => setText(e.target.value)} /><div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setText('')}>Cancel</Button><Button disabled={busy || !text.trim()} onClick={() => void save()}>{busy ? 'Saving…' : 'Save note'}</Button></div></>}
         {!data.isCurrent && !isAdmin && <p className="text-sm text-muted-foreground">Historical record: read-only.</p>}{message && <p role="status" className="text-sm">{message}</p>}{saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}<Link className="inline-block text-sm font-semibold text-primary underline" to={`/adviser/advisee/${encodeURIComponent(id)}/notes`}>View all notes</Link>
       </div></>}
   </Panel>

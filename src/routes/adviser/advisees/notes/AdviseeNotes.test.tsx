@@ -1,5 +1,5 @@
 ﻿import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import type { ApiSchema } from '@/lib/api'
 import Notes from './AdviseeNotes'
@@ -25,7 +25,7 @@ describe('selected student notes',()=>{
     vi.mocked(getNotes).mockResolvedValue({notes:[note],isCurrent:true})
     vi.mocked(addNote).mockResolvedValue(note)
     render(page());fireEvent.click(await screen.findByRole('button',{name:'Write a note'}))
-    fireEvent.change(screen.getByLabelText('Advising note'),{target:{value:'Draft'}})
+    fireEvent.change(screen.getByLabelText('Note'),{target:{value:'Draft'}})
     expect((screen.getByRole('button',{name:'Save note'}) as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(screen.getByRole('button',{name:'Save note'}))
     await waitFor(()=>expect(addNote).toHaveBeenCalledWith('student-one','Draft'))
@@ -34,5 +34,14 @@ describe('selected student notes',()=>{
   it('clears notes when the account changes',async()=>{
     vi.mocked(getNotes).mockResolvedValueOnce({notes:[note],isCurrent:true}).mockImplementation(()=>new Promise(()=>{}))
     const view=render(page()); expect(await screen.findByText('A note')).toBeTruthy(); auth.user={id:'adviser-two'};view.rerender(page());expect(screen.queryByText('A note')).toBeNull()
+  })
+  it('shows save errors in the note dialog and clears the draft on cancel',async()=>{
+    vi.mocked(getNotes).mockResolvedValue({notes:[note],isCurrent:true});vi.mocked(addNote).mockRejectedValue(new Error('Unable to save'))
+    render(page());fireEvent.click(await screen.findByRole('button',{name:'Write a note'}))
+    fireEvent.change(screen.getByLabelText('Note'),{target:{value:'Draft'}});fireEvent.click(screen.getByRole('button',{name:'Save note'}))
+    expect((await within(screen.getByRole('dialog')).findByRole('alert')).textContent).toContain('Unable to save')
+    fireEvent.click(screen.getByRole('button',{name:'Cancel'}));fireEvent.click(screen.getByRole('button',{name:'Write a note'}))
+    expect((screen.getByLabelText('Note') as HTMLTextAreaElement).value).toBe('')
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })
