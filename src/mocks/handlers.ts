@@ -1950,70 +1950,27 @@ export const saaisMswHandlers = [
           'Not authorized to view this student academic summary.',
         )
       }
-      const countedAttempts = markRetakeResults(getMockDatabase().attemptResults.filter(a => a.student_id === studentId)).filter(a => a.counts_toward_cumulative_gwa)
-      const weighted = countedAttempts.map(a => ({ grade: a.completion_grade ?? a.final_grade ?? (a.is_lapsed_inc ? 5 : null), units: a.units_attempted })).filter(a => a.grade != null && a.units > 0)
-      const countedUnits = weighted.reduce((sum, item) => sum + item.units, 0)
-      const cumulativeGwa = countedUnits ? Number((weighted.reduce((sum, item) => sum + item.grade! * item.units, 0) / countedUnits).toFixed(2)) : null
       const db = getMockDatabase()
-      const isAdditionalSample = db.profiles.some(profile => profile.id === studentId && profile.email.startsWith('sample.student'))
-      if (isAdditionalSample) {
-        const organization = db.studentOrganizations.find(item => item.student_id === studentId)!
-        const curriculum = db.curriculumVersions.find(item => item.id === organization.curriculum_version_id)!
-        const metrics = studentMetrics(studentId, organization.department_id)
-        const inProgress = metrics.results.filter(item => item.recorded_status === 'currently_enrolled')
-        const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === curriculum.id).map(term => term.id)
-        const slots = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id))
-        const passedSlots = new Set(metrics.results.filter(item => item.effective_status === 'passed' && item.curriculum_term_course_id).map(item => item.curriculum_term_course_id))
-        for (const credit of db.outsideCredits.filter(item => item.student_id === studentId && item.revoked_at == null)) passedSlots.add(credit.destination_curriculum_term_course_id)
-        const summary: ApiSchema<'AcademicSummary'> = {
-          student_id: studentId, gwa: metrics.gwa, earned_units: metrics.earnedUnits, required_units: curriculum.total_units,
-          counted_units: metrics.countedUnits, failed_units: metrics.failedUnits, in_progress_units: inProgress.reduce((sum, item) => sum + item.units_attempted, 0),
-          remaining_units: Math.max(0, curriculum.total_units - metrics.earnedUnits), failure_pct: metrics.failurePct,
-          standing: metrics.standing, year_level: metrics.earnedUnits >= 110 ? 4 : metrics.earnedUnits >= 72 ? 3 : metrics.earnedUnits >= 36 ? 2 : 1,
-          slots_satisfied: slots.filter(slot => passedSlots.has(slot.id)).length, total_slots: slots.length,
-          open_inc_count: metrics.openInc.length, lapsed_inc_count: metrics.lapsed.length, open_flags_count: metrics.flags.length,
-          deficiencies_count: metrics.failed.length + metrics.openInc.length + metrics.lapsed.length + metrics.flags.length,
-          is_delinquent: metrics.isDelinquent, computed_at: '2026-11-10T08:00:00Z',
-        }
-        return HttpResponse.json(summary)
-      }
+      const organization = db.studentOrganizations.find(item => item.student_id === studentId)
+      if (!organization) return errorJson(404, 'NOT_FOUND', 'Student academic record not found.')
+      const curriculum = db.curriculumVersions.find(item => item.id === organization.curriculum_version_id)!
+      const metrics = studentMetrics(studentId, organization.department_id)
+      const inProgress = metrics.results.filter(item => item.recorded_status === 'currently_enrolled')
+      const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === curriculum.id).map(term => term.id)
+      const slots = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id))
+      const passedSlots = new Set(slots.filter(slot => metrics.results.some(item => item.effective_status === 'passed' && (item.curriculum_term_course_id === slot.id || (slot.course_id != null && db.courseOfferings.some(offering => offering.id === item.course_offering_id && offering.course_id === slot.course_id))))).map(slot => slot.id))
+      for (const credit of db.outsideCredits.filter(item => item.student_id === studentId && item.revoked_at == null)) passedSlots.add(credit.destination_curriculum_term_course_id)
       const summary: ApiSchema<'AcademicSummary'> = {
-        student_id: studentId,
-        gwa: cumulativeGwa,
-        earned_units: 36,
-        required_units: 162,
-        counted_units: countedUnits,
-        failed_units: 0,
-        in_progress_units: 3,
-        remaining_units: 126,
-        failure_pct: 0,
-        standing: 'good_standing',
-        year_level: 3,
-        slots_satisfied: 12,
-        total_slots: 54,
-        open_inc_count: 1,
-        lapsed_inc_count: 0,
-        open_flags_count: 1,
-        deficiencies_count: 1,
-        deficiencies: [
-          {
-            kind: 'open_inc',
-            attempt_id: MOCK_IDS.attemptCsci102Inc,
-            course_code: 'CSCI 102',
-            course_title: 'Computer Programming 1',
-            term_label: '2nd Sem 2025-2026',
-            inc_deadline: '2027-05-30',
-            days_remaining: 201,
-            detail: 'Missing final laboratory project submission.',
-          },
-        ],
-        is_delinquent: (() => {
-          const organization = db.studentOrganizations.find(item => item.student_id === studentId)
-          return organization ? studentMetrics(studentId, organization.department_id).isDelinquent : false
-        })(),
-        computed_at: '2026-11-10T08:00:00Z',
+        student_id: studentId, gwa: metrics.gwa, earned_units: metrics.earnedUnits, required_units: curriculum.total_units,
+        counted_units: metrics.countedUnits, failed_units: metrics.failedUnits, in_progress_units: inProgress.reduce((sum, item) => sum + item.units_attempted, 0),
+        remaining_units: Math.max(0, curriculum.total_units - metrics.earnedUnits), failure_pct: metrics.failurePct,
+        standing: metrics.standing, year_level: metrics.earnedUnits >= 110 ? 4 : metrics.earnedUnits >= 72 ? 3 : metrics.earnedUnits >= 36 ? 2 : 1,
+        slots_satisfied: slots.filter(slot => passedSlots.has(slot.id)).length, total_slots: slots.length,
+        open_inc_count: metrics.openInc.length, lapsed_inc_count: metrics.lapsed.length, open_flags_count: metrics.flags.length,
+        deficiencies_count: metrics.failed.length + metrics.openInc.length + metrics.lapsed.length + metrics.flags.length,
+        is_delinquent: metrics.isDelinquent, computed_at: '2026-11-10T08:00:00Z',
       }
-      return HttpResponse.json(summary, { status: 200 })
+      return HttpResponse.json(summary)
     },
   ),
 
@@ -2030,73 +1987,32 @@ export const saaisMswHandlers = [
           'Not authorized to view this student checklist.',
         )
       }
-      if (studentId !== MOCK_IDS.studentPrimary) {
-        const db = getMockDatabase()
-        const organization = db.studentOrganizations.find(item => item.student_id === studentId)
-        if (!organization) return HttpResponse.json([])
-        const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === organization.curriculum_version_id).map(term => term.id)
-        const slots: ApiSchema<'ChecklistSlotResult'>[] = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id)).map(slot => {
-          const matching = db.attemptResults.filter(item => item.student_id === studentId && item.curriculum_term_course_id === slot.id)
-            .sort((a, b) => {
-              const order = (item: ApiSchema<'AttemptResult'>) => db.schoolTerms.find(term => term.id === db.courseOfferings.find(offering => offering.id === item.course_offering_id)?.school_term_id)?.chronological_key ?? 0
-              return order(a) - order(b) || (a.created_at ?? '').localeCompare(b.created_at ?? '') || a.id.localeCompare(b.id)
-            })
-          const attempt = matching.find(item => item.effective_status === 'passed') ?? matching.at(-1)
-          const attempts = matching.flatMap(item => {
-            const offering = db.courseOfferings.find(row => row.id === item.course_offering_id)
-            const term = db.schoolTerms.find(row => row.id === offering?.school_term_id)
-            return term ? [{ attempt_id: item.id, school_term_id: term.id, term_label: `${term.term_type} ${term.school_year}`,
-              recorded_status: item.recorded_status, effective_status: item.effective_status, midterm_status: item.midterm_status,
-              midterm_grade: item.midterm_grade, final_grade: item.final_grade, completion_grade: item.completion_grade,
-              inc_deadline: item.inc_deadline, instructor: item.instructor }] : []
+      const db = getMockDatabase()
+      const organization = db.studentOrganizations.find(item => item.student_id === studentId)
+      if (!organization) return HttpResponse.json([])
+      const termIds = db.curriculumTerms.filter(term => term.curriculum_version_id === organization.curriculum_version_id).map(term => term.id)
+      const slots: ApiSchema<'ChecklistSlotResult'>[] = db.curriculumTermCourses.filter(slot => termIds.includes(slot.curriculum_term_id)).map(slot => {
+        const matching = db.attemptResults.filter(item => item.student_id === studentId && (item.curriculum_term_course_id === slot.id || (slot.course_id != null && db.courseOfferings.some(offering => offering.id === item.course_offering_id && offering.course_id === slot.course_id))))
+          .sort((a, b) => {
+            const order = (item: ApiSchema<'AttemptResult'>) => db.schoolTerms.find(term => term.id === db.courseOfferings.find(offering => offering.id === item.course_offering_id)?.school_term_id)?.chronological_key ?? 0
+            return order(a) - order(b) || (a.created_at ?? '').localeCompare(b.created_at ?? '') || a.id.localeCompare(b.id)
           })
-          const credit = db.outsideCredits.find(item => item.student_id === studentId && item.destination_curriculum_term_course_id === slot.id && item.revoked_at == null)
-          return { curriculum_term_course_id: slot.id, status: credit ? 'passed' : attempt?.effective_status ?? 'not_taken', required_units: slot.nominal_units,
-            earned_units: credit ? credit.units_credited : attempt?.effective_status === 'passed' ? attempt.units_attempted : 0,
-            source_attempt_id: credit ? null : attempt?.id ?? null, satisfaction_source: credit ? 'Outside credit' : attempt?.effective_status === 'passed' ? 'Direct' : null,
-            attempts, grade_fix_history: matching.flatMap(item => item.grade_fix_history ?? []) }
+        const attempt = matching.find(item => item.effective_status === 'passed') ?? matching.at(-1)
+        const attempts = matching.flatMap(item => {
+          const offering = db.courseOfferings.find(row => row.id === item.course_offering_id)
+          const term = db.schoolTerms.find(row => row.id === offering?.school_term_id)
+          return term ? [{ attempt_id: item.id, school_term_id: term.id, term_label: `${term.term_type} ${term.school_year}`,
+            recorded_status: item.recorded_status, effective_status: item.effective_status, midterm_status: item.midterm_status,
+            midterm_grade: item.midterm_grade, final_grade: item.final_grade, completion_grade: item.completion_grade,
+            inc_deadline: item.inc_deadline, instructor: item.instructor }] : []
         })
-        return HttpResponse.json(slots)
-      }
-      const checklist: ApiSchema<'ChecklistSlotResult'>[] = [
-        {
-          curriculum_term_course_id: MOCK_IDS.slotCsci101,
-          status: 'passed',
-          required_units: 3,
-          earned_units: 3,
-          source_attempt_id: null,
-          satisfaction_source: 'Outside credit',
-          credited_course_code: 'CMSC 11',
-          credited_course_title: 'Introduction to Computer Science',
-          attempts: [],
-          grade_fix_history: [],
-        },
-        {
-          curriculum_term_course_id: MOCK_IDS.slotCsci102,
-          status: 'inc',
-          required_units: 3,
-          earned_units: 0,
-          source_attempt_id: MOCK_IDS.attemptCsci102Inc,
-          satisfaction_source: null,
-          attempts: [
-            {
-              attempt_id: MOCK_IDS.attemptCsci102Inc,
-              school_term_id: MOCK_IDS.term2025Sem2Closed,
-              term_label: '2nd Sem 2025-2026',
-              midterm_status: 'graded',
-              midterm_grade: 2.0,
-              final_grade: null,
-              recorded_status: 'inc',
-              completion_grade: null,
-              effective_status: 'inc',
-              inc_deadline: '2027-05-30',
-              instructor: 'Prof. Maria Clara Santos',
-            },
-          ],
-          grade_fix_history: [],
-        },
-      ]
-      return HttpResponse.json(checklist, { status: 200 })
+        const credit = db.outsideCredits.find(item => item.student_id === studentId && item.destination_curriculum_term_course_id === slot.id && item.revoked_at == null)
+        return { curriculum_term_course_id: slot.id, status: credit ? 'passed' : attempt?.effective_status ?? 'not_taken', required_units: slot.nominal_units,
+          earned_units: credit ? credit.units_credited : attempt?.effective_status === 'passed' ? attempt.units_attempted : 0,
+          source_attempt_id: credit ? null : attempt?.id ?? null, satisfaction_source: credit ? 'Outside credit' : attempt?.effective_status === 'passed' ? 'Direct' : null,
+          attempts, grade_fix_history: matching.flatMap(item => item.grade_fix_history ?? []) }
+      })
+      return HttpResponse.json(slots)
     },
   ),
 
