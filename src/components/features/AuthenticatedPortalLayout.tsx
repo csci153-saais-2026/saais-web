@@ -104,7 +104,10 @@ export function AuthenticatedPortalLayout() {
         profileHref: '/settings',
         onSignOut: () => void handleSignOut(),
       }}
-      crumbs={[{ label: portalLabel, to: homeHref }]}
+      crumbs={[
+        { label: portalLabel, to: homeHref },
+        ...(location.pathname === '/settings' ? [{ label: 'Change password' }] : []),
+      ]}
     />
   )
 }
