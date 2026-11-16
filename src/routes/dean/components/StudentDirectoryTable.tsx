@@ -1,4 +1,5 @@
 import { Panel } from "@/components/features/panel"
+import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Table,
@@ -12,15 +13,32 @@ import type { DeanStudentSummary } from "@/routes/dean/types"
 
 export function StudentDirectoryTable({
   students,
+  totalCount,
   onSelectStudent,
+  onResetFilters,
 }: {
   students: DeanStudentSummary[]
+  totalCount: number
   onSelectStudent: (student: DeanStudentSummary) => void
+  onResetFilters?: () => void
 }) {
+  const countLabel =
+    students.length === totalCount
+      ? `${students.length} ${students.length === 1 ? "student" : "students"}`
+      : `Showing ${students.length} of ${totalCount} students`
+
   return (
     <Panel
       title="Faculty student roster"
-      description={`${students.length} ${students.length === 1 ? "student" : "students"}`}
+      description={countLabel}
+      action={
+        <span
+          aria-live="polite"
+          className="font-mono text-xs text-muted-foreground"
+        >
+          {students.length} {students.length === 1 ? "student" : "students"}
+        </span>
+      }
       flush
     >
       <Table responsive>
@@ -71,7 +89,14 @@ export function StudentDirectoryTable({
                 colSpan={6}
                 className="py-10 text-center text-muted-foreground"
               >
-                No students match these filters.
+                <div className="flex flex-col items-center gap-3">
+                  <span>No students match these filters.</span>
+                  {onResetFilters && (
+                    <Button type="button" variant="outline" size="sm" onClick={onResetFilters}>
+                      Reset filters
+                    </Button>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           )}

@@ -66,7 +66,9 @@ export default function DeanStudentsPage() {
 
       <StudentDirectoryTable
         students={filteredStudents}
+        totalCount={FACULTY_STUDENTS.length}
         onSelectStudent={handleSelectStudent}
+        onResetFilters={handleReset}
       />
 
       <SampleFooter>Fictional sample records · Reference date: 28 October 2026</SampleFooter>
