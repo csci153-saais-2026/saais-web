@@ -16106,7 +16106,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/curriculum-transfers",
+                  "raw": "{{base_url}}/functions/v1/students/{{transfer_student_id}}/curriculum-transfers",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -16114,7 +16114,7 @@
                     "functions",
                     "v1",
                     "students",
-                    "{{student_id}}",
+                    "{{transfer_student_id}}",
                     "curriculum-transfers"
                   ],
                   "query": []
@@ -16174,7 +16174,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/curriculum-transfers",
+                  "raw": "{{base_url}}/functions/v1/students/{{transfer_student_id}}/curriculum-transfers",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -16182,7 +16182,7 @@
                     "functions",
                     "v1",
                     "students",
-                    "{{student_id}}",
+                    "{{transfer_student_id}}",
                     "curriculum-transfers"
                   ],
                   "query": []

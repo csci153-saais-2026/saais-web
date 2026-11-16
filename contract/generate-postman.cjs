@@ -448,6 +448,9 @@ function resolveRef(spec, refObj) {
 function toPostmanPathVariableUrl(openApiRoute, method = 'get') {
   const isDelete = method.toLowerCase() === 'delete'
   return openApiRoute.replace(/\{([^}]+)\}/g, (_, paramName) => {
+    if (paramName === 'student_id' && method.toLowerCase() === 'post' && openApiRoute.endsWith('/curriculum-transfers')) {
+      return '{{transfer_student_id}}'
+    }
     if (paramName === 'attempt_id' && method.toLowerCase() === 'patch' && openApiRoute.endsWith('/attempts/{attempt_id}/grades')) {
       return '{{grade_correction_attempt_id}}'
     }
@@ -1058,6 +1061,11 @@ function generatePostmanArtifacts() {
       {
         key: 'student_id',
         value: '00000000-0000-4000-8000-000000000101',
+        enabled: true,
+      },
+      {
+        key: 'transfer_student_id',
+        value: '00000000-0000-4000-8001-000000000023',
         enabled: true,
       },
       {
