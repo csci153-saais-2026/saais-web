@@ -2821,23 +2821,37 @@ export const saaisMswHandlers = [
       if (!currentAttempt) return errorJson(404, 'NOT_FOUND', 'The flagged attempt was not found.')
       if (body.expected_revision != null && body.expected_revision !== currentAttempt.revision) return errorJson(409, 'STALE_ATTEMPT', 'The attempt changed since the flag was raised.')
       if (body.resolution_action === 'correct') {
-        if (body.corrected_grade != null) {
-          if (flag.reported_stage === 'midterm') {
-            currentAttempt.midterm_grade = body.corrected_grade
-            currentAttempt.midterm_status = 'graded'
+        const result = { ...currentAttempt }
+        if (flag.reported_stage === 'midterm') {
+          if (currentAttempt.completion_grade != null) return errorJson(409, 'INC_COMPLETION_EXISTS', 'Use the INC completion correction operation.')
+          if (body.corrected_midterm_status != null && !['graded', 'dr'].includes(body.corrected_midterm_status)) return errorJson(400, 'INVALID_INPUT', 'Provide a valid midterm status.')
+          if (body.corrected_grade != null && (!Number.isFinite(body.corrected_grade) || body.corrected_grade < 1 || body.corrected_grade > 5 || body.corrected_grade * 4 % 1 !== 0)) return errorJson(400, 'INVALID_INPUT', 'Provide a valid midterm grade.')
+          if (body.corrected_midterm_status === 'dr') {
+            if (body.corrected_grade != null || (body.corrected_status != null && body.corrected_status !== 'dr')) return errorJson(400, 'INVALID_INPUT', 'A dropped midterm requires a dropped final and no numeric grade.')
+            result.midterm_status = 'dr'; result.midterm_grade = null
+            result.recorded_status = 'dr'; result.effective_status = 'dr'
+            result.final_grade = null; result.gwa_grade = null; result.inc_deadline = null; result.is_lapsed_inc = false
           } else {
-            currentAttempt.final_grade = body.corrected_grade
-            currentAttempt.gwa_grade = body.corrected_grade
-            currentAttempt.effective_status = body.corrected_grade <= 3 ? 'passed' : 'failed'
-            currentAttempt.recorded_status = currentAttempt.effective_status
+            if (body.corrected_grade != null) { result.midterm_grade = body.corrected_grade; result.midterm_status = 'graded' }
+            else if (body.corrected_midterm_status) result.midterm_status = body.corrected_midterm_status
+            if (currentAttempt.midterm_status === 'dr' && result.midterm_status !== 'dr') {
+              result.recorded_status = 'currently_enrolled'; result.effective_status = 'currently_enrolled'
+            }
+            if (body.corrected_status === 'dr' || result.recorded_status === 'dr') return errorJson(400, 'INVALID_INPUT', 'A dropped final requires a dropped midterm.')
+            if (result.final_grade != null) { result.recorded_status = result.final_grade <= 3 ? 'passed' : 'failed'; result.effective_status = result.recorded_status }
           }
+        } else {
+          if (body.corrected_grade != null) {
+            result.final_grade = body.corrected_grade
+            result.gwa_grade = body.corrected_grade
+            result.effective_status = body.corrected_grade <= 3 ? 'passed' : 'failed'
+            result.recorded_status = result.effective_status
+          }
+          if (body.corrected_status) { result.effective_status = body.corrected_status; result.recorded_status = body.corrected_status }
+          if (body.corrected_midterm_status) result.midterm_status = body.corrected_midterm_status
         }
-        if (body.corrected_status && flag.reported_stage !== 'midterm') { currentAttempt.effective_status = body.corrected_status; currentAttempt.recorded_status = body.corrected_status }
-        if (body.corrected_midterm_status) currentAttempt.midterm_status = body.corrected_midterm_status
         db.attemptResults[db.attemptResults.indexOf(currentAttempt)] = {
-          ...currentAttempt,
-          revision: currentAttempt.revision + 1,
-          updated_at: new Date().toISOString(),
+          ...result, revision: currentAttempt.revision + 1, updated_at: new Date().toISOString(),
         }
       }
       const now = new Date().toISOString()
