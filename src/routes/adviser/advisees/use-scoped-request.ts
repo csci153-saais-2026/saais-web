@@ -7,7 +7,7 @@ export function useScopedRequest<T>(key: string, enabled: boolean, load: () => P
     if (enabled) void load().then(data => {
       if (active) setState({ key, data })
     }).catch((error: unknown) => {
-      if (active) setState(previous => ({ key, ...(keepPrevious ? { data: previous.data } : {}), error: error instanceof Error ? error.message : 'Unable to load records.' }))
+      if (active) setState(previous => ({ key: keepPrevious && previous.data !== undefined ? previous.key : key, ...(keepPrevious ? { data: previous.data } : {}), error: error instanceof Error ? error.message : 'Unable to load records.' }))
     })
     return () => { active = false }
     // The key contains every input used by load.
