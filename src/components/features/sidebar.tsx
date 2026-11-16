@@ -1,4 +1,4 @@
-import { BookIcon, ChevronDownIcon, LogoutIcon, type IconComponent } from "@/components/icons"
+import { BookIcon, ChevronDownIcon, LockIcon, LogoutIcon, type IconComponent } from "@/components/icons"
 import * as React from "react"
 import { Link, NavLink } from "react-router"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -150,7 +150,8 @@ function AccountMenu({
       <PopoverContent side="top" align="start" className="w-56 gap-0 p-1.5">
         {profileHref && (
           <Link to={profileHref} className="flex items-center gap-2.5 rounded-[5px] px-3 py-2.5 text-sm font-medium hover:bg-accent">
-            My profile
+            <LockIcon className="size-4" />
+            Change Password
           </Link>
         )}
         <hr className="my-1 border-line-soft" />
