@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { ApiSchema } from '@/lib/api'
+import { ApiClientError, type ApiSchema } from '@/lib/api'
 import Flags from './AdviserGradeFlags'
 import { getFlags, resolveFlag } from './grade-flags.api'
 const auth=vi.hoisted(()=>({user:{id:'adviser-one'},isMockMode:false}))
@@ -15,10 +15,26 @@ describe('grade flag identity',()=>{
   vi.mocked(getFlags).mockResolvedValue(data);vi.mocked(resolveFlag).mockResolvedValue({} as ApiSchema<'GradeFlag'>)
   render(<MemoryRouter><Flags/></MemoryRouter>);const buttons=await screen.findAllByRole('button',{name:'Review flag'});fireEvent.click(buttons[1]!)
   expect(screen.getByText(/Second Student · CS 2 · Second/)).toBeTruthy();expect(within(screen.getByRole('dialog')).getByText('Two comment')).toBeTruthy()
-  fireEvent.change(screen.getByLabelText('Action'),{target:{value:'reject'}});fireEvent.change(screen.getByLabelText('Reply / reason'),{target:{value:'Reviewed'}});fireEvent.click(screen.getByRole('button',{name:'Submit resolution'}))
+  fireEvent.change(screen.getByLabelText('Action'),{target:{value:'reject'}});fireEvent.change(screen.getByLabelText('Reply / reason'),{target:{value:'Reviewed'}});fireEvent.click(screen.getByLabelText('I reviewed the current grade'));fireEvent.click(screen.getByRole('button',{name:'Submit resolution'}))
   await waitFor(()=>expect(resolveFlag).toHaveBeenCalledWith('flag-two',{resolution_action:'reject',resolution_note:'Reviewed',expected_revision:7}))
  })
  it('does not retain flags when switching accounts',async()=>{
   vi.mocked(getFlags).mockResolvedValueOnce(data).mockImplementation(()=>new Promise(()=>{}));const view=render(<MemoryRouter><Flags/></MemoryRouter>);expect(await screen.findByText('First Student')).toBeTruthy();auth.user={id:'adviser-two'};view.rerender(<MemoryRouter><Flags/></MemoryRouter>);expect(screen.queryByText('First Student')).toBeNull()
  })
+ it('requires reviewing the refreshed grade after a stale response, including after a failed reload',async()=>{
+  const refreshed={...data,attempts:data.attempts.map(a=>a.id==='attempt-one'?{...a,revision:2,midterm_grade:1.75}:a)}
+  vi.mocked(getFlags).mockResolvedValueOnce(data).mockRejectedValueOnce(new Error('Reload failed')).mockResolvedValue(refreshed)
+  vi.mocked(resolveFlag).mockRejectedValueOnce(new ApiClientError({status:409,code:'STALE_ATTEMPT',message:'Stale',details:null,hint:null,retryAfterSeconds:null,isAuthError:false,isForbidden:false,isNotFound:false,isConflict:true,isRateLimited:false,isNetworkError:false})).mockResolvedValueOnce({} as ApiSchema<'GradeFlag'>)
+  render(<MemoryRouter><Flags/></MemoryRouter>);fireEvent.click((await screen.findAllByRole('button',{name:'Review flag'}))[0]!)
+  fireEvent.change(screen.getByLabelText('Action'),{target:{value:'reject'}});fireEvent.change(screen.getByLabelText('Reply / reason'),{target:{value:'Reviewed'}});fireEvent.click(screen.getByLabelText('I reviewed the current grade'));fireEvent.click(screen.getByRole('button',{name:'Submit resolution'}))
+  expect(await within(screen.getByRole('dialog')).findByText('Reload failed')).toBeTruthy()
+  expect((screen.getByRole('button',{name:'Submit resolution'}) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(screen.getByRole('button',{name:'Retry loading grade'}))
+  expect(await screen.findByText('Current midterm grade: 1.75')).toBeTruthy()
+  expect((screen.getByLabelText('I reviewed the current grade') as HTMLInputElement).checked).toBe(false)
+  expect((screen.getByRole('button',{name:'Submit resolution'}) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(screen.getByLabelText('I reviewed the current grade'));fireEvent.click(screen.getByRole('button',{name:'Submit resolution'}))
+  await waitFor(()=>expect(resolveFlag).toHaveBeenLastCalledWith('flag-one',{resolution_action:'reject',resolution_note:'Reviewed',expected_revision:2}))
+ })
+
 })
