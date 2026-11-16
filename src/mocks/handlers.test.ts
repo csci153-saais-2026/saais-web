@@ -608,9 +608,9 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
         },
       },
     )
-    expect(recsResponse.response.headers.get('X-Excluded-Count')).toBe('3')
+    expect(recsResponse.response.headers.get('X-Excluded-Count')).toBe('4')
     const recs = unwrapApiResult(recsResponse)
-    expect(recs[0]?.excluded_summary?.total_excluded).toBe(3)
+    expect(recs.some(item => item.code === 'CSCI 101')).toBe(false)
 
     // Recording midterm grade without confirmed_enrollment returns 409 ENROLLMENT_CONFIRMATION_REQUIRED
     const unconfirmed = await client.POST(

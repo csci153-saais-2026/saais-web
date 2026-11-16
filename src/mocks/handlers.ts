@@ -2231,7 +2231,7 @@ export const saaisMswHandlers = [
         );
         const previousTermIndices = results.flatMap((result) => {
           const slot = slots.find(
-            (item) => item.id === result.curriculum_term_course_id,
+            (item) => item.id === result.curriculum_term_course_id || (item.course_id != null && db.courseOfferings.some(offering => offering.id === result.course_offering_id && offering.course_id === item.course_id)),
           );
           const index = orderedTerms.findIndex(
             (term) => term.id === slot?.curriculum_term_id,
@@ -2260,8 +2260,7 @@ export const saaisMswHandlers = [
           const prior = results.filter(
             (item) =>
               item.curriculum_term_course_id === slot.id ||
-              (item.curriculum_term_course_id === null &&
-                db.courseOfferings.some(
+              (db.courseOfferings.some(
                   (offering) =>
                     offering.id === item.course_offering_id &&
                     offering.course_id === course.id,
@@ -2299,8 +2298,7 @@ export const saaisMswHandlers = [
                   (item) =>
                     item.effective_status === 'passed' &&
                     (item.curriculum_term_course_id === requiredSlot?.id ||
-                      (item.curriculum_term_course_id === null &&
-                        db.courseOfferings.some(
+                      (db.courseOfferings.some(
                           (offering) =>
                             offering.id === item.course_offering_id &&
                             offering.course_id ===
