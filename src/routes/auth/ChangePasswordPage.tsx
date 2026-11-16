@@ -26,6 +26,12 @@ export default function ChangePasswordPage() {
   })
 
   const isGoogleManagedAccount = user?.authProvider === 'google'
+  const passwordRules = [
+    { label: 'At least 12 characters', met: newPassword.length >= 12 && newPassword.length <= 128 },
+    { label: 'Contains uppercase, lowercase, and a number', met: /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword) },
+    { label: 'Different from your current password', met: newPassword.length > 0 && newPassword !== currentPassword },
+    { label: 'Both new password fields match', met: confirmPassword.length > 0 && newPassword === confirmPassword },
+  ]
 
   const togglePasswordVisibility = (field: keyof typeof visiblePasswords) => {
     setVisiblePasswords(current => ({ ...current, [field]: !current[field] }))
@@ -159,9 +165,6 @@ export default function ChangePasswordPage() {
                     <EyeIcon aria-hidden />
                   </Button>
                 </div>
-                <span className="text-[11px] text-muted-foreground">
-                  Must be 12–128 characters with uppercase, lowercase, and number.
-                </span>
               </div>
 
               <div className="grid gap-1.5">
@@ -190,6 +193,20 @@ export default function ChangePasswordPage() {
                   </Button>
                 </div>
               </div>
+
+              <ul aria-label="Password requirements" className="grid gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-[13px]">
+                {passwordRules.map(rule => (
+                  <li key={rule.label} className={`flex items-center gap-2.5 ${rule.met ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <span
+                      aria-hidden="true"
+                      className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border ${rule.met ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-transparent'}`}
+                    >
+                      <CheckIcon className="size-3" />
+                    </span>
+                    {rule.label}
+                  </li>
+                ))}
+              </ul>
 
               <Button type="submit" disabled={submitting} className="w-full mt-2">
                 {submitting ? 'Updating password…' : 'Change Password'}
