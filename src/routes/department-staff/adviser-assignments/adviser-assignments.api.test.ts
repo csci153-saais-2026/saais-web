@@ -2,7 +2,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import {
+  bulkReassignAdvisers,
   listStudentAdviserAssignments,
+  type BulkAdviserReassignmentRequest,
 } from './adviser-assignments.api'
 import { listStudentFilterOptions } from '../students/students.api'
 
@@ -24,6 +26,38 @@ const server = setupServer()
 beforeAll(() => server.listen())
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
+
+const studentIds = [
+  '33333333-3333-4333-8333-333333333333',
+  '99999999-9999-4999-8999-999999999999',
+]
+const targetAdviserId = '88888888-8888-4888-8888-888888888888'
+const requestBody: BulkAdviserReassignmentRequest = {
+  student_ids: [studentIds[0]],
+  adviser_id: targetAdviserId,
+  effective_since: '2026-11-10',
+  reason: 'Transfer to the new adviser',
+}
+
+function reassignedRecord(studentId: string, index: number) {
+  return {
+    id: index === 0
+      ? 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+      : 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    adviser_id: targetAdviserId,
+    adviser_name: 'Target Adviser',
+    adviser_email: null,
+    adviser_faculty_name: null,
+    adviser_consultation_hours: null,
+    student_id: studentId,
+    start_date: requestBody.effective_since,
+    end_date: null,
+    handed_over_to_adviser_id: null,
+    handed_over_to_name: null,
+    handover_label: null,
+    created_at: '2026-11-10T09:00:00Z',
+  }
+}
 
 describe('Adviser assignment preparation reads', () => {
   it('loads history for only the requested roster students', async () => {
@@ -162,6 +196,112 @@ describe('Adviser assignment preparation reads', () => {
     await expect(listStudentFilterOptions(departmentId)).resolves.toEqual({
       curricula: [],
       advisers: [{ id: eligibleId, label: 'Active Adviser' }],
+    })
+  })
+
+  describe('Bulk adviser reassignment requests', () => {
+    it.each([
+      { label: 'one student', ids: [studentIds[0]] },
+      { label: 'multiple students', ids: studentIds },
+    ])('submits one atomic request for $label', async ({ ids }) => {
+      let requestCount = 0
+      let sentBody: unknown
+      server.use(
+        http.post('*/functions/v1/adviser-assignments/bulk-reassign', async ({ request }) => {
+          requestCount += 1
+          sentBody = await request.json()
+          return HttpResponse.json({
+            reassigned_count: ids.length,
+            assignments: ids.map(reassignedRecord),
+          })
+        }),
+      )
+      const body = { ...requestBody, student_ids: ids }
+
+      await expect(bulkReassignAdvisers(body)).resolves.toMatchObject({
+        reassigned_count: ids.length,
+        assignments: ids.map((studentId) =>
+          expect.objectContaining({
+            student_id: studentId,
+            adviser_id: body.adviser_id,
+            start_date: body.effective_since,
+          }),
+        ),
+      })
+      expect(requestCount).toBe(1)
+      expect(sentBody).toEqual(body)
+    })
+
+    it.each([
+      { status: 403, isForbidden: true, isConflict: false },
+      { status: 409, isForbidden: false, isConflict: true },
+    ])('surfaces HTTP $status without returning a success-shaped response', async ({
+      status,
+      isForbidden,
+      isConflict,
+    }) => {
+      let requestCount = 0
+      server.use(
+        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () => {
+          requestCount += 1
+          return HttpResponse.json(
+            { code: 'REASSIGNMENT_ERROR', message: 'Reassignment rejected.' },
+            { status },
+          )
+        }),
+      )
+
+      await expect(bulkReassignAdvisers(requestBody)).rejects.toMatchObject({
+        status,
+        isForbidden,
+        isConflict,
+      })
+      expect(requestCount).toBe(1)
+    })
+
+    it('surfaces network failures without reporting reassignment success', async () => {
+      let requestCount = 0
+      server.use(
+        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () => {
+          requestCount += 1
+          return HttpResponse.error()
+        }),
+      )
+
+      await expect(bulkReassignAdvisers(requestBody)).rejects.toMatchObject({
+        isNetworkError: true,
+      })
+      expect(requestCount).toBe(1)
+    })
+
+    it('rejects a partial success-shaped response', async () => {
+      server.use(
+        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () =>
+          HttpResponse.json({ reassigned_count: 1, assignments: [] }),
+        ),
+      )
+
+      await expect(bulkReassignAdvisers(requestBody)).rejects.toThrow(
+        'did not confirm the complete atomic reassignment',
+      )
+    })
+
+    it('rejects duplicate student IDs before making a request', async () => {
+      let requestCount = 0
+      server.use(
+        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () => {
+          requestCount += 1
+          return HttpResponse.json({})
+        }),
+      )
+
+      await expect(
+        bulkReassignAdvisers({
+          ...requestBody,
+          student_ids: [studentIds[0], studentIds[0]],
+        }),
+      ).rejects.toThrow('between one and 500 unique students')
+      expect(requestCount).toBe(0)
     })
   })
 })
