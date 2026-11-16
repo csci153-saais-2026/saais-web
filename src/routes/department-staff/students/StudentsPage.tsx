@@ -12,6 +12,7 @@ import {
   useStudents,
 } from './use-students'
 import { StudentImportDialog } from './import/StudentImportDialog'
+import { useStaffScope } from '../shared/use-staff-scope'
 
 type StudentRosterItem = ApiSchema<'StudentRosterItem'>
 
@@ -92,6 +93,14 @@ function getUuidParam(params: URLSearchParams, key: string): string {
 
 export default function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const staffScope = useStaffScope()
+  const importScope =
+    staffScope.status === 'ready'
+      ? {
+          profileId: staffScope.profileId,
+          departmentId: staffScope.departmentId,
+        }
+      : null
   const [search, curriculumVersionId, adviserId, offset] = [
     (searchParams.get('search') ?? '').slice(0, MAX_SEARCH_LENGTH),
     getUuidParam(searchParams, 'curriculum_version_id'),
@@ -203,7 +212,7 @@ export default function StudentsPage() {
       <PageHeading
         title="Student roster"
         subtitle="Students in your authorized department."
-        actions={<StudentImportDialog />}
+        actions={<StudentImportDialog scope={importScope} />}
       />
       <div className="grid gap-4 md:grid-cols-3">
         <FormField
