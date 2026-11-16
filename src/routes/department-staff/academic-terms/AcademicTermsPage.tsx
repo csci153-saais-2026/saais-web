@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { DataTablePanel, type Column } from '@/components/features/data-table-panel'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -8,6 +9,11 @@ import type {
   SchoolTerm,
 } from './academic-terms.api'
 import { useAcademicTerms } from '@/hooks/use-academic-terms'
+import { SchoolTermDialog } from './SchoolTermDialog'
+
+function termTypeLabel(termType: SchoolTerm['term_type']): string {
+  return termType === 'Summer' ? 'Summer/Midyear' : termType
+}
 
 function formatCalendarDate(value: string | null | undefined): string {
   if (!value) return 'Not provided'
@@ -65,7 +71,7 @@ function TermDetails({
     <details className="min-w-52">
       <summary
         className="min-h-11 cursor-pointer content-center font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        aria-label={`View details for ${term.school_year}, ${term.term_type}`}
+        aria-label={`View details for ${term.school_year}, ${termTypeLabel(term.term_type)}`}
       >
         View term
       </summary>
@@ -75,8 +81,8 @@ function TermDetails({
           <dd className="text-muted-foreground">{term.school_year}</dd>
         </div>
         <div>
-          <dt className="font-medium">Semester</dt>
-          <dd className="text-muted-foreground">{term.term_type}</dd>
+          <dt className="font-medium">Term type</dt>
+          <dd className="text-muted-foreground">{termTypeLabel(term.term_type)}</dd>
         </div>
         <div>
           <dt className="font-medium">Term dates</dt>
@@ -137,6 +143,9 @@ function TermDetails({
 
 export default function AcademicTermsPage() {
   const academicTerms = useAcademicTerms()
+  const [dialogTerm, setDialogTerm] = useState<SchoolTerm | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const closures = academicTerms.data?.departmentClosures ?? []
   const closureByTermId = new Map(
     closures.map((closure) => [closure.school_term_id, closure]),
@@ -148,7 +157,7 @@ export default function AcademicTermsPage() {
       cell: (term) => (
         <div className="flex flex-col">
           <span className="font-medium text-foreground">{term.school_year}</span>
-          <span className="text-xs text-muted-foreground">{term.term_type}</span>
+          <span className="text-xs text-muted-foreground">{termTypeLabel(term.term_type)}</span>
         </div>
       ),
     },
@@ -199,6 +208,23 @@ export default function AcademicTermsPage() {
         <TermDetails term={term} closure={closureByTermId.get(term.id)} />
       ),
     },
+    {
+      header: 'Actions',
+      cell: (term) => (
+        <Button
+          type="button"
+          variant="outline"
+          aria-label={`Edit ${term.school_year} ${termTypeLabel(term.term_type)} academic term`}
+          onClick={() => {
+            setDialogTerm(term)
+            setSaveMessage(null)
+            setDialogOpen(true)
+          }}
+        >
+          Edit
+        </Button>
+      ),
+    },
   ]
 
   return (
@@ -207,16 +233,34 @@ export default function AcademicTermsPage() {
         title="Academic terms"
         subtitle="Review calendar dates and the encoding status for your department."
         actions={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void academicTerms.refetch()}
-            disabled={academicTerms.isFetching}
-          >
-            {academicTerms.isFetching ? 'Refreshing…' : 'Refresh'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                setDialogTerm(null)
+                setSaveMessage(null)
+                setDialogOpen(true)
+              }}
+            >
+              Add academic term
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void academicTerms.refetch()}
+              disabled={academicTerms.isFetching}
+            >
+              {academicTerms.isFetching ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </div>
         }
       />
+
+      {saveMessage && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {saveMessage}
+        </p>
+      )}
 
       {academicTerms.isPending && (
         <Panel title="Academic term history">
@@ -258,6 +302,19 @@ export default function AcademicTermsPage() {
               {academicTerms.data.terms.length === 1 ? '' : 's'}
             </p>
           }
+        />
+      )}
+
+      {dialogOpen && (
+        <SchoolTermDialog
+          term={dialogTerm ?? undefined}
+          onClose={() => setDialogOpen(false)}
+          onSaved={() => {
+            setDialogOpen(false)
+            setSaveMessage(
+              dialogTerm ? 'Academic term updated.' : 'Academic term created.',
+            )
+          }}
         />
       )}
     </div>
