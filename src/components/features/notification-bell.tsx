@@ -42,7 +42,7 @@ function NotificationBell({
           </span>
         )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[360px] gap-0 p-0">
+      <PopoverContent align="end" className="w-[360px] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto gap-0 p-0">
         <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
           <h2 className="font-sans text-base font-semibold">Notifications</h2>
           {onMarkAllRead && (

@@ -21,7 +21,7 @@ function yearStanding(year: number | undefined) {
   return `${year}${suffix === 'one' ? 'st' : suffix === 'two' ? 'nd' : suffix === 'few' ? 'rd' : 'th'} year`
 }
 function AttemptDetails({ row, title }: { row: ApiSchema<'ChecklistSlotResult'>; title: string }) {
-  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm">Course info</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Requirement and attempt history</DialogDescription></DialogHeader>
+  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm">Course info</Button></DialogTrigger><DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto"><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Requirement and attempt history</DialogDescription></DialogHeader>
     <p>{row.earned_units} / {row.required_units} units · {row.satisfaction_source ?? 'No credited source'}</p>
     {row.credited_course_code && <p>Credited: {row.credited_course_code} {row.credited_course_title}</p>}
     {row.attempts?.length ? <ul className="space-y-3">{row.attempts.map(a => <li key={a.attempt_id} className="border-b pb-2"><strong>{a.term_label}</strong><p>Midterm: {a.midterm_grade ?? a.midterm_status ?? '—'} · Final: {a.final_grade ?? a.recorded_status} · Completion: {a.completion_grade ?? '—'}</p><p>Instructor: {a.instructor || 'Not recorded'}{a.inc_deadline && ` · INC deadline: ${a.inc_deadline}`}</p></li>)}</ul> : <p>No attempts recorded.</p>}
