@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { AdviserPage } from '../../Adviser'
 import { useAuth } from '@/hooks/use-auth'
@@ -50,8 +50,9 @@ function RecentNotes({ id, userId, isAdmin }: { id: string; userId: string; isAd
   const { data, error } = useScopedRequest(JSON.stringify([userId, id, revision]), true, () => getNotes(id))
   async function save() {
     if (!text.trim()) return
+    const submitted = text
     setBusy(true); setSaveError(''); setMessage('')
-    try { await addNote(id, text.trim()); setText(''); setMessage('Note added.'); setRevision(n => n + 1) }
+    try { await addNote(id, submitted.trim()); setText(current => current === submitted ? '' : current); setMessage('Note added.'); setRevision(n => n + 1) }
     catch (e) { setSaveError(e instanceof Error ? e.message : 'Unable to add note.') }
     finally { setBusy(false) }
   }
@@ -69,14 +70,15 @@ function RecentNotes({ id, userId, isAdmin }: { id: string; userId: string; isAd
 
 function AdvisingContent({ id, userId, isAdmin, isMockMode }: { id: string; userId: string; isAdmin: boolean; isMockMode: boolean }) {
   const [term, setTerm] = useState('')
+  const termRef = useRef(term)
   const [revision, setRevision] = useState(0)
   const [message, setMessage] = useState('')
   const terms = useScopedRequest(JSON.stringify([userId, 'terms']), true, getAdvisingTerms)
   const data = useScopedRequest(JSON.stringify([userId, id, term, revision]), !!term, () => getAdvisingData(id, term))
   const selectedTerm = terms.data?.find(item => item.id === term)
-  return <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(280px,1fr)]"><Panel title="Course recommendations" description={selectedTerm ? `${selectedTerm.school_year} · ${selectedTerm.term_type}` : 'Select a school term to review the plan.'} flush action={terms.data && <label className="grid gap-1 text-xs font-medium">Term<select aria-label="School term" className="max-w-48 rounded-md border border-border bg-white px-3 py-2 text-sm" value={term} onChange={e => { setTerm(e.target.value); setMessage('') }}><option value="">Select term</option>{terms.data.map(t => <option key={t.id} value={t.id}>{t.school_year} · {t.term_type}</option>)}</select></label>}>
+  return <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(280px,1fr)]"><Panel title="Course recommendations" description={selectedTerm ? `${selectedTerm.school_year} · ${selectedTerm.term_type}` : 'Select a school term to review the plan.'} flush action={terms.data && <label className="grid gap-1 text-xs font-medium">Term<select aria-label="School term" className="max-w-48 rounded-md border border-border bg-white px-3 py-2 text-sm" value={term} onChange={e => { termRef.current = e.target.value; setTerm(e.target.value); setMessage('') }}><option value="">Select term</option>{terms.data.map(t => <option key={t.id} value={t.id}>{t.school_year} · {t.term_type}</option>)}</select></label>}>
     {terms.error && <p role="alert" className="p-5">{terms.error}</p>}{!terms.data && !terms.error && <p role="status" className="p-5">Loading terms…</p>}{terms.data && terms.data.length === 0 && <p className="p-5 text-sm text-muted-foreground">No school terms available.</p>}
-    {!term && terms.data && terms.data.length > 0 && <div className="flex flex-wrap items-center gap-3 p-5"><span className="text-sm">0 selected</span><Button disabled>Add selected to plan</Button></div>}{term && !data.data && !data.error && <p role="status" className="p-5">Loading advising plan…</p>}{data.error && <div role="alert" className="space-y-3 p-5"><p>{data.error}</p><Button variant="outline" onClick={() => setRevision(n => n + 1)}>Try again</Button></div>}{message && <p role="status" className="px-5 pt-4">{message}</p>}{data.data && <PlanEditor key={`${term}:${revision}`} data={data.data} id={id} term={term} onSaved={() => { setMessage('Plan saved.'); setRevision(n => n + 1) }} />}
+    {!term && terms.data && terms.data.length > 0 && <div className="flex flex-wrap items-center gap-3 p-5"><span className="text-sm">0 selected</span><Button disabled>Add selected to plan</Button></div>}{term && !data.data && !data.error && <p role="status" className="p-5">Loading advising plan…</p>}{data.error && <div role="alert" className="space-y-3 p-5"><p>{data.error}</p><Button variant="outline" onClick={() => setRevision(n => n + 1)}>Try again</Button></div>}{message && <p role="status" className="px-5 pt-4">{message}</p>}{data.data && <PlanEditor key={`${term}:${revision}`} data={data.data} id={id} term={term} onSaved={() => { if (termRef.current !== term) return; setMessage('Plan saved.'); setRevision(n => n + 1) }} />}
   </Panel><div className="min-w-0"><RecentNotes id={id} userId={userId} isAdmin={isAdmin} /><AdvisingAssistant key={`${userId}:${id}`} studentId={id} isMockMode={isMockMode} /></div></div>
 }
 export default function AdviseeAdvising() {

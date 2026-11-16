@@ -33,14 +33,14 @@ describe('term advising identity',()=>{
   expect(screen.queryByRole('button',{name:'Save note'})).toBeNull()
   expect(screen.getByRole('link',{name:'View all notes'}).getAttribute('href')).toBe('/adviser/advisee/student-two/notes')
  })
- it('shows the mockup controls without offering an unsupported mock save',async()=>{
+ it('allows note saving in mock mode',async()=>{
   auth.isMockMode=true
   vi.mocked(getAdvisingTerms).mockResolvedValue([{id:'term-two',school_year:'2026',term_type:'1st Semester'}] as ApiSchema<'SchoolTerm'>[])
   vi.mocked(getNotes).mockResolvedValueOnce({isCurrent:true,notes:[]})
   render(page())
   expect((await screen.findByRole('button',{name:'Add selected to plan'}) as HTMLButtonElement).disabled).toBe(true)
   fireEvent.change(await screen.findByLabelText('Write an advising note'),{target:{value:'Draft note'}})
-  expect((screen.getByRole('button',{name:'Save note'}) as HTMLButtonElement).disabled).toBe(true)
+  expect((screen.getByRole('button',{name:'Save note'}) as HTMLButtonElement).disabled).toBe(false)
   fireEvent.click(screen.getByRole('button',{name:'Cancel'}))
   expect((screen.getByLabelText('Write an advising note') as HTMLTextAreaElement).value).toBe('')
  })
