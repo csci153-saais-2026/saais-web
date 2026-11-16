@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertIcon, CheckIcon, EyeIcon } from '@/components/icons'
+import { useNavigate } from 'react-router'
 import { useAuth } from '@/hooks/use-auth'
 import {
   changeAuthenticatedPassword,
@@ -12,6 +13,7 @@ import {
 } from '@/lib/auth/auth-service'
 
 export default function ChangePasswordPage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [currentPassword, setCurrentPassword] = React.useState('')
   const [newPassword, setNewPassword] = React.useState('')
@@ -100,14 +102,14 @@ export default function ChangePasswordPage() {
         ) : (
           <>
             {successMessage && (
-              <Alert className="mb-4 bg-primary/10 text-primary border-primary/20">
+              <Alert role="status" className="mb-4 border-primary/20 bg-primary/10 text-primary">
                 <CheckIcon className="w-4 h-4 text-primary" />
                 <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
 
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert role="alert" variant="destructive" className="mb-4">
                 <AlertIcon />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
@@ -208,9 +210,14 @@ export default function ChangePasswordPage() {
                 ))}
               </ul>
 
-              <Button type="submit" disabled={submitting} className="w-full mt-2">
-                {submitting ? 'Updating password…' : 'Change Password'}
-              </Button>
+              <div className="mt-1 flex flex-wrap items-center gap-2.5">
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? 'Updating password…' : 'Update password'}
+                </Button>
+                <Button type="button" variant="ghost" disabled={submitting} onClick={() => navigate(-1)}>
+                  Cancel
+                </Button>
+              </div>
             </form>
           </>
         )}
