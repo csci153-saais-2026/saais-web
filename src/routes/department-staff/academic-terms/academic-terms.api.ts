@@ -10,10 +10,32 @@ const READ_LIMIT = 1000
 
 export type SchoolTerm = ApiSchema<'SchoolTerm'>
 export type DepartmentTermEncoding = ApiSchema<'DepartmentTermEncodingClosure'>
+export type SchoolTermInsert = ApiSchema<'SchoolTermInsert'>
+export type SchoolTermUpdate = Omit<ApiSchema<'SchoolTermUpdate'>, 'is_locked'>
 
 export interface AcademicTermsData {
   readonly terms: readonly SchoolTerm[]
   readonly departmentClosures: readonly DepartmentTermEncoding[]
+}
+
+export async function createSchoolTerm(
+  body: SchoolTermInsert,
+): Promise<SchoolTerm> {
+  return unwrapApiResult<SchoolTerm>(
+    await apiClient.POST('/functions/v1/catalog/school_term', { body }),
+  )
+}
+
+export async function updateSchoolTerm(
+  id: string,
+  body: SchoolTermUpdate,
+): Promise<SchoolTerm> {
+  return unwrapApiResult<SchoolTerm>(
+    await apiClient.PATCH('/functions/v1/catalog/school_term/{id}', {
+      params: { path: { id } },
+      body,
+    }),
+  )
 }
 
 function completeRead<T>(
