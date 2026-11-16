@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,158 +9,130 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/features/form-field'
-import { ApiClientError } from '@/lib/api'
-import type { ApiSchema } from '@/lib/api'
-import { useAdviserReassignment } from '@/hooks/use-adviser-assignments'
-
-type StudentRow = ApiSchema<'StudentRosterItem'>
-
-type AdviserOption = {
-  id: string
-  label: string
-}
+import type { StudentFilterOption } from '@/routes/department-staff/students/students.api'
+import type { AdviserAssignmentRosterItem } from '@/hooks/use-adviser-assignments'
+import { reassignmentSchema } from './reassignment.schema'
 
 function getTodayInAsiaManila(): string {
-  const now = new Date()
-  const formatter = new Intl.DateTimeFormat('en-CA', {
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  })
-  return formatter.format(now)
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
+  return `${values.year}-${values.month}-${values.day}`
 }
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof ApiClientError) {
-    if (error.isForbidden) {
-      return 'Your account is not permitted to reassign advisers in this department.'
-    }
-    if (error.isAuthError) {
-      return 'Your session could not be verified. Sign in again and retry.'
-    }
-    if (error.isNetworkError) {
-      return 'Could not reach the adviser reassignment service. Check your connection and retry.'
-    }
-    return error.message
-  }
+function formatCalendarDate(value: string): string {
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return `Invalid date (${value})`
 
-  if (error instanceof Error) return error.message
-  return 'The adviser reassignment could not be submitted.'
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date)
+}
+
+type FieldErrors = {
+  adviser_id?: string
+  effective_since?: string
+  reason?: string
 }
 
 export function ReassignAdviserDialog({
   students,
   advisers,
-  open,
   onClose,
-  onSuccess,
 }: {
-  students: StudentRow[]
-  advisers: AdviserOption[]
-  open: boolean
+  students: readonly AdviserAssignmentRosterItem[]
+  advisers: readonly StudentFilterOption[]
   onClose: () => void
-  onSuccess: () => void
 }) {
-  const mutation = useAdviserReassignment()
-  const [selectedAdviserId, setSelectedAdviserId] = useState('')
-  const [effectiveSince, setEffectiveSince] = useState(getTodayInAsiaManila())
+  const [selectedAdviserId, setSelectedAdviserId] = useState(
+    () => advisers[0]?.id ?? '',
+  )
+  const [effectiveSince, setEffectiveSince] = useState(getTodayInAsiaManila)
   const [reason, setReason] = useState('')
-  const [localError, setLocalError] = useState<string | null>(null)
+  const [touchedFields, setTouchedFields] = useState<
+    Partial<Record<keyof FieldErrors, boolean>>
+  >({})
 
-  const studentIds = useMemo(() => students.map((student) => student.student_id), [students])
-  const selectedNames = useMemo(
-    () => students.map((student) => student.full_name),
+  const earliestAllowedDate = useMemo(
+    () =>
+      students.reduce((latest, item) => {
+        const startDate = item.currentAssignment?.start_date
+        return startDate && startDate > latest ? startDate : latest
+      }, ''),
     [students],
   )
-
-  useEffect(() => {
-    if (!open) return
-    if (advisers.length > 0) {
-      setSelectedAdviserId((current) => current || advisers[0].id)
-    } else {
-      setSelectedAdviserId('')
-    }
-    setEffectiveSince(getTodayInAsiaManila())
-    setReason('')
-    setLocalError(null)
-  }, [advisers, open])
-
-  const duplicates = students.filter(
-    (student) => student.adviser_id === selectedAdviserId,
+  const selectedAdviser = advisers.find(
+    (adviser) => adviser.id === selectedAdviserId,
   )
-
-  async function handleSubmit() {
-    if (studentIds.length === 0) {
-      setLocalError('Select at least one student to reassign.')
-      return
+  const parsed = reassignmentSchema.safeParse({
+    adviser_id: selectedAdviserId,
+    effective_since: effectiveSince,
+    reason,
+  })
+  const parsedEffectiveDate =
+    reassignmentSchema.shape.effective_since.safeParse(effectiveSince)
+  const fieldErrors: FieldErrors = {}
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0]
+      if (
+        (field === 'adviser_id' ||
+          field === 'effective_since' ||
+          field === 'reason') &&
+        !fieldErrors[field]
+      ) {
+        fieldErrors[field] = issue.message
+      }
     }
-
-    if (!selectedAdviserId) {
-      setLocalError('Select an active adviser in this department.')
-      return
-    }
-
-    if (!effectiveSince.trim()) {
-      setLocalError('Choose the effective date for the new assignment.')
-      return
-    }
-
-    const trimmedReason = reason.trim()
-    if (!trimmedReason) {
-      setLocalError('Add a short reason for this reassignment.')
-      return
-    }
-
-    if (duplicates.length === studentIds.length) {
-      setLocalError('All selected students already have this adviser assigned.')
-      return
-    }
-
-    setLocalError(null)
-
-    try {
-      await mutation.mutateAsync({
-        student_ids: studentIds,
-        adviser_id: selectedAdviserId,
-        effective_since: effectiveSince,
-        reason: trimmedReason,
-      })
-      onSuccess()
-    } catch (error) {
-      setLocalError(getErrorMessage(error))
-    }
+  }
+  if (!fieldErrors.adviser_id && !selectedAdviser) {
+    fieldErrors.adviser_id = 'Select an eligible active adviser in this department.'
+  }
+  if (
+    !fieldErrors.effective_since &&
+    parsedEffectiveDate.success &&
+    earliestAllowedDate &&
+    parsedEffectiveDate.data < earliestAllowedDate
+  ) {
+    fieldErrors.effective_since =
+      `The effective date cannot be before ${formatCalendarDate(earliestAllowedDate)}.`
   }
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Reassign adviser</DialogTitle>
+          <DialogTitle>Prepare adviser reassignment</DialogTitle>
           <DialogDescription>
-            This confirms a single multi-student reassignment for the selected department roster.
+            Review the selected students and proposed assignment. This step only prepares a preview;
+            it does not save changes.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="rounded-md border bg-muted/20 p-3 text-sm">
-            <p className="font-medium text-foreground">Selected students</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-              {selectedNames.map((name) => (
-                <li key={name}>{name}</li>
-              ))}
-            </ul>
-          </div>
-
-          <FormField label="Target adviser" htmlFor="reassign-adviser">
+          <FormField
+            label="Target adviser"
+            htmlFor="reassign-adviser"
+            error={touchedFields.adviser_id ? fieldErrors.adviser_id : undefined}
+          >
             <select
               id="reassign-adviser"
               value={selectedAdviserId}
+              aria-invalid={Boolean(touchedFields.adviser_id && fieldErrors.adviser_id)}
               className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-              onChange={(event) => setSelectedAdviserId(event.target.value)}
-              disabled={advisers.length === 0 || mutation.isPending}
+              onChange={(event) => {
+                setSelectedAdviserId(event.target.value)
+                setTouchedFields((current) => ({ ...current, adviser_id: true }))
+              }}
             >
-              <option value="">Select an adviser</option>
+              <option value="">Select an eligible adviser</option>
               {advisers.map((adviser) => (
                 <option key={adviser.id} value={adviser.id}>
                   {adviser.label}
@@ -170,58 +142,135 @@ export function ReassignAdviserDialog({
           </FormField>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="Effective since" htmlFor="reassign-effective-date">
+            <FormField
+              label="Effective since"
+              htmlFor="reassign-effective-date"
+              hint={
+                earliestAllowedDate
+                  ? `Must be on or after ${formatCalendarDate(earliestAllowedDate)} (Asia/Manila date).`
+                  : 'Use the calendar date in Asia/Manila.'
+              }
+              error={
+                touchedFields.effective_since
+                  ? fieldErrors.effective_since
+                  : undefined
+              }
+            >
               <input
                 id="reassign-effective-date"
                 type="date"
                 value={effectiveSince}
+                min={earliestAllowedDate || undefined}
+                aria-invalid={Boolean(
+                  touchedFields.effective_since && fieldErrors.effective_since,
+                )}
                 className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                onChange={(event) => setEffectiveSince(event.target.value)}
-                disabled={mutation.isPending}
+                onChange={(event) => {
+                  setEffectiveSince(event.target.value)
+                  setTouchedFields((current) => ({
+                    ...current,
+                    effective_since: true,
+                  }))
+                }}
               />
             </FormField>
 
             <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">Total selected</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{studentIds.length}</p>
+              <p className="font-medium text-foreground">Selected students</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {students.length}
+              </p>
             </div>
           </div>
 
-          <FormField label="Reason" htmlFor="reassign-reason">
+          <FormField
+            label="Reason"
+            htmlFor="reassign-reason"
+            hint="Required; use at most 2,000 characters."
+            error={touchedFields.reason ? fieldErrors.reason : undefined}
+          >
             <textarea
               id="reassign-reason"
               rows={4}
+              maxLength={2000}
               value={reason}
+              aria-invalid={Boolean(touchedFields.reason && fieldErrors.reason)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Explain the reassignment reason for audit purposes."
-              onChange={(event) => setReason(event.target.value)}
-              disabled={mutation.isPending}
+              placeholder="Explain the proposed reassignment."
+              onChange={(event) => {
+                setReason(event.target.value)
+                setTouchedFields((current) => ({ ...current, reason: true }))
+              }}
             />
           </FormField>
 
-          {localError && (
-            <p role="alert" className="text-sm text-destructive">
-              {localError}
-            </p>
-          )}
-
-          {mutation.isPending && (
-            <p role="status" className="text-sm text-muted-foreground">
-              Saving adviser reassignment…
-            </p>
-          )}
+          <section
+            aria-labelledby="reassignment-preview-heading"
+            className="space-y-3 rounded-md border bg-muted/20 p-4"
+          >
+            <div>
+              <h3
+                id="reassignment-preview-heading"
+                className="font-semibold text-foreground"
+              >
+                Reassignment preview
+              </h3>
+              <p role="status" className="text-sm text-muted-foreground">
+                Preview only — nothing will be saved in this step.
+              </p>
+            </div>
+            <ul className="divide-y">
+              {students.map((item) => {
+                const currentAssignment = item.currentAssignment
+                const currentAdviser =
+                  currentAssignment?.adviser_name ?? 'Adviser name unavailable'
+                return (
+                  <li
+                    key={item.student.student_id}
+                    className="grid gap-1 py-3 text-sm sm:grid-cols-2"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {item.student.full_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.student.student_number}
+                      </p>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
+                      <dt className="text-muted-foreground">Current adviser</dt>
+                      <dd>{currentAdviser}</dd>
+                      <dt className="text-muted-foreground">New adviser</dt>
+                      <dd>{selectedAdviser?.label ?? 'Select a target adviser'}</dd>
+                      <dt className="text-muted-foreground">Current since</dt>
+                      <dd>
+                        {currentAssignment
+                          ? formatCalendarDate(currentAssignment.start_date)
+                          : 'No current assignment'}
+                      </dd>
+                      <dt className="text-muted-foreground">Effective since</dt>
+                      <dd>
+                        {effectiveSince
+                          ? formatCalendarDate(effectiveSince)
+                          : 'Choose a date'}
+                      </dd>
+                    </dl>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="border-t pt-3 text-sm">
+              <p className="font-medium text-foreground">Reason</p>
+              <p className="whitespace-pre-wrap text-muted-foreground">
+                {reason.trim() || 'Enter a reason to complete the preview.'}
+              </p>
+            </div>
+          </section>
         </div>
 
-        <DialogFooter className="mt-6 gap-2">
-          <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={mutation.isPending || advisers.length === 0 || studentIds.length === 0}
-          >
-            Confirm reassignment
+        <DialogFooter className="mt-6">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Close preview
           </Button>
         </DialogFooter>
       </DialogContent>
