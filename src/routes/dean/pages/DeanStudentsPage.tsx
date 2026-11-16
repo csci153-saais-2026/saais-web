@@ -4,11 +4,13 @@ import { PageHeading } from "@/components/features/page-heading"
 import { SampleFooter } from "@/components/features/sample-footer"
 import { StudentDirectoryFilters } from "@/routes/dean/components/StudentDirectoryFilters"
 import { StudentDirectoryTable } from "@/routes/dean/components/StudentDirectoryTable"
+import { useDeanAudit } from "@/routes/dean/context/DeanAuditContext"
 import { FACULTY_STUDENTS } from "@/routes/dean/data/faculty-students"
 import type { DeanStudentSummary } from "@/routes/dean/types"
 
 export default function DeanStudentsPage() {
   const navigate = useNavigate()
+  const { recordAuditEvent } = useDeanAudit()
   const [query, setQuery] = useState("")
   const [curriculum, setCurriculum] = useState("all")
   const [adviser, setAdviser] = useState("all")
@@ -42,6 +44,12 @@ export default function DeanStudentsPage() {
   }
 
   const handleSelectStudent = (student: DeanStudentSummary) => {
+    recordAuditEvent({
+      action: "View",
+      student: `${student.studentNumber} · ${student.name}`,
+      studentNumber: student.studentNumber,
+      details: "Viewed student academic record",
+    })
     navigate(`/dean/students/${encodeURIComponent(student.studentNumber)}`)
   }
 

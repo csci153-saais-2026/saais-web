@@ -11,29 +11,8 @@ import { DeanReadOnlyNotice } from "@/routes/dean/components/DeanReadOnlyNotice"
 import { DeanStudentAuditTab } from "@/routes/dean/components/DeanStudentAuditTab"
 import { DeanStudentChecklistTab } from "@/routes/dean/components/DeanStudentChecklistTab"
 import { DeanStudentGradesTab } from "@/routes/dean/components/DeanStudentGradesTab"
+import { useDeanAudit } from "@/routes/dean/context/DeanAuditContext"
 import { getDeanStudentDetail } from "@/routes/dean/data/faculty-students"
-import type { DeanAuditEntry } from "@/routes/dean/types"
-
-const SEED_STUDENT_AUDIT: DeanAuditEntry[] = [
-  {
-    id: "seed-1",
-    timestamp: "16 Oct 2026 09:14",
-    actor: "Prof. Mara Reyes",
-    action: "View",
-    student: "Ana Reyes",
-    studentNumber: "23-1-01234",
-    details: "Opened checklist",
-  },
-  {
-    id: "seed-2",
-    timestamp: "14 Oct 2026 16:02",
-    actor: "Prof. Mara Reyes",
-    action: "Change",
-    student: "Ana Reyes",
-    studentNumber: "23-1-01234",
-    details: "CSci 25 final: 2.25 → 2.50",
-  },
-]
 
 const DEAN_RECORD_TABS = [
   { value: "checklist", label: "Checklist" },
@@ -44,6 +23,7 @@ const DEAN_RECORD_TABS = [
 export default function DeanStudentDetailPage() {
   const { studentNumber = "" } = useParams()
   const [activeTab, setActiveTab] = useState("checklist")
+  const { entries } = useDeanAudit()
   const student = getDeanStudentDetail(decodeURIComponent(studentNumber))
 
   if (!student) {
@@ -95,10 +75,10 @@ export default function DeanStudentDetailPage() {
       {activeTab === "audit" && (
         <DeanStudentAuditTab
           studentName={student.name}
-          entries={SEED_STUDENT_AUDIT.filter(
+          entries={entries.filter(
             (entry) =>
               entry.studentNumber === student.studentNumber ||
-              entry.student === student.name,
+              entry.student.includes(student.name),
           )}
         />
       )}
