@@ -5,6 +5,7 @@ import { StaffScopeProvider } from './shared/staff-scope-provider'
 import { useStaffScope } from './shared/use-staff-scope'
 
 const StudentsPage = lazy(() => import('./students/StudentsPage'))
+const CurriculaPage = lazy(() => import('./curricula/CurriculaPage'))
 
 function DepartmentStaffContent() {
   const scope = useStaffScope()
@@ -90,6 +91,7 @@ function DepartmentStaffContent() {
             ) : (
               <Routes>
                 <Route path="students" element={<StudentsPage />} />
+                <Route path="curricula" element={<CurriculaPage />} />
                 <Route
                   path="*"
                   element={
