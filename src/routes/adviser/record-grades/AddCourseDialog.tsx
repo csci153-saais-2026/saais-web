@@ -1,0 +1,14 @@
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import type { getTermOfferings } from './encode.api'
+
+type Offering = Awaited<ReturnType<typeof getTermOfferings>>[number]
+export function AddCourseDialog({ offerings, unavailable, disabled, onAdd }: { offerings: Offering[]; unavailable: string[]; disabled?: boolean; onAdd: (id: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState('')
+  const matches = offerings.filter(item => `${item.code} ${item.title}`.toLowerCase().includes(search.toLowerCase().trim()))
+  const groups = [{ label: 'Required courses', items: matches.filter(item => item.direct_curriculum_slot_id) }, { label: 'Other offered courses', items: matches.filter(item => !item.direct_curriculum_slot_id) }]
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" disabled={disabled}><span aria-hidden="true">+</span> Add course</Button></DialogTrigger><DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"><DialogHeader className="border-b p-5"><DialogTitle>Add course</DialogTitle><DialogDescription>Choose a course to add to the selected advisee and term.</DialogDescription></DialogHeader><div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-5"><label><span className="sr-only">Search courses</span><input className="w-full rounded-md border border-border p-3" placeholder="Search courses by code or title" value={search} onChange={event => setSearch(event.target.value)} /></label>{groups.map(group => group.items.length > 0 && <fieldset key={group.label} className="grid gap-2"><legend className="mb-2 text-xs font-semibold uppercase tracking-wider">{group.label}</legend>{group.items.map(item => <label key={item.offering.id} className="flex items-center gap-3 rounded-md border border-border p-3 has-[:disabled]:opacity-50"><input type="radio" name="add-course" value={item.offering.id} checked={selected === item.offering.id} disabled={unavailable.includes(item.offering.id)} onChange={() => setSelected(item.offering.id)} /><strong>{item.code}</strong><span>{item.title}</span>{unavailable.includes(item.offering.id) && <span className="text-muted-foreground">Already added</span>}</label>)}</fieldset>)}{!matches.length && <p>No courses match your search.</p>}</div><div className="flex justify-end gap-2 border-t p-4"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button disabled={!selected || unavailable.includes(selected)} onClick={() => { onAdd(selected); setSelected(''); setSearch(''); setOpen(false) }}>Add course</Button></div></DialogContent></Dialog>
+}

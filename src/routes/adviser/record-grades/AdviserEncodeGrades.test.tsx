@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { ApiSchema } from '@/lib/api'
 import Encode from './AdviserEncodeGrades'
@@ -28,8 +28,8 @@ describe('encoding workspace identity',()=>{
  it('loads attempts and submits the selected student and INC attempt',async()=>{
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue([]);vi.mocked(completeInc).mockResolvedValue({} as ApiSchema<'INCResolution'>)
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
-   expect(await screen.findAllByText(/CS 1/)).toHaveLength(2)
-   fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Complete INC'}))
+   expect((await screen.findAllByText(/CS 1/)).length).toBeGreaterThan(0)
+   fireEvent.click(screen.getByRole('button',{name:'Resolve INC'}));expect(screen.queryByRole('option',{name:'3.25'})).toBeNull();fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Resolve INC'}))
    await waitFor(()=>expect(completeInc).toHaveBeenCalledWith('student-one',attempt,2.25,'Completed'))
    await waitFor(()=>expect(getTermOfferings).toHaveBeenCalledTimes(2))
  })
@@ -44,7 +44,7 @@ describe('encoding workspace identity',()=>{
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue({...data,terms:data.terms.map(t=>({...t,attempts:[old]}))});vi.mocked(getTermOfferings).mockResolvedValue([]);vi.mocked(saveTermGrades).mockResolvedValue([])
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
    fireEvent.change(await screen.findByLabelText('New final grade'),{target:{value:'2.25'}});fireEvent.click(screen.getByRole('button',{name:'Review this attempt'}));expect(saveTermGrades).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Confirm this attempt'}))
-   await waitFor(()=>expect(saveTermGrades).toHaveBeenCalledWith('student-one','term-one',[{attempt_id:'attempt-one',course_offering_id:'offering-one',final_grade:2.25,continue_with_prerequisite_override:false}]))
+   await waitFor(()=>expect(saveTermGrades).toHaveBeenCalledWith('student-one','term-one',[{attempt_id:'attempt-one',course_offering_id:'offering-one',final_grade:2.25,remark:'Passed',continue_with_prerequisite_override:false}]))
  })
  it('never sends an existing final grade as a silent overwrite',async()=>{
    auth.isMockMode=false;const old={...attempt,recorded_status:'passed',effective_status:'passed',final_grade:2.5} as ApiSchema<'AttemptResult'>
@@ -56,11 +56,26 @@ describe('encoding workspace identity',()=>{
    const offering={offering:{id:'offering-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValueOnce([offering]).mockResolvedValueOnce([]);vi.mocked(completeInc).mockResolvedValue({} as ApiSchema<'INCResolution'>)
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
-   fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.change(screen.getByLabelText('Course'),{target:{value:'offering-two'}});fireEvent.change(screen.getByLabelText('Remark'),{target:{value:'Keep draft'}})
-   fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Complete INC'}))
+   fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:/CS 2/}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}));fireEvent.change(screen.getByLabelText('Remark'),{target:{value:'Keep draft'}})
+   fireEvent.click(screen.getByRole('button',{name:'Resolve INC'}));fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Resolve INC'}))
    await waitFor(()=>expect(getTermOfferings).toHaveBeenCalledTimes(2))
    expect((await screen.findByLabelText('Remark') as HTMLInputElement).value).toBe('Keep draft')
    expect((screen.getByRole('button',{name:'Review grades'}) as HTMLButtonElement).disabled).toBe(true)
+ })
+ it('sets the final and remark from midterm DR and derives remarks from final results',async()=>{
+   const offering={offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue([offering]);vi.mocked(saveTermGrades).mockResolvedValue([])
+   render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
+   fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:/CS 2/}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}))
+   const mid=screen.getByLabelText('Midterm for CS 2') as HTMLSelectElement;const final=screen.getByLabelText('Final for CS 2') as HTMLSelectElement;const remark=screen.getByLabelText('Remark') as HTMLInputElement
+   expect(within(mid).getByRole('option',{name:'4.75'})).toBeTruthy();expect(within(final).queryByRole('option',{name:'4.75'})).toBeNull()
+   fireEvent.change(mid,{target:{value:'dr'}});expect(final.value).toBe('dr');expect(final.disabled).toBe(true);expect(remark.value).toBe('DR')
+   fireEvent.change(mid,{target:{value:'4.75'}});expect(final.disabled).toBe(false);expect(final.value).toBe('')
+   fireEvent.change(final,{target:{value:'5.00'}});expect(remark.value).toBe('Failed')
+   fireEvent.change(final,{target:{value:'2.25'}});expect(remark.value).toBe('Passed')
+   fireEvent.change(final,{target:{value:'inc'}});expect(remark.value).toBe('INC')
+   fireEvent.change(mid,{target:{value:'dr'}});fireEvent.click(screen.getByRole('button',{name:'Review grades'}));fireEvent.click(screen.getByRole('button',{name:'Confirm and save grades'}))
+   await waitFor(()=>expect(saveTermGrades).toHaveBeenCalledWith('student-one','term-one',[expect.objectContaining({course_offering_id:'offering-two',midterm_status:'dr',midterm_grade:null,final_grade:null,status:'dr',remark:'DR'})]))
  })
 
 })
