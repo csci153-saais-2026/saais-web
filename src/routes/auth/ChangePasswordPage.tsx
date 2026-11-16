@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertIcon, CheckIcon, EyeIcon } from '@/components/icons'
+import { AlertIcon, CheckIcon, EyeIcon, FlagIcon, ShieldIcon } from '@/components/icons'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/hooks/use-auth'
 import {
@@ -222,6 +222,20 @@ export default function ChangePasswordPage() {
           </>
         )}
       </Panel>
+          <aside aria-label="Password security information" className="grid content-start gap-3">
+            <Alert variant="advisory" className="items-start">
+              <FlagIcon aria-hidden />
+              <AlertDescription>
+                If you sign in with <strong>Continue with Google</strong>, your password is managed by Google and this page does not change it.
+              </AlertDescription>
+            </Alert>
+            <Alert variant="success" className="items-start">
+              <ShieldIcon aria-hidden />
+              <AlertDescription>
+                Changing your password signs you out of every other device. The change is written to the audit log; the password itself is never logged.
+              </AlertDescription>
+            </Alert>
+          </aside>
         </div>
       </div>
     </main>
