@@ -24,7 +24,7 @@ permissions:
 jobs:
   lint-and-build:
     name: Lint & Build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64]
 
     steps:
       - name: Checkout code
@@ -34,6 +34,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          architecture: arm64
           cache: "npm"
 
       - name: Install dependencies
@@ -91,4 +92,5 @@ jobs:
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
+          os: linux-arm64
           token: ${{ secrets.CODECOV_TOKEN }}
