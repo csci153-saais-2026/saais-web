@@ -5,12 +5,26 @@ import { ApiClientError, normalizeApiError } from '@/lib/api'
 import type { AcademicTermsData } from './academic-terms.api'
 import AcademicTermsPage from './AcademicTermsPage'
 
-const { useAcademicTerms } = vi.hoisted(() => ({
+const { useAcademicTerms, createMutation, updateMutation } = vi.hoisted(() => ({
   useAcademicTerms: vi.fn(),
+  createMutation: {
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  },
+  updateMutation: {
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  },
 }))
 
 vi.mock('@/hooks/use-academic-terms', () => ({
   useAcademicTerms: () => useAcademicTerms(),
+  useCreateSchoolTerm: () => createMutation,
+  useUpdateSchoolTerm: () => updateMutation,
 }))
 
 afterEach(() => {
@@ -48,6 +62,28 @@ function success(data: AcademicTermsData): Partial<UseQueryResult<AcademicTermsD
 }
 
 describe('AcademicTermsPage', () => {
+  it('opens create and edit forms from the terms page', () => {
+    useAcademicTerms.mockReturnValue(
+      success({ terms: [lockedTerm], departmentClosures: [] }),
+    )
+
+    render(<AcademicTermsPage />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Edit 2025 - 2026 2nd Semester academic term',
+      }),
+    )
+    expect(screen.getByRole('dialog', { name: 'Edit academic term' })).toBeTruthy()
+    expect(
+      (screen.getByLabelText('Actual end date') as HTMLInputElement).value,
+    ).toBe('2026-05-30')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add academic term' }))
+    expect(screen.getByRole('dialog', { name: 'Create academic term' })).toBeTruthy()
+  })
+
   it('shows institutional lock separately from this department closure and exposes read-only details', async () => {
     useAcademicTerms.mockReturnValue(
       success({
