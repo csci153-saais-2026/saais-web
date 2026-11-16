@@ -59,7 +59,7 @@ export function useNotifications(userId: string | undefined, disabled: boolean, 
   })), [items, role])
   return {
     items,
-    loading: query.isLoading || query.isFetching,
+    loading: query.isLoading,
     error: query.error instanceof Error ? query.error.message : query.error ? 'Unable to load notifications.' : null,
     markAllRead,
     markRead,
