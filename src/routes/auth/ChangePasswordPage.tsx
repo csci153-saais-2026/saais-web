@@ -30,7 +30,7 @@ export default function ChangePasswordPage() {
   const isGoogleManagedAccount = user?.authProvider === 'google'
   const passwordRules = [
     { label: 'At least 12 characters', met: newPassword.length >= 12 && newPassword.length <= 128 },
-    { label: 'Contains uppercase, lowercase, and a number', met: /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword) },
+    { label: 'Contains uppercase, lowercase and a number', met: /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword) },
     { label: 'Different from your current password', met: newPassword.length > 0 && newPassword !== currentPassword },
     { label: 'Both new password fields match', met: confirmPassword.length > 0 && newPassword === confirmPassword },
   ]
@@ -77,13 +77,13 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-[30px]">
+    <main className="min-w-0 flex-1 p-0">
       <div className="w-full">
         <header className="mb-6">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Change password</h1>
           <p className="mt-1 text-sm text-muted-foreground">Update the password for your account.</p>
         </header>
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(270px,2fr)]">
+        <div className="grid w-full max-w-[938px] grid-cols-1 items-start gap-[18px] min-[901px]:grid-cols-[minmax(0,560px)_minmax(0,360px)]">
       <Panel
         title="Your password"
         description="You'll need your current password to set a new one."
@@ -115,9 +115,9 @@ export default function ChangePasswordPage() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="grid gap-4">
+            <form onSubmit={handleSubmit} className="grid gap-0">
               <div className="grid gap-1.5">
-                <Label htmlFor="currentPassword">Current Password</Label>
+                <Label htmlFor="currentPassword" className="text-[12.5px] font-semibold leading-normal text-muted-foreground">Current password</Label>
                 <div className="relative">
                   <Input
                     id="currentPassword"
@@ -135,20 +135,22 @@ export default function ChangePasswordPage() {
                     aria-pressed={visiblePasswords.currentPassword}
                     onClick={() => togglePasswordVisibility('currentPassword')}
                   >
-                    <EyeIcon slashed={!visiblePasswords.currentPassword} aria-hidden />
+                    <EyeIcon className="size-[17px]" slashed={!visiblePasswords.currentPassword} aria-hidden />
                   </button>
                 </div>
               </div>
 
+              <div aria-hidden="true" className="my-5 h-px bg-border" />
+
+              <div className="flex flex-col gap-[18px]">
               <div className="grid gap-1.5">
-                <Label htmlFor="newPassword">New Password</Label>
+                <Label htmlFor="newPassword" className="text-[12.5px] font-semibold leading-normal text-muted-foreground">New password</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
                     type={visiblePasswords.newPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     required
-                    placeholder="At least 12 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="pr-11"
@@ -160,20 +162,19 @@ export default function ChangePasswordPage() {
                     aria-pressed={visiblePasswords.newPassword}
                     onClick={() => togglePasswordVisibility('newPassword')}
                   >
-                    <EyeIcon slashed={!visiblePasswords.newPassword} aria-hidden />
+                    <EyeIcon className="size-[17px]" slashed={!visiblePasswords.newPassword} aria-hidden />
                   </button>
                 </div>
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword" className="text-[12.5px] font-semibold leading-normal text-muted-foreground">Confirm new password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={visiblePasswords.confirmPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     required
-                    placeholder="Repeat new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pr-11"
@@ -185,12 +186,13 @@ export default function ChangePasswordPage() {
                     aria-pressed={visiblePasswords.confirmPassword}
                     onClick={() => togglePasswordVisibility('confirmPassword')}
                   >
-                    <EyeIcon slashed={!visiblePasswords.confirmPassword} aria-hidden />
+                    <EyeIcon className="size-[17px]" slashed={!visiblePasswords.confirmPassword} aria-hidden />
                   </button>
                 </div>
               </div>
+              </div>
 
-              <ul aria-label="Password requirements" className="grid gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-[13px]">
+              <ul aria-label="Password requirements" className="mt-[18px] grid gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-[13px]">
                 {passwordRules.map(rule => (
                   <li key={rule.label} className={`flex items-center gap-2.5 ${rule.met ? 'text-primary' : 'text-muted-foreground'}`}>
                     <span
@@ -204,7 +206,7 @@ export default function ChangePasswordPage() {
                 ))}
               </ul>
 
-              <div className="mt-1 flex flex-wrap items-center gap-2.5">
+              <div className="mt-5 flex flex-wrap items-center gap-2.5">
                 <Button type="submit" disabled={submitting}>
                   {submitting ? 'Updating password…' : 'Update password'}
                 </Button>
@@ -216,7 +218,7 @@ export default function ChangePasswordPage() {
           </>
         )}
       </Panel>
-          <aside aria-label="Password security information" className="grid content-start gap-3">
+          <aside aria-label="Password security information" className="grid content-start gap-[14px]">
             <Alert variant="advisory" className="items-start">
               <FlagIcon aria-hidden />
               <AlertDescription>
@@ -226,7 +228,7 @@ export default function ChangePasswordPage() {
             <Alert variant="success" className="items-start">
               <ShieldIcon aria-hidden />
               <AlertDescription>
-                Changing your password signs you out of every other device. The change is written to the audit log; the password itself is never logged.
+                Changing your password signs you out of every other device. The change is written to the audit log; the password itself never is.
               </AlertDescription>
             </Alert>
           </aside>
