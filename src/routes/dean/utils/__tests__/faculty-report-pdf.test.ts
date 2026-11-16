@@ -41,3 +41,4 @@ describe("faculty-report-pdf", () => {
     expect(raw).toContain("Faculty of Computing | All departments | read-only")
   })
 })
+

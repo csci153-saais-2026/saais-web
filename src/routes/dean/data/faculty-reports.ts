@@ -141,3 +141,4 @@ export const FACULTY_REPORTS: Readonly<Record<DepartmentFilter, FacultyDepartmen
     },
   },
 }
+

@@ -448,3 +448,4 @@ export function getDeanStudentDetail(studentNumber: string): DeanStudentDetail |
     gradeRows: DEFAULT_GRADE_ROWS,
   }
 }
+

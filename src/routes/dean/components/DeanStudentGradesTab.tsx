@@ -45,3 +45,4 @@ export function DeanStudentGradesTab({ student }: { student: DeanStudentDetail }
     />
   )
 }
+

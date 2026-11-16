@@ -17,3 +17,4 @@ export function DeanAuditActionPill({ action }: { action: DeanAuditAction }) {
     </Badge>
   )
 }
+
