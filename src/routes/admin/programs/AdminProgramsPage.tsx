@@ -315,10 +315,11 @@ export default function AdminProgramsPage() {
   ]
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
+    <div className="grid gap-2">
       <PageHeading
         title="Programs"
         subtitle="Maintain degree program catalog records and their organization and status."
+        className="mb-4"
         actions={
           <Button
             disabled={!catalogsLoaded || Boolean(catalogError)}

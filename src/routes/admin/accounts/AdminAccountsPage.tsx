@@ -279,10 +279,11 @@ export default function AdminAccountsPage() {
   }
 
   return (
-    <main className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
+    <div className="grid gap-2">
       <PageHeading
         title="Accounts and roles"
         subtitle="Manage institution-wide accounts, role assignments, and invitations."
+        className="mb-4"
         actions={
           <Button
             type="button"
@@ -688,6 +689,6 @@ export default function AdminAccountsPage() {
           </DialogContent>
         </Dialog>
       )}
-    </main>
+    </div>
   )
 }

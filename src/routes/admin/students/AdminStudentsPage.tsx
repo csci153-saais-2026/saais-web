@@ -291,10 +291,22 @@ export default function AdminStudentsPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
+    <div className="grid gap-2">
       <PageHeading
         title="Student directory"
         subtitle="Search and review the institution-wide student roster and academic overview."
+        className="mb-4"
+        actions={
+          <div className="w-full md:w-64 lg:w-[340px]">
+            <SearchInput
+              id="student-search"
+              aria-label="Search students"
+              value={search}
+              placeholder="Search by name or student number"
+              onChange={(event) => resetPageAnd(setSearch, event.target.value)}
+            />
+          </div>
+        }
       />
 
       {catalogError && (
@@ -338,14 +350,6 @@ export default function AdminStudentsPage() {
         aria-label="Student roster filters"
         className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
       >
-        <FormField label="Search students" htmlFor="student-search" className="sm:col-span-2">
-          <SearchInput
-            id="student-search"
-            value={search}
-            placeholder="Search by name or student number"
-            onChange={(event) => resetPageAnd(setSearch, event.target.value)}
-          />
-        </FormField>
         <FilterSelect
           id="student-faculty"
           label="Faculty / college"

@@ -455,10 +455,11 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
+    <div className="grid gap-2">
       <PageHeading
         title="System settings"
         subtitle="Configure institution-wide academic standing thresholds, sender email, and backup metadata."
+        className="mb-4"
       />
 
       {error && (

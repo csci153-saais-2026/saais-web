@@ -210,10 +210,11 @@ export default function AdminAuditLogPage() {
   const pageNumber = Math.floor(offset / AUDIT_PAGE_SIZE) + 1
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
+    <div className="grid gap-2">
       <PageHeading
         title="Audit log"
         subtitle="Review institution-wide, immutable system activity."
+        className="mb-4"
       />
 
       <Panel

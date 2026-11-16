@@ -210,10 +210,27 @@ export default function AdminFacultiesPage() {
   ]
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-2 p-4 sm:p-8">
+    <div className="grid gap-2">
       <PageHeading
         title="Faculties and departments"
         subtitle="Maintain the institutional faculty and department hierarchy."
+        className="mb-4"
+        actions={
+          <>
+            <Button
+              onClick={() => setDepartmentDialog(null)}
+              disabled={faculties.length === 0}
+            >
+              Add department
+            </Button>
+            <Button
+              onClick={() => setFacultyDialog(null)}
+              disabled={loading || Boolean(error)}
+            >
+              Add faculty
+            </Button>
+          </>
+        }
       />
 
       {error && (
@@ -236,14 +253,6 @@ export default function AdminFacultiesPage() {
       <DataTablePanel
         title="Faculties"
         description="Institutional colleges and divisions, with department totals."
-        action={
-          <Button
-            onClick={() => setFacultyDialog(null)}
-            disabled={loading || Boolean(error)}
-          >
-            Add faculty
-          </Button>
-        }
         columns={facultyColumns}
         rows={!loading && !error ? faculties : []}
         rowKey={(faculty) => faculty.id}
@@ -259,14 +268,6 @@ export default function AdminFacultiesPage() {
       <DataTablePanel
         title="Departments"
         description="Academic departments and their parent faculties."
-        action={
-          <Button
-            onClick={() => setDepartmentDialog(null)}
-            disabled={faculties.length === 0}
-          >
-            Add department
-          </Button>
-        }
         columns={departmentColumns}
         rows={!loading && !error ? departments : []}
         rowKey={(department) => department.id}
