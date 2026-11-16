@@ -1,4 +1,9 @@
-import { apiClient, postgrestFilter, unwrapApiResult } from '@/lib/api'
+import {
+  apiClient,
+  parseContentRange,
+  postgrestFilter,
+  unwrapApiResult,
+} from '@/lib/api'
 import type {
   ApiSchema,
   OperationQuery,
@@ -39,6 +44,27 @@ function assertCompleteReferenceRead<T>(
       `${resource} filter options reached the ${FILTER_REFERENCE_LIMIT}-row reference-read limit; completeness could not be confirmed.`,
     )
   }
+}
+
+function completeReferenceRead<T>(
+  result: { data?: T[]; error?: unknown; response: Response },
+  resource: string,
+): T[] {
+  const rows = unwrapApiResult<T[]>(result)
+  if (!Array.isArray(rows)) {
+    throw new Error(`${resource} reference read returned invalid data.`)
+  }
+  const range = parseContentRange(result.response.headers.get('Content-Range'))
+  if (
+    rows.length >= FILTER_REFERENCE_LIMIT ||
+    result.response.status === 206 ||
+    (range?.total != null && range.total > rows.length)
+  ) {
+    throw new Error(
+      `${resource} reference read was incomplete; eligibility could not be confirmed.`,
+    )
+  }
+  return rows
 }
 
 export function listStudentRoster(
@@ -145,41 +171,74 @@ async function listDepartmentCurricula(
 }
 
 async function listDepartmentAdvisers(
+  departmentId: string,
   signal?: AbortSignal,
 ): Promise<StudentFilterOption[]> {
-  const result = await apiClient.GET('/rest/v1/adviser_assignment', {
+  const assignmentsResult = await apiClient.GET('/rest/v1/role_assignment', {
     params: {
       query: {
-        select:
-          'id,adviser_id,adviser_name,student_id,start_date,end_date,created_at',
+        role: postgrestFilter.eq('adviser'),
+        department_id: postgrestFilter.eq(departmentId),
+        select: 'id,profile_id,role,department_id',
+        order: 'profile_id.asc,id.asc',
         limit: FILTER_REFERENCE_LIMIT,
         offset: 0,
-        order: 'adviser_name.asc,id.asc',
       },
     },
     signal,
   })
-  const assignments = unwrapApiResult<ApiSchema<'AdviserAssignment'>[]>(
-    result,
+  const assignments = completeReferenceRead<ApiSchema<'RoleAssignment'>>(
+    assignmentsResult,
+    'Department adviser assignments',
+  ).filter(
+    (assignment) =>
+      assignment.role === 'adviser' &&
+      assignment.department_id === departmentId,
   )
-  if (!Array.isArray(assignments)) {
-    throw new Error('The adviser reference read returned invalid data.')
-  }
-  assertCompleteReferenceRead(assignments, 'Adviser')
-
-  const advisers = new Map<string, string>()
-  for (const assignment of assignments) {
-    if (
-      assignment.end_date === null &&
-      assignment.adviser_name
-    ) {
-      advisers.set(assignment.adviser_id, assignment.adviser_name)
-    }
+  const adviserIds = [...new Set(assignments.map((assignment) => assignment.profile_id))]
+  const adviserBatches: string[][] = []
+  for (
+    let start = 0;
+    start < adviserIds.length;
+    start += PROGRAM_FILTER_BATCH_SIZE
+  ) {
+    adviserBatches.push(
+      adviserIds.slice(start, start + PROGRAM_FILTER_BATCH_SIZE),
+    )
   }
 
-  return Array.from(advisers, ([id, label]) => ({ id, label })).sort(
-    (left, right) => left.label.localeCompare(right.label),
+  const adviserProfiles = await Promise.all(
+    adviserBatches.map(async (ids) => {
+      const result = await apiClient.GET('/rest/v1/profile', {
+        params: {
+          query: {
+            id: postgrestFilter.inList(ids),
+            status: postgrestFilter.eq('active'),
+            select: 'id,full_name,status',
+            order: 'full_name.asc,id.asc',
+            limit: FILTER_REFERENCE_LIMIT,
+            offset: 0,
+          },
+        },
+        signal,
+      })
+      return completeReferenceRead<ApiSchema<'Profile'>>(
+        result,
+        'Active department adviser profiles',
+      ).filter(
+        (profile) =>
+          ids.includes(profile.id) &&
+          profile.status === 'active' &&
+          typeof profile.full_name === 'string' &&
+          profile.full_name.trim().length > 0,
+      )
+    }),
   )
+
+  return adviserProfiles
+    .flat()
+    .map((profile) => ({ id: profile.id, label: profile.full_name }))
+    .sort((left, right) => left.label.localeCompare(right.label))
 }
 
 export async function listStudentFilterOptions(
@@ -188,7 +247,7 @@ export async function listStudentFilterOptions(
 ): Promise<StudentRosterFilterOptions> {
   const [curricula, advisers] = await Promise.all([
     listDepartmentCurricula(departmentId, signal),
-    listDepartmentAdvisers(signal),
+    listDepartmentAdvisers(departmentId, signal),
   ])
   return { curricula, advisers }
 }
