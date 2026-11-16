@@ -1,22 +1,29 @@
-import { PageHeading } from '@/components/features/page-heading'
-import { Panel } from '@/components/features/panel'
+import { lazy, Suspense } from 'react'
+import { Navigate, Route, Routes } from 'react-router'
 import { useAuth } from '@/hooks/use-auth'
+
+const StudentDashboardPage = lazy(
+  () => import('./dashboard/StudentDashboardPage'),
+)
 
 export default function StudentPortal() {
   const { user } = useAuth()
 
+  if (!user?.id) {
+    return null
+  }
+
   return (
-    <div className="max-w-5xl mx-auto p-8 grid gap-6">
-      <PageHeading
-        title="Student Portal"
-        subtitle={`Welcome, ${user?.fullName ?? 'Student'} (${user?.email ?? ''})`}
-      />
-      <Panel title="Academic Progress & Checklist" description="Interactive curriculum audit and tracking.">
-        <p className="text-sm text-muted-foreground">
-          View your degree requirements, prerequisite status, enrolled courses, and grades.
-        </p>
-      </Panel>
-    </div>
+    <Suspense fallback={<div className="p-8 text-muted-foreground">Loading…</div>}>
+      <Routes>
+        <Route index element={<StudentDashboardPage studentId={user.id} />} />
+        <Route
+          path="dashboard"
+          element={<StudentDashboardPage studentId={user.id} />}
+        />
+        <Route path="*" element={<Navigate to="/student" replace />} />
+      </Routes>
+    </Suspense>
   )
 }
 
