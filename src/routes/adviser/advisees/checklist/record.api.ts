@@ -60,7 +60,7 @@ export async function completeInc(studentId: string, attempt: ApiSchema<'Attempt
 }
 export async function getIncResolution(studentId: string, attemptId: string) {
   const rows = unwrapApiResult(await apiClient.GET('/rest/v1/inc_resolution', { params: { query: { student_id: postgrestFilter.eq(studentId), attempt_id: postgrestFilter.eq(attemptId), select: 'id,student_id,attempt_id,completion_grade,resolved_by,resolved_at,updated_by,updated_at,effective_status', limit: 1 } } }))
-  const result = rows.find(row => row.student_id === studentId && row.attempt_id === attemptId)
+  const result = rows.find(row => row.student_id.toLowerCase() === studentId.toLowerCase() && row.attempt_id === attemptId)
   if (!result) throw new Error('INC completion is unavailable for this attempt.')
   return result
 }
