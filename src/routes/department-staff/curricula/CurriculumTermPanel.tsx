@@ -1,10 +1,14 @@
 import { DataTablePanel, type Column } from '@/components/features/data-table-panel'
 import type { Course, CurriculumSlot, CurriculumTerm } from './curricula.api'
+import { Button } from '@/components/ui/button'
 
-export function CurriculumTermPanel({ term, slots, courses }: {
+export function CurriculumTermPanel({ term, slots, courses, onEdit, onDelete, actionsDisabled = false }: {
   term: CurriculumTerm
   slots: CurriculumSlot[]
   courses: Course[]
+  onEdit?: () => void
+  onDelete?: () => void
+  actionsDisabled?: boolean
 }) {
   const references = new Map(courses.map(course => [course.id, course]))
   const columns: Column<CurriculumSlot>[] = [
@@ -20,5 +24,9 @@ export function CurriculumTermPanel({ term, slots, courses }: {
     { header: 'Course units', numeric: true, cell: slot => slot.course_id ? references.get(slot.course_id)?.units ?? 'Unavailable' : 'Not fixed' },
     { header: 'Nominal slot units', numeric: true, cell: slot => slot.nominal_units ?? 'Unavailable' },
   ]
-  return <DataTablePanel title={`Year ${term.year_level} - Term ${term.term_sequence}`} description="Curriculum position; course units and nominal requirement units are shown separately." rows={slots} columns={columns} rowKey={slot => slot.id} empty="No requirements are available for this term." />
+  const label = `Year ${term.year_level} - Term ${term.term_sequence}`
+  return <DataTablePanel title={label} description="Curriculum position; course units and nominal requirement units are shown separately." action={<div className="flex flex-wrap gap-2">
+    {onEdit && <Button type="button" size="sm" variant="outline" disabled={actionsDisabled} aria-label={`Edit ${label}`} onClick={onEdit}>Edit term</Button>}
+    {onDelete && <Button type="button" size="sm" variant="destructive" disabled={actionsDisabled} aria-label={`Delete ${label}`} onClick={onDelete}>Delete term</Button>}
+  </div>} rows={slots} columns={columns} rowKey={slot => slot.id} empty="No requirements are available for this term." />
 }

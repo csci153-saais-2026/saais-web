@@ -8,9 +8,10 @@ import { ApiClientError } from '@/lib/api'
 import { CurriculumTermPanel } from './CurriculumTermPanel'
 import { useCurricula, useCurriculum, type VersionLifecycleAction } from '@/hooks/use-curricula'
 import { CurriculumVersionDialog } from './CurriculumVersionDialog'
-import type { CurriculumVersion } from './curricula.api'
+import type { CurriculumTerm, CurriculumVersion } from './curricula.api'
 import { CurriculumVersionLifecycleDialog } from './CurriculumVersionLifecycleDialog'
 import { CurriculumTermDialog } from './CurriculumTermDialog'
+import { CurriculumTermDeleteDialog } from './CurriculumTermDeleteDialog'
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -32,6 +33,7 @@ export default function CurriculaPage() {
   const [lifecycleMessage, setLifecycleMessage] = useState('')
   const [addingTerm, setAddingTerm] = useState<CurriculumVersion | null>(null)
   const [termMessage, setTermMessage] = useState('')
+  const [termAction, setTermAction] = useState<{ action: 'edit' | 'delete'; term: CurriculumTerm; version: CurriculumVersion; requirementCount: number } | null>(null)
   const versions = catalog.isError ? [] : catalog.data?.versions ?? []
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
@@ -42,6 +44,8 @@ export default function CurriculaPage() {
     {updated && <p role="status">Curriculum version updated.</p>}
     {lifecycleMessage && <p role="status">{lifecycleMessage}</p>}
     {termMessage && <p role="status">{termMessage}</p>}
+    {termAction?.action === 'edit' && <CurriculumTermDialog key={`edit:${termAction.term.id}`} term={termAction.term} version={termAction.version} onClose={() => setTermAction(null)} onUpdated={id => { setSelection(id); setTermAction(null); setTermMessage('Curriculum term updated.') }} />}
+    {termAction?.action === 'delete' && <CurriculumTermDeleteDialog key={termAction.term.id} term={termAction.term} version={termAction.version} requirementCount={termAction.requirementCount} onClose={() => setTermAction(null)} onDeleted={id => { setSelection(id); setTermAction(null); setTermMessage('Curriculum term deleted.') }} />}
     {addingTerm && <CurriculumTermDialog key={addingTerm.id} version={addingTerm} onClose={() => setAddingTerm(null)} onAdded={id => { setSelection(id); setAddingTerm(null); setTermMessage('Curriculum term added.'); setCreated(false); setUpdated(false); setLifecycleMessage('') }} />}
     {lifecycle && <CurriculumVersionLifecycleDialog key={`${lifecycle.action}:${lifecycle.version.id}`} action={lifecycle.action} version={lifecycle.version} programLabel={catalog.data?.programs.find(program => program.id === lifecycle.version.program_id)?.code ?? 'Program unavailable'} onClose={() => setLifecycle(null)} onRetireInstead={() => setLifecycle({ ...lifecycle, action: 'retire' })} onCompleted={(action, id) => {
       setSelection(action === 'delete' ? '' : id)
@@ -77,7 +81,14 @@ export default function CurriculaPage() {
       {detail.isError && <Panel title="Curriculum requirements"><p role="alert">{errorMessage(detail.error)}</p><Button type="button" variant="outline" disabled={detail.isFetching} onClick={() => void detail.refetch()}>Retry requirements</Button></Panel>}
       {detail.isSuccess && <>
         {detail.data.terms.length === 0 && <Panel title="Curriculum requirements"><p>No terms are available for this curriculum version.</p></Panel>}
-        {detail.data.terms.map(term => <CurriculumTermPanel key={term.id} term={term} slots={detail.data.slots.filter(slot => slot.curriculum_term_id === term.id)} courses={detail.data.courses} />)}
+        {detail.data.terms.map(term => {
+          const slots = detail.data.slots.filter(slot => slot.curriculum_term_id === term.id)
+          function openTermAction(action: 'edit' | 'delete') {
+            setTermMessage(''); setCreated(false); setUpdated(false); setLifecycleMessage('')
+            setTermAction({ action, term, version, requirementCount: slots.length })
+          }
+          return <CurriculumTermPanel key={term.id} term={term} slots={slots} courses={detail.data.courses} actionsDisabled={!catalog.isSuccess || catalog.isFetching || detail.isFetching} onEdit={() => openTermAction('edit')} onDelete={() => openTermAction('delete')} />
+        })}
       </>}
     </>}
   </div>

@@ -14,6 +14,14 @@ export async function createCurriculumTerm(body: Pick<ApiSchema<'CurriculumTermI
   return unwrapApiResult<CurriculumTerm>(await apiClient.POST('/functions/v1/catalog/curriculum_term', { body }))
 }
 
+export async function updateCurriculumTerm(id: string, body: ApiSchema<'CurriculumTermUpdate'>): Promise<CurriculumTerm> {
+  return unwrapApiResult<CurriculumTerm>(await apiClient.PATCH('/functions/v1/catalog/curriculum_term/{id}', { params: { path: { id } }, body }))
+}
+
+export async function deleteCurriculumTerm(id: string): Promise<void> {
+  unwrapApiResult(await apiClient.DELETE('/functions/v1/catalog/curriculum_term/{id}', { params: { path: { id } } }))
+}
+
 export async function createCurriculumVersion(body: NewCurriculumVersion): Promise<CurriculumVersion> {
   // Blank-version creation is approved for Step 19. Child creation is separate.
   return unwrapApiResult<CurriculumVersion>(await apiClient.POST('/functions/v1/catalog/curriculum_version', { body }))

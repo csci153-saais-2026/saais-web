@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { createCurriculumTerm, createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion } from './curricula.api'
+import { createCurriculumTerm, createCurriculumVersion, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumTerm, updateCurriculumVersion } from './curricula.api'
 
 vi.mock('@/lib/api', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -18,6 +18,26 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('Curriculum typed reads', () => {
+  it('edits and deletes via term endpoints without writing to child records', async () => {
+    let writes = 0
+    server.use(
+      http.patch('*/functions/v1/catalog/curriculum_term/:id', async ({ request, params }) => {
+        writes++
+        expect(params.id).toBe('term')
+        expect(await request.json()).toEqual({ year_level: 3, term_sequence: 2 })
+        return HttpResponse.json({ id: 'term', curriculum_version_id: 'version', year_level: 3, term_sequence: 2 })
+      }),
+      http.delete('*/functions/v1/catalog/curriculum_term/:id', ({ params }) => {
+        writes++
+        if (params.id === 'protected') return HttpResponse.json({ message: 'Last term is required' }, { status: 409 })
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    expect(await updateCurriculumTerm('term', { year_level: 3, term_sequence: 2 })).toMatchObject({ id: 'term', curriculum_version_id: 'version' })
+    await expect(deleteCurriculumTerm('term')).resolves.toBeUndefined()
+    await expect(deleteCurriculumTerm('protected')).rejects.toMatchObject({ isConflict: true, message: 'Last term is required' })
+    expect(writes).toBe(3)
+  })
   it('creates an empty positional term through one catalog operation', async () => {
     const body: Parameters<typeof createCurriculumTerm>[0] = { curriculum_version_id: 'version', year_level: 1, term_sequence: 3, slots: [] }
     let calls = 0
