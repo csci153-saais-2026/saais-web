@@ -276,7 +276,7 @@ describe('InvitePage & Password Flows', () => {
     fireEvent.change(screen.getByLabelText(/^Confirm New Password$/i), {
       target: { value: 'SamePassword123' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Change Password/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Update password/i }))
     expect(
       await screen.findByText(/must not be identical to your current password/i),
     ).toBeTruthy()

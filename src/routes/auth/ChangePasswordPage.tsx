@@ -201,6 +201,7 @@ export default function ChangePasswordPage() {
                     >
                       <CheckIcon className="size-3" />
                     </span>
+                    <span>{rule.met ? 'Met' : 'Not met'}</span>
                     {rule.label}
                   </li>
                 ))}
