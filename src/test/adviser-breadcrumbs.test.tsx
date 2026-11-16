@@ -179,14 +179,14 @@ describe('Adviser breadcrumbs in the shared top bar', () => {
     view.rerender(withQueryClient(viewRoot('/adviser/advisee/2022-01188/notes')))
     expect(getProfile.mock.calls[1][1].signal.aborted).toBe(true)
     await within(trail()).findByRole('link', { name: 'Jordan Flores' })
-    act(() => resolve(profileResult('Previous account student', '2022-01188')))
+    await act(async () => { resolve(profileResult('Previous account student', '2022-01188')) })
     expect(within(trail()).queryByText('Previous account student')).toBeNull()
   })
 
   it('keeps a neutral label on lookup errors', async () => {
     getProfile.mockRejectedValue(new Error('Unavailable'))
     setup('/adviser/advisee/missing/notes')
-    await waitFor(() => expect(getProfile).toHaveBeenCalledOnce())
+    await act(async () => { await waitFor(() => expect(getProfile).toHaveBeenCalledOnce()) })
     expect(within(trail()).getByRole('link', { name: 'Student record' })).toBeTruthy()
     expect(trail().querySelector('[aria-current="page"]')?.textContent).toBe('Notes')
   })
