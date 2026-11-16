@@ -25,7 +25,8 @@ const lockedTerm: AcademicTermsData['terms'][number] = {
   term_type: '2nd Semester',
   school_year: '2025 - 2026',
   is_locked: true,
-  override_flag: false,
+  override_flag: true,
+  override_at: '2026-07-01T00:00:00Z',
   starts_on: '2026-01-15',
   ends_on: '2026-05-30',
   encoding_deadline: '2026-06-15',
@@ -69,8 +70,14 @@ describe('AcademicTermsPage', () => {
     expect(screen.getAllByText('Locked')).toHaveLength(2)
     expect(screen.getAllByText('Open')).toHaveLength(2)
     expect(screen.getAllByText('15 Jun 2026')).toHaveLength(2)
+    const summary = screen.getByText('View term')
+    expect(summary.tagName).toBe('SUMMARY')
+    expect(summary.getAttribute('aria-label')).toBe(
+      'View details for 2025 - 2026, 2nd Semester',
+    )
+    expect(screen.queryByText('Institutional override')).toBeNull()
 
-    fireEvent.click(screen.getByText('View term'))
+    fireEvent.click(summary)
 
     expect(screen.getAllByText('Institution-wide lock')).toHaveLength(2)
     expect(
@@ -82,6 +89,37 @@ describe('AcademicTermsPage', () => {
     ).toBeTruthy()
     expect(screen.queryByRole('button', { name: /close encoding/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /add a term/i })).toBeNull()
+  })
+
+  it('shows department closure actor and time in read-only term details', () => {
+    useAcademicTerms.mockReturnValue(
+      success({
+        terms: [lockedTerm],
+        departmentClosures: [
+          {
+            id: 'closure-1',
+            school_term_id: 'term-1',
+            department_id: 'department-1',
+            is_closed: true,
+            closed_by_name: 'Department Staff',
+            closed_at: '2026-06-17T00:00:00Z',
+          },
+        ],
+      }),
+    )
+
+    render(<AcademicTermsPage />)
+
+    expect(screen.getAllByText('Closed')).toHaveLength(2)
+    fireEvent.click(screen.getByText('View term'))
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          element.textContent?.includes('Recorded by Department Staff on') === true,
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /reopen encoding/i })).toBeNull()
   })
 
   it('does not infer an open state when no department closure record exists', () => {
