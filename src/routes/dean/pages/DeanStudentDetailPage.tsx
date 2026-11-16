@@ -11,7 +11,7 @@ import { DeanReadOnlyNotice } from "@/routes/dean/components/DeanReadOnlyNotice"
 import { DeanStudentAuditTab } from "@/routes/dean/components/DeanStudentAuditTab"
 import { DeanStudentChecklistTab } from "@/routes/dean/components/DeanStudentChecklistTab"
 import { DeanStudentGradesTab } from "@/routes/dean/components/DeanStudentGradesTab"
-import { useDeanAudit } from "@/routes/dean/context/DeanAuditContext"
+import { useDeanAudit } from "@/routes/dean/context/dean-audit-context"
 import { getDeanStudentDetail } from "@/routes/dean/data/faculty-students"
 
 const DEAN_RECORD_TABS = [

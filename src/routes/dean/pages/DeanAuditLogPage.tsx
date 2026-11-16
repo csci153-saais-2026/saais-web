@@ -4,7 +4,7 @@ import { PageHeading } from "@/components/features/page-heading"
 import { SampleFooter } from "@/components/features/sample-footer"
 import { DeanAuditActionPill } from "@/routes/dean/components/DeanAuditActionPill"
 import { FacultyAuditFilters } from "@/routes/dean/components/FacultyAuditFilters"
-import { useDeanAudit } from "@/routes/dean/context/DeanAuditContext"
+import { useDeanAudit } from "@/routes/dean/context/dean-audit-context"
 
 const MONTHS: readonly string[] = [
   "jan",

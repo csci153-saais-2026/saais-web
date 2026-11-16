@@ -5,7 +5,7 @@ import { CohortStudentsDialog } from "@/routes/dean/components/CohortStudentsDia
 import { FacultyBatchGwaTable } from "@/routes/dean/components/FacultyBatchGwaTable"
 import { FacultyReportHeader } from "@/routes/dean/components/FacultyReportHeader"
 import { FacultyReportStatsAndDistribution } from "@/routes/dean/components/FacultyReportStatsAndDistribution"
-import { useDeanAudit } from "@/routes/dean/context/DeanAuditContext"
+import { useDeanAudit } from "@/routes/dean/context/dean-audit-context"
 import { FACULTY_REPORTS } from "@/routes/dean/data/faculty-reports"
 import type { BatchCurriculumRow, DepartmentFilter } from "@/routes/dean/types"
 import { downloadFacultyReportPdf } from "@/routes/dean/utils/faculty-report-pdf"

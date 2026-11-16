@@ -4,7 +4,7 @@ import { PageHeading } from "@/components/features/page-heading"
 import { SampleFooter } from "@/components/features/sample-footer"
 import { StudentDirectoryFilters } from "@/routes/dean/components/StudentDirectoryFilters"
 import { StudentDirectoryTable } from "@/routes/dean/components/StudentDirectoryTable"
-import { useDeanAudit } from "@/routes/dean/context/DeanAuditContext"
+import { useDeanAudit } from "@/routes/dean/context/dean-audit-context"
 import { FACULTY_STUDENTS } from "@/routes/dean/data/faculty-students"
 import type { DeanStudentSummary } from "@/routes/dean/types"
 

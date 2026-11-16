@@ -62,9 +62,6 @@ function resolveRoleFromPath(
 }
 
 function resolveCrumbs(pathname: string, portalLabel: string, homeHref: string): Crumb[] {
-  if (pathname.startsWith('/dean/reports')) {
-    return [{ label: portalLabel, to: homeHref }, { label: 'Faculty reports' }]
-  }
   if (pathname.startsWith('/dean/students/')) {
     const studentNumber = decodeURIComponent(pathname.slice('/dean/students/'.length))
     return [
@@ -72,12 +69,6 @@ function resolveCrumbs(pathname: string, portalLabel: string, homeHref: string):
       { label: 'Students', to: '/dean/students' },
       { label: studentNumber || 'Student record' },
     ]
-  }
-  if (pathname.startsWith('/dean/students')) {
-    return [{ label: portalLabel, to: homeHref }, { label: 'Students' }]
-  }
-  if (pathname.startsWith('/dean/audit-log')) {
-    return [{ label: portalLabel, to: homeHref }, { label: 'Audit log' }]
   }
   return [{ label: portalLabel, to: homeHref }]
 }
