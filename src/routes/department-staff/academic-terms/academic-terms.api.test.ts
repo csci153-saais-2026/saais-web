@@ -1,7 +1,14 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { listAcademicTerms } from './academic-terms.api'
+import {
+  createSchoolTerm,
+  listAcademicTerms,
+  updateSchoolTerm,
+  type SchoolTermInsert,
+  type SchoolTermUpdate,
+} from './academic-terms.api'
+import type { ApiSchema } from '@/lib/api'
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -17,6 +24,42 @@ vi.mock('@/lib/api', async (importOriginal) => {
 })
 
 const server = setupServer()
+
+const createBody: SchoolTermInsert = {
+  start_year: 2026,
+  end_year: 2027,
+  term_type: 'Summer',
+  starts_on: '2026-06-01',
+  ends_on: '2026-08-15',
+  encoding_deadline: '2026-08-31',
+  is_locked: false,
+}
+
+const updateBody: SchoolTermUpdate = {
+  start_year: 2026,
+  end_year: 2027,
+  term_type: 'Summer',
+  starts_on: '2026-06-01',
+  ends_on: '2026-08-15',
+  encoding_deadline: '2026-08-31',
+}
+
+function termResponse(id: string): ApiSchema<'SchoolTerm'> {
+  return {
+    id,
+    start_year: createBody.start_year,
+    end_year: createBody.end_year,
+    term_type: createBody.term_type,
+    school_year: '2026 - 2027',
+    is_locked: false,
+    override_flag: false,
+    starts_on: createBody.starts_on,
+    ends_on: createBody.ends_on,
+    encoding_deadline: createBody.encoding_deadline,
+    default_inc_deadline: '2027-08-15',
+    chronological_key: 20261,
+  }
+}
 
 beforeAll(() => server.listen())
 afterEach(() => server.resetHandlers())
@@ -74,6 +117,56 @@ describe('Academic term reads', () => {
     await expect(listAcademicTerms('department-1')).resolves.toEqual({
       terms: [term],
       departmentClosures: [departmentClosure],
+    })
+  })
+
+  describe('Academic term writes', () => {
+    it('creates a term through the transactional catalog operation', async () => {
+      const saved = termResponse('term-created')
+      server.use(
+        http.post('*/functions/v1/catalog/school_term', async ({ request }) => {
+          expect(await request.json()).toEqual(createBody)
+          return HttpResponse.json(saved, { status: 201 })
+        }),
+      )
+
+      await expect(createSchoolTerm(createBody)).resolves.toEqual(saved)
+    })
+
+    it('updates only editable fields through the transactional catalog operation', async () => {
+      const saved = termResponse('term-existing')
+      server.use(
+        http.patch(
+          '*/functions/v1/catalog/school_term/:id',
+          async ({ request, params }) => {
+            expect(params.id).toBe('term-existing')
+            expect(await request.json()).toEqual(updateBody)
+            return HttpResponse.json(saved)
+          },
+        ),
+      )
+
+      await expect(
+        updateSchoolTerm('term-existing', updateBody),
+      ).resolves.toEqual(saved)
+    })
+
+    it('surfaces duplicate conflicts and scoped write denials', async () => {
+      server.use(
+        http.post('*/functions/v1/catalog/school_term', () =>
+          HttpResponse.json({ code: 'CONFLICT', message: 'Duplicate term.' }, { status: 409 }),
+        ),
+        http.patch('*/functions/v1/catalog/school_term/:id', () =>
+          HttpResponse.json({ code: 'FORBIDDEN', message: 'Denied.' }, { status: 403 }),
+        ),
+      )
+
+      await expect(createSchoolTerm(createBody)).rejects.toMatchObject({
+        isConflict: true,
+      })
+      await expect(
+        updateSchoolTerm('term-existing', updateBody),
+      ).rejects.toMatchObject({ isForbidden: true })
     })
   })
 
