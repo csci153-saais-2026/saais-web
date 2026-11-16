@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { SampleFooter } from "@/components/features/sample-footer"
 import { FacultyReportHeader } from "@/routes/dean/components/FacultyReportHeader"
+import { FacultyReportStatsAndDistribution } from "@/routes/dean/components/FacultyReportStatsAndDistribution"
 import { FACULTY_REPORTS } from "@/routes/dean/data/faculty-reports"
 import type { DepartmentFilter } from "@/routes/dean/types"
 import { downloadFacultyReportPdf } from "@/routes/dean/utils/faculty-report-pdf"
@@ -20,6 +21,8 @@ export default function DeanReportsPage() {
         onDepartmentChange={setDepartment}
         onExportPdf={handleExportPdf}
       />
+
+      <FacultyReportStatsAndDistribution report={report} />
 
       <SampleFooter>Fictional sample records · Reference date: 28 October 2026</SampleFooter>
     </div>
