@@ -13,6 +13,14 @@ export async function createCurriculumSlot(body: ApiSchema<'CurriculumTermCourse
   return unwrapApiResult<CurriculumSlot>(await apiClient.POST('/functions/v1/catalog/curriculum_term_course', { body }))
 }
 
+export async function updateCurriculumSlot(id: string, body: ApiSchema<'CurriculumTermCourseUpdate'>): Promise<CurriculumSlot> {
+  return unwrapApiResult<CurriculumSlot>(await apiClient.PATCH('/functions/v1/catalog/curriculum_term_course/{id}', { params: { path: { id } }, body }))
+}
+
+export async function deleteCurriculumSlot(id: string): Promise<void> {
+  unwrapApiResult(await apiClient.DELETE('/functions/v1/catalog/curriculum_term_course/{id}', { params: { path: { id } } }))
+}
+
 /** Step 22 creates empty terms only; slot creation is a separate workflow. */
 export async function createCurriculumTerm(body: Pick<ApiSchema<'CurriculumTermInsert'>, 'curriculum_version_id' | 'year_level' | 'term_sequence'> & { slots: never[] }): Promise<CurriculumTerm> {
   return unwrapApiResult<CurriculumTerm>(await apiClient.POST('/functions/v1/catalog/curriculum_term', { body }))

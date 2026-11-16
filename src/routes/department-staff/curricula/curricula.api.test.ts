@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { createCurriculumSlot, createCurriculumTerm, createCurriculumVersion, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, listCurriculumCourses, readCurriculum, updateCurriculumTerm, updateCurriculumVersion } from './curricula.api'
+import { createCurriculumSlot, createCurriculumTerm, createCurriculumVersion, deleteCurriculumSlot, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, listCurriculumCourses, readCurriculum, updateCurriculumSlot, updateCurriculumTerm, updateCurriculumVersion } from './curricula.api'
 
 vi.mock('@/lib/api', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -51,6 +51,26 @@ describe('Curriculum typed reads', () => {
       ])
     }))
     await expect(listCurriculumCourses('department')).resolves.toMatchObject([{ id: 'active', department_id: 'department' }])
+  })
+  it('updates and deletes requirements through their typed catalog endpoints', async () => {
+    const body = { course_id: null, is_elective_slot: false, slot_type: 'ge' as const, slot_label: 'Humanities GE', nominal_units: 2.5 }
+    let deletes = 0
+    server.use(
+      http.patch('*/functions/v1/catalog/curriculum_term_course/:id', async ({ request, params }) => {
+        expect(params.id).toBe('slot')
+        expect(await request.json()).toEqual(body)
+        return HttpResponse.json({ ...body, id: 'slot', curriculum_term_id: 'term' })
+      }),
+      http.delete('*/functions/v1/catalog/curriculum_term_course/:id', ({ params }) => {
+        deletes++
+        expect(params.id).toBe('slot')
+        return deletes === 1 ? new HttpResponse(null, { status: 204 }) : HttpResponse.json({ message: 'Requirement history is protected.' }, { status: 409 })
+      }),
+    )
+    expect(await updateCurriculumSlot('slot', body)).toMatchObject({ id: 'slot', curriculum_term_id: 'term', nominal_units: 2.5 })
+    await expect(deleteCurriculumSlot('slot')).resolves.toBeUndefined()
+    await expect(deleteCurriculumSlot('slot')).rejects.toMatchObject({ isConflict: true, message: 'Requirement history is protected.' })
+    expect(deletes).toBe(2)
   })
   it('edits and deletes via term endpoints without writing to child records', async () => {
     let writes = 0
