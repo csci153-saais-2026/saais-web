@@ -130,14 +130,6 @@ function TermDetails({
             <dd className="text-muted-foreground">{closure.closure_note}</dd>
           </div>
         )}
-        {term.override_flag && (
-          <div>
-            <dt className="font-medium">Institutional override</dt>
-            <dd className="text-muted-foreground">
-              Recorded on {formatRecordedAt(term.override_at)}
-            </dd>
-          </div>
-        )}
       </dl>
     </details>
   )
