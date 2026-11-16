@@ -50,10 +50,11 @@ export async function getGrades(id: string) {
     catalog('schoolTerms', terms.map(term => term.school_term_id)) as Promise<ApiSchema<'SchoolTerm'>[]>,
   ])
   const courses = await catalog('courses', offerings.map(o => o.course_id)) as ApiSchema<'Course'>[]
-  return { terms, offerings, courses, schoolTerms, canEdit: current.some(s => s.student_id.toLowerCase() === id.toLowerCase()) }
+  const selected = current.find(s => s.student_id.toLowerCase() === id.toLowerCase())
+  return { terms, offerings, courses, schoolTerms, canEdit: !!selected, studentName: selected?.full_name }
 }
-export async function correctGrade(studentId: string, attempt: ApiSchema<'AttemptResult'>, grade: number, reason: string, stage: 'midterm' | 'final') {
-  return unwrapApiResult(await apiClient.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/grades', { params: { path: { student_id: studentId, attempt_id: attempt.id } }, body: { expected_revision: attempt.revision, ...(stage === 'midterm' ? { midterm_grade: grade, midterm_status: 'graded' } : { final_grade: grade }), reason } }))
+export async function correctGrade(studentId: string, attempt: ApiSchema<'AttemptResult'>, grade: number, reason: string, stage: 'midterm' | 'final', finalGrade?: number) {
+  return unwrapApiResult(await apiClient.PATCH('/functions/v1/students/{student_id}/attempts/{attempt_id}/grades', { params: { path: { student_id: studentId, attempt_id: attempt.id } }, body: { expected_revision: attempt.revision, ...(stage === 'midterm' ? { midterm_grade: grade, midterm_status: 'graded', ...(finalGrade != null ? { final_grade: finalGrade } : {}) } : { final_grade: grade }), reason } }))
 }
 export async function completeInc(studentId: string, attempt: ApiSchema<'AttemptResult'>, grade: number, reason: string) {
   return unwrapApiResult(await apiClient.POST('/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion', { params: { path: { student_id: studentId, attempt_id: attempt.id } }, body: { completion_grade: grade, reason } }))
