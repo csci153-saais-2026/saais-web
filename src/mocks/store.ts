@@ -1102,6 +1102,8 @@ function buildInitialMockDatabase(): MockDatabaseState {
     const suffix = String(serial).padStart(12, '0')
     const persona = MOCK_PERSONAS[`student_sample_${serial}`]!
     const adviser = index % 2 === 0 ? MOCK_PERSONAS.adviser : MOCK_PERSONAS.adviser_secondary
+    // Sample 23 can request a transfer to the active 2024 curriculum.
+    const curriculumVersionId = serial === 23 ? MOCK_IDS.curriculumBscs2020 : MOCK_IDS.curriculumBscs2024
     const curriculumAssignmentId = `71000000-0000-4000-8001-${suffix}`
     const studentNumber = `26-1-${String(10001 + index)}`
     db.profiles.push({ id: persona.profileId, role: 'student', roles: ['student'], email: persona.email,
@@ -1112,10 +1114,10 @@ function buildInitialMockDatabase(): MockDatabaseState {
       role: 'student', faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst,
       created_at: '2026-08-01T08:00:00Z' })
     db.studentCurriculumAssignments.push({ id: curriculumAssignmentId, student_id: persona.profileId,
-      curriculum_version_id: MOCK_IDS.curriculumBscs2024, start_date: '2026-08-01', end_date: null,
+      curriculum_version_id: curriculumVersionId, start_date: '2026-08-01', end_date: null,
       change_note: 'Initial curriculum assignment', created_at: '2026-08-01T08:00:00Z' })
     db.studentOrganizations.push({ student_id: persona.profileId, student_curriculum_assignment_id: curriculumAssignmentId,
-      curriculum_version_id: MOCK_IDS.curriculumBscs2024, program_id: MOCK_IDS.programBscs,
+      curriculum_version_id: curriculumVersionId, program_id: MOCK_IDS.programBscs,
       department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing, adviser_id: adviser.profileId, entry_year: 2026 })
     db.adviserAssignments.push({ id: `70000000-0000-4000-8001-${suffix}`, student_id: persona.profileId,
       adviser_id: adviser.profileId, adviser_name: adviser.fullName, adviser_email: adviser.email,
