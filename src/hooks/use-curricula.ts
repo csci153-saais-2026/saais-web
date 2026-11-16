@@ -1,8 +1,50 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
-import { createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion, type CurriculumVersion } from '@/routes/department-staff/curricula/curricula.api'
+import { createCurriculumTerm, createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion, type CurriculumVersion } from '@/routes/department-staff/curricula/curricula.api'
 import { blankVersionRequest, versionUpdateRequest, type CurriculumVersionValues } from '@/routes/department-staff/curricula/curriculum-version.schema'
+import { curriculumTermSchema, type CurriculumTermValues } from '@/routes/department-staff/curricula/curriculum-term.schema'
+
+export function useCreateCurriculumTerm() {
+  const scope = useStaffScope()
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: async ({ versionId, values }: { versionId: string; values: CurriculumTermValues }) => {
+      if (scope.status !== 'ready') throw new Error('An authorized department is required to add a curriculum term.')
+      const key = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curricula')
+      const catalog = queryClient.getQueryData<Awaited<ReturnType<typeof listCurricula>>>(key)
+      const version = catalog?.versions.find(item => item.id === versionId)
+      if (!version || !catalog?.programs.some(program => program.id === version.program_id && program.department_id === scope.departmentId)) {
+        throw new Error('This version is no longer available in your authorized department. Refresh the list.')
+      }
+      const detailKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curriculum-overview', { versionId })
+      const detail = queryClient.getQueryData<Awaited<ReturnType<typeof readCurriculum>>>(detailKey)
+      if (!detail) throw new Error('Load the selected curriculum requirements before adding a term.')
+      const position = curriculumTermSchema.parse(values)
+      if (detail.terms.some(term => term.year_level === position.year_level && term.term_sequence === position.term_sequence)) {
+        throw new Error('This year and term position already exists in the selected curriculum.')
+      }
+      // Empty terms are approved for Step 22. No requirement-slot writes are made.
+      const term = await createCurriculumTerm({ curriculum_version_id: versionId, ...position, slots: [] })
+      if (!term?.id || term.curriculum_version_id !== versionId || term.year_level !== position.year_level || term.term_sequence !== position.term_sequence) {
+        throw new Error('The term creation result could not be confirmed. Refresh the curriculum before submitting again.')
+      }
+      return { term, versionId, profileId: scope.profileId, departmentId: scope.departmentId }
+    },
+    onSuccess: async ({ term, versionId, profileId, departmentId }) => {
+      const detailKey = staffQueryKeys.resource(profileId, departmentId, 'curriculum-overview', { versionId })
+      queryClient.setQueryData<Awaited<ReturnType<typeof readCurriculum>>>(detailKey, detail => {
+        if (!detail) return detail
+        return { ...detail, terms: [...detail.terms.filter(item => item.id !== term.id), term].sort((a, b) => a.year_level - b.year_level || a.term_sequence - b.term_sequence || a.id.localeCompare(b.id)) }
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailKey }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'curricula') }),
+      ])
+    },
+  })
+}
 
 export type VersionLifecycleAction = 'retire' | 'delete'
 

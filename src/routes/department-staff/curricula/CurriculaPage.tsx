@@ -10,6 +10,7 @@ import { useCurricula, useCurriculum, type VersionLifecycleAction } from '@/hook
 import { CurriculumVersionDialog } from './CurriculumVersionDialog'
 import type { CurriculumVersion } from './curricula.api'
 import { CurriculumVersionLifecycleDialog } from './CurriculumVersionLifecycleDialog'
+import { CurriculumTermDialog } from './CurriculumTermDialog'
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -29,6 +30,8 @@ export default function CurriculaPage() {
   const [updated, setUpdated] = useState(false)
   const [lifecycle, setLifecycle] = useState<{ action: VersionLifecycleAction; version: CurriculumVersion } | null>(null)
   const [lifecycleMessage, setLifecycleMessage] = useState('')
+  const [addingTerm, setAddingTerm] = useState<CurriculumVersion | null>(null)
+  const [termMessage, setTermMessage] = useState('')
   const versions = catalog.isError ? [] : catalog.data?.versions ?? []
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
@@ -38,6 +41,8 @@ export default function CurriculaPage() {
     {created && <p role="status">Curriculum version created.</p>}
     {updated && <p role="status">Curriculum version updated.</p>}
     {lifecycleMessage && <p role="status">{lifecycleMessage}</p>}
+    {termMessage && <p role="status">{termMessage}</p>}
+    {addingTerm && <CurriculumTermDialog key={addingTerm.id} version={addingTerm} onClose={() => setAddingTerm(null)} onAdded={id => { setSelection(id); setAddingTerm(null); setTermMessage('Curriculum term added.'); setCreated(false); setUpdated(false); setLifecycleMessage('') }} />}
     {lifecycle && <CurriculumVersionLifecycleDialog key={`${lifecycle.action}:${lifecycle.version.id}`} action={lifecycle.action} version={lifecycle.version} programLabel={catalog.data?.programs.find(program => program.id === lifecycle.version.program_id)?.code ?? 'Program unavailable'} onClose={() => setLifecycle(null)} onRetireInstead={() => setLifecycle({ ...lifecycle, action: 'retire' })} onCompleted={(action, id) => {
       setSelection(action === 'delete' ? '' : id)
       setLifecycle(null)
@@ -58,6 +63,7 @@ export default function CurriculaPage() {
       </FormField>
       <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setEditing(version) }}>Edit version</Button>
       <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching || !detail.isSuccess || detail.isFetching} onClick={() => { setTermMessage(''); setAddingTerm(version) }}>Add term</Button>
         {version.status !== 'retired' && version.status !== 'closed' && <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'retire', version }) }}>Retire version</Button>}
         <Button type="button" variant="destructive" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'delete', version }) }}>Delete version</Button>
       </div>

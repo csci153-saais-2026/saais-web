@@ -6,7 +6,7 @@ import { ApiClientError, normalizeApiError } from '@/lib/api'
 import { createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion, type CurriculumVersion } from './curricula.api'
 import CurriculaPage from './CurriculaPage'
 
-vi.mock('./curricula.api', () => ({ listCurricula: vi.fn(), readCurriculum: vi.fn(), createCurriculumVersion: vi.fn(), updateCurriculumVersion: vi.fn(), deleteCurriculumVersion: vi.fn() }))
+vi.mock('./curricula.api', () => ({ listCurricula: vi.fn(), readCurriculum: vi.fn(), createCurriculumVersion: vi.fn(), updateCurriculumVersion: vi.fn(), deleteCurriculumVersion: vi.fn(), createCurriculumTerm: vi.fn() }))
 const scope = { status: 'ready' as const, departmentIds: ['department'], selectedDepartmentId: 'department', departmentId: 'department', profileId: 'staff', canQuery: true as const, selectDepartment: vi.fn() }
 const program = { id: 'program', code: 'BSCS', name: 'Computer Science', department_id: 'department', nominal_duration: 4, status: 'active' as const }
 const version: CurriculumVersion = { id: 'v1', program_id: program.id, version_label: 'BSCS 2027', effective_start: '2027-08-01', total_units: 162, delinquency_threshold: 12, status: 'active', enrolled_student_count: 0 }
