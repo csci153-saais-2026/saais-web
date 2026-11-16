@@ -82,7 +82,7 @@ Reuse the existing role guard, `deptStaffNav`, and the current feature/UI primit
 | Query and refresh boundary | Shared FE + Staff FE | Agree the one-time provider, mutation retry policy, invalidation/refresh rules, cancellation, and identity/scope-change reset behavior before feature hooks depend on it. |
 | Student record destination | Shared FE + API/Platform | Agree a read-only Staff-authorized destination before adding student-record links; the current Department Head guard does not authorize Staff-only users. |
 | Accounts route policy | Shared FE + API/Platform | Define any Department Head access to `/department-staff/accounts` without broadening access to all Staff pages. |
-| Authoritative data semantics | API/Platform + Staff FE | Confirm enrolled-count source, initial curriculum-child creation, warning-row import eligibility, and offering-unit total semantics before corresponding UI claims them. |
+| Authoritative data semantics | API/Platform + Staff FE | Confirm enrolled-count source, initial curriculum-child creation, eventual warning-row commit eligibility, and offering-unit total semantics before corresponding UI claims them. In the preview step, warnings remain distinct from valid outcomes and are not represented as eligible. |
 | Deployment behavior | Deployment owner + QA | Verify SPA rewrites for direct routes, cache headers, public `VITE_` configuration, CORS, and the fact that browser MSW runs only in development. |
 
 No agreement may be satisfied by fictional mock persistence or by assuming that the OpenAPI description is deployed.
