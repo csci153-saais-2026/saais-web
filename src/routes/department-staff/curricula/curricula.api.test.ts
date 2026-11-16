@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { createCurriculumTerm, createCurriculumVersion, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumTerm, updateCurriculumVersion } from './curricula.api'
+import { createCurriculumSlot, createCurriculumTerm, createCurriculumVersion, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, listCurriculumCourses, readCurriculum, updateCurriculumTerm, updateCurriculumVersion } from './curricula.api'
 
 vi.mock('@/lib/api', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -18,6 +18,40 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('Curriculum typed reads', () => {
+  it('creates fixed and flexible requirements with their submitted nominal units', async () => {
+    const requests: unknown[] = []
+    server.use(http.post('*/functions/v1/catalog/curriculum_term_course', async ({ request }) => {
+      const body = await request.json()
+      requests.push(body)
+      return HttpResponse.json({ ...body as object, id: `slot-${requests.length}` }, { status: 201 })
+    }))
+    const fixed = {
+      curriculum_term_id: 'term', course_id: '11111111-1111-4111-8111-111111111111',
+      is_elective_slot: false, slot_type: 'required' as const, slot_label: null, nominal_units: 3.25,
+    }
+    const flexible = {
+      curriculum_term_id: 'term', course_id: null,
+      is_elective_slot: true, slot_type: 'elective' as const, slot_label: 'Technical elective', nominal_units: 0.75,
+    }
+    expect(await createCurriculumSlot(fixed)).toMatchObject({ id: 'slot-1', curriculum_term_id: 'term', nominal_units: 3.25 })
+    expect(await createCurriculumSlot(flexible)).toMatchObject({ id: 'slot-2', curriculum_term_id: 'term', nominal_units: 0.75 })
+    expect(requests).toEqual([fixed, flexible])
+  })
+  it('loads only active course choices from the department and drops mismatched references', async () => {
+    server.use(http.get('*/rest/v1/course', ({ request }) => {
+      const query = new URL(request.url).searchParams
+      expect(query.get('department_id')).toBe('eq.department')
+      expect(query.get('status')).toBe('eq.active')
+      expect(query.get('select')).toContain('department_id')
+      const course = { code: 'CS 101', title: 'Computing', units: 3, repeatable_type: 'none', status: 'active' }
+      return HttpResponse.json([
+        { id: 'active', department_id: 'department', ...course },
+        { id: 'foreign', department_id: 'other', ...course },
+        { id: 'inactive', department_id: 'department', ...course, status: 'discontinued' },
+      ])
+    }))
+    await expect(listCurriculumCourses('department')).resolves.toMatchObject([{ id: 'active', department_id: 'department' }])
+  })
   it('edits and deletes via term endpoints without writing to child records', async () => {
     let writes = 0
     server.use(

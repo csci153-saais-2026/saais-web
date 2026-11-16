@@ -9,6 +9,10 @@ export type CurriculumTerm = ApiSchema<'CurriculumTerm'>
 export type CurriculumSlot = ApiSchema<'CurriculumTermCourse'>
 export type Course = ApiSchema<'Course'>
 
+export async function createCurriculumSlot(body: ApiSchema<'CurriculumTermCourseInsert'>): Promise<CurriculumSlot> {
+  return unwrapApiResult<CurriculumSlot>(await apiClient.POST('/functions/v1/catalog/curriculum_term_course', { body }))
+}
+
 /** Step 22 creates empty terms only; slot creation is a separate workflow. */
 export async function createCurriculumTerm(body: Pick<ApiSchema<'CurriculumTermInsert'>, 'curriculum_version_id' | 'year_level' | 'term_sequence'> & { slots: never[] }): Promise<CurriculumTerm> {
   return unwrapApiResult<CurriculumTerm>(await apiClient.POST('/functions/v1/catalog/curriculum_term', { body }))
@@ -109,4 +113,16 @@ export async function readCurriculum(versionId: string, signal?: AbortSignal) {
     }), 'Course references').filter(course => ids.includes(course.id)),
   )
   return { terms, slots, courses }
+}
+
+/** Active course choices are restricted to the resolved department. */
+export async function listCurriculumCourses(departmentId: string, signal?: AbortSignal): Promise<Course[]> {
+  return completeRead<Course>(await apiClient.GET('/rest/v1/course', {
+    params: { query: {
+      department_id: postgrestFilter.eq(departmentId),
+      status: postgrestFilter.eq('active'),
+      select: 'id,department_id,code,title,units,status,repeatable_type',
+      order: 'code.asc,id.asc', limit: READ_LIMIT, offset: 0,
+    } }, signal,
+  }), 'Department courses').filter(course => course.department_id === departmentId && course.status === 'active')
 }
