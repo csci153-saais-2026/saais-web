@@ -128,17 +128,15 @@ export default function ChangePasswordPage() {
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     className="pr-11"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute top-1/2 right-1 flex size-[34px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-muted-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     aria-label={visiblePasswords.currentPassword ? 'Hide current password' : 'Show current password'}
                     aria-pressed={visiblePasswords.currentPassword}
                     onClick={() => togglePasswordVisibility('currentPassword')}
                   >
-                    <EyeIcon aria-hidden />
-                  </Button>
+                    <EyeIcon slashed={!visiblePasswords.currentPassword} aria-hidden />
+                  </button>
                 </div>
               </div>
 
@@ -155,17 +153,15 @@ export default function ChangePasswordPage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="pr-11"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute top-1/2 right-1 flex size-[34px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-muted-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     aria-label={visiblePasswords.newPassword ? 'Hide new password' : 'Show new password'}
                     aria-pressed={visiblePasswords.newPassword}
                     onClick={() => togglePasswordVisibility('newPassword')}
                   >
-                    <EyeIcon aria-hidden />
-                  </Button>
+                    <EyeIcon slashed={!visiblePasswords.newPassword} aria-hidden />
+                  </button>
                 </div>
               </div>
 
@@ -182,17 +178,15 @@ export default function ChangePasswordPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pr-11"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute top-1/2 right-1 flex size-[34px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-muted-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     aria-label={visiblePasswords.confirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
                     aria-pressed={visiblePasswords.confirmPassword}
                     onClick={() => togglePasswordVisibility('confirmPassword')}
                   >
-                    <EyeIcon aria-hidden />
-                  </Button>
+                    <EyeIcon slashed={!visiblePasswords.confirmPassword} aria-hidden />
+                  </button>
                 </div>
               </div>
 
