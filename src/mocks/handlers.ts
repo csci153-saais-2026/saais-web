@@ -2813,21 +2813,30 @@ export const saaisMswHandlers = [
       if (!attempt) return errorJson(404, 'NOT_FOUND', 'The flagged attempt was not found.')
       if (!db.adviserAssignments.some((item) => item.student_id === flag.student_id && item.adviser_id === auth.persona.profileId && item.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Only the current adviser may resolve this flag.')
       if (attemptEncodingClosed(flag.student_id, attempt.id)) return encodingClosedResponse()
+      const term = db.schoolTerms.find(t => t.id === db.courseOfferings.find(o => o.id === attempt.course_offering_id)?.school_term_id)
+      if (term?.is_locked && !term.override_flag) return errorJson(409, 'TERM_LOCKED', 'Corrections require an editable term.')
       const body = await request.json().catch(() => null) as ApiSchema<'GradeFlagResolveRequest'> | null
       if (!body || !['correct', 'reject'].includes(String(body.resolution_action)) || !body.resolution_note?.trim() || (body.resolution_action === 'correct' && body.corrected_grade == null && body.corrected_status == null && body.corrected_midterm_status == null)) return errorJson(400, 'INVALID_INPUT', 'Choose a resolution and provide a reason and correction.')
-      if (body.expected_revision != null && body.expected_revision !== attempt.revision) return errorJson(409, 'STALE_ATTEMPT', 'The attempt changed since the flag was raised.')
+      const currentAttempt = db.attemptResults.find(item => item.id === flag.attempt_id && item.student_id === flag.student_id)
+      if (!currentAttempt) return errorJson(404, 'NOT_FOUND', 'The flagged attempt was not found.')
+      if (body.expected_revision != null && body.expected_revision !== currentAttempt.revision) return errorJson(409, 'STALE_ATTEMPT', 'The attempt changed since the flag was raised.')
       if (body.resolution_action === 'correct') {
         if (body.corrected_grade != null) {
-          attempt.final_grade = body.corrected_grade
-          attempt.gwa_grade = body.corrected_grade
-          attempt.effective_status = body.corrected_grade <= 3 ? 'passed' : 'failed'
-          attempt.recorded_status = attempt.effective_status
+          if (flag.reported_stage === 'midterm') {
+            currentAttempt.midterm_grade = body.corrected_grade
+            currentAttempt.midterm_status = 'graded'
+          } else {
+            currentAttempt.final_grade = body.corrected_grade
+            currentAttempt.gwa_grade = body.corrected_grade
+            currentAttempt.effective_status = body.corrected_grade <= 3 ? 'passed' : 'failed'
+            currentAttempt.recorded_status = currentAttempt.effective_status
+          }
         }
-        if (body.corrected_status) { attempt.effective_status = body.corrected_status; attempt.recorded_status = body.corrected_status }
-        if (body.corrected_midterm_status) attempt.midterm_status = body.corrected_midterm_status
-        db.attemptResults[db.attemptResults.indexOf(attempt)] = {
-          ...attempt,
-          revision: attempt.revision + 1,
+        if (body.corrected_status && flag.reported_stage !== 'midterm') { currentAttempt.effective_status = body.corrected_status; currentAttempt.recorded_status = body.corrected_status }
+        if (body.corrected_midterm_status) currentAttempt.midterm_status = body.corrected_midterm_status
+        db.attemptResults[db.attemptResults.indexOf(currentAttempt)] = {
+          ...currentAttempt,
+          revision: currentAttempt.revision + 1,
           updated_at: new Date().toISOString(),
         }
       }
