@@ -34,6 +34,14 @@ describe('selected checklist',()=>{
   render(page());await screen.findByText('Year Standing')
   expect(screen.queryByText('2nd year')).toBeNull()
  })
+ it('shows the selected student’s deficiency subjects from the summary',async()=>{
+  vi.mocked(getChecklist).mockResolvedValue({...data,summary:{...data.summary,deficiencies_count:2,deficiencies:[{kind:'open_inc',course_code:'CS 101',course_title:'First'},{kind:'failed',course_code:'CS 102',course_title:'Second'}]}})
+  render(page());expect(await screen.findByText('Unresolved INC: CS 101 · Failed: CS 102')).toBeTruthy()
+ })
+ it('uses checklist statuses when the shared summary omits deficiency details',async()=>{
+  vi.mocked(getChecklist).mockResolvedValue({...data,summary:{...data.summary,deficiencies_count:2},results:[{...row,status:'inc'}]})
+  render(page());expect(await screen.findByText('Unresolved INC: CS 1 · Additional details unavailable')).toBeTruthy()
+ })
  it('uses the visible groups when some terms are individually collapsed',async()=>{
   vi.mocked(getChecklist).mockResolvedValue({...data,results:[row,{...row,curriculum_term_course_id:'slot-two'}],slots:[...data.slots,{...data.slots[0]!,id:'slot-two',curriculum_term_id:'term-two'}],terms:[...data.terms,{...data.terms[0]!,id:'term-two',term_sequence:2}]})
   render(page());const first=await screen.findByRole('button',{name:/Semester 1/});const second=screen.getByRole('button',{name:/Semester 2/})

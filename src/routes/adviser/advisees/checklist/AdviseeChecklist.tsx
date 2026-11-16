@@ -15,15 +15,34 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { ApiSchema } from '@/lib/api'
 
 const statusMap: Record<ApiSchema<'ChecklistSlotResult'>['status'], Status> = { not_taken: 'not-taken', currently_enrolled: 'enrolled', passed: 'passed', failed: 'failed', inc: 'inc', dr: 'dr', na: 'na' }
+const deficiencyLabels: Record<ApiSchema<'StudentDeficiencyItem'>['kind'], string> = { failed: 'Failed', open_inc: 'Unresolved INC', lapsed_inc: 'Lapsed INC', open_flag: 'Open grade flag', unmet_prerequisite: 'Unmet prerequisite' }
+function deficiencyNote(data: Awaited<ReturnType<typeof getChecklist>>) {
+  if (data.summary.deficiencies) {
+    const details = data.summary.deficiencies.map(item => `${deficiencyLabels[item.kind]}: ${item.course_code}`)
+    return details.length ? details.join(' · ') : data.summary.deficiencies_count ? 'Details unavailable' : 'No deficiencies'
+  }
+  const details = data.results.flatMap(row => {
+    if (row.status !== 'inc' && row.status !== 'failed') return []
+    const slot = data.slots.find(item => item.id === row.curriculum_term_course_id)
+    const course = data.courses.find(item => item.id === slot?.course_id)
+    if (!course) return []
+    return [`${row.status === 'inc' ? 'Unresolved INC' : 'Failed'}: ${course.code}`]
+  })
+  const unique = [...new Set(details)]
+  if (data.summary.deficiencies_count == null) return unique.length ? unique.join(' · ') : 'Details unavailable'
+  if (data.summary.deficiencies_count > unique.length) unique.push(unique.length ? 'Additional details unavailable' : 'Details unavailable')
+  return unique.length ? unique.join(' · ') : 'No deficiencies'
+}
 function yearStanding(year: number | undefined) {
   if (year == null) return '—'
   const suffix = new Intl.PluralRules('en', { type: 'ordinal' }).select(year)
   return `${year}${suffix === 'one' ? 'st' : suffix === 'two' ? 'nd' : suffix === 'few' ? 'rd' : 'th'} year`
 }
 function AttemptDetails({ row, title }: { row: ApiSchema<'ChecklistSlotResult'>; title: string }) {
-  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm">Course info</Button></DialogTrigger><DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto"><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>Requirement and attempt history</DialogDescription></DialogHeader>
-    <p>{row.earned_units} / {row.required_units} units · {row.satisfaction_source ?? 'No credited source'}</p>
+  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm">Course info</Button></DialogTrigger><DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>Course info</DialogTitle><DialogDescription>{title}</DialogDescription></DialogHeader>
+    <div className="grid gap-3 rounded-md border border-border bg-secondary/40 p-4 sm:grid-cols-3"><div><Kicker>Units earned / required</Kicker><p className="mt-1 font-semibold">{row.earned_units} / {row.required_units}</p></div><div><Kicker>Status</Kicker><StatusBadge status={statusMap[row.status]} /></div><div><Kicker>Satisfaction source</Kicker><p className="mt-1">{row.satisfaction_source ?? '—'}</p></div></div>
     {row.credited_course_code && <p>Credited: {row.credited_course_code} {row.credited_course_title}</p>}
+    <h3 className="font-semibold">Attempt history</h3>
     {row.attempts?.length ? <ul className="space-y-3">{row.attempts.map(a => <li key={a.attempt_id} className="border-b pb-2"><strong>{a.term_label}</strong><p>Midterm: {a.midterm_grade ?? a.midterm_status ?? '—'} · Final: {a.final_grade ?? a.recorded_status} · Completion: {a.completion_grade ?? '—'}</p><p>Instructor: {a.instructor || 'Not recorded'}{a.inc_deadline && ` · INC deadline: ${a.inc_deadline}`}</p></li>)}</ul> : <p>No attempts recorded.</p>}
     {!!row.grade_fix_history?.length && <div><h3 className="font-semibold">Grade fix history</h3><ul>{row.grade_fix_history.map((entry, index) => <li key={`${entry.changed_at}:${index}`}>{new Date(entry.changed_at).toLocaleString()} · {entry.old_grade ?? '—'} → {entry.new_grade ?? '—'}</li>)}</ul></div>}
   </DialogContent></Dialog>
@@ -53,9 +72,9 @@ export default function AdviseeChecklist() {
       {label:'Cumulative GWA', value:data.summary.gwa?.toFixed(2) ?? '—', note:'Unit-weighted counted attempts'},
       {label:'Counted units', value:data.summary.counted_units ?? '—', valueSuffix:`/ ${data.summary.required_units}`, note:`Of ${data.summary.required_units} total units. Excludes unresolved, unexpired INC`},
       {label:'Year Standing', value:yearStanding(data.summary.year_level), note:`${data.summary.earned_units} of ${data.summary.required_units} units earned`},
-      {label:'Deficiencies', value:data.summary.deficiencies_count ?? '—', note:data.summary.deficiencies?.map(item=>`${item.kind.replaceAll('_',' ')}: ${item.course_code}`).join(' · ')},
+      {label:'Deficiencies', value:data.summary.deficiencies_count ?? '—', note:deficiencyNote(data)},
     ]} />
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><label className="grid w-56 gap-1 text-sm">Show requirements<select className="rounded-md border border-input bg-background px-3 py-2" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">All statuses</option><option value="not_taken">Not yet taken</option><option value="passed">Passed / credited</option><option value="inc">INC</option><option value="currently_enrolled">Currently enrolled</option><option value="failed">Failed</option></select></label><Button variant="outline" className="ml-auto" disabled={visibleGroups.length === 0} onClick={() => setExpanded(previous => { const next = new Set(previous); for (const [label] of visibleGroups) { if (allCollapsed) next.add(label); else next.delete(label) } return next })}>{allCollapsed ? 'Expand All' : 'Collapse All'}</Button></div>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><label className="grid w-56 gap-1 text-sm">Show requirements<select className="rounded-md border border-input bg-card px-3 py-2" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">All statuses</option><option value="not_taken">Not yet taken</option><option value="passed">Passed / credited</option><option value="inc">INC</option><option value="currently_enrolled">Currently enrolled</option><option value="failed">Failed</option></select></label><Button variant="outline" className="ml-auto" disabled={visibleGroups.length === 0} onClick={() => setExpanded(previous => { const next = new Set(previous); for (const [label] of visibleGroups) { if (allCollapsed) next.add(label); else next.delete(label) } return next })}>{allCollapsed ? 'Expand All' : 'Collapse All'}</Button></div>
       {!visibleGroups.length && <p>No requirements match this filter.</p>}
       {visibleGroups.map(([label, items]) => {
         const passedUnits = items.reduce((sum, item) => sum + item.earned_units, 0)
