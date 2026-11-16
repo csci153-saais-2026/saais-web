@@ -90,6 +90,7 @@ export default function AdviserAssignmentsPage() {
     studentIds: string[]
   }>({ key: '', studentIds: [] })
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [submissionMessage, setSubmissionMessage] = useState<string | null>(null)
 
   const filters = useMemo(
     () => ({
@@ -115,10 +116,14 @@ export default function AdviserAssignmentsPage() {
   const selectedStudents = rows.filter((item) =>
     selectedIds.includes(item.student.student_id),
   )
+  const hasEligibleSelection =
+    selectedStudents.length > 0 &&
+    selectedStudents.every((item) => item.currentAssignment !== null)
   const advisers = filterOptions.data?.advisers ?? []
 
   function updateSelection(nextStudentIds: string[]) {
     setSelection({ key: selectionKey, studentIds: nextStudentIds })
+    setSubmissionMessage(null)
   }
 
   function toggleStudent(studentId: string) {
@@ -153,7 +158,7 @@ export default function AdviserAssignmentsPage() {
             type="button"
             variant="outline"
             disabled={
-              selectedStudents.length === 0 ||
+              !hasEligibleSelection ||
               roster.isPending ||
               roster.isFetching ||
               roster.isError ||
@@ -167,6 +172,12 @@ export default function AdviserAssignmentsPage() {
           </Button>
         }
       />
+
+      {submissionMessage && (
+        <p role="status" className="text-sm text-primary">
+          {submissionMessage}
+        </p>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <FormField
@@ -300,7 +311,11 @@ export default function AdviserAssignmentsPage() {
                 <input
                   type="checkbox"
                   checked={selectedIds.includes(item.student.student_id)}
-                  disabled={!item.currentAssignment || roster.isFetching}
+                  disabled={
+                    roster.isFetching ||
+                    (!item.currentAssignment &&
+                      !selectedIds.includes(item.student.student_id))
+                  }
                   aria-label={`Select ${item.student.full_name}`}
                   title={
                     item.currentAssignment
@@ -359,6 +374,13 @@ export default function AdviserAssignmentsPage() {
           students={selectedStudents}
           advisers={advisers}
           onClose={() => setIsDialogOpen(false)}
+          onSuccess={(response) => {
+            setSelection({ key: selectionKey, studentIds: [] })
+            setIsDialogOpen(false)
+            setSubmissionMessage(
+              `Successfully reassigned ${response.reassigned_count} student${response.reassigned_count === 1 ? '' : 's'}.`,
+            )
+          }}
         />
       )}
     </div>
