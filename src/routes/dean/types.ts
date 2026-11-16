@@ -53,7 +53,7 @@ export interface DeanChecklistTerm {
   description: string
   passedUnits: number
   totalUnits: number
-  semesterGwa: string
+  semesterGwa?: string
   rows: ChecklistRow[]
 }
 
