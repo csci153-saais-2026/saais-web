@@ -60,8 +60,19 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto py-8 px-4">
-      <Panel title="Change Password" description="Update your institutional login password.">
+    <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-[30px]">
+      <div className="w-full">
+        <header className="mb-6">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Change password</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Update the password for your account.</p>
+        </header>
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(270px,2fr)]">
+      <Panel
+        title="Your password"
+        description="You'll need your current password to set a new one."
+        className="mb-0 rounded-md border-border shadow-none ring-0"
+        bodyClassName="gap-4 p-5"
+      >
         {isGoogleManagedAccount ? (
           <Alert className="bg-muted/60 text-foreground border-border">
             <AlertIcon />
@@ -133,6 +144,8 @@ export default function ChangePasswordPage() {
           </>
         )}
       </Panel>
-    </div>
+        </div>
+      </div>
+    </main>
   )
 }
