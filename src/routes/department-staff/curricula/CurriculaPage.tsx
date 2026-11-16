@@ -8,11 +8,12 @@ import { ApiClientError } from '@/lib/api'
 import { CurriculumTermPanel } from './CurriculumTermPanel'
 import { useCurricula, useCurriculum, type VersionLifecycleAction } from '@/hooks/use-curricula'
 import { CurriculumVersionDialog } from './CurriculumVersionDialog'
-import type { CurriculumTerm, CurriculumVersion } from './curricula.api'
+import type { CurriculumSlot, CurriculumTerm, CurriculumVersion } from './curricula.api'
 import { CurriculumVersionLifecycleDialog } from './CurriculumVersionLifecycleDialog'
 import { CurriculumTermDialog } from './CurriculumTermDialog'
 import { CurriculumTermDeleteDialog } from './CurriculumTermDeleteDialog'
 import { CurriculumSlotDialog } from './CurriculumSlotDialog'
+import { CurriculumSlotDeleteDialog } from './CurriculumSlotDeleteDialog'
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -36,6 +37,7 @@ export default function CurriculaPage() {
   const [termMessage, setTermMessage] = useState('')
   const [termAction, setTermAction] = useState<{ action: 'edit' | 'delete'; term: CurriculumTerm; version: CurriculumVersion; requirementCount: number } | null>(null)
   const [addingRequirement, setAddingRequirement] = useState<{ term: CurriculumTerm; version: CurriculumVersion } | null>(null)
+  const [slotAction, setSlotAction] = useState<{ action: 'edit' | 'delete'; term: CurriculumTerm; version: CurriculumVersion; slot: CurriculumSlot } | null>(null)
   const versions = catalog.isError ? [] : catalog.data?.versions ?? []
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
@@ -48,6 +50,8 @@ export default function CurriculaPage() {
     {termMessage && <p role="status">{termMessage}</p>}
     {termAction?.action === 'edit' && <CurriculumTermDialog key={`edit:${termAction.term.id}`} term={termAction.term} version={termAction.version} onClose={() => setTermAction(null)} onUpdated={id => { setSelection(id); setTermAction(null); setTermMessage('Curriculum term updated.') }} />}
     {termAction?.action === 'delete' && <CurriculumTermDeleteDialog key={termAction.term.id} term={termAction.term} version={termAction.version} requirementCount={termAction.requirementCount} onClose={() => setTermAction(null)} onDeleted={id => { setSelection(id); setTermAction(null); setTermMessage('Curriculum term deleted.') }} />}
+    {slotAction?.action === 'edit' && <CurriculumSlotDialog key={`edit-slot:${slotAction.slot.id}`} slot={slotAction.slot} term={slotAction.term} version={slotAction.version} onClose={() => setSlotAction(null)} onUpdated={id => { setSelection(id); setSlotAction(null); setTermMessage('Curriculum requirement updated.') }} />}
+    {slotAction?.action === 'delete' && <CurriculumSlotDeleteDialog key={slotAction.slot.id} slot={slotAction.slot} term={slotAction.term} version={slotAction.version} onClose={() => setSlotAction(null)} onDeleted={id => { setSelection(id); setSlotAction(null); setTermMessage('Curriculum requirement deleted.') }} />}
     {addingRequirement && <CurriculumSlotDialog key={addingRequirement.term.id} term={addingRequirement.term} version={addingRequirement.version} onClose={() => setAddingRequirement(null)} onCreated={id => { setSelection(id); setAddingRequirement(null); setTermMessage('Curriculum requirement added.') }} />}
     {addingTerm && <CurriculumTermDialog key={addingTerm.id} version={addingTerm} onClose={() => setAddingTerm(null)} onAdded={id => { setSelection(id); setAddingTerm(null); setTermMessage('Curriculum term added.'); setCreated(false); setUpdated(false); setLifecycleMessage('') }} />}
     {lifecycle && <CurriculumVersionLifecycleDialog key={`${lifecycle.action}:${lifecycle.version.id}`} action={lifecycle.action} version={lifecycle.version} programLabel={catalog.data?.programs.find(program => program.id === lifecycle.version.program_id)?.code ?? 'Program unavailable'} onClose={() => setLifecycle(null)} onRetireInstead={() => setLifecycle({ ...lifecycle, action: 'retire' })} onCompleted={(action, id) => {
@@ -90,7 +94,7 @@ export default function CurriculaPage() {
             setTermMessage(''); setCreated(false); setUpdated(false); setLifecycleMessage('')
             setTermAction({ action, term, version, requirementCount: slots.length })
           }
-          return <CurriculumTermPanel key={term.id} term={term} slots={slots} courses={detail.data.courses} actionsDisabled={!catalog.isSuccess || catalog.isFetching || detail.isFetching} onAddRequirement={() => { setTermMessage(''); setAddingRequirement({ term, version }) }} onEdit={() => openTermAction('edit')} onDelete={() => openTermAction('delete')} />
+          return <CurriculumTermPanel key={term.id} term={term} slots={slots} courses={detail.data.courses} actionsDisabled={!catalog.isSuccess || catalog.isFetching || detail.isFetching} onAddRequirement={() => { setTermMessage(''); setAddingRequirement({ term, version }) }} onEditSlot={slot => { setTermMessage(''); setSlotAction({ action: 'edit', term, version, slot }) }} onDeleteSlot={slot => { setTermMessage(''); setSlotAction({ action: 'delete', term, version, slot }) }} onEdit={() => openTermAction('edit')} onDelete={() => openTermAction('delete')} />
         })}
       </>}
     </>}

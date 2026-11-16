@@ -2,11 +2,13 @@ import { DataTablePanel, type Column } from '@/components/features/data-table-pa
 import type { Course, CurriculumSlot, CurriculumTerm } from './curricula.api'
 import { Button } from '@/components/ui/button'
 
-export function CurriculumTermPanel({ term, slots, courses, onAddRequirement, onEdit, onDelete, actionsDisabled = false }: {
+export function CurriculumTermPanel({ term, slots, courses, onAddRequirement, onEditSlot, onDeleteSlot, onEdit, onDelete, actionsDisabled = false }: {
   term: CurriculumTerm
   slots: CurriculumSlot[]
   courses: Course[]
   onAddRequirement?: () => void
+  onEditSlot?: (slot: CurriculumSlot) => void
+  onDeleteSlot?: (slot: CurriculumSlot) => void
   onEdit?: () => void
   onDelete?: () => void
   actionsDisabled?: boolean
@@ -24,6 +26,13 @@ export function CurriculumTermPanel({ term, slots, courses, onAddRequirement, on
     { header: 'Type', cell: slot => slot.slot_type === 'ge' ? 'General education' : slot.is_elective_slot || slot.slot_type === 'elective' ? 'Elective' : 'Required' },
     { header: 'Course units', numeric: true, cell: slot => slot.course_id ? references.get(slot.course_id)?.units ?? 'Unavailable' : 'Not fixed' },
     { header: 'Nominal slot units', numeric: true, cell: slot => slot.nominal_units ?? 'Unavailable' },
+    ...(onEditSlot || onDeleteSlot ? [{ header: 'Actions', cell: (slot: CurriculumSlot) => {
+      const name = slot.slot_label || (slot.course_id ? references.get(slot.course_id)?.code : null) || slot.id
+      return <div className="flex flex-wrap gap-2">
+        {onEditSlot && <Button type="button" size="sm" variant="outline" disabled={actionsDisabled} aria-label={`Edit requirement ${name}`} onClick={() => onEditSlot(slot)}>Edit</Button>}
+        {onDeleteSlot && <Button type="button" size="sm" variant="destructive" disabled={actionsDisabled} aria-label={`Delete requirement ${name}`} onClick={() => onDeleteSlot(slot)}>Delete</Button>}
+      </div>
+    } }] : []),
   ]
   const label = `Year ${term.year_level} - Term ${term.term_sequence}`
   return <DataTablePanel title={label} description="Curriculum position; course units and nominal requirement units are shown separately." action={<div className="flex flex-wrap gap-2">
