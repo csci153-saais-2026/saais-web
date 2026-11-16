@@ -31,6 +31,7 @@ describe('encoding workspace identity',()=>{
    expect(await screen.findAllByText(/CS 1/)).toHaveLength(2)
    fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Complete INC'}))
    await waitFor(()=>expect(completeInc).toHaveBeenCalledWith('student-one',attempt,2.25,'Completed'))
+   await waitFor(()=>expect(getTermOfferings).toHaveBeenCalledTimes(2))
  })
  it('clears prior attempts when switching students or accounts',async()=>{
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getTermOfferings).mockResolvedValue([]);vi.mocked(getGrades).mockResolvedValueOnce(data).mockImplementation(()=>new Promise(()=>{}))
@@ -51,4 +52,15 @@ describe('encoding workspace identity',()=>{
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
    expect(await screen.findByText(/Previously recorded grades/)).toBeTruthy();expect(screen.queryByLabelText('New final grade')).toBeNull();expect(saveTermGrades).not.toHaveBeenCalled()
  })
+ it('retains draft rows and checks refreshed eligibility after another grade is saved',async()=>{
+   const offering={offering:{id:'offering-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValueOnce([offering]).mockResolvedValueOnce([]);vi.mocked(completeInc).mockResolvedValue({} as ApiSchema<'INCResolution'>)
+   render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
+   fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.change(screen.getByLabelText('Course'),{target:{value:'offering-two'}});fireEvent.change(screen.getByLabelText('Remark'),{target:{value:'Keep draft'}})
+   fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Complete INC'}))
+   await waitFor(()=>expect(getTermOfferings).toHaveBeenCalledTimes(2))
+   expect((await screen.findByLabelText('Remark') as HTMLInputElement).value).toBe('Keep draft')
+   expect((screen.getByRole('button',{name:'Review grades'}) as HTMLButtonElement).disabled).toBe(true)
+ })
+
 })
