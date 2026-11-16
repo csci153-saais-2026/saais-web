@@ -8,9 +8,32 @@ import {
 } from "@/components/features/student-record-header"
 import { Button } from "@/components/ui/button"
 import { DeanReadOnlyNotice } from "@/routes/dean/components/DeanReadOnlyNotice"
+import { DeanStudentAuditTab } from "@/routes/dean/components/DeanStudentAuditTab"
 import { DeanStudentChecklistTab } from "@/routes/dean/components/DeanStudentChecklistTab"
 import { DeanStudentGradesTab } from "@/routes/dean/components/DeanStudentGradesTab"
 import { getDeanStudentDetail } from "@/routes/dean/data/faculty-students"
+import type { DeanAuditEntry } from "@/routes/dean/types"
+
+const SEED_STUDENT_AUDIT: DeanAuditEntry[] = [
+  {
+    id: "seed-1",
+    timestamp: "16 Oct 2026 09:14",
+    actor: "Prof. Mara Reyes",
+    action: "View",
+    student: "Ana Reyes",
+    studentNumber: "23-1-01234",
+    details: "Opened checklist",
+  },
+  {
+    id: "seed-2",
+    timestamp: "14 Oct 2026 16:02",
+    actor: "Prof. Mara Reyes",
+    action: "Change",
+    student: "Ana Reyes",
+    studentNumber: "23-1-01234",
+    details: "CSci 25 final: 2.25 → 2.50",
+  },
+]
 
 const DEAN_RECORD_TABS = [
   { value: "checklist", label: "Checklist" },
@@ -70,9 +93,14 @@ export default function DeanStudentDetailPage() {
       {activeTab === "grades" && <DeanStudentGradesTab student={student} />}
 
       {activeTab === "audit" && (
-        <Panel title="Record audit trail" description="View and grade change history for this student.">
-          <p className="text-sm text-muted-foreground">Audit log loading…</p>
-        </Panel>
+        <DeanStudentAuditTab
+          studentName={student.name}
+          entries={SEED_STUDENT_AUDIT.filter(
+            (entry) =>
+              entry.studentNumber === student.studentNumber ||
+              entry.student === student.name,
+          )}
+        />
       )}
 
       <SampleFooter>Fictional sample records · Reference date: 28 October 2026</SampleFooter>
