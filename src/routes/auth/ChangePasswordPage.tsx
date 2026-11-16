@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertIcon, CheckIcon } from '@/components/icons'
+import { AlertIcon, CheckIcon, EyeIcon } from '@/components/icons'
 import { useAuth } from '@/hooks/use-auth'
 import {
   changeAuthenticatedPassword,
@@ -19,8 +19,17 @@ export default function ChangePasswordPage() {
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
+  const [visiblePasswords, setVisiblePasswords] = React.useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  })
 
   const isGoogleManagedAccount = user?.authProvider === 'google'
+
+  const togglePasswordVisibility = (field: keyof typeof visiblePasswords) => {
+    setVisiblePasswords(current => ({ ...current, [field]: !current[field] }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,25 +110,55 @@ export default function ChangePasswordPage() {
             <form onSubmit={handleSubmit} className="grid gap-4">
               <div className="grid gap-1.5">
                 <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  required
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="currentPassword"
+                    type={visiblePasswords.currentPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="pr-11"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={visiblePasswords.currentPassword ? 'Hide current password' : 'Show current password'}
+                    aria-pressed={visiblePasswords.currentPassword}
+                    onClick={() => togglePasswordVisibility('currentPassword')}
+                  >
+                    <EyeIcon aria-hidden />
+                  </Button>
+                </div>
               </div>
 
               <div className="grid gap-1.5">
                 <Label htmlFor="newPassword">New Password</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  required
-                  placeholder="At least 12 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={visiblePasswords.newPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    required
+                    placeholder="At least 12 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="pr-11"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={visiblePasswords.newPassword ? 'Hide new password' : 'Show new password'}
+                    aria-pressed={visiblePasswords.newPassword}
+                    onClick={() => togglePasswordVisibility('newPassword')}
+                  >
+                    <EyeIcon aria-hidden />
+                  </Button>
+                </div>
                 <span className="text-[11px] text-muted-foreground">
                   Must be 12–128 characters with uppercase, lowercase, and number.
                 </span>
@@ -127,14 +166,29 @@ export default function ChangePasswordPage() {
 
               <div className="grid gap-1.5">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  required
-                  placeholder="Repeat new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={visiblePasswords.confirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    required
+                    placeholder="Repeat new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pr-11"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={visiblePasswords.confirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
+                    aria-pressed={visiblePasswords.confirmPassword}
+                    onClick={() => togglePasswordVisibility('confirmPassword')}
+                  >
+                    <EyeIcon aria-hidden />
+                  </Button>
+                </div>
               </div>
 
               <Button type="submit" disabled={submitting} className="w-full mt-2">
