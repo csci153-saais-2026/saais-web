@@ -5,8 +5,17 @@ import { FormField } from '@/components/features/form-field'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
 import { SearchInput } from '@/components/features/search-input'
-import { StatGrid } from '@/components/features/stat-tile'
 import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import {
   Select,
   SelectContent,
@@ -51,18 +60,6 @@ const booleanFilterOptions = [
   { value: 'true', label: 'With condition' },
   { value: 'false', label: 'Without condition' },
 ] as const
-
-function getStandingLabel(standing: Standing): string {
-  return standingOptions.find((option) => option.value === standing)?.label ?? standing
-}
-
-function getStandingVariant(
-  standing: Standing,
-): 'default' | 'secondary' | 'destructive' {
-  if (standing === 'good_standing') return 'default'
-  if (standing === 'dismissed') return 'destructive'
-  return 'secondary'
-}
 
 function formatGwa(gwa: number | null | undefined): string {
   return gwa == null ? '—' : gwa.toFixed(2)
@@ -118,6 +115,7 @@ export default function AdminStudentsPage() {
   const [hasDeficiencies, setHasDeficiencies] = useState<BooleanFilter>(ALL)
   const [hasOpenInc, setHasOpenInc] = useState<BooleanFilter>(ALL)
   const [hasOpenFlags, setHasOpenFlags] = useState<BooleanFilter>(ALL)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [sortBy, setSortBy] = useState<SortColumn>('full_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(0)
@@ -256,12 +254,32 @@ export default function AdminStudentsPage() {
     hasDeficiencies !== ALL ||
     hasOpenInc !== ALL ||
     hasOpenFlags !== ALL
+  const activeFilterCount = [
+    facultyId,
+    programId,
+    yearLevel,
+    standing,
+    hasDeficiencies,
+    hasOpenInc,
+    hasOpenFlags,
+  ].filter((value) => value !== ALL).length
   const totalCount = roster?.total_count ?? 0
   const pageCount = Math.ceil(totalCount / PAGE_SIZE)
 
   function resetPageAnd<T>(setter: (value: T) => void, value: T) {
     setPage(0)
     setter(value)
+  }
+
+  function resetFilters() {
+    setPage(0)
+    setFacultyId(ALL)
+    setProgramId(ALL)
+    setYearLevel(ALL)
+    setStanding(ALL)
+    setHasDeficiencies(ALL)
+    setHasOpenInc(ALL)
+    setHasOpenFlags(ALL)
   }
 
   function toggleSort(column: SortColumn) {
@@ -280,7 +298,7 @@ export default function AdminStudentsPage() {
     return (
       <button
         type="button"
-        className="font-semibold hover:text-foreground focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+        className="text-[11.5px] font-semibold tracking-[0.09em] uppercase hover:text-foreground focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
         aria-label={`Sort by ${label}${active ? `, currently ${sortDir}ending` : ''}`}
         onClick={() => toggleSort(column)}
       >
@@ -297,14 +315,148 @@ export default function AdminStudentsPage() {
         subtitle="Search and review the institution-wide student roster and academic overview."
         className="mb-4"
         actions={
-          <div className="w-full md:w-64 lg:w-[340px]">
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
             <SearchInput
               id="student-search"
               aria-label="Search students"
+              className="w-full sm:w-64 lg:w-[340px]"
               value={search}
               placeholder="Search by name or student number"
               onChange={(event) => resetPageAnd(setSearch, event.target.value)}
             />
+            <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-label={`Filter students, ${activeFilterCount} active ${
+                    activeFilterCount === 1 ? 'filter' : 'filters'
+                  }`}
+                >
+                  <span>Filter</span>
+                  <Badge variant="secondary" aria-hidden="true">
+                    {activeFilterCount}
+                  </Badge>
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="gap-0 p-0">
+                <SheetHeader className="border-b border-border p-6 pr-14">
+                  <SheetTitle>Student filters</SheetTitle>
+                  <SheetDescription>
+                    Narrow the roster by organization, year, and academic conditions.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="flex-1 space-y-4 overflow-y-auto p-6">
+                  <FilterSelect
+                    id="student-faculty"
+                    label="Faculty / college"
+                    value={facultyId}
+                    onChange={(value) => resetPageAnd(setFacultyId, value)}
+                    options={[
+                      { value: ALL, label: 'All faculties' },
+                      ...facultyOptions,
+                    ]}
+                    disabled={!catalogsLoaded}
+                  />
+                  <FilterSelect
+                    id="student-program"
+                    label="Program"
+                    value={programId}
+                    onChange={(value) => resetPageAnd(setProgramId, value)}
+                    options={[
+                      { value: ALL, label: 'All programs' },
+                      ...programOptions,
+                    ]}
+                    disabled={!catalogsLoaded}
+                  />
+                  <FilterSelect
+                    id="student-year-level"
+                    label="Year level"
+                    value={yearLevel}
+                    onChange={(value) => resetPageAnd(setYearLevel, value)}
+                    options={[
+                      { value: ALL, label: 'All year levels' },
+                      ...[1, 2, 3, 4, 5, 6].map((year) => ({
+                        value: String(year),
+                        label: `Year ${year}`,
+                      })),
+                    ]}
+                  />
+                  <FilterSelect
+                    id="student-standing"
+                    label="Academic standing"
+                    value={standing}
+                    onChange={(value) => {
+                      if (value === ALL || isStanding(value)) {
+                        resetPageAnd(setStanding, value)
+                      }
+                    }}
+                    options={[
+                      { value: ALL, label: 'All standings' },
+                      ...standingOptions,
+                    ]}
+                  />
+                  <FilterSelect
+                    id="student-deficiencies"
+                    label="Deficiencies"
+                    value={hasDeficiencies}
+                    onChange={(value) => {
+                      if (isBooleanFilter(value)) {
+                        resetPageAnd(setHasDeficiencies, value)
+                      }
+                    }}
+                    options={[
+                      { value: ALL, label: 'Any deficiencies' },
+                      { value: 'true', label: 'Has deficiencies' },
+                      { value: 'false', label: 'No deficiencies' },
+                    ]}
+                  />
+                  <FilterSelect
+                    id="student-open-inc"
+                    label="Open INC"
+                    value={hasOpenInc}
+                    onChange={(value) => {
+                      if (isBooleanFilter(value)) {
+                        resetPageAnd(setHasOpenInc, value)
+                      }
+                    }}
+                    options={[
+                      { value: ALL, label: 'Any open INC' },
+                      { value: 'true', label: 'Has open INC' },
+                      { value: 'false', label: 'No open INC' },
+                    ]}
+                  />
+                  <FilterSelect
+                    id="student-open-flags"
+                    label="Open flags"
+                    value={hasOpenFlags}
+                    onChange={(value) => {
+                      if (isBooleanFilter(value)) {
+                        resetPageAnd(setHasOpenFlags, value)
+                      }
+                    }}
+                    options={[
+                      { value: ALL, label: 'Any open flags' },
+                      { value: 'true', label: 'Has open flags' },
+                      { value: 'false', label: 'No open flags' },
+                    ]}
+                  />
+                </div>
+                <SheetFooter className="flex-row justify-between border-t border-border p-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetFilters}
+                    disabled={activeFilterCount === 0}
+                  >
+                    Reset
+                  </Button>
+                  <SheetClose asChild>
+                    <Button type="button">Done</Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
           </div>
         }
       />
@@ -325,120 +477,6 @@ export default function AdminStudentsPage() {
           </Button>
         </div>
       )}
-
-      {roster && (
-        <StatGrid
-          items={[
-            { label: 'Matching students', value: roster.total_count },
-            { label: 'With deficiencies', value: roster.with_deficiencies_count },
-            ...(roster.flagged_count != null
-              ? [{ label: 'Open flags', value: roster.flagged_count }]
-              : []),
-            ...(roster.open_inc_students_count != null
-              ? [
-                  {
-                    label: 'Open INC',
-                    value: roster.open_inc_students_count,
-                  },
-                ]
-              : []),
-          ]}
-        />
-      )}
-
-      <section
-        aria-label="Student roster filters"
-        className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-      >
-        <FilterSelect
-          id="student-faculty"
-          label="Faculty / college"
-          value={facultyId}
-          onChange={(value) => resetPageAnd(setFacultyId, value)}
-          options={[{ value: ALL, label: 'All faculties' }, ...facultyOptions]}
-          disabled={!catalogsLoaded}
-        />
-        <FilterSelect
-          id="student-program"
-          label="Program"
-          value={programId}
-          onChange={(value) => resetPageAnd(setProgramId, value)}
-          options={[{ value: ALL, label: 'All programs' }, ...programOptions]}
-          disabled={!catalogsLoaded}
-        />
-        <FilterSelect
-          id="student-year-level"
-          label="Year level"
-          value={yearLevel}
-          onChange={(value) => resetPageAnd(setYearLevel, value)}
-          options={[
-            { value: ALL, label: 'All year levels' },
-            ...[1, 2, 3, 4, 5, 6].map((year) => ({
-              value: String(year),
-              label: `Year ${year}`,
-            })),
-          ]}
-        />
-        <FilterSelect
-          id="student-standing"
-          label="Academic standing"
-          value={standing}
-          onChange={(value) => {
-            if (value === ALL || isStanding(value)) {
-              resetPageAnd(setStanding, value)
-            }
-          }}
-          options={[
-            { value: ALL, label: 'All standings' },
-            ...standingOptions,
-          ]}
-        />
-        <FilterSelect
-          id="student-deficiencies"
-          label="Deficiencies"
-          value={hasDeficiencies}
-          onChange={(value) => {
-            if (isBooleanFilter(value)) {
-              resetPageAnd(setHasDeficiencies, value)
-            }
-          }}
-          options={[
-            { value: ALL, label: 'Any deficiencies' },
-            { value: 'true', label: 'Has deficiencies' },
-            { value: 'false', label: 'No deficiencies' },
-          ]}
-        />
-        <FilterSelect
-          id="student-open-inc"
-          label="Open INC"
-          value={hasOpenInc}
-          onChange={(value) => {
-            if (isBooleanFilter(value)) {
-              resetPageAnd(setHasOpenInc, value)
-            }
-          }}
-          options={[
-            { value: ALL, label: 'Any open INC' },
-            { value: 'true', label: 'Has open INC' },
-            { value: 'false', label: 'No open INC' },
-          ]}
-        />
-        <FilterSelect
-          id="student-open-flags"
-          label="Open flags"
-          value={hasOpenFlags}
-          onChange={(value) => {
-            if (isBooleanFilter(value)) {
-              resetPageAnd(setHasOpenFlags, value)
-            }
-          }}
-          options={[
-            { value: ALL, label: 'Any open flags' },
-            { value: 'true', label: 'Has open flags' },
-            { value: 'false', label: 'No open flags' },
-          ]}
-        />
-      </section>
 
       {loading ? (
         <div
@@ -464,45 +502,45 @@ export default function AdminStudentsPage() {
         </div>
       ) : roster ? (
         <Panel
-          title="Students"
-          description="Read-only academic roster. Student records are managed through their authorized workflows."
+          title="All students"
+          action={
+            <span className="text-sm text-muted-foreground" aria-live="polite">
+              {roster.items.length} of {totalCount} shown
+            </span>
+          }
           flush
         >
           <Table responsive className="table-fixed">
             <colgroup>
-              <col className="w-[23%]" />
+              <col className="w-[27%]" />
               <col className="w-[14%]" />
-              <col className="w-[19%]" />
-              <col className="w-[6%]" />
-              <col className="w-[7%]" />
-              <col className="w-[12%]" />
-              <col className="w-[9%]" />
+              <col className="w-[22%]" />
+              <col className="w-[8%]" />
+              <col className="w-[8%]" />
+              <col className="w-[11%]" />
               <col className="w-[10%]" />
             </colgroup>
             <TableHeader className="bg-secondary">
               <TableRow>
-                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   {sortHeading('Student', 'full_name')}
                 </TableHead>
-                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
-                  {sortHeading('Student number', 'student_number')}
+                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                  {sortHeading('Student no.', 'student_number')}
                 </TableHead>
-                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   Curriculum
                 </TableHead>
-                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   {sortHeading('Year', 'year_level')}
                 </TableHead>
-                <TableHead className="whitespace-normal px-1.5 text-right text-xs leading-tight sm:px-2 sm:text-sm">
+                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   {sortHeading('GWA', 'gwa')}
                 </TableHead>
-                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
-                  {sortHeading('Standing', 'standing')}
-                </TableHead>
-                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   Open flags
                 </TableHead>
-                <TableHead className="whitespace-normal px-1.5 text-xs leading-tight sm:px-2 sm:text-sm">
+                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   Deficiencies
                 </TableHead>
               </TableRow>
@@ -510,21 +548,18 @@ export default function AdminStudentsPage() {
             <TableBody>
               {roster.items.map((student) => (
                 <TableRow key={student.student_id}>
-                  <TableCell label="Student" className="whitespace-normal px-1.5 sm:px-2">
+                  <TableCell label="Student" className="whitespace-normal px-3.5 py-[11px] text-[13.5px]">
                     <div className="break-words font-semibold leading-tight">
                       {student.full_name}
                     </div>
-                    <div className="break-all text-xs leading-tight text-muted-foreground">
-                      {student.email}
-                    </div>
                   </TableCell>
                   <TableCell
-                    label="Student number"
-                    className="whitespace-normal break-words px-1.5 font-mono text-xs sm:px-2"
+                    label="Student no."
+                    className="whitespace-normal break-words px-3.5 py-[11px] text-[13.5px] font-mono"
                   >
                     {student.student_number}
                   </TableCell>
-                  <TableCell label="Curriculum" className="whitespace-normal px-1.5 sm:px-2">
+                  <TableCell label="Curriculum" className="whitespace-normal px-3.5 py-[11px] text-[13.5px]">
                     <div className="break-words leading-tight">
                       {student.curriculum_label}
                     </div>
@@ -533,21 +568,16 @@ export default function AdminStudentsPage() {
                       {student.entry_year ?? 'Entry year unavailable'}
                     </div>
                   </TableCell>
-                  <TableCell label="Year" className="whitespace-normal px-1.5 text-center sm:px-2">
+                  <TableCell label="Year" className="whitespace-normal px-3.5 py-[11px] text-[13.5px]">
                     {student.year_level}
                   </TableCell>
                   <TableCell
                     label="GWA"
-                    className="whitespace-normal px-1.5 text-right font-mono sm:px-2"
+                    className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px] font-mono"
                   >
                     {formatGwa(student.gwa)}
                   </TableCell>
-                  <TableCell label="Standing" className="whitespace-normal px-1.5 sm:px-2">
-                    <Badge variant={getStandingVariant(student.standing)}>
-                      {getStandingLabel(student.standing)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell label="Open flags" className="whitespace-normal px-1.5 sm:px-2">
+                  <TableCell label="Open flags" className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]">
                     {student.open_flags_count > 0 ? (
                       <StatusBadge status="flagged">
                         {student.open_flags_count} open
@@ -558,7 +588,7 @@ export default function AdminStudentsPage() {
                   </TableCell>
                   <TableCell
                     label="Deficiencies"
-                    className="whitespace-normal px-1.5 sm:px-2"
+                    className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]"
                   >
                     {student.deficiencies_count > 0 ? (
                       <Badge variant="secondary">
@@ -580,7 +610,9 @@ export default function AdminStudentsPage() {
           {roster.items.length === 0 && (
             <p className="px-5 py-8 text-center text-sm text-muted-foreground">
               {hasActiveFilters
-                ? 'No students match these search criteria.'
+                ? search.trim()
+                  ? 'No students match that search.'
+                  : 'No students match the selected filters.'
                 : 'No students are available in the roster.'}
             </p>
           )}

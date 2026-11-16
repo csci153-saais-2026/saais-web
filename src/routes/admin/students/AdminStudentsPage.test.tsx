@@ -71,6 +71,13 @@ function roster(
 const faculties = [{ id: 'faculty-1', name: 'Faculty of Computing' }]
 const programs = [{ id: 'program-1', code: 'BSCS', name: 'Computer Science' }]
 
+async function openFilterSheet() {
+  fireEvent.click(
+    screen.getByRole('button', { name: /Filter students/ }),
+  )
+  return screen.findByRole('dialog')
+}
+
 describe('AdminStudentsPage', () => {
   beforeEach(() => {
     getMock.mockReset()
@@ -96,7 +103,22 @@ describe('AdminStudentsPage', () => {
     expect(screen.getByText('24-1-01798')).toBeTruthy()
     expect(screen.getByText('BSCS 2024-2025 v1')).toBeTruthy()
     expect(screen.getByText('1.75')).toBeTruthy()
-    expect(screen.getByText('Good standing')).toBeTruthy()
+    expect(screen.getByText('All students')).toBeTruthy()
+    expect(screen.getByText('1 of 1 shown')).toBeTruthy()
+    expect(screen.getAllByRole('columnheader')).toHaveLength(7)
+    expect(
+      screen.getByRole('button', { name: 'Sort by Student no.' }),
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole('columnheader', { name: /Standing/ }),
+    ).toBeNull()
+    expect(screen.queryByText('Matching students')).toBeNull()
+    expect(screen.queryByText('With deficiencies')).toBeNull()
+    expect(
+      screen.getByRole('button', {
+        name: 'Filter students, 0 active filters',
+      }),
+    ).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: /Open flags/i })).toBeTruthy()
     expect(getMock).toHaveBeenCalledWith(
       '/functions/v1/students',
@@ -222,8 +244,9 @@ describe('AdminStudentsPage', () => {
     render(<AdminStudentsPage />)
 
     await screen.findByText('Alex Student')
-    expect(screen.getAllByText('Open flags')).toHaveLength(2)
-    expect(screen.getAllByText('Open INC')).toHaveLength(1)
+    expect(screen.getAllByText('Open flags')).toHaveLength(1)
+    expect(screen.queryByText('Matching students')).toBeNull()
+    expect(screen.queryByText('With deficiencies')).toBeNull()
   })
 
   it('shows the request error and allows retrying', async () => {
@@ -304,7 +327,7 @@ describe('AdminStudentsPage', () => {
     })
 
     expect(
-      await screen.findByText('No students match these search criteria.'),
+      await screen.findByText('No students match that search.'),
     ).toBeTruthy()
   })
 
@@ -326,6 +349,7 @@ describe('AdminStudentsPage', () => {
     })
     render(<AdminStudentsPage />)
     await screen.findByText('Alex Student')
+    await openFilterSheet()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Faculty / college' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Faculty of Computing' }))
@@ -339,7 +363,14 @@ describe('AdminStudentsPage', () => {
         }),
       )
     })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(
+      screen.getByRole('button', {
+        name: 'Filter students, 1 active filter',
+      }),
+    ).toBeTruthy()
 
+    await openFilterSheet()
     fireEvent.click(screen.getByRole('combobox', { name: 'Program' }))
     fireEvent.click(await screen.findByRole('option', { name: 'BSCS · Computer Science' }))
     await waitFor(() => {
@@ -355,6 +386,12 @@ describe('AdminStudentsPage', () => {
         }),
       )
     })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(
+      screen.getByRole('button', {
+        name: 'Filter students, 2 active filters',
+      }),
+    ).toBeTruthy()
   })
 
   it('filters by academic standing, deficiencies, INC, and open flags', async () => {
@@ -364,6 +401,7 @@ describe('AdminStudentsPage', () => {
     })
     render(<AdminStudentsPage />)
     await screen.findByText('Alex Student')
+    await openFilterSheet()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Academic standing' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Warning' }))
@@ -391,11 +429,61 @@ describe('AdminStudentsPage', () => {
     })
   })
 
+  it('resets all filters and their active count from the filter sheet', async () => {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    render(<AdminStudentsPage />)
+    await screen.findByText('Alex Student')
+    await openFilterSheet()
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Faculty / college' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Faculty of Computing' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Academic standing' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Warning' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+
+    expect(
+      screen.getByRole('combobox', { name: 'Faculty / college' }).textContent,
+    ).toContain('All faculties')
+    expect(
+      screen.getByRole('combobox', { name: 'Academic standing' }).textContent,
+    ).toContain('All standings')
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(
+      screen.getByRole('button', {
+        name: 'Filter students, 0 active filters',
+      }),
+    ).toBeTruthy()
+    await waitFor(() => {
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.not.objectContaining({
+              faculty_id: 'faculty-1',
+            }),
+          },
+        }),
+      )
+      expect(getMock).toHaveBeenLastCalledWith(
+        '/functions/v1/students',
+        expect.objectContaining({
+          params: {
+            query: expect.not.objectContaining({ standing: 'warning' }),
+          },
+        }),
+      )
+    })
+  })
+
   it('sorts the roster by supported table columns', async () => {
     render(<AdminStudentsPage />)
     await screen.findByText('Alex Student')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sort by Student number' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Student no.' }))
     await waitFor(() => {
       expect(getMock).toHaveBeenLastCalledWith(
         '/functions/v1/students',
@@ -410,7 +498,7 @@ describe('AdminStudentsPage', () => {
       )
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Sort by Student number/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Sort by Student no./ }))
     await waitFor(() => {
       expect(getMock).toHaveBeenLastCalledWith(
         '/functions/v1/students',
