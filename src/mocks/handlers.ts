@@ -3437,6 +3437,11 @@ export const saaisMswHandlers = [
       const archived = (body as { is_archived: boolean }).is_archived
       const updated = { ...note, is_archived: archived, archived_at: archived ? '2026-11-10T09:00:00Z' : null, archived_by: archived ? auth.persona.profileId : null }
       db.advisingNotes[db.advisingNotes.indexOf(note)] = updated
+      const student = db.profiles.find(item => item.id === studentId)
+      db.auditLogEntries.push({ id: nextSyntheticUuid(), actor_id: auth.persona.profileId, actor_name: auth.persona.fullName,
+        actor_role: auth.persona.primaryRole, student_id: studentId, student_name: student?.full_name ?? null, student_number: student?.student_number ?? null,
+        target_label: student?.full_name ?? 'Student note', action: archived ? 'note_archived' : 'note_restored', action_category: 'note_change', entity_type: 'advising_note', entity_id: noteId,
+        details_summary: archived ? 'Archived advising note.' : 'Restored advising note.', old_value: { is_archived: note.is_archived }, new_value: { is_archived: archived }, reason: null, created_at: new Date().toISOString() })
       return HttpResponse.json(updated, { status: 200 })
     },
   ),
