@@ -22,6 +22,7 @@ function DataTablePanel<T>({
   columns,
   rows,
   rowKey,
+  rowProps,
   empty = "No records match. Try another search or filter.",
   footer,
 }: {
@@ -31,6 +32,7 @@ function DataTablePanel<T>({
   columns: Column<T>[]
   rows: T[]
   rowKey: (row: T) => string
+  rowProps?: (row: T) => React.ComponentProps<'tr'>
   empty?: string
   footer?: React.ReactNode
 }) {
@@ -54,7 +56,7 @@ function DataTablePanel<T>({
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={rowKey(row)}>
+            <TableRow key={rowKey(row)} {...rowProps?.(row)}>
               {columns.map((c) => (
                 <TableCell
                   key={c.header}
