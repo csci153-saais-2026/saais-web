@@ -21,6 +21,22 @@ export const curriculumVersionSchema = z.object({
 
 export type CurriculumVersionValues = z.infer<typeof curriculumVersionSchema>
 
+export const curriculumVersionEditSchema = curriculumVersionSchema.safeExtend({
+  version_label: z.string().trim().min(1, 'Enter a version label.').max(250, 'Use at most 250 characters.'),
+})
+
+export function versionUpdateRequest(values: CurriculumVersionValues): ApiSchema<'CurriculumVersionUpdate'> {
+  const parsed = curriculumVersionEditSchema.parse(values)
+  return {
+    version_label: parsed.version_label,
+    effective_start: parsed.effective_start,
+    effective_end: parsed.effective_end || null,
+    total_units: parsed.total_units,
+    delinquency_threshold: parsed.delinquency_threshold,
+    status: parsed.status,
+  }
+}
+
 // The generated Insert schema includes unknown union branches. Keep the blank
 // creation payload narrowly typed from the generated entity rather than casting it.
 export type NewCurriculumVersion = Pick<ApiSchema<'CurriculumVersion'>,

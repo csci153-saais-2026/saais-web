@@ -1,8 +1,46 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { staffQueryKeys } from '../shared/staff-query-keys'
 import { useStaffScope } from '../shared/use-staff-scope'
-import { createCurriculumVersion, listCurricula, readCurriculum } from './curricula.api'
-import { blankVersionRequest, type CurriculumVersionValues } from './curriculum-version.schema'
+import { createCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion, type CurriculumVersion } from './curricula.api'
+import { blankVersionRequest, versionUpdateRequest, type CurriculumVersionValues } from './curriculum-version.schema'
+
+export function useUpdateCurriculumVersion() {
+  const scope = useStaffScope()
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: async ({ original, values }: { original: CurriculumVersion; values: CurriculumVersionValues }) => {
+      if (scope.status !== 'ready') throw new Error('An authorized department is required to edit a version.')
+      const key = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curricula')
+      const catalog = queryClient.getQueryData<Awaited<ReturnType<typeof listCurricula>>>(key)
+      const current = catalog?.versions.find(version => version.id === original.id)
+      if (!current || values.program_id !== current.program_id || !catalog?.programs.some(program => program.id === current.program_id && program.department_id === scope.departmentId)) {
+        throw new Error('This version is no longer available in your authorized department. Refresh the list.')
+      }
+      const fields = ['version_label', 'effective_start', 'effective_end', 'total_units', 'delinquency_threshold', 'status'] as const
+      if (current.program_id !== original.program_id || fields.some(field => current[field] !== original[field])) {
+        throw new Error('This version changed while the form was open. Close the dialog and review the refreshed version before editing again.')
+      }
+      const version = await updateCurriculumVersion(original.id, versionUpdateRequest(values))
+      if (!version || version.id !== original.id || version.program_id !== original.program_id) {
+        throw new Error('The service returned an unexpected version. Refresh the list to confirm the update.')
+      }
+      return { version, profileId: scope.profileId, departmentId: scope.departmentId }
+    },
+    onSuccess: async ({ version, profileId, departmentId }) => {
+      const key = staffQueryKeys.resource(profileId, departmentId, 'curricula')
+      queryClient.setQueryData<Awaited<ReturnType<typeof listCurricula>>>(key, catalog => {
+        if (!catalog) return catalog
+        return { ...catalog, versions: catalog.versions.map(item => item.id === version.id ? version : item) }
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'curriculum-overview', { versionId: version.id }) }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'student-filter-options') }),
+      ])
+    },
+  })
+}
 
 export function useCreateCurriculumVersion() {
   const scope = useStaffScope()

@@ -14,6 +14,12 @@ export async function createCurriculumVersion(body: NewCurriculumVersion): Promi
   return unwrapApiResult<CurriculumVersion>(await apiClient.POST('/functions/v1/catalog/curriculum_version', { body }))
 }
 
+export async function updateCurriculumVersion(id: string, body: ApiSchema<'CurriculumVersionUpdate'>): Promise<CurriculumVersion> {
+  return unwrapApiResult<CurriculumVersion>(await apiClient.PATCH('/functions/v1/catalog/curriculum_version/{id}', {
+    params: { path: { id } }, body,
+  }))
+}
+
 function completeRead<T>(result: { data?: T[]; error?: unknown; response: Response }, resource: string): T[] {
   const rows = unwrapApiResult<T[]>(result)
   if (!Array.isArray(rows)) throw new Error(`${resource} returned invalid data.`)

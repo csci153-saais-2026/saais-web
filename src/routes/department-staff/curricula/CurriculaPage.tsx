@@ -8,6 +8,7 @@ import { ApiClientError } from '@/lib/api'
 import { CurriculumTermPanel } from './CurriculumTermPanel'
 import { useCurricula, useCurriculum } from './use-curricula'
 import { CurriculumVersionDialog } from './CurriculumVersionDialog'
+import type { CurriculumVersion } from './curricula.api'
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -23,13 +24,17 @@ export default function CurriculaPage() {
   const [selection, setSelection] = useState('')
   const [creating, setCreating] = useState(false)
   const [created, setCreated] = useState(false)
+  const [editing, setEditing] = useState<CurriculumVersion | null>(null)
+  const [updated, setUpdated] = useState(false)
   const versions = catalog.isError ? [] : catalog.data?.versions ?? []
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
   const statuses = { draft: 'Draft', active: 'Active', retired: 'Retired', teach_out: 'Teach out', closed: 'Closed' }
   return <div className="space-y-6">
-    <PageHeading title="Curricula" subtitle="Shape the path to graduation." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setCreating(true) }}>Add version</Button>} />
+    <PageHeading title="Curricula" subtitle="Shape the path to graduation." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setUpdated(false); setCreating(true) }}>Add version</Button>} />
     {created && <p role="status">Curriculum version created.</p>}
+    {updated && <p role="status">Curriculum version updated.</p>}
+    {editing && catalog.data && <CurriculumVersionDialog key={editing.id} version={editing} programs={catalog.data.programs} onClose={() => setEditing(null)} onUpdated={id => { setSelection(id); setEditing(null); setUpdated(true) }} />}
     {creating && catalog.data && <CurriculumVersionDialog programs={catalog.data.programs} onClose={() => setCreating(false)} onCreated={id => { setSelection(id); setCreating(false); setCreated(true) }} />}
     {catalog.isPending && <p role="status">Loading curriculum versions...</p>}
     {catalog.isError && <Panel title="Curriculum versions"><p role="alert">{errorMessage(catalog.error)}</p><Button type="button" variant="outline" disabled={catalog.isFetching} onClick={() => void catalog.refetch()}>Retry versions</Button></Panel>}
@@ -40,6 +45,7 @@ export default function CurriculaPage() {
           {versions.map(item => <option key={item.id} value={item.id}>{catalog.data?.programs.find(program => program.id === item.program_id)?.code ?? 'Program unavailable'} - {item.version_label}</option>)}
         </select>
       </FormField>
+      <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setEditing(version) }}>Edit version</Button>
       <StatGrid items={[
         { label: 'Required units', value: version.total_units ?? 'Unavailable' },
         { label: 'Delinquency threshold', value: version.delinquency_threshold ?? 'Unavailable', note: 'Failed units' },

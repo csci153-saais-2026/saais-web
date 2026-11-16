@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { createCurriculumVersion, listCurricula, readCurriculum } from './curricula.api'
+import { createCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion } from './curricula.api'
 
 vi.mock('@/lib/api', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -18,6 +18,18 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('Curriculum typed reads', () => {
+  it('patches only version details through the catalog endpoint', async () => {
+    const body = { version_label: 'Revised 2027', effective_start: '2027-08-01', effective_end: null, total_units: 162.25, delinquency_threshold: 12, status: 'active' as const }
+    let patches = 0
+    server.use(http.patch('*/functions/v1/catalog/curriculum_version/:id', async ({ request, params }) => {
+      patches++
+      expect(params.id).toBe('existing-version')
+      expect(await request.json()).toEqual(body)
+      return HttpResponse.json({ ...body, id: params.id, program_id: 'unchanged-program' })
+    }))
+    expect(await updateCurriculumVersion('existing-version', body)).toMatchObject({ id: 'existing-version', program_id: 'unchanged-program' })
+    expect(patches).toBe(1)
+  })
   it('creates a blank version with one catalog request and no child writes', async () => {
     const body = { program_id: '11111111-1111-4111-8111-111111111111', version_label: '2027', effective_start: '2027-08-01', effective_end: null, total_units: 0, delinquency_threshold: 0, status: 'draft' as const }
     let writes = 0

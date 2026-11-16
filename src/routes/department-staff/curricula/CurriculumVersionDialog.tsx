@@ -6,40 +6,50 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ApiClientError } from '@/lib/api'
-import type { Program } from './curricula.api'
-import { curriculumVersionSchema, type CurriculumVersionValues } from './curriculum-version.schema'
-import { useCreateCurriculumVersion } from './use-curricula'
+import type { CurriculumVersion, Program } from './curricula.api'
+import { curriculumVersionEditSchema, curriculumVersionSchema, type CurriculumVersionValues } from './curriculum-version.schema'
+import { useCreateCurriculumVersion, useUpdateCurriculumVersion } from './use-curricula'
 
-function creationError(error: unknown): string {
+function versionError(error: unknown, editing: boolean): string {
   if (error instanceof ApiClientError) {
-    if (error.isForbidden) return 'You do not have permission to create a version for this program.'
-    if (error.isConflict) return `The version could not be created because of a conflict. ${error.message}`
+    if (error.isForbidden) return editing ? 'You do not have permission to edit this curriculum version.' : 'You do not have permission to create a version for this program.'
+    if (error.isConflict) return `The version could not be ${editing ? 'updated' : 'created'} because of a conflict. ${error.message}`
     if (error.isRateLimited) return 'Too many requests. Wait before submitting again.'
     if (error.isAuthError) return 'Your session could not be verified. Sign in again.'
-    if (error.isNetworkError) return 'The creation result could not be confirmed. Refresh the version list before submitting again to avoid a duplicate.'
+    if (error.isNetworkError) return editing ? 'The update result could not be confirmed. Refresh the version list before submitting again.' : 'The creation result could not be confirmed. Refresh the version list before submitting again to avoid a duplicate.'
   }
-  return error instanceof Error ? error.message : 'The version could not be created.'
+  return error instanceof Error ? error.message : `The version could not be ${editing ? 'updated' : 'created'}.`
 }
 
-export function CurriculumVersionDialog({ programs, onClose, onCreated }: {
+type CurriculumVersionDialogProps = {
   programs: Program[]
   onClose: () => void
-  onCreated: (versionId: string) => void
-}) {
+} & ({ version?: undefined; onCreated: (versionId: string) => void; onUpdated?: never } |
+  { version: CurriculumVersion; onUpdated: (versionId: string) => void; onCreated?: never })
+
+export function CurriculumVersionDialog({ programs, onClose, onCreated, version, onUpdated }: CurriculumVersionDialogProps) {
   const creation = useCreateCurriculumVersion()
+  const update = useUpdateCurriculumVersion()
+  const editing = version !== undefined
+  const mutation = editing ? update : creation
   const submitting = useRef(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CurriculumVersionValues>({
-    resolver: zodResolver(curriculumVersionSchema),
-    defaultValues: { program_id: '', version_label: '', effective_start: '', effective_end: '', total_units: 0, delinquency_threshold: 0, status: 'draft' },
+    resolver: zodResolver(editing ? curriculumVersionEditSchema : curriculumVersionSchema),
+    defaultValues: version ? { program_id: version.program_id, version_label: version.version_label, effective_start: version.effective_start, effective_end: version.effective_end ?? '', total_units: version.total_units, delinquency_threshold: version.delinquency_threshold, status: version.status } : { program_id: '', version_label: '', effective_start: '', effective_end: '', total_units: 0, delinquency_threshold: 0, status: 'draft' },
   })
-  const pending = isSubmitting || creation.isPending
+  const pending = isSubmitting || mutation.isPending
 
   async function submit(values: CurriculumVersionValues) {
     if (submitting.current) return
     submitting.current = true
     try {
-      const { version } = await creation.mutateAsync(values)
-      onCreated(version.id)
+      if (version) {
+        const result = await update.mutateAsync({ original: version, values })
+        onUpdated(result.version.id)
+      } else {
+        const result = await creation.mutateAsync(values)
+        onCreated(result.version.id)
+      }
     } catch {
       // Preserve inputs; the normalized mutation error is shown below.
     } finally {
@@ -50,19 +60,22 @@ export function CurriculumVersionDialog({ programs, onClose, onCreated }: {
   return <Dialog open onOpenChange={open => { if (!open && !pending) onClose() }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!pending} onEscapeKeyDown={event => { if (pending) event.preventDefault() }} onInteractOutside={event => { if (pending) event.preventDefault() }}>
       <DialogHeader>
-        <DialogTitle>Create curriculum version</DialogTitle>
-        <DialogDescription>Create a blank version for a department program. Terms and requirements can be added afterward.</DialogDescription>
+        <DialogTitle>{editing ? 'Edit curriculum version' : 'Create curriculum version'}</DialogTitle>
+        <DialogDescription>{editing ? 'Update version details. Existing student assignments and historical records stay attached to this version; students are not migrated by this change.' : 'Create a blank version for a department program. Terms and requirements can be added afterward.'}</DialogDescription>
       </DialogHeader>
       <form noValidate onSubmit={event => { void handleSubmit(submit)(event) }} className="space-y-4" aria-busy={pending}>
         <fieldset disabled={pending} className="grid min-w-0 gap-4">
           <FormField label="Program" htmlFor="new-version-program" error={errors.program_id?.message}>
-            <select id="new-version-program" className="min-h-11 w-full rounded-sm border border-input bg-card px-3" aria-invalid={!!errors.program_id} {...register('program_id')}>
+            {editing ? <>
+              <Input id="new-version-program" readOnly value={programs.find(program => program.id === version.program_id)?.code ?? 'Program unavailable'} />
+              <input type="hidden" {...register('program_id')} />
+            </> : <select id="new-version-program" className="min-h-11 w-full rounded-sm border border-input bg-card px-3" aria-invalid={!!errors.program_id} {...register('program_id')}>
               <option value="">Select a program</option>
               {programs.map(program => <option key={program.id} value={program.id}>{program.code} - {program.name}</option>)}
-            </select>
+            </select>}
           </FormField>
           <FormField label="Version label" htmlFor="new-version-label" error={errors.version_label?.message}>
-            <Input id="new-version-label" maxLength={100} aria-invalid={!!errors.version_label} {...register('version_label')} />
+            <Input id="new-version-label" maxLength={editing ? 250 : 100} aria-invalid={!!errors.version_label} {...register('version_label')} />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Effective start" htmlFor="new-version-start" error={errors.effective_start?.message}>
@@ -84,10 +97,10 @@ export function CurriculumVersionDialog({ programs, onClose, onCreated }: {
             </select>
           </FormField>
         </fieldset>
-        {creation.isError && <p role="alert" className="text-sm text-destructive">{creationError(creation.error)}</p>}
+        {mutation.isError && <p role="alert" className="text-sm text-destructive">{versionError(mutation.error, editing)}</p>}
         <DialogFooter>
           <Button type="button" variant="outline" disabled={pending} onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={pending}>{pending ? 'Creating version...' : 'Create version'}</Button>
+          <Button type="submit" disabled={pending}>{editing ? pending ? 'Saving version...' : 'Save changes' : pending ? 'Creating version...' : 'Create version'}</Button>
         </DialogFooter>
       </form>
     </DialogContent>
