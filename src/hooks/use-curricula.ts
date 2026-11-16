@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
-import { createCurriculumTerm, createCurriculumVersion, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumTerm, updateCurriculumVersion, type CurriculumTerm, type CurriculumVersion } from '@/routes/department-staff/curricula/curricula.api'
+import { createCurriculumSlot, createCurriculumTerm, createCurriculumVersion, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, listCurriculumCourses, readCurriculum, updateCurriculumTerm, updateCurriculumVersion, type Course, type CurriculumTerm, type CurriculumVersion } from '@/routes/department-staff/curricula/curricula.api'
 import { blankVersionRequest, versionUpdateRequest, type CurriculumVersionValues } from '@/routes/department-staff/curricula/curriculum-version.schema'
 import { curriculumTermSchema, type CurriculumTermValues } from '@/routes/department-staff/curricula/curriculum-term.schema'
+import { curriculumSlotRequest, curriculumSlotSchema, type CurriculumSlotValues } from '@/routes/department-staff/curricula/curriculum-slot.schema'
 
 type TermChange = { original: CurriculumTerm } & ({ action: 'edit'; values: CurriculumTermValues } | { action: 'delete' })
 
@@ -95,6 +96,58 @@ export function useCreateCurriculumTerm() {
       queryClient.setQueryData<Awaited<ReturnType<typeof readCurriculum>>>(detailKey, detail => {
         if (!detail) return detail
         return { ...detail, terms: [...detail.terms.filter(item => item.id !== term.id), term].sort((a, b) => a.year_level - b.year_level || a.term_sequence - b.term_sequence || a.id.localeCompare(b.id)) }
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailKey }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'curricula') }),
+      ])
+    },
+  })
+}
+
+export function useCreateCurriculumSlot() {
+  const scope = useStaffScope()
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: async ({ term, values }: { term: CurriculumTerm; values: CurriculumSlotValues }) => {
+      if (scope.status !== 'ready') throw new Error('An authorized department is required to add a curriculum requirement.')
+      const versionId = term.curriculum_version_id
+      const catalogKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curricula')
+      const catalog = queryClient.getQueryData<Awaited<ReturnType<typeof listCurricula>>>(catalogKey)
+      const version = catalog?.versions.find(item => item.id === versionId)
+      if (!version || !catalog?.programs.some(program => program.id === version.program_id && program.department_id === scope.departmentId)) {
+        throw new Error('This version is no longer available in your authorized department. Refresh the list.')
+      }
+      const detailKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curriculum-overview', { versionId })
+      const detail = queryClient.getQueryData<Awaited<ReturnType<typeof readCurriculum>>>(detailKey)
+      const current = detail?.terms.find(item => item.id === term.id && item.curriculum_version_id === versionId)
+      if (!current || current.year_level !== term.year_level || current.term_sequence !== term.term_sequence) {
+        throw new Error('This term changed while the dialog was open. Close it and review the refreshed term.')
+      }
+      const parsed = curriculumSlotSchema.parse(values)
+      const fixedCourse = parsed.slot_type === 'required' || parsed.slot_type === 'pe' || parsed.slot_type === 'nstp'
+      const coursesKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curriculum-course-options')
+      const courses = queryClient.getQueryData<Course[]>(coursesKey) ?? []
+      const course = fixedCourse ? courses.find(item => item.id === parsed.course_id && item.department_id === scope.departmentId && item.status === 'active') : undefined
+      if (fixedCourse && !course) throw new Error('Select an active course from your department catalog and retry.')
+      const request = curriculumSlotRequest(term.id, parsed)
+      const slot = await createCurriculumSlot(request)
+      if (!slot?.id || slot.curriculum_term_id !== term.id) {
+        throw new Error('The requirement creation result could not be confirmed. Refresh the curriculum before submitting again.')
+      }
+      return { slot, course, versionId, profileId: scope.profileId, departmentId: scope.departmentId }
+    },
+    onSuccess: async ({ slot, course, versionId, profileId, departmentId }) => {
+      const detailKey = staffQueryKeys.resource(profileId, departmentId, 'curriculum-overview', { versionId })
+      await queryClient.cancelQueries({ queryKey: detailKey })
+      queryClient.setQueryData<Awaited<ReturnType<typeof readCurriculum>>>(detailKey, detail => {
+        if (!detail) return detail
+        return {
+          ...detail,
+          slots: [...detail.slots.filter(item => item.id !== slot.id), slot],
+          courses: course ? [...detail.courses.filter(item => item.id !== course.id), course] : detail.courses,
+        }
       })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: detailKey }),
@@ -252,6 +305,20 @@ export function useCurriculum(versionId: string | undefined) {
     queryFn: ({ signal }) => {
       if (!active || !versionId) throw new Error('Select an authorized curriculum version first.')
       return readCurriculum(versionId, signal)
+    },
+  })
+}
+
+export function useCurriculumCourses(enabled = true) {
+  const scope = useStaffScope()
+  const active = scope.status === 'ready' ? scope : null
+  return useQuery({
+    queryKey: staffQueryKeys.resource(active?.profileId ?? '', active?.departmentId ?? '', 'curriculum-course-options'),
+    enabled: active !== null && enabled,
+    retry: false,
+    queryFn: ({ signal }) => {
+      if (!active) throw new Error('Course requests require an authorized department.')
+      return listCurriculumCourses(active.departmentId, signal)
     },
   })
 }
