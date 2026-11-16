@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router'
 import type { ApiSchema } from '@/lib/api'
 import Notes from './AdviseeNotes'
-import { getNotes, setNoteArchived } from './notes.api'
+import { addNote, getNotes, setNoteArchived } from './notes.api'
 const auth = vi.hoisted(() => ({ user: { id: 'adviser-one' }, roles: ['adviser'], isMockMode: true }))
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => auth }))
 vi.mock('../../Adviser', () => ({ AdviserPage: ({children}:{children:React.ReactNode}) => <>{children}</> }))
@@ -21,12 +21,14 @@ describe('selected student notes',()=>{
     vi.mocked(getNotes).mockResolvedValue({notes:[note],isCurrent:false})
     render(page()); expect(await screen.findByText('A note')).toBeTruthy(); expect(screen.queryByRole('button',{name:'Archive'})).toBeNull()
   })
-  it('shows the note dialog while keeping mock saves disabled',async()=>{
+  it('submits a note in mock mode',async()=>{
     vi.mocked(getNotes).mockResolvedValue({notes:[note],isCurrent:true})
+    vi.mocked(addNote).mockResolvedValue(note)
     render(page());fireEvent.click(await screen.findByRole('button',{name:'Write a note'}))
     fireEvent.change(screen.getByLabelText('Advising note'),{target:{value:'Draft'}})
-    expect((screen.getByRole('button',{name:'Save note'}) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button',{name:'Cancel'}))
+    expect((screen.getByRole('button',{name:'Save note'}) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button',{name:'Save note'}))
+    await waitFor(()=>expect(addNote).toHaveBeenCalledWith('student-one','Draft'))
     await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull())
   })
   it('clears notes when the account changes',async()=>{
