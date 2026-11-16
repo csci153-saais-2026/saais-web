@@ -11,6 +11,7 @@ import {
   useStudentFilterOptions,
   useStudents,
 } from './use-students'
+import { StudentImportDialog } from './import/StudentImportDialog'
 
 type StudentRosterItem = ApiSchema<'StudentRosterItem'>
 
@@ -202,6 +203,7 @@ export default function StudentsPage() {
       <PageHeading
         title="Student roster"
         subtitle="Students in your authorized department."
+        actions={<StudentImportDialog />}
       />
       <div className="grid gap-4 md:grid-cols-3">
         <FormField
