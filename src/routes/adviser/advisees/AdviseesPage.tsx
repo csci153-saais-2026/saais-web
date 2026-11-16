@@ -19,7 +19,7 @@ export default function AdviseesPage() {
   const [revision, setRevision] = useState(0)
   const key = JSON.stringify([user?.id, scope, search, revision])
   const { data, error } = useScopedRequest(key, !!user?.id, () => getRoster(scope, search))
-  const rows = data?.filter(row => standing === 'all' || (standing === 'flagged' ? row.is_delinquent === true : row.is_delinquent === false))
+  const rows = data?.filter(row => standing === 'all' || (standing === 'flagged' ? (row.is_delinquent ?? row.standing !== 'good_standing') : !(row.is_delinquent ?? row.standing !== 'good_standing')))
   return <AdviserPage title="Advisees" sample={false}>
     <PageHeading title="Know your students." subtitle="Search current and past advisees. Historical records remain read-only." />
     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end">
