@@ -19,6 +19,7 @@ export function useAdviserDashboard(userId: string | undefined, termId: string, 
     if (!userId) return () => { active = false }
     void Promise.all([getAdviserDashboard(termId || undefined), getSchoolTerms()])
       .then(([report, terms]) => {
+        if (report.adviser_id !== userId) throw new Error('The dashboard report does not match the signed-in adviser.')
         if (active) setState({ key, report, terms, error: null, loading: false })
       })
       .catch((error: unknown) => {
