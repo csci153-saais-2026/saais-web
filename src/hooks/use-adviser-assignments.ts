@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ApiClientError } from '@/lib/api'
 import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import {
@@ -111,6 +112,26 @@ export function useAdviserReassignment() {
   const scope = useStaffScope()
   const queryClient = useQueryClient()
 
+  async function invalidateAffectedQueries() {
+    if (scope.status !== 'ready') return
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: staffQueryKeys.resource(
+          scope.profileId,
+          scope.departmentId,
+          'students',
+        ),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: staffQueryKeys.resource(
+          scope.profileId,
+          scope.departmentId,
+          'adviser-assignments',
+        ),
+      }),
+    ])
+  }
+
   return useMutation({
     retry: false,
     mutationFn: async (body: BulkAdviserReassignmentRequest) => {
@@ -119,16 +140,13 @@ export function useAdviserReassignment() {
       }
       return bulkReassignAdvisers(body)
     },
-    onSuccess: async () => {
-      if (scope.status !== 'ready') return
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: staffQueryKeys.resource(scope.profileId, scope.departmentId, 'students'),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: staffQueryKeys.resource(scope.profileId, scope.departmentId, 'adviser-assignments'),
-        }),
-      ])
+    onSuccess: invalidateAffectedQueries,
+    onError: (error) => {
+      const shouldRefresh =
+        !(error instanceof ApiClientError) ||
+        error.isConflict ||
+        error.isNetworkError
+      return shouldRefresh ? invalidateAffectedQueries() : undefined
     },
   })
 }
