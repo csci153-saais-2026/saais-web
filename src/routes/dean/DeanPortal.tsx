@@ -1,20 +1,22 @@
-import { Panel } from '@/components/features/panel'
+import { lazy, Suspense } from "react"
+import { Navigate, Route, Routes } from "react-router"
+
+const DeanReportsPage = lazy(() => import("@/routes/dean/pages/DeanReportsPage"))
+const DeanStudentsPage = lazy(() => import("@/routes/dean/pages/DeanStudentsPage"))
+const DeanStudentDetailPage = lazy(() => import("@/routes/dean/pages/DeanStudentDetailPage"))
+const DeanAuditLogPage = lazy(() => import("@/routes/dean/pages/DeanAuditLogPage"))
 
 export default function DeanPortal() {
   return (
-    <div className="space-y-6">
-      <Panel
-        title="College Dean Portal"
-        description="Faculty-wide cohort analytics, cross-department curriculum transfers, and college audit reports."
-      >
-        <div className="p-6 text-sm text-muted-foreground border rounded-md bg-muted/20">
-          <p className="font-semibold text-foreground">Office of the Dean (Tracked Feature)</p>
-          <p className="mt-1">
-            This module provides college-level oversight and reporting across all constituent departments. You are authenticated as an authorized Dean.
-          </p>
-        </div>
-      </Panel>
-    </div>
+    <Suspense fallback={<div className="py-8 text-sm text-muted-foreground">Loading…</div>}>
+      <Routes>
+        <Route index element={<Navigate to="reports" replace />} />
+        <Route path="reports" element={<DeanReportsPage />} />
+        <Route path="students" element={<DeanStudentsPage />} />
+        <Route path="students/:studentNumber" element={<DeanStudentDetailPage />} />
+        <Route path="audit-log" element={<DeanAuditLogPage />} />
+        <Route path="*" element={<Navigate to="reports" replace />} />
+      </Routes>
+    </Suspense>
   )
 }
-
