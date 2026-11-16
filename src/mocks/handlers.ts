@@ -2858,10 +2858,22 @@ export const saaisMswHandlers = [
       const course = db.courses.find((item) => item.code.toLowerCase() === row.course_code.toLowerCase())
       const offering = db.courseOfferings.find((item) => item.course_id === course?.id && item.school_term_id === body.school_term_id)
       const assigned = Boolean(student && db.adviserAssignments.some((item) => item.student_id === student.id && item.adviser_id === auth.persona.profileId && item.end_date === null))
-      const reason = !student || !course || !offering ? 'Student, course, or term offering not found.' : !assigned ? 'Student is not currently assigned to this adviser.' : alreadyPassedCourse(student.id, offering.id) ? 'A passed course cannot be retaken.' : departmentEncodingClosed(student.id, body.school_term_id) ? 'The student department encoding is closed.' : ''
+      const term = db.schoolTerms.find(item => item.id === body.school_term_id)
+      const old = db.attemptResults.find(attempt => attempt.student_id === student?.id && attempt.course_offering_id === offering?.id)
+      const final = row.final_grade ?? old?.final_grade ?? null
+      const midterm = row.midterm_grade ?? old?.midterm_grade ?? null
+      const midtermStatus = row.midterm_status ?? old?.midterm_status ?? 'graded'
+      const status = row.status ?? (final == null ? 'currently_enrolled' : final <= 3 ? 'passed' : 'failed')
+      const validGrade = (grade: unknown) => grade == null || (typeof grade === 'number' && Number.isFinite(grade) && grade >= 1 && grade <= 5 && grade * 4 % 1 === 0)
+      const invalid = !validGrade(row.midterm_grade) || !validGrade(row.final_grade) || !['passed', 'failed', 'currently_enrolled', 'inc', 'dr', 'na'].includes(status) || !['graded', 'dr'].includes(midtermStatus) || (midtermStatus === 'dr' && (midterm != null || status !== 'dr')) || (status === 'dr' && midtermStatus !== 'dr') || (final != null && status !== (final <= 3 ? 'passed' : 'failed')) || (final == null && (status === 'passed' || status === 'failed'))
+      const reason = !student || !course || !offering ? 'Student, course, or term offering not found.' : !assigned ? 'Student is not currently assigned to this adviser.' : term?.is_locked && !term.override_flag ? 'The school term is locked.' : invalid ? 'Invalid grade or inconsistent status.' : old?.final_grade != null && row.final_grade != null && old.final_grade !== row.final_grade ? 'Use grade correction to change an existing final grade.' : alreadyPassedCourse(student.id, offering.id) ? 'A passed course cannot be retaken.' : departmentEncodingClosed(student.id, body.school_term_id) ? 'The student department encoding is closed.' : ''
       return { student, course, offering, reason }
     }
-    const checks = body.rows.map((row) => getRow(row))
+    const checks = body.rows.map((row, index) => {
+      const check = getRow(row)
+      if (body.rows.slice(0, index).some(previous => previous.student_number === row.student_number && previous.course_code.toLowerCase() === row.course_code.toLowerCase())) check.reason = 'Duplicate student and course in import.'
+      return check
+    })
     const results: ApiSchema<'GradeBatchImportResponse'>['results'] = body.rows.map((row, index) => ({ row_number: row.row_number, student_number: row.student_number, course_code: row.course_code, outcome: checks[index].reason ? 'error' : body.mode === 'commit' ? 'imported' : 'valid', message: checks[index].reason || 'Validated successfully.' }))
     const valid = body.rows.map((row, index) => ({ row, check: checks[index] })).filter(({ check }) => !check.reason)
     if (body.mode === 'commit') for (const { row, check } of valid) {
@@ -2872,7 +2884,7 @@ export const saaisMswHandlers = [
       const status = row.status ?? (final == null ? 'currently_enrolled' : final <= 3 ? 'passed' : 'failed')
       const slotId = row.curriculum_term_course_id ?? db.curriculumTermCourses.find((slot) => slot.course_id === course.id)?.id ?? null
       const now = new Date().toISOString()
-      const result: ApiSchema<'AttemptResult'> = { id: old?.id ?? nextSyntheticUuid(), student_id: student.id, course_offering_id: offering.id, curriculum_term_course_id: slotId, recorded_status: status, effective_status: status, midterm_status: row.midterm_status ?? old?.midterm_status ?? 'graded', midterm_grade: row.midterm_grade ?? old?.midterm_grade ?? null, final_grade: final, instructor: row.instructor ?? old?.instructor ?? offering.instructor, inc_deadline: old?.inc_deadline ?? null, prerequisite_override: old?.prerequisite_override ?? false, prerequisite_grade_override: old?.prerequisite_grade_override ?? false, grade_fix_history: old?.grade_fix_history ?? [], units_attempted: old?.units_attempted ?? course.units, revision: (old?.revision ?? 0) + 1, created_at: old?.created_at ?? now, updated_at: now, completion_grade: old?.completion_grade ?? null, resolved_at: old?.resolved_at ?? null, gwa_grade: final, is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: false }
+      const result: ApiSchema<'AttemptResult'> = { id: old?.id ?? nextSyntheticUuid(), student_id: student.id, course_offering_id: offering.id, curriculum_term_course_id: slotId, recorded_status: status, effective_status: status, midterm_status: row.midterm_status ?? old?.midterm_status ?? 'graded', midterm_grade: row.midterm_grade ?? old?.midterm_grade ?? null, final_grade: final, instructor: row.instructor ?? old?.instructor ?? offering.instructor, inc_deadline: status === 'inc' ? old?.inc_deadline ?? db.schoolTerms.find(term => term.id === body.school_term_id)?.default_inc_deadline ?? null : null, prerequisite_override: old?.prerequisite_override ?? false, prerequisite_grade_override: old?.prerequisite_grade_override ?? false, grade_fix_history: old?.grade_fix_history ?? [], units_attempted: old?.units_attempted ?? course.units, revision: (old?.revision ?? 0) + 1, created_at: old?.created_at ?? now, updated_at: now, completion_grade: status === 'inc' ? null : old?.completion_grade ?? null, resolved_at: status === 'inc' ? null : old?.resolved_at ?? null, gwa_grade: final, is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: false }
       if (old) db.attemptResults[db.attemptResults.indexOf(old)] = result
       else db.attemptResults.push(result)
       if (row.remark?.trim()) db.attemptRemarks.push({ id: nextSyntheticUuid(), student_id: student.id, authored_by: auth.persona.profileId, body_text: row.remark, created_at: now, attempt_id: result.id, curriculum_term_course_id: slotId })
