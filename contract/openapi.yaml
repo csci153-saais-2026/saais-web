@@ -8649,7 +8649,7 @@ components:
     studentNumberQueryParam:
       name: student_number
       in: query
-      description: Filter by student number (e.g. `eq.2023-04412`)
+      description: Filter by student number (e.g. `eq.23-1-04412`)
       required: false
       schema:
         type: string

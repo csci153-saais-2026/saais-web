@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import rawCollection from "../../contract/postman/saais-api.postman_collection.json";
 import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
 import { saaisMockServer } from "./node";
-import { resetMockDatabase } from "./store";
+import { getMockDatabase, resetMockDatabase } from "./store";
 
 interface PostmanHeader {
   key: string;
@@ -96,7 +96,25 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
     for (const { fullName, item } of requests) {
       resetMockDatabase();
       const req = item.request!;
-      const rawUrl = interpolate(req.url.raw, env);
+      let rawUrl = interpolate(req.url.raw, env);
+      if (
+        req.method === "DELETE" &&
+        fullName.includes("(deleteCourse)") &&
+        item.name.startsWith("Authorized")
+      ) {
+        const db = getMockDatabase();
+        const unusedId = "50000000-0000-4000-8009-000000000001";
+        db.courses.push({
+          ...db.courses[0]!,
+          id: unusedId,
+          code: "TEST 999",
+          title: "Unused test course",
+        });
+        rawUrl = rawUrl.replace(
+          /\/catalog\/course\/[^/?]+/,
+          `/catalog/course/${unusedId}`,
+        );
+      }
       const headers: Record<string, string> = {};
       for (const h of req.header ?? []) {
         headers[h.key] = interpolate(h.value, env);

@@ -18,9 +18,12 @@ export const MOCK_IDS = {
 
   programBscs: "30000000-0000-4000-8000-000000000001",
   programBsit: "30000000-0000-4000-8000-000000000002",
+  programBsabe: "30000000-0000-4000-8000-000000000003",
 
   curriculumBscs2024: "40000000-0000-4000-8000-000000000001",
   curriculumBscs2020: "40000000-0000-4000-8000-000000000002",
+  curriculumBsabe: "40000000-0000-4000-8000-000000000003",
+  curriculumReference: "40000000-0000-4000-8000-000000000004",
 
   curriculumTerm1Y1S: "41000000-0000-4000-8000-000000000001",
   curriculumTerm1Y2S: "41000000-0000-4000-8000-000000000002",
@@ -55,12 +58,14 @@ export const MOCK_IDS = {
   offeringCsci198: "62000000-0000-4000-8000-000000000002",
   offeringCsci102: "62000000-0000-4000-8000-000000000003",
   offeringPhEd11: "62000000-0000-4000-8000-000000000004",
+  offeringNstp11: "62000000-0000-4000-8000-000000000006",
 
   studentPrimary: "00000000-0000-4000-8000-000000000101",
   studentSecondary: "00000000-0000-4000-8000-000000000102",
   studentOtherDept: "00000000-0000-4000-8000-000000000103",
   adviserPrimary: "00000000-0000-4000-8000-000000000201",
   adviserSecondary: "00000000-0000-4000-8000-000000000202",
+  adviserEngineering: "00000000-0000-4000-8000-000000000203",
   deptHeadDcst: "00000000-0000-4000-8000-000000000301",
   deptStaffDcst: "00000000-0000-4000-8000-000000000401",
   deanComputing: "00000000-0000-4000-8000-000000000501",
@@ -102,6 +107,7 @@ export type MockPersonaKey =
   | "student_other_dept"
   | "adviser"
   | "adviser_secondary"
+  | "adviser_engineering"
   | "department_head"
   | "department_staff"
   | "dean"
@@ -127,9 +133,41 @@ export interface MockPersona {
   readonly token: string;
 }
 
+const SAMPLE_STUDENT_NAMES = [
+  "Lina Mae Valoria",
+  "Paolo Andre Miraflor",
+  "Celia Mae Dalisay",
+  "Nico Rafael Lumera",
+  "Arielle Joy Berano",
+  "Enzo Martin Villaro",
+  "Mikaela Rose Talavera",
+  "Rafael Luis Balingit",
+  "Carmela Iris Beleno",
+  "Joaquin Emil Andaya",
+  "Althea Grace Mendoria",
+  "Marco Nilo Calayag",
+  "Bianca Faye Soriano",
+  "Darian Noel Macaraig",
+  "Eliza Anne Valmores",
+  "Gabriel Tomas Alvero",
+  "Hannah Elise Dalupan",
+  "Ivan Rafael Montiel",
+  "Janelle Marie Lucero",
+  "Kian Paulo Dalisan",
+  "Leona Faith Verano",
+  "Miguel Anton Sumalin",
+  "Nerissa Claire Malaya",
+  "Owen Gabriel Lacson",
+  "Pia Nadine Alcaraz",
+  "Renzo Matteo Tagara",
+  "Sofia Camille Ynares",
+  "Tomas Enrique Maravilla",
+  "Vera Nica Maravilla",
+] as const;
+
 export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
   ...Object.fromEntries(
-    Array.from({ length: 24 }, (_, index) => {
+    Array.from({ length: 29 }, (_, index) => {
       const serial = index + 1;
       const key: MockPersonaKey = `student_sample_${serial}`;
       const profileId = `00000000-0000-4000-8001-${String(serial).padStart(12, "0")}`;
@@ -139,7 +177,7 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
           key,
           profileId,
           email: `sample.student${String(serial).padStart(2, "0")}@vsu.edu.ph`,
-          fullName: `Sample Student ${String(serial).padStart(2, "0")}`,
+          fullName: SAMPLE_STUDENT_NAMES[index]!,
           primaryRole: "student",
           roles: ["student"],
           roleScopes: [
@@ -245,6 +283,24 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
     facultyId: MOCK_IDS.facultyComputing,
     departmentId: MOCK_IDS.deptDcst,
     token: `mock-jwt:adviser_secondary:${MOCK_IDS.adviserSecondary}`,
+  },
+  adviser_engineering: {
+    key: "adviser_engineering",
+    profileId: MOCK_IDS.adviserEngineering,
+    email: "adviser.engineering@vsu.edu.ph",
+    fullName: "Dr. Amelia Villanueva",
+    primaryRole: "adviser",
+    roles: ["adviser"],
+    roleScopes: [
+      {
+        role: "adviser",
+        scope_type: "department",
+        scope_id: MOCK_IDS.deptDabe,
+      },
+    ],
+    facultyId: MOCK_IDS.facultyEngineering,
+    departmentId: MOCK_IDS.deptDabe,
+    token: `mock-jwt:adviser_engineering:${MOCK_IDS.adviserEngineering}`,
   },
   department_head: {
     key: "department_head",

@@ -882,7 +882,7 @@
                     {
                       "key": "student_number",
                       "value": "",
-                      "description": "Filter by student number (e.g. `eq.2023-04412`)",
+                      "description": "Filter by student number (e.g. `eq.23-1-04412`)",
                       "disabled": true
                     },
                     {
@@ -996,7 +996,7 @@
                     {
                       "key": "student_number",
                       "value": "",
-                      "description": "Filter by student number (e.g. `eq.2023-04412`)",
+                      "description": "Filter by student number (e.g. `eq.23-1-04412`)",
                       "disabled": true
                     },
                     {
