@@ -1,7 +1,41 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { staffQueryKeys } from '../shared/staff-query-keys'
 import { useStaffScope } from '../shared/use-staff-scope'
-import { listCurricula, readCurriculum } from './curricula.api'
+import { createCurriculumVersion, listCurricula, readCurriculum } from './curricula.api'
+import { blankVersionRequest, type CurriculumVersionValues } from './curriculum-version.schema'
+
+export function useCreateCurriculumVersion() {
+  const scope = useStaffScope()
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: async (values: CurriculumVersionValues) => {
+      if (scope.status !== 'ready') throw new Error('An authorized department is required to create a version.')
+      const key = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curricula')
+      const catalog = queryClient.getQueryData<Awaited<ReturnType<typeof listCurricula>>>(key)
+      if (!catalog?.programs.some(program => program.id === values.program_id && program.department_id === scope.departmentId)) {
+        throw new Error('Select a program in your authorized department and retry.')
+      }
+      const version = await createCurriculumVersion(blankVersionRequest(values))
+      if (!version?.id || version.program_id !== values.program_id) {
+        throw new Error('The service returned an unexpected version. Refresh the list before trying again; creation may have completed.')
+      }
+      return { version, profileId: scope.profileId, departmentId: scope.departmentId }
+    },
+    onSuccess: async ({ version, profileId, departmentId }) => {
+      // Use the originating identity/scope even if the session changes in flight.
+      const key = staffQueryKeys.resource(profileId, departmentId, 'curricula')
+      queryClient.setQueryData<Awaited<ReturnType<typeof listCurricula>>>(key, catalog => {
+        if (!catalog) return catalog
+        return { ...catalog, versions: [version, ...catalog.versions.filter(item => item.id !== version.id)] }
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'student-filter-options') }),
+      ])
+    },
+  })
+}
 
 export function useCurricula() {
   const scope = useStaffScope()

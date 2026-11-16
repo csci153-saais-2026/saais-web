@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ApiClientError } from '@/lib/api'
 import { CurriculumTermPanel } from './CurriculumTermPanel'
 import { useCurricula, useCurriculum } from './use-curricula'
+import { CurriculumVersionDialog } from './CurriculumVersionDialog'
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -20,12 +21,16 @@ function errorMessage(error: unknown) {
 export default function CurriculaPage() {
   const catalog = useCurricula()
   const [selection, setSelection] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [created, setCreated] = useState(false)
   const versions = catalog.isError ? [] : catalog.data?.versions ?? []
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
   const statuses = { draft: 'Draft', active: 'Active', retired: 'Retired', teach_out: 'Teach out', closed: 'Closed' }
   return <div className="space-y-6">
-    <PageHeading title="Curricula" subtitle="Shape the path to graduation." />
+    <PageHeading title="Curricula" subtitle="Shape the path to graduation." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setCreating(true) }}>Add version</Button>} />
+    {created && <p role="status">Curriculum version created.</p>}
+    {creating && catalog.data && <CurriculumVersionDialog programs={catalog.data.programs} onClose={() => setCreating(false)} onCreated={id => { setSelection(id); setCreating(false); setCreated(true) }} />}
     {catalog.isPending && <p role="status">Loading curriculum versions...</p>}
     {catalog.isError && <Panel title="Curriculum versions"><p role="alert">{errorMessage(catalog.error)}</p><Button type="button" variant="outline" disabled={catalog.isFetching} onClick={() => void catalog.refetch()}>Retry versions</Button></Panel>}
     {catalog.isSuccess && versions.length === 0 && <Panel title="Curriculum versions"><p>No curriculum versions are available for your department.</p></Panel>}

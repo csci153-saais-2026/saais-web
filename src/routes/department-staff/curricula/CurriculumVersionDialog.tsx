@@ -1,0 +1,95 @@
+import { useRef } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { FormField } from '@/components/features/form-field'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ApiClientError } from '@/lib/api'
+import type { Program } from './curricula.api'
+import { curriculumVersionSchema, type CurriculumVersionValues } from './curriculum-version.schema'
+import { useCreateCurriculumVersion } from './use-curricula'
+
+function creationError(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.isForbidden) return 'You do not have permission to create a version for this program.'
+    if (error.isConflict) return `The version could not be created because of a conflict. ${error.message}`
+    if (error.isRateLimited) return 'Too many requests. Wait before submitting again.'
+    if (error.isAuthError) return 'Your session could not be verified. Sign in again.'
+    if (error.isNetworkError) return 'The creation result could not be confirmed. Refresh the version list before submitting again to avoid a duplicate.'
+  }
+  return error instanceof Error ? error.message : 'The version could not be created.'
+}
+
+export function CurriculumVersionDialog({ programs, onClose, onCreated }: {
+  programs: Program[]
+  onClose: () => void
+  onCreated: (versionId: string) => void
+}) {
+  const creation = useCreateCurriculumVersion()
+  const submitting = useRef(false)
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CurriculumVersionValues>({
+    resolver: zodResolver(curriculumVersionSchema),
+    defaultValues: { program_id: '', version_label: '', effective_start: '', effective_end: '', total_units: 0, delinquency_threshold: 0, status: 'draft' },
+  })
+  const pending = isSubmitting || creation.isPending
+
+  async function submit(values: CurriculumVersionValues) {
+    if (submitting.current) return
+    submitting.current = true
+    try {
+      const { version } = await creation.mutateAsync(values)
+      onCreated(version.id)
+    } catch {
+      // Preserve inputs; the normalized mutation error is shown below.
+    } finally {
+      submitting.current = false
+    }
+  }
+
+  return <Dialog open onOpenChange={open => { if (!open && !pending) onClose() }}>
+    <DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!pending} onEscapeKeyDown={event => { if (pending) event.preventDefault() }} onInteractOutside={event => { if (pending) event.preventDefault() }}>
+      <DialogHeader>
+        <DialogTitle>Create curriculum version</DialogTitle>
+        <DialogDescription>Create a blank version for a department program. Terms and requirements can be added afterward.</DialogDescription>
+      </DialogHeader>
+      <form noValidate onSubmit={event => { void handleSubmit(submit)(event) }} className="space-y-4" aria-busy={pending}>
+        <fieldset disabled={pending} className="grid min-w-0 gap-4">
+          <FormField label="Program" htmlFor="new-version-program" error={errors.program_id?.message}>
+            <select id="new-version-program" className="min-h-11 w-full rounded-sm border border-input bg-card px-3" aria-invalid={!!errors.program_id} {...register('program_id')}>
+              <option value="">Select a program</option>
+              {programs.map(program => <option key={program.id} value={program.id}>{program.code} - {program.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Version label" htmlFor="new-version-label" error={errors.version_label?.message}>
+            <Input id="new-version-label" maxLength={100} aria-invalid={!!errors.version_label} {...register('version_label')} />
+          </FormField>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Effective start" htmlFor="new-version-start" error={errors.effective_start?.message}>
+              <Input id="new-version-start" type="date" aria-invalid={!!errors.effective_start} {...register('effective_start')} />
+            </FormField>
+            <FormField label="Effective end (optional)" htmlFor="new-version-end" error={errors.effective_end?.message}>
+              <Input id="new-version-end" type="date" aria-invalid={!!errors.effective_end} {...register('effective_end')} />
+            </FormField>
+            <FormField label="Required units" htmlFor="new-version-units" error={errors.total_units?.message}>
+              <Input id="new-version-units" type="number" min={0} step={0.25} aria-invalid={!!errors.total_units} {...register('total_units', { valueAsNumber: true })} />
+            </FormField>
+            <FormField label="Delinquency threshold (failed units)" htmlFor="new-version-threshold" error={errors.delinquency_threshold?.message}>
+              <Input id="new-version-threshold" type="number" min={0} step={0.25} aria-invalid={!!errors.delinquency_threshold} {...register('delinquency_threshold', { valueAsNumber: true })} />
+            </FormField>
+          </div>
+          <FormField label="Status" htmlFor="new-version-status" error={errors.status?.message}>
+            <select id="new-version-status" className="min-h-11 w-full rounded-sm border border-input bg-card px-3" aria-invalid={!!errors.status} {...register('status')}>
+              <option value="draft">Draft</option><option value="active">Active</option><option value="retired">Retired</option><option value="teach_out">Teach out</option><option value="closed">Closed</option>
+            </select>
+          </FormField>
+        </fieldset>
+        {creation.isError && <p role="alert" className="text-sm text-destructive">{creationError(creation.error)}</p>}
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={pending} onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={pending}>{pending ? 'Creating version...' : 'Create version'}</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
+}

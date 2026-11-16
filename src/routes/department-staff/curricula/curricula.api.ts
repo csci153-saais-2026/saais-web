@@ -1,4 +1,5 @@
 import { apiClient, parseContentRange, postgrestFilter, unwrapApiResult, type ApiSchema } from '@/lib/api'
+import type { NewCurriculumVersion } from './curriculum-version.schema'
 
 const READ_LIMIT = 1000
 const BATCH_SIZE = 50
@@ -7,6 +8,11 @@ export type CurriculumVersion = ApiSchema<'CurriculumVersion'>
 export type CurriculumTerm = ApiSchema<'CurriculumTerm'>
 export type CurriculumSlot = ApiSchema<'CurriculumTermCourse'>
 export type Course = ApiSchema<'Course'>
+
+export async function createCurriculumVersion(body: NewCurriculumVersion): Promise<CurriculumVersion> {
+  // Blank-version creation is approved for Step 19. Child creation is separate.
+  return unwrapApiResult<CurriculumVersion>(await apiClient.POST('/functions/v1/catalog/curriculum_version', { body }))
+}
 
 function completeRead<T>(result: { data?: T[]; error?: unknown; response: Response }, resource: string): T[] {
   const rows = unwrapApiResult<T[]>(result)

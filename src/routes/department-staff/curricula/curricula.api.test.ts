@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { listCurricula, readCurriculum } from './curricula.api'
+import { createCurriculumVersion, listCurricula, readCurriculum } from './curricula.api'
 
 vi.mock('@/lib/api', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -18,6 +18,17 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('Curriculum typed reads', () => {
+  it('creates a blank version with one catalog request and no child writes', async () => {
+    const body = { program_id: '11111111-1111-4111-8111-111111111111', version_label: '2027', effective_start: '2027-08-01', effective_end: null, total_units: 0, delinquency_threshold: 0, status: 'draft' as const }
+    let writes = 0
+    server.use(http.post('*/functions/v1/catalog/curriculum_version', async ({ request }) => {
+      writes++
+      expect(await request.json()).toEqual(body)
+      return HttpResponse.json({ ...body, id: 'created-version' }, { status: 201 })
+    }))
+    expect(await createCurriculumVersion(body)).toMatchObject({ id: 'created-version', program_id: body.program_id })
+    expect(writes).toBe(1)
+  })
   it('filters programs by department and versions by eligible program IDs', async () => {
     server.use(
       http.get('*/rest/v1/program', ({ request }) => {
