@@ -34,3 +34,15 @@ export function curriculumSlotRequest(termId: string, values: CurriculumSlotValu
     nominal_units: parsed.nominal_units,
   }
 }
+
+export function curriculumSlotUpdateRequest(values: CurriculumSlotValues): ApiSchema<'CurriculumTermCourseUpdate'> {
+  const parsed = curriculumSlotSchema.parse(values)
+  const fixedCourse = parsed.slot_type === 'required' || parsed.slot_type === 'pe' || parsed.slot_type === 'nstp'
+  return {
+    course_id: fixedCourse ? parsed.course_id : null,
+    is_elective_slot: parsed.slot_type === 'elective',
+    slot_type: parsed.slot_type,
+    slot_label: parsed.slot_label || null,
+    nominal_units: parsed.nominal_units,
+  }
+}

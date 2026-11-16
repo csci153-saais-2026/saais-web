@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
-import { createCurriculumSlot, createCurriculumTerm, createCurriculumVersion, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, listCurriculumCourses, readCurriculum, updateCurriculumTerm, updateCurriculumVersion, type Course, type CurriculumTerm, type CurriculumVersion } from '@/routes/department-staff/curricula/curricula.api'
+import { createCurriculumSlot, createCurriculumTerm, createCurriculumVersion, deleteCurriculumSlot, deleteCurriculumTerm, deleteCurriculumVersion, listCurricula, listCurriculumCourses, readCurriculum, updateCurriculumSlot, updateCurriculumTerm, updateCurriculumVersion, type Course, type CurriculumSlot, type CurriculumTerm, type CurriculumVersion } from '@/routes/department-staff/curricula/curricula.api'
 import { blankVersionRequest, versionUpdateRequest, type CurriculumVersionValues } from '@/routes/department-staff/curricula/curriculum-version.schema'
 import { curriculumTermSchema, type CurriculumTermValues } from '@/routes/department-staff/curricula/curriculum-term.schema'
-import { curriculumSlotRequest, curriculumSlotSchema, type CurriculumSlotValues } from '@/routes/department-staff/curricula/curriculum-slot.schema'
+import { curriculumSlotRequest, curriculumSlotSchema, curriculumSlotUpdateRequest, type CurriculumSlotValues } from '@/routes/department-staff/curricula/curriculum-slot.schema'
 
 type TermChange = { original: CurriculumTerm } & ({ action: 'edit'; values: CurriculumTermValues } | { action: 'delete' })
 
@@ -147,6 +147,84 @@ export function useCreateCurriculumSlot() {
           ...detail,
           slots: [...detail.slots.filter(item => item.id !== slot.id), slot],
           courses: course ? [...detail.courses.filter(item => item.id !== course.id), course] : detail.courses,
+        }
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailKey }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'curricula') }),
+      ])
+    },
+  })
+}
+
+type SlotChange = { term: CurriculumTerm; original: CurriculumSlot } &
+  ({ action: 'edit'; values: CurriculumSlotValues } | { action: 'delete' })
+
+function slotSnapshotMatches(current: CurriculumSlot, original: CurriculumSlot) {
+  return current.id === original.id && current.curriculum_term_id === original.curriculum_term_id &&
+    (current.course_id ?? null) === (original.course_id ?? null) &&
+    current.is_elective_slot === original.is_elective_slot &&
+    (current.slot_type ?? (current.is_elective_slot ? 'elective' : 'required')) === (original.slot_type ?? (original.is_elective_slot ? 'elective' : 'required')) &&
+    (current.slot_label ?? null) === (original.slot_label ?? null) && current.nominal_units === original.nominal_units
+}
+
+export function useManageCurriculumSlot() {
+  const scope = useStaffScope()
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: async (change: SlotChange) => {
+      if (scope.status !== 'ready') throw new Error('An authorized department is required to manage curriculum requirements.')
+      const { term, original } = change
+      const versionId = term.curriculum_version_id
+      const catalogKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curricula')
+      const catalog = queryClient.getQueryData<Awaited<ReturnType<typeof listCurricula>>>(catalogKey)
+      const version = catalog?.versions.find(item => item.id === versionId)
+      if (!version || !catalog?.programs.some(program => program.id === version.program_id && program.department_id === scope.departmentId)) {
+        throw new Error('This version is no longer available in your authorized department. Refresh the list.')
+      }
+      const detailKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curriculum-overview', { versionId })
+      const detail = queryClient.getQueryData<Awaited<ReturnType<typeof readCurriculum>>>(detailKey)
+      const currentTerm = detail?.terms.find(item => item.id === term.id && item.curriculum_version_id === versionId)
+      if (!currentTerm || currentTerm.year_level !== term.year_level || currentTerm.term_sequence !== term.term_sequence) {
+        throw new Error('This term changed while the dialog was open. Close it and review the refreshed term.')
+      }
+      const current = detail?.slots.find(item => item.id === original.id && item.curriculum_term_id === term.id)
+      if (!current || !slotSnapshotMatches(current, original)) {
+        throw new Error('This requirement changed while the dialog was open. Close it and review the refreshed requirement.')
+      }
+      if (change.action === 'delete') {
+        await deleteCurriculumSlot(current.id)
+        return { action: change.action, id: current.id, versionId, profileId: scope.profileId, departmentId: scope.departmentId }
+      }
+      const parsed = curriculumSlotSchema.parse(change.values)
+      const fixedCourse = parsed.slot_type === 'required' || parsed.slot_type === 'pe' || parsed.slot_type === 'nstp'
+      const coursesKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curriculum-course-options')
+      const courses = queryClient.getQueryData<Course[]>(coursesKey) ?? []
+      const course = fixedCourse ? courses.find(item => item.id === parsed.course_id && item.department_id === scope.departmentId && item.status === 'active') : undefined
+      const retainingOriginalCourse = fixedCourse && current.course_id === parsed.course_id
+      if (fixedCourse && !course && !retainingOriginalCourse) throw new Error('Select an active course from your department catalog and retry.')
+      const request = curriculumSlotUpdateRequest(parsed)
+      const response = await updateCurriculumSlot(current.id, request)
+      if (!response?.id || response.id !== current.id || response.curriculum_term_id !== current.curriculum_term_id ||
+        response.is_elective_slot !== request.is_elective_slot || response.nominal_units !== request.nominal_units ||
+        (response.course_id !== undefined && response.course_id !== request.course_id) ||
+        (response.slot_type !== undefined && response.slot_type !== request.slot_type) ||
+        (response.slot_label !== undefined && response.slot_label !== request.slot_label)) {
+        throw new Error('The requirement update result could not be confirmed. Refresh the curriculum before submitting again.')
+      }
+      const updated: CurriculumSlot = { ...current, ...response, ...request, id: current.id, curriculum_term_id: current.curriculum_term_id }
+      return { action: change.action, id: current.id, updated, course, versionId, profileId: scope.profileId, departmentId: scope.departmentId }
+    },
+    onSuccess: async ({ action, id, updated, course, versionId, profileId, departmentId }) => {
+      const detailKey = staffQueryKeys.resource(profileId, departmentId, 'curriculum-overview', { versionId })
+      await queryClient.cancelQueries({ queryKey: detailKey })
+      queryClient.setQueryData<Awaited<ReturnType<typeof readCurriculum>>>(detailKey, detail => {
+        if (!detail) return detail
+        return {
+          ...detail,
+          slots: action === 'delete' ? detail.slots.filter(item => item.id !== id) : detail.slots.map(item => item.id === id ? updated! : item),
+          courses: action === 'edit' && course ? [...detail.courses.filter(item => item.id !== course.id), course] : detail.courses,
         }
       })
       await Promise.all([
