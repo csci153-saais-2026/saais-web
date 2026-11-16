@@ -1,8 +1,61 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { staffQueryKeys } from '../shared/staff-query-keys'
-import { useStaffScope } from '../shared/use-staff-scope'
-import { createCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion, type CurriculumVersion } from './curricula.api'
-import { blankVersionRequest, versionUpdateRequest, type CurriculumVersionValues } from './curriculum-version.schema'
+import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
+import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
+import { createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion, type CurriculumVersion } from '@/routes/department-staff/curricula/curricula.api'
+import { blankVersionRequest, versionUpdateRequest, type CurriculumVersionValues } from '@/routes/department-staff/curricula/curriculum-version.schema'
+
+export type VersionLifecycleAction = 'retire' | 'delete'
+
+export function useCurriculumVersionLifecycle() {
+  const scope = useStaffScope()
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: async ({ action, original }: { action: VersionLifecycleAction; original: CurriculumVersion }) => {
+      if (scope.status !== 'ready') throw new Error('An authorized department is required to manage a version.')
+      const key = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curricula')
+      const catalog = queryClient.getQueryData<Awaited<ReturnType<typeof listCurricula>>>(key)
+      const current = catalog?.versions.find(version => version.id === original.id)
+      if (!current || !catalog?.programs.some(program => program.id === current.program_id && program.department_id === scope.departmentId)) {
+        throw new Error('This version is no longer available in your authorized department. Refresh the list.')
+      }
+      if (current.program_id !== original.program_id || current.version_label !== original.version_label || current.status !== original.status) {
+        throw new Error('This version changed while the confirmation was open. Close it and review the refreshed version.')
+      }
+      let retired: CurriculumVersion | undefined
+      if (action === 'retire') {
+        if (current.status === 'retired' || current.status === 'closed') throw new Error('This version is already retired or closed.')
+        retired = await updateCurriculumVersion(original.id, { status: 'retired' })
+        if (retired?.id !== original.id || retired.program_id !== original.program_id || retired.status !== 'retired') {
+          throw new Error('The retirement result could not be confirmed. Refresh the version list before continuing.')
+        }
+      } else {
+        // Counts are informational. Only the server can establish that no history,
+        // transfer, equivalence or last-version dependency prevents deletion.
+        await deleteCurriculumVersion(original.id)
+      }
+      return { action, id: original.id, retired, profileId: scope.profileId, departmentId: scope.departmentId }
+    },
+    onSuccess: async ({ action, id, retired, profileId, departmentId }) => {
+      const key = staffQueryKeys.resource(profileId, departmentId, 'curricula')
+      const detailKey = staffQueryKeys.resource(profileId, departmentId, 'curriculum-overview', { versionId: id })
+      if (action === 'delete') {
+        await queryClient.cancelQueries({ queryKey: detailKey })
+        queryClient.removeQueries({ queryKey: detailKey })
+      }
+      queryClient.setQueryData<Awaited<ReturnType<typeof listCurricula>>>(key, catalog => {
+        if (!catalog) return catalog
+        return { ...catalog, versions: action === 'delete'
+          ? catalog.versions.filter(version => version.id !== id)
+          : catalog.versions.map(version => version.id === id ? retired! : version) }
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'student-filter-options') }),
+      ])
+    },
+  })
+}
 
 export function useUpdateCurriculumVersion() {
   const scope = useStaffScope()

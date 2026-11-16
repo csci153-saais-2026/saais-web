@@ -6,9 +6,10 @@ import { StatGrid } from '@/components/features/stat-tile'
 import { Button } from '@/components/ui/button'
 import { ApiClientError } from '@/lib/api'
 import { CurriculumTermPanel } from './CurriculumTermPanel'
-import { useCurricula, useCurriculum } from './use-curricula'
+import { useCurricula, useCurriculum, type VersionLifecycleAction } from '@/hooks/use-curricula'
 import { CurriculumVersionDialog } from './CurriculumVersionDialog'
 import type { CurriculumVersion } from './curricula.api'
+import { CurriculumVersionLifecycleDialog } from './CurriculumVersionLifecycleDialog'
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -26,14 +27,24 @@ export default function CurriculaPage() {
   const [created, setCreated] = useState(false)
   const [editing, setEditing] = useState<CurriculumVersion | null>(null)
   const [updated, setUpdated] = useState(false)
+  const [lifecycle, setLifecycle] = useState<{ action: VersionLifecycleAction; version: CurriculumVersion } | null>(null)
+  const [lifecycleMessage, setLifecycleMessage] = useState('')
   const versions = catalog.isError ? [] : catalog.data?.versions ?? []
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
   const statuses = { draft: 'Draft', active: 'Active', retired: 'Retired', teach_out: 'Teach out', closed: 'Closed' }
   return <div className="space-y-6">
-    <PageHeading title="Curricula" subtitle="Shape the path to graduation." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setUpdated(false); setCreating(true) }}>Add version</Button>} />
+    <PageHeading title="Curricula" subtitle="Shape the path to graduation." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setCreating(true) }}>Add version</Button>} />
     {created && <p role="status">Curriculum version created.</p>}
     {updated && <p role="status">Curriculum version updated.</p>}
+    {lifecycleMessage && <p role="status">{lifecycleMessage}</p>}
+    {lifecycle && <CurriculumVersionLifecycleDialog key={`${lifecycle.action}:${lifecycle.version.id}`} action={lifecycle.action} version={lifecycle.version} programLabel={catalog.data?.programs.find(program => program.id === lifecycle.version.program_id)?.code ?? 'Program unavailable'} onClose={() => setLifecycle(null)} onRetireInstead={() => setLifecycle({ ...lifecycle, action: 'retire' })} onCompleted={(action, id) => {
+      setSelection(action === 'delete' ? '' : id)
+      setLifecycle(null)
+      setCreated(false)
+      setUpdated(false)
+      setLifecycleMessage(action === 'delete' ? 'Curriculum version deleted.' : 'Curriculum version retired.')
+    }} />}
     {editing && catalog.data && <CurriculumVersionDialog key={editing.id} version={editing} programs={catalog.data.programs} onClose={() => setEditing(null)} onUpdated={id => { setSelection(id); setEditing(null); setUpdated(true) }} />}
     {creating && catalog.data && <CurriculumVersionDialog programs={catalog.data.programs} onClose={() => setCreating(false)} onCreated={id => { setSelection(id); setCreating(false); setCreated(true) }} />}
     {catalog.isPending && <p role="status">Loading curriculum versions...</p>}
@@ -45,7 +56,11 @@ export default function CurriculaPage() {
           {versions.map(item => <option key={item.id} value={item.id}>{catalog.data?.programs.find(program => program.id === item.program_id)?.code ?? 'Program unavailable'} - {item.version_label}</option>)}
         </select>
       </FormField>
-      <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setEditing(version) }}>Edit version</Button>
+      <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setEditing(version) }}>Edit version</Button>
+      <div className="flex flex-wrap gap-2">
+        {version.status !== 'retired' && version.status !== 'closed' && <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'retire', version }) }}>Retire version</Button>}
+        <Button type="button" variant="destructive" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'delete', version }) }}>Delete version</Button>
+      </div>
       <StatGrid items={[
         { label: 'Required units', value: version.total_units ?? 'Unavailable' },
         { label: 'Delinquency threshold', value: version.delinquency_threshold ?? 'Unavailable', note: 'Failed units' },

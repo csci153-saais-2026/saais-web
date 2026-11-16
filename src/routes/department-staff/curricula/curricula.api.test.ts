@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { createCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion } from './curricula.api'
+import { createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion } from './curricula.api'
 
 vi.mock('@/lib/api', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -18,6 +18,17 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('Curriculum typed reads', () => {
+  it('deletes through one version endpoint and leaves protected-dependency errors intact', async () => {
+    let calls = 0
+    server.use(http.delete('*/functions/v1/catalog/curriculum_version/:id', ({ params }) => {
+      calls++
+      if (params.id === 'protected') return HttpResponse.json({ message: 'Referenced history prevents deletion' }, { status: 409 })
+      return new HttpResponse(null, { status: 204 })
+    }))
+    await expect(deleteCurriculumVersion('unreferenced')).resolves.toBeUndefined()
+    await expect(deleteCurriculumVersion('protected')).rejects.toMatchObject({ isConflict: true, message: 'Referenced history prevents deletion' })
+    expect(calls).toBe(2)
+  })
   it('patches only version details through the catalog endpoint', async () => {
     const body = { version_label: 'Revised 2027', effective_start: '2027-08-01', effective_end: null, total_units: 162.25, delinquency_threshold: 12, status: 'active' as const }
     let patches = 0

@@ -20,6 +20,12 @@ export async function updateCurriculumVersion(id: string, body: ApiSchema<'Curri
   }))
 }
 
+export async function deleteCurriculumVersion(id: string): Promise<void> {
+  unwrapApiResult(await apiClient.DELETE('/functions/v1/catalog/curriculum_version/{id}', {
+    params: { path: { id } },
+  }))
+}
+
 function completeRead<T>(result: { data?: T[]; error?: unknown; response: Response }, resource: string): T[] {
   const rows = unwrapApiResult<T[]>(result)
   if (!Array.isArray(rows)) throw new Error(`${resource} returned invalid data.`)

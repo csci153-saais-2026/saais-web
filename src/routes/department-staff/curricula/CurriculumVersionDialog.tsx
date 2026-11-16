@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ApiClientError } from '@/lib/api'
 import type { CurriculumVersion, Program } from './curricula.api'
 import { curriculumVersionEditSchema, curriculumVersionSchema, type CurriculumVersionValues } from './curriculum-version.schema'
-import { useCreateCurriculumVersion, useUpdateCurriculumVersion } from './use-curricula'
+import { useCreateCurriculumVersion, useUpdateCurriculumVersion } from '@/hooks/use-curricula'
 
 function versionError(error: unknown, editing: boolean): string {
   if (error instanceof ApiClientError) {
