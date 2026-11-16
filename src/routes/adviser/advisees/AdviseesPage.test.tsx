@@ -1,6 +1,6 @@
 ﻿import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import type { ApiSchema } from '@/lib/api'
 import AdviseesPage from './AdviseesPage'
 import { SelectedStudentHeader } from './SelectedStudentHeader'
@@ -15,6 +15,15 @@ const second = student('22222222-2222-4222-8222-222222222222', 'Second Student')
 afterEach(() => { cleanup(); vi.resetAllMocks(); auth.user = { id: 'adviser-one' } })
 
 describe('advisee identity', () => {
+  it('opens the selected row by mouse or keyboard', async () => {
+    vi.mocked(getRoster).mockResolvedValue([first, second])
+    function Location() { return <p data-testid="location">{useLocation().pathname}</p> }
+    render(<MemoryRouter><AdviseesPage /><Location /></MemoryRouter>)
+    fireEvent.click((await screen.findByText('Second Student')).closest('tr')!)
+    expect(screen.getByTestId('location').textContent).toBe(`/adviser/advisee/${second.student_id}/checklist`)
+    fireEvent.keyDown(screen.getByRole('row', { name: "Open First Student's record" }), { key: 'Enter' })
+    expect(screen.getByTestId('location').textContent).toBe(`/adviser/advisee/${first.student_id}/checklist`)
+  })
   it('links each roster row to its own UUID and requests past scope', async () => {
     vi.mocked(getRoster).mockResolvedValue([first, second])
     render(<MemoryRouter><AdviseesPage /></MemoryRouter>)
