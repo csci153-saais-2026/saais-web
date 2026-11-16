@@ -7,7 +7,7 @@ import CurriculaPage from './CurriculaPage'
 import { createCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion, type CurriculumVersion } from './curricula.api'
 import { blankVersionRequest, curriculumVersionSchema, curriculumVersionEditSchema, versionUpdateRequest, type CurriculumVersionValues } from './curriculum-version.schema'
 
-vi.mock('./curricula.api', () => ({ listCurricula: vi.fn(), readCurriculum: vi.fn(), createCurriculumVersion: vi.fn(), updateCurriculumVersion: vi.fn(), deleteCurriculumVersion: vi.fn() }))
+vi.mock('./curricula.api', () => ({ listCurricula: vi.fn(), readCurriculum: vi.fn(), createCurriculumVersion: vi.fn(), updateCurriculumVersion: vi.fn(), deleteCurriculumVersion: vi.fn(), createCurriculumTerm: vi.fn() }))
 const programId = '11111111-1111-4111-8111-111111111111'
 const scope = { status: 'ready' as const, departmentIds: ['department'], selectedDepartmentId: 'department', departmentId: 'department', profileId: 'staff', canQuery: true as const, selectDepartment: vi.fn() }
 const program = { id: programId, code: 'BSCS', name: 'Computer Science', department_id: 'department', nominal_duration: 4, status: 'active' as const }

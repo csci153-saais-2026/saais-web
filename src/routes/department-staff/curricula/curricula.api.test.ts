@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion } from './curricula.api'
+import { createCurriculumTerm, createCurriculumVersion, deleteCurriculumVersion, listCurricula, readCurriculum, updateCurriculumVersion } from './curricula.api'
 
 vi.mock('@/lib/api', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -18,6 +18,17 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('Curriculum typed reads', () => {
+  it('creates an empty positional term through one catalog operation', async () => {
+    const body: Parameters<typeof createCurriculumTerm>[0] = { curriculum_version_id: 'version', year_level: 1, term_sequence: 3, slots: [] }
+    let calls = 0
+    server.use(http.post('*/functions/v1/catalog/curriculum_term', async ({ request }) => {
+      calls++
+      expect(await request.json()).toEqual(body)
+      return HttpResponse.json({ id: 'term', curriculum_version_id: 'version', year_level: 1, term_sequence: 3 }, { status: 201 })
+    }))
+    expect(await createCurriculumTerm(body)).toMatchObject({ id: 'term', curriculum_version_id: 'version' })
+    expect(calls).toBe(1)
+  })
   it('deletes through one version endpoint and leaves protected-dependency errors intact', async () => {
     let calls = 0
     server.use(http.delete('*/functions/v1/catalog/curriculum_version/:id', ({ params }) => {

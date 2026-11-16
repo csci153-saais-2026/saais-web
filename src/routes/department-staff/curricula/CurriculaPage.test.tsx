@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 import DepartmentStaffPortal from '../DepartmentStaffPortal'
 import { listCurricula, readCurriculum, type CurriculumVersion } from './curricula.api'
 
-vi.mock('./curricula.api', () => ({ listCurricula: vi.fn(), readCurriculum: vi.fn(), createCurriculumVersion: vi.fn(), updateCurriculumVersion: vi.fn(), deleteCurriculumVersion: vi.fn() }))
+vi.mock('./curricula.api', () => ({ listCurricula: vi.fn(), readCurriculum: vi.fn(), createCurriculumVersion: vi.fn(), updateCurriculumVersion: vi.fn(), deleteCurriculumVersion: vi.fn(), createCurriculumTerm: vi.fn() }))
 vi.mock('../shared/staff-scope-provider', () => ({ StaffScopeProvider: ({ children }: { children: ReactNode }) => children }))
 const version: CurriculumVersion = { id: 'v1', program_id: 'p1', version_label: '2024', effective_start: '2024-08-01', total_units: 0, delinquency_threshold: 0, status: 'active', enrolled_student_count: 0 }
 const catalog = { programs: [{ id: 'p1', code: 'BSCS', name: 'Computer Science', department_id: 'd1', nominal_duration: 4, status: 'active' as const }], versions: [version, { ...version, id: 'v2', version_label: '2020', status: 'teach_out' as const, enrolled_student_count: undefined }] }
