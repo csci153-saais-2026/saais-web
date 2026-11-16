@@ -2524,10 +2524,12 @@ export const saaisMswHandlers = [
           ('instructor' in body && body.instructor !== null && (typeof body.instructor !== 'string' || body.instructor.length > 150))) {
         return errorJson(400, 'INVALID_INPUT', 'Provide valid correction fields, revision and reason.')
       }
-      if (body.expected_revision !== attempt.revision) return errorJson(409, 'STALE_ATTEMPT', 'The attempt changed since it was loaded.')
-      if (attempt.completion_grade != null) return errorJson(409, 'INC_COMPLETION_EXISTS', 'Use the INC completion correction operation.')
-      if (attempt.recorded_status === 'inc' && body.final_grade != null) return errorJson(409, 'INC_COMPLETION_REQUIRED', 'Use the INC completion operation for an incomplete grade.')
-      if (!attempt.prerequisite_override && ('final_grade' in body || 'status' in body)) {
+      const currentAttempt = db.attemptResults.find(a => a.id === attemptId && a.student_id === studentId)
+      if (!currentAttempt) return errorJson(404, 'NOT_FOUND', 'Attempt not found for this student.')
+      if (body.expected_revision !== currentAttempt.revision) return errorJson(409, 'STALE_ATTEMPT', 'The attempt changed since it was loaded.')
+      if (currentAttempt.completion_grade != null) return errorJson(409, 'INC_COMPLETION_EXISTS', 'Use the INC completion correction operation.')
+      if (currentAttempt.recorded_status === 'inc' && body.final_grade != null) return errorJson(409, 'INC_COMPLETION_REQUIRED', 'Use the INC completion operation for an incomplete grade.')
+      if (!currentAttempt.prerequisite_override && ('final_grade' in body || 'status' in body)) {
         const required = db.prerequisites.filter(p => p.course_id === offering?.course_id && p.type === 'strict')
         const unmet = required.some(prerequisite => {
           const slots = db.curriculumTermCourses.filter(s => s.course_id === prerequisite.prerequisite_course_id).map(s => s.id)
@@ -2543,11 +2545,11 @@ export const saaisMswHandlers = [
         })
         if (unmet) return errorJson(409, 'PREREQUISITE_NOT_MET', 'A strict prerequisite is not satisfied and this attempt has no override.')
       }
-      let finalGrade = ('final_grade' in body ? body.final_grade : attempt.final_grade) as number | null
-      const midtermGrade = ('midterm_grade' in body ? body.midterm_grade : attempt.midterm_grade) as number | null
-      const midtermStatus = ('midterm_status' in body ? body.midterm_status : attempt.midterm_status) as ApiSchema<'MidtermStatus'> | null | undefined
-      let status = ('status' in body ? body.status : attempt.recorded_status) as ApiSchema<'AttemptStatus'>
-      if (attempt.midterm_status === 'dr' && midtermStatus !== 'dr' && !('status' in body)) status = 'currently_enrolled'
+      let finalGrade = ('final_grade' in body ? body.final_grade : currentAttempt.final_grade) as number | null
+      const midtermGrade = ('midterm_grade' in body ? body.midterm_grade : currentAttempt.midterm_grade) as number | null
+      const midtermStatus = ('midterm_status' in body ? body.midterm_status : currentAttempt.midterm_status) as ApiSchema<'MidtermStatus'> | null | undefined
+      let status = ('status' in body ? body.status : currentAttempt.recorded_status) as ApiSchema<'AttemptStatus'>
+      if (currentAttempt.midterm_status === 'dr' && midtermStatus !== 'dr' && !('status' in body)) status = 'currently_enrolled'
       if (midtermStatus === 'dr') {
         if (body.final_grade != null || (body.status != null && body.status !== 'dr')) return errorJson(400, 'INVALID_INPUT', 'A dropped midterm requires a dropped final.')
         status = 'dr'; finalGrade = null
@@ -2562,19 +2564,19 @@ export const saaisMswHandlers = [
       }
       if (midtermStatus === 'dr' && midtermGrade != null) return errorJson(400, 'INVALID_INPUT', 'A dropped midterm cannot have a numeric grade.')
       const updatedAt = new Date().toISOString()
-      const instructor = ('instructor' in body ? body.instructor : attempt.instructor) as string | null | undefined
-      const oldValue = { status: attempt.recorded_status, midterm_status: attempt.midterm_status, midterm_grade: attempt.midterm_grade, final_grade: attempt.final_grade, instructor: attempt.instructor }
+      const instructor = ('instructor' in body ? body.instructor : currentAttempt.instructor) as string | null | undefined
+      const oldValue = { status: currentAttempt.recorded_status, midterm_status: currentAttempt.midterm_status, midterm_grade: currentAttempt.midterm_grade, final_grade: currentAttempt.final_grade, instructor: currentAttempt.instructor }
       const newValue = { status, midterm_status: midtermStatus, midterm_grade: midtermGrade, final_grade: finalGrade, instructor }
-      const history = [...(attempt.grade_fix_history ?? [])]
-      if (attempt.midterm_grade !== midtermGrade) history.push({ changed_at: updatedAt, old_grade: attempt.midterm_grade, new_grade: midtermGrade, actor_name: auth.persona.fullName, summary: 'Midterm grade corrected' })
-      if (attempt.final_grade !== finalGrade) history.push({ changed_at: updatedAt, old_grade: attempt.final_grade, new_grade: finalGrade, actor_name: auth.persona.fullName, summary: 'Final grade corrected' })
-      const incDeadline = status === 'inc' ? attempt.inc_deadline ?? term.default_inc_deadline : null
+      const history = [...(currentAttempt.grade_fix_history ?? [])]
+      if (currentAttempt.midterm_grade !== midtermGrade) history.push({ changed_at: updatedAt, old_grade: currentAttempt.midterm_grade, new_grade: midtermGrade, actor_name: auth.persona.fullName, summary: 'Midterm grade corrected' })
+      if (currentAttempt.final_grade !== finalGrade) history.push({ changed_at: updatedAt, old_grade: currentAttempt.final_grade, new_grade: finalGrade, actor_name: auth.persona.fullName, summary: 'Final grade corrected' })
+      const incDeadline = status === 'inc' ? currentAttempt.inc_deadline ?? term.default_inc_deadline : null
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
       const lapsed = status === 'inc' && !!incDeadline && incDeadline < today
-      const result: ApiSchema<'AttemptResult'> = { ...attempt, recorded_status: status, effective_status: status, midterm_status: midtermStatus,
+      const result: ApiSchema<'AttemptResult'> = { ...currentAttempt, recorded_status: status, effective_status: status, midterm_status: midtermStatus,
         midterm_grade: midtermGrade, final_grade: finalGrade, instructor, inc_deadline: incDeadline,
-        gwa_grade: finalGrade ?? (lapsed ? 5 : null), is_lapsed_inc: lapsed, revision: attempt.revision + 1, updated_at: updatedAt, grade_fix_history: history }
-      db.attemptResults[db.attemptResults.indexOf(attempt)] = result
+        gwa_grade: finalGrade ?? (lapsed ? 5 : null), is_lapsed_inc: lapsed, revision: currentAttempt.revision + 1, updated_at: updatedAt, grade_fix_history: history }
+      db.attemptResults[db.attemptResults.indexOf(currentAttempt)] = result
       const base = db.attempts.find(a => a.id === attemptId && a.student_id === studentId)
       if (base) Object.assign(base, { ...newValue, inc_deadline: result.inc_deadline, revision: result.revision, updated_at: updatedAt, updated_by: auth.persona.profileId })
       const student = db.profiles.find(p => p.id === studentId)

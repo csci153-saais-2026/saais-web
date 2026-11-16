@@ -1,5 +1,5 @@
 ﻿import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { createSaaisApiClient } from '@/lib/api'
+import { createSaaisApiClient, type ApiSchema } from '@/lib/api'
 import { getMockDatabase, loginAsMockPersona, logoutMockPersona, MOCK_IDS, resetMockDatabase } from '@/mocks'
 import { saaisMockServer } from '@/mocks/node'
 
@@ -35,7 +35,7 @@ describe('shared grade correction', () => {
     const db=getMockDatabase(); const student=db.profiles.find(p=>p.email==='sample.student01@vsu.edu.ph')!
     const other=db.profiles.find(p=>p.email==='sample.student03@vsu.edu.ph')!
     const attempt=db.attemptResults.find(a=>a.student_id===student.id)!
-    const call=(studentId:string,attemptId:string,body:unknown)=>client().PATCH(route,{params:{path:{student_id:studentId,attempt_id:attemptId}},body})
+    const call=(studentId:string,attemptId:string,body:ApiSchema<'GradeCorrectionRequest'>)=>client().PATCH(route,{params:{path:{student_id:studentId,attempt_id:attemptId}},body})
     expect((await call(other.id,attempt.id,{expected_revision:1,final_grade:2,reason:'Reason'})).response.status).toBe(404)
     expect((await call(student.id,attempt.id,{expected_revision:1,final_grade:2.1,reason:'Reason'})).response.status).toBe(400)
     expect((await call(student.id,attempt.id,{expected_revision:1,final_grade:2,reason:'  '})).response.status).toBe(400)
@@ -49,7 +49,7 @@ describe('shared grade correction', () => {
     loginAsMockPersona('adviser')
     const db = getMockDatabase()
     const path = { student_id: MOCK_IDS.studentPrimary, attempt_id: MOCK_IDS.attemptCsci153Open }
-    const patch = (body: unknown) => client().PATCH(route, { params: { path }, body })
+    const patch = (body: ApiSchema<'GradeCorrectionRequest'>) => client().PATCH(route, { params: { path }, body })
     const closure = db.departmentTermEncodings.find(c => c.school_term_id === MOCK_IDS.term2026Sem1Open && c.department_id === MOCK_IDS.deptDcst)!
     closure.is_closed = true
     expect((await patch({ expected_revision: 1, final_grade: 2, reason: 'Reason' })).response.status).toBe(409)
