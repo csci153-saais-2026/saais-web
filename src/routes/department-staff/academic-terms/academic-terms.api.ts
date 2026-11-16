@@ -48,7 +48,7 @@ export async function listAcademicTerms(
       params: {
         query: {
           select:
-            'id,start_year,end_year,term_type,school_year,is_locked,override_flag,override_actor_id,override_at,starts_on,ends_on,encoding_deadline,default_inc_deadline,closed_by,closed_by_name,closed_at,closure_note,chronological_key',
+            'id,start_year,end_year,term_type,school_year,is_locked,starts_on,ends_on,encoding_deadline,default_inc_deadline,closed_by,closed_by_name,closed_at,closure_note,chronological_key',
           order: 'chronological_key.desc,id.asc',
           limit: READ_LIMIT,
           offset: 0,
