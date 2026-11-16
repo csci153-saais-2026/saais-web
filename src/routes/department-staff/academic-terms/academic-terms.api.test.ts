@@ -54,6 +54,7 @@ describe('Academic term reads', () => {
         const query = new URL(request.url).searchParams
         expect(query.get('select')).toContain('is_locked')
         expect(query.get('select')).toContain('closed_by_name')
+        expect(query.get('select')).not.toContain('override')
         expect(query.get('order')).toBe('chronological_key.desc,id.asc')
         expect(query.get('limit')).toBe('1000')
         return HttpResponse.json([term])
