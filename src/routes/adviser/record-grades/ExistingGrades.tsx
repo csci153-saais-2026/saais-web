@@ -32,9 +32,9 @@ function PendingInc({ studentId, attempt, title, termLabel, studentName, onSaved
 }
 function ExistingAttempt({ studentId, termId, attempt, title, instructorOptions, onSaved }: { studentId: string; termId: string; attempt: ApiSchema<'AttemptResult'>; title: string; instructorOptions: string[]; onSaved: () => void }) {
   const initialOutcome = outcomeRemark(attempt.recorded_status === 'dr' ? 'dr' : attempt.recorded_status === 'inc' && attempt.completion_grade == null ? 'inc' : (attempt.completion_grade ?? attempt.final_grade)?.toFixed(2) ?? '')
-  const [midterm, setMidterm] = useState(''); const [final, setFinal] = useState(''); const [instructor, setInstructor] = useState(''); const [remark, setRemark] = useState(initialOutcome)
+  const [midterm, setMidterm] = useState(''); const [final, setFinal] = useState(''); const [instructor, setInstructor] = useState(attempt.instructor ?? ''); const [remark, setRemark] = useState(initialOutcome)
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [review, setReview] = useState(false)
-  const changed = !!(midterm || final || instructor.trim() || remark.trim() !== initialOutcome)
+  const changed = !!(midterm || final || instructor.trim() !== (attempt.instructor ?? '') || remark.trim() !== initialOutcome)
   async function save(event: React.FormEvent) {
     event.preventDefault(); setError('')
     if (!review) { setReview(true); return }
@@ -43,7 +43,7 @@ function ExistingAttempt({ studentId, termId, attempt, title, instructorOptions,
       await saveTermGrades(studentId, termId, [{ attempt_id: attempt.id, course_offering_id: attempt.course_offering_id,
         ...(midterm === 'dr' ? { midterm_status: 'dr', status: 'dr' } : midterm ? { midterm_status: 'graded', midterm_grade: Number(midterm) } : {}),
         ...(final === 'inc' ? { status: 'inc' } : final === 'dr' ? { status: 'dr' } : final ? { final_grade: Number(final) } : {}),
-        ...(instructor.trim() ? { instructor: instructor.trim() } : {}), ...(remark.trim() ? { remark: remark.trim() } : {}),
+        ...(instructor.trim() && instructor.trim() !== (attempt.instructor ?? '') ? { instructor: instructor.trim() } : {}), ...(remark.trim() ? { remark: remark.trim() } : {}),
         continue_with_prerequisite_override: false }])
       onSaved()
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save this attempt.') }
@@ -61,8 +61,8 @@ function ExistingAttempt({ studentId, termId, attempt, title, instructorOptions,
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to remove this course.') }
     finally { setBusy(false) }
   }
-  return <form aria-label={`Edit ${title}`} onSubmit={save} className="grid gap-3 border-b border-border px-3 py-2 sm:grid-cols-2 lg:grid-cols-[minmax(160px,2fr)_minmax(160px,2fr)_110px_110px_minmax(120px,1fr)_28px] lg:items-center"><div><strong>{code}</strong>{name.length > 0 && <span className="block text-xs text-muted-foreground">{name.join(' · ')}</span>}</div>
-    {attempt.instructor ? <label><span className="sr-only">Instructor for {title}</span><select className="w-full rounded-md border border-border bg-card px-3 py-2" value={attempt.instructor} disabled><option>{attempt.instructor}</option></select></label> : <label><span className="sr-only">Instructor for {title}</span><select className="w-full rounded-md border border-border bg-card p-2" value={instructor} onChange={e=>{setInstructor(e.target.value);setReview(false)}}><option value="">Select instructor</option>{instructorOptions.map(name => <option key={name} value={name}>{name}</option>)}</select></label>}
+  return <form aria-label={`Edit ${title}`} onSubmit={save} className="grid gap-3 lg:gap-x-7 border-b border-border px-3.5 py-2 sm:grid-cols-2 lg:grid-cols-[minmax(140px,1fr)_minmax(180px,1fr)_90px_90px_minmax(160px,1.45fr)_28px] lg:items-center"><div><strong>{code}</strong>{name.length > 0 && <span className="block text-xs text-muted-foreground">{name.join(' · ')}</span>}</div>
+    <label><span className="sr-only">Instructor for {title}</span><select className="w-full rounded-md border border-border bg-card p-2" value={instructor} onChange={e=>{setInstructor(e.target.value);setReview(false)}}><option value="">Select instructor</option>{[...new Set([...(attempt.instructor ? [attempt.instructor] : []), ...instructorOptions])].map(name => <option key={name} value={name}>{name}</option>)}</select></label>
     {allowMidterm ? <label><span className="sr-only">New midterm grade</span><GradeSelect allowDrop placeholder="—" value={midterm} onChange={e=>{const value=e.target.value;setMidterm(value);if(value==='dr'){setFinal('dr');setRemark('DR')}else if(midterm==='dr'){setFinal('');setRemark('')}setReview(false)}} /></label> : <label><span className="sr-only">Midterm for {title}</span><GradeSelect allowDrop disabled placeholder="—" value={displayedMidterm === 'DR' ? 'dr' : displayedMidterm === '—' ? '' : displayedMidterm} /></label>}
     {allowFinal ? <label><span className="sr-only">New final grade</span><GradeSelect vsuScale includeStatuses disableDrop={midterm!=='dr'} disabled={midterm==='dr'} placeholder="—" value={final} onChange={e=>{setFinal(e.target.value);setRemark(outcomeRemark(e.target.value));setReview(false)}} /></label> : <label><span className="sr-only">Final for {title}</span><GradeSelect includeStatuses disabled placeholder="—" value={displayedFinal === 'DR' ? 'dr' : displayedFinal === 'INC' ? 'inc' : displayedFinal === '—' ? '' : displayedFinal} /></label>}
     <div aria-label={`Status for ${title}`}>{shownStatus ? <StatusBadge status={shownStatus} /> : <span className="text-muted-foreground">—</span>}</div><Button type="button" variant="ghost" size="icon-sm" className="justify-self-end" aria-label={`Remove ${code}`} title="Remove this course" disabled={busy} onClick={() => void remove()}>×</Button>
