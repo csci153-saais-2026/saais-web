@@ -1,38 +1,38 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { vi } from 'vitest'
 import { AuthContext, type AuthContextValue } from '@/context/auth-context'
 import { getMockDatabase, loginAsMockPersona, logoutMockPersona, MOCK_IDS, MOCK_PERSONAS, resetMockDatabase } from '@/mocks'
 import { saaisMockServer } from '@/mocks/node'
 import DepartmentStaffPortal from '../DepartmentStaffPortal'
 
-const staffPersona = MOCK_PERSONAS.department_staff
-
-function staffAuth(): AuthContextValue {
-  const roleAssignments = getMockDatabase().roleAssignments.filter(assignment => assignment.profile_id === staffPersona.profileId)
+function staffAuth(personaKey: 'department_staff' | 'department_head' = 'department_staff'): AuthContextValue {
+  const persona = MOCK_PERSONAS[personaKey]
+  const roleAssignments = getMockDatabase().roleAssignments.filter(assignment => assignment.profile_id === persona.profileId)
   return {
     user: {
-      id: staffPersona.profileId,
-      email: staffPersona.email,
-      fullName: staffPersona.fullName,
-      primaryRole: staffPersona.primaryRole,
-      roles: staffPersona.roles,
-      facultyId: staffPersona.facultyId,
-      departmentId: staffPersona.departmentId,
+      id: persona.profileId,
+      email: persona.email,
+      fullName: persona.fullName,
+      primaryRole: persona.primaryRole,
+      roles: persona.roles,
+      facultyId: persona.facultyId,
+      departmentId: persona.departmentId,
     },
     profile: null,
     session: null,
-    roles: staffPersona.roles,
+    roles: persona.roles,
     roleAssignments,
-    roleScopes: staffPersona.roleScopes.map(scope => ({
+    roleScopes: persona.roleScopes.map(scope => ({
       role: scope.role,
       facultyId: scope.scope_type === 'faculty' ? scope.scope_id : null,
       departmentId: scope.scope_type === 'department' ? scope.scope_id : null,
     })),
-    activeRole: staffPersona.primaryRole,
-    primaryRole: staffPersona.primaryRole,
+    activeRole: persona.primaryRole,
+    primaryRole: persona.primaryRole,
     isLoading: false,
     isAuthenticated: true,
     isAllowedToEnter: true,
@@ -41,7 +41,7 @@ function staffAuth(): AuthContextValue {
     isPasswordRecovery: false,
     keepSignedIn: true,
     isMockMode: true,
-    activePersonaKey: staffPersona.key,
+    activePersonaKey: persona.key,
     signInWithPassword: async () => undefined,
     signInWithGoogle: async () => undefined,
     signOut: async () => undefined,
@@ -51,11 +51,11 @@ function staffAuth(): AuthContextValue {
   }
 }
 
-function renderAccounts(path = '/department-staff/accounts') {
+function renderAccounts(path = '/department-staff/accounts', personaKey: 'department_staff' | 'department_head' = 'department_staff') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <AuthContext.Provider value={staffAuth()}>
+      <AuthContext.Provider value={staffAuth(personaKey)}>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
             <Route path="/department-staff/*" element={<DepartmentStaffPortal />} />
@@ -156,13 +156,80 @@ describe('Department Staff accounts directory', () => {
       requestedQuery = new URL(request.url).searchParams
       return HttpResponse.json([])
     }))
-    const { listDepartmentAccounts } = await import('./accounts.api')
+    const { accountsMaxOffset, listDepartmentAccounts } = await import('./accounts.api')
 
-    const page = await listDepartmentAccounts({ department_id: MOCK_IDS.deptDcst, offset: 40 })
+    const page = await listDepartmentAccounts(
+      { department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing },
+      { search: 'nicolas@example.edu', role: 'adviser', offset: 40 },
+    )
 
     expect(requestedQuery.get('department_id')).toBe(MOCK_IDS.deptDcst)
+    expect(requestedQuery.get('faculty_id')).toBe(MOCK_IDS.facultyComputing)
     expect(requestedQuery.get('limit')).toBe('21')
     expect(requestedQuery.get('offset')).toBe('40')
+    expect(requestedQuery.get('search')).toBe('nicolas@example.edu')
+    expect(requestedQuery.get('role')).toBe('adviser')
     expect(page).toEqual({ accounts: [], hasNext: false })
+    await expect(listDepartmentAccounts(
+      { department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing },
+      { offset: accountsMaxOffset + 1 },
+    )).rejects.toThrow('outside the supported range')
+  })
+
+  it('applies the combined search and role filters in the MSW account handler', async () => {
+    const { listDepartmentAccounts } = await import('./accounts.api')
+    const page = await listDepartmentAccounts(
+      { department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing },
+      { search: MOCK_PERSONAS.student.email, role: 'student', offset: 0 },
+    )
+
+    expect(page.accounts).toHaveLength(1)
+    expect(page.accounts[0]?.profile.email).toBe(MOCK_PERSONAS.student.email)
+    expect(page.accounts[0]?.role_assignments?.some(assignment => assignment.role === 'student')).toBe(true)
+  })
+
+  it('combines UI search and role filters and resets bounded pagination on changes', async () => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    const requests: URLSearchParams[] = []
+    saaisMockServer.use(http.get('*/functions/v1/accounts', ({ request }) => {
+      requests.push(new URL(request.url).searchParams)
+      return HttpResponse.json([])
+    }))
+    renderAccounts('/department-staff/accounts?offset=40')
+
+    const search = await screen.findByRole('searchbox', { name: 'Search accounts' })
+    fireEvent.change(search, { target: { value: 'Ron' } })
+    await waitFor(() => expect(requests.at(-1)?.get('search')).toBe('Ron'))
+    expect(requests.at(-1)?.get('offset')).toBe('0')
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Role' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Adviser' }))
+    await waitFor(() => expect(requests.at(-1)?.get('role')).toBe('adviser'))
+    expect(requests.at(-1)?.get('search')).toBe('Ron')
+    expect(requests.at(-1)?.get('offset')).toBe('0')
+    expect(requests.at(-1)?.get('department_id')).toBe(MOCK_IDS.deptDcst)
+    expect(requests.at(-1)?.get('faculty_id')).toBe(MOCK_IDS.facultyComputing)
+  })
+
+  it('ignores organization values in the URL and does not broaden the Staff portal guard', async () => {
+    let requestedQuery: URLSearchParams | undefined
+    saaisMockServer.use(http.get('*/functions/v1/accounts', ({ request }) => {
+      requestedQuery = new URL(request.url).searchParams
+      return HttpResponse.json([])
+    }))
+    renderAccounts(`/department-staff/accounts?department=${MOCK_IDS.deptDabe}&faculty=${MOCK_IDS.facultyEngineering}`)
+
+    await screen.findByRole('table')
+    expect(requestedQuery?.get('department_id')).toBe(MOCK_IDS.deptDcst)
+    expect(requestedQuery?.get('faculty_id')).toBe(MOCK_IDS.facultyComputing)
+    expect(screen.queryByRole('combobox', { name: /department|faculty|college/i })).toBeNull()
+
+    cleanup()
+    renderAccounts('/department-staff/accounts', 'department_head')
+    expect(await screen.findByText('A Department Staff role assignment is required to continue.')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Accounts and roles' })).toBeNull()
   })
 })

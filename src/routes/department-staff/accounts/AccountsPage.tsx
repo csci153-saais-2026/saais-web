@@ -4,6 +4,9 @@ import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/features/form-field'
+import { SearchInput } from '@/components/features/search-input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useDepartmentAccounts } from '@/hooks/use-department-accounts'
 import { ApiClientError, type ApiSchema } from '@/lib/api'
 import { useStaffScope } from '../shared/use-staff-scope'
@@ -57,6 +60,12 @@ function parseOffset(value: string | null): number {
   return Math.min(Math.floor(offset / accountsPageSize) * accountsPageSize, accountsMaxOffset)
 }
 
+function parseRole(value: string | null): ApiSchema<'RoleType'> | '' {
+  return value && Object.hasOwn(roleLabels, value)
+    ? value as ApiSchema<'RoleType'>
+    : ''
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError) {
     if (error.isForbidden) return 'Your account is not permitted to view accounts in this department.'
@@ -70,19 +79,55 @@ function errorMessage(error: unknown): string {
 export default function AccountsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const scope = useStaffScope()
+  const search = searchParams.get('q') ?? ''
+  const role = parseRole(searchParams.get('role'))
   const offset = parseOffset(searchParams.get('offset'))
-  const accounts = useDepartmentAccounts(offset)
+  const accounts = useDepartmentAccounts({ search, role: role || undefined, offset })
+
+  function updateFilters(updates: Record<string, string>) {
+    const next = new URLSearchParams(searchParams)
+    Object.entries(updates).forEach(([key, value]) => value ? next.set(key, value) : next.delete(key))
+    next.delete('offset')
+    setSearchParams(next, { replace: true })
+  }
 
   function updateOffset(nextOffset: number) {
     const next = new URLSearchParams(searchParams)
     if (nextOffset <= 0) next.delete('offset')
-    else next.set('offset', String(nextOffset))
+    else next.set('offset', String(Math.min(nextOffset, accountsMaxOffset)))
     setSearchParams(next, { replace: true })
   }
 
   return (
     <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
       <PageHeading title="Accounts and roles" subtitle="Read-only account directory for your authorized department." />
+
+      {scope.status === 'ready' && (
+        <Panel title="Find accounts" description="Organization scope is fixed to your approved Department Staff assignment.">
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
+            <FormField label="Search accounts" htmlFor="accounts-search" hint="Search by name or institutional email.">
+              <SearchInput
+                id="accounts-search"
+                value={search}
+                maxLength={150}
+                placeholder="Search accounts"
+                onChange={event => updateFilters({ q: event.target.value })}
+              />
+            </FormField>
+            <FormField label="Role" htmlFor="accounts-role">
+              <Select value={role || 'all'} onValueChange={value => updateFilters({ role: value === 'all' ? '' : value })}>
+                <SelectTrigger id="accounts-role" className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All roles</SelectItem>
+                  {Object.entries(roleLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          </div>
+        </Panel>
+      )}
 
       {scope.status !== 'ready' && (
         <Panel title="Accounts and roles">
@@ -114,7 +159,7 @@ export default function AccountsPage() {
           columns={columns}
           rows={accounts.data.accounts}
           rowKey={account => account.profile.id}
-          empty="No accounts are listed for this department."
+          empty={search || role ? 'No accounts match the current search and role filters.' : 'No accounts are listed for this department.'}
           footer={(
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground" aria-live="polite">

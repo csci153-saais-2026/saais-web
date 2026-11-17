@@ -1149,6 +1149,7 @@ export const saaisMswHandlers = [
         || summary.student_organization?.faculty_id === facultyId
       const hasRole = !requestedRole
         || summary.role_assignments?.some(assignment => assignment.role === requestedRole)
+        || summary.profile.roles?.includes(requestedRole as ApiSchema<'RoleType'>)
         || summary.profile.role === requestedRole
       const matchesSearch = !search
         || summary.profile.full_name.toLocaleLowerCase().includes(search)
