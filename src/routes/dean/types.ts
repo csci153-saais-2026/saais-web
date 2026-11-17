@@ -1,12 +1,7 @@
-import type { ChecklistRow } from "@/components/features/checklist-term-group"
 import type { GradeBand } from "@/components/features/grade-distribution"
 import type { Status } from "@/components/ui/status-badge"
 
-export type DepartmentFilter =
-  | "All departments"
-  | "DCST"
-  | "DIT Alang-alang"
-  | "DIT Isabel"
+export type DepartmentFilter = string
 
 export interface BatchCurriculumRow {
   batch: string
@@ -16,6 +11,7 @@ export interface BatchCurriculumRow {
 }
 
 export interface CohortStudentSample {
+  studentId: string
   studentNumber: string
   name: string
   gwa: string
@@ -23,6 +19,7 @@ export interface CohortStudentSample {
 
 export interface FacultyDepartmentReport {
   department: DepartmentFilter
+  departmentCode?: string
   students: number
   meanGwa: string
   withDeficiencies: number
@@ -32,10 +29,12 @@ export interface FacultyDepartmentReport {
 }
 
 export interface DeanStudentSummary {
+  studentId: string
   studentNumber: string
   name: string
   initials: string
-  department: Exclude<DepartmentFilter, "All departments">
+  departmentId: string
+  department: string
   curriculum: string
   adviser: string
   program: string
@@ -45,42 +44,10 @@ export interface DeanStudentSummary {
   gwa: string
   unitsEarned: number
   unitsRequired: number
+  entryYear: number
 }
 
-export interface DeanChecklistTerm {
-  id: string
-  title: string
-  description: string
-  passedUnits: number
-  totalUnits: number
-  semesterGwa?: string
-  rows: ChecklistRow[]
-}
-
-export interface DeanGradeTermRow {
-  term: string
-  code: string
-  title: string
-  units: number
-  finalGrade: string
-  status: Status
-  remarks?: string
-}
-
-export interface DeanCourseInfo {
-  code: string
-  title: string
-  units: number
-  prerequisites: string
-  description: string
-}
-
-export interface DeanStudentDetail extends DeanStudentSummary {
-  checklistTerms: DeanChecklistTerm[]
-  gradeRows: DeanGradeTermRow[]
-}
-
-export type DeanAuditAction = "View" | "Change"
+export type DeanAuditAction = "View" | "Change" | "Sign-in"
 
 export interface DeanAuditEntry {
   id: string
@@ -88,6 +55,7 @@ export interface DeanAuditEntry {
   actor: string
   action: DeanAuditAction
   student: string
-  studentNumber?: string
+  studentId?: string | null
+  studentNumber?: string | null
   details: string
 }
