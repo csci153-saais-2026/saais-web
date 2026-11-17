@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import * as sharedLayout from '@/layouts/AuthenticatedLayout'
 
@@ -11,6 +12,7 @@ const auth = vi.hoisted(() => ({
   roleAssignments: [{ role: 'dean' }],
   activeRole: 'dean',
   isLoading: false,
+  isAllowedToEnter: true,
   signOut: vi.fn().mockResolvedValue(undefined),
 }))
 const navigate = vi.hoisted(() => vi.fn())
@@ -28,19 +30,23 @@ afterEach(() => {
 beforeEach(() => {
   auth.roleAssignments = [{ role: 'dean' }]
   auth.isLoading = false
+  auth.isAllowedToEnter = true
   auth.signOut.mockClear()
   navigate.mockClear()
 })
 
 function setup() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
   return render(
-    <MemoryRouter initialEntries={['/dean/reports']}>
-      <Routes>
-        <Route element={<AuthenticatedPortalLayout />}>
-          <Route path="/dean/reports" element={<div>Report content</div>} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/dean/reports']}>
+        <Routes>
+          <Route element={<AuthenticatedPortalLayout />}>
+            <Route path="/dean/reports" element={<div>Report content</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -50,7 +56,9 @@ describe('AuthenticatedPortalLayout integration', () => {
     expect(screen.getByText('Dean')).toBeTruthy()
     // A derived role list must not introduce a menu absent from actual assignments.
     expect(screen.queryByText('Adviser')).toBeNull()
-    expect(screen.getByRole('link', { name: 'Faculty reports' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getAllByRole('link', { name: 'Faculty reports' }).some(link =>
+      link.getAttribute('href') === '/dean/reports' && link.getAttribute('aria-current') === 'page'
+    )).toBe(true)
     expect(screen.getByText('Ada Example')).toBeTruthy()
     expect(screen.getByText('ada@example.edu.ph')).toBeTruthy()
     expect(screen.getByText('AE')).toBeTruthy()
@@ -78,5 +86,13 @@ describe('AuthenticatedPortalLayout integration', () => {
     expect(screen.getByText(/Loading workspace/)).toBeTruthy()
     expect(screen.queryByText('Report content')).toBeNull()
     expect(screen.queryByText('Ada Example')).toBeNull()
+  })
+
+  it('shows an explicit unavailable state for an unauthorized account', () => {
+    auth.isAllowedToEnter = false
+    setup()
+    expect(screen.getByRole('heading', { name: 'Workspace unavailable' })).toBeTruthy()
+    expect(screen.queryByText('Ada Example')).toBeNull()
+    expect(screen.queryByText('Report content')).toBeNull()
   })
 })
