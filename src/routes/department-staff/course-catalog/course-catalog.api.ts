@@ -15,7 +15,7 @@ export interface CourseCatalogReferences {
 
 export interface CourseCatalogFilters {
   search: string
-  status: '' | 'active' | 'inactive' | 'discontinued'
+  status: '' | 'active' | 'inactive'
   facultyId: string
   departmentId: string
   page: number
@@ -204,7 +204,9 @@ export async function listCourseCatalogPage(
     limit: PAGE_SIZE,
     offset,
     ...(departmentFilter ? { department_id: departmentFilter } : {}),
-    ...(filters.status ? { status: postgrestFilter.eq(filters.status) } : {}),
+    ...(filters.status
+      ? { status: filters.status === 'active' ? postgrestFilter.eq('active') : postgrestFilter.neq('active') }
+      : {}),
     ...(filters.search.trim() ? { or: searchFilter(filters.search) } : {}),
   }
 

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { DataTablePanel, type Column } from '@/components/features/data-table-panel'
+import type { Column } from '@/components/features/data-table-panel'
 import { FormField } from '@/components/features/form-field'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -10,16 +10,14 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiClientError } from '@/lib/api'
-import { courseCatalogMaxOffset, courseCatalogPageSize, type CatalogCourse, type CatalogDepartment, type CatalogFaculty } from './course-catalog.api'
+import { courseCatalogMaxOffset, courseCatalogPageSize, type CatalogCourse } from './course-catalog.api'
 import { useCourseCatalog, useCourseCatalogReferences } from '@/hooks/use-course-catalog'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import { CourseDialog } from './CourseDialog'
 import { CourseCatalogActions } from './CourseCatalogActions'
 import { CoursePrerequisitesDialog } from './CoursePrerequisitesDialog'
-
-const courseTypeLabels: Record<string, string> = {
-  major: 'Major', ge: 'GE', elective: 'Elective', pe: 'PE', nstp: 'NSTP', foundation: 'Foundation', service: 'Service',
-}
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatusBadge } from '@/components/ui/status-badge'
 
 function displayValue(value: unknown): string {
   return typeof value === 'string' && value.trim() ? value : 'Not provided'
@@ -40,21 +38,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The course catalog could not be loaded.'
 }
 
-function departmentLabel(
-  course: CatalogCourse,
-  departmentsById: ReadonlyMap<string, CatalogDepartment>,
-  facultiesById: ReadonlyMap<string, CatalogFaculty>,
-) {
-  const department = departmentsById.get(course.department_id)
-  if (!department) return { primary: 'Department unavailable', secondary: 'Reference details unavailable' }
-  const faculty = department.faculty_id ? facultiesById.get(department.faculty_id) : undefined
-  const label = [department.code, department.name].filter(value => typeof value === 'string' && value.trim()).join(' · ')
-  return {
-    primary: label || 'Department name unavailable',
-    secondary: faculty?.name?.trim() || 'Faculty unavailable',
-  }
-}
-
 function parsePage(value: string | null): number {
   if (!value || !/^\d+$/.test(value)) return 0
   const page = Number(value)
@@ -62,8 +45,8 @@ function parsePage(value: string | null): number {
   return Number.isSafeInteger(page) ? Math.min(page, maxPage) : 0
 }
 
-function parseStatus(value: string | null): '' | 'active' | 'inactive' | 'discontinued' {
-  return value === 'active' || value === 'inactive' || value === 'discontinued' ? value : ''
+function parseStatus(value: string | null): '' | 'active' | 'inactive' {
+  return value === 'active' || value === 'inactive' ? value : ''
 }
 
 function isValidSearch(value: string): boolean {
@@ -94,14 +77,9 @@ export default function CourseCatalogPage() {
     : 'Use 100 characters or fewer. PostgREST syntax, wildcard, and control characters are not supported.'
   const catalog = useCourseCatalog(filters, !searchError)
   const departmentsById = new Map((references.data?.departments ?? []).map(department => [department.id, department]))
-  const facultiesById = new Map((references.data?.faculties ?? []).map(faculty => [faculty.id, faculty]))
   const departmentOptions = (references.data?.departments ?? []).filter(
     department => !filters.facultyId || department.faculty_id === filters.facultyId,
   )
-  const administeringDepartment = staffScope.status === 'ready'
-    ? departmentsById.get(staffScope.departmentId)
-    : undefined
-
   const updateFilters = (updates: Record<string, string>, resetPage = true) => {
     const next = new URLSearchParams(searchParams)
     Object.entries(updates).forEach(([key, value]) => value ? next.set(key, value) : next.delete(key))
@@ -110,53 +88,51 @@ export default function CourseCatalogPage() {
   }
 
   const columns: Column<CatalogCourse>[] = [
-    { header: 'Code', className: 'font-mono font-semibold sm:whitespace-nowrap', cell: course => displayValue(course.code) },
-    { header: 'Title', className: 'min-w-0 whitespace-normal sm:min-w-52', cell: course => <span className="block min-w-0 break-words">{displayValue(course.title)}</span> },
     {
-      header: 'Department', className: 'min-w-0 whitespace-normal sm:min-w-52',
-      cell: course => {
-        const label = departmentLabel(course, departmentsById, facultiesById)
-        return <div className="min-w-0 break-words"><span className="block font-medium">{label.primary}</span><span className="block text-xs text-muted-foreground">{label.secondary}</span></div>
-      },
+      header: 'Course',
+      className: 'min-w-0 whitespace-normal',
+      cell: course => <div className="min-w-0 space-y-1 break-words">
+        <span className="block font-semibold">{displayValue(course.code)}</span>
+        <span className="block break-words text-sm text-muted-foreground">{displayValue(course.title)}</span>
+      </div>,
     },
-    { header: 'Units', numeric: true, className: 'sm:whitespace-nowrap', cell: course => typeof course.units === 'number' && Number.isFinite(course.units) ? course.units : 'Not provided' },
-    { header: 'Type', className: 'sm:whitespace-nowrap', cell: course => course.category ? courseTypeLabels[course.category] ?? 'Not provided' : 'Not provided' },
-    { header: 'Status', className: 'sm:whitespace-nowrap', cell: course => <Badge variant={course.status === 'active' ? 'secondary' : 'outline'}>{statusLabel(course.status)}</Badge> },
+    { header: 'Units', className: 'whitespace-nowrap text-center', cell: course => typeof course.units === 'number' && Number.isFinite(course.units) ? course.units : 'Not provided' },
     {
-      header: 'Actions', className: 'sm:whitespace-nowrap',
-      cell: course => staffScope.status === 'ready' && staffScope.departmentIds.includes(course.department_id)
-        ? <div className="flex flex-wrap items-center gap-2">
-          <CourseDialog
+      header: 'Status',
+      className: 'whitespace-nowrap',
+      cell: course => course.status === 'active'
+        ? <StatusBadge status="active">Active</StatusBadge>
+        : course.status === 'inactive' || course.status === 'discontinued'
+          ? <StatusBadge status="archived">Inactive</StatusBadge>
+          : <Badge variant="outline">{statusLabel(course.status)}</Badge>,
+    },
+    {
+      header: 'Actions',
+      className: 'min-w-0 whitespace-normal',
+      cell: course => {
+        const canEdit = staffScope.status === 'ready' && staffScope.departmentIds.includes(course.department_id)
+        const department = departmentsById.get(course.department_id)
+        const departmentName = department ? `${department.code} · ${department.name}` : course.department_id
+        return <div className="flex flex-wrap items-center gap-2.5 sm:flex-nowrap">
+          {canEdit ? <CourseDialog
             course={course}
             departmentId={course.department_id}
-            departmentLabel={(() => {
-              const department = departmentsById.get(course.department_id)
-              return department ? `${department.code} · ${department.name}` : course.department_id
-            })()}
+            departmentLabel={departmentName}
             onCreated={() => undefined}
             onUpdated={() => undefined}
-            triggerLabel={`Edit ${course.code || 'course'}`}
-          />
-          <CourseCatalogActions
-            course={course}
-            departmentLabel={(() => {
-              const department = departmentsById.get(course.department_id)
-              return department ? `${department.code} · ${department.name}` : course.department_id
-            })()}
-          />
+            triggerLabel="Edit"
+          /> : null}
+          <DialogTrigger asChild>
+            <Button type="button" size="sm" variant="outline" aria-label={`View prerequisites for ${course.code || 'course'}`} onClick={event => {
+              prerequisiteTrigger.current = event.currentTarget
+              setPrerequisiteCourse(course)
+            }}>
+              Prerequisites
+            </Button>
+          </DialogTrigger>
+          {canEdit ? <CourseCatalogActions course={course} departmentLabel={departmentName} showDiscontinue={false} /> : <span className="sr-only">Read only</span>}
         </div>
-        : <span aria-label="Read only">—</span>,
-    },
-    {
-      header: 'Prerequisites', className: 'sm:whitespace-nowrap',
-      cell: course => <DialogTrigger asChild>
-        <Button type="button" size="sm" variant="outline" onClick={event => {
-          prerequisiteTrigger.current = event.currentTarget
-          setPrerequisiteCourse(course)
-        }}>
-          View prerequisites for {course.code || 'course'}
-        </Button>
-      </DialogTrigger>,
+      },
     },
   ]
 
@@ -169,33 +145,28 @@ export default function CourseCatalogPage() {
   return (
     <Dialog open={prerequisiteDialogOpen} onOpenChange={setPrerequisiteDialogOpen}>
     <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
-      <PageHeading title="Course catalog" subtitle="Browse and maintain courses in your authorized department." />
+      <PageHeading
+        title="One catalog. Many academic paths."
+        subtitle="Maintain course definitions and prerequisites."
+      />
 
       <Panel
         title="Course catalog"
-        description="Edit courses only within your authorized department; other department references remain read-only."
-        action={staffScope.status === 'ready' ? (
-          <CourseDialog
-            departmentId={staffScope.departmentId}
-            departmentLabel={administeringDepartment ? `${administeringDepartment.code} · ${administeringDepartment.name}` : undefined}
-            description="Create a catalog course in your authorized department."
-            triggerLabel="Add course"
-            onCreated={() => undefined}
-          />
-        ) : undefined}
+        description="Different course codes never imply equivalence."
+        flush
+        bodyClassName="gap-0"
       >
-        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
-          <FormField label="Search courses" htmlFor="catalog-search" error={searchError} className="sm:col-span-2 xl:col-span-1">
-            <SearchInput id="catalog-search" value={filters.search} placeholder="Search by code or title" onChange={event => updateFilters({ q: event.target.value })} />
+        <div className="grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-4">
+          <FormField label="Search records" htmlFor="catalog-search" error={searchError} className="sm:col-span-2 xl:col-span-1">
+            <SearchInput id="catalog-search" value={filters.search} placeholder="Search by course code or title" onChange={event => updateFilters({ q: event.target.value })} />
           </FormField>
           <FormField label="Status" htmlFor="catalog-status">
             <Select value={filters.status || 'all'} onValueChange={value => updateFilters({ status: value === 'all' ? '' : value })}>
               <SelectTrigger id="catalog-status" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="all">All records</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="discontinued">Discontinued (shown as Inactive)</SelectItem>
               </SelectContent>
             </Select>
           </FormField>
@@ -218,46 +189,47 @@ export default function CourseCatalogPage() {
             </Select>
           </FormField>
         </div>
-      </Panel>
 
-      {!searchError && (references.isPending || catalog.isPending) && (
-        <Panel title="Catalog results">
-          <p role="status" className="p-6 text-sm text-muted-foreground">Loading courses and department references…</p>
-        </Panel>
-      )}
+        {!searchError && (references.isPending || catalog.isPending) && (
+          <p role="status" className="border-t border-border px-5 py-6 text-sm text-muted-foreground">Loading courses and department references…</p>
+        )}
 
-      {(references.isError || catalog.isError) && (
-        <Panel title="Catalog results">
-          <div className="space-y-4 p-6">
+        {(references.isError || catalog.isError) && (
+          <div className="space-y-4 border-t border-border p-5">
             <p role="alert" className="text-sm text-destructive">{errorMessage(references.error ?? catalog.error)}</p>
             <Button type="button" variant="outline" onClick={() => { void references.refetch(); void catalog.refetch() }} disabled={references.isFetching || catalog.isFetching}>
               {references.isFetching || catalog.isFetching ? 'Retrying…' : 'Retry'}
             </Button>
           </div>
-        </Panel>
-      )}
+        )}
 
-      {references.isSuccess && catalog.isSuccess && !searchError && (
-        <DataTablePanel
-          title="Catalog results"
-          description={data?.total == null
-            ? `${data?.courses.length ?? 0} courses on this page`
-            : `Showing ${start}–${end} of ${data.total} courses`}
-          columns={columns}
-          rows={data.courses}
-          rowKey={course => course.id}
-          empty="No courses match these filters."
-          footer={(
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground" aria-live="polite">{data?.total != null ? `${start}–${end} of ${data.total}` : `Page ${filters.page + 1}`}</p>
+        {references.isSuccess && catalog.isSuccess && !searchError && (
+          <>
+            <Table responsive>
+              <TableHeader className="bg-secondary">
+                <TableRow>
+                  {columns.map(column => <TableHead key={column.header} className={`h-auto px-3.5 py-2.5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase${column.header === 'Units' ? ' text-center' : ''}`}>{column.header}</TableHead>)}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.courses.map(course => <TableRow key={course.id}>
+                  {columns.map(column => <TableCell key={column.header} label={column.header} className={`px-3.5 py-[11px] text-[13.5px] ${column.className ?? ''}`}>
+                    {column.cell(course)}
+                  </TableCell>)}
+                </TableRow>)}
+              </TableBody>
+            </Table>
+            {data.courses.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted-foreground">No courses match these filters.</p>}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+              <p className="text-sm" aria-live="polite">{data.total != null ? `${start}–${end} of ${data.total}` : `Page ${filters.page + 1}`}</p>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => updateFilters({ page: String(filters.page - 1) }, false)} disabled={filters.page === 0 || catalog.isFetching}>Previous</Button>
                 <Button type="button" variant="outline" onClick={() => updateFilters({ page: String(filters.page + 1) }, false)} disabled={!hasNext || catalog.isFetching}>Next</Button>
               </div>
             </div>
-          )}
-        />
-      )}
+          </>
+        )}
+      </Panel>
       <CoursePrerequisitesDialog
         key={prerequisiteCourse?.id ?? 'no-course'}
         course={prerequisiteCourse}

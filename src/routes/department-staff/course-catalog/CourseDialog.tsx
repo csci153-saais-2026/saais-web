@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormField } from '@/components/features/form-field'
@@ -18,7 +18,7 @@ export function CourseDialog({ departmentId, departmentLabel, description, onCre
   course?: CatalogCourse
   disabled?: boolean
   initialCategory?: CourseValues['category']
-  triggerLabel?: string
+  triggerLabel?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const createMutation = useCreateCatalogCourse()
@@ -70,16 +70,29 @@ export function CourseDialog({ departmentId, departmentLabel, description, onCre
   }
 
   return <>
-    <Button type="button" size="sm" variant="outline" disabled={disabled || !departmentId} onClick={openForm}>{resolvedTriggerLabel}</Button>
+    <Button type="button" size="sm" variant="outline" aria-label={editing ? `Edit ${course.code}` : undefined} disabled={disabled || !departmentId} onClick={openForm}>{resolvedTriggerLabel}</Button>
     {open && <Dialog open onOpenChange={next => { if (!next && !pending) setOpen(false) }}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!pending} onEscapeKeyDown={event => { if (pending) event.preventDefault() }} onInteractOutside={event => { if (pending) event.preventDefault() }}>
-        <DialogHeader>
-          <DialogTitle>{editing ? 'Edit catalog course' : 'Create catalog course'}</DialogTitle>
-          <DialogDescription>{description ?? (editing ? 'Update the approved details for this department course.' : 'Create a department course, then attach it to this curriculum requirement.')}</DialogDescription>
+      <DialogContent
+        className={editing
+          ? 'flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-md p-0 sm:max-w-[600px]'
+          : 'max-h-[90dvh] overflow-y-auto'}
+        showCloseButton={!pending}
+        onEscapeKeyDown={event => { if (pending) event.preventDefault() }}
+        onInteractOutside={event => { if (pending) event.preventDefault() }}
+      >
+        <DialogHeader className={editing ? 'shrink-0 border-b border-border px-5 py-[18px]' : undefined}>
+          <DialogTitle>{editing ? 'Edit course' : 'Create catalog course'}</DialogTitle>
+          {!editing && <DialogDescription>{description ?? 'Create a department course, then attach it to this curriculum requirement.'}</DialogDescription>}
         </DialogHeader>
-        <form noValidate className="grid gap-4" aria-busy={pending} onSubmit={event => { void handleSubmit(submit)(event) }}>
-          <fieldset disabled={pending} className="grid min-w-0 gap-4">
-            <FormField label="Department" htmlFor="catalog-course-department" hint={editing ? 'A course cannot be moved to another department here.' : 'Courses are created only in your authorized department.'}>
+        <form
+          noValidate
+          className={editing ? 'flex min-h-0 flex-1 flex-col gap-0 overflow-hidden' : 'grid gap-4'}
+          aria-busy={pending}
+          onSubmit={event => { void handleSubmit(submit)(event) }}
+        >
+          <div className={editing ? 'min-h-0 flex-1 overflow-y-auto px-5 py-5' : undefined}>
+          <fieldset disabled={pending} className={editing ? 'grid min-w-0 grid-cols-2 gap-4' : 'grid min-w-0 gap-4'}>
+            <FormField label="Department" htmlFor="catalog-course-department" className={editing ? 'col-span-2' : undefined} hint={!editing ? 'Courses are created only in your authorized department.' : undefined}>
               <Input id="catalog-course-department" value={departmentLabel || departmentId} readOnly />
             </FormField>
             <input type="hidden" {...register('category')} />
@@ -92,12 +105,6 @@ export function CourseDialog({ departmentId, departmentLabel, description, onCre
             <FormField label="Units" htmlFor="catalog-course-units" error={errors.units?.message}>
               <Input id="catalog-course-units" type="number" min={0.25} step={0.25} aria-invalid={!!errors.units} {...register('units', { valueAsNumber: true })} />
             </FormField>
-            <FormField label="Course type" htmlFor="catalog-course-type" error={errors.type?.message}>
-              <select id="catalog-course-type" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.type} {...register('type')}>
-                <option value="non_elective">Non-elective</option>
-                <option value="elective">Elective</option>
-              </select>
-            </FormField>
             <FormField label="Status" htmlFor="catalog-course-status" error={errors.status?.message}>
               <select id="catalog-course-status" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.status} {...register('status')}>
                 <option value="active">Active</option>
@@ -105,9 +112,16 @@ export function CourseDialog({ departmentId, departmentLabel, description, onCre
                 <option value="discontinued">Discontinued</option>
               </select>
             </FormField>
+            <FormField label="Course type" htmlFor="catalog-course-type" className={editing ? 'col-span-2' : undefined} error={errors.type?.message}>
+              <select id="catalog-course-type" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.type} {...register('type')}>
+                <option value="non_elective">Non-elective</option>
+                <option value="elective">Elective</option>
+              </select>
+            </FormField>
           </fieldset>
           {mutation.isError && <p role="alert" className="text-sm text-destructive">{editing ? courseUpdateError(updateMutation.error) : courseCreationError(createMutation.error)}</p>}
-          <DialogFooter>
+          </div>
+          <DialogFooter className={editing ? 'shrink-0 flex-row border-t border-border px-5 py-4' : undefined}>
             <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={pending}>{pending ? (editing ? 'Saving course...' : 'Creating course...') : (editing ? 'Save changes' : 'Create course')}</Button>
           </DialogFooter>

@@ -14,9 +14,10 @@ import type { CatalogCourse } from './course-catalog.api'
 interface CourseCatalogActionsProps {
   course: CatalogCourse
   departmentLabel: string
+  showDiscontinue?: boolean
 }
 
-export function CourseCatalogActions({ course, departmentLabel }: CourseCatalogActionsProps) {
+export function CourseCatalogActions({ course, departmentLabel, showDiscontinue = true }: CourseCatalogActionsProps) {
   const [action, setAction] = useState<CourseCatalogAction | null>(null)
   const requestStarted = useRef(false)
   const mutation = useCourseCatalogAction()
@@ -52,13 +53,13 @@ export function CourseCatalogActions({ course, departmentLabel }: CourseCatalogA
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {course.status === 'active' && (
-          <Button type="button" size="sm" variant="outline" onClick={() => openConfirmation('discontinue')}>
-            Discontinue {course.code}
+        {showDiscontinue && course.status === 'active' && (
+          <Button type="button" size="sm" variant="outline" aria-label={`Discontinue ${course.code}`} onClick={() => openConfirmation('discontinue')}>
+            Discontinue
           </Button>
         )}
-        <Button type="button" size="sm" variant="outline" onClick={() => openConfirmation('delete')}>
-          Delete {course.code}
+        <Button type="button" size="sm" variant="outline" aria-label={`Delete ${course.code}`} onClick={() => openConfirmation('delete')}>
+          Delete
         </Button>
       </div>
 

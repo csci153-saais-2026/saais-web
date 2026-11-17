@@ -94,7 +94,10 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus }: Cours
   }
 
   return (
-        <DialogContent onCloseAutoFocus={event => { event.preventDefault(); onReturnFocus() }}>
+        <DialogContent
+          className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-[600px]"
+          onCloseAutoFocus={event => { event.preventDefault(); onReturnFocus() }}
+        >
           <DialogHeader>
             <DialogTitle>Prerequisite relationships</DialogTitle>
             <DialogDescription>
@@ -169,12 +172,12 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus }: Cours
                 </div>
               )}
               {candidates.isSuccess && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-1 text-sm font-medium" htmlFor="prerequisite-course-choice">
+                <div className="grid min-w-0 gap-4 md:grid-cols-2">
+                  <label className="grid min-w-0 gap-1 text-sm font-medium" htmlFor="prerequisite-course-choice">
                     Course
                     <select
                       id="prerequisite-course-choice"
-                      className="min-h-10 rounded-sm border border-input bg-card px-3 font-normal"
+                      className="min-h-10 w-full min-w-0 max-w-full rounded-sm border border-input bg-card px-3 font-normal"
                       value={selectedCourseId}
                       disabled={mutationPending}
                       onChange={event => { setSelectedCourseId(event.target.value); setMessage('') }}
@@ -189,11 +192,11 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus }: Cours
                       })}
                     </select>
                   </label>
-                  <label className="grid gap-1 text-sm font-medium" htmlFor="prerequisite-type-choice">
+                  <label className="grid min-w-0 gap-1 text-sm font-medium" htmlFor="prerequisite-type-choice">
                     Relationship type
                     <select
                       id="prerequisite-type-choice"
-                      className="min-h-10 rounded-sm border border-input bg-card px-3 font-normal"
+                      className="min-h-10 w-full min-w-0 max-w-full rounded-sm border border-input bg-card px-3 font-normal"
                       value={selectedType}
                       disabled={mutationPending}
                       onChange={event => setSelectedType(event.target.value as CatalogPrerequisiteType)}

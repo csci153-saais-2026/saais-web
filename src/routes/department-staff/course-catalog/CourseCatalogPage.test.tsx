@@ -91,23 +91,28 @@ describe('Department Staff course catalog', () => {
   it('loads the lazy page and renders the exact catalog columns and labels', async () => {
     renderCourseCatalog('/department-staff/course-catalog?context=keep')
 
-    expect(await screen.findByRole('heading', { name: 'Course catalog', level: 1 })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'One catalog. Many academic paths.', level: 1 })).toBeTruthy()
+    expect(screen.getByText('Maintain course definitions and prerequisites.')).toBeTruthy()
+    expect(screen.queryByText('Catalog results')).toBeNull()
     await screen.findByRole('row', { name: /CSCI 101/ })
     const table = screen.getByRole('table')
     expect(within(table).getAllByRole('columnheader').map(header => header.textContent)).toEqual([
-      'Code', 'Title', 'Department', 'Units', 'Type', 'Status', 'Actions', 'Prerequisites',
+      'Course', 'Units', 'Status', 'Actions',
     ])
 
     const row = await screen.findByRole('row', { name: /CSCI 101/ })
     expect(within(row).getByText('Introduction to Computing')).toBeTruthy()
-    expect(within(row).getByText('DCST · Department of Computer Science and Technology')).toBeTruthy()
-    expect(within(row).getByText('Faculty of Computing')).toBeTruthy()
+    expect(within(row).queryByText(/Department of Computer Science and Technology/)).toBeNull()
+    expect(within(row).queryByText('Faculty of Computing')).toBeNull()
     expect(within(row).getByText('3')).toBeTruthy()
-    expect(within(row).getByText('Major')).toBeTruthy()
+    expect(within(row).queryByText('Major')).toBeNull()
     expect(within(row).getByText('Active')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Edit CSCI 101' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Discontinue CSCI 101' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Discontinue CSCI 101' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Delete CSCI 101' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View prerequisites for CSCI 101' }).textContent).toBe('Prerequisites')
+    const catalogPanel = screen.getByText('Different course codes never imply equivalence.').closest('[data-slot="card"]')
+    expect(catalogPanel?.contains(table)).toBe(true)
   })
 
   it('displays discontinued courses as Inactive without changing the API value', async () => {
@@ -119,6 +124,28 @@ describe('Department Staff course catalog', () => {
     expect(within(row).getByText('Inactive')).toBeTruthy()
     expect(within(row).queryByText('Discontinued')).toBeNull()
     expect(getMockDatabase().courses[0]?.status).toBe('discontinued')
+  })
+
+  it('offers only Active and Inactive labels and filters inactive API values together', async () => {
+    const course = { ...getMockDatabase().courses[0]!, status: 'discontinued' as const }
+    let requestedStatus = ''
+    saaisMockServer.use(http.get('*/rest/v1/course', ({ request }) => {
+      requestedStatus = new URL(request.url).searchParams.get('status') ?? ''
+      return HttpResponse.json([course], { headers: { 'Content-Range': '0-0/1' } })
+    }))
+    renderCourseCatalog('/department-staff/course-catalog?status=inactive')
+
+    const row = await screen.findByRole('row', { name: new RegExp(course.code) })
+    expect(within(row).getByText('Inactive')).toBeTruthy()
+    expect(requestedStatus).toBe('neq.active')
+    // Radix Select scrolls the highlighted option into view; jsdom does not implement this browser API.
+    const scrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = vi.fn()
+    fireEvent.click(screen.getByRole('combobox', { name: 'Status' }))
+    expect(await screen.findByRole('option', { name: 'Active' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Inactive' })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: /Discontinued/ })).toBeNull()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
   })
 
   it('filters API-inactive rows while retaining their Inactive display label', async () => {
@@ -139,7 +166,7 @@ describe('Department Staff course catalog', () => {
     renderCourseCatalog()
 
     const row = await screen.findByRole('row', { name: /CSCI 101/ })
-    expect(within(row).getAllByText('Not provided')).toHaveLength(3)
+    expect(within(row).getAllByText('Not provided')).toHaveLength(2)
     expect(within(row).getByText('Active')).toBeTruthy()
   })
 
@@ -161,9 +188,9 @@ describe('Department Staff course catalog', () => {
     renderCourseCatalog()
 
     const row = await screen.findByRole('row', { name: /CSCI 102/ })
-    expect(within(row).getByText('DABE · Department of Agricultural and Biosystems Engineering')).toBeTruthy()
-    expect(within(row).getByText('Faculty of Engineering and Technology')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Add course' })).toBeTruthy()
+    expect(within(row).queryByText(/Department of Agricultural and Biosystems Engineering/)).toBeNull()
+    expect(within(row).queryByText('Faculty of Engineering and Technology')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add course' })).toBeNull()
     expect(screen.queryByRole('button', { name: /edit|delete|retire/i })).toBeNull()
     fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 102' }))
     expect(await screen.findByText('Prerequisite')).toBeTruthy()
@@ -482,10 +509,10 @@ describe('Department Staff course catalog', () => {
     await screen.findByRole('row', { name: /TEST 0/ })
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))
     await screen.findByRole('row', { name: /TEST 20/ })
-    expect(screen.getAllByText(/21.*25 of 25/)).toHaveLength(2)
+    expect(screen.getAllByText(/21.*25 of 25/)).toHaveLength(1)
     expect(offsets).toContain('20')
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), { target: { value: 'new search' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search records' }), { target: { value: 'new search' } })
     await waitFor(() => expect(screen.getByTestId('current-location').textContent).not.toContain('page=1'))
     expect(screen.getByTestId('current-location').textContent).toContain('context=keep')
     await waitFor(() => expect(offsets.at(-1)).toBe('0'))
@@ -509,7 +536,7 @@ describe('Department Staff course catalog', () => {
     }))
     renderCourseCatalog('/department-staff/course-catalog?q=slow')
     await slowStarted
-    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search courses' }), { target: { value: 'fast' } })
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search records' }), { target: { value: 'fast' } })
 
     expect(await screen.findByText('Fast current result')).toBeTruthy()
     await new Promise(resolve => setTimeout(resolve, 120))
@@ -525,7 +552,7 @@ describe('Department Staff course catalog', () => {
     renderCourseCatalog()
     await screen.findByRole('row', { name: /CSCI 101/ })
     const countBefore = requestCount
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), { target: { value: 'x),status.eq.active' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search records' }), { target: { value: 'x),status.eq.active' } })
     expect(await screen.findByText(/PostgREST syntax, wildcard, and control characters/)).toBeTruthy()
     await new Promise(resolve => setTimeout(resolve, 30))
     expect(requestCount).toBe(countBefore)
@@ -547,8 +574,8 @@ describe('Department Staff course catalog', () => {
     renderCourseCatalog(`/department-staff/course-catalog?department=${MOCK_IDS.deptDabe}`)
 
     const row = await screen.findByRole('row', { name: /CSCI 102/ })
-    expect(within(row).getByText(/DABE/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Add course' })).toBeTruthy()
+    expect(within(row).queryByText(/DABE/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add course' })).toBeNull()
     expect(screen.queryByRole('button', { name: /edit|delete|retire/i })).toBeNull()
     fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 102' }))
     expect(await screen.findByText('Prerequisite')).toBeTruthy()
@@ -582,7 +609,12 @@ describe('Department Staff course catalog', () => {
     const setQueryData = vi.spyOn(queryClient, 'setQueryData')
     const invalidation = vi.spyOn(queryClient, 'invalidateQueries')
     fireEvent.click(screen.getByRole('button', { name: 'Edit CSCI 101' }))
-    expect(screen.getByRole('heading', { name: 'Edit catalog course' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Edit course' })).toBeTruthy()
+    const editDialog = screen.getByRole('dialog')
+    expect(editDialog.className).toContain('sm:max-w-[600px]')
+    expect(editDialog.querySelector('[data-slot="dialog-header"]')?.className).toContain('border-b')
+    expect(editDialog.querySelector('form > div')?.className).toContain('overflow-y-auto')
+    expect(editDialog.querySelector('[data-slot="dialog-footer"]')?.className).toContain('border-t')
     expect((screen.getByLabelText('Course title') as HTMLInputElement).value).toBe(course.title)
     fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CSCI 101A' } })
     fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Revised Computing Foundations' } })
@@ -675,7 +707,7 @@ describe('Department Staff course catalog', () => {
     expect(screen.getByRole('heading', { name: 'Delete catalog course?' })).toBeTruthy()
   })
 
-  it('discontinues through status-only update and refreshes live curriculum references without changing filters', async () => {
+  it('discontinues through the edit status field and refreshes live curriculum references without changing filters', async () => {
     const { queryClient } = renderCourseCatalog('/department-staff/course-catalog?status=active&context=keep')
     const course = getMockDatabase().courses.find(item => item.id === MOCK_IDS.courseCsci101)!
     const curriculaKey = ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curricula', {}]
@@ -696,11 +728,11 @@ describe('Department Staff course catalog', () => {
     ] })
     queryClient.setQueryData(activeKey, { slots: [{ course_id: course.id }] })
     queryClient.setQueryData(historicalKey, { slots: [{ course_id: course.id }] })
-    fireEvent.click(screen.getByRole('button', { name: 'Discontinue CSCI 101' }))
-    expect(screen.getByRole('heading', { name: 'Discontinue catalog course?' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Discontinue course' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit CSCI 101' }))
+    fireEvent.change(screen.getByLabelText('Status', { selector: 'select' }), { target: { value: 'discontinued' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    await waitFor(() => expect(requestBody).toEqual({ status: 'discontinued' }))
+    await waitFor(() => expect(requestBody).toMatchObject({ status: 'discontinued' }))
     await waitFor(() => expect(screen.queryByRole('row', { name: /CSCI 101/ })).toBeNull())
     expect(getMockDatabase().courses.find(item => item.id === course.id)?.status).toBe('discontinued')
     const { listCurriculumCourses } = await import('../curricula/curricula.api')
@@ -747,69 +779,13 @@ describe('Department Staff course catalog', () => {
 
     expect((await screen.findByRole('alert')).textContent).toContain(message)
     expect((screen.getByLabelText('Course title') as HTMLInputElement).value).toBe('Unsaved edit retained')
-    expect(screen.getByRole('heading', { name: 'Edit catalog course' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Edit course' })).toBeTruthy()
   })
 
-  it('opens the shared course form from Add course and refreshes catalog queries without changing filters', async () => {
-    const { queryClient } = renderCourseCatalog('/department-staff/course-catalog?status=active&context=keep')
+  it('does not expose a create-course action from the reading catalog page', async () => {
+    renderCourseCatalog()
     await screen.findByRole('row', { name: /CSCI 101/ })
-    const invalidation = vi.spyOn(queryClient, 'invalidateQueries')
-    fireEvent.click(screen.getByRole('button', { name: 'Add course' }))
-
-    expect(screen.getByRole('heading', { name: 'Create catalog course' })).toBeTruthy()
-    expect((screen.getByDisplayValue(/DCST/) as HTMLInputElement).value).toContain('DCST')
-    fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CS 295' } })
-    fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Reliable Systems' } })
-    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '3.25' } })
-    fireEvent.change(screen.getByLabelText('Course type'), { target: { value: 'non_elective' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create course' }))
-
-    expect(await screen.findByRole('row', { name: /CS 295/ })).toBeTruthy()
-    expect(getMockDatabase().courses.find(course => course.code === 'CS 295')).toMatchObject({
-      department_id: MOCK_IDS.deptDcst,
-      category: 'major',
-      is_elective: false,
-      units: 3.25,
-      status: 'active',
-    })
-    expect(invalidation).toHaveBeenCalledWith({ queryKey: expect.arrayContaining(['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'course-catalog-page']) })
-    expect(invalidation).toHaveBeenCalledWith({ queryKey: expect.arrayContaining(['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'course-catalog-references']) })
-    expect(screen.getByTestId('current-location').textContent).toContain('status=active')
-    expect(screen.getByTestId('current-location').textContent).toContain('context=keep')
-  })
-
-  it('blocks zero units in the shared form without sending a create request', async () => {
-    let requests = 0
-    saaisMockServer.use(http.post('*/functions/v1/catalog/course', () => {
-      requests += 1
-      return HttpResponse.json({ code: 'UNEXPECTED', message: 'Should not submit invalid units.' }, { status: 500 })
-    }))
-    renderCourseCatalog()
-    fireEvent.click(await screen.findByRole('button', { name: 'Add course' }))
-    fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CS 296' } })
-    fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Zero Unit Course' } })
-    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '0' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create course' }))
-
-    expect(await screen.findByText('Enter more than zero units.')).toBeTruthy()
-    expect(requests).toBe(0)
-    expect(getMockDatabase().courses.some(course => course.code === 'CS 296')).toBe(false)
-  })
-
-  it('shows a duplicate-code conflict and keeps the entered values', async () => {
-    saaisMockServer.use(http.post('*/functions/v1/catalog/course', () => HttpResponse.json(
-      { code: 'CONFLICT', message: 'Course code already exists in this department.' },
-      { status: 409 },
-    )))
-    renderCourseCatalog()
-    fireEvent.click(await screen.findByRole('button', { name: 'Add course' }))
-    fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CSCI 101' } })
-    fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Duplicate Course Code' } })
-    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create course' }))
-
-    expect((await screen.findByRole('alert')).textContent).toContain('already in use')
-    expect((screen.getByLabelText('Course code') as HTMLInputElement).value).toBe('CSCI 101')
-    expect(getMockDatabase().courses.filter(course => course.code === 'CSCI 101')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Add course' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Create catalog course' })).toBeNull()
   })
 })
