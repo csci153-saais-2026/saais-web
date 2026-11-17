@@ -2,9 +2,11 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import {
+  closeSchoolTermEncoding,
   createSchoolTerm,
   listAcademicTerms,
   updateSchoolTerm,
+  type SchoolTermCloseEncodingRequest,
   type SchoolTermInsert,
   type SchoolTermUpdate,
 } from './academic-terms.api'
@@ -121,6 +123,49 @@ describe('Academic term reads', () => {
   })
 
   describe('Academic term writes', () => {
+    it('closes encoding only with the explicit department-scoped request', async () => {
+      const body: SchoolTermCloseEncodingRequest = {
+        scope: 'department',
+        department_id: 'department-1',
+        closure_note: 'Grade review is complete.',
+      }
+      const updated = termResponse('term-existing')
+      server.use(
+        http.post(
+          '*/functions/v1/school-terms/:school_term_id/close-encoding',
+          async ({ request, params }) => {
+            expect(params.school_term_id).toBe('term-existing')
+            expect(await request.json()).toEqual(body)
+            return HttpResponse.json(updated)
+          },
+        ),
+      )
+
+      await expect(
+        closeSchoolTermEncoding('term-existing', body),
+      ).resolves.toEqual(updated)
+
+      let responseStatus = 403
+      server.use(
+        http.post(
+          '*/functions/v1/school-terms/:school_term_id/close-encoding',
+          () =>
+            HttpResponse.json(
+              { code: responseStatus === 403 ? 'FORBIDDEN' : 'CONFLICT', message: 'Closure denied.' },
+              { status: responseStatus },
+            ),
+        ),
+      )
+      await expect(
+        closeSchoolTermEncoding('term-existing', body),
+      ).rejects.toMatchObject({ isForbidden: true })
+
+      responseStatus = 409
+      await expect(
+        closeSchoolTermEncoding('term-existing', body),
+      ).rejects.toMatchObject({ isConflict: true })
+    })
+
     it('creates a term through the transactional catalog operation', async () => {
       const saved = termResponse('term-created')
       server.use(
