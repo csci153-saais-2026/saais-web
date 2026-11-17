@@ -410,6 +410,7 @@ export default function StudentsPage() {
           description={directoryDescription}
           className={DIRECTORY_PANEL_TYPOGRAPHY}
           flush
+          bodyClassName="gap-0"
         >
           <div className="space-y-4 border-b border-border p-5">
             {filterControls}
@@ -425,6 +426,7 @@ export default function StudentsPage() {
           description={directoryDescription}
           className={DIRECTORY_PANEL_TYPOGRAPHY}
           flush
+          bodyClassName="gap-0"
         >
           <div className="space-y-4 border-b border-border p-5">
             {filterControls}
@@ -449,6 +451,7 @@ export default function StudentsPage() {
           description={directoryDescription}
           className={DIRECTORY_PANEL_TYPOGRAPHY}
           flush
+          bodyClassName="gap-0"
         >
           <div className="space-y-4 border-b border-border p-5">
             {filterControls}
