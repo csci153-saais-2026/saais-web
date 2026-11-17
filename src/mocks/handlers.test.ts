@@ -165,6 +165,71 @@ describe('Course offering management mock operations', () => {
   })
 })
 
+describe('Student roster mock filters and summaries', () => {
+  const client = () =>
+    createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+
+  it('applies staff roster filters, authorizes department scope, and summarizes before pagination', async () => {
+    const db = getMockDatabase()
+    loginAsMockPersona('department_staff')
+    const api = client()
+    const email = db.profiles.find((profile) => profile.id === MOCK_IDS.studentPrimary)!.email!
+    const roster = unwrapApiResult(await api.GET('/functions/v1/students', {
+      params: { query: { department_id: MOCK_IDS.deptDcst } },
+    }))
+    const primary = roster.items.find((item) => item.student_id === MOCK_IDS.studentPrimary)!
+    expect(primary).toBeDefined()
+
+    const filteredByEmail = unwrapApiResult(await api.GET('/functions/v1/students', {
+      params: { query: { department_id: MOCK_IDS.deptDcst, search: email } },
+    }))
+    expect(filteredByEmail.items.map((item) => item.student_id)).toContain(MOCK_IDS.studentPrimary)
+    expect(filteredByEmail.total_count).toBe(1)
+
+    const filteredByCurriculumAndAdviser = unwrapApiResult(await api.GET('/functions/v1/students', {
+      params: { query: {
+        department_id: MOCK_IDS.deptDcst,
+        curriculum_version_id: primary.curriculum_version_id,
+        adviser_id: primary.adviser_id!,
+      } },
+    }))
+    expect(filteredByCurriculumAndAdviser.items.every((item) =>
+      item.curriculum_version_id === primary.curriculum_version_id && item.adviser_id === primary.adviser_id,
+    )).toBe(true)
+
+    const filteredByStanding = unwrapApiResult(await api.GET('/functions/v1/students', {
+      params: { query: { department_id: MOCK_IDS.deptDcst, standing: primary.standing } },
+    }))
+    expect(filteredByStanding.items.every((item) => item.standing === primary.standing)).toBe(true)
+
+    const currentAssignments = unwrapApiResult(await api.GET('/functions/v1/students', {
+      params: { query: { department_id: MOCK_IDS.deptDcst, assignment_scope: 'current' } },
+    }))
+    expect(currentAssignments.items.every((item) => item.assignment_status === 'active')).toBe(true)
+    const unassigned = unwrapApiResult(await api.GET('/functions/v1/students', {
+      params: { query: { department_id: MOCK_IDS.deptDcst, assignment_scope: 'unassigned' } },
+    }))
+    expect(unassigned.items.every((item) => item.assignment_status === 'unassigned')).toBe(true)
+
+    const paginated = unwrapApiResult(await api.GET('/functions/v1/students', {
+      params: { query: { department_id: MOCK_IDS.deptDcst, limit: 1, offset: 1 } },
+    }))
+    expect(paginated.items).toHaveLength(1)
+    expect(paginated.total_count).toBe(roster.total_count)
+    expect(paginated.unassigned_count).toBe(roster.unassigned_count)
+    expect(paginated.with_deficiencies_count).toBe(roster.with_deficiencies_count)
+    expect(paginated.flagged_count).toBe(roster.flagged_count)
+    expect(paginated.open_inc_students_count).toBe(roster.open_inc_students_count)
+    expect(paginated.standing_counts).toEqual(roster.standing_counts)
+    expect(roster.flagged_count).toBe(roster.items.filter((item) => item.open_flags_count > 0).length)
+
+    const unauthorized = await api.GET('/functions/v1/students', {
+      params: { query: { department_id: MOCK_IDS.deptDabe } },
+    })
+    expect(unauthorized.response.status).toBe(403)
+  })
+})
+
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
   it('keeps an earlier failure selected until a retake has a numeric result', async () => {
     const db = getMockDatabase()

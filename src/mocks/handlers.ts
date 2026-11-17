@@ -2006,13 +2006,23 @@ export const saaisMswHandlers = [
       })
     }
     const search = url.searchParams.get('search')?.trim().toLowerCase()
-    const filtered = items.filter(item => {
+    const curriculumVersionId = url.searchParams.get('curriculum_version_id')
+    const adviserId = url.searchParams.get('adviser_id')
+    const standing = url.searchParams.get('standing')
+    const matchingItems = items.filter(item => {
       const ownAssignments = db.adviserAssignments.filter(a => a.student_id === item.student_id && a.adviser_id === auth.persona.profileId)
-      if ((scope === 'current' || scope === 'my_active_advisees') && !ownAssignments.some(a => a.end_date === null)) return false
-      if ((scope === 'past' || scope === 'my_handed_over_advisees') && (!ownAssignments.some(a => a.end_date !== null) || ownAssignments.some(a => a.end_date === null))) return false
+      const isAdviser = auth.persona.roles.includes('adviser')
+      if ((scope === 'current' || scope === 'my_active_advisees') && !(isAdviser
+        ? ownAssignments.some(a => a.end_date === null)
+        : item.assignment_status === 'active')) return false
+      if ((scope === 'past' || scope === 'my_handed_over_advisees') && !(isAdviser
+        ? ownAssignments.some(a => a.end_date !== null) && !ownAssignments.some(a => a.end_date === null)
+        : item.assignment_status === 'past')) return false
       if (scope === 'unassigned' && item.assignment_status !== 'unassigned') return false
-      if (search && !`${item.full_name} ${item.student_number}`.toLowerCase().includes(search)) return false
-      const standing = url.searchParams.get('standing')
+      if (departmentId && item.department_id !== departmentId) return false
+      if (curriculumVersionId && item.curriculum_version_id !== curriculumVersionId) return false
+      if (adviserId && item.adviser_id !== adviserId) return false
+      if (search && !`${item.full_name} ${item.student_number} ${item.email ?? ''}`.toLowerCase().includes(search)) return false
       if (standing && item.standing !== standing) return false
       return true
     })
@@ -2024,7 +2034,7 @@ export const saaisMswHandlers = [
     const limit = Number.isSafeInteger(limitValue) && limitValue > 0
       ? Math.min(limitValue, 1000)
       : 20
-    const filtered = matchingItems.slice(offset, offset + limit)
+    const pageItems = matchingItems.slice(offset, offset + limit)
     const countStanding = (standing: ApiSchema<'StudentRosterItem'>['standing']) =>
       matchingItems.filter((item) => item.standing === standing).length
 
@@ -2035,16 +2045,16 @@ export const saaisMswHandlers = [
       ).length,
       with_deficiencies_count: matchingItems.filter((i) => i.deficiencies_count > 0)
         .length,
-      flagged_count: filtered.filter((i) => i.open_flags_count > 0 || i.is_delinquent).length,
-      open_inc_students_count: filtered.filter((i) => i.open_inc_count > 0)
+      flagged_count: matchingItems.filter((i) => i.open_flags_count > 0).length,
+      open_inc_students_count: matchingItems.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
-        good_standing: filtered.filter(i => i.standing === 'good_standing').length,
-        warning: filtered.filter(i => i.standing === 'warning').length,
-        probation: filtered.filter(i => i.standing === 'probation').length,
-        dismissed: filtered.filter(i => i.standing === 'dismissed').length,
+        good_standing: countStanding('good_standing'),
+        warning: countStanding('warning'),
+        probation: countStanding('probation'),
+        dismissed: countStanding('dismissed'),
       },
-      items: filtered.slice(Number(url.searchParams.get('offset') ?? 0), Number(url.searchParams.get('offset') ?? 0) + Math.min(100, Number(url.searchParams.get('limit') ?? 100))),
+      items: pageItems,
     }
     return HttpResponse.json(response, { status: 200 })
   }),
