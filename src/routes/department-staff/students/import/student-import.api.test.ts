@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ApiSchema } from '@/lib/api'
-import { previewStudentImport } from './student-import.api'
+import { commitStudentImport, previewStudentImport } from './student-import.api'
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -155,5 +155,64 @@ describe('previewStudentImport', () => {
     await expect(previewStudentImport([row])).rejects.toMatchObject({
       isForbidden: true,
     })
+  })
+})
+
+describe('commitStudentImport', () => {
+  it('sends the explicit commit operation and validates its per-row result', async () => {
+    let requests = 0
+    server.use(
+      http.post('*/functions/v1/students/import', async ({ request }) => {
+        requests += 1
+        expect(await request.json()).toEqual({ mode: 'commit', rows: [row] })
+        return HttpResponse.json({
+          mode: 'commit',
+          valid_count: 1,
+          warning_count: 0,
+          error_count: 0,
+          imported_count: 1,
+          results: [
+            {
+              row_number: row.row_number,
+              student_number: row.student_number,
+              email: row.email,
+              outcome: 'imported',
+              message: 'Imported successfully.',
+            },
+          ],
+        })
+      }),
+    )
+
+    await expect(commitStudentImport([row])).resolves.toMatchObject({
+      mode: 'commit',
+      imported_count: 1,
+    })
+    expect(requests).toBe(1)
+  })
+
+  it('rejects a commit response with mismatched rows or outcome counts', async () => {
+    server.use(
+      http.post('*/functions/v1/students/import', () =>
+        HttpResponse.json({
+          mode: 'commit',
+          valid_count: 1,
+          warning_count: 0,
+          error_count: 0,
+          imported_count: 0,
+          results: [
+            {
+              row_number: row.row_number,
+              student_number: '24-1-00002',
+              email: row.email,
+              outcome: 'error',
+              message: 'A different row was returned.',
+            },
+          ],
+        }),
+      ),
+    )
+
+    await expect(commitStudentImport([row])).rejects.toThrow('invalid row results')
   })
 })

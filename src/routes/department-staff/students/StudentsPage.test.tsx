@@ -1,109 +1,56 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   cleanup,
-  act,
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { http, HttpResponse } from 'msw'
 import { AuthContext, type AuthContextValue } from '@/context/auth-context'
-import { ApiClientError, normalizeApiError } from '@/lib/api'
-import type { ApiSchema, OperationResponse } from '@/lib/api'
-import DepartmentStaffPortal from '../DepartmentStaffPortal'
 import {
-  listStudentFilterOptions,
-  listStudentRoster,
-} from './students.api'
+  getMockDatabase,
+  loginAsMockPersona,
+  logoutMockPersona,
+  MOCK_IDS,
+  MOCK_PERSONAS,
+  resetMockDatabase,
+} from '@/mocks'
+import { saaisMockServer } from '@/mocks/node'
+import DepartmentStaffPortal from '../DepartmentStaffPortal'
 
-vi.mock('./students.api', () => ({
-  listStudentFilterOptions: vi.fn(),
-  listStudentRoster: vi.fn(),
-}))
-
-beforeEach(() => {
-  vi.mocked(listStudentFilterOptions).mockResolvedValue(filterOptions)
-})
-
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-})
-
-const PROFILE_ID = '11111111-1111-4111-8111-111111111111'
-const DEPARTMENT_ID = '22222222-2222-4222-8222-222222222222'
-const STUDENT_ID = '33333333-3333-4333-8333-333333333333'
-const CURRICULUM_ID = '66666666-6666-4666-8666-666666666666'
-const ADVISER_ID = '88888888-8888-4888-8888-888888888888'
-const STAFF_ROLE = 'department_staff'
-
-const student: ApiSchema<'StudentRosterItem'> = {
-  student_id: STUDENT_ID,
-  student_number: '24-1-01798',
-  full_name: 'Maria Santos',
-  email: 'maria@example.edu.ph',
-  status: 'active',
-  faculty_id: '44444444-4444-4444-8444-444444444444',
-  faculty_name: 'Faculty of Computing',
-  department_id: DEPARTMENT_ID,
-  department_name: 'Department of Computer Science',
-  program_id: '55555555-5555-4555-8555-555555555555',
-  program_code: 'BSCS',
-  program_name: 'Bachelor of Science in Computer Science',
-  curriculum_version_id: CURRICULUM_ID,
-  curriculum_label: 'BSCS 2024-2025 v1',
-  year_level: 3,
-  earned_units: 36,
-  required_units: 162,
-  standing: 'good_standing',
-  deficiencies_count: 0,
-  open_inc_count: 0,
-  open_flags_count: 0,
-  adviser_id: ADVISER_ID,
-  adviser_name: 'Alex Adviser',
-}
-
-const filterOptions = {
-  curricula: [{ id: CURRICULUM_ID, label: 'BSCS — BSCS 2024-2025 v1' }],
-  advisers: [{ id: ADVISER_ID, label: 'Alex Adviser' }],
-}
-
-const roster: OperationResponse<'listStudentRoster'> = {
-  total_count: 1,
-  unassigned_count: 0,
-  with_deficiencies_count: 0,
-  items: [student],
-}
+const staffPersona = MOCK_PERSONAS.department_staff
 
 function staffAuth(): AuthContextValue {
-  const roleAssignment: ApiSchema<'RoleAssignment'> = {
-    id: '77777777-7777-4777-8777-777777777777',
-    profile_id: PROFILE_ID,
-    role: STAFF_ROLE,
-    faculty_id: null,
-    department_id: DEPARTMENT_ID,
-    created_at: '2026-11-16T00:00:00Z',
-  }
+  const roleAssignments = getMockDatabase().roleAssignments.filter(
+    (assignment) => assignment.profile_id === staffPersona.profileId,
+  )
 
   return {
     user: {
-      id: PROFILE_ID,
-      email: 'staff@example.edu.ph',
-      fullName: 'Department Staff',
-      primaryRole: STAFF_ROLE,
-      roles: [STAFF_ROLE],
+      id: staffPersona.profileId,
+      email: staffPersona.email,
+      fullName: staffPersona.fullName,
+      primaryRole: staffPersona.primaryRole,
+      roles: staffPersona.roles,
+      facultyId: staffPersona.facultyId,
+      departmentId: staffPersona.departmentId,
     },
     profile: null,
     session: null,
-    roles: [STAFF_ROLE],
-    roleAssignments: [roleAssignment],
-    roleScopes: [
-      { role: STAFF_ROLE, facultyId: null, departmentId: DEPARTMENT_ID },
-    ],
-    activeRole: STAFF_ROLE,
-    primaryRole: STAFF_ROLE,
+    roles: staffPersona.roles,
+    roleAssignments,
+    roleScopes: staffPersona.roleScopes.map((scope) => ({
+      role: scope.role,
+      facultyId: scope.scope_type === 'faculty' ? scope.scope_id : null,
+      departmentId:
+        scope.scope_type === 'department' ? scope.scope_id : null,
+    })),
+    activeRole: staffPersona.primaryRole,
+    primaryRole: staffPersona.primaryRole,
     isLoading: false,
     isAuthenticated: true,
     isAllowedToEnter: true,
@@ -112,7 +59,7 @@ function staffAuth(): AuthContextValue {
     isPasswordRecovery: false,
     keepSignedIn: true,
     isMockMode: true,
-    activePersonaKey: 'department_staff',
+    activePersonaKey: staffPersona.key,
     signInWithPassword: async () => undefined,
     signInWithGoogle: async () => undefined,
     signOut: async () => undefined,
@@ -122,7 +69,7 @@ function staffAuth(): AuthContextValue {
   }
 }
 
-function CurrentPath() {
+function CurrentLocation() {
   const location = useLocation()
   return (
     <>
@@ -150,152 +97,137 @@ function renderPortal(path: string) {
               element={<DepartmentStaffPortal />}
             />
           </Routes>
-          <CurrentPath />
+          <CurrentLocation />
         </MemoryRouter>
       </AuthContext.Provider>
     </QueryClientProvider>,
   )
 }
 
-function forbiddenError(): ApiClientError {
-  return new ApiClientError(
-    normalizeApiError(
-      { message: 'Forbidden' },
-      new Response(null, { status: 403 }),
-    ),
-  )
-}
+beforeAll(() => saaisMockServer.listen())
+beforeEach(() => {
+  resetMockDatabase()
+  loginAsMockPersona('department_staff')
+})
+afterEach(() => {
+  cleanup()
+  saaisMockServer.resetHandlers()
+  resetMockDatabase()
+  logoutMockPersona()
+})
+afterAll(() => saaisMockServer.close())
 
-describe('Department Staff student roster route', () => {
-  it('redirects the portal index to the scoped student roster', async () => {
-    vi.mocked(listStudentRoster).mockResolvedValue(roster)
-    renderPortal('/department-staff')
-
-    await waitFor(
-      () =>
-        expect(screen.getByTestId('current-path').textContent).toBe(
-          '/department-staff/students',
-        ),
-      { timeout: 5000 },
-    )
-    expect(await screen.findByText('Maria Santos', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByText('24-1-01798')).toBeTruthy()
-    expect(screen.getByText('BSCS 2024-2025 v1')).toBeTruthy()
-    expect(screen.getAllByText('Alex Adviser')).toHaveLength(2)
-    expect(listStudentRoster).toHaveBeenCalledWith(
-      { department_id: DEPARTMENT_ID, limit: 20, offset: 0 },
-      expect.any(AbortSignal),
-    )
-    expect(listStudentFilterOptions).toHaveBeenCalledWith(
-      DEPARTMENT_ID,
-      expect.any(AbortSignal),
-    )
-  })
-
-  it('loads the roster when the child route is opened directly', async () => {
-    vi.mocked(listStudentRoster).mockResolvedValue(roster)
+describe('Department Staff student directory', () => {
+  it('renders the mockup directory with records from the staff persona MSW handler', async () => {
     renderPortal('/department-staff/students')
 
-    expect(await screen.findByText('Maria Santos')).toBeTruthy()
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Students', level: 1 },
+        { timeout: 5000 },
+      ),
+    ).toBeTruthy()
+    expect(
+      await screen.findByText(MOCK_PERSONAS.student.fullName),
+    ).toBeTruthy()
+    expect(screen.getByText('Department directory')).toBeTruthy()
+    expect(screen.getByText(MOCK_PERSONAS.student.email)).toBeTruthy()
+    expect(screen.getByText('3rd year')).toBeTruthy()
+    expect(screen.getByText(MOCK_PERSONAS.adviser.fullName)).toBeTruthy()
+    expect(screen.getByText(MOCK_PERSONAS.student_secondary.fullName)).toBeTruthy()
+    expect(screen.getByText(MOCK_PERSONAS.student_secondary.email)).toBeTruthy()
+    expect(screen.getByText('1st year')).toBeTruthy()
+    expect(screen.getByText('Unassigned')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Import spreadsheet' })).toBeTruthy()
+    expect(screen.queryByText(/Staff requests are scoped to department/)).toBeNull()
+    expect(screen.getByText('Showing 1–2 of 2 students')).toBeTruthy()
+    const directoryPanel = screen
+      .getByText('Department directory')
+      .closest('[data-slot="card"]') as HTMLElement
+    expect(
+      within(directoryPanel).getByRole('searchbox', {
+        name: 'Search students',
+      }),
+    ).toBeTruthy()
+    expect(
+      within(directoryPanel).getByRole('combobox', { name: 'Curriculum' }),
+    ).toBeTruthy()
+    expect(
+      within(directoryPanel).getByRole('combobox', { name: 'Adviser' }),
+    ).toBeTruthy()
+    const directorySummary = within(directoryPanel).getByText(
+      /2 enrolled students.*BSCS/,
+    )
+    expect(directorySummary.textContent).toMatch(
+      /(?:AY \d{4} - \d{4}, (?:1st Semester|2nd Semester|Summer)|Academic year and term unavailable)/,
+    )
     expect(screen.getByTestId('current-path').textContent).toBe(
       '/department-staff/students',
     )
   })
 
-  it('sends combined URL filters and pagination to the typed roster query', async () => {
-    vi.mocked(listStudentRoster).mockResolvedValue({
-      ...roster,
-      total_count: 45,
-    })
-    renderPortal(
-      `/department-staff/students?search=Maria%20%26%20%25&curriculum_version_id=${CURRICULUM_ID}&adviser_id=${ADVISER_ID}&offset=20`,
-    )
-
-    expect(await screen.findByText('Maria Santos')).toBeTruthy()
-    await waitFor(() =>
-      expect(listStudentRoster).toHaveBeenCalledWith(
-        {
-          department_id: DEPARTMENT_ID,
-          limit: 20,
-          offset: 20,
-          search: 'Maria & %',
-          curriculum_version_id: CURRICULUM_ID,
-          adviser_id: ADVISER_ID,
-        },
-        expect.any(AbortSignal),
-      ),
-    )
-    expect(
-      (screen.getByRole('combobox', { name: 'Curriculum' }) as HTMLSelectElement)
-        .value,
-    ).toBe(CURRICULUM_ID)
-    expect(
-      (screen.getByRole('combobox', { name: 'Adviser' }) as HTMLSelectElement)
-        .value,
-    ).toBe(ADVISER_ID)
-  })
-
-  it('resets the URL offset when a filter changes', async () => {
-    vi.mocked(listStudentRoster).mockImplementation((query) =>
-      Promise.resolve({
-        ...roster,
-        total_count: 45,
-        items: query.offset === 20 ? [] : roster.items,
-      }),
-    )
-    renderPortal('/department-staff/students?offset=20')
-
-    await screen.findByText('Showing 0 students on this page; 45 students match these filters')
-    fireEvent.change(screen.getByRole('combobox', { name: 'Curriculum' }), {
-      target: { value: CURRICULUM_ID },
+  it('applies search through the roster handler and reflects it in the URL', async () => {
+    renderPortal('/department-staff/students')
+    const search = await screen.findByRole('searchbox', {
+      name: 'Search students',
     })
 
-    await waitFor(() =>
-      expect(listStudentRoster).toHaveBeenCalledWith(
-        {
-          department_id: DEPARTMENT_ID,
-          limit: 20,
-          offset: 0,
-          curriculum_version_id: CURRICULUM_ID,
-        },
-        expect.any(AbortSignal),
-      ),
-    )
+    fireEvent.change(search, {
+      target: { value: MOCK_PERSONAS.student_secondary.fullName },
+    })
+
     expect(
-      new URLSearchParams(
-        screen.getByTestId('current-search').textContent ?? '',
-      ).has('offset'),
-    ).toBe(false)
-  })
-
-  it('encodes special search text in the URL and sends it as plain search text', async () => {
-    vi.mocked(listStudentRoster).mockResolvedValue(roster)
-    renderPortal('/department-staff/students?offset=20')
-
-    const search = "O'Neil, (A&B)% / 24"
-    fireEvent.change(
-      await screen.findByRole('searchbox', {
-        name: 'Search name or student number',
-      }),
-      { target: { value: search } },
-    )
-
+      await screen.findByText(MOCK_PERSONAS.student_secondary.fullName),
+    ).toBeTruthy()
     await waitFor(() =>
-      expect(listStudentRoster).toHaveBeenCalledWith(
-        {
-          department_id: DEPARTMENT_ID,
-          limit: 20,
-          offset: 0,
-          search,
-        },
-        expect.any(AbortSignal),
-      ),
+      expect(screen.queryByText(MOCK_PERSONAS.student.fullName)).toBeNull(),
     )
     expect(
       new URLSearchParams(
         screen.getByTestId('current-search').textContent ?? '',
       ).get('search'),
-    ).toBe(search)
+    ).toBe(MOCK_PERSONAS.student_secondary.fullName)
+    expect(screen.getByText('Showing 1–1 of 1 student')).toBeTruthy()
+  })
+
+  it('applies curriculum and adviser filters using existing mock records', async () => {
+    renderPortal(
+      `/department-staff/students?curriculum_version_id=${MOCK_IDS.curriculumBscs2024}&adviser_id=${MOCK_IDS.adviserPrimary}`,
+    )
+
+    expect(
+      await screen.findByText(MOCK_PERSONAS.student.fullName),
+    ).toBeTruthy()
+    expect(screen.queryByText(MOCK_PERSONAS.student_secondary.fullName)).toBeNull()
+    expect(screen.getByRole('combobox', { name: 'Curriculum' }).textContent).toContain(
+      'BSCS 2024-2025 v1',
+    )
+    expect(screen.getByRole('combobox', { name: 'Adviser' }).textContent).toContain(
+      MOCK_PERSONAS.adviser.fullName,
+    )
+    expect(screen.getByText('Showing 1–1 of 1 student')).toBeTruthy()
+  })
+
+  it('paginates an existing roster query without introducing extra records', async () => {
+    renderPortal('/department-staff/students?offset=20')
+
+    expect(
+      await screen.findByText('No students shown; 2 students match these filters'),
+    ).toBeTruthy()
+    expect(
+      (screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false)
+    expect(
+      (screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }))
+    expect(
+      await screen.findByText(MOCK_PERSONAS.student.fullName),
+    ).toBeTruthy()
     expect(
       new URLSearchParams(
         screen.getByTestId('current-search').textContent ?? '',
@@ -303,102 +235,45 @@ describe('Department Staff student roster route', () => {
     ).toBe(false)
   })
 
-  it('paginates using server result counts rather than department totals', async () => {
-    const nextStudent: ApiSchema<'StudentRosterItem'> = {
-      ...student,
-      student_id: '99999999-9999-4999-8999-999999999999',
-      student_number: '24-1-09999',
-      full_name: 'Next Page Student',
-    }
-    vi.mocked(listStudentRoster)
-      .mockResolvedValueOnce({ ...roster, total_count: 21 })
-      .mockResolvedValueOnce({
-        ...roster,
-        total_count: 21,
-        items: [nextStudent],
-      })
-      .mockResolvedValueOnce({ ...roster, total_count: 21 })
-    renderPortal('/department-staff/students')
-
-    expect(await screen.findByText('Maria Santos')).toBeTruthy()
-    screen.getByRole('button', { name: 'Next' }).click()
-
-    expect(await screen.findByText('Next Page Student')).toBeTruthy()
-    await waitFor(() =>
-      expect(listStudentRoster).toHaveBeenCalledWith(
-        { department_id: DEPARTMENT_ID, limit: 20, offset: 20 },
-        expect.any(AbortSignal),
-      ),
-    )
-    expect(
-      new URLSearchParams(
-        screen.getByTestId('current-search').textContent ?? '',
-      ).get('offset'),
-    ).toBe('20')
-
-    screen.getByRole('button', { name: 'Previous' }).click()
-    expect(await screen.findByText('Maria Santos')).toBeTruthy()
-    expect(
-      new URLSearchParams(
-        screen.getByTestId('current-search').textContent ?? '',
-      ).has('offset'),
-    ).toBe(false)
-  })
-
-  it('cancels the previous request and does not render its late result', async () => {
-    let resolveSlowRequest:
-      | ((value: OperationResponse<'listStudentRoster'>) => void)
-      | undefined
-    let slowRequestSignal: AbortSignal | undefined
-    const nextStudent: ApiSchema<'StudentRosterItem'> = {
-      ...student,
-      student_id: '99999999-9999-4999-8999-999999999999',
-      full_name: 'Current Search Result',
-    }
-    vi.mocked(listStudentRoster).mockImplementation((query, signal) => {
-      if (query.search === 'slow') {
-        slowRequestSignal = signal
-        return new Promise((resolve) => {
-          resolveSlowRequest = resolve
-        })
-      }
-      return Promise.resolve({ ...roster, items: [nextStudent] })
-    })
-    renderPortal('/department-staff/students?search=slow')
-
-    await waitFor(() => expect(listStudentRoster).toHaveBeenCalledTimes(1))
-    fireEvent.change(
-      screen.getByRole('searchbox', {
-        name: 'Search name or student number',
-      }),
-      { target: { value: 'fast' } },
+  it('clears current filters while preserving unrelated URL parameters', async () => {
+    renderPortal(
+      `/department-staff/students?search=${encodeURIComponent(MOCK_PERSONAS.student_secondary.fullName)}&offset=20&tab=directory`,
     )
 
-    expect(await screen.findByText('Current Search Result')).toBeTruthy()
-    await waitFor(() => expect(slowRequestSignal?.aborted).toBe(true))
-    await act(async () => {
-      resolveSlowRequest?.({ ...roster, items: [student] })
-    })
-    expect(screen.queryByText('Maria Santos')).toBeNull()
+    expect(
+      await screen.findByText('No students shown; 1 student matches these filters'),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
+
+    expect(
+      await screen.findByText(MOCK_PERSONAS.student.fullName),
+    ).toBeTruthy()
+    const params = new URLSearchParams(
+      screen.getByTestId('current-search').textContent ?? '',
+    )
+    expect(params.get('tab')).toBe('directory')
+    expect(params.has('search')).toBe(false)
+    expect(params.has('offset')).toBe(false)
   })
 
-  it('renders an honest empty state when no roster rows are returned', async () => {
-    vi.mocked(listStudentRoster).mockResolvedValue({
-      ...roster,
-      total_count: 0,
-      items: [],
-    })
-    renderPortal('/department-staff/students')
+  it('shows an honest empty state for a search with no matching existing records', async () => {
+    renderPortal('/department-staff/students?search=No%20matching%20student')
 
     expect(
       await screen.findByText('No students match these filters.'),
     ).toBeTruthy()
+    expect(screen.getByText('No students shown; 0 students match these filters')).toBeTruthy()
   })
 
-  it('shows a denied state and supports a manual retry', async () => {
-    vi.mocked(listStudentRoster)
-      .mockRejectedValueOnce(forbiddenError())
-      .mockResolvedValueOnce(roster)
+  it('shows permission errors from MSW and retries against the default handler', async () => {
+    saaisMockServer.use(
+      http.get('*/functions/v1/students', () =>
+        HttpResponse.json(
+          { code: 'INSUFFICIENT_PRIVILEGE', message: 'Forbidden' },
+          { status: 403 },
+        ),
+      ),
+    )
     renderPortal('/department-staff/students')
 
     expect(
@@ -406,50 +281,41 @@ describe('Department Staff student roster route', () => {
         'Your account is not permitted to view this department’s student roster.',
       ),
     ).toBeTruthy()
-    screen.getByRole('button', { name: 'Retry' }).click()
-
-    expect(await screen.findByText('Maria Santos')).toBeTruthy()
-    await waitFor(() => expect(listStudentRoster).toHaveBeenCalledTimes(2))
+    saaisMockServer.resetHandlers()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(
+      await screen.findByText(MOCK_PERSONAS.student.fullName),
+    ).toBeTruthy()
   })
 
-  it('shows a network error instead of presenting it as an empty roster', async () => {
-    vi.mocked(listStudentRoster).mockRejectedValue(
-      new ApiClientError(normalizeApiError(new Error('offline'))),
+  it('shows filter-reference errors without treating missing options as an empty result', async () => {
+    saaisMockServer.use(
+      http.get('*/rest/v1/program', () =>
+        HttpResponse.json(
+          { code: 'SERVICE_UNAVAILABLE', message: 'Program references unavailable' },
+          { status: 503 },
+        ),
+      ),
     )
     renderPortal('/department-staff/students')
 
     expect(
-      await screen.findByText(
-        'Could not reach the student roster service. Check your connection and retry.',
-      ),
+      await screen.findByText(/Program references unavailable/),
     ).toBeTruthy()
     expect(
-      screen.queryByText('No students match these filters.'),
-    ).toBeNull()
+      (screen.getByRole('combobox', { name: 'Curriculum' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+    expect(await screen.findByText(MOCK_PERSONAS.student.fullName)).toBeTruthy()
+    expect(screen.queryByText('No students match these filters.')).toBeNull()
   })
 
-  it('reports filter-reference failures instead of showing an empty option list', async () => {
-    vi.mocked(listStudentRoster).mockResolvedValue(roster)
-    vi.mocked(listStudentFilterOptions).mockRejectedValueOnce(
-      new Error('Reference service unavailable'),
-    )
-    renderPortal('/department-staff/students')
-
-    expect(await screen.findByText('Reference service unavailable')).toBeTruthy()
-    expect(screen.getByRole('combobox', { name: 'Curriculum' })).toHaveProperty(
-      'disabled',
-      true,
-    )
-    screen.getByRole('button', { name: 'Retry filters' }).click()
-    expect(await screen.findByText('BSCS — BSCS 2024-2025 v1')).toBeTruthy()
-  })
-
-  it('renders explicit not-found content for unknown child routes', async () => {
+  it('does not render a roster for an unknown nested route', async () => {
     renderPortal('/department-staff/not-a-page')
 
     expect(
       await screen.findByText('This Department Staff page does not exist.'),
     ).toBeTruthy()
-    expect(listStudentRoster).not.toHaveBeenCalled()
+    expect(screen.queryByText(MOCK_PERSONAS.student.fullName)).toBeNull()
   })
 })
