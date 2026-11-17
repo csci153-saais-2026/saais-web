@@ -29,7 +29,7 @@ function BreadcrumbCrumb({
 
   if (crumb.to) {
     return (
-      <BreadcrumbLink asChild className="font-[450] hover:text-primary hover:underline underline-offset-3">
+      <BreadcrumbLink asChild className="font-[450] text-muted-2 hover:text-muted-2 hover:underline underline-offset-3">
         <Link to={crumb.to}>
           {crumb.label}
         </Link>
