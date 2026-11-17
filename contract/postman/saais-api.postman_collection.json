@@ -4743,7 +4743,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{prior_curriculum_version_id}}",
+                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{curriculum_delete_id}}",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -4752,7 +4752,7 @@
                     "v1",
                     "catalog",
                     "curriculum_version",
-                    "{{prior_curriculum_version_id}}"
+                    "{{curriculum_delete_id}}"
                   ],
                   "query": []
                 },
@@ -4797,7 +4797,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{prior_curriculum_version_id}}",
+                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{curriculum_delete_id}}",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -4806,7 +4806,7 @@
                     "v1",
                     "catalog",
                     "curriculum_version",
-                    "{{prior_curriculum_version_id}}"
+                    "{{curriculum_delete_id}}"
                   ],
                   "query": []
                 },

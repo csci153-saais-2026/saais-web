@@ -479,7 +479,7 @@ function toPostmanPathVariableUrl(openApiRoute, method = 'get') {
         openApiRoute.includes('/catalog/curriculum_version/')
       ) {
         return isDelete
-          ? '{{prior_curriculum_version_id}}'
+          ? '{{curriculum_delete_id}}'
           : '{{curriculum_version_id}}'
       }
       if (
@@ -1116,6 +1116,11 @@ function generatePostmanArtifacts() {
       {
         key: 'prior_curriculum_version_id',
         value: '40000000-0000-4000-8000-000000000002',
+        enabled: true,
+      },
+      {
+        key: 'curriculum_delete_id',
+        value: '40000000-0000-4000-8000-000000000003',
         enabled: true,
       },
       {

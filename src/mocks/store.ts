@@ -138,6 +138,17 @@ function buildInitialMockDatabase(): MockDatabaseState {
         status: 'teach_out',
         enrolled_student_count: 0,
       },
+      {
+        id: MOCK_IDS.curriculumBscsDraft,
+        program_id: MOCK_IDS.programBscs,
+        version_label: 'BSCS 2027-2028 v1',
+        effective_start: '2027-08-01',
+        effective_end: null,
+        delinquency_threshold: 24,
+        total_units: 162,
+        status: 'draft',
+        enrolled_student_count: 0,
+      },
     ],
     curriculumTerms: [
       {
