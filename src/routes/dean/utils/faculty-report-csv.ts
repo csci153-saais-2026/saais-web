@@ -66,3 +66,4 @@ export function downloadFacultyReportCsv(
 
   return filename
 }
+

@@ -43,3 +43,4 @@ describe("FacultyAuditFilters", () => {
     expect(onReset).toHaveBeenCalledTimes(1)
   })
 })
+

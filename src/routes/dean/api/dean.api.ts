@@ -15,3 +15,4 @@ export async function postDeanAuditViewEvent(
     await apiClient.POST("/functions/v1/audit/view-event", { body }),
   )
 }
+

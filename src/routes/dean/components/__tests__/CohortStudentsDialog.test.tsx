@@ -39,3 +39,4 @@ describe("CohortStudentsDialog", () => {
     expect(onOpenStudent).toHaveBeenCalledWith("23-1-01234")
   })
 })
+

@@ -52,3 +52,4 @@ describe("StudentDirectoryFilters", () => {
     expect(onReset).toHaveBeenCalledTimes(1)
   })
 })
+

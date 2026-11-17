@@ -30,3 +30,4 @@ describe("FacultyReportHeader", () => {
     expect(onExportCsv).toHaveBeenCalledTimes(1)
   })
 })
+

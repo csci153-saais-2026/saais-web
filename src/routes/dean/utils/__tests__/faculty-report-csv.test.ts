@@ -29,3 +29,4 @@ describe("faculty-report-csv", () => {
     expect(csv).toContain("2023,BSCS 2025–present,58,1.96\r\n")
   })
 })
+
