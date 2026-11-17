@@ -203,6 +203,7 @@ describe('Department Staff student directory', () => {
       await screen.findByText(MOCK_PERSONAS.student.fullName),
     ).toBeTruthy()
     expect(screen.queryByText(MOCK_PERSONAS.student_secondary.fullName)).toBeNull()
+    expect(await screen.findByText('BSCS — BSCS 2024-2025 v1')).toBeTruthy()
     expect(screen.getByRole('combobox', { name: 'Curriculum' }).textContent).toContain(
       'BSCS 2024-2025 v1',
     )
