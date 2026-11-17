@@ -5,7 +5,8 @@ import { Panel } from "@/components/features/panel";
 import { completeInc } from "../advisees/checklist/record.api";
 import { deleteTermAttempt, type getTermOfferings } from "./encode.api";
 import { GradeSelect } from "../GradeSelect";
-import { outcomeRemark, outcomeStatus } from "./grade-encoding";
+import { outcomeStatus } from "./grade-encoding";
+import { emptyDraft, type ExistingDraft } from "./existing-draft";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Dialog,
@@ -144,55 +145,6 @@ function PendingInc({
       </Dialog>
     </div>
   );
-}
-export type ExistingDraft = {
-  midterm: string;
-  final: string;
-  instructor: string;
-};
-export const emptyDraft = (
-  attempt: ApiSchema<"AttemptResult">,
-): ExistingDraft => ({
-  midterm: "",
-  final: "",
-  instructor: attempt.instructor ?? "",
-});
-export const draftChanged = (
-  attempt: ApiSchema<"AttemptResult">,
-  draft: ExistingDraft,
-) =>
-  !!(
-    draft.midterm ||
-    draft.final ||
-    draft.instructor.trim() !== (attempt.instructor ?? "")
-  );
-export function draftPayload(
-  attempt: ApiSchema<"AttemptResult">,
-  draft: ExistingDraft,
-): ApiSchema<"EncodeTermGradeRowInput"> {
-  const remark = outcomeRemark(draft.final);
-  return {
-    attempt_id: attempt.id,
-    course_offering_id: attempt.course_offering_id,
-    ...(draft.midterm === "dr"
-      ? { midterm_status: "dr", status: "dr" }
-      : draft.midterm
-        ? { midterm_status: "graded", midterm_grade: Number(draft.midterm) }
-        : {}),
-    ...(draft.final === "inc"
-      ? { status: "inc" }
-      : draft.final === "dr"
-        ? { status: "dr" }
-        : draft.final
-          ? { final_grade: Number(draft.final) }
-          : {}),
-    ...(draft.instructor.trim() &&
-    draft.instructor.trim() !== (attempt.instructor ?? "")
-      ? { instructor: draft.instructor.trim() }
-      : {}),
-    ...(remark ? { remark } : {}),
-    continue_with_prerequisite_override: false,
-  };
 }
 function ExistingAttempt({
   studentId,
