@@ -1560,6 +1560,19 @@ export const saaisMswHandlers = [
     if (!body?.curriculum_term_id) {
       return errorJson(400, 'INVALID_INPUT', 'curriculum_term_id is required.')
     }
+    const db = getMockDatabase()
+    const term = db.curriculumTerms.find((item) => item.id === body.curriculum_term_id)
+    const version = db.curriculumVersions.find((item) => item.id === term?.curriculum_version_id)
+    const program = db.programs.find((item) => item.id === version?.program_id)
+    if (!term || !version || !program) {
+      return errorJson(404, 'NOT_FOUND', 'The target curriculum term was not found.')
+    }
+    if (!canAccessDepartment(auth.persona, program.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
+    }
+    if (body.course_id && !db.courses.some((course) => course.id === body.course_id)) {
+      return errorJson(400, 'INVALID_INPUT', 'The selected catalog course was not found.')
+    }
     const created: ApiSchema<'CurriculumTermCourse'> = {
       id: nextSyntheticUuid(),
       curriculum_term_id: body.curriculum_term_id,
@@ -1569,7 +1582,7 @@ export const saaisMswHandlers = [
       slot_label: body.slot_label ?? null,
       nominal_units: body.nominal_units,
     }
-    getMockDatabase().curriculumTermCourses.push(created)
+    db.curriculumTermCourses.push(created)
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -1584,6 +1597,14 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumTermCourses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum slot not found.')
+    const existing = db.curriculumTermCourses[idx]!
+    const term = db.curriculumTerms.find((item) => item.id === existing.curriculum_term_id)
+    const version = db.curriculumVersions.find((item) => item.id === term?.curriculum_version_id)
+    const program = db.programs.find((item) => item.id === version?.program_id)
+    if (!program) return errorJson(404, 'NOT_FOUND', 'The target curriculum was not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
+    }
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'CurriculumTermCourseUpdate'>
     const updated: ApiSchema<'CurriculumTermCourse'> = {
       ...db.curriculumTermCourses[idx]!,
@@ -1604,6 +1625,13 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumTermCourses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum slot not found.')
+    const term = db.curriculumTerms.find((item) => item.id === db.curriculumTermCourses[idx]?.curriculum_term_id)
+    const version = db.curriculumVersions.find((item) => item.id === term?.curriculum_version_id)
+    const program = db.programs.find((item) => item.id === version?.program_id)
+    if (!program) return errorJson(404, 'NOT_FOUND', 'The target curriculum was not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
+    }
     db.curriculumTermCourses.splice(idx, 1)
     return new HttpResponse(null, { status: 204 })
   }),
@@ -1621,6 +1649,19 @@ export const saaisMswHandlers = [
     if (!body?.code || !body?.title || !body?.department_id) {
       return errorJson(400, 'INVALID_INPUT', 'code, title, and department_id are required.')
     }
+    const db = getMockDatabase()
+    if (!db.departments.some((department) => department.id === body.department_id)) {
+      return errorJson(400, 'INVALID_INPUT', 'The requested department was not found.')
+    }
+    if (!canAccessDepartment(auth.persona, body.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Cannot create a course outside the authorized department.')
+    }
+    if (db.courses.some((course) =>
+      course.department_id === body.department_id &&
+      course.code.trim().toLowerCase() === body.code.trim().toLowerCase()
+    )) {
+      return errorJson(409, 'DUPLICATE_COURSE_CODE', 'A course with this code already exists in the department.')
+    }
     const created: ApiSchema<'Course'> = {
       id: nextSyntheticUuid(),
       department_id: body.department_id,
@@ -1632,7 +1673,7 @@ export const saaisMswHandlers = [
       status: body.status ?? 'active',
       repeatable_type: body.repeatable_type ?? 'none',
     }
-    getMockDatabase().courses.push(created)
+    db.courses.push(created)
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -3560,24 +3601,159 @@ export const saaisMswHandlers = [
       return errorJson(400, 'INVALID_INPUT', 'mode and rows are required.')
     }
     const db = getMockDatabase()
-    const valid = (r: ApiSchema<'StudentBatchImportRowInput'>) => {
-      const adviser = db.profiles.find(p => p.id === r.adviser_id && p.status === 'active' && p.roles?.includes('adviser'))
-      const program = db.programs.find(p => p.id === r.program_id)
-      return Boolean(adviser && program && adviser.department_id === program.department_id && db.curriculumVersions.some(c => c.id === r.curriculum_version_id && c.program_id === r.program_id && c.status === 'active'))
+    const seenNumbers = new Set<string>()
+    const seenEmails = new Set<string>()
+    const checks = body.rows.map((row) => {
+      const program = db.programs.find((item) => item.id === row.program_id)
+      const department = db.departments.find(
+        (item) => item.id === program?.department_id,
+      )
+      if (
+        program &&
+        !auth.persona.roles.includes('admin') &&
+        !canAccessDepartment(auth.persona, program.department_id)
+      ) {
+        return { row, error: 'The program is outside your authorized department.' as const, program: null, department: null, adviser: null }
+      }
+
+      const adviser = db.profiles.find(
+        (item) =>
+          item.id === row.adviser_id &&
+          item.status === 'active' &&
+          (item.roles ?? [item.role]).includes('adviser'),
+      )
+      const curriculum = db.curriculumVersions.find(
+        (item) =>
+          item.id === row.curriculum_version_id &&
+          item.program_id === row.program_id &&
+          item.status === 'active',
+      )
+      const normalizedEmail = row.email.trim().toLowerCase()
+      const duplicateNumber =
+        seenNumbers.has(row.student_number) ||
+        db.profiles.some((profile) => profile.student_number === row.student_number)
+      const duplicateEmail =
+        seenEmails.has(normalizedEmail) ||
+        db.profiles.some((profile) => profile.email.toLowerCase() === normalizedEmail)
+      seenNumbers.add(row.student_number)
+      seenEmails.add(normalizedEmail)
+
+      let error: string | null = null
+      if (!/^\d{2}-\d-\d{5}$/.test(row.student_number)) {
+        error = 'Student number must follow YY-N-NNNNN.'
+      } else if (duplicateNumber) {
+        error = 'Student number already exists.'
+      } else if (duplicateEmail) {
+        error = 'Institutional email already exists.'
+      } else if (!program || !department || !curriculum) {
+        error = 'A matching active program and curriculum are required.'
+      } else if (
+        !adviser ||
+        adviser.department_id !== program.department_id ||
+        !canAccessDepartment(auth.persona, program.department_id)
+      ) {
+        error = 'An eligible active adviser in the authorized department is required.'
+      }
+
+      return { row, error, program, department, adviser }
+    })
+    const unauthorized = checks.find(
+      (check) => check.error === 'The program is outside your authorized department.',
+    )
+    if (unauthorized) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', unauthorized.error)
     }
-    const validCount = body.rows.filter(valid).length
+
+    const validChecks = checks.filter((check) => check.error === null)
+    const validCount = validChecks.length
+    if (body.mode === 'commit') {
+      const createdAt = '2026-11-10T09:00:00Z'
+      const importedByCurriculum = new Map<string, number>()
+      for (const { row, program, department, adviser } of validChecks) {
+        if (!program || !department || !adviser) continue
+        const studentId = nextSyntheticUuid()
+        const assignmentId = nextSyntheticUuid()
+        db.profiles.push({
+          id: studentId,
+          role: 'student',
+          roles: ['student'],
+          email: row.email.trim(),
+          full_name: row.full_name.trim(),
+          student_number: row.student_number,
+          status: 'active',
+          created_at: createdAt,
+          updated_at: createdAt,
+          faculty_id: department.faculty_id,
+          department_id: department.id,
+          avatar_url: null,
+          consultation_hours: null,
+        })
+        db.roleAssignments.push({
+          id: nextSyntheticUuid(),
+          profile_id: studentId,
+          role: 'student',
+          faculty_id: department.faculty_id,
+          department_id: department.id,
+          created_at: createdAt,
+        })
+        db.studentCurriculumAssignments.push({
+          id: assignmentId,
+          student_id: studentId,
+          curriculum_version_id: row.curriculum_version_id,
+          start_date: '2026-11-10',
+          end_date: null,
+          change_note: 'Initial curriculum assignment',
+          created_at: createdAt,
+        })
+        importedByCurriculum.set(
+          row.curriculum_version_id,
+          (importedByCurriculum.get(row.curriculum_version_id) ?? 0) + 1,
+        )
+        db.studentOrganizations.push({
+          student_id: studentId,
+          student_curriculum_assignment_id: assignmentId,
+          curriculum_version_id: row.curriculum_version_id,
+          program_id: program.id,
+          department_id: department.id,
+          faculty_id: department.faculty_id,
+          adviser_id: adviser.id,
+          entry_year: row.entry_year ?? null,
+        })
+        db.adviserAssignments.push({
+          id: nextSyntheticUuid(),
+          student_id: studentId,
+          adviser_id: adviser.id,
+          adviser_name: adviser.full_name,
+          adviser_email: adviser.email,
+          adviser_faculty_name: null,
+          adviser_consultation_hours: adviser.consultation_hours ?? null,
+          start_date: '2026-11-10',
+          end_date: null,
+          handed_over_to_adviser_id: null,
+          handed_over_to_name: null,
+          handover_label: null,
+          created_at: createdAt,
+        })
+      }
+      db.curriculumVersions = db.curriculumVersions.map((version) => ({
+        ...version,
+        enrolled_student_count:
+          version.enrolled_student_count + (importedByCurriculum.get(version.id) ?? 0),
+      }))
+    }
+
     const res: ApiSchema<'StudentBatchImportResponse'> = {
       mode: body.mode,
       valid_count: validCount,
       warning_count: 0,
       error_count: body.rows.length - validCount,
       imported_count: body.mode === 'commit' ? validCount : 0,
-      results: body.rows.map((r) => ({
-        row_number: r.row_number,
-        student_number: r.student_number,
-        email: r.email,
-        outcome: valid(r) ? (body.mode === 'commit' ? 'imported' : 'valid') : 'error',
-        message: valid(r) ? 'Validated successfully.' : 'An eligible active adviser and matching active curriculum are required.',
+      results: checks.map(({ row, error }) => ({
+        row_number: row.row_number,
+        student_number: row.student_number,
+        email: row.email,
+        outcome: error ? 'error' : body.mode === 'commit' ? 'imported' : 'valid',
+        message: error ?? 'Validated successfully.',
       })),
     }
     return HttpResponse.json(res, { status: 200 })

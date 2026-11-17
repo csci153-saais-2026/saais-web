@@ -7,6 +7,8 @@ import { saaisMockServer } from '@/mocks/node'
 import { StaffScopeContext } from '@/routes/department-staff/shared/use-staff-scope'
 import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
 import type { ApiSchema } from '@/lib/api'
+import { listCourseCatalogPage, listCourseCatalogReferences } from '@/routes/department-staff/course-catalog/course-catalog.api'
+import { readCurriculum } from './curricula.api'
 import { CurriculumSlotDialog } from './CurriculumSlotDialog'
 
 vi.mock('@/lib/api', async importOriginal => {
@@ -84,6 +86,15 @@ describe('Create catalog course from a curriculum requirement', () => {
     await waitFor(() => expect(state.onCreated).toHaveBeenCalledWith(state.version.id))
 
     expect(getMockDatabase().curriculumTermCourses.some(slot => slot.course_id === createdCourse.id && slot.curriculum_term_id === state.term.id)).toBe(true)
+    const references = await listCourseCatalogReferences()
+    const catalog = await listCourseCatalogPage(
+      { search: 'STEP26 CS 101', status: '', facultyId: '', departmentId, page: 0 },
+      references,
+    )
+    expect(catalog.courses.map(course => course.id)).toContain(createdCourse.id)
+    const refreshedCurriculum = await readCurriculum(state.version.id)
+    expect(refreshedCurriculum.slots.some(slot => slot.course_id === createdCourse.id)).toBe(true)
+    expect(refreshedCurriculum.courses.some(course => course.id === createdCourse.id)).toBe(true)
     expect(invalidation).toHaveBeenCalledWith({ queryKey: state.catalogCoursesKey })
     expect(invalidation).toHaveBeenCalledWith({ queryKey: state.catalogReferencesKey })
     expect(invalidation).toHaveBeenCalledWith({ queryKey: state.courseOptionsKey })
