@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ApiClientError } from '@/lib/api'
 import { courseCatalogMaxOffset, courseCatalogPageSize, type CatalogCourse, type CatalogDepartment, type CatalogFaculty } from './course-catalog.api'
 import { useCourseCatalog, useCourseCatalogReferences } from '@/hooks/use-course-catalog'
+import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
+import { CourseDialog } from './CourseDialog'
 
 const courseTypeLabels: Record<string, string> = {
   major: 'Major', ge: 'GE', elective: 'Elective', pe: 'PE', nstp: 'NSTP', foundation: 'Foundation', service: 'Service',
@@ -71,6 +73,7 @@ function isValidSearch(value: string): boolean {
 
 export default function CourseCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const staffScope = useStaffScope()
   const filters = {
     search: searchParams.get('q') ?? '',
     status: parseStatus(searchParams.get('status')),
@@ -88,6 +91,9 @@ export default function CourseCatalogPage() {
   const departmentOptions = (references.data?.departments ?? []).filter(
     department => !filters.facultyId || department.faculty_id === filters.facultyId,
   )
+  const administeringDepartment = staffScope.status === 'ready'
+    ? departmentsById.get(staffScope.departmentId)
+    : undefined
 
   const updateFilters = (updates: Record<string, string>, resetPage = true) => {
     const next = new URLSearchParams(searchParams)
@@ -121,7 +127,19 @@ export default function CourseCatalogPage() {
     <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
       <PageHeading title="Course catalog" subtitle="Browse the read-only university course reference." />
 
-      <Panel title="Course catalog" description="Course and organizational reference information is read-only here.">
+      <Panel
+        title="Course catalog"
+        description="Reference rows are read-only; new courses can only be created in your authorized department."
+        action={staffScope.status === 'ready' ? (
+          <CourseDialog
+            departmentId={staffScope.departmentId}
+            departmentLabel={administeringDepartment ? `${administeringDepartment.code} · ${administeringDepartment.name}` : undefined}
+            description="Create a catalog course in your authorized department."
+            triggerLabel="Add course"
+            onCreated={() => undefined}
+          />
+        ) : undefined}
+      >
         <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
           <FormField label="Search courses" htmlFor="catalog-search" error={searchError} className="sm:col-span-2 xl:col-span-1">
             <SearchInput id="catalog-search" value={filters.search} placeholder="Search by code or title" onChange={event => updateFilters({ q: event.target.value })} />

@@ -49,7 +49,8 @@ function renderSlotDialog() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } })
   const catalogKey = staffQueryKeys.resource(persona.profileId, departmentId, 'curricula')
   const detailKey = staffQueryKeys.resource(persona.profileId, departmentId, 'curriculum-overview', { versionId: fixture.version.id })
-  const catalogCoursesKey = staffQueryKeys.resource(persona.profileId, departmentId, 'course-catalog')
+  const catalogCoursesKey = staffQueryKeys.resource(persona.profileId, departmentId, 'course-catalog-page')
+  const catalogReferencesKey = staffQueryKeys.resource(persona.profileId, departmentId, 'course-catalog-references')
   const courseOptionsKey = staffQueryKeys.resource(persona.profileId, departmentId, 'curriculum-course-options')
   client.setQueryData(catalogKey, { programs: fixture.programs, versions: fixture.versions })
   client.setQueryData(detailKey, { terms: fixture.terms, slots: fixture.slots, courses: fixture.courses })
@@ -58,7 +59,7 @@ function renderSlotDialog() {
   render(<QueryClientProvider client={client}><StaffScopeContext.Provider value={scope}>
     <CurriculumSlotDialog term={fixture.term} version={fixture.version} onClose={vi.fn()} onCreated={onCreated} />
   </StaffScopeContext.Provider></QueryClientProvider>)
-  return { ...fixture, client, catalogKey, detailKey, catalogCoursesKey, courseOptionsKey, onCreated }
+  return { ...fixture, client, catalogKey, detailKey, catalogCoursesKey, catalogReferencesKey, courseOptionsKey, onCreated }
 }
 
 beforeAll(() => saaisMockServer.listen())
@@ -84,6 +85,7 @@ describe('Create catalog course from a curriculum requirement', () => {
 
     expect(getMockDatabase().curriculumTermCourses.some(slot => slot.course_id === createdCourse.id && slot.curriculum_term_id === state.term.id)).toBe(true)
     expect(invalidation).toHaveBeenCalledWith({ queryKey: state.catalogCoursesKey })
+    expect(invalidation).toHaveBeenCalledWith({ queryKey: state.catalogReferencesKey })
     expect(invalidation).toHaveBeenCalledWith({ queryKey: state.courseOptionsKey })
     expect(invalidation).toHaveBeenCalledWith({ queryKey: state.catalogKey })
     expect(invalidation).toHaveBeenCalledWith({ queryKey: state.detailKey })
@@ -119,6 +121,7 @@ describe('Create catalog course from a curriculum requirement', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create catalog course' }))
     fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'STEP26 RETRY 101' } })
     fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Retryable Attachment Course' } })
+    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '3' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create course' }))
     await screen.findByText('Course STEP26 RETRY 101 created. Save this requirement to attach it.')
     const created = db.courses.find(course => course.code === 'STEP26 RETRY 101')!

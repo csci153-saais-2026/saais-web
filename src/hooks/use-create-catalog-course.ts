@@ -30,7 +30,8 @@ export function useCreateCatalogCourse() {
         ...(current ?? []).filter(item => item.id !== course.id), course,
       ])
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'course-catalog') }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'course-catalog-page') }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.resource(profileId, departmentId, 'course-catalog-references') }),
         queryClient.invalidateQueries({ queryKey: courseOptionsKey }),
       ])
     },

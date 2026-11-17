@@ -43,10 +43,12 @@ afterAll(() => saaisMockServer.close())
 
 describe('CourseDialog', () => {
   it('validates exact catalog fields and rejects unknown or repeat-policy fields', () => {
-    const invalid = { code: ' ', title: 'CS', units: 1.1, category: 'unknown', status: 'archived', repeatable_type: 'once' }
+    const invalid = { code: ' ', title: 'CS', units: 1.1, type: 'unknown', category: 'unknown', status: 'archived', repeatable_type: 'once' }
     expect(courseSchema.safeParse(invalid).success).toBe(false)
-    expect(courseSchema.safeParse({ code: 'CS 201', title: 'Data Structures', units: 3.25, category: 'major', status: 'active', repeatable_type: 'none' }).success).toBe(false)
-    expect(courseSchema.safeParse({ code: 'CS 201', title: 'Data Structures', units: 3.25, category: 'major', status: 'active' }).success).toBe(true)
+    expect(courseSchema.safeParse({ code: 'CS 201', title: 'Data Structures', units: 0.0, type: 'non_elective', category: 'major', status: 'active' }).success).toBe(false)
+    expect(courseSchema.safeParse({ code: 'CS 201', title: 'Data Structures', units: 3.25, type: 'Major', category: 'major', status: 'active' }).success).toBe(false)
+    expect(courseSchema.safeParse({ code: 'CS 201', title: 'Data Structures', units: 3.25, type: 'non_elective', category: 'major', status: 'inactive' }).success).toBe(false)
+    expect(courseSchema.safeParse({ code: 'CS 201', title: 'Data Structures', units: 3.25, type: 'elective', category: 'major', status: 'discontinued' }).success).toBe(true)
   })
 
   it('creates a course for the authenticated Department Staff persona in its authorized department', async () => {
@@ -55,13 +57,15 @@ describe('CourseDialog', () => {
     fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CS 290' } })
     fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Applied Data Design' } })
     fireEvent.change(screen.getByLabelText('Units'), { target: { value: '3.25' } })
-    fireEvent.change(screen.getByLabelText('Course type'), { target: { value: 'ge' } })
+    expect(Array.from((screen.getByLabelText('Course type') as HTMLSelectElement).options).map(option => option.value)).toEqual(['non_elective', 'elective'])
+    expect(Array.from((screen.getByLabelText('Status') as HTMLSelectElement).options).map(option => option.value)).toEqual(['active', 'discontinued'])
+    fireEvent.change(screen.getByLabelText('Course type'), { target: { value: 'elective' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create course' }))
     await waitFor(() => expect(onCreated).toHaveBeenCalledOnce())
     const created = getMockDatabase().courses.find(course => course.code === 'CS 290')
     expect(created).toMatchObject({
       department_id: staffDepartment, code: 'CS 290', title: 'Applied Data Design', units: 3.25,
-      category: 'ge', is_elective: false, status: 'active', repeatable_type: 'none',
+      category: 'elective', is_elective: true, status: 'active', repeatable_type: 'none',
     })
     expect(onCreated).toHaveBeenCalledWith(created)
   })
@@ -73,6 +77,7 @@ describe('CourseDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create catalog course' }))
     fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CS 291' } })
     fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Out of scope course' } })
+    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '3' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create course' }))
 
     await screen.findByRole('alert')
