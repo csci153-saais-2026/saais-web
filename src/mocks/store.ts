@@ -1178,6 +1178,11 @@ function buildInitialMockDatabase(): MockDatabaseState {
     db.attemptResults.push({ ...common, recorded_status: 'failed', effective_status: 'failed', completion_grade: null, resolved_at: null,
       gwa_grade: 5, is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: true })
   }
+  for (const curriculum of db.curriculumVersions) {
+    curriculum.enrolled_student_count = db.studentCurriculumAssignments.filter(
+      assignment => assignment.curriculum_version_id === curriculum.id && assignment.end_date === null,
+    ).length
+  }
   return db
 }
 

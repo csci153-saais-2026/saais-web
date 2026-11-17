@@ -65,7 +65,7 @@ export async function createDashboardPdf(report: ApiSchema<'AdviserDashboardRepo
   const statuses = distribution ? distribution.inc_count + distribution.dr_count + distribution.na_count : 0
   const total = distribution ? distribution.total_graded + statuses : 0
   const share = (count: number) => total ? `${(count / total * 100).toFixed(1).replace(/\.0$/, '')}%` : '0%'
-  table(['Grade range', 'Share of final grades'], distribution ? [...distribution.buckets.map(bucket => [bucket.label, share(bucket.count)]), ['INC / DR / NA', share(statuses)]] : [['Not available', '-']], [17, 120])
+  table(['Grade range', 'Share of final grades'], distribution ? [...distribution.buckets.map(bucket => [bucket.label, `${bucket.percentage}%`]), ['INC / DR / NA', share(statuses)]] : [['Not available', '-']], [17, 120])
   if (y > pageHeight - 40) { pdf.addPage(); topStripe(); y = 15 }
   heading('GWA by batch and curriculum version')
   table(['BATCH', 'CURRICULUM', 'STUDENTS', 'MEAN GWA'], report.batch_curriculum_gwa?.length ? report.batch_curriculum_gwa.map(row => [String(row.entry_year), `${row.program_code} ${row.curriculum_label}`, String(row.student_count), row.mean_gwa?.toFixed(2) ?? 'Not available']) : [['Not available', '-', '-', '-']], [17, 78, 165, 225])

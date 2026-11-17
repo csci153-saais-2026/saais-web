@@ -2842,12 +2842,24 @@ export const saaisMswHandlers = [
           }
         } else {
           if (body.corrected_grade != null) {
+            if (!Number.isFinite(body.corrected_grade) || body.corrected_grade < 1 || body.corrected_grade > 5 || body.corrected_grade * 4 % 1 !== 0) return errorJson(400, 'INVALID_INPUT', 'Provide a valid final grade.')
+            const gradeStatus = body.corrected_grade <= 3 ? 'passed' : 'failed'
+            if (body.corrected_status != null && body.corrected_status !== gradeStatus) return errorJson(400, 'INVALID_INPUT', 'The corrected status must match the corrected final grade.')
             result.final_grade = body.corrected_grade
             result.gwa_grade = body.corrected_grade
-            result.effective_status = body.corrected_grade <= 3 ? 'passed' : 'failed'
+            result.effective_status = gradeStatus
             result.recorded_status = result.effective_status
+            result.inc_deadline = null
           }
-          if (body.corrected_status) { result.effective_status = body.corrected_status; result.recorded_status = body.corrected_status }
+          if (body.corrected_status) {
+            if (body.corrected_status === 'inc' && body.corrected_grade == null) {
+              const deadline = term?.default_inc_deadline
+              if (!deadline) return errorJson(409, 'INC_DEADLINE_UNAVAILABLE', 'The term has no default INC deadline.')
+              result.final_grade = null; result.gwa_grade = null; result.completion_grade = null; result.resolved_at = null
+              result.inc_deadline = deadline; result.is_lapsed_inc = false
+            }
+            result.effective_status = body.corrected_status; result.recorded_status = body.corrected_status
+          }
           if (body.corrected_midterm_status) result.midterm_status = body.corrected_midterm_status
         }
         db.attemptResults[db.attemptResults.indexOf(currentAttempt)] = {

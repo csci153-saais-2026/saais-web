@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import AdviserDashboard from './AdviserDashboard'
 import { getAdviserDashboard, getSchoolTerms } from './adviser-dashboard.api'
@@ -81,10 +81,12 @@ describe('AdviserDashboard', () => {
     const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     try {
       const view = render(<MemoryRouter><AdviserDashboard /></MemoryRouter>)
-      fireEvent.click(await screen.findByRole('button', { name: 'Export PDF' }))
+      const exportButton = await screen.findByRole('button', { name: 'Export PDF' })
+      await waitFor(() => expect(exportButton.disabled).toBe(false))
+      fireEvent.click(exportButton)
       const download = await screen.findByRole('link', { name: 'Download PDF' })
       expect(download.getAttribute('href')).toBe('blob:dashboard')
-      expect(createDashboardPdf).toHaveBeenCalledWith(report, 'All terms', undefined, undefined, undefined)
+      expect(createDashboardPdf).toHaveBeenCalledWith(report, 'All terms', 0, undefined, undefined)
       auth.user = { id: 'adviser-two' }
       view.rerender(<MemoryRouter><AdviserDashboard /></MemoryRouter>)
       expect(screen.queryByRole('dialog', { name: 'Preview: Dashboard' })).toBeNull()

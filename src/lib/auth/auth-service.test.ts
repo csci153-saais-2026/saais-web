@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AuthApiError } from '@supabase/supabase-js'
 import { apiClient } from '@/lib/api'
 import {
   AuthHydrationError,
@@ -140,9 +141,9 @@ describe('auth service helpers and account actions', () => {
     await expect(changeAuthenticatedPassword('CurrentPassword123', 'NewPassword123')).resolves.toEqual({ simulated: false })
     expect(signOut).toHaveBeenCalledWith({ scope: 'others' })
 
-    recover.mockResolvedValueOnce({ data: null, error: new Error('recovery failed') as never })
+    recover.mockResolvedValueOnce({ data: null, error: new AuthApiError('recovery failed', 400) })
     await expect(requestPasswordRecoveryEmail('student@vsu.edu.ph')).rejects.toThrow('recovery failed')
-    update.mockResolvedValueOnce({ data: { user: null }, error: new Error('update failed') as never })
+    update.mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('update failed', 400) })
     await expect(completePasswordReset('AnotherPassword123')).rejects.toThrow('update failed')
   })
 

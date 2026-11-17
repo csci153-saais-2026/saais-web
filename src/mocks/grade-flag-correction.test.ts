@@ -27,4 +27,32 @@ describe('flag midterm corrections', () => {
     expect(graded.response.status).toBe(200)
     expect(db.attemptResults.find(a => a.id === attempt.id)).toMatchObject({ midterm_status: 'graded', midterm_grade: 2.25, recorded_status: 'currently_enrolled', effective_status: 'currently_enrolled', final_grade: null })
   })
+
+  it('validates final grades against their derived status and initializes INC deadlines', async () => {
+    loginAsMockPersona('adviser')
+    const db = getMockDatabase()
+    const flagIndex = db.gradeFlags.findIndex(f => f.id === MOCK_IDS.gradeFlag1)
+    const sourceFlag = db.gradeFlags[flagIndex]!
+    const attemptIndex = db.attemptResults.findIndex(a => a.id === sourceFlag.attempt_id)
+    const originalAttempt = structuredClone(db.attemptResults[attemptIndex]!)
+    const flag = { ...sourceFlag, reported_stage: 'final' as const, status: 'open' as const }
+    db.gradeFlags[flagIndex] = flag
+    const path = { flag_id: flag.id }
+    const base = { resolution_action: 'correct' as const, resolution_note: 'Correct final record', expected_revision: originalAttempt.revision }
+
+    const invalidGrade = await client().POST('/functions/v1/grade-flags/{flag_id}/resolve', { params: { path }, body: { ...base, corrected_grade: 99 } })
+    expect(invalidGrade.response.status).toBe(400)
+    expect(db.attemptResults[attemptIndex]).toEqual(originalAttempt)
+    expect(db.gradeFlags[flagIndex]?.status).toBe('open')
+
+    const contradictory = await client().POST('/functions/v1/grade-flags/{flag_id}/resolve', { params: { path }, body: { ...base, corrected_grade: 1.5, corrected_status: 'failed' } })
+    expect(contradictory.response.status).toBe(400)
+    expect(db.attemptResults[attemptIndex]).toEqual(originalAttempt)
+    expect(db.gradeFlags[flagIndex]?.status).toBe('open')
+
+    const inc = await client().POST('/functions/v1/grade-flags/{flag_id}/resolve', { params: { path }, body: { ...base, corrected_status: 'inc' } })
+    expect(inc.response.status).toBe(200)
+    expect(db.attemptResults[attemptIndex]).toMatchObject({ recorded_status: 'inc', effective_status: 'inc', final_grade: null, gwa_grade: null, inc_deadline: db.schoolTerms.find(term => term.id === db.courseOfferings.find(offering => offering.id === originalAttempt.course_offering_id)?.school_term_id)?.default_inc_deadline })
+    expect(db.gradeFlags[flagIndex]?.status).toBe('corrected')
+  })
 })

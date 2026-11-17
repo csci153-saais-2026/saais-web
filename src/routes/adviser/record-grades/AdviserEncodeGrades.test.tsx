@@ -78,4 +78,33 @@ describe('encoding workspace identity',()=>{
    await waitFor(()=>expect(saveTermGrades).toHaveBeenCalledWith('student-one','term-one',[expect.objectContaining({course_offering_id:'offering-two',midterm_status:'dr',midterm_grade:null,final_grade:null,status:'dr',remark:'DR'})]))
  })
 
+ it('invalidates review when adding a course and locks drafts while the save is pending',async()=>{
+   const offerings=[
+     {offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Second course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false},
+     {offering:{id:'offering-three',course_id:'course-three'},code:'CS 3',title:'Third course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false},
+   ] as Awaited<ReturnType<typeof getTermOfferings>>
+   let finishSave!:()=>void
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue(offerings)
+   vi.mocked(saveTermGrades).mockImplementation(()=>new Promise(resolve=>{finishSave=()=>resolve([])}))
+   render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
+
+   const addCourse=async(code:string)=>{fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:new RegExp(code)}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}))}
+   await addCourse('CS 2');fireEvent.change(screen.getByLabelText('Final for CS 2'),{target:{value:'2.25'}})
+   fireEvent.click(screen.getByRole('button',{name:'Review grades'}));expect(screen.getByRole('button',{name:'Confirm and save grades'})).toBeTruthy()
+
+   await addCourse('CS 3')
+   expect(screen.getByRole('button',{name:'Review grades'})).toBeTruthy()
+   expect(screen.queryByRole('button',{name:'Confirm and save grades'})).toBeNull()
+   fireEvent.change(screen.getByLabelText('Final for CS 3'),{target:{value:'2.50'}})
+   fireEvent.click(screen.getByRole('button',{name:'Review grades'}));fireEvent.click(screen.getByRole('button',{name:'Confirm and save grades'}))
+
+   expect((screen.getByLabelText('Instructor for CS 2') as HTMLInputElement).disabled).toBe(true)
+   expect((screen.getByLabelText('Midterm for CS 2') as HTMLSelectElement).disabled).toBe(true)
+   expect((screen.getByLabelText('Final for CS 2') as HTMLSelectElement).disabled).toBe(true)
+   expect((screen.getAllByLabelText('Remark')[0] as HTMLInputElement).disabled).toBe(true)
+   expect((screen.getByRole('button',{name:'Remove CS 2'}) as HTMLButtonElement).disabled).toBe(true)
+   finishSave()
+   expect(await screen.findByText('Grades saved.')).toBeTruthy()
+ })
+
 })

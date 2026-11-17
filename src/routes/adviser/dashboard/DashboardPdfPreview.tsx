@@ -13,8 +13,22 @@ export function DashboardPdfPreview({ report, termLabel, deficiencyCount, advise
   departmentId?: string | null
   onClose: () => void
 }) {
-  const [url, setUrl] = useState('')
-  const [error, setError] = useState(false)
+  const [preview, setPreview] = useState<{
+    report: ApiSchema<'AdviserDashboardReport'>
+    termLabel: string
+    deficiencyCount?: number
+    adviserName?: string
+    departmentId?: string | null
+    url: string
+    error: boolean
+  } | null>(null)
+  const isCurrentPreview = preview?.report === report
+    && preview.termLabel === termLabel
+    && preview.deficiencyCount === deficiencyCount
+    && preview.adviserName === adviserName
+    && preview.departmentId === departmentId
+  const url = isCurrentPreview ? preview.url : ''
+  const error = isCurrentPreview && preview.error
 
   useEffect(() => {
     let active = true
@@ -31,8 +45,10 @@ export function DashboardPdfPreview({ report, termLabel, deficiencyCount, advise
     void prepare().then(blob => {
       if (!active) return
       objectUrl = URL.createObjectURL(blob)
-      setUrl(objectUrl)
-    }).catch(() => { if (active) setError(true) })
+      setPreview({ report, termLabel, deficiencyCount, adviserName, departmentId, url: objectUrl, error: false })
+    }).catch(() => {
+      if (active) setPreview({ report, termLabel, deficiencyCount, adviserName, departmentId, url: '', error: true })
+    })
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [report, termLabel, deficiencyCount, adviserName, departmentId])
 
