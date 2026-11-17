@@ -55,4 +55,25 @@ describe('flag midterm corrections', () => {
     expect(db.attemptResults[attemptIndex]).toMatchObject({ recorded_status: 'inc', effective_status: 'inc', final_grade: null, gwa_grade: null, inc_deadline: db.schoolTerms.find(term => term.id === db.courseOfferings.find(offering => offering.id === originalAttempt.course_offering_id)?.school_term_id)?.default_inc_deadline })
     expect(db.gradeFlags[flagIndex]?.status).toBe('corrected')
   })
+
+  it('rejects changing a completed INC back to INC through flag resolution', async () => {
+    loginAsMockPersona('adviser')
+    const db = getMockDatabase()
+    const flagIndex = db.gradeFlags.findIndex(flag => flag.id === MOCK_IDS.gradeFlag1)
+    const flag = { ...db.gradeFlags[flagIndex]!, attempt_id: MOCK_IDS.attemptPhEd11IncResolved, reported_stage: 'final' as const, status: 'open' as const }
+    db.gradeFlags[flagIndex] = flag
+    const attemptIndex = db.attemptResults.findIndex(attempt => attempt.id === flag.attempt_id)
+    const originalAttempt = structuredClone(db.attemptResults[attemptIndex]!)
+    const originalResolution = structuredClone(db.incResolutions.find(resolution => resolution.attempt_id === flag.attempt_id))
+
+    const response = await client().POST('/functions/v1/grade-flags/{flag_id}/resolve', {
+      params: { path: { flag_id: flag.id } },
+      body: { resolution_action: 'correct', corrected_status: 'inc', resolution_note: 'Preserve completion', expected_revision: originalAttempt.revision },
+    })
+
+    expect(response.response.status).toBe(409)
+    expect(db.attemptResults[attemptIndex]).toEqual(originalAttempt)
+    expect(db.incResolutions.find(resolution => resolution.attempt_id === flag.attempt_id)).toEqual(originalResolution)
+    expect(db.gradeFlags[flagIndex]?.status).toBe('open')
+  })
 })

@@ -2853,6 +2853,9 @@ export const saaisMswHandlers = [
           }
           if (body.corrected_status) {
             if (body.corrected_status === 'inc' && body.corrected_grade == null) {
+              if (currentAttempt.completion_grade != null || currentAttempt.resolved_at != null || db.incResolutions.some(resolution => resolution.attempt_id === currentAttempt.id && resolution.student_id === currentAttempt.student_id)) {
+                return errorJson(409, 'INC_COMPLETION_EXISTS', 'Use the INC completion correction operation.')
+              }
               const deadline = term?.default_inc_deadline
               if (!deadline) return errorJson(409, 'INC_DEADLINE_UNAVAILABLE', 'The term has no default INC deadline.')
               result.final_grade = null; result.gwa_grade = null; result.completion_grade = null; result.resolved_at = null
