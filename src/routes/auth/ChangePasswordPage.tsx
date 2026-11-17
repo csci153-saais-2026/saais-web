@@ -131,7 +131,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     className="absolute top-1/2 right-1 flex size-[34px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-muted-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    aria-label={visiblePasswords.currentPassword ? 'Hide current password' : 'Show current password'}
+                    aria-label="Show current password"
                     aria-pressed={visiblePasswords.currentPassword}
                     onClick={() => togglePasswordVisibility('currentPassword')}
                   >
@@ -158,7 +158,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     className="absolute top-1/2 right-1 flex size-[34px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-muted-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    aria-label={visiblePasswords.newPassword ? 'Hide new password' : 'Show new password'}
+                    aria-label="Show new password"
                     aria-pressed={visiblePasswords.newPassword}
                     onClick={() => togglePasswordVisibility('newPassword')}
                   >
@@ -182,7 +182,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     className="absolute top-1/2 right-1 flex size-[34px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-muted-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    aria-label={visiblePasswords.confirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
+                    aria-label="Show confirmation password"
                     aria-pressed={visiblePasswords.confirmPassword}
                     onClick={() => togglePasswordVisibility('confirmPassword')}
                   >
