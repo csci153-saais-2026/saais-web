@@ -33,18 +33,6 @@ export function getPortalBreadcrumbs(
     return [{ ...root, to: '/adviser/dashboard' }, { label }]
   }
 
-  if (role === 'dean') {
-    const studentRecord = matchPath('/dean/students/:studentNumber', pathname)
-    if (studentRecord) {
-      const studentNumber = decodeURIComponent(studentRecord.params.studentNumber || '')
-      return [
-        root,
-        { label: 'Students', to: '/dean/students' },
-        { label: studentNumber || 'Student record' },
-      ]
-    }
-  }
-
   const item = navigationConfig[role].items.find(item => matchPath(item.href, pathname))
   return item ? [root, { label: item.label }] : [root]
 }
