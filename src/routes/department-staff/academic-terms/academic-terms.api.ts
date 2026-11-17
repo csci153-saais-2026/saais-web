@@ -12,6 +12,7 @@ export type SchoolTerm = ApiSchema<'SchoolTerm'>
 export type DepartmentTermEncoding = ApiSchema<'DepartmentTermEncodingClosure'>
 export type SchoolTermInsert = ApiSchema<'SchoolTermInsert'>
 export type SchoolTermUpdate = Omit<ApiSchema<'SchoolTermUpdate'>, 'is_locked'>
+export type SchoolTermCloseEncodingRequest = ApiSchema<'SchoolTermCloseEncodingRequest'>
 
 export interface AcademicTermsData {
   readonly terms: readonly SchoolTerm[]
@@ -35,6 +36,21 @@ export async function updateSchoolTerm(
       params: { path: { id } },
       body,
     }),
+  )
+}
+
+export async function closeSchoolTermEncoding(
+  schoolTermId: string,
+  body: SchoolTermCloseEncodingRequest,
+): Promise<SchoolTerm> {
+  return unwrapApiResult<SchoolTerm>(
+    await apiClient.POST(
+      '/functions/v1/school-terms/{school_term_id}/close-encoding',
+      {
+        params: { path: { school_term_id: schoolTermId } },
+        body,
+      },
+    ),
   )
 }
 
