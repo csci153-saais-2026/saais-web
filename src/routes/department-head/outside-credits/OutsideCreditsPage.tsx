@@ -1,5 +1,5 @@
-import { useRef, useState } from "react"
-import { Controller, useForm } from "react-hook-form"
+import { useState } from "react"
+import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { PlusIcon } from "@/components/icons"
@@ -27,25 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "../shared/dh-ui"
-import { useDepartmentToast } from "../shared/dh-utils"
-import { MOCK_OUTSIDE_CREDITS, type OutsideCreditRecord } from "./preview-data"
-import { MOCK_STUDENTS } from "../shared/mock-students"
-
-const STUDENT_OPTIONS = MOCK_STUDENTS.filter((student) =>
-  ["24-1-00124", "24-1-00316", "25-1-00087"].includes(student.id)
-)
-
-const DESTINATION_SLOTS = [
-  { code: "CC 101", title: "Introduction to Computing", units: 3 },
-  { code: "CC 102", title: "Computer Programming 1", units: 3 },
-  { code: "CC 104", title: "Data Structures and Algorithms", units: 3 },
-  { code: "GE 1", title: "Purposive Communication", units: 3 },
-  { code: "GE 4", title: "Mathematics in the Modern World", units: 3 },
-]
-
-type PreviewOutsideCredit = OutsideCreditRecord & { reason?: string }
+import { QueryMessage } from "../shared/dh-ui"
+import { useNotify } from "../shared/notify-context"
+import {
+  useCreditCourse, useOutsideCredits,
+  type CreditStudentOption, type DestinationSlot, type NewOutsideCredit, type OutsideCreditRecord,
+} from "./outside-credits-api"
 
 const outsideCreditSchema = z.object({
   studentId: z.string().min(1, "Choose a student."),
@@ -70,14 +57,18 @@ function normalizeSource(value: string) {
 
 function CreditCourseDialog({
   credits,
+  students,
+  slots,
   onCredit,
   onClose,
 }: {
-  credits: PreviewOutsideCredit[]
-  onCredit: (credit: Omit<PreviewOutsideCredit, "id">) => void
+  credits: OutsideCreditRecord[]
+  students: CreditStudentOption[]
+  slots: DestinationSlot[]
+  onCredit: (credit: NewOutsideCredit) => Promise<void>
   onClose: () => void
 }) {
-  const { control, formState: { errors }, handleSubmit, register, setError } = useForm<CreditForm>({
+  const { control, formState: { errors }, handleSubmit, register, setError, setValue } = useForm<CreditForm>({
     resolver: zodResolver(outsideCreditSchema),
     defaultValues: {
       studentId: "",
@@ -92,14 +83,18 @@ function CreditCourseDialog({
     },
   })
 
-  function creditCourse(values: CreditForm) {
-    const student = STUDENT_OPTIONS.find((option) => option.id === values.studentId)
-    const slot = DESTINATION_SLOTS.find((option) => option.code === values.destinationCode)
+  const selectedStudentId = useWatch({ control, name: "studentId" })
+  const selectedStudent = students.find((option) => option.id === selectedStudentId)
+  const availableSlots = slots.filter((slot) => slot.curriculumId === selectedStudent?.curriculumId)
+
+  async function creditCourse(values: CreditForm) {
+    const student = students.find((option) => option.id === values.studentId)
+    const slot = slots.find((option) => option.id === values.destinationCode && option.curriculumId === student?.curriculumId)
     if (!student) setError("studentId", { message: "Choose a student." }, { shouldFocus: true })
     if (!slot) setError("destinationCode", { message: "Choose a destination curriculum slot." }, { shouldFocus: Boolean(student) })
     if (!student || !slot) return
 
-    const studentCredits = credits.filter((credit) => credit.studentId === student.id)
+    const studentCredits = credits.filter((credit) => credit.studentUuid === student.id)
     if (studentCredits.some((credit) =>
       normalizeSource(credit.originSchool) === normalizeSource(values.originSchool) &&
       normalizeSource(credit.originalCode) === normalizeSource(values.originalCode)
@@ -108,27 +103,27 @@ function CreditCourseDialog({
       return
     }
     if (studentCredits.some((credit) =>
-      credit.targetCurriculum === student.curriculum && credit.equivalentCode === slot.code
+      credit.slotId === slot.id
     )) {
       setError("destinationCode", { message: "This slot already has an outside credit." }, { shouldFocus: true })
       return
     }
 
-    onCredit({
-      studentName: student.name,
-      studentId: student.id,
-      originalCode: values.originalCode,
-      originalTitle: values.originalTitle,
-      originalUnits: Number(values.originalUnits),
-      originSchool: values.originSchool,
-      grade: values.grade,
-      equivalentCode: slot.code,
-      equivalentTitle: slot.title,
-      equivalentUnits: slot.units,
-      targetCurriculum: student.curriculum,
-      entryType: values.entryType,
-      reason: values.reason,
-    })
+    try {
+      await onCredit({
+        studentId: student.id,
+        entryType: values.entryType,
+        originalCode: values.originalCode,
+        originalTitle: values.originalTitle,
+        originalUnits: Number(values.originalUnits),
+        originSchool: values.originSchool,
+        grade: values.grade,
+        slotId: slot.id,
+        reason: values.reason,
+      })
+    } catch (failure) {
+      setError("reason", { message: failure instanceof Error ? failure.message : "The credit could not be saved." })
+    }
   }
 
   return (
@@ -136,7 +131,7 @@ function CreditCourseDialog({
       <DialogHeader>
         <DialogTitle>Credit an outside course</DialogTitle>
         <DialogDescription>
-          Preview a credit for a course from another school or degree program using sample records.
+          Credit a course from another school or degree program.
         </DialogDescription>
       </DialogHeader>
 
@@ -144,14 +139,14 @@ function CreditCourseDialog({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField label="Student" htmlFor="cr-student" error={errors.studentId?.message}>
             <Controller name="studentId" control={control} render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
+              <Select value={field.value} onValueChange={(value) => { field.onChange(value); setValue("destinationCode", "") }}>
                 <SelectTrigger id="cr-student" className="w-full" aria-invalid={Boolean(errors.studentId)} ref={field.ref} onBlur={field.onBlur}>
                   <SelectValue placeholder="Choose a student" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STUDENT_OPTIONS.map((student) => (
+                  {students.map((student) => (
                     <SelectItem key={student.id} value={student.id}>
-                      {student.name} · {student.id}
+                      {student.name} · {student.studentNumber}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -203,8 +198,8 @@ function CreditCourseDialog({
                 <SelectValue placeholder="Choose a destination slot" />
               </SelectTrigger>
               <SelectContent>
-                {DESTINATION_SLOTS.map((slot) => (
-                  <SelectItem key={slot.code} value={slot.code}>
+                {availableSlots.map((slot) => (
+                  <SelectItem key={slot.id} value={slot.id}>
                     {slot.code} · {slot.title} · {slot.units} units
                   </SelectItem>
                 ))}
@@ -227,23 +222,34 @@ function CreditCourseDialog({
 }
 
 export default function OutsideCreditsPage() {
-  const [credits, setCredits] = useState<PreviewOutsideCredit[]>(MOCK_OUTSIDE_CREDITS)
+  const query = useOutsideCredits()
+  const creditCourse = useCreditCourse()
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const nextCreditId = useRef(0)
-  const { message: toastMessage, showToast } = useDepartmentToast()
+  const showToast = useNotify()
+  const credits = query.data?.records ?? []
 
-  function addCredit(credit: Omit<PreviewOutsideCredit, "id">) {
-    const newRecord = { id: `preview-credit-${++nextCreditId.current}`, ...credit }
-    setCredits((prev) => [newRecord, ...prev])
+  async function addCredit(credit: NewOutsideCredit) {
+    const student = query.data?.students.find((item) => item.id === credit.studentId)
+    await creditCourse.mutateAsync(credit)
     setIsAddOpen(false)
-    showToast(`Credited ${credit.originalCode} for ${credit.studentName} in this preview.`)
+    showToast(`Credited ${credit.originalCode} for ${student?.name ?? "the student"}.`)
   }
 
-  const addedCount = credits.length - MOCK_OUTSIDE_CREDITS.length
-  const totalCreditedSubjects = 28 + addedCount
-  const addedUnits = credits
-    .slice(0, addedCount)
-    .reduce((sum, r) => sum + r.equivalentUnits, 0)
+  const totalCreditedSubjects = credits.length
+  const studentCount = new Set(credits.map((credit) => credit.studentUuid)).size
+  const transferees = new Set(credits.filter((credit) => credit.entryType === "Transferee").map((credit) => credit.studentUuid)).size
+  const shiftees = new Set(credits.filter((credit) => credit.entryType === "Shiftee").map((credit) => credit.studentUuid)).size
+  const curriculumCount = new Set(credits.map((credit) => credit.targetCurriculum)).size
+  const recognizedUnits = credits.reduce((sum, credit) => sum + credit.unitsCredited, 0)
+
+  if (!query.data) {
+    return (
+      <div className="space-y-6">
+        <PageHeading title="Outside credits" subtitle="Review credited subjects for shiftees and transferees in your department." />
+        <QueryMessage query={query} label="outside credits" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -264,17 +270,17 @@ export default function OutsideCreditsPage() {
           {
             label: "Credited subjects",
             value: totalCreditedSubjects,
-            note: "AY 2025–2026 · 1st semester",
+            note: "Active outside credits",
           },
           {
             label: "Students with outside credits",
-            value: 9,
-            note: "6 transferees · 3 shiftees",
+            value: studentCount,
+            note: `${transferees} transferee${transferees === 1 ? "" : "s"} · ${shiftees} shiftee${shiftees === 1 ? "" : "s"}`,
           },
           {
             label: "Units recognized",
-            value: 84 + addedUnits,
-            note: "Across BSCS and BSIT curricula",
+            value: recognizedUnits,
+            note: `Across ${curriculumCount} curricul${curriculumCount === 1 ? "um" : "a"}`,
           },
         ]}
       />
@@ -310,7 +316,6 @@ export default function OutsideCreditsPage() {
                 </TableCell>
                 <TableCell label="School / origin" className="text-muted-foreground text-xs">
                   {c.originSchool}
-                  {c.reason && <p className="mt-1 break-words">Reason: {c.reason}</p>}
                 </TableCell>
                 <TableCell label="Grade" className="text-right font-mono font-medium">
                   {c.grade}
@@ -335,21 +340,16 @@ export default function OutsideCreditsPage() {
 
         <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
           <span>
-            Showing {credits.length} sample records of {totalCreditedSubjects} credited subjects
+            {credits.length} credited {credits.length === 1 ? "subject" : "subjects"}
           </span>
           <span>DCST department scope</span>
         </div>
       </Panel>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        {isAddOpen && <CreditCourseDialog credits={credits} onCredit={addCredit} onClose={() => setIsAddOpen(false)} />}
+        {isAddOpen && <CreditCourseDialog credits={credits} students={query.data.students} slots={query.data.slots} onCredit={addCredit} onClose={() => setIsAddOpen(false)} />}
       </Dialog>
 
-      <DepartmentToast message={toastMessage} />
-
-      <SampleFooter>
-        Sample records for presentation · Reference date: 15 August 2025 · Static design
-      </SampleFooter>
     </div>
   )
 }

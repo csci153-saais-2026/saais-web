@@ -1,17 +1,15 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { describe, expect, it } from "vitest"
+import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import OutsideCreditsPage from "./OutsideCreditsPage"
+import { renderDepartmentHead, setupDepartmentHeadMockApi } from "../test-utils"
 
-const INITIAL_COUNT = "Showing 4 sample records of 28 credited subjects"
+setupDepartmentHeadMockApi()
 
-beforeAll(() => {
-  if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
-})
+const INITIAL_COUNT = "1 credited subject"
 
-afterEach(cleanup)
-
-function openDialog() {
-  render(<OutsideCreditsPage />)
+async function openDialog() {
+  renderDepartmentHead(<OutsideCreditsPage />)
+  await screen.findByText(INITIAL_COUNT)
   fireEvent.click(screen.getByRole("button", { name: "Credit a course" }))
   return within(screen.getByRole("dialog", { name: "Credit an outside course" }))
 }
@@ -25,10 +23,10 @@ async function fillCredit(dialog: ReturnType<typeof within>, {
   grade = "1.00",
   code = "CS 205",
   origin = "Western State College",
-  slot = /^CC 104/,
+  slot = /^CSCI 102/,
   units = "3.25",
 } = {}) {
-  await select(dialog, "Student", /Ana Marie Santos/)
+  await select(dialog, "Student", /Sta\. Agata/)
   await select(dialog, "Destination curriculum slot", slot)
   for (const [label, value] of [
     ["Original course code", code],
@@ -48,7 +46,7 @@ function submit(dialog: ReturnType<typeof within>) {
 
 describe("Outside Credits form", () => {
   it("shows errors for missing details, including the destination and reason", async () => {
-    const dialog = openDialog()
+    const dialog = await openDialog()
     fireEvent.change(dialog.getByLabelText("Reason"), { target: { value: "  " } })
     submit(dialog)
 
@@ -66,7 +64,7 @@ describe("Outside Credits form", () => {
   })
 
   it.each(["5.00", "3.01", "1.5"])("rejects grade %s without adding a record", async (grade) => {
-    const dialog = openDialog()
+    const dialog = await openDialog()
     await fillCredit(dialog, { grade })
     submit(dialog)
 
@@ -76,7 +74,7 @@ describe("Outside Credits form", () => {
   })
 
   it.each(["0", "-0.25", "1.1"])("rejects invalid units %s", async (units) => {
-    const dialog = openDialog()
+    const dialog = await openDialog()
     await fillCredit(dialog, { units })
     submit(dialog)
 
@@ -84,30 +82,29 @@ describe("Outside Credits form", () => {
     expect(screen.getByText(INITIAL_COUNT)).toBeTruthy()
   })
 
-  it("rejects duplicate normalized source courses and occupied sample slots", async () => {
-    const dialog = openDialog()
-    await fillCredit(dialog, { code: " cs   101 ", origin: " northern   state college " })
+  it("rejects duplicate normalized source courses and occupied slots", async () => {
+    const dialog = await openDialog()
+    await fillCredit(dialog, { code: " cmsc   11 ", origin: " university  of the philippines  cebu " })
     submit(dialog)
     expect(await dialog.findByText("This student already has credit for this course from this origin.")).toBeTruthy()
 
     fireEvent.change(dialog.getByLabelText("Original course code"), { target: { value: "CS 205" } })
-    await select(dialog, "Destination curriculum slot", /^CC 101/)
+    await select(dialog, "Destination curriculum slot", /^CSCI 101/)
     submit(dialog)
     expect(await dialog.findByText("This slot already has an outside credit.")).toBeTruthy()
     expect(screen.getByText(INITIAL_COUNT)).toBeTruthy()
   })
 
-  it.each(["1.00", "3.00"])("adds a valid sample credit at boundary grade %s", async (grade) => {
-    const dialog = openDialog()
+  it.each(["1.00", "3.00"])("adds a valid credit at boundary grade %s", async (grade) => {
+    const dialog = await openDialog()
     await fillCredit(dialog, { grade })
     submit(dialog)
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
-    const row = screen.getByRole("row", { name: /CS 205 · Algorithms/ })
+    const row = await screen.findByRole("row", { name: /CS 205 · Algorithms/ })
     expect(within(row).getByText(grade)).toBeTruthy()
     expect(within(row).getByText("3.25 units")).toBeTruthy()
-    expect(within(row).getByText("Reason: Equivalent course outcomes")).toBeTruthy()
-    expect(within(row).getByText("CC 104 · Data Structures and Algorithms")).toBeTruthy()
-    expect(screen.getByText("Showing 5 sample records of 29 credited subjects")).toBeTruthy()
+    expect(within(row).getByText(/^CSCI 102 · /)).toBeTruthy()
+    expect(await screen.findByText("2 credited subjects")).toBeTruthy()
   })
 })
