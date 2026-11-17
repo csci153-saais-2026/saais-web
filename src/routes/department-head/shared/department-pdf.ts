@@ -1,3 +1,5 @@
+import type { ApiSchema } from "@/lib/api"
+
 /** A department-head export, described as data so every page shares one PDF layout. */
 export type DepartmentPdfSection = {
   title: string
@@ -18,14 +20,14 @@ export type DepartmentPdfDocument = {
   sections: DepartmentPdfSection[]
 }
 
-const LOGOS = ["bagong-pilipinas.png", "vsu-wordmark.png", "FC.png", "DCST.png"] as const
+const LOGOS = ["bagong-pilipinas.png", "vsu-wordmark.png"] as const
 const GREEN = "#29450e"
 const CREAM = "#f8f6ed"
 
 // The standard PDF fonts only cover Latin-1, so typographic punctuation is flattened.
 const clean = (value: string | number) => String(value)
   .replace(/[–—]/g, "-").replace(/·/g, "|").replace(/→/g, "->")
-  .replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/ /g, " ")
+  .replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replaceAll(String.fromCharCode(160), " ")
 
 async function loadLogo(name: string): Promise<Uint8Array | null> {
   try {
@@ -35,7 +37,7 @@ async function loadLogo(name: string): Promise<Uint8Array | null> {
 }
 
 /** Builds the PDF with the institutional logos from public/. */
-export async function createDepartmentPdf(report: DepartmentPdfDocument): Promise<Blob> {
+export async function createDepartmentPdf(report: DepartmentPdfDocument, department?: ApiSchema<"Department">): Promise<Blob> {
   const { jsPDF } = await import("jspdf")
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
   const logos = await Promise.all(LOGOS.map(loadLogo))
@@ -49,16 +51,18 @@ export async function createDepartmentPdf(report: DepartmentPdfDocument): Promis
   const stripe = () => { pdf.setFillColor(GREEN); pdf.rect(0, 0, pageWidth, 2, "F") }
   const ink = () => pdf.setTextColor("#111111")
 
+  // Same letterhead as the adviser dashboard: two logos, a divider, then the department name.
   function letterhead() {
     stripe()
-    const [bagong, vsu, fc, dcst] = logos
-    if (bagong) pdf.addImage(bagong, "PNG", margin, 9, 18, 17)
-    if (vsu) pdf.addImage(vsu, "PNG", margin + 20, 9, 50, 17)
-    if (dcst) pdf.addImage(dcst, "PNG", pageWidth - margin - 17, 9, 17, 17)
-    if (fc) pdf.addImage(fc, "PNG", pageWidth - margin - 36, 9, 17, 17)
-    pdf.setDrawColor(GREEN); pdf.line(margin, 30, pageWidth - margin, 30)
-    pdf.setTextColor(GREEN); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8)
-    text("Department of Computer Science and Technology", pageWidth / 2, 35, { align: "center" })
+    const [bagong, vsu] = logos
+    if (bagong) pdf.addImage(bagong, "PNG", margin, 10, 22, 21)
+    if (vsu) pdf.addImage(vsu, "PNG", margin + 25, 10, 58, 21)
+    const dividerX = margin + 88
+    pdf.setDrawColor(GREEN); pdf.line(dividerX, 10, dividerX, 31)
+    pdf.setTextColor(GREEN); pdf.setFont("helvetica", "normal"); pdf.setFontSize(9)
+    text(department?.letterhead_prefix ?? "Department", dividerX + 5, 17)
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(12)
+    pdf.text((pdf.splitTextToSize(clean(department?.letterhead_name ?? department?.name ?? "Department unavailable"), pageWidth - margin - dividerX - 5) as string[]), dividerX + 5, 24)
     ink()
   }
 
@@ -130,11 +134,15 @@ export async function createDepartmentPdf(report: DepartmentPdfDocument): Promis
     y += 6
   }
 
-  ensure(32)
+  ensure(36)
   pdf.setDrawColor("#888888"); pdf.line(margin + 10, y + 16, margin + 75, y + 16); pdf.line(pageWidth - margin - 75, y + 16, pageWidth - margin - 10, y + 16)
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(8)
-  text("Prepared by: Department Head", margin + 42.5, y + 21, { align: "center" })
-  text("Noted by: Dean", pageWidth - margin - 42.5, y + 21, { align: "center" })
+  pdf.setFont("helvetica", "bold")
+  if (department?.department_head_name) text(department.department_head_name, margin + 42.5, y + 21, { align: "center" })
+  if (department?.dean_name) text(department.dean_name, pageWidth - margin - 42.5, y + 21, { align: "center" })
+  pdf.setFont("helvetica", "normal")
+  text("Prepared by: Department Head", margin + 42.5, y + 26, { align: "center" })
+  text("Noted by: Dean", pageWidth - margin - 42.5, y + 26, { align: "center" })
 
   const pages = pdf.getNumberOfPages()
   for (let page = 1; page <= pages; page++) {

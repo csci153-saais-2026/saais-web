@@ -38,7 +38,8 @@ async function getAcademicTerms(): Promise<AcademicTermRecord[]> {
     apiClient.GET("/rest/v1/school_term", { params: { query: { select: "*", order: "chronological_key.desc", limit: 100 } } }).then(unwrapApiResult),
     apiClient.GET("/rest/v1/department_term_encoding", { params: { query: { select: "*", limit: 100 } } }).then(unwrapApiResult),
   ])
-  return terms.map((term) => {
+  // Latest term first, whatever order the server returns.
+  return [...terms].sort((a, b) => b.chronological_key - a.chronological_key).map((term) => {
     const closure = closures.find((row) => row.school_term_id === term.id && row.is_closed)
     const closed = Boolean(closure) || term.is_locked
     return {

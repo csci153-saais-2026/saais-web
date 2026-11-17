@@ -77,8 +77,8 @@ export default function AuditLogPage() {
           { header: "Timestamp", className: "whitespace-normal", cell: (event) => <time dateTime={event.timestamp}><span className="block">{dateFormatter.format(new Date(event.timestamp))}</span><span className="block text-xs text-muted-foreground">{timeFormatter.format(new Date(event.timestamp)).toUpperCase()}</span></time> },
           { header: "Person", className: "whitespace-normal", cell: (event) => <span className="min-w-0">{event.person}</span> },
           { header: "Action", cell: (event) => <StatusBadge status={actionStatus[event.action]}>{event.action}</StatusBadge> },
-          { header: "Student / record", className: "whitespace-normal", cell: (event) => <span className="min-w-0 break-words">{event.studentNumber || event.studentName ? [event.studentNumber, event.studentName].filter(Boolean).join(" · ") : "—"}</span> },
-          { header: "Details", className: "whitespace-normal", cell: (event) => <span className="min-w-0 break-words">{event.details}</span> },
+          { header: "Student / record", className: "whitespace-normal", cell: (event) => <span className="min-w-0 wrap-break-word">{event.studentNumber || event.studentName ? [event.studentNumber, event.studentName].filter(Boolean).join(" · ") : "—"}</span> },
+          { header: "Details", className: "whitespace-normal", cell: (event) => <span className="min-w-0 wrap-break-word">{event.details}</span> },
         ]}
         empty={dateError ? "Choose a valid date range to view events." : "No entries match these filters."}
         footer={
