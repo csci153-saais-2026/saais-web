@@ -1,45 +1,69 @@
 import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { DataTablePanel } from "@/components/features/data-table-panel"
 import { PageHeading } from "@/components/features/page-heading"
-import { SampleFooter } from "@/components/features/sample-footer"
+import type { ApiSchema } from "@/lib/api"
+import { getDeanAuditLogEntries } from "@/routes/dean/api/dean.api"
 import { DeanAuditActionPill } from "@/routes/dean/components/DeanAuditActionPill"
+import { DeanQueryState } from "@/routes/dean/components/DeanQueryState"
 import { FacultyAuditFilters } from "@/routes/dean/components/FacultyAuditFilters"
-import { useDeanAudit } from "@/routes/dean/context/dean-audit-context"
+import type { DeanAuditAction, DeanAuditEntry } from "@/routes/dean/types"
 
-const MONTHS: readonly string[] = [
-  "jan",
-  "feb",
-  "mar",
-  "apr",
-  "may",
-  "jun",
-  "jul",
-  "aug",
-  "sep",
-  "oct",
-  "nov",
-  "dec",
-]
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Manila",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+})
 
-function extractAuditDay(timestamp: string): string {
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(timestamp)
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+function mapCategoryToAction(category: string): DeanAuditAction {
+  if (category === "change" || category === "grade_change") return "Change"
+  if (category === "auth" || category === "login") return "Sign-in"
+  return "View"
+}
 
-  const named = /^(\d{1,2}) ([A-Za-z]{3}) (\d{4})/.exec(timestamp)
-  if (!named) return ""
+function toDeanAuditEntry(entry: ApiSchema<"AuditLogEntry">): DeanAuditEntry & { dayKey: string } {
+  const created = new Date(entry.created_at)
+  const dayKey = Number.isNaN(created.getTime())
+    ? ""
+    : created.toISOString().slice(0, 10)
+  const studentDisplay =
+    entry.student_number || entry.student_name
+      ? [entry.student_number, entry.student_name].filter(Boolean).join(" · ")
+      : "—"
 
-  const monthIdx = MONTHS.indexOf(named[2].toLowerCase())
-  if (monthIdx < 0) return ""
-
-  return `${named[3]}-${String(monthIdx + 1).padStart(2, "0")}-${named[1].padStart(2, "0")}`
+  return {
+    id: entry.id,
+    timestamp: Number.isNaN(created.getTime())
+      ? entry.created_at
+      : dateFormatter.format(created),
+    actor: entry.actor_name,
+    action: mapCategoryToAction(entry.action_category),
+    student: studentDisplay,
+    studentId: entry.student_id,
+    studentNumber: entry.student_number,
+    details: entry.details_summary,
+    dayKey,
+  }
 }
 
 export default function DeanAuditLogPage() {
-  const { entries } = useDeanAudit()
   const [person, setPerson] = useState("")
   const [student, setStudent] = useState("")
   const [action, setAction] = useState("all")
   const [fromDate, setFromDate] = useState("")
+
+  const auditQuery = useQuery({
+    queryKey: ["dean", "audit-log"],
+    queryFn: getDeanAuditLogEntries,
+  })
+
+  const entries = useMemo(
+    () => (auditQuery.data ?? []).map(toDeanAuditEntry),
+    [auditQuery.data],
+  )
 
   const filteredEntries = useMemo(() => {
     const personQuery = person.trim().toLowerCase()
@@ -51,8 +75,7 @@ export default function DeanAuditLogPage() {
       const matchesStudent =
         studentQuery === "" || entry.student.toLowerCase().includes(studentQuery)
       const matchesAction = action === "all" || entry.action === action
-      const matchesDate =
-        fromDate === "" || extractAuditDay(entry.timestamp) >= fromDate
+      const matchesDate = fromDate === "" || entry.dayKey >= fromDate
 
       return matchesPerson && matchesStudent && matchesAction && matchesDate
     })
@@ -72,53 +95,61 @@ export default function DeanAuditLogPage() {
         subtitle="Immutable record of faculty report exports, drill-downs, and student record views."
       />
 
-      <FacultyAuditFilters
-        person={person}
-        onPersonChange={setPerson}
-        student={student}
-        onStudentChange={setStudent}
-        action={action}
-        onActionChange={setAction}
-        fromDate={fromDate}
-        onFromDateChange={setFromDate}
-        onReset={handleReset}
-      />
-
-      <DataTablePanel
-        title="Audit events"
-        description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
-        rows={filteredEntries}
-        rowKey={(row) => row.id}
-        empty="No audit records match these filters."
-        columns={[
-          {
-            header: "When",
-            cell: (row) => (
-              <span className="font-mono text-xs text-muted-foreground">
-                {row.timestamp}
-              </span>
-            ),
-          },
-          {
-            header: "Who",
-            cell: (row) => <span className="font-medium">{row.actor}</span>,
-          },
-          {
-            header: "Action",
-            cell: (row) => <DeanAuditActionPill action={row.action} />,
-          },
-          {
-            header: "Student",
-            cell: (row) => row.student,
-          },
-          {
-            header: "Details",
-            cell: (row) => row.details,
-          },
-        ]}
-      />
-
-      <SampleFooter>Fictional sample records · Reference date: 28 October 2026</SampleFooter>
+      {!auditQuery.data ? (
+        <DeanQueryState
+          isLoading={auditQuery.isLoading}
+          isError={auditQuery.isError}
+          label="the audit log"
+          onRetry={() => void auditQuery.refetch()}
+        />
+      ) : (
+        <DataTablePanel
+          title="Audit events"
+          description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
+          toolbar={
+            <FacultyAuditFilters
+              person={person}
+              onPersonChange={setPerson}
+              student={student}
+              onStudentChange={setStudent}
+              action={action}
+              onActionChange={setAction}
+              fromDate={fromDate}
+              onFromDateChange={setFromDate}
+              onReset={handleReset}
+            />
+          }
+          rows={filteredEntries}
+          rowKey={(row) => row.id}
+          empty="No audit records match these filters."
+          columns={[
+            {
+              header: "When",
+              cell: (row) => (
+                <span className="font-mono text-xs text-muted-foreground">
+                  {row.timestamp}
+                </span>
+              ),
+            },
+            {
+              header: "Who",
+              cell: (row) => <span className="font-medium">{row.actor}</span>,
+            },
+            {
+              header: "Action",
+              cell: (row) => <DeanAuditActionPill action={row.action} />,
+            },
+            {
+              header: "Student",
+              cell: (row) => row.student,
+            },
+            {
+              header: "Details",
+              cell: (row) => row.details,
+            },
+          ]}
+        />
+      )}
     </div>
   )
 }
