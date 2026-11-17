@@ -10,9 +10,7 @@ export function computeGradeDistribution(
   attempts: ApiSchema<"AttemptResult">[],
   studentIds: Set<string>,
 ): GradeBand[] {
-  const scoped = attempts.filter(
-    (a) => studentIds.has(a.student_id) && !a.is_superseded,
-  )
+  const scoped = attempts.filter((a) => studentIds.has(a.student_id))
   const total = scoped.length
   if (total === 0) {
     return [

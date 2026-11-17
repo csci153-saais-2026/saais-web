@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query"
 import { DataTablePanel } from "@/components/features/data-table-panel"
 import { StatusBadge, type Status } from "@/components/ui/status-badge"
 import type { ApiSchema } from "@/lib/api"
-import { getDeanCourses, getDeanStudentGrades } from "@/routes/dean/api/dean.api"
+import {
+  getDeanCourseOfferings,
+  getDeanCourses,
+  getDeanStudentGrades,
+} from "@/routes/dean/api/dean.api"
 import { DeanQueryState } from "@/routes/dean/components/DeanQueryState"
 import type { DeanStudentSummary } from "@/routes/dean/types"
 
@@ -10,27 +14,21 @@ const GRADE_STATUS_MAP: Record<ApiSchema<"AttemptResult">["effective_status"], S
   passed: "passed",
   failed: "failed",
   inc: "inc",
-  inc_lapsed: "inc-lapsed",
   currently_enrolled: "enrolled",
   dr: "dr",
   na: "na",
-}
-
-const TERM_TYPE_LABEL: Record<ApiSchema<"TermType">, string> = {
-  "1st": "1st Sem",
-  "2nd": "2nd Sem",
-  midyear: "Midyear",
 }
 
 export function DeanStudentGradesTab({ student }: { student: DeanStudentSummary }) {
   const gradesQuery = useQuery({
     queryKey: ["dean", "student-grades", student.studentId],
     queryFn: async () => {
-      const [termGrades, courses] = await Promise.all([
+      const [termGrades, courses, offerings] = await Promise.all([
         getDeanStudentGrades(student.studentId),
         getDeanCourses(),
+        getDeanCourseOfferings(),
       ])
-      return { termGrades, courses }
+      return { termGrades, courses, offerings }
     },
   })
 
@@ -46,19 +44,24 @@ export function DeanStudentGradesTab({ student }: { student: DeanStudentSummary 
   }
 
   const courseById = new Map(gradesQuery.data.courses.map((c) => [c.id, c]))
+  const offeringById = new Map(gradesQuery.data.offerings.map((o) => [o.id, o]))
+
   const rows = gradesQuery.data.termGrades.flatMap((term) => {
-    const termLabel = `${TERM_TYPE_LABEL[term.term_type]} AY ${term.school_year}`
+    const termLabel = `${term.term_type} AY ${term.school_year}`
     return term.attempts.map((attempt) => {
-      const course = courseById.get(attempt.course_id)
+      const offering = offeringById.get(attempt.course_offering_id)
+      const course = offering ? courseById.get(offering.course_id) : undefined
       const grade = attempt.completion_grade ?? attempt.final_grade
       return {
-        id: attempt.attempt_id,
+        id: attempt.id,
         term: termLabel,
-        code: course?.code ?? attempt.course_id,
-        title: course?.title ?? "Course",
+        code: course?.code ?? "Course",
+        title: course?.title ?? "Enrolled course",
         units: attempt.units_attempted,
         finalGrade: grade != null ? grade.toFixed(2) : "—",
-        status: GRADE_STATUS_MAP[attempt.effective_status],
+        status: attempt.is_lapsed_inc
+          ? ("inc-lapsed" as const)
+          : GRADE_STATUS_MAP[attempt.effective_status],
       }
     })
   })

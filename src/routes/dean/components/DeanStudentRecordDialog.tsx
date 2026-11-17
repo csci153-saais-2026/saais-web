@@ -38,7 +38,6 @@ export function DeanStudentRecordDialog({
 
   useEffect(() => {
     if (!student) return
-    setActiveTab("checklist")
     void postDeanAuditViewEvent({
       event_type: "student_record_viewed",
       student_id: student.studentId,

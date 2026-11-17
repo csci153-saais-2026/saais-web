@@ -142,6 +142,7 @@ export default function DeanStudentsPage() {
       )}
 
       <DeanStudentRecordDialog
+        key={selectedStudent?.studentId ?? "closed"}
         student={selectedStudent}
         onClose={() => setSelectedStudent(null)}
       />

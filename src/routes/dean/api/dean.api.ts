@@ -45,6 +45,10 @@ export async function getDeanCourses(): Promise<ApiSchema<"Course">[]> {
   return unwrapApiResult(await apiClient.GET("/rest/v1/course"))
 }
 
+export async function getDeanCourseOfferings(): Promise<ApiSchema<"CourseOffering">[]> {
+  return unwrapApiResult(await apiClient.GET("/rest/v1/course_offering"))
+}
+
 export async function getDeanAttemptResults(): Promise<ApiSchema<"AttemptResult">[]> {
   return unwrapApiResult(await apiClient.GET("/rest/v1/attempt_result"))
 }

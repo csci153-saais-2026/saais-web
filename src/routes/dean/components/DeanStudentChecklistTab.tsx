@@ -141,7 +141,7 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
 
           <p className="text-sm text-muted-foreground">
             {selectedCourse
-              ? selectedCourse.is_active
+              ? selectedCourse.status === "active"
                 ? "Active catalog course in this student's curriculum."
                 : "Archived catalog course."
               : "No additional catalog metadata is recorded for this requirement."}

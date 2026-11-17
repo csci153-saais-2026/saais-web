@@ -103,10 +103,8 @@ export default function DeanAuditLogPage() {
           onRetry={() => void auditQuery.refetch()}
         />
       ) : (
-        <DataTablePanel
-          title="Audit events"
-          description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
-          toolbar={
+        <div className="space-y-4">
+          <div className="rounded-md border border-border bg-card">
             <FacultyAuditFilters
               person={person}
               onPersonChange={setPerson}
@@ -118,37 +116,42 @@ export default function DeanAuditLogPage() {
               onFromDateChange={setFromDate}
               onReset={handleReset}
             />
-          }
-          rows={filteredEntries}
-          rowKey={(row) => row.id}
-          empty="No audit records match these filters."
-          columns={[
-            {
-              header: "When",
-              cell: (row) => (
-                <span className="font-mono text-xs text-muted-foreground">
-                  {row.timestamp}
-                </span>
-              ),
-            },
-            {
-              header: "Who",
-              cell: (row) => <span className="font-medium">{row.actor}</span>,
-            },
-            {
-              header: "Action",
-              cell: (row) => <DeanAuditActionPill action={row.action} />,
-            },
-            {
-              header: "Student",
-              cell: (row) => row.student,
-            },
-            {
-              header: "Details",
-              cell: (row) => row.details,
-            },
-          ]}
-        />
+          </div>
+
+          <DataTablePanel
+            title="Audit events"
+            description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
+            rows={filteredEntries}
+            rowKey={(row) => row.id}
+            empty="No audit records match these filters."
+            columns={[
+              {
+                header: "When",
+                cell: (row) => (
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {row.timestamp}
+                  </span>
+                ),
+              },
+              {
+                header: "Who",
+                cell: (row) => <span className="font-medium">{row.actor}</span>,
+              },
+              {
+                header: "Action",
+                cell: (row) => <DeanAuditActionPill action={row.action} />,
+              },
+              {
+                header: "Student",
+                cell: (row) => row.student,
+              },
+              {
+                header: "Details",
+                cell: (row) => row.details,
+              },
+            ]}
+          />
+        </div>
       )}
     </div>
   )
