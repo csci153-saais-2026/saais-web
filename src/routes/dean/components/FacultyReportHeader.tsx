@@ -8,19 +8,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DEPARTMENT_OPTIONS } from "@/routes/dean/data/faculty-reports"
 import type { DepartmentFilter } from "@/routes/dean/types"
 
 export function FacultyReportHeader({
   department,
+  departments = ["All departments"],
   onDepartmentChange,
   onExportPdf,
   onExportCsv,
+  disabled = false,
 }: {
   department: DepartmentFilter
+  departments?: string[]
   onDepartmentChange: (department: DepartmentFilter) => void
   onExportPdf: () => void
   onExportCsv?: () => void
+  disabled?: boolean
 }) {
   const scopeMeta =
     department === "All departments"
@@ -35,13 +38,14 @@ export function FacultyReportHeader({
         <div className="flex flex-wrap items-center gap-2">
           <Select
             value={department}
-            onValueChange={(value) => onDepartmentChange(value as DepartmentFilter)}
+            onValueChange={onDepartmentChange}
+            disabled={disabled}
           >
-            <SelectTrigger aria-label="Department" className="w-[180px] bg-card">
+            <SelectTrigger aria-label="Department" className="w-[200px] bg-card">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>
-              {DEPARTMENT_OPTIONS.map((option) => (
+              {departments.map((option) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>
@@ -50,13 +54,13 @@ export function FacultyReportHeader({
           </Select>
 
           {onExportCsv && (
-            <Button type="button" variant="outline" onClick={onExportCsv}>
+            <Button type="button" variant="outline" onClick={onExportCsv} disabled={disabled}>
               <DownloadIcon />
               Export CSV
             </Button>
           )}
 
-          <Button type="button" variant="outline" onClick={onExportPdf}>
+          <Button type="button" variant="outline" onClick={onExportPdf} disabled={disabled}>
             <DownloadIcon />
             Download PDF
           </Button>
@@ -65,4 +69,3 @@ export function FacultyReportHeader({
     />
   )
 }
-
