@@ -549,6 +549,46 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(200)
   })
 
+  it('keeps a department closure note separate from institutional term metadata', async () => {
+    const db = getMockDatabase()
+    const term = db.schoolTerms.find(
+      (item) => item.id === MOCK_IDS.term2026Sem1Open,
+    )!
+    const originalLock = term.is_locked
+    const originalInstitutionalNote = term.closure_note
+    const note = 'Department grade review is complete.'
+    loginAsMockPersona('department_staff')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+    const result = await client.POST(
+      '/functions/v1/school-terms/{school_term_id}/close-encoding',
+      {
+        params: { path: { school_term_id: term.id } },
+        body: {
+          scope: 'department',
+          department_id: MOCK_IDS.deptDcst,
+          closure_note: note,
+        },
+      },
+    )
+
+    expect(result.response.status).toBe(200)
+    const savedTerm = db.schoolTerms.find((item) => item.id === term.id)!
+    expect(savedTerm.is_locked).toBe(originalLock)
+    expect(savedTerm.closure_note).toBe(originalInstitutionalNote)
+    expect(
+      db.departmentTermEncodings.find(
+        (closure) =>
+          closure.school_term_id === term.id &&
+          closure.department_id === MOCK_IDS.deptDcst,
+      )?.closure_note,
+    ).toBe(note)
+  })
+
   it('resolves named and shorthand mock persona tokens accurately', () => {
     expect(
       resolveMockPersonaFromAuthHeader(`Bearer ${MOCK_PERSONAS.adviser.token}`)
