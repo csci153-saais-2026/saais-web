@@ -1,15 +1,22 @@
-import * as React from "react"
-import { Panel } from "@/components/features/panel"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { Panel } from "@/components/features/panel";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export type Column<T> = {
-  header: string
-  cell: (row: T) => React.ReactNode
-  className?: string
+  header: string;
+  cell: (row: T) => React.ReactNode;
+  className?: string;
   /** Right-align numeric columns. */
-  numeric?: boolean
-}
+  numeric?: boolean;
+};
 
 /**
  * Panel wrapping an edge-to-edge data table with cream header row. Below 768px each row
@@ -26,27 +33,27 @@ function DataTablePanel<T>({
   empty = "No records match. Try another search or filter.",
   footer,
 }: {
-  title: string
-  description?: string
-  action?: React.ReactNode
-  columns: Column<T>[]
-  rows: T[]
-  rowKey: (row: T) => string
-  rowProps?: (row: T) => React.ComponentProps<'tr'>
-  empty?: string
-  footer?: React.ReactNode
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  columns: Column<T>[];
+  rows: T[];
+  rowKey: (row: T) => string;
+  rowProps?: (row: T) => React.ComponentProps<"tr">;
+  empty?: string;
+  footer?: React.ReactNode;
 }) {
   return (
     <Panel title={title} description={description} action={action} flush>
-     <Table responsive>
+      <Table responsive>
         <TableHeader className="bg-secondary">
           <TableRow>
             {columns.map((c) => (
               <TableHead
                 key={c.header}
                 className={cn(
-                  "text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase",
-                  c.numeric && "text-right"
+                  "text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase",
+                  c.numeric && "text-right",
                 )}
               >
                 {c.header}
@@ -61,7 +68,11 @@ function DataTablePanel<T>({
                 <TableCell
                   key={c.header}
                   label={c.header}
-                  className={cn("py-2.5 text-[13.5px]", c.numeric && "text-right font-mono", c.className)}
+                  className={cn(
+                    "py-2.5 text-[13.5px]",
+                    c.numeric && "text-right font-mono",
+                    c.className,
+                  )}
                 >
                   {c.cell(row)}
                 </TableCell>
@@ -70,10 +81,18 @@ function DataTablePanel<T>({
           ))}
         </TableBody>
       </Table>
-      {rows.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted-foreground">{empty}</p>}
-      {footer && <div className="border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">{footer}</div>}
+      {rows.length === 0 && (
+        <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+          {empty}
+        </p>
+      )}
+      {footer && (
+        <div className="border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
+          {footer}
+        </div>
+      )}
     </Panel>
-  )
+  );
 }
 
-export { DataTablePanel }
+export { DataTablePanel };

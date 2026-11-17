@@ -16,10 +16,10 @@ it('filters the selected student’s audit entries by search and actor', async (
     { id: '2', student_id: 'student-one', actor_id: 'adviser-one', actor_role: 'adviser', actor_name: 'Adviser', action: 'note.created', details_summary: 'Added note', created_at: '2026-01-02T00:00:00Z' },
   ] as ApiSchema<'AuditLogEntry'>[])
   render(<MemoryRouter initialEntries={['/advisee/student-one/history']}><Routes><Route path="/advisee/:id/history" element={<AdviseeHistory />} /></Routes></MemoryRouter>)
-  expect(await screen.findByText('note.created')).toBeTruthy()
+  expect(await screen.findByText('Note created')).toBeTruthy()
   expect(getStudentHistory).toHaveBeenCalledWith('student-one')
   fireEvent.change(screen.getByLabelText('Search the audit log'), { target: { value: 'note' } })
-  expect(screen.queryByText('plan.viewed')).toBeNull()
+  expect(screen.queryByText('Plan viewed')).toBeNull()
   fireEvent.change(screen.getByLabelText('Filter by actor'), { target: { value: 'student' } })
-  expect(screen.queryByText('note.created')).toBeNull()
+  expect(screen.queryByText('Note created')).toBeNull()
 })
