@@ -8,6 +8,7 @@ const StudentsPage = lazy(() => import('./students/StudentsPage'))
 const AdviserAssignmentsPage = lazy(() => import('./adviser-assignments/AdviserAssignmentsPage'))
 const AcademicTermsPage = lazy(() => import('./academic-terms/AcademicTermsPage'))
 const CurriculaPage = lazy(() => import('./curricula/CurriculaPage'))
+const CourseCatalogPage = lazy(() => import('./course-catalog/CourseCatalogPage'))
 
 function DepartmentStaffContent() {
   const scope = useStaffScope()
@@ -93,6 +94,7 @@ function DepartmentStaffContent() {
                 <Route path="adviser-assignments" element={<AdviserAssignmentsPage />} />
                 <Route path="academic-terms" element={<AcademicTermsPage />} />
                 <Route path="curricula" element={<CurriculaPage />} />
+                <Route path="course-catalog" element={<CourseCatalogPage />} />
                 <Route
                   path="*"
                   element={
