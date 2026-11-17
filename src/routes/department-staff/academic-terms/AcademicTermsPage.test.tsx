@@ -5,8 +5,9 @@ import { ApiClientError, normalizeApiError } from '@/lib/api'
 import type { AcademicTermsData } from './academic-terms.api'
 import AcademicTermsPage from './AcademicTermsPage'
 
-const { useAcademicTerms, createMutation, updateMutation } = vi.hoisted(() => ({
+const { useAcademicTerms, useStaffScope, createMutation, updateMutation } = vi.hoisted(() => ({
   useAcademicTerms: vi.fn(),
+  useStaffScope: vi.fn(),
   createMutation: {
     mutateAsync: vi.fn(),
     isPending: false,
@@ -27,6 +28,28 @@ vi.mock('@/hooks/use-academic-terms', () => ({
   useUpdateSchoolTerm: () => updateMutation,
 }))
 
+vi.mock('@/routes/department-staff/shared/use-staff-scope', () => ({
+  useStaffScope: () => useStaffScope(),
+}))
+
+vi.mock('./EncodingClosureDialog', () => ({
+  EncodingClosureDialog: ({
+    term,
+    onClose,
+    onComplete,
+  }: {
+    term: AcademicTermsData['terms'][number]
+    onClose: () => void
+    onComplete: () => void
+  }) => (
+    <div role="dialog" aria-label="Close department grade encoding">
+      <span>{term.school_year}</span>
+      <button type="button" onClick={onClose}>Cancel closure</button>
+      <button type="button" onClick={onComplete}>Complete closure</button>
+    </div>
+  ),
+}))
+
 vi.mock('./OpenedSubjectsPanel', () => ({
   OpenedSubjectsPanel: () => <div data-testid="opened-subjects-panel" />,
 }))
@@ -35,6 +58,18 @@ afterEach(() => {
   cleanup()
   vi.clearAllMocks()
 })
+
+function resetScope() {
+  useStaffScope.mockReturnValue({
+    status: 'ready',
+    departmentIds: ['department-1'],
+    selectedDepartmentId: 'department-1',
+    departmentId: 'department-1',
+    profileId: 'staff-1',
+    canQuery: true,
+    selectDepartment: vi.fn(),
+  })
+}
 
 const lockedTerm: AcademicTermsData['terms'][number] = {
   id: 'term-1',
@@ -67,6 +102,7 @@ function success(data: AcademicTermsData): Partial<UseQueryResult<AcademicTermsD
 
 describe('AcademicTermsPage', () => {
   it('opens create and edit forms from the terms page', () => {
+    resetScope()
     useAcademicTerms.mockReturnValue(
       success({ terms: [lockedTerm], departmentClosures: [] }),
     )
@@ -90,6 +126,7 @@ describe('AcademicTermsPage', () => {
   })
 
   it('shows institutional lock separately from this department closure and exposes read-only details', async () => {
+    resetScope()
     useAcademicTerms.mockReturnValue(
       success({
         terms: [lockedTerm],
@@ -128,11 +165,16 @@ describe('AcademicTermsPage', () => {
           element.textContent?.includes('Recorded by Institution Admin on') === true,
       ),
     ).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /close encoding/i })).toBeNull()
+    expect(
+      screen.getByRole('button', {
+        name: 'Close encoding for 2025 - 2026 2nd Semester',
+      }),
+    ).toBeTruthy()
     expect(screen.queryByRole('button', { name: /add a term/i })).toBeNull()
   })
 
   it('shows department closure actor and time in read-only term details', () => {
+    resetScope()
     useAcademicTerms.mockReturnValue(
       success({
         terms: [lockedTerm],
@@ -161,9 +203,11 @@ describe('AcademicTermsPage', () => {
       ),
     ).toBeTruthy()
     expect(screen.queryByRole('button', { name: /reopen encoding/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /close encoding for/i })).toBeNull()
   })
 
   it('does not infer an open state when no department closure record exists', () => {
+    resetScope()
     useAcademicTerms.mockReturnValue(
       success({ terms: [lockedTerm], departmentClosures: [] }),
     )
@@ -172,9 +216,37 @@ describe('AcademicTermsPage', () => {
 
     expect(screen.getAllByText('No department-specific record')).toHaveLength(2)
     expect(screen.queryByText('Open')).toBeNull()
+    expect(
+      screen.getByRole('button', {
+        name: 'Close encoding for 2025 - 2026 2nd Semester',
+      }),
+    ).toBeTruthy()
+  })
+
+  it('opens and dismisses a close-encoding dialog for the selected term', () => {
+    resetScope()
+    useAcademicTerms.mockReturnValue(
+      success({ terms: [lockedTerm], departmentClosures: [] }),
+    )
+
+    render(<AcademicTermsPage />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Close encoding for 2025 - 2026 2nd Semester',
+      }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Close department grade encoding' }),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel closure' }))
+    expect(
+      screen.queryByRole('dialog', { name: 'Close department grade encoding' }),
+    ).toBeNull()
   })
 
   it('shows an explicit empty state when the service returns no terms', () => {
+    resetScope()
     useAcademicTerms.mockReturnValue(success({ terms: [], departmentClosures: [] }))
 
     render(<AcademicTermsPage />)
@@ -183,6 +255,7 @@ describe('AcademicTermsPage', () => {
   })
 
   it('shows a denied read error and offers a retry instead of an empty state', () => {
+    resetScope()
     const refetch = vi.fn()
     useAcademicTerms.mockReturnValue({
       isPending: false,
