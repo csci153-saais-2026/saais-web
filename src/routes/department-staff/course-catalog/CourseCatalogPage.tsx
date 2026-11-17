@@ -259,6 +259,7 @@ export default function CourseCatalogPage() {
         />
       )}
       <CoursePrerequisitesDialog
+        key={prerequisiteCourse?.id ?? 'no-course'}
         course={prerequisiteCourse}
         open={prerequisiteDialogOpen}
         onReturnFocus={() => prerequisiteTrigger.current?.focus()}

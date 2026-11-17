@@ -30,8 +30,33 @@ export type CatalogPrerequisiteType = 'strict' | 'co_requisite' | 'recommended'
 
 export interface CatalogPrerequisiteView {
   id: string
+  prerequisiteCourseId: string
   type: CatalogPrerequisiteType
   course: CatalogCourse | null
+}
+
+export async function createCatalogPrerequisite(body: ApiSchema<'PrerequisiteInsert'>): Promise<ApiSchema<'Prerequisite'>> {
+  return unwrapApiResult<ApiSchema<'Prerequisite'>>(await apiClient.POST('/functions/v1/catalog/prerequisite', { body }))
+}
+
+export async function deleteCatalogPrerequisite(id: string): Promise<void> {
+  unwrapApiResult(await apiClient.DELETE('/functions/v1/catalog/prerequisite/{id}', { params: { path: { id } } }))
+}
+
+/** Reads a bounded set of candidate courses only from the administering department. */
+export async function listDepartmentPrerequisiteCandidates(departmentId: string, signal?: AbortSignal): Promise<CatalogCourse[]> {
+  const result = await apiClient.GET('/rest/v1/course', {
+    params: { query: {
+      department_id: postgrestFilter.eq(departmentId),
+      select: 'id,department_id,code,title,units,status,repeatable_type,is_elective,category',
+      order: 'code.asc,id.asc',
+      limit: READ_LIMIT,
+      offset: 0,
+    } },
+    signal,
+  })
+  return completeRead<CatalogCourse>(result, 'Department course references')
+    .filter(course => course.department_id === departmentId)
 }
 
 export async function createCatalogCourse(body: ApiSchema<'CourseInsert'>): Promise<CatalogCourse> {
@@ -71,7 +96,7 @@ export async function listCatalogPrerequisites(courseId: string, signal?: AbortS
   const courseIds = [...new Set(validRelationships
     .map(row => row.prerequisite_course_id)
     .filter(id => typeof id === 'string' && id.length > 0))]
-  if (!courseIds.length) return validRelationships.map(row => ({ id: row.id, type: row.type, course: null }))
+  if (!courseIds.length) return validRelationships.map(row => ({ id: row.id, prerequisiteCourseId: row.prerequisite_course_id, type: row.type, course: null }))
 
   const coursesResult = await apiClient.GET('/rest/v1/course', {
     params: { query: {
@@ -87,6 +112,7 @@ export async function listCatalogPrerequisites(courseId: string, signal?: AbortS
   const coursesById = new Map(courses.map(course => [course.id, course]))
   return validRelationships.map(row => ({
     id: row.id,
+    prerequisiteCourseId: row.prerequisite_course_id,
     type: row.type,
     course: coursesById.get(row.prerequisite_course_id) ?? null,
   }))
