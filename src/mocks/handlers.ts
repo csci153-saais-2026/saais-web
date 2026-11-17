@@ -336,6 +336,19 @@ function applyPostgrestQuery<T extends object>(
     })
   })
 
+  // Bounded course search shape published by listCourses: search code OR title.
+  const courseSearch = url.searchParams.get('or')
+  if (courseSearch) {
+    const match = /^\(code\.ilike\.(.+),title\.ilike\.(.+)\)$/.exec(courseSearch)
+    if (match?.[1] && match[2]) {
+      filtered = filtered.filter((row) => {
+        const record = row as Record<string, unknown>
+        return matchesPostgrestOperator(record.code, match[1]!) ||
+          matchesPostgrestOperator(record.title, match[2]!)
+      })
+    }
+  }
+
   const andParam = url.searchParams.get('and')
   if (andParam) {
     const m =
