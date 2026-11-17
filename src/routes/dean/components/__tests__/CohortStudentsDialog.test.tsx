@@ -20,8 +20,8 @@ describe("CohortStudentsDialog", () => {
           meanGwa: "2.02",
         }}
         students={[
-          { studentNumber: "23-1-01234", name: "Ana Reyes", gwa: "1.72" },
-          { studentNumber: "23-1-01301", name: "Ben Lopez", gwa: "2.10" },
+          { studentId: "stu-1", studentNumber: "23-1-01234", name: "Ana Reyes", gwa: "1.72" },
+          { studentId: "stu-2", studentNumber: "23-1-01301", name: "Ben Lopez", gwa: "2.10" },
         ]}
         open
         onOpenChange={onOpenChange}
@@ -39,4 +39,3 @@ describe("CohortStudentsDialog", () => {
     expect(onOpenStudent).toHaveBeenCalledWith("23-1-01234")
   })
 })
-

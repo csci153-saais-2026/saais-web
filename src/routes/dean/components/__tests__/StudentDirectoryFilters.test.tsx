@@ -7,7 +7,7 @@ describe("StudentDirectoryFilters", () => {
     cleanup()
   })
 
-  it("disables Clear when no filters are active and calls onReset when filters are set", () => {
+  it("disables Reset filters when no filters are active and calls onReset when filters are set", () => {
     const onReset = vi.fn()
     const onQueryChange = vi.fn()
 
@@ -25,10 +25,10 @@ describe("StudentDirectoryFilters", () => {
       />,
     )
 
-    const clearButton = screen.getByRole("button", { name: "Clear" }) as HTMLButtonElement
-    expect(clearButton.disabled).toBe(true)
+    const resetButton = screen.getByRole("button", { name: "Reset filters" }) as HTMLButtonElement
+    expect(resetButton.disabled).toBe(true)
 
-    fireEvent.change(screen.getByPlaceholderText("Name or student number"), {
+    fireEvent.change(screen.getByPlaceholderText("Search by student name or ID"), {
       target: { value: "Ana" },
     })
     expect(onQueryChange).toHaveBeenCalledWith("Ana")
@@ -47,9 +47,8 @@ describe("StudentDirectoryFilters", () => {
       />,
     )
 
-    expect(clearButton.disabled).toBe(false)
-    fireEvent.click(clearButton)
+    expect(resetButton.disabled).toBe(false)
+    fireEvent.click(resetButton)
     expect(onReset).toHaveBeenCalledTimes(1)
   })
 })
-

@@ -7,7 +7,7 @@ describe("FacultyAuditFilters", () => {
     cleanup()
   })
 
-  it("handles person, student, and date inputs and enables Clear", () => {
+  it("handles person, student, and date inputs and enables Reset filters", () => {
     const onPersonChange = vi.fn()
     const onStudentChange = vi.fn()
     const onFromDateChange = vi.fn()
@@ -37,10 +37,9 @@ describe("FacultyAuditFilters", () => {
     })
     expect(onFromDateChange).toHaveBeenCalledWith("2026-10-14")
 
-    const clearButton = screen.getByRole("button", { name: "Clear" }) as HTMLButtonElement
-    expect(clearButton.disabled).toBe(false)
-    fireEvent.click(clearButton)
+    const resetButton = screen.getByRole("button", { name: "Reset filters" }) as HTMLButtonElement
+    expect(resetButton.disabled).toBe(false)
+    fireEvent.click(resetButton)
     expect(onReset).toHaveBeenCalledTimes(1)
   })
 })
-

@@ -27,7 +27,12 @@ const STATUS_MAP: Record<ApiSchema<"ChecklistSlotResult">["status"], Status> = {
   na: "na",
 }
 
-function buildChecklistTerms(data: ApiSchema<"StudentChecklistResponse">) {
+function buildChecklistTerms(data: {
+  results: ApiSchema<"ChecklistSlotResult">[]
+  slots: ApiSchema<"CurriculumTermCourse">[]
+  terms: ApiSchema<"CurriculumTerm">[]
+  courses: ApiSchema<"Course">[]
+}) {
   const groups = new Map<string, ChecklistRow[]>()
 
   for (const result of data.results) {
