@@ -165,6 +165,58 @@ describe('Course offering management mock operations', () => {
   })
 })
 
+describe('Course catalog removal mock operation', () => {
+  const client = () =>
+    createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+
+  it('deletes a newly created unreferenced course and protects referenced courses', async () => {
+    const db = getMockDatabase()
+    loginAsMockPersona('department_staff')
+    const created = await client().POST('/functions/v1/catalog/course', {
+      body: {
+        department_id: MOCK_IDS.deptDcst,
+        code: 'CSCI 297',
+        title: 'Temporary Catalog Course',
+        units: 1,
+        category: 'major',
+        is_elective: false,
+        status: 'active',
+        repeatable_type: 'none',
+      },
+    })
+    expect(created.response.status).toBe(201)
+
+    const removed = await client().DELETE('/functions/v1/catalog/course/{id}', {
+      params: { path: { id: created.data!.id } },
+    })
+    expect(removed.response.status).toBe(204)
+    expect(db.courses.some(course => course.id === created.data!.id)).toBe(false)
+
+    const protectedCourse = await client().DELETE('/functions/v1/catalog/course/{id}', {
+      params: { path: { id: MOCK_IDS.courseCsci101 } },
+    })
+    expect(protectedCourse.response.status).toBe(409)
+    expect(db.courses.some(course => course.id === MOCK_IDS.courseCsci101)).toBe(true)
+  })
+
+  it('enforces department scope for catalog update and deletion', async () => {
+    const db = getMockDatabase()
+    loginAsMockPersona('department_staff')
+    const course = db.courses.find(item => item.id === MOCK_IDS.courseCsci198)!
+    course.department_id = MOCK_IDS.deptDabe
+
+    const update = await client().PATCH('/functions/v1/catalog/course/{id}', {
+      params: { path: { id: course.id } }, body: { status: 'discontinued' },
+    })
+    const remove = await client().DELETE('/functions/v1/catalog/course/{id}', {
+      params: { path: { id: course.id } },
+    })
+    expect(update.response.status).toBe(403)
+    expect(remove.response.status).toBe(403)
+    expect(db.courses.some(item => item.id === course.id)).toBe(true)
+  })
+})
+
 describe('Student roster mock filters and summaries', () => {
   const client = () =>
     createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })

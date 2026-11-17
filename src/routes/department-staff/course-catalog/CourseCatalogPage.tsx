@@ -12,6 +12,7 @@ import { courseCatalogMaxOffset, courseCatalogPageSize, type CatalogCourse, type
 import { useCourseCatalog, useCourseCatalogReferences } from '@/hooks/use-course-catalog'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import { CourseDialog } from './CourseDialog'
+import { CourseCatalogActions } from './CourseCatalogActions'
 
 const courseTypeLabels: Record<string, string> = {
   major: 'Major', ge: 'GE', elective: 'Elective', pe: 'PE', nstp: 'NSTP', foundation: 'Foundation', service: 'Service',
@@ -118,7 +119,8 @@ export default function CourseCatalogPage() {
     {
       header: 'Actions', className: 'sm:whitespace-nowrap',
       cell: course => staffScope.status === 'ready' && staffScope.departmentIds.includes(course.department_id)
-        ? <CourseDialog
+        ? <div className="flex flex-wrap items-center gap-2">
+          <CourseDialog
             course={course}
             departmentId={course.department_id}
             departmentLabel={(() => {
@@ -129,6 +131,14 @@ export default function CourseCatalogPage() {
             onUpdated={() => undefined}
             triggerLabel={`Edit ${course.code || 'course'}`}
           />
+          <CourseCatalogActions
+            course={course}
+            departmentLabel={(() => {
+              const department = departmentsById.get(course.department_id)
+              return department ? `${department.code} · ${department.name}` : course.department_id
+            })()}
+          />
+        </div>
         : <span aria-label="Read only">—</span>,
     },
   ]

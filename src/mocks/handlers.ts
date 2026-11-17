@@ -1578,7 +1578,13 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, db.courses[idx]!.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course is outside the authorized department.')
+    }
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'CourseUpdate'>
+    if (body.status === 'discontinued' && db.courses[idx]!.status !== 'active') {
+      return errorJson(409, 'STALE_RECORD', 'Only an active course can be discontinued.')
+    }
     const updated: ApiSchema<'Course'> = { ...db.courses[idx]!, ...body }
     db.courses[idx] = updated
     return HttpResponse.json(updated, { status: 200 })
@@ -1595,11 +1601,21 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course not found.')
-    if (db.curriculumTermCourses.some((s) => s.course_id === id)) {
+    const course = db.courses[idx]!
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course is outside the authorized department.')
+    }
+    const offeringIds = new Set(db.courseOfferings.filter(offering => offering.course_id === id).map(offering => offering.id))
+    const hasProtectedReferences = db.curriculumTermCourses.some(slot => slot.course_id === id)
+      || db.courseOfferings.some(offering => offering.course_id === id)
+      || db.prerequisites.some(prerequisite => prerequisite.course_id === id || prerequisite.prerequisite_course_id === id)
+      || db.attempts.some(attempt => offeringIds.has(attempt.course_offering_id))
+      || db.attemptResults.some(attempt => offeringIds.has(attempt.course_offering_id))
+    if (hasProtectedReferences) {
       return errorJson(
         409,
         'DEPENDENT_RECORDS_EXIST',
-        'Cannot delete a course referenced by a curriculum slot.',
+        'Cannot delete a course referenced by curriculum, offerings, prerequisites, or attempts. Discontinue it instead.',
       )
     }
     db.courses.splice(idx, 1)

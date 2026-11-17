@@ -106,7 +106,8 @@ describe('Department Staff course catalog', () => {
     expect(within(row).getByText('Major')).toBeTruthy()
     expect(within(row).getByText('Active')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Edit CSCI 101' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /delete|retire/i })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Discontinue CSCI 101' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Delete CSCI 101' })).toBeTruthy()
   })
 
   it('displays discontinued courses as Inactive without changing the API value', async () => {
@@ -382,6 +383,107 @@ describe('Department Staff course catalog', () => {
     expect(overviewInvalidation?.predicate?.({ queryKey: activeKey, state: { data: { slots: [{ course_id: course.id }] } } } as never)).toBe(true)
     expect(overviewInvalidation?.predicate?.({ queryKey: historicalKey, state: { data: historicalSnapshot } } as never)).toBe(false)
     expect(setQueryData.mock.calls.some(([key]) => key.includes('curriculum-overview'))).toBe(false)
+    expect(screen.getByTestId('current-location').textContent).toContain('status=active')
+    expect(screen.getByTestId('current-location').textContent).toContain('context=keep')
+  })
+
+  it('cancels course deletion without sending a request', async () => {
+    let deletes = 0
+    saaisMockServer.use(http.delete('*/functions/v1/catalog/course/:id', () => {
+      deletes += 1
+      return new HttpResponse(null, { status: 204 })
+    }))
+    renderCourseCatalog()
+    await screen.findByRole('row', { name: /CSCI 101/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete CSCI 101' }))
+    expect(screen.getByRole('heading', { name: 'Delete catalog course?' })).toBeTruthy()
+    expect(screen.getByText(/CSCI 101 · Introduction to Computing/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Delete catalog course?' })).toBeNull())
+    expect(deletes).toBe(0)
+    expect(getMockDatabase().courses.some(course => course.id === MOCK_IDS.courseCsci101)).toBe(true)
+  })
+
+  it('deletes an unreferenced course once after confirmation and preserves filter context', async () => {
+    const { createCatalogCourse } = await import('./course-catalog.api')
+    const created = await createCatalogCourse({
+      department_id: MOCK_IDS.deptDcst,
+      code: 'CSCI 297',
+      title: 'Temporary Catalog Course',
+      units: 1,
+      category: 'major',
+      is_elective: false,
+      status: 'active',
+      repeatable_type: 'none',
+    })
+    let deletes = 0
+    saaisMockServer.use(http.delete('*/functions/v1/catalog/course/:id', ({ params }) => {
+      deletes += 1
+      const database = getMockDatabase()
+      const index = database.courses.findIndex(course => course.id === String(params.id))
+      if (index >= 0) database.courses.splice(index, 1)
+      return new HttpResponse(null, { status: 204 })
+    }))
+    renderCourseCatalog('/department-staff/course-catalog?status=active&context=keep')
+    await screen.findByRole('row', { name: /CSCI 297/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete CSCI 297' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete course' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete course' }))
+
+    await waitFor(() => expect(deletes).toBe(1))
+    await waitFor(() => expect(screen.queryByRole('row', { name: /CSCI 297/ })).toBeNull())
+    expect(getMockDatabase().courses.some(course => course.id === created.id)).toBe(false)
+    expect(screen.getByTestId('current-location').textContent).toContain('status=active')
+    expect(screen.getByTestId('current-location').textContent).toContain('context=keep')
+  })
+
+  it('surfaces history-protected deletion conflicts without removing the course', async () => {
+    renderCourseCatalog()
+    await screen.findByRole('row', { name: /CSCI 101/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete CSCI 101' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete course' }))
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/protected by curriculum, offering, prerequisite, or attempt history/i)
+    expect(getMockDatabase().courses.some(course => course.id === MOCK_IDS.courseCsci101)).toBe(true)
+    expect(screen.getByRole('heading', { name: 'Delete catalog course?' })).toBeTruthy()
+  })
+
+  it('discontinues through status-only update and refreshes live curriculum references without changing filters', async () => {
+    const { queryClient } = renderCourseCatalog('/department-staff/course-catalog?status=active&context=keep')
+    const course = getMockDatabase().courses.find(item => item.id === MOCK_IDS.courseCsci101)!
+    const curriculaKey = ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curricula', {}]
+    const activeKey = ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-overview', { versionId: 'active-v1' }]
+    const historicalKey = ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-overview', { versionId: 'historical-v1' }]
+    const invalidation = vi.spyOn(queryClient, 'invalidateQueries')
+    let requestBody: unknown
+    saaisMockServer.use(http.patch('*/functions/v1/catalog/course/:id', async ({ request, params }) => {
+      requestBody = await request.json()
+      const database = getMockDatabase()
+      const index = database.courses.findIndex(item => item.id === String(params.id))
+      database.courses[index] = { ...database.courses[index]!, status: 'discontinued' }
+      return HttpResponse.json(database.courses[index])
+    }))
+    await screen.findByRole('row', { name: /CSCI 101/ })
+    queryClient.setQueryData(curriculaKey, { versions: [
+      { id: 'active-v1', status: 'active' }, { id: 'historical-v1', status: 'retired' },
+    ] })
+    queryClient.setQueryData(activeKey, { slots: [{ course_id: course.id }] })
+    queryClient.setQueryData(historicalKey, { slots: [{ course_id: course.id }] })
+    fireEvent.click(screen.getByRole('button', { name: 'Discontinue CSCI 101' }))
+    expect(screen.getByRole('heading', { name: 'Discontinue catalog course?' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Discontinue course' }))
+
+    await waitFor(() => expect(requestBody).toEqual({ status: 'discontinued' }))
+    await waitFor(() => expect(screen.queryByRole('row', { name: /CSCI 101/ })).toBeNull())
+    expect(getMockDatabase().courses.find(item => item.id === course.id)?.status).toBe('discontinued')
+    const { listCurriculumCourses } = await import('../curricula/curricula.api')
+    const refreshedOptions = await listCurriculumCourses(MOCK_IDS.deptDcst)
+    expect(refreshedOptions.some(item => item.id === course.id)).toBe(false)
+    expect(invalidation).toHaveBeenCalledWith({ queryKey: expect.arrayContaining(['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'course-catalog-page']) })
+    expect(invalidation).toHaveBeenCalledWith({ queryKey: expect.arrayContaining(['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-course-options']) })
+    const overviewInvalidation = invalidation.mock.calls.map(([filters]) => filters).find(filters => filters.queryKey?.[3] === 'curriculum-overview')
+    expect(overviewInvalidation?.predicate?.({ queryKey: activeKey, state: { data: { slots: [{ course_id: course.id }] } } } as never)).toBe(true)
+    expect(overviewInvalidation?.predicate?.({ queryKey: historicalKey, state: { data: { slots: [{ course_id: course.id }] } } } as never)).toBe(false)
     expect(screen.getByTestId('current-location').textContent).toContain('status=active')
     expect(screen.getByTestId('current-location').textContent).toContain('context=keep')
   })

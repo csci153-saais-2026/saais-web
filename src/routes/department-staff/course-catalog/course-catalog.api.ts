@@ -37,6 +37,12 @@ export async function updateCatalogCourse(id: string, body: ApiSchema<'CourseUpd
   }))
 }
 
+export async function deleteCatalogCourse(id: string): Promise<void> {
+  unwrapApiResult(await apiClient.DELETE('/functions/v1/catalog/course/{id}', {
+    params: { path: { id } },
+  }))
+}
+
 function completeRead<T>(
   result: { data?: T[]; error?: unknown; response: Response },
   resource: string,
