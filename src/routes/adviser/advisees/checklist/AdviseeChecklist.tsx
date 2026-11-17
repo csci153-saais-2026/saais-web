@@ -48,26 +48,26 @@ const grade = (value: number | null | undefined) => value == null ? null : value
 function AttemptDetails({ row, title, meta }: { row: ApiSchema<'ChecklistSlotResult'>; title: string; meta: string }) {
   const attempts = row.attempts ?? []
   const fixes = row.grade_fix_history ?? []
-  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm">Course info</Button></DialogTrigger>
-    <DialogContent showCloseButton={false} className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0 sm:max-w-[960px]">
-      <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border px-5 pt-[18px] pb-4">
+  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm" className="h-auto rounded-lg px-3 py-1.5 text-[13px] font-semibold">Course info</Button></DialogTrigger>
+    <DialogContent showCloseButton={false} className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0 sm:max-w-240">
+      <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border px-5 pt-4.5 pb-4">
         <div><DialogTitle>{title}</DialogTitle><DialogDescription className="mt-1.5 text-[13px]">{meta}</DialogDescription></div>
-        <DialogClose asChild><Button variant="ghost" size="icon" className="size-[34px] shrink-0 text-muted-foreground" aria-label="Close"><XIcon className="size-[18px]" aria-hidden /></Button></DialogClose>
+        <DialogClose asChild><Button variant="ghost" size="icon" className="size-8.5 shrink-0 text-muted-foreground" aria-label="Close"><XIcon className="size-4.5" aria-hidden /></Button></DialogClose>
       </DialogHeader>
       <div className="p-5">
         <div className="flex items-center gap-2.5 text-sm"><span>Status:</span><StatusBadge status={statusMap[row.status]} /><span className="text-muted-foreground">· {attempts.length} {attempts.length === 1 ? 'attempt' : 'attempts'}</span></div>
         {attempts.length ? <Table className="mt-4"><TableHeader className="bg-secondary"><TableRow>{attemptHeaders.map(header => <TableHead key={header} className="px-3.5 text-[11.5px] font-semibold tracking-[0.09em] whitespace-nowrap text-muted-2 uppercase">{header}</TableHead>)}</TableRow></TableHeader><TableBody>
           {attempts.map((a, index) => <TableRow key={a.attempt_id}>
-            <TableCell className="px-3.5 py-[11px]">{index + 1}</TableCell>
-            <TableCell className="px-3.5 py-[11px] whitespace-normal">{a.term_label}</TableCell>
-            <TableCell className="px-3.5 py-[11px]">{grade(a.midterm_grade) ?? (a.midterm_status === 'dr' ? 'DR' : '—')}</TableCell>
-            <TableCell className="px-3.5 py-[11px]">{grade(a.final_grade) ?? '—'}</TableCell>
-            <TableCell className="px-3.5 py-[11px]">{grade(a.completion_grade) ?? '—'}</TableCell>
-            <TableCell className="px-3.5 py-[11px]">{a.instructor || '—'}</TableCell>
-            <TableCell className="px-3.5 py-[11px]"><StatusBadge status={statusMap[a.effective_status]} /></TableCell>
+            <TableCell className="px-3.5 py-2.75">{index + 1}</TableCell>
+            <TableCell className="px-3.5 py-2.75 whitespace-normal">{a.term_label}</TableCell>
+            <TableCell className="px-3.5 py-2.75">{grade(a.midterm_grade) ?? (a.midterm_status === 'dr' ? 'DR' : '—')}</TableCell>
+            <TableCell className="px-3.5 py-2.75">{grade(a.final_grade) ?? '—'}</TableCell>
+            <TableCell className="px-3.5 py-2.75">{grade(a.completion_grade) ?? '—'}</TableCell>
+            <TableCell className="px-3.5 py-2.75">{a.instructor || '—'}</TableCell>
+            <TableCell className="px-3.5 py-2.75"><StatusBadge status={statusMap[a.effective_status]} /></TableCell>
           </TableRow>)}
         </TableBody></Table> : <p className="mt-4 text-[13.5px] text-muted-foreground">No attempts recorded yet.</p>}
-        <h3 className="mt-[22px] text-[15.5px] font-semibold">Grade fix history</h3>
+        <h3 className="mt-5.5 text-[15.5px] font-semibold">Grade fix history</h3>
         {fixes.length ? <ul className="mt-2.5 grid gap-1.5 text-[13.5px] text-muted-foreground">{fixes.map((entry, index) => <li key={`${entry.changed_at}:${index}`}>{new Date(entry.changed_at).toLocaleString()} · {entry.old_grade ?? '—'} → {entry.new_grade ?? '—'}</li>)}</ul> : <p className="mt-2 text-[13.5px] text-muted-foreground">No grade fixes recorded.</p>}
       </div>
     </DialogContent></Dialog>
@@ -104,9 +104,9 @@ export default function AdviseeChecklist() {
       {visibleGroups.map(([label, items]) => {
         const passedUnits = items.reduce((sum, item) => sum + item.earned_units, 0)
         const totalUnits = items.reduce((sum, item) => sum + item.required_units, 0)
-        return <Collapsible key={label} open={expanded.has(label)} onOpenChange={open=>setExpanded(previous=>{const next=new Set(previous);if(open)next.add(label);else next.delete(label);return next})} className="mb-4 overflow-hidden rounded-md border border-border bg-card">
-          <CollapsibleTrigger className="flex w-full flex-wrap items-center gap-4 px-5 py-4 text-left hover:bg-secondary/40">
-            <span className="min-w-0 flex-1"><span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted-foreground">Curriculum position · course availability depends on the school term.</span></span>
+        return <Collapsible key={label} open={expanded.has(label)} onOpenChange={open=>setExpanded(previous=>{const next=new Set(previous);if(open)next.add(label);else next.delete(label);return next})} className="mb-4 min-w-0 overflow-hidden rounded-md border border-border bg-card">
+          <CollapsibleTrigger className={`flex w-full flex-wrap items-start justify-between gap-4 px-5 py-4 text-left hover:bg-secondary/40 ${expanded.has(label) ? 'border-b border-line-soft' : ''}`}>
+            <span className="min-w-0 flex-1"><span className="block text-[15.5px] font-semibold">{label}</span><span className="mt-0.75 block text-[13px] text-muted-foreground">Curriculum position · course availability depends on the school term.</span></span>
             <span className="flex items-center gap-5 text-right sm:gap-7">
               <span><Kicker className="block text-[10px]">Passed units</Kicker><span className="font-heading font-bold text-primary">{passedUnits}/{totalUnits}</span></span>
               <span><Kicker className="block text-[10px]">Total units</Kicker><span className="font-heading font-bold text-primary">{totalUnits}</span></span>
@@ -114,12 +114,12 @@ export default function AdviseeChecklist() {
               <ChevronDownIcon className={`size-4 text-muted-foreground transition-transform ${expanded.has(label) ? '' : '-rotate-90'}`} aria-hidden />
             </span>
           </CollapsibleTrigger>
-          <CollapsibleContent><Table responsive><TableHeader className="bg-secondary"><TableRow>{['Requirement','Units earned / required','Status','Satisfaction source','Attempts','Course info'].map(header=><TableHead key={header} className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">{header}</TableHead>)}</TableRow></TableHeader><TableBody>
-            {items.filter(matchesFilter).map(r=>{const slot=data.slots.find(s=>s.id===r.curriculum_term_course_id);const course=data.courses.find(c=>c.id===slot?.course_id);const title=course ? `${course.code} · ${course.title}` : slot?.slot_label ?? 'Requirement';const term=data.terms.find(t=>t.id===slot?.curriculum_term_id);const meta=[`${r.required_units} ${r.required_units===1?'unit':'units'}`,course?.category?categoryLabels[course.category]:null,term?`${ordinal(term.year_level)} Year, ${ordinal(term.term_sequence)} Semester`:null].filter(Boolean).join(' · ');const sourceAttempt=r.attempts?.find(attempt=>attempt.attempt_id===r.source_attempt_id);const sourceGrade=sourceAttempt?.completion_grade ?? sourceAttempt?.final_grade;return <TableRow key={r.curriculum_term_course_id}>
-              <TableCell label="Requirement"><b className="block">{course?.code ?? slot?.slot_label ?? 'Requirement unavailable'}</b><span className="text-xs text-muted-foreground">{course?.title ?? (slot ? 'Elective requirement' : r.curriculum_term_course_id)}</span></TableCell>
-              <TableCell label="Units earned / required">{r.earned_units} / {r.required_units}</TableCell><TableCell label="Status"><StatusBadge status={statusMap[r.status]} /></TableCell>
-              <TableCell label="Satisfaction source">{r.satisfaction_source ?? '—'}{(r.credited_course_code || sourceGrade != null) && <span className="block text-xs text-muted-foreground">{r.credited_course_code}{r.credited_course_code && sourceGrade != null ? ' · ' : ''}{sourceGrade != null ? `grade ${sourceGrade.toFixed(2)}` : ''}</span>}</TableCell>
-              <TableCell label="Attempts">{r.attempts?.length ? `${r.attempts.length} ${r.attempts.length === 1 ? 'attempt' : 'attempts'}` : '—'}</TableCell><TableCell label="Course info"><AttemptDetails row={r} title={title} meta={meta} /></TableCell>
+          <CollapsibleContent><Table responsive className="table-auto"><colgroup>{[27,15,13,21,11,13].map((w,i)=><col key={i} style={{width:`${w}%`}} />)}</colgroup><TableHeader><TableRow className="border-b border-border hover:bg-secondary">{['Requirement','Units earned / required','Status','Satisfaction source','Attempts','Course info'].map(header=><TableHead key={header} className="h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase">{header}</TableHead>)}</TableRow></TableHeader><TableBody>
+            {items.filter(matchesFilter).map(r=>{const slot=data.slots.find(s=>s.id===r.curriculum_term_course_id);const course=data.courses.find(c=>c.id===slot?.course_id);const title=course ? `${course.code} · ${course.title}` : slot?.slot_label ?? 'Requirement';const term=data.terms.find(t=>t.id===slot?.curriculum_term_id);const meta=[`${r.required_units} ${r.required_units===1?'unit':'units'}`,course?.category?categoryLabels[course.category]:null,term?`${ordinal(term.year_level)} Year, ${ordinal(term.term_sequence)} Semester`:null].filter(Boolean).join(' · ');const sourceAttempt=r.attempts?.find(attempt=>attempt.attempt_id===r.source_attempt_id);const sourceGrade=sourceAttempt?.completion_grade ?? sourceAttempt?.final_grade;return <TableRow key={r.curriculum_term_course_id} className="border-line-soft">
+              <TableCell label="Requirement" className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"><b className="block font-semibold">{course?.code ?? slot?.slot_label ?? 'Requirement unavailable'}</b><span className="mt-0.5 block text-[12.5px] text-muted-foreground">{course?.title ?? (slot ? 'Elective requirement' : r.curriculum_term_course_id)}</span></TableCell>
+              <TableCell label="Units earned / required" className="px-3.5 py-2.75 text-[13.5px] whitespace-normal">{r.earned_units} / {r.required_units}</TableCell><TableCell label="Status" className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"><StatusBadge status={statusMap[r.status]} /></TableCell>
+              <TableCell label="Satisfaction source" className="px-3.5 py-2.75 text-[13.5px] whitespace-normal">{r.satisfaction_source ?? '—'}{(r.credited_course_code || sourceGrade != null) && <span className="mt-0.5 block text-[12.5px] text-muted-foreground">{r.credited_course_code}{r.credited_course_code && sourceGrade != null ? ' · ' : ''}{sourceGrade != null ? `grade ${sourceGrade.toFixed(2)}` : ''}</span>}</TableCell>
+              <TableCell label="Attempts" className="px-3.5 py-2.75 text-[13.5px] whitespace-normal">{r.attempts?.length ? `${r.attempts.length} ${r.attempts.length === 1 ? 'attempt' : 'attempts'}` : '—'}</TableCell><TableCell label="Course info" className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"><AttemptDetails row={r} title={title} meta={meta} /></TableCell>
             </TableRow>})}
           </TableBody></Table></CollapsibleContent>
         </Collapsible>
