@@ -40,11 +40,11 @@ describe('encoding workspace identity',()=>{
    fireEvent.change(screen.getByLabelText('Advisee'),{target:{value:'student-two'}});expect(screen.queryByText('Completion grade')).toBeNull();expect(screen.getByRole('status').textContent).toContain('Loading')
    auth.user={id:'adviser-two'};view.rerender(<MemoryRouter><Encode/></MemoryRouter>);expect(screen.queryByText('CS 1 · Computing')).toBeNull()
  })
- it('reviews a blank final before sending the selected existing attempt',async()=>{
+ it('saves edits to an existing attempt with the single Save grades button',async()=>{
    auth.isMockMode=false;const old={...attempt,recorded_status:'currently_enrolled',effective_status:'currently_enrolled',midterm_grade:2,final_grade:null} as ApiSchema<'AttemptResult'>
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue({...data,terms:data.terms.map(t=>({...t,attempts:[old]}))});vi.mocked(getTermOfferings).mockResolvedValue([]);vi.mocked(saveTermGrades).mockResolvedValue([])
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
-   fireEvent.change(await screen.findByLabelText('New final grade'),{target:{value:'2.25'}});fireEvent.click(screen.getByRole('button',{name:'Review this attempt'}));expect(saveTermGrades).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Confirm this attempt'}))
+   fireEvent.change(await screen.findByLabelText('New final grade'),{target:{value:'2.25'}});expect(saveTermGrades).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Save grades'}))
    await waitFor(()=>expect(saveTermGrades).toHaveBeenCalledWith('student-one','term-one',[{attempt_id:'attempt-one',course_offering_id:'offering-one',final_grade:2.25,remark:'Passed',continue_with_prerequisite_override:false}]))
  })
  it('never sends an existing final grade as a silent overwrite',async()=>{
@@ -61,7 +61,7 @@ describe('encoding workspace identity',()=>{
    fireEvent.click(screen.getByRole('button',{name:'Resolve INC'}));fireEvent.change(screen.getByLabelText('Completion grade'),{target:{value:'2.25'}});fireEvent.change(screen.getByLabelText('Reason'),{target:{value:'Completed'}});fireEvent.click(screen.getByRole('button',{name:'Resolve INC'}))
    await waitFor(()=>expect(getTermOfferings).toHaveBeenCalledTimes(2))
    expect(await screen.findByText('Course unavailable')).toBeTruthy()
-   expect((screen.getByRole('button',{name:'Review grades'}) as HTMLButtonElement).disabled).toBe(true)
+   expect((screen.getByRole('button',{name:'Save grades'}) as HTMLButtonElement).disabled).toBe(true)
  })
  it('sets the final and remark from midterm DR and derives remarks from final results',async()=>{
    const offering={offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:'slot-two',has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
@@ -75,11 +75,11 @@ describe('encoding workspace identity',()=>{
    fireEvent.change(final,{target:{value:'5.00'}});expect(remark.textContent).toBe('Failed')
    fireEvent.change(final,{target:{value:'2.25'}});expect(remark.textContent).toBe('Passed')
    fireEvent.change(final,{target:{value:'inc'}});expect(remark.textContent).toBe('INC')
-   fireEvent.change(mid,{target:{value:'dr'}});fireEvent.click(screen.getByRole('button',{name:'Review grades'}));fireEvent.click(screen.getByRole('button',{name:'Confirm and save grades'}))
+   fireEvent.change(mid,{target:{value:'dr'}});fireEvent.click(screen.getByRole('button',{name:'Save grades'}))
    await waitFor(()=>expect(saveTermGrades).toHaveBeenCalledWith('student-one','term-one',[expect.objectContaining({course_offering_id:'offering-two',midterm_status:'dr',midterm_grade:null,final_grade:null,status:'dr',remark:'DR'})]))
  })
 
- it('invalidates review when adding a course and locks drafts while the save is pending',async()=>{
+ it('locks drafts while the save is pending',async()=>{
    const offerings=[
      {offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Second course',direct_curriculum_slot_id:'slot-two',has_unmet_strict_prerequisites:false},
      {offering:{id:'offering-three',course_id:'course-three'},code:'CS 3',title:'Third course',direct_curriculum_slot_id:'slot-three',has_unmet_strict_prerequisites:false},
@@ -91,13 +91,9 @@ describe('encoding workspace identity',()=>{
 
    const addCourse=async(code:string)=>{fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:new RegExp(code)}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}))}
    await addCourse('CS 2');fireEvent.change(screen.getByLabelText('Final for CS 2'),{target:{value:'2.25'}})
-   fireEvent.click(screen.getByRole('button',{name:'Review grades'}));expect(screen.getByRole('button',{name:'Confirm and save grades'})).toBeTruthy()
-
    await addCourse('CS 3')
-   expect(screen.getByRole('button',{name:'Review grades'})).toBeTruthy()
-   expect(screen.queryByRole('button',{name:'Confirm and save grades'})).toBeNull()
    fireEvent.change(screen.getByLabelText('Final for CS 3'),{target:{value:'2.50'}})
-   fireEvent.click(screen.getByRole('button',{name:'Review grades'}));fireEvent.click(screen.getByRole('button',{name:'Confirm and save grades'}))
+   fireEvent.click(screen.getByRole('button',{name:'Save grades'}))
 
    expect((screen.getByLabelText('Instructor for CS 2') as HTMLInputElement).disabled).toBe(true)
    expect((screen.getByLabelText('Midterm for CS 2') as HTMLSelectElement).disabled).toBe(true)
