@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import AcademicTermsPage from "./AcademicTermsPage"
 import { renderDepartmentHead, setupDepartmentHeadMockApi } from "../test-utils"
 
+vi.mock("../shared/department-pdf", () => ({ createDepartmentPdf: vi.fn(async () => new Blob(["%PDF"], { type: "application/pdf" })) }))
 setupDepartmentHeadMockApi()
 
 async function openPage() {
@@ -39,5 +40,15 @@ describe("Academic Terms", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Add term" }))
     expect(await screen.findByText(/Added academic term 2027–2028/)).toBeDefined()
     await waitFor(() => expect(screen.getAllByText("2027–2028").length).toBeGreaterThan(0))
+  })
+
+  it("opens the PDF viewer instead of printing the page", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:terms")
+    URL.revokeObjectURL = vi.fn()
+    await openPage()
+    fireEvent.click(screen.getByRole("button", { name: "Export PDF" }))
+    const dialog = await screen.findByRole("dialog", { name: /Preview: Academic terms/ })
+    expect(await within(dialog).findByRole("link", { name: "Download PDF" })).toBeDefined()
+    expect(within(dialog).getByRole("button", { name: "Close" })).toBeDefined()
   })
 })

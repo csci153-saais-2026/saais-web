@@ -26,7 +26,10 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { QueryMessage } from "../shared/dh-ui"
 import { useNotify } from "../shared/notify-context"
+import type { DepartmentPdfDocument } from "../shared/department-pdf"
+import { PdfViewerDialog } from "../shared/PdfViewerDialog"
 import { useAcademicTerms, useCloseEncoding, useCreateTerm, type AcademicTermRecord } from "./terms-api"
+import { buildTermsPdf } from "./terms-pdf"
 
 const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const
 
@@ -50,16 +53,8 @@ export default function AcademicTermsPage() {
   const [newDeadline, setNewDeadline] = React.useState("2026-06-12")
   const [newStatus, setNewStatus] = React.useState<"Open" | "Closed">("Closed")
 
-  const handleExportPdf = () => {
-    showToast("Generating Academic Terms PDF summary...")
-    try {
-      if (typeof window !== "undefined" && typeof window.print === "function") {
-        window.print()
-      }
-    } catch {
-      // Ignore unimplemented print in headless test environments
-    }
-  }
+  const [pdf, setPdf] = React.useState<DepartmentPdfDocument | null>(null)
+  const handleExportPdf = () => setPdf(buildTermsPdf(terms))
 
   const handleCreateTerm = async () => {
     setFormError("")
@@ -401,7 +396,7 @@ export default function AcademicTermsPage() {
         </DialogContent>
       </Dialog>
 
-
+      <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
     </div>
   )
 }

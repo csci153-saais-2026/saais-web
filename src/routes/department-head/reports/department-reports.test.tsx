@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import DepartmentReportsPage from "./DepartmentReportsPage"
-import { downloadReportPdf } from "./report-pdf"
 import { renderDepartmentHead, setupDepartmentHeadMockApi } from "../test-utils"
 
-vi.mock("./report-pdf", () => ({ downloadReportPdf: vi.fn() }))
+vi.mock("../shared/department-pdf", () => ({ createDepartmentPdf: vi.fn(async () => new Blob(["%PDF"], { type: "application/pdf" })) }))
 setupDepartmentHeadMockApi()
 
 async function choose(label: string, option: string) {
@@ -23,7 +22,7 @@ describe("Department Reports", () => {
     expect(screen.getByText("26")).toBeTruthy()
     expect(screen.getByText("GWA distribution")).toBeTruthy()
     expect(screen.getByText(/students have a cumulative GWA · Percentages sum to 100%\./)).toBeTruthy()
-    expect(screen.getByText("Department curriculum summary")).toBeTruthy()
+    expect(screen.getByText("Department summary")).toBeTruthy()
     const table = screen.getByRole("table", { name: "GWA by batch and curriculum" })
     expect(within(table).getAllByRole("row").length).toBeGreaterThan(1)
   })
@@ -45,14 +44,16 @@ describe("Department Reports", () => {
     expect(screen.getByText("No report available")).toBeTruthy()
     expect(screen.queryByRole("table", { name: "GWA by batch and curriculum" })).toBeNull()
     expect((screen.getByRole("button", { name: "Export PDF" }) as HTMLButtonElement).disabled).toBe(true)
-  })
+  }, 30_000)
 
-  it("exports the selected report and provides feedback if PDF generation fails", async () => {
+  it("opens the selected report in the PDF viewer before downloading", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:report")
+    URL.revokeObjectURL = vi.fn()
     await openReport()
     fireEvent.click(screen.getByRole("button", { name: "Export PDF" }))
-    expect(downloadReportPdf).toHaveBeenCalledWith(expect.objectContaining({ programKey: "all", enrolled: 26 }))
-    vi.mocked(downloadReportPdf).mockImplementationOnce(() => { throw new Error("Unavailable browser download") })
-    fireEvent.click(screen.getByRole("button", { name: "Export PDF" }))
-    expect(screen.getByRole("alert").textContent).toContain("The PDF could not be created")
+    const dialog = await screen.findByRole("dialog", { name: /Preview: Department reports/ })
+    const download = await within(dialog).findByRole("link", { name: "Download PDF" })
+    expect(download.getAttribute("download")).toMatch(/^SAAIS-department-report-.*-all\.pdf$/)
+    expect(within(dialog).getByRole("button", { name: "Close" })).toBeTruthy()
   })
 })

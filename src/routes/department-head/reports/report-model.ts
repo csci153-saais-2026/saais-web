@@ -66,6 +66,12 @@ const BANDS: { label: string; tone: GradeBand["tone"]; match: (gwa: number | nul
 
 const mean = (values: number[]) => values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2) : "—"
 
+/** Groups curricula by program, with the newest version of each program first. */
+function latestCurriculumFirst(a: string, b: string): number {
+  const [codeA, ...restA] = a.split(" "), [codeB, ...restB] = b.split(" ")
+  return codeA.localeCompare(codeB) || restB.join(" ").localeCompare(restA.join(" "), "en", { numeric: true })
+}
+
 /** Builds the department report for a term and program from the live student roster. */
 export function buildDepartmentReport(input: {
   students: ReportStudent[]
@@ -93,7 +99,7 @@ export function buildDepartmentReport(input: {
     detail: `${counts[index].toLocaleString("en-US")} ${counts[index] === 1 ? "student" : "students"}`,
   }))
 
-  const curricula = [...new Set(selected.map((student) => student.curriculum))].sort().map((name) => ({
+  const curricula = [...new Set(selected.map((student) => student.curriculum))].sort(latestCurriculumFirst).map((name) => ({
     name,
     status: currentCurricula.has(name) ? "Current" as const : "Older" as const,
     students: selected.filter((student) => student.curriculum === name).length,

@@ -17,7 +17,7 @@ export function ReportFilters({
       <FormField label="Academic term" htmlFor="report-term">
         <Select value={term} onValueChange={onTermChange}>
           <SelectTrigger id="report-term" className="w-full min-w-0"><SelectValue /></SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper">
             {terms.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -25,7 +25,7 @@ export function ReportFilters({
       <FormField label="Degree program" htmlFor="report-program">
         <Select value={program} onValueChange={onProgramChange}>
           <SelectTrigger id="report-program" className="w-full min-w-0"><SelectValue /></SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper">
             <SelectItem value={ALL_PROGRAMS}>All department programs</SelectItem>
             {programs.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
           </SelectContent>

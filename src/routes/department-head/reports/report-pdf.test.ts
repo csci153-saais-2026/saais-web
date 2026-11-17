@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createReportPdf, reportPdfFilename } from "./report-pdf"
+import { buildReportPdf } from "./report-pdf"
 import { ALL_PROGRAMS, buildDepartmentReport, getCohortStudents, type ReportStudent } from "./report-model"
 
 const student = (index: number, overrides: Partial<ReportStudent> = {}): ReportStudent => ({
@@ -43,43 +43,19 @@ describe("department report model", () => {
   })
 })
 
-describe("department report PDF", () => {
-  it("exports selected program data with searchable text and correct byte offsets", () => {
-    const selected = report("BSIT")
-    const bytes = createReportPdf(selected)
-    const text = new TextDecoder().decode(bytes)
-    expect(text.startsWith("%PDF-1.4")).toBe(true)
-    expect(text).toContain("AY 2025-2026 | 1st semester")
-    expect(text).toContain("BS Information Technology")
-    expect(text).toContain("Currently enrolled: 2")
-    expect(text).not.toContain("BSCS 2024")
-    expect(text).toContain("GWA by batch and curriculum")
-    const xrefOffset = Number(/startxref\n(\d+)/.exec(text)![1])
-    expect(new TextDecoder().decode(bytes.slice(xrefOffset, xrefOffset + 4))).toBe("xref")
-    const entries = [...text.matchAll(/(\d{10}) 00000 n /g)]
-    entries.forEach((entry, index) => {
-      const offset = Number(entry[1])
-      expect(text.slice(offset).startsWith(`${index + 1} 0 obj`)).toBe(true)
-    })
-    expect(reportPdfFilename(selected)).toBe("SAAIS-department-report-term-1-BSIT.pdf")
+describe("department report PDF document", () => {
+  it("describes the selected program for the shared PDF viewer", () => {
+    const doc = buildReportPdf(report("BSIT"))
+    expect(doc.subtitle).toBe("AY 2025–2026 · 1st semester | BS Information Technology")
+    expect(doc.filename).toBe("SAAIS-department-report-term-1-BSIT.pdf")
+    expect(doc.stats?.[0]).toMatchObject({ label: "Currently enrolled", value: "2" })
+    expect(doc.sections.map((section) => section.title)).toEqual(["GWA distribution", "Department summary", "GWA by batch and curriculum"])
+    expect(JSON.stringify(doc)).not.toContain("BSCS 2024")
   })
 
-  it("paginates long cohort tables without dropping the final row", () => {
+  it("includes every cohort row", () => {
     const long = report()
-    long.cohorts = Array.from({ length: 60 }, (_, index) => ({ ...long.cohorts[0], id: `cohort-${index}`, curriculum: index === 59 ? "LAST COHORT" : `Curriculum ${index}` }))
-    const text = new TextDecoder().decode(createReportPdf(long))
-    const pageCount = Number(/\/Type \/Pages .*?\/Count (\d+)/.exec(text)![1])
-    expect(pageCount).toBeGreaterThan(2)
-    expect(text).toContain("LAST COHORT")
-    expect(text).toContain(`Page ${pageCount} of ${pageCount}`)
-    expect(text.split("GWA by batch and curriculum").length - 1).toBeGreaterThan(1)
-  })
-
-  it("escapes PDF text syntax and rejects unsupported scripts instead of silently deleting them", () => {
-    const selected = report()
-    selected.programLabel = "Program (A) \\ term"
-    expect(new TextDecoder().decode(createReportPdf(selected))).toContain("Program \\(A\\) \\\\ term")
-    selected.programLabel = "計算機"
-    expect(() => createReportPdf(selected)).toThrow("PDF font")
+    long.cohorts = Array.from({ length: 60 }, (_, index) => ({ ...long.cohorts[0], id: `cohort-${index}` }))
+    expect(buildReportPdf(long).sections[2].rows).toHaveLength(60)
   })
 })

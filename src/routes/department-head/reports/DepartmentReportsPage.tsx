@@ -4,15 +4,16 @@ import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
 import { StatGrid } from "@/components/features/stat-tile"
 import { DownloadIcon } from "@/components/icons"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { QueryMessage } from "../shared/dh-ui"
 import { ReportCohortDialog } from "./ReportCohortDialog"
 import { ReportFilters } from "./ReportFilters"
 import { ALL_PROGRAMS, buildDepartmentReport, getCohortStudents, type CohortSummary } from "./report-model"
-import { downloadReportPdf } from "./report-pdf"
+import type { DepartmentPdfDocument } from "../shared/department-pdf"
+import { PdfViewerDialog } from "../shared/PdfViewerDialog"
+import { buildReportPdf } from "./report-pdf"
 import { useReportSource } from "./reports-api"
 
 export default function DepartmentReportsPage() {
@@ -20,7 +21,7 @@ export default function DepartmentReportsPage() {
   const [pickedTerm, setTerm] = useState("")
   const [program, setProgram] = useState(ALL_PROGRAMS)
   const [cohort, setCohort] = useState<CohortSummary | null>(null)
-  const [exportError, setExportError] = useState("")
+  const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null)
   const data = source.data
   const term = pickedTerm || data?.currentTermId || data?.terms[0]?.value || ""
   const termLabel = data?.terms.find((option) => option.value === term)?.label ?? ""
@@ -31,13 +32,7 @@ export default function DepartmentReportsPage() {
     : null, [data, term, termLabel, program])
   const cohortStudents = useMemo(() => data && cohort ? getCohortStudents(data.students, cohort) : [], [data, cohort])
 
-  function exportPdf() {
-    if (!report) return
-    setExportError("")
-    try { downloadReportPdf(report) } catch {
-      setExportError("The PDF could not be created. Please try exporting the report again.")
-    }
-  }
+  const exportPdf = () => { if (report) setPdf(buildReportPdf(report)) }
 
   const heading = <PageHeading title="Department reports" subtitle="A semester snapshot of student progress across your department."
     actions={<Button type="button" variant="outline" disabled={!report} onClick={exportPdf}><DownloadIcon />Export PDF</Button>} />
@@ -47,9 +42,8 @@ export default function DepartmentReportsPage() {
     <>
       {heading}
       <ReportFilters term={term} program={program} terms={data.terms} programs={data.programs}
-        onTermChange={(value) => { setTerm(value); setCohort(null); setExportError("") }}
-        onProgramChange={(value) => { setProgram(value); setCohort(null); setExportError("") }} />
-      {exportError && <Alert variant="destructive" className="mb-5"><AlertTitle>Export unsuccessful</AlertTitle><AlertDescription>{exportError}</AlertDescription></Alert>}
+        onTermChange={(value) => { setTerm(value); setCohort(null) }}
+        onProgramChange={(value) => { setProgram(value); setCohort(null) }} />
       {!report ? (
         <Panel title="No report available">
           <p className="text-muted-foreground">There are no records for this academic term and degree program.</p>
@@ -67,11 +61,11 @@ export default function DepartmentReportsPage() {
               <GradeDistribution bands={report.distribution} />
               <p className="mt-5 text-xs text-muted-foreground">{report.gwaStudents.toLocaleString("en-US")} of {report.enrolled.toLocaleString("en-US")} students have a cumulative GWA · Percentages sum to 100%.</p>
             </Panel>
-            <Panel title="Department curriculum summary" description={report.programLabel}>
+            <Panel title="Department summary" description="Enrollment by active curriculum">
               <ul className="divide-y divide-border">
                 {report.curricula.map((curriculum) => (
                   <li key={curriculum.name} className="py-3 first:pt-0 last:pb-0">
-                    <div className="flex flex-wrap items-center gap-2"><strong>{curriculum.name}</strong><Badge variant="secondary" className="rounded-sm">{curriculum.status}</Badge></div>
+                    <div className="flex flex-wrap items-center gap-2"><strong>{curriculum.name}</strong><StatusBadge status={curriculum.status === "Current" ? "current" : "archived"}>{curriculum.status}</StatusBadge></div>
                     <p className="mt-1 text-sm text-muted-foreground">{curriculum.students.toLocaleString("en-US")} students</p>
                   </li>
                 ))}
@@ -80,15 +74,15 @@ export default function DepartmentReportsPage() {
           </div>
           <Panel title="GWA by batch and curriculum" description="Entry year, study range, and academic performance for each cohort." flush>
             <Table responsive aria-label="GWA by batch and curriculum">
-              <TableHeader className="bg-secondary"><TableRow><TableHead>Entry year</TableHead><TableHead>Study range</TableHead><TableHead>Curriculum</TableHead><TableHead className="text-right">Students</TableHead><TableHead className="text-right">Mean GWA</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+              <TableHeader className="bg-secondary"><TableRow><TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Entry year</TableHead><TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Study range</TableHead><TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Curriculum</TableHead><TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Students</TableHead><TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Mean GWA</TableHead><TableHead aria-label="Actions" /></TableRow></TableHeader>
               <TableBody>{report.cohorts.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell label="Entry year" className="font-mono">{row.entryYear}</TableCell>
+                  <TableCell label="Entry year">{row.entryYear}</TableCell>
                   <TableCell label="Study range">{row.entryYear}–{row.entryYear + 4}</TableCell>
                   <TableCell label="Curriculum">{row.curriculum}</TableCell>
-                  <TableCell label="Students" className="text-right font-mono">{row.students}</TableCell>
-                  <TableCell label="Mean GWA" className="text-right font-mono">{row.meanGwa}</TableCell>
-                  <TableCell label="Actions"><Button type="button" variant="link" size="sm" aria-label={`View students for ${row.curriculum} batch ${row.entryYear}`} onClick={() => setCohort(row)}>View students →</Button></TableCell>
+                  <TableCell label="Students">{row.students}</TableCell>
+                  <TableCell label="Mean GWA">{row.meanGwa}</TableCell>
+                  <TableCell label="Actions"><Button type="button" variant="link" size="sm" className="h-auto px-0 py-1 font-semibold underline-offset-4" aria-label={`View students for ${row.curriculum} batch ${row.entryYear}`} onClick={() => setCohort(row)}>View students →</Button></TableCell>
                 </TableRow>
               ))}</TableBody>
             </Table>
@@ -96,6 +90,7 @@ export default function DepartmentReportsPage() {
           </Panel>
         </div>
       )}
+      <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
       <ReportCohortDialog cohort={cohort} students={cohortStudents} onClose={() => setCohort(null)} />
     </>
   )
