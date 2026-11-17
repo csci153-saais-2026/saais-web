@@ -4,12 +4,14 @@ import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
 import { Button } from '@/components/ui/button'
 import { ApiClientError } from '@/lib/api'
+import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import type {
   DepartmentTermEncoding,
   SchoolTerm,
 } from './academic-terms.api'
 import { useAcademicTerms } from '@/hooks/use-academic-terms'
 import { SchoolTermDialog } from './SchoolTermDialog'
+import { EncodingClosureDialog } from './EncodingClosureDialog'
 import { OpenedSubjectsPanel } from './OpenedSubjectsPanel'
 
 function termTypeLabel(termType: SchoolTerm['term_type']): string {
@@ -144,8 +146,12 @@ function TermDetails({
 
 export default function AcademicTermsPage() {
   const academicTerms = useAcademicTerms()
+  const scope = useStaffScope()
   const [dialogTerm, setDialogTerm] = useState<SchoolTerm | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [closureDialogTerm, setClosureDialogTerm] = useState<SchoolTerm | null>(
+    null,
+  )
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const closures = academicTerms.data?.departmentClosures ?? []
   const closureByTermId = new Map(
@@ -211,20 +217,38 @@ export default function AcademicTermsPage() {
     },
     {
       header: 'Actions',
-      cell: (term) => (
-        <Button
-          type="button"
-          variant="outline"
-          aria-label={`Edit ${term.school_year} ${termTypeLabel(term.term_type)} academic term`}
-          onClick={() => {
-            setDialogTerm(term)
-            setSaveMessage(null)
-            setDialogOpen(true)
-          }}
-        >
-          Edit
-        </Button>
-      ),
+      cell: (term) => {
+        const closure = closureByTermId.get(term.id)
+        return (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              aria-label={`Edit ${term.school_year} ${termTypeLabel(term.term_type)} academic term`}
+              onClick={() => {
+                setDialogTerm(term)
+                setSaveMessage(null)
+                setDialogOpen(true)
+              }}
+            >
+              Edit
+            </Button>
+            {scope.status === 'ready' && !closure?.is_closed && (
+              <Button
+                type="button"
+                variant="outline"
+                aria-label={`Close encoding for ${term.school_year} ${termTypeLabel(term.term_type)}`}
+                onClick={() => {
+                  setSaveMessage(null)
+                  setClosureDialogTerm(term)
+                }}
+              >
+                Close encoding
+              </Button>
+            )}
+          </div>
+        )
+      },
     },
   ]
 
@@ -317,6 +341,18 @@ export default function AcademicTermsPage() {
             setDialogOpen(false)
             setSaveMessage(
               dialogTerm ? 'Academic term updated.' : 'Academic term created.',
+            )
+          }}
+        />
+      )}
+      {closureDialogTerm && (
+        <EncodingClosureDialog
+          term={closureDialogTerm}
+          onClose={() => setClosureDialogTerm(null)}
+          onComplete={() => {
+            setClosureDialogTerm(null)
+            setSaveMessage(
+              `Department grade encoding closed for ${closureDialogTerm.school_year}, ${termTypeLabel(closureDialogTerm.term_type)}.`,
             )
           }}
         />
