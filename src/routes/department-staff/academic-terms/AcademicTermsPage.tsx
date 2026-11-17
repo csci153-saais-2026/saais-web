@@ -15,7 +15,6 @@ import {
   EncodingClosureDialog,
   type EncodingClosureDialogMode,
 } from './EncodingClosureDialog'
-import { OpenedSubjectsPanel } from './OpenedSubjectsPanel'
 
 function termTypeLabel(termType: SchoolTerm['term_type']): string {
   return termType === 'Summer' ? 'Summer/Midyear' : termType
@@ -336,7 +335,6 @@ export default function AcademicTermsPage() {
               </p>
             }
           />
-          <OpenedSubjectsPanel terms={academicTerms.data.terms} />
         </>
       )}
 
