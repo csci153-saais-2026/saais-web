@@ -146,7 +146,9 @@ describe('Department Staff curricula', () => {
     fireEvent.change(await screen.findByLabelText('Curriculum version'), {
       target: { value: MOCK_IDS.curriculumBscs2024 },
     })
-    fireEvent.click(await screen.findByRole('button', { name: 'Add term' }))
+    const addTermButton = await screen.findByRole('button', { name: 'Add term' })
+    await waitFor(() => expect((addTermButton as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(addTermButton)
     await screen.findByRole('dialog', { name: 'Add curriculum term' })
     fireEvent.change(screen.getByLabelText('Term position'), {
       target: { value: '3' },

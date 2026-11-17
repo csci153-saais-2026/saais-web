@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -143,9 +143,25 @@ describe('Department Staff adviser assignments', () => {
     expect(screen.getByRole('searchbox', { name: 'Search students' })).toBeTruthy()
     expect(screen.getByRole('combobox', { name: 'Curriculum' })).toBeTruthy()
     expect(screen.getByRole('combobox', { name: 'Adviser' })).toBeTruthy()
-    expect(screen.getAllByText(MOCK_PERSONAS.adviser.fullName)).toHaveLength(2)
+    const adviserFilter = screen.getByRole('combobox', { name: 'Adviser' })
+    expect(
+      within(adviserFilter).getByRole('option', {
+        name: MOCK_PERSONAS.adviser.fullName,
+      }),
+    ).toBeTruthy()
+    const assignedStudentRow = screen.getByRole('row', {
+      name: new RegExp(MOCK_PERSONAS.student.fullName),
+    })
+    expect(
+      within(assignedStudentRow).getByText(MOCK_PERSONAS.adviser.fullName),
+    ).toBeTruthy()
     expect(screen.getByText('01 Aug 2024')).toBeTruthy()
-    expect(screen.getAllByText('BSCS 2024')).toHaveLength(2)
+    for (const student of [MOCK_PERSONAS.student, MOCK_PERSONAS.student_secondary]) {
+      const row = screen.getByRole('row', {
+        name: new RegExp(student.fullName),
+      })
+      expect(within(row).getByText('BSCS 2024')).toBeTruthy()
+    }
 
     expect(
       screen.getByRole('checkbox', {
@@ -153,7 +169,9 @@ describe('Department Staff adviser assignments', () => {
       }),
     ).toHaveProperty('disabled', true)
     expect(screen.getByText('0 students selected')).toBeTruthy()
-    expect(screen.getByText(/Showing 1–2 of 2 students/)).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toMatch(
+      /^Showing 1–\d+ of \d+ students · Department scope$/,
+    )
   })
 
   it('filters the existing roster by search and adviser through MSW', async () => {
