@@ -19,26 +19,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "../shared/dh-ui"
-import { useDepartmentToast } from "../shared/dh-utils"
-import {
-  MOCK_TRANSFER_REQUESTS,
-  MOCK_TRANSFER_HISTORY,
-  type TransferRequest,
-  type TransferDecisionHistory,
-} from "./preview-data"
+import { QueryMessage } from "../shared/dh-ui"
+import { useNotify } from "../shared/notify-context"
+import { useDecideTransfer, useTransfers, type TransferRequest } from "./transfers-api"
 
 export default function CurriculumTransfersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.has("history") ? "history" : "pending"
 
-  const [pendingRequests, setPendingRequests] = React.useState<TransferRequest[]>(MOCK_TRANSFER_REQUESTS)
-  const [decisionHistory, setDecisionHistory] = React.useState<TransferDecisionHistory[]>(MOCK_TRANSFER_HISTORY)
+  const transfers = useTransfers()
+  const decide = useDecideTransfer()
+  const pendingRequests = transfers.data?.pending ?? []
+  const decisionHistory = transfers.data?.history ?? []
   const [selectedRequest, setSelectedRequest] = React.useState<TransferRequest | null>(null)
   const [decisionReason, setDecisionReason] = React.useState("")
   const [rejectionError, setRejectionError] = React.useState(false)
-  const { message: toastMessage, showToast } = useDepartmentToast()
+  const showToast = useNotify()
 
   const handleTabChange = (nextTab: string) => {
     const nextParams = new URLSearchParams(searchParams)
@@ -56,52 +52,36 @@ export default function CurriculumTransfersPage() {
     setRejectionError(false)
   }
 
-  const handleApprove = () => {
+  const submitDecision = async (decision: "approved" | "rejected") => {
     if (!selectedRequest) return
-    const approvedItem: TransferDecisionHistory = {
-      id: `hist-${Date.now()}`,
-      studentName: selectedRequest.studentName,
-      studentId: selectedRequest.studentId,
-      currentCurriculum: selectedRequest.currentCurriculum,
-      requestedCurriculum: selectedRequest.requestedCurriculum,
-      adviser: selectedRequest.adviser,
-      decision: "Approved",
-      decisionDate: "Today",
-      decisionReason: decisionReason.trim() || "Completed foundational courses align with requested curriculum.",
-    }
-
-    setPendingRequests((prev) => prev.filter((r) => r.id !== selectedRequest.id))
-    setDecisionHistory((prev) => [approvedItem, ...prev])
-    setSelectedRequest(null)
-    showToast(`Request for ${approvedItem.studentName} approved.`)
-  }
-
-  const handleReject = () => {
-    if (!selectedRequest) return
-    if (!decisionReason.trim()) {
+    const note = decisionReason.trim()
+    if (decision === "rejected" && !note) {
       setRejectionError(true)
       return
     }
-
-    const rejectedItem: TransferDecisionHistory = {
-      id: `hist-${Date.now()}`,
-      studentName: selectedRequest.studentName,
-      studentId: selectedRequest.studentId,
-      currentCurriculum: selectedRequest.currentCurriculum,
-      requestedCurriculum: selectedRequest.requestedCurriculum,
-      adviser: selectedRequest.adviser,
-      decision: "Rejected",
-      decisionDate: "Today",
-      decisionReason: decisionReason.trim(),
+    try {
+      await decide.mutateAsync({ id: selectedRequest.id, decision, note })
+      showToast(`Request for ${selectedRequest.studentName} ${decision}.`)
+      setSelectedRequest(null)
+    } catch (failure) {
+      showToast(failure instanceof Error ? failure.message : "The decision could not be saved.")
     }
-
-    setPendingRequests((prev) => prev.filter((r) => r.id !== selectedRequest.id))
-    setDecisionHistory((prev) => [rejectedItem, ...prev])
-    setSelectedRequest(null)
-    showToast(`Request for ${rejectedItem.studentName} rejected.`)
   }
+  const handleApprove = () => submitDecision("approved")
+  const handleReject = () => submitDecision("rejected")
 
-  const totalDecisionsCount = decisionHistory.length + 12
+  const totalDecisionsCount = decisionHistory.length
+  const approvedCount = decisionHistory.filter((item) => item.decision === "Approved").length
+  const rejectedCount = decisionHistory.length - approvedCount
+
+  if (!transfers.data) {
+    return (
+      <div className="space-y-6">
+        <PageHeading title="Curriculum transfers" subtitle="Review adviser-endorsed requests to move students to another curriculum." />
+        <QueryMessage query={transfers} label="curriculum transfers" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -119,13 +99,13 @@ export default function CurriculumTransfersPage() {
             note: "Requests endorsed by advisers",
           },
           {
-            label: "Approved this semester",
-            value: 12 + decisionHistory.filter((h) => h.decision === "Approved").length - 1,
-            note: "AY 2025–2026 · 1st semester",
+            label: "Approved",
+            value: approvedCount,
+            note: "All recorded decisions",
           },
           {
-            label: "Rejected this semester",
-            value: 2 + decisionHistory.filter((h) => h.decision === "Rejected").length - 1,
+            label: "Rejected",
+            value: rejectedCount,
             note: "Decisions include a reason",
           },
         ]}
@@ -208,7 +188,7 @@ export default function CurriculumTransfersPage() {
       ) : (
         <Panel
           title="Transfer decision history"
-          description={`A sample of the ${totalDecisionsCount} decisions recorded this semester.`}
+          description={`${totalDecisionsCount} recorded decisions.`}
           flush
         >
           <Table responsive>
@@ -249,7 +229,7 @@ export default function CurriculumTransfersPage() {
           </Table>
           <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
             <span>
-              {decisionHistory.length} sample decisions of {totalDecisionsCount}
+              {decisionHistory.length} decisions of {totalDecisionsCount}
             </span>
             <span>DCST department scope</span>
           </div>
@@ -341,11 +321,6 @@ export default function CurriculumTransfersPage() {
         </DialogContent>
       </Dialog>
 
-      <DepartmentToast message={toastMessage} />
-
-      <SampleFooter>
-        Sample records for presentation · Reference date: 15 August 2025 · Static design
-      </SampleFooter>
     </div>
   )
 }

@@ -1,43 +1,38 @@
-import { afterEach, describe, expect, it } from "vitest"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { MemoryRouter } from "react-router"
+import { describe, expect, it } from "vitest"
+import { fireEvent, screen, waitFor } from "@testing-library/react"
 import CurriculumTransfersPage from "./CurriculumTransfersPage"
+import { renderDepartmentHead, setupDepartmentHeadMockApi } from "../test-utils"
 
-afterEach(cleanup)
+setupDepartmentHeadMockApi()
 
-describe("Curriculum Transfers preview", () => {
-  it("renders stat metrics and pending requests", () => {
-    render(
-      <MemoryRouter>
-        <CurriculumTransfersPage />
-      </MemoryRouter>
-    )
+const route = "/department-head/curriculum-transfers"
 
+describe("Curriculum Transfers", () => {
+  it("renders stat metrics and the pending request from the API", async () => {
+    renderDepartmentHead(<CurriculumTransfersPage />, route)
+    expect(await screen.findByText("Sta. Agata, Jerome Daniel S.")).toBeDefined()
     expect(screen.getByText("Pending review")).toBeDefined()
-    expect(screen.getByText("Approved this semester")).toBeDefined()
     expect(screen.getByText("Transfer requests")).toBeDefined()
-    expect(screen.getByText("Luis Miguel Cruz")).toBeDefined()
-    expect(screen.getByText("23-1-00218")).toBeDefined()
+    expect(screen.getByText("24-1-01798")).toBeDefined()
+    expect(screen.getByText("Pending review (1)")).toBeDefined()
   })
 
-  it("supports ?history=1 tab selection and review dialog validation", () => {
-    render(
-      <MemoryRouter initialEntries={["/department-head/curriculum-transfers?history=1"]}>
-        <CurriculumTransfersPage />
-      </MemoryRouter>
-    )
-
-    expect(screen.getByText("Transfer decision history")).toBeDefined()
-    expect(screen.getByText("Maria Lopez")).toBeDefined()
-
-    const pendingTab = screen.getByRole("tab", { name: /Pending review/i })
-    fireEvent.mouseDown(pendingTab, { button: 0 })
-    fireEvent.click(pendingTab)
-    const reviewButtons = screen.getAllByRole("button", { name: /Review request →/i })
-    fireEvent.click(reviewButtons[0])
-
+  it("requires a reason to reject, then records the decision in the history", async () => {
+    renderDepartmentHead(<CurriculumTransfersPage />, route)
+    fireEvent.click(await screen.findByRole("button", { name: /Review request →/i }))
     expect(screen.getByRole("heading", { name: "Review curriculum transfer" })).toBeDefined()
     fireEvent.click(screen.getByRole("button", { name: /Reject request/i }))
     expect(screen.getByText(/Add a decision reason to reject/i)).toBeDefined()
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Pending review of required equivalencies." } })
+    fireEvent.click(screen.getByRole("button", { name: /Reject request/i }))
+    expect(await screen.findByText("Request for Sta. Agata, Jerome Daniel S. rejected.")).toBeDefined()
+    await waitFor(() => expect(screen.getByText("Pending review (0)")).toBeDefined())
+    expect(screen.getByText("Decision history (1)")).toBeDefined()
+  })
+
+  it("supports ?history=1 tab selection", async () => {
+    renderDepartmentHead(<CurriculumTransfersPage />, `${route}?history=1`)
+    expect(await screen.findByText("Transfer decision history")).toBeDefined()
+    expect(screen.getByText("Decision history (0)")).toBeDefined()
   })
 })
