@@ -137,8 +137,8 @@ describe('Adviser breadcrumbs in the shared top bar', () => {
     expectOneBreadcrumb(container)
 
     expect(Array.from(trail().querySelectorAll('[data-slot="breadcrumb-item"]')).map(item => item.textContent))
-      .toEqual(['Adviser', 'Advisees', 'Elena Santos', 'Grades'])
-    expect(within(trail()).getByRole('link', { name: 'Adviser' }).getAttribute('href')).toBe('/adviser/dashboard')
+      .toEqual(['Advising workspace', 'Advisees', 'Elena Santos', 'Grades'])
+    expect(within(trail()).getByRole('link', { name: 'Advising workspace' }).getAttribute('href')).toBe('/adviser/dashboard')
     fireEvent.click(within(trail()).getByRole('link', { name: 'Advisees' }))
     expect(trail().querySelector('[aria-current="page"]')?.textContent).toBe('Advisees')
     expect(screen.queryByRole('button', { name: 'Show previous pages' })).toBeNull()
@@ -162,7 +162,7 @@ describe('Adviser breadcrumbs in the shared top bar', () => {
     expect(getProfile.mock.calls[0][1].params.query.id).toBe('eq.10000000-0000-4000-8000-000000000001')
     expect(trail().querySelector('[aria-current="page"]')?.textContent).toBe('Checklist')
     expect(Array.from(trail().querySelectorAll('[data-slot="breadcrumb-item"]')).map(item => item.textContent))
-      .toEqual(['Adviser', 'Advisees', 'Elena Santos', 'Checklist'])
+      .toEqual(['Advising workspace', 'Advisees', 'Elena Santos', 'Checklist'])
   })
 
   it('clears the previous student immediately on record or account changes and ignores late responses', async () => {
@@ -219,7 +219,7 @@ describe('Adviser breadcrumbs in the shared top bar', () => {
     await within(trail()).findByRole('link', { name: 'Elena Santos' })
     expectOneBreadcrumb(container)
     expect(Array.from(trail().querySelectorAll('[data-slot="breadcrumb-item"]')).map(item => item.textContent))
-      .toEqual(['Adviser', 'Advisees', 'Elena Santos', 'Grades'])
+      .toEqual(['Advising workspace', 'Advisees', 'Elena Santos', 'Grades'])
     expect(screen.queryByRole('button', { name: 'Show previous pages' })).toBeNull()
     fireEvent.click(within(trail()).getByRole('link', { name: 'Elena Santos' }))
     expect(trail().querySelector('[aria-current="page"]')?.textContent).toBe('Checklist')
