@@ -22,50 +22,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "../shared/dh-ui"
-import { useDepartmentToast } from "../shared/dh-utils"
-import {
-  EQUIVALENCE_SOURCE_COURSES,
-  EQUIVALENCE_TARGET_COURSES,
-  MOCK_EQUIVALENCIES,
-  type CourseEquivalence,
-} from "./preview-data"
-
-const FROM_CURRICULA = [
-  { id: "bscs-2021", label: "BSCS 2021" },
-  { id: "bsit-2021", label: "BSIT 2021" },
-] as const
-const TO_CURRICULA = [
-  { id: "bscs-2024", label: "BSCS 2024" },
-  { id: "bsit-2024", label: "BSIT 2024" },
-] as const
+import { QueryMessage } from "../shared/dh-ui"
+import { useNotify } from "../shared/notify-context"
+import { useAddEquivalence, useEquivalenceData } from "./equivalence-api"
 
 export default function EquivalencePage() {
-  const [equivalencies, setEquivalencies] = React.useState<CourseEquivalence[]>(MOCK_EQUIVALENCIES)
-  const [fromCurriculumId, setFromCurriculumId] = React.useState<string>(FROM_CURRICULA[0].id)
-  const [toCurriculumId, setToCurriculumId] = React.useState<string>(TO_CURRICULA[0].id)
+  const query = useEquivalenceData()
+  const addEquivalence = useAddEquivalence()
+  const showToast = useNotify()
+  const curricula = query.data?.curricula ?? []
+  const courses = query.data?.courses ?? []
+  const equivalencies = query.data?.equivalencies ?? []
+  const [pickedFromId, setFromCurriculumId] = React.useState("")
+  const [pickedToId, setToCurriculumId] = React.useState("")
+  // Start on a curriculum pair that already has equivalencies, otherwise on the first two curricula.
+  const fromCurriculumId = pickedFromId || equivalencies[0]?.fromCurriculumId || curricula[0]?.id || ""
+  const toCurriculumId = pickedToId || equivalencies[0]?.toCurriculumId || curricula[1]?.id || curricula[0]?.id || ""
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false)
-  const { message: toastMessage, showToast } = useDepartmentToast()
 
-  const [modalFromId, setModalFromId] = React.useState(fromCurriculumId)
-  const [modalToId, setModalToId] = React.useState(toCurriculumId)
-  const [sourceCourseId, setSourceCourseId] = React.useState(EQUIVALENCE_SOURCE_COURSES[0].id)
-  const [targetCourseId, setTargetCourseId] = React.useState(EQUIVALENCE_TARGET_COURSES[0].id)
+  const [modalFromId, setModalFromId] = React.useState("")
+  const [modalToId, setModalToId] = React.useState("")
+  const [sourceCourseId, setSourceCourseId] = React.useState("")
+  const [targetCourseId, setTargetCourseId] = React.useState("")
   const [formError, setFormError] = React.useState("")
 
   function openAddDialog() {
     setModalFromId(fromCurriculumId)
     setModalToId(toCurriculumId)
-    setSourceCourseId(EQUIVALENCE_SOURCE_COURSES[0].id)
-    setTargetCourseId(EQUIVALENCE_TARGET_COURSES[0].id)
+    setSourceCourseId(courses[0]?.id ?? "")
+    setTargetCourseId(courses[1]?.id ?? courses[0]?.id ?? "")
     setFormError("")
     setIsAddModalOpen(true)
   }
 
-  function handleAddEquivalence() {
-    const sourceCourse = EQUIVALENCE_SOURCE_COURSES.find((course) => course.id === sourceCourseId)
-    const targetCourse = EQUIVALENCE_TARGET_COURSES.find((course) => course.id === targetCourseId)
+  async function handleAddEquivalence() {
+    const sourceCourse = courses.find((course) => course.id === sourceCourseId)
+    const targetCourse = courses.find((course) => course.id === targetCourseId)
     if (!sourceCourse || !targetCourse) {
       setFormError("Select both courses before adding an equivalence.")
       return
@@ -81,26 +73,31 @@ export default function EquivalencePage() {
       return
     }
 
-    const newEquiv: CourseEquivalence = {
-      id: `${modalFromId}/${modalToId}/${sourceCourseId}/${targetCourseId}`,
-      fromCurriculumId: modalFromId,
-      toCurriculumId: modalToId,
-      sourceCourse,
-      targetCourse,
+    try {
+      await addEquivalence.mutateAsync({ fromId: modalFromId, toId: modalToId, sourceCourseId, targetCourseId })
+      setFromCurriculumId(modalFromId)
+      setToCurriculumId(modalToId)
+      setIsAddModalOpen(false)
+      showToast(`Added equivalence for ${sourceCourse.code} → ${targetCourse.code}.`)
+    } catch (failure) {
+      setFormError(failure instanceof Error ? failure.message : "The equivalence could not be added.")
     }
-
-    setEquivalencies((prev) => [newEquiv, ...prev])
-    setFromCurriculumId(modalFromId)
-    setToCurriculumId(modalToId)
-    setIsAddModalOpen(false)
-    showToast(`Added equivalence for ${sourceCourse.code} → ${targetCourse.code}.`)
   }
 
   const displayedEquivalencies = equivalencies.filter((eq) =>
     eq.fromCurriculumId === fromCurriculumId && eq.toCurriculumId === toCurriculumId
   )
-  const fromLabel = FROM_CURRICULA.find((curriculum) => curriculum.id === fromCurriculumId)?.label
-  const toLabel = TO_CURRICULA.find((curriculum) => curriculum.id === toCurriculumId)?.label
+  const fromLabel = curricula.find((curriculum) => curriculum.id === fromCurriculumId)?.label
+  const toLabel = curricula.find((curriculum) => curriculum.id === toCurriculumId)?.label
+
+  if (!query.data) {
+    return (
+      <div className="space-y-6">
+        <PageHeading title="Equivalence" subtitle="Define one-to-one course equivalencies between curriculum versions." />
+        <QueryMessage query={query} label="equivalencies" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -134,7 +131,7 @@ export default function EquivalencePage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {FROM_CURRICULA.map((item) => (
+                {curricula.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
                     {item.label}
                   </SelectItem>
@@ -149,7 +146,7 @@ export default function EquivalencePage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TO_CURRICULA.map((item) => (
+                {curricula.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
                     {item.label}
                   </SelectItem>
@@ -198,7 +195,7 @@ export default function EquivalencePage() {
             {displayedEquivalencies.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                  No equivalency sample for this pair. Select <strong>BSCS 2021</strong> and <strong>BSCS 2024</strong> to view the populated design.
+                  No equivalencies recorded for this pair.
                 </TableCell>
               </TableRow>
             )}
@@ -229,7 +226,7 @@ export default function EquivalencePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {FROM_CURRICULA.map((item) => (
+                    {curricula.map((item) => (
                       <SelectItem key={item.id} value={item.id}>
                         {item.label}
                       </SelectItem>
@@ -244,7 +241,7 @@ export default function EquivalencePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TO_CURRICULA.map((item) => (
+                    {curricula.map((item) => (
                       <SelectItem key={item.id} value={item.id}>
                         {item.label}
                       </SelectItem>
@@ -260,7 +257,7 @@ export default function EquivalencePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EQUIVALENCE_SOURCE_COURSES.map((course) => (
+                  {courses.map((course) => (
                     <SelectItem key={course.id} value={course.id}>
                       {course.code} · {course.title} · {course.units} units
                     </SelectItem>
@@ -275,7 +272,7 @@ export default function EquivalencePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EQUIVALENCE_TARGET_COURSES.map((course) => (
+                  {courses.map((course) => (
                     <SelectItem key={course.id} value={course.id}>
                       {course.code} · {course.title} · {course.units} units
                     </SelectItem>
@@ -298,16 +295,12 @@ export default function EquivalencePage() {
             <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddEquivalence}>Add equivalence</Button>
+            <Button onClick={handleAddEquivalence} disabled={addEquivalence.isPending}>Add equivalence</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <DepartmentToast message={toastMessage} />
 
-      <SampleFooter>
-        Sample records for presentation · Reference date: 15 August 2025 · Static design
-      </SampleFooter>
     </div>
   )
 }
