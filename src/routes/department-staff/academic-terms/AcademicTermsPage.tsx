@@ -10,6 +10,7 @@ import type {
 } from './academic-terms.api'
 import { useAcademicTerms } from '@/hooks/use-academic-terms'
 import { SchoolTermDialog } from './SchoolTermDialog'
+import { OpenedSubjectsPanel } from './OpenedSubjectsPanel'
 
 function termTypeLabel(termType: SchoolTerm['term_type']): string {
   return termType === 'Summer' ? 'Summer/Midyear' : termType
@@ -289,20 +290,23 @@ export default function AcademicTermsPage() {
       )}
 
       {academicTerms.isSuccess && (
-        <DataTablePanel
-          title="Academic term history"
-          description="Institution-wide calendar locks and department-specific encoding closures are shown separately."
-          columns={columns}
-          rows={[...academicTerms.data.terms]}
-          rowKey={(term) => term.id}
-          empty="No academic terms are available."
-          footer={
-            <p role="status">
-              {academicTerms.data.terms.length} academic term
-              {academicTerms.data.terms.length === 1 ? '' : 's'}
-            </p>
-          }
-        />
+        <>
+          <DataTablePanel
+            title="Academic term history"
+            description="Institution-wide calendar locks and department-specific encoding closures are shown separately."
+            columns={columns}
+            rows={[...academicTerms.data.terms]}
+            rowKey={(term) => term.id}
+            empty="No academic terms are available."
+            footer={
+              <p role="status">
+                {academicTerms.data.terms.length} academic term
+                {academicTerms.data.terms.length === 1 ? '' : 's'}
+              </p>
+            }
+          />
+          <OpenedSubjectsPanel terms={academicTerms.data.terms} />
+        </>
       )}
 
       {dialogOpen && (

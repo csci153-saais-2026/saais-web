@@ -27,6 +27,10 @@ vi.mock('@/hooks/use-academic-terms', () => ({
   useUpdateSchoolTerm: () => updateMutation,
 }))
 
+vi.mock('./OpenedSubjectsPanel', () => ({
+  OpenedSubjectsPanel: () => <div data-testid="opened-subjects-panel" />,
+}))
+
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -69,6 +73,7 @@ describe('AcademicTermsPage', () => {
 
     render(<AcademicTermsPage />)
 
+    expect(screen.getByTestId('opened-subjects-panel')).toBeTruthy()
     fireEvent.click(
       screen.getByRole('button', {
         name: 'Edit 2025 - 2026 2nd Semester academic term',
