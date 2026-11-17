@@ -115,6 +115,22 @@ export default function CourseCatalogPage() {
     { header: 'Units', numeric: true, className: 'sm:whitespace-nowrap', cell: course => typeof course.units === 'number' && Number.isFinite(course.units) ? course.units : 'Not provided' },
     { header: 'Type', className: 'sm:whitespace-nowrap', cell: course => course.category ? courseTypeLabels[course.category] ?? 'Not provided' : 'Not provided' },
     { header: 'Status', className: 'sm:whitespace-nowrap', cell: course => <Badge variant={course.status === 'active' ? 'secondary' : 'outline'}>{statusLabel(course.status)}</Badge> },
+    {
+      header: 'Actions', className: 'sm:whitespace-nowrap',
+      cell: course => staffScope.status === 'ready' && staffScope.departmentIds.includes(course.department_id)
+        ? <CourseDialog
+            course={course}
+            departmentId={course.department_id}
+            departmentLabel={(() => {
+              const department = departmentsById.get(course.department_id)
+              return department ? `${department.code} · ${department.name}` : course.department_id
+            })()}
+            onCreated={() => undefined}
+            onUpdated={() => undefined}
+            triggerLabel={`Edit ${course.code || 'course'}`}
+          />
+        : <span aria-label="Read only">—</span>,
+    },
   ]
 
   const data = catalog.data
@@ -125,11 +141,11 @@ export default function CourseCatalogPage() {
     : (data?.courses.length ?? 0) === courseCatalogPageSize
   return (
     <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
-      <PageHeading title="Course catalog" subtitle="Browse the read-only university course reference." />
+      <PageHeading title="Course catalog" subtitle="Browse and maintain courses in your authorized department." />
 
       <Panel
         title="Course catalog"
-        description="Reference rows are read-only; new courses can only be created in your authorized department."
+        description="Edit courses only within your authorized department; other department references remain read-only."
         action={staffScope.status === 'ready' ? (
           <CourseDialog
             departmentId={staffScope.departmentId}

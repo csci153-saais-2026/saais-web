@@ -88,14 +88,14 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 describe('Department Staff course catalog', () => {
-  it('loads the lazy page and renders the exact read-only catalog columns and labels', async () => {
+  it('loads the lazy page and renders the exact catalog columns and labels', async () => {
     renderCourseCatalog('/department-staff/course-catalog?context=keep')
 
     expect(await screen.findByRole('heading', { name: 'Course catalog', level: 1 })).toBeTruthy()
     await screen.findByRole('row', { name: /CSCI 101/ })
     const table = screen.getByRole('table')
     expect(within(table).getAllByRole('columnheader').map(header => header.textContent)).toEqual([
-      'Code', 'Title', 'Department', 'Units', 'Type', 'Status',
+      'Code', 'Title', 'Department', 'Units', 'Type', 'Status', 'Actions',
     ])
 
     const row = await screen.findByRole('row', { name: /CSCI 101/ })
@@ -105,7 +105,8 @@ describe('Department Staff course catalog', () => {
     expect(within(row).getByText('3')).toBeTruthy()
     expect(within(row).getByText('Major')).toBeTruthy()
     expect(within(row).getByText('Active')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /edit|delete|retire/i })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Edit CSCI 101' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /delete|retire/i })).toBeNull()
   })
 
   it('displays discontinued courses as Inactive without changing the API value', async () => {
@@ -324,6 +325,100 @@ describe('Department Staff course catalog', () => {
     expect(within(row).getByText(/DABE/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add course' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /edit|delete|retire/i })).toBeNull()
+  })
+
+  it('updates only approved mutable fields and refreshes catalog and curriculum data without changing filter context', async () => {
+    const { queryClient } = renderCourseCatalog('/department-staff/course-catalog?status=active&context=keep')
+    const course = getMockDatabase().courses.find(item => item.code === 'CSCI 101')!
+    const curriculaKey = ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curricula', {}]
+    const activeKey = ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-overview', { versionId: 'active-v1' }]
+    const historicalKey = ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-overview', { versionId: 'historical-v1' }]
+    const historicalSnapshot = { slots: [{ course_id: course.id }], title: 'Frozen curriculum snapshot' }
+    let requestBody: Record<string, unknown> | undefined
+    saaisMockServer.use(http.patch('*/functions/v1/catalog/course/:id', async ({ request, params }) => {
+      requestBody = await request.json() as Record<string, unknown>
+      const database = getMockDatabase()
+      const index = database.courses.findIndex(item => item.id === String(params.id))
+      database.courses[index] = { ...database.courses[index]!, ...requestBody } as typeof database.courses[number]
+      return HttpResponse.json(database.courses[index])
+    }))
+
+    await screen.findByRole('row', { name: /CSCI 101/ })
+    queryClient.setQueryData(curriculaKey, { versions: [
+      { id: 'active-v1', status: 'active' }, { id: 'historical-v1', status: 'retired' },
+    ] })
+    queryClient.setQueryData(activeKey, { slots: [{ course_id: course.id }], title: 'Active curriculum' })
+    queryClient.setQueryData(historicalKey, historicalSnapshot)
+    expect(queryClient.getQueryData(curriculaKey)).toBeDefined()
+    expect(queryClient.getQueriesData({ queryKey: ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-overview'] })).toHaveLength(2)
+    const setQueryData = vi.spyOn(queryClient, 'setQueryData')
+    const invalidation = vi.spyOn(queryClient, 'invalidateQueries')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit CSCI 101' }))
+    expect(screen.getByRole('heading', { name: 'Edit catalog course' })).toBeTruthy()
+    expect((screen.getByLabelText('Course title') as HTMLInputElement).value).toBe(course.title)
+    fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CSCI 101A' } })
+    fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Revised Computing Foundations' } })
+    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '3.5' } })
+    fireEvent.change(screen.getByLabelText('Course type'), { target: { value: 'elective' } })
+    fireEvent.change(screen.getByLabelText('Status', { selector: 'select' }), { target: { value: 'discontinued' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => expect(requestBody).toBeDefined())
+    expect(Object.keys(requestBody!).sort()).toEqual(['category', 'code', 'is_elective', 'status', 'title', 'units'])
+    expect(requestBody).toEqual({
+      code: 'CSCI 101A', title: 'Revised Computing Foundations', units: 3.5,
+      category: 'elective', is_elective: true, status: 'discontinued',
+    })
+    expect(invalidation).toHaveBeenCalledWith({ queryKey: expect.arrayContaining(['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'course-catalog-page']) })
+    expect(invalidation).toHaveBeenCalledWith({ queryKey: expect.arrayContaining(['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'course-catalog-references']) })
+    expect(invalidation).toHaveBeenCalledWith({ queryKey: expect.arrayContaining(['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-course-options']) })
+    expect(invalidation).toHaveBeenCalledWith(expect.objectContaining({
+      queryKey: ['staff', staffPersona.profileId, MOCK_IDS.deptDcst, 'curriculum-overview'],
+      predicate: expect.any(Function),
+    }))
+    const overviewInvalidation = invalidation.mock.calls
+      .map(([filters]) => filters)
+      .find(filters => filters.queryKey?.[3] === 'curriculum-overview')
+    expect(overviewInvalidation?.predicate?.({ queryKey: activeKey, state: { data: { slots: [{ course_id: course.id }] } } } as never)).toBe(true)
+    expect(overviewInvalidation?.predicate?.({ queryKey: historicalKey, state: { data: historicalSnapshot } } as never)).toBe(false)
+    expect(setQueryData.mock.calls.some(([key]) => key.includes('curriculum-overview'))).toBe(false)
+    expect(screen.getByTestId('current-location').textContent).toContain('status=active')
+    expect(screen.getByTestId('current-location').textContent).toContain('context=keep')
+  })
+
+  it('blocks invalid update values without making a request', async () => {
+    let requests = 0
+    saaisMockServer.use(http.patch('*/functions/v1/catalog/course/:id', () => {
+      requests += 1
+      return HttpResponse.json({ message: 'Invalid input should not be submitted.' }, { status: 500 })
+    }))
+    renderCourseCatalog()
+    await screen.findByRole('row', { name: /CSCI 101/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit CSCI 101' }))
+    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '0' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText('Enter more than zero units.')).toBeTruthy()
+    expect(requests).toBe(0)
+  })
+
+  it.each([
+    [403, 'INSUFFICIENT_PRIVILEGE', 'permission to edit'],
+    [409, '23505', 'already exists'],
+    [409, 'STALE_RECORD', 'changed since it was loaded'],
+  ])('keeps the edit form available after server status %s (%s)', async (status, code, message) => {
+    saaisMockServer.use(http.patch('*/functions/v1/catalog/course/:id', () => HttpResponse.json(
+      { code, message: 'The server rejected the update.' },
+      { status },
+    )))
+    renderCourseCatalog()
+    await screen.findByRole('row', { name: /CSCI 101/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit CSCI 101' }))
+    fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Unsaved edit retained' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain(message)
+    expect((screen.getByLabelText('Course title') as HTMLInputElement).value).toBe('Unsaved edit retained')
+    expect(screen.getByRole('heading', { name: 'Edit catalog course' })).toBeTruthy()
   })
 
   it('opens the shared course form from Add course and refreshes catalog queries without changing filters', async () => {

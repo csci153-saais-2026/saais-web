@@ -14,7 +14,14 @@ export const courseSchema = z.object({
   status: z.enum(courseStatuses, { error: 'Choose active or discontinued.' }),
 }).strict()
 
+export const editableCourseSchema = courseSchema.extend({
+  // Preserve legacy API-inactive records when editing other fields; create remains
+  // restricted to the approved active/discontinued choices above.
+  status: z.enum(['active', 'inactive', 'discontinued'], { error: 'Choose a valid course status.' }),
+})
+
 export type CourseValues = z.infer<typeof courseSchema>
+export type EditableCourseValues = z.infer<typeof editableCourseSchema>
 
 export function courseCreateRequest(departmentId: string, values: CourseValues): ApiSchema<'CourseInsert'> {
   const parsed = courseSchema.parse(values)
@@ -28,5 +35,18 @@ export function courseCreateRequest(departmentId: string, values: CourseValues):
     status: parsed.status,
     // Required by the legacy contract schema; repeat policy is not a user control.
     repeatable_type: 'none',
+  }
+}
+
+export function courseUpdateRequest(values: EditableCourseValues): ApiSchema<'CourseUpdate'> {
+  const parsed = editableCourseSchema.parse(values)
+  return {
+    code: parsed.code,
+    title: parsed.title,
+    units: parsed.units,
+    category: parsed.type === 'elective' ? 'elective' : parsed.category === 'elective' ? 'major' : parsed.category,
+    is_elective: parsed.type === 'elective',
+    status: parsed.status,
+    // Intentionally omit department_id and repeatable_type: neither is editable here.
   }
 }

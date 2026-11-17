@@ -30,6 +30,13 @@ export async function createCatalogCourse(body: ApiSchema<'CourseInsert'>): Prom
   return unwrapApiResult<CatalogCourse>(await apiClient.POST('/functions/v1/catalog/course', { body }))
 }
 
+export async function updateCatalogCourse(id: string, body: ApiSchema<'CourseUpdate'>): Promise<CatalogCourse> {
+  return unwrapApiResult<CatalogCourse>(await apiClient.PATCH('/functions/v1/catalog/course/{id}', {
+    params: { path: { id } },
+    body,
+  }))
+}
+
 function completeRead<T>(
   result: { data?: T[]; error?: unknown; response: Response },
   resource: string,
