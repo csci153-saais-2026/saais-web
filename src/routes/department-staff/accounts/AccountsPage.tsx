@@ -11,6 +11,7 @@ import { useDepartmentAccounts } from '@/hooks/use-department-accounts'
 import { ApiClientError, type ApiSchema } from '@/lib/api'
 import { useStaffScope } from '../shared/use-staff-scope'
 import { accountsMaxOffset, accountsPageSize, type DepartmentAccount } from './accounts.api'
+import InviteAccountDialog from './InviteAccountDialog'
 
 const roleLabels: Record<ApiSchema<'RoleType'>, string> = {
   student: 'Student',
@@ -100,7 +101,11 @@ export default function AccountsPage() {
 
   return (
     <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
-      <PageHeading title="Accounts and roles" subtitle="Read-only account directory for your authorized department." />
+      <PageHeading
+        title="Accounts and roles"
+        subtitle="Read-only account directory for your authorized department."
+        actions={scope.status === 'ready' ? <InviteAccountDialog /> : undefined}
+      />
 
       {scope.status === 'ready' && (
         <Panel title="Find accounts" description="Organization scope is fixed to your approved Department Staff assignment.">

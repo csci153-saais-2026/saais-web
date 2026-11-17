@@ -170,7 +170,7 @@ async function listDepartmentCurricula(
     .sort((left, right) => left.label.localeCompare(right.label))
 }
 
-async function listDepartmentAdvisers(
+export async function listEligibleDepartmentAdvisers(
   departmentId: string,
   signal?: AbortSignal,
 ): Promise<StudentFilterOption[]> {
@@ -247,7 +247,7 @@ export async function listStudentFilterOptions(
 ): Promise<StudentRosterFilterOptions> {
   const [curricula, advisers] = await Promise.all([
     listDepartmentCurricula(departmentId, signal),
-    listDepartmentAdvisers(departmentId, signal),
+    listEligibleDepartmentAdvisers(departmentId, signal),
   ])
   return { curricula, advisers }
 }

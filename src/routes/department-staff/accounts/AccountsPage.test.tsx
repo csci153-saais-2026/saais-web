@@ -232,4 +232,39 @@ describe('Department Staff accounts directory', () => {
     expect(await screen.findByText('A Department Staff role assignment is required to continue.')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Accounts and roles' })).toBeNull()
   })
+
+  it('reviews a valid multi-role student draft while leaving provisioning unavailable', async () => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    let provisioningCalls = 0
+    saaisMockServer.use(http.post('*/functions/v1/auth/invite', () => {
+      provisioningCalls += 1
+      return HttpResponse.json({ success: true })
+    }))
+    renderAccounts()
+    fireEvent.click(await screen.findByRole('button', { name: 'Prepare invitation' }))
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'New Student' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: 'new.student@vsu.edu.ph' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Canonical student number' }), { target: { value: '26-1-00042' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Additional role Adviser' }))
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Program' }))
+    fireEvent.click(await screen.findByRole('option', { name: /BSCS - Bachelor of Science in Computer Science/ }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Active curriculum version' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'BSCS 2024-2025 v1' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Eligible initial adviser' }))
+    fireEvent.click(await screen.findByRole('option', { name: MOCK_PERSONAS.adviser.fullName }))
+    fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
+
+    const summary = await screen.findByRole('region', { name: 'Invitation review' })
+    expect(within(summary).getByText(/new\.student@vsu\.edu\.ph/)).toBeTruthy()
+    expect(within(summary).getByText(/Student, Adviser/)).toBeTruthy()
+    expect(within(summary).getByText('26-1-00042')).toBeTruthy()
+    expect(within(summary).getByText(/BSCS 2024-2025 v1/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send invitation (Step 37)' }).hasAttribute('disabled')).toBe(true)
+    expect(provisioningCalls).toBe(0)
+  })
 })
