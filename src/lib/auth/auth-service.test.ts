@@ -141,9 +141,9 @@ describe('auth service helpers and account actions', () => {
     await expect(changeAuthenticatedPassword('CurrentPassword123', 'NewPassword123')).resolves.toEqual({ simulated: false })
     expect(signOut).toHaveBeenCalledWith({ scope: 'others' })
 
-    recover.mockResolvedValueOnce({ data: null, error: new AuthApiError('recovery failed', 400) })
+    recover.mockResolvedValueOnce({ data: null, error: new AuthApiError('recovery failed', 400, 'recovery_failed') })
     await expect(requestPasswordRecoveryEmail('student@vsu.edu.ph')).rejects.toThrow('recovery failed')
-    update.mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('update failed', 400) })
+    update.mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('update failed', 400, 'update_failed') })
     await expect(completePasswordReset('AnotherPassword123')).rejects.toThrow('update failed')
   })
 

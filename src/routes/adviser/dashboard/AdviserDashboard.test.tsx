@@ -82,7 +82,7 @@ describe('AdviserDashboard', () => {
     try {
       const view = render(<MemoryRouter><AdviserDashboard /></MemoryRouter>)
       const exportButton = await screen.findByRole('button', { name: 'Export PDF' })
-      await waitFor(() => expect(exportButton.disabled).toBe(false))
+      await waitFor(() => expect((exportButton as HTMLButtonElement).disabled).toBe(false))
       fireEvent.click(exportButton)
       const download = await screen.findByRole('link', { name: 'Download PDF' })
       expect(download.getAttribute('href')).toBe('blob:dashboard')
