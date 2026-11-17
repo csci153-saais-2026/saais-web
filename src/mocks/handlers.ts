@@ -20,6 +20,47 @@ function alreadyPassedCourse(studentId: string, offeringId: string, existingAtte
   return Boolean(courseId && db.attemptResults.some(a => a.student_id === studentId && a.id !== existingAttemptId && a.effective_status === 'passed' && db.courseOfferings.some(o => o.id === a.course_offering_id && o.course_id === courseId)))
 }
 
+function isRequiredCourseInDepartment(
+  courseId: string,
+  departmentId: string,
+): boolean {
+  const db = getMockDatabase()
+  const departmentTermIds = new Set(
+    db.curriculumTerms
+      .filter((term) => {
+        const version = db.curriculumVersions.find(
+          (item) => item.id === term.curriculum_version_id,
+        )
+        const program = db.programs.find(
+          (item) => item.id === version?.program_id,
+        )
+        return program?.department_id === departmentId
+      })
+      .map((term) => term.id),
+  )
+
+  return db.curriculumTermCourses.some(
+    (slot) =>
+      slot.course_id === courseId &&
+      departmentTermIds.has(slot.curriculum_term_id) &&
+      !slot.is_elective_slot &&
+      slot.slot_type !== 'elective',
+  )
+}
+
+function courseOfferingHasHistory(offeringId: string): boolean {
+  const db = getMockDatabase()
+  return (
+    db.attempts.some((attempt) => attempt.course_offering_id === offeringId) ||
+    db.attemptResults.some(
+      (result) => result.course_offering_id === offeringId,
+    ) ||
+    db.advisingPlanItems.some(
+      (item) => item.course_offering_id === offeringId,
+    )
+  )
+}
+
 function markRetakeResults(attempts: ApiSchema<'AttemptResult'>[]): ApiSchema<'AttemptResult'>[] {
   const db = getMockDatabase()
   const courseId = (attempt: ApiSchema<'AttemptResult'>) => db.courseOfferings.find(o => o.id === attempt.course_offering_id)?.course_id
@@ -1649,16 +1690,36 @@ export const saaisMswHandlers = [
     if (!body?.school_term_id || !body?.course_id) {
       return errorJson(400, 'INVALID_INPUT', 'school_term_id and course_id are required.')
     }
+    const db = getMockDatabase()
+    const course = db.courses.find((item) => item.id === body.course_id)
+    if (!course) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course offering is outside the authorized department.')
+    }
+    if (!db.schoolTerms.some((term) => term.id === body.school_term_id)) {
+      return errorJson(404, 'NOT_FOUND', 'School term not found.')
+    }
+    if (
+      course.status === 'discontinued' &&
+      (!body.is_by_request ||
+        !isRequiredCourseInDepartment(course.id, course.department_id))
+    ) {
+      return errorJson(
+        400,
+        'INVALID_INPUT',
+        'Discontinued courses may only be offered by request when required by a department curriculum.',
+      )
+    }
     const created: ApiSchema<'CourseOffering'> = {
       id: nextSyntheticUuid(),
       school_term_id: body.school_term_id,
       course_id: body.course_id,
-      section: body.section ?? 'A',
-      schedule: body.schedule ?? 'MWF 08:00-09:00',
+      section: body.section ?? null,
+      schedule: body.schedule ?? null,
       instructor: body.instructor ?? null,
       is_by_request: body.is_by_request ?? false,
     }
-    getMockDatabase().courseOfferings.push(created)
+    db.courseOfferings.push(created)
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -1673,10 +1734,27 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courseOfferings.findIndex((o) => o.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course offering not found.')
+    const current = db.courseOfferings[idx]!
+    const course = db.courses.find((item) => item.id === current.course_id)
+    if (!course) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course offering is outside the authorized department.')
+    }
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'CourseOfferingUpdate'>
     const updated: ApiSchema<'CourseOffering'> = {
-      ...db.courseOfferings[idx]!,
+      ...current,
       ...body,
+    }
+    if (
+      course.status === 'discontinued' &&
+      (!updated.is_by_request ||
+        !isRequiredCourseInDepartment(course.id, course.department_id))
+    ) {
+      return errorJson(
+        400,
+        'INVALID_INPUT',
+        'Discontinued courses may only be offered by request when required by a department curriculum.',
+      )
     }
     db.courseOfferings[idx] = updated
     return HttpResponse.json(updated, { status: 200 })
@@ -1693,6 +1771,20 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courseOfferings.findIndex((o) => o.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course offering not found.')
+    const course = db.courses.find(
+      (item) => item.id === db.courseOfferings[idx]?.course_id,
+    )
+    if (!course) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course offering is outside the authorized department.')
+    }
+    if (courseOfferingHasHistory(id)) {
+      return errorJson(
+        409,
+        'CONFLICT',
+        'Academic history or dependent advising records protect this course offering.',
+      )
+    }
     db.courseOfferings.splice(idx, 1)
     return new HttpResponse(null, { status: 204 })
   }),

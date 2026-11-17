@@ -36,6 +36,135 @@ afterAll(() => {
   saaisMockServer.close()
 })
 
+describe('Course offering management mock operations', () => {
+  const client = () =>
+    createSaaisApiClient({ baseUrl: BASE_URL, apiKey: TEST_API_KEY, mode: 'mock' })
+
+  it('creates only department-scoped offerings and preserves submitted optional fields', async () => {
+    const db = getMockDatabase()
+    const course = db.courses.find((item) => item.id === MOCK_IDS.courseCsci198)!
+    loginAsMockPersona('department_staff')
+
+    const body = {
+      school_term_id: MOCK_IDS.term2026Sem1Open,
+      course_id: course.id,
+      section: null,
+      schedule: null,
+      instructor: null,
+      is_by_request: false,
+    }
+    const created = await client().POST(
+      '/functions/v1/catalog/course_offering',
+      { body },
+    )
+    expect(created.response.status).toBe(201)
+    expect(created.data).toMatchObject(body)
+
+    const foreignCourseId = '82000000-0000-4000-8000-000000000001'
+    db.courses.push({
+      ...course,
+      id: foreignCourseId,
+      department_id: MOCK_IDS.deptDabe,
+    })
+    const denied = await client().POST(
+      '/functions/v1/catalog/course_offering',
+      {
+        body: {
+          ...body,
+          course_id: foreignCourseId,
+        },
+      },
+    )
+    expect(denied.response.status).toBe(403)
+  })
+
+  it('requires discontinued courses to be required by the department and offered by request', async () => {
+    const db = getMockDatabase()
+    const activeCourse = db.courses.find(
+      (item) => item.id === MOCK_IDS.courseCsci153,
+    )!
+    const discontinuedCourseId = '82000000-0000-4000-8000-000000000002'
+    db.courses.push({
+      ...activeCourse,
+      id: discontinuedCourseId,
+      code: 'CSCI 099',
+      title: 'Discontinued Required Course',
+      status: 'discontinued',
+    })
+    const curriculumTerm = db.curriculumTerms.find((term) => {
+      const version = db.curriculumVersions.find(
+        (item) => item.id === term.curriculum_version_id,
+      )
+      const program = db.programs.find(
+        (item) => item.id === version?.program_id,
+      )
+      return program?.department_id === MOCK_IDS.deptDcst
+    })!
+    db.curriculumTermCourses.push({
+      ...db.curriculumTermCourses[0]!,
+      id: '82000000-0000-4000-8000-000000000003',
+      curriculum_term_id: curriculumTerm.id,
+      course_id: discontinuedCourseId,
+      is_elective_slot: false,
+      slot_type: 'required',
+      slot_label: null,
+    })
+    loginAsMockPersona('department_staff')
+
+    const body = {
+      school_term_id: MOCK_IDS.term2026Sem1Open,
+      course_id: discontinuedCourseId,
+      section: 'R1',
+      is_by_request: false,
+    }
+    const denied = await client().POST(
+      '/functions/v1/catalog/course_offering',
+      { body },
+    )
+    expect(denied.response.status).toBe(400)
+    expect(db.courseOfferings.some((item) => item.course_id === discontinuedCourseId)).toBe(false)
+
+    const allowed = await client().POST(
+      '/functions/v1/catalog/course_offering',
+      { body: { ...body, is_by_request: true } },
+    )
+    expect(allowed.response.status).toBe(201)
+    expect(allowed.data?.is_by_request).toBe(true)
+  })
+
+  it('rejects removal of offerings with academic history and removes unreferenced offerings', async () => {
+    const db = getMockDatabase()
+    loginAsMockPersona('department_staff')
+
+    const protectedOffering = await client().DELETE(
+      '/functions/v1/catalog/course_offering/{id}',
+      { params: { path: { id: MOCK_IDS.offeringCsci153 } } },
+    )
+    expect(protectedOffering.response.status).toBe(409)
+    expect(db.courseOfferings.some((item) => item.id === MOCK_IDS.offeringCsci153)).toBe(true)
+
+    const created = await client().POST(
+      '/functions/v1/catalog/course_offering',
+      {
+        body: {
+          school_term_id: MOCK_IDS.term2026Sem1Open,
+          course_id: MOCK_IDS.courseCsci198,
+          section: 'TMP',
+          is_by_request: false,
+        },
+      },
+    )
+    expect(created.response.status).toBe(201)
+    const removableId = created.data!.id
+    const removed = await client().DELETE(
+      '/functions/v1/catalog/course_offering/{id}',
+      { params: { path: { id: removableId } } },
+    )
+    expect(removed.response.status).toBe(204)
+    expect(db.courseOfferings.some((item) => item.id === removableId)).toBe(false)
+  })
+})
+
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
   it('keeps an earlier failure selected until a retake has a numeric result', async () => {
     const db = getMockDatabase()

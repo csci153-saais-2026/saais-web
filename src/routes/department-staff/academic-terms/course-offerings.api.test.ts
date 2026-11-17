@@ -2,9 +2,14 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import {
+  createCourseOffering,
+  deleteCourseOffering,
   listCourseOfferings,
+  updateCourseOffering,
   type Course,
   type CourseOffering,
+  type CourseOfferingInsert,
+  type CourseOfferingUpdate,
 } from './course-offerings.api'
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -138,5 +143,82 @@ describe('Course offering reads', () => {
     await expect(listCourseOfferings(termId)).rejects.toThrow(
       'A course offering references a course that could not be loaded.',
     )
+  })
+})
+
+describe('Course offering writes', () => {
+  it('creates with the exact selected term, course and offering fields', async () => {
+    const body: CourseOfferingInsert = {
+      school_term_id: termId,
+      course_id: 'course-1',
+      section: null,
+      schedule: null,
+      instructor: 'Instructor',
+      is_by_request: true,
+    }
+    const saved = offering('offering-created', 'course-1', body)
+
+    server.use(
+      http.post('*/functions/v1/catalog/course_offering', async ({ request }) => {
+        expect(await request.json()).toEqual(body)
+        return HttpResponse.json(saved, { status: 201 })
+      }),
+    )
+
+    await expect(createCourseOffering(body)).resolves.toEqual(saved)
+  })
+
+  it('updates only fields allowed by the contract', async () => {
+    const body: CourseOfferingUpdate = {
+      section: 'B',
+      schedule: null,
+      instructor: 'Updated instructor',
+      is_by_request: false,
+    }
+    const saved = offering('offering-existing', 'course-1', body)
+
+    server.use(
+      http.patch(
+        '*/functions/v1/catalog/course_offering/:id',
+        async ({ request, params }) => {
+          expect(params.id).toBe('offering-existing')
+          expect(await request.json()).toEqual(body)
+          return HttpResponse.json(saved)
+        },
+      ),
+    )
+
+    await expect(
+      updateCourseOffering('offering-existing', body),
+    ).resolves.toEqual(saved)
+  })
+
+  it('deletes only through the transactional catalog operation', async () => {
+    server.use(
+      http.delete(
+        '*/functions/v1/catalog/course_offering/:id',
+        ({ params }) => {
+          expect(params.id).toBe('offering-existing')
+          return new HttpResponse(null, { status: 204 })
+        },
+      ),
+    )
+
+    await expect(deleteCourseOffering('offering-existing')).resolves.toBeUndefined()
+  })
+
+  it('surfaces server-protected conflicts without treating them as success', async () => {
+    server.use(
+      http.delete('*/functions/v1/catalog/course_offering/:id', () =>
+        HttpResponse.json(
+          { code: 'CONFLICT', message: 'Academic history protects this offering.' },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    await expect(
+      deleteCourseOffering('offering-existing'),
+    ).rejects.toMatchObject({ isConflict: true })
   })
 })

@@ -4,9 +4,14 @@ import { Panel } from '@/components/features/panel'
 import { Button } from '@/components/ui/button'
 import { ApiClientError } from '@/lib/api'
 import { useCurricula, useCurriculum } from '@/hooks/use-curricula'
+import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import type { CurriculumVersion } from '../curricula/curricula.api'
 import type { SchoolTerm } from './academic-terms.api'
-import type { OpenedSubject } from './course-offerings.api'
+import {
+  type OpenedSubject,
+} from './course-offerings.api'
+import { isRequiredDiscontinuedCourse } from './course-offering.schema'
+import { CourseOfferingDialog, type CourseOfferingDialogMode } from './CourseOfferingDialog'
 import { useCourseOfferings } from './use-course-offerings'
 
 function termTypeLabel(termType: SchoolTerm['term_type']): string {
@@ -45,11 +50,51 @@ function formatUnits(units: number): string {
 function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
   const offerings = useCourseOfferings(term.id)
   const curricula = useCurricula()
+  const scope = useStaffScope()
   const [versionId, setVersionId] = useState('')
   const [yearLevel, setYearLevel] = useState('')
+  const [dialog, setDialog] = useState<{
+    mode: CourseOfferingDialogMode
+    item?: OpenedSubject
+  } | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const versions = curricula.data?.versions ?? []
   const selectedVersion = versions.find((version) => version.id === versionId)
   const curriculum = useCurriculum(selectedVersion?.id)
+  const requiredCourseIds = useMemo(
+    () =>
+      new Set(
+        (curriculum.data?.slots ?? [])
+          .filter(
+            (slot): slot is typeof slot & { course_id: string } =>
+              slot.course_id !== null &&
+              slot.course_id !== undefined &&
+              !slot.is_elective_slot &&
+              slot.slot_type !== 'elective',
+          )
+          .map((slot) => slot.course_id),
+      ),
+    [curriculum.data?.slots],
+  )
+  const discontinuedRequiredCourses = useMemo(() => {
+    if (scope.status !== 'ready' || !selectedVersion || !curriculum.isSuccess) {
+      return []
+    }
+
+    return curriculum.data.courses.filter((course) =>
+      isRequiredDiscontinuedCourse(
+        course,
+        requiredCourseIds,
+        scope.departmentId,
+      ),
+    )
+  }, [
+    curriculum.data,
+    curriculum.isSuccess,
+    requiredCourseIds,
+    scope,
+    selectedVersion,
+  ])
   const yearLevels = useMemo(
     () =>
       [...new Set((curriculum.data?.terms ?? []).map((item) => item.year_level))]
@@ -130,6 +175,33 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
       cell: (item) => formatUnits(item.course.units),
       numeric: true,
     },
+    {
+      header: 'Actions',
+      cell: (item) =>
+        scope.status !== 'ready' ||
+        item.course.department_id !== scope.departmentId ? (
+          <span className="text-muted-foreground">Read-only</span>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              aria-label={`Edit ${item.course.code} offering section ${item.offering.section ?? 'unspecified'}`}
+              onClick={() => setDialog({ mode: 'edit', item })}
+            >
+              Edit
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              aria-label={`Remove ${item.course.code} offering section ${item.offering.section ?? 'unspecified'}`}
+              onClick={() => setDialog({ mode: 'delete', item })}
+            >
+              Remove
+            </Button>
+          </div>
+        ),
+    },
   ]
 
   const curriculumReady =
@@ -140,6 +212,15 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
       <Panel
         title="Opened subjects filters"
         description="Filter explicit offerings by courses referenced in a department curriculum."
+        action={
+          <Button
+            type="button"
+            disabled={scope.status !== 'ready'}
+            onClick={() => setDialog({ mode: 'create' })}
+          >
+            Add offering
+          </Button>
+        }
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
@@ -229,6 +310,11 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
             </Button>
           </div>
         )}
+        {message && (
+          <p role="status" className="mt-4 text-sm text-muted-foreground">
+            {message}
+          </p>
+        )}
       </Panel>
 
       {!curriculumReady ? null : offerings.isPending ? (
@@ -271,6 +357,26 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
               {formatUnits(units)} opened units, including by-request offerings.
             </p>
           }
+        />
+      )}
+      {dialog && (
+        <CourseOfferingDialog
+          mode={dialog.mode}
+          term={term}
+          offering={dialog.item?.offering}
+          course={dialog.item?.course}
+          discontinuedRequiredCourses={discontinuedRequiredCourses}
+          onClose={() => setDialog(null)}
+          onComplete={(action) => {
+            setDialog(null)
+            setMessage(
+              action === 'created'
+                ? 'Course offering added.'
+                : action === 'updated'
+                  ? 'Course offering updated.'
+                  : 'Course offering removed.',
+            )
+          }}
         />
       )}
     </>

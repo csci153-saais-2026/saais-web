@@ -11,10 +11,40 @@ const BATCH_SIZE = 50
 
 export type CourseOffering = ApiSchema<'CourseOffering'>
 export type Course = ApiSchema<'Course'>
+export type CourseOfferingInsert = ApiSchema<'CourseOfferingInsert'>
+export type CourseOfferingUpdate = ApiSchema<'CourseOfferingUpdate'>
 
 export interface OpenedSubject {
   readonly offering: CourseOffering
   readonly course: Course
+}
+
+export async function createCourseOffering(
+  body: CourseOfferingInsert,
+): Promise<CourseOffering> {
+  return unwrapApiResult<CourseOffering>(
+    await apiClient.POST('/functions/v1/catalog/course_offering', { body }),
+  )
+}
+
+export async function updateCourseOffering(
+  id: string,
+  body: CourseOfferingUpdate,
+): Promise<CourseOffering> {
+  return unwrapApiResult<CourseOffering>(
+    await apiClient.PATCH('/functions/v1/catalog/course_offering/{id}', {
+      params: { path: { id } },
+      body,
+    }),
+  )
+}
+
+export async function deleteCourseOffering(id: string): Promise<void> {
+  unwrapApiResult(
+    await apiClient.DELETE('/functions/v1/catalog/course_offering/{id}', {
+      params: { path: { id } },
+    }),
+  )
 }
 
 function completeRead<T>(

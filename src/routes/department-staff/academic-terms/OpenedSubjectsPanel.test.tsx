@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   useCourseOfferings: vi.fn(),
   useCurricula: vi.fn(),
   useCurriculum: vi.fn(),
+  useStaffScope: vi.fn(),
 }))
 
 vi.mock('./use-course-offerings', () => ({
@@ -18,6 +19,24 @@ vi.mock('@/hooks/use-curricula', () => ({
   useCurricula: () => mocks.useCurricula(),
   useCurriculum: (versionId: string | undefined) =>
     mocks.useCurriculum(versionId),
+}))
+
+vi.mock('@/routes/department-staff/shared/use-staff-scope', () => ({
+  useStaffScope: () => mocks.useStaffScope(),
+}))
+
+vi.mock('./CourseOfferingDialog', () => ({
+  CourseOfferingDialog: ({
+    mode,
+    onClose,
+  }: {
+    mode: string
+    onClose: () => void
+  }) => (
+    <div data-testid="course-offering-dialog" data-mode={mode}>
+      <button type="button" onClick={onClose}>Close test dialog</button>
+    </div>
+  ),
 }))
 
 const termOne: SchoolTerm = {
@@ -148,6 +167,15 @@ function courseOfferingsSuccess(data: readonly OpenedSubject[]) {
 }
 
 function resetMocks() {
+  mocks.useStaffScope.mockReturnValue({
+    status: 'ready',
+    departmentIds: ['department-1'],
+    selectedDepartmentId: 'department-1',
+    departmentId: 'department-1',
+    profileId: 'staff-1',
+    canQuery: true,
+    selectDepartment: vi.fn(),
+  })
   mocks.useCourseOfferings.mockImplementation(() =>
     courseOfferingsSuccess(offeredSubjects),
   )
@@ -175,6 +203,22 @@ afterEach(() => {
 })
 
 describe('OpenedSubjectsPanel', () => {
+  it('opens create and edit actions for offerings in the authorized department', () => {
+    resetMocks()
+    render(<OpenedSubjectsPanel terms={[termOne]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add offering' }))
+    expect(screen.getByTestId('course-offering-dialog').getAttribute('data-mode')).toBe('create')
+    fireEvent.click(screen.getByRole('button', { name: 'Close test dialog' }))
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Edit CS 101 offering section A',
+      }),
+    )
+    expect(screen.getByTestId('course-offering-dialog').getAttribute('data-mode')).toBe('edit')
+  })
+
   it('filters by curriculum year while counting each offered section once', () => {
     resetMocks()
     render(<OpenedSubjectsPanel terms={[termOne]} />)
