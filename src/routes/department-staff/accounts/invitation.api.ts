@@ -1,10 +1,19 @@
 import { listEligibleDepartmentAdvisers, type StudentFilterOption } from '../students/students.api'
 import { listCurricula, type CurriculumVersion, type Program } from '../curricula/curricula.api'
+import { apiClient, unwrapApiResult, type ApiSchema } from '@/lib/api'
 
 export interface DepartmentInvitationOptions {
   programs: Program[]
   curriculumVersions: CurriculumVersion[]
   advisers: StudentFilterOption[]
+}
+
+/** Sends exactly one reviewed request; identity creation and email delivery stay server-owned. */
+export async function sendDepartmentInvitation(
+  payload: ApiSchema<'InviteRequest'>,
+): Promise<ApiSchema<'InviteResponse'>> {
+  const result = await apiClient.POST('/functions/v1/auth/invite', { body: payload })
+  return unwrapApiResult<ApiSchema<'InviteResponse'>>(result)
 }
 
 /** Only active program versions and active, department-assigned advisers are eligible for preview. */

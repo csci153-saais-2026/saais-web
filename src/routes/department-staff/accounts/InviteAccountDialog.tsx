@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { useDepartmentInvitationOptions } from '@/hooks/use-department-invitation-options'
+import { useSendDepartmentInvitation } from '@/hooks/use-send-department-invitation'
+import { ApiClientError } from '@/lib/api'
 import { useStaffScope } from '../shared/use-staff-scope'
 import {
   buildDepartmentInvitePreview,
@@ -40,9 +42,11 @@ export default function InviteAccountDialog() {
   const [values, setValues] = useState(initialValues)
   const [review, setReview] = useState<Extract<DepartmentInvitePreviewResult, { ok: true }> | null>(null)
   const [errors, setErrors] = useState<string[]>([])
+  const sendLock = useRef(false)
   const auth = useAuth()
   const scope = useStaffScope()
   const references = useDepartmentInvitationOptions()
+  const invitation = useSendDepartmentInvitation()
   const departmentId = scope.status === 'ready' ? scope.departmentId : null
   const facultyId = departmentId
     ? auth.roleAssignments.find(assignment =>
@@ -61,6 +65,7 @@ export default function InviteAccountDialog() {
     setValues(previous => ({ ...previous, [key]: value }))
     setReview(null)
     setErrors([])
+    invitation.reset()
   }
 
   function updateRole(role: DepartmentInviteRole) {
@@ -71,6 +76,7 @@ export default function InviteAccountDialog() {
     }))
     setReview(null)
     setErrors([])
+    invitation.reset()
   }
 
   function toggleAdditionalRole(role: DepartmentInviteRole, checked: boolean) {
@@ -82,6 +88,7 @@ export default function InviteAccountDialog() {
     }))
     setReview(null)
     setErrors([])
+    invitation.reset()
   }
 
   function prepareReview(event: FormEvent<HTMLFormElement>) {
@@ -97,13 +104,35 @@ export default function InviteAccountDialog() {
       setReview(null)
       return
     }
+    invitation.reset()
     setErrors([])
     setReview(result)
+  }
+
+  function sendReviewedInvitation() {
+    if (!review || sendLock.current || invitation.isPending || invitation.isSuccess) return
+    const result = buildDepartmentInvitePreview(values, {
+      ownEmail: auth.user?.email ?? '',
+      departmentId,
+      facultyId,
+      ...options,
+    })
+    if (result.ok === false) {
+      setErrors(result.errors)
+      setReview(null)
+      return
+    }
+    setErrors([])
+    setReview(result)
+    sendLock.current = true
+    invitation.mutate(result.payload, { onSettled: () => { sendLock.current = false } })
   }
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen)
     if (!nextOpen) {
+      invitation.reset()
+      sendLock.current = false
       setValues(initialValues)
       setReview(null)
       setErrors([])
@@ -119,7 +148,7 @@ export default function InviteAccountDialog() {
         <DialogHeader>
           <DialogTitle>Prepare department invitation</DialogTitle>
           <DialogDescription>
-            Validate a draft invitation for your assigned department. This step does not create an account or send email.
+            Review the details before the server creates the account and sends its invitation.
           </DialogDescription>
         </DialogHeader>
 
@@ -223,6 +252,24 @@ export default function InviteAccountDialog() {
             </div>
           )}
 
+          {invitation.isError && (
+            <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              <p>{invitation.error instanceof Error ? invitation.error.message : 'The invitation could not be sent.'}</p>
+              {invitation.error instanceof ApiClientError && (
+                <p className="mt-1">{invitation.error.isConflict ? 'The server reports a duplicate or conflicting account.' : invitation.error.isForbidden ? 'The server denied this invitation for the current scope.' : invitation.error.isNetworkError ? 'Check your connection before retrying; the server may have received the request.' : `Request failed (${invitation.error.status}).`}</p>
+              )}
+            </div>
+          )}
+
+          {invitation.isSuccess && (
+            <div role="status" className="rounded-md border border-green-700/20 bg-green-50 p-3 text-sm text-green-900">
+              <p>{invitation.data.message}</p>
+              <p className="mt-1">Invitation status: {invitation.data.invitation_status ?? 'pending'}.</p>
+              {invitation.data.invitation_expires_at && <p>Expires: {new Date(invitation.data.invitation_expires_at).toLocaleString()}.</p>}
+              <p className="mt-1">The invitee must use the invitation link to activate their account; this does not sign you or the invitee in.</p>
+            </div>
+          )}
+
           {reviewResult && (
             <section aria-label="Invitation review" className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-4">
               <h3 className="font-semibold">Review summary</h3>
@@ -237,13 +284,15 @@ export default function InviteAccountDialog() {
                   <p><span className="font-medium">Initial adviser:</span> {resolvedAdviser?.label}</p>
                 </div>
               )}
-              <p className="text-sm text-muted-foreground">Preview only. No account provisioning or invitation email was requested.</p>
+              {!invitation.isSuccess && <p className="text-sm text-muted-foreground">No account is created until you send this reviewed invitation.</p>}
             </section>
           )}
 
           <DialogFooter>
             <Button type="submit" variant="outline" disabled={references.isPending && values.role === 'student'}>Review invitation</Button>
-            <Button type="button" disabled aria-disabled="true">Send invitation (Step 37)</Button>
+            <Button type="button" onClick={sendReviewedInvitation} disabled={!review || invitation.isPending || invitation.isSuccess || !facultyId}>
+              {invitation.isPending ? 'Sending invitation…' : invitation.isSuccess ? 'Invitation sent' : 'Send invitation'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { vi } from 'vitest'
 import { AuthContext, type AuthContextValue } from '@/context/auth-context'
+import { staffQueryKeys } from '../shared/staff-query-keys'
 import { getMockDatabase, loginAsMockPersona, logoutMockPersona, MOCK_IDS, MOCK_PERSONAS, resetMockDatabase } from '@/mocks'
 import { saaisMockServer } from '@/mocks/node'
 import DepartmentStaffPortal from '../DepartmentStaffPortal'
@@ -53,7 +54,7 @@ function staffAuth(personaKey: 'department_staff' | 'department_head' = 'departm
 
 function renderAccounts(path = '/department-staff/accounts', personaKey: 'department_staff' | 'department_head' = 'department_staff') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={staffAuth(personaKey)}>
         <MemoryRouter initialEntries={[path]}>
@@ -64,6 +65,7 @@ function renderAccounts(path = '/department-staff/accounts', personaKey: 'depart
       </AuthContext.Provider>
     </QueryClientProvider>,
   )
+  return { ...view, queryClient }
 }
 
 beforeAll(() => saaisMockServer.listen())
@@ -233,17 +235,34 @@ describe('Department Staff accounts directory', () => {
     expect(screen.queryByRole('heading', { name: 'Accounts and roles' })).toBeNull()
   })
 
-  it('reviews a valid multi-role student draft while leaving provisioning unavailable', async () => {
+  it('sends one reviewed multi-role student request and displays the server result', async () => {
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
       value: vi.fn(),
     })
     let provisioningCalls = 0
-    saaisMockServer.use(http.post('*/functions/v1/auth/invite', () => {
+    let submittedBody: unknown
+    saaisMockServer.use(http.post('*/functions/v1/auth/invite', async ({ request }) => {
       provisioningCalls += 1
-      return HttpResponse.json({ success: true })
+      submittedBody = await request.json()
+      return HttpResponse.json({
+        success: true,
+        message: 'Invitation email dispatched successfully.',
+        profile_id: '55555555-5555-4555-8555-555555555555',
+        invitation_status: 'pending',
+        invitation_sent_at: '2026-11-10T08:00:00Z',
+        invitation_expires_at: '2026-11-17T08:00:00Z',
+      }, { status: 201 })
     }))
-    renderAccounts()
+    const { queryClient } = renderAccounts()
+    await screen.findByRole('table')
+    const scopePrefix = [MOCK_PERSONAS.department_staff.profileId, MOCK_IDS.deptDcst] as const
+    const affectedKeys = [
+      staffQueryKeys.resource(...scopePrefix, 'accounts'),
+      staffQueryKeys.resource(...scopePrefix, 'students'),
+      staffQueryKeys.resource(...scopePrefix, 'adviser-assignments'),
+    ]
+    affectedKeys.forEach(key => queryClient.setQueryData(key, { cached: true }))
     fireEvent.click(await screen.findByRole('button', { name: 'Prepare invitation' }))
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'New Student' } })
@@ -264,7 +283,64 @@ describe('Department Staff accounts directory', () => {
     expect(within(summary).getByText(/Student, Adviser/)).toBeTruthy()
     expect(within(summary).getByText('26-1-00042')).toBeTruthy()
     expect(within(summary).getByText(/BSCS 2024-2025 v1/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Send invitation (Step 37)' }).hasAttribute('disabled')).toBe(true)
-    expect(provisioningCalls).toBe(0)
+    const sendButton = screen.getByRole('button', { name: 'Send invitation' })
+    expect(sendButton.hasAttribute('disabled')).toBe(false)
+    fireEvent.click(sendButton)
+    fireEvent.click(sendButton)
+
+    expect(await screen.findByText('Invitation email dispatched successfully.')).toBeTruthy()
+    expect(provisioningCalls).toBe(1)
+    expect(submittedBody).toEqual({
+      email: 'new.student@vsu.edu.ph',
+      full_name: 'New Student',
+      role: 'student',
+      student_number: '26-1-00042',
+      program_id: MOCK_IDS.programBscs,
+      curriculum_version_id: MOCK_IDS.curriculumBscs2024,
+      adviser_id: MOCK_IDS.adviserPrimary,
+      role_assignments: [{ role: 'adviser', department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing }],
+    })
+    expect(screen.getByRole('button', { name: 'Invitation sent' }).hasAttribute('disabled')).toBe(true)
+    await waitFor(() => {
+      for (const key of affectedKeys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+    })
+  })
+
+  it('shows a real server conflict and permits a deliberate retry without duplicate in-flight requests', async () => {
+    let calls = 0
+    saaisMockServer.use(http.post('*/functions/v1/auth/invite', () => {
+      calls += 1
+      return HttpResponse.json({ code: 'DUPLICATE_EMAIL', message: 'An account with this email already exists.' }, { status: 409 })
+    }))
+    renderAccounts()
+    fireEvent.click(await screen.findByRole('button', { name: 'Prepare invitation' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'Duplicate Person' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: 'duplicate.person@vsu.edu.ph' } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Adviser' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+
+    expect(await screen.findByText('An account with this email already exists.')).toBeTruthy()
+    expect(screen.getByText(/server reports a duplicate or conflicting account/)).toBeTruthy()
+    expect(calls).toBe(1)
+    expect(screen.getByRole('button', { name: 'Send invitation' }).hasAttribute('disabled')).toBe(false)
+  })
+
+  it('prevents a self-grant before making a request', async () => {
+    let calls = 0
+    saaisMockServer.use(http.post('*/functions/v1/auth/invite', () => {
+      calls += 1
+      return HttpResponse.json({ success: true })
+    }))
+    renderAccounts()
+    fireEvent.click(await screen.findByRole('button', { name: 'Prepare invitation' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'Staff User' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: MOCK_PERSONAS.department_staff.email } })
+    fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain('You cannot grant roles to your own account.')
+    expect(screen.getByRole('button', { name: 'Send invitation' }).hasAttribute('disabled')).toBe(true)
+    expect(calls).toBe(0)
   })
 })
