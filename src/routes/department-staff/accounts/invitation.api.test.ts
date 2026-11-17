@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw'
 import type { ApiSchema } from '@/lib/api'
 import { getMockDatabase, loginAsMockPersona, logoutMockPersona, MOCK_IDS, MOCK_PERSONAS, resetMockDatabase } from '@/mocks'
 import { saaisMockServer } from '@/mocks/node'
-import { canResendDepartmentInvitation, resendDepartmentAccountInvitation } from './accounts.api'
+import { canResendDepartmentInvitation, canRevokeDepartmentInvitation, resendDepartmentAccountInvitation, revokeDepartmentAccountInvitation } from './accounts.api'
 import { sendDepartmentInvitation } from './invitation.api'
 
 vi.mock('@/lib/api', async importOriginal => {
@@ -177,5 +177,56 @@ describe('department account invitation API', () => {
     await expect(resendDepartmentAccountInvitation(MOCK_IDS.studentSecondary))
       .rejects.toMatchObject({ status: 429, isRateLimited: true, retryAfterSeconds: 30 })
     expect(calls).toBe(1)
+  })
+
+  it('allows revocation only for pending, invited, in-department non-self accounts', () => {
+    const database = getMockDatabase()
+    const profile = database.profiles.find(item => item.id === MOCK_IDS.studentSecondary)!
+    const account = {
+      profile,
+      role_assignments: database.roleAssignments.filter(item => item.profile_id === profile.id),
+      student_organization: database.studentOrganizations.find(item => item.student_id === profile.id) ?? null,
+    } satisfies ApiSchema<'AccountSummary'>
+
+    expect(canRevokeDepartmentInvitation(account, MOCK_PERSONAS.department_staff.profileId, MOCK_IDS.deptDcst)).toBe(true)
+    expect(canRevokeDepartmentInvitation(account, profile.id, MOCK_IDS.deptDcst)).toBe(false)
+    expect(canRevokeDepartmentInvitation(account, MOCK_PERSONAS.department_staff.profileId, MOCK_IDS.deptDabe)).toBe(false)
+    expect(canRevokeDepartmentInvitation({ ...account, profile: { ...profile, status: 'active' } }, MOCK_PERSONAS.department_staff.profileId, MOCK_IDS.deptDcst)).toBe(false)
+    expect(canRevokeDepartmentInvitation({ ...account, profile: { ...profile, invitation_status: 'expired' } }, MOCK_PERSONAS.department_staff.profileId, MOCK_IDS.deptDcst)).toBe(false)
+    const deanProfile = database.profiles.find(item => item.id === MOCK_IDS.deanDeptHeadComputing)!
+    expect(canRevokeDepartmentInvitation({ ...account, profile: { ...deanProfile, status: 'invited', invitation_status: 'pending' } }, MOCK_PERSONAS.department_staff.profileId, MOCK_IDS.deptDcst)).toBe(false)
+  })
+
+  it('revokes only the invitation state and retains the invited profile and roles', async () => {
+    const profileId = MOCK_IDS.studentSecondary
+    const before = getMockDatabase().profiles.find(profile => profile.id === profileId)!
+    const roles = [...(before.roles ?? [])]
+    const result = await revokeDepartmentAccountInvitation(profileId)
+
+    expect(result).toMatchObject({
+      id: profileId,
+      status: 'invited',
+      invitation_status: 'revoked',
+      roles,
+    })
+    expect(getMockDatabase().profiles.find(profile => profile.id === profileId)).toMatchObject({
+      status: 'invited',
+      invitation_status: 'revoked',
+      roles,
+    })
+    expect(getMockDatabase().profiles.some(profile => profile.id === profileId)).toBe(true)
+  })
+
+  it('surfaces stale-state conflicts and foreign-scope denials without touching account rows', async () => {
+    const profileId = MOCK_IDS.studentSecondary
+    const database = getMockDatabase()
+    const profile = database.profiles.find(item => item.id === profileId)!
+    database.profiles[database.profiles.findIndex(item => item.id === profileId)] = { ...profile, invitation_status: 'expired' }
+    await expect(revokeDepartmentAccountInvitation(profileId))
+      .rejects.toMatchObject({ status: 409, isConflict: true, code: 'INVITATION_NOT_REVOCABLE' })
+
+    await expect(revokeDepartmentAccountInvitation(MOCK_IDS.studentOtherDept))
+      .rejects.toMatchObject({ status: 403, isForbidden: true })
+    expect(getMockDatabase().profiles.find(item => item.id === profileId)?.status).toBe('invited')
   })
 })

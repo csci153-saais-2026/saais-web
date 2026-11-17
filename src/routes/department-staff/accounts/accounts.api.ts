@@ -34,6 +34,30 @@ export function canResendDepartmentInvitation(
     && roles.every(role => staffResendRoles.has(role))
 }
 
+/** Revocation is narrower than resend: only a pending invited account in the active department qualifies. */
+export function canRevokeDepartmentInvitation(
+  account: DepartmentAccount,
+  actingProfileId: string,
+  departmentId: string,
+): boolean {
+  const { profile } = account
+  const roles = [...new Set([
+    ...(account.role_assignments ?? []).map(assignment => assignment.role),
+    ...(profile.roles?.length ? profile.roles : [profile.role]),
+  ])]
+  const inDepartment = profile.department_id === departmentId
+    || account.role_assignments?.some(assignment => assignment.department_id === departmentId) === true
+    || account.student_organization?.department_id === departmentId
+
+  return Boolean(departmentId)
+    && profile.id !== actingProfileId
+    && inDepartment
+    && profile.status === 'invited'
+    && profile.invitation_status === 'pending'
+    && roles.length > 0
+    && roles.every(role => staffResendRoles.has(role))
+}
+
 export interface DepartmentAccountsPage {
   accounts: DepartmentAccount[]
   hasNext: boolean
@@ -46,6 +70,15 @@ export async function resendDepartmentAccountInvitation(
     params: { path: { profile_id: profileId } },
   })
   return unwrapApiResult<ApiSchema<'ResendInviteResponse'>>(result)
+}
+
+export async function revokeDepartmentAccountInvitation(
+  profileId: string,
+): Promise<ApiSchema<'Profile'>> {
+  const result = await apiClient.POST('/functions/v1/accounts/{profile_id}/revoke-invite', {
+    params: { path: { profile_id: profileId } },
+  })
+  return unwrapApiResult<ApiSchema<'Profile'>>(result)
 }
 
 export type DepartmentAccountsFilters = Pick<

@@ -182,6 +182,7 @@ describe('Department Staff accounts directory', () => {
 
     const activeRow = await within(table).findByRole('row', { name: new RegExp(MOCK_PERSONAS.student.fullName) })
     expect(within(activeRow).queryByRole('button', { name: 'Resend invitation' })).toBeNull()
+    expect(within(activeRow).queryByRole('button', { name: 'Revoke invitation' })).toBeNull()
     fireEvent.click(resendButton)
     await waitFor(() => expect(resendButton.hasAttribute('disabled')).toBe(true))
     fireEvent.click(resendButton)
@@ -204,6 +205,85 @@ describe('Department Staff accounts directory', () => {
     fireEvent.click(within(eligibleRow).getByRole('button', { name: 'Resend invitation' }))
 
     expect((await within(eligibleRow).findByRole('alert')).textContent).toContain('Try again in 42 seconds.')
+  })
+
+  it('names the target and sends no revoke request when confirmation is canceled', async () => {
+    let calls = 0
+    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/revoke-invite', () => {
+      calls += 1
+      return HttpResponse.json({})
+    }))
+    renderAccounts()
+    const table = await screen.findByRole('table')
+    const targetRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
+    fireEvent.click(within(targetRow).getByRole('button', { name: 'Revoke invitation' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Revoke invitation for Concoles, Cyril Jade M.?' })).toBeTruthy()
+    expect(dialog.textContent).toContain(MOCK_PERSONAS.student_secondary.email)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(calls).toBe(0)
+    expect(getMockDatabase().profiles.find(profile => profile.id === MOCK_IDS.studentSecondary)?.invitation_status).toBe('pending')
+  })
+
+  it('revokes through the dedicated endpoint, preserves the account and roles, and disables same-target actions while pending', async () => {
+    let releaseResponse: (() => void) | undefined
+    const responseGate = new Promise<void>(resolve => { releaseResponse = resolve })
+    const database = getMockDatabase()
+    const profile = database.profiles.find(item => item.id === MOCK_IDS.studentSecondary)!
+    const originalRoles = [...(profile.roles ?? [])]
+    let revokeCalls = 0
+    let destructiveCalls = 0
+    saaisMockServer.use(
+      http.post('*/functions/v1/accounts/:profile_id/revoke-invite', async () => {
+        revokeCalls += 1
+        await responseGate
+        const updatedProfile = { ...profile, invitation_status: 'revoked' as const, updated_at: '2026-11-17T09:30:00Z' }
+        database.profiles[database.profiles.findIndex(item => item.id === MOCK_IDS.studentSecondary)] = updatedProfile
+        return HttpResponse.json(updatedProfile)
+      }),
+      http.delete('*/functions/v1/accounts/:profile_id', () => { destructiveCalls += 1; return HttpResponse.json({}, { status: 500 }) }),
+      http.patch('*/functions/v1/accounts/:profile_id', () => { destructiveCalls += 1; return HttpResponse.json({}, { status: 500 }) }),
+    )
+    renderAccounts()
+    const table = await screen.findByRole('table')
+    const targetRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
+    fireEvent.click(within(targetRow).getByRole('button', { name: 'Revoke invitation' }))
+    const dialog = await screen.findByRole('dialog')
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm revocation' })
+    fireEvent.click(confirm)
+
+    await waitFor(() => expect(confirm.hasAttribute('disabled')).toBe(true))
+    expect(within(targetRow).getByRole('button', { name: 'Resend invitation', hidden: true }).hasAttribute('disabled')).toBe(true)
+    fireEvent.click(confirm)
+    expect(revokeCalls).toBe(1)
+    expect(destructiveCalls).toBe(0)
+
+    releaseResponse?.()
+    expect(await within(targetRow).findByText('revoked')).toBeTruthy()
+    expect(await within(targetRow).findByText(/Invitation revoked for/)).toBeTruthy()
+    await waitFor(() => expect(within(targetRow).queryByRole('button', { name: 'Revoke invitation' })).toBeNull())
+    expect(profile.status).toBe('invited')
+    expect(profile.roles).toEqual(originalRoles)
+    expect(getMockDatabase().profiles.some(item => item.id === MOCK_IDS.studentSecondary)).toBe(true)
+  })
+
+  it('shows stale revocation conflicts and refreshes the account status', async () => {
+    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/revoke-invite', () => HttpResponse.json(
+      { code: 'INVITATION_NOT_REVOCABLE', message: 'This invitation is no longer pending.' },
+      { status: 409 },
+    )))
+    renderAccounts()
+    const table = await screen.findByRole('table')
+    const targetRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
+    fireEvent.click(within(targetRow).getByRole('button', { name: 'Revoke invitation' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm revocation' }))
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain('Account status was refreshed')
+    expect(getMockDatabase().profiles.find(item => item.id === MOCK_IDS.studentSecondary)?.invitation_status).toBe('pending')
   })
 
   it('requests account pages with the resolved department and bounded offsets', async () => {

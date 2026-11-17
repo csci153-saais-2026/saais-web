@@ -1246,10 +1246,13 @@ export const saaisMswHandlers = [
       if (!canManageDepartmentInvite(auth.persona, profile)) {
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot manage this invitation.')
       }
+      if (profile.status !== 'invited' || profile.invitation_status !== 'pending') {
+        return errorJson(409, 'INVITATION_NOT_REVOCABLE', 'This invitation is no longer pending. Refresh account status.')
+      }
       const updated: ApiSchema<'Profile'> = {
         ...profile,
-        status: 'disabled',
         invitation_status: 'revoked',
+        updated_at: '2026-11-17T09:30:00Z',
       }
       const idx = db.profiles.findIndex((p) => p.id === profileId)
       db.profiles[idx] = updated

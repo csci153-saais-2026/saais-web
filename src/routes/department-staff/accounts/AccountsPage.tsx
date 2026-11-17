@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { DataTablePanel, type Column } from '@/components/features/data-table-panel'
 import { PageHeading } from '@/components/features/page-heading'
@@ -7,11 +8,13 @@ import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/features/form-field'
 import { SearchInput } from '@/components/features/search-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useDepartmentAccounts } from '@/hooks/use-department-accounts'
+import { useResendDepartmentInvitation } from '@/hooks/use-resend-department-invitation'
+import { useRevokeDepartmentInvitation } from '@/hooks/use-revoke-department-invitation'
 import { ApiClientError, type ApiSchema } from '@/lib/api'
 import { useStaffScope } from '../shared/use-staff-scope'
-import { accountsMaxOffset, accountsPageSize, canResendDepartmentInvitation, type DepartmentAccount } from './accounts.api'
-import { useResendDepartmentInvitation } from '@/hooks/use-resend-department-invitation'
+import { accountsMaxOffset, accountsPageSize, canResendDepartmentInvitation, canRevokeDepartmentInvitation, type DepartmentAccount } from './accounts.api'
 import InviteAccountDialog from './InviteAccountDialog'
 
 const roleLabels: Record<ApiSchema<'RoleType'>, string> = {
@@ -70,28 +73,72 @@ function resendFailureMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The invitation could not be resent.'
 }
 
-function InvitationActions({ account, actingProfileId }: { account: DepartmentAccount; actingProfileId: string }) {
+function revokeFailureMessage(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.isConflict) return `${error.message} Account status was refreshed; revoke only if the server still shows a pending invitation.`
+    if (error.isRateLimited) {
+      return error.retryAfterSeconds === null
+        ? 'The server is rate limiting invitation changes. Wait before trying again.'
+        : `The server is rate limiting invitation changes. Try again in ${error.retryAfterSeconds} seconds.`
+    }
+    if (error.isForbidden) return error.message
+    if (error.isNetworkError) return 'The revoke result is uncertain. Account status was refreshed; check it before trying again.'
+    return error.message
+  }
+  return error instanceof Error ? error.message : 'The invitation could not be revoked.'
+}
+
+function InvitationActions({ account, actingProfileId, departmentId }: { account: DepartmentAccount; actingProfileId: string; departmentId: string }) {
   const resend = useResendDepartmentInvitation()
-  if (!canResendDepartmentInvitation(account, actingProfileId)) {
+  const revoke = useRevokeDepartmentInvitation()
+  const [confirmationOpen, setConfirmationOpen] = useState(false)
+  const canResend = canResendDepartmentInvitation(account, actingProfileId)
+  const canRevoke = canRevokeDepartmentInvitation(account, actingProfileId, departmentId)
+  const targetBusy = resend.isPending || revoke.isPending
+  if (!canResend && !canRevoke) {
     return <span className="text-muted-foreground">No resend action</span>
   }
 
   return (
     <div className="space-y-1.5">
-      <Button
+      {canResend && <Button
         type="button"
         variant="outline"
-        disabled={resend.isPending || resend.isSuccess}
+        disabled={targetBusy || resend.isSuccess}
         onClick={() => resend.mutate(account.profile.id)}
       >
         {resend.isPending ? 'Resending…' : resend.isSuccess ? 'Invitation resent' : 'Resend invitation'}
-      </Button>
+      </Button>}
+      {canRevoke && (
+        <Dialog open={confirmationOpen} onOpenChange={open => { if (!targetBusy) setConfirmationOpen(open) }}>
+          <DialogTrigger asChild>
+            <Button type="button" variant="outline" disabled={targetBusy}>Revoke invitation</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Revoke invitation for {account.profile.full_name}?</DialogTitle>
+              <DialogDescription>
+                This invalidates the pending invitation link for {account.profile.email}. It will not delete the account or change its roles.
+              </DialogDescription>
+            </DialogHeader>
+            {revoke.isError && <p role="alert" className="text-sm text-destructive">{revokeFailureMessage(revoke.error)}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={targetBusy} onClick={() => setConfirmationOpen(false)}>Cancel</Button>
+              <Button type="button" variant="destructive" disabled={targetBusy} onClick={() => revoke.mutate(account.profile.id)}>
+                {revoke.isPending ? 'Revoking…' : 'Confirm revocation'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {resend.isSuccess && (
         <p role="status" className="max-w-56 text-xs text-muted-foreground">
           {resend.data.message} Expires {new Date(resend.data.invitation_expires_at).toLocaleString()}.
         </p>
       )}
       {resend.isError && <p role="alert" className="max-w-56 text-xs text-destructive">{resendFailureMessage(resend.error)}</p>}
+      {revoke.isError && <p role="alert" className="max-w-56 text-xs text-destructive">{revokeFailureMessage(revoke.error)}</p>}
+      {revoke.isSuccess && <p role="status" className="max-w-56 text-xs text-muted-foreground">Invitation revoked for {revoke.data.full_name}.</p>}
     </div>
   )
 }
@@ -139,7 +186,7 @@ export default function AccountsPage() {
     }, {
       header: 'Actions',
       className: 'min-w-52',
-      cell: (account: DepartmentAccount) => <InvitationActions account={account} actingProfileId={scope.profileId} />,
+      cell: (account: DepartmentAccount) => <InvitationActions account={account} actingProfileId={scope.profileId} departmentId={scope.departmentId} />,
     } satisfies Column<DepartmentAccount>]
     : columns
 
