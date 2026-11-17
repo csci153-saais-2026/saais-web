@@ -549,6 +549,49 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect((await client.POST('/functions/v1/students/{student_id}/record-grades', { params, body })).response.status).toBe(200)
   })
 
+  it('reopens department encoding without lifting an institution-wide lock', async () => {
+    const db = getMockDatabase()
+    const lockedTerm = db.schoolTerms.find(
+      (term) => term.id === MOCK_IDS.term2025Sem2Closed,
+    )!
+    const closure = {
+      id: '82000000-0000-4000-8000-000000000004',
+      school_term_id: lockedTerm.id,
+      department_id: MOCK_IDS.deptDcst,
+      is_closed: true,
+      closed_by: MOCK_IDS.deptStaffDcst,
+      closed_at: '2026-11-10T09:00:00Z',
+      closure_note: 'Department closure',
+    }
+    db.departmentTermEncodings.push(closure)
+    loginAsMockPersona('department_staff')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+    const response = await client.POST(
+      '/functions/v1/school-terms/{school_term_id}/reopen-encoding',
+      {
+        params: { path: { school_term_id: lockedTerm.id } },
+        body: {
+          scope: 'department',
+          department_id: MOCK_IDS.deptDcst,
+        },
+      },
+    )
+
+    expect(response.response.status).toBe(200)
+    expect(response.data?.is_closed).toBe(false)
+    expect(
+      db.departmentTermEncodings.find(
+        (item) => item.id === closure.id,
+      )?.is_closed,
+    ).toBe(false)
+    expect(db.schoolTerms.find((term) => term.id === lockedTerm.id)?.is_locked).toBe(true)
+  })
+
   it('keeps a department closure note separate from institutional term metadata', async () => {
     const db = getMockDatabase()
     const term = db.schoolTerms.find(

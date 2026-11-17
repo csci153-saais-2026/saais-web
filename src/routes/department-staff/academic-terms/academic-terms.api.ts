@@ -54,6 +54,21 @@ export async function closeSchoolTermEncoding(
   )
 }
 
+export async function reopenDepartmentTermEncoding(
+  schoolTermId: string,
+  body: SchoolTermCloseEncodingRequest,
+): Promise<DepartmentTermEncoding> {
+  return unwrapApiResult<DepartmentTermEncoding>(
+    await apiClient.POST(
+      '/functions/v1/school-terms/{school_term_id}/reopen-encoding',
+      {
+        params: { path: { school_term_id: schoolTermId } },
+        body,
+      },
+    ),
+  )
+}
+
 function completeRead<T>(
   result: { data?: T[]; error?: unknown; response: Response },
   resource: string,

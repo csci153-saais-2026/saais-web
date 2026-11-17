@@ -11,7 +11,10 @@ import type {
 } from './academic-terms.api'
 import { useAcademicTerms } from '@/hooks/use-academic-terms'
 import { SchoolTermDialog } from './SchoolTermDialog'
-import { EncodingClosureDialog } from './EncodingClosureDialog'
+import {
+  EncodingClosureDialog,
+  type EncodingClosureDialogMode,
+} from './EncodingClosureDialog'
 import { OpenedSubjectsPanel } from './OpenedSubjectsPanel'
 
 function termTypeLabel(termType: SchoolTerm['term_type']): string {
@@ -149,9 +152,10 @@ export default function AcademicTermsPage() {
   const scope = useStaffScope()
   const [dialogTerm, setDialogTerm] = useState<SchoolTerm | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [closureDialogTerm, setClosureDialogTerm] = useState<SchoolTerm | null>(
-    null,
-  )
+  const [closureDialog, setClosureDialog] = useState<{
+    mode: EncodingClosureDialogMode
+    term: SchoolTerm
+  } | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const closures = academicTerms.data?.departmentClosures ?? []
   const closureByTermId = new Map(
@@ -233,17 +237,20 @@ export default function AcademicTermsPage() {
             >
               Edit
             </Button>
-            {scope.status === 'ready' && !closure?.is_closed && (
+            {scope.status === 'ready' && (
               <Button
                 type="button"
                 variant="outline"
-                aria-label={`Close encoding for ${term.school_year} ${termTypeLabel(term.term_type)}`}
+                aria-label={`${closure?.is_closed ? 'Reopen' : 'Close'} encoding for ${term.school_year} ${termTypeLabel(term.term_type)}`}
                 onClick={() => {
                   setSaveMessage(null)
-                  setClosureDialogTerm(term)
+                  setClosureDialog({
+                    mode: closure?.is_closed ? 'reopen' : 'close',
+                    term,
+                  })
                 }}
               >
-                Close encoding
+                {closure?.is_closed ? 'Reopen encoding' : 'Close encoding'}
               </Button>
             )}
           </div>
@@ -345,14 +352,15 @@ export default function AcademicTermsPage() {
           }}
         />
       )}
-      {closureDialogTerm && (
+      {closureDialog && (
         <EncodingClosureDialog
-          term={closureDialogTerm}
-          onClose={() => setClosureDialogTerm(null)}
-          onComplete={() => {
-            setClosureDialogTerm(null)
+          mode={closureDialog.mode}
+          term={closureDialog.term}
+          onClose={() => setClosureDialog(null)}
+          onComplete={(action) => {
+            setClosureDialog(null)
             setSaveMessage(
-              `Department grade encoding closed for ${closureDialogTerm.school_year}, ${termTypeLabel(closureDialogTerm.term_type)}.`,
+              `Department grade encoding ${action} for ${closureDialog.term.school_year}, ${termTypeLabel(closureDialog.term.term_type)}.`,
             )
           }}
         />

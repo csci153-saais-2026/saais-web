@@ -5,6 +5,7 @@ import {
   closeSchoolTermEncoding,
   createSchoolTerm,
   listAcademicTerms,
+  reopenDepartmentTermEncoding,
   updateSchoolTerm,
   type SchoolTermCloseEncodingRequest,
   type SchoolTermInsert,
@@ -123,6 +124,47 @@ describe('Academic term reads', () => {
   })
 
   describe('Academic term writes', () => {
+    it('reopens encoding through the department-scoped operation', async () => {
+      const body: SchoolTermCloseEncodingRequest = {
+        scope: 'department',
+        department_id: 'department-1',
+      }
+      const closure = {
+        id: 'closure-1',
+        school_term_id: 'term-existing',
+        department_id: 'department-1',
+        is_closed: false,
+      }
+      server.use(
+        http.post(
+          '*/functions/v1/school-terms/:school_term_id/reopen-encoding',
+          async ({ request, params }) => {
+            expect(params.school_term_id).toBe('term-existing')
+            expect(await request.json()).toEqual(body)
+            return HttpResponse.json(closure)
+          },
+        ),
+      )
+
+      await expect(
+        reopenDepartmentTermEncoding('term-existing', body),
+      ).resolves.toEqual(closure)
+
+      server.use(
+        http.post(
+          '*/functions/v1/school-terms/:school_term_id/reopen-encoding',
+          () =>
+            HttpResponse.json(
+              { code: 'CONFLICT', message: 'Closure state changed.' },
+              { status: 409 },
+            ),
+        ),
+      )
+      await expect(
+        reopenDepartmentTermEncoding('term-existing', body),
+      ).rejects.toMatchObject({ isConflict: true })
+    })
+
     it('closes encoding only with the explicit department-scoped request', async () => {
       const body: SchoolTermCloseEncodingRequest = {
         scope: 'department',

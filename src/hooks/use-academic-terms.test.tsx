@@ -10,6 +10,7 @@ import {
   useAcademicTerms,
   useCloseAcademicTermEncoding,
   useCreateSchoolTerm,
+  useReopenAcademicTermEncoding,
   useUpdateSchoolTerm,
 } from './use-academic-terms'
 
@@ -18,6 +19,7 @@ const api = vi.hoisted(() => ({
   createSchoolTerm: vi.fn(),
   updateSchoolTerm: vi.fn(),
   closeSchoolTermEncoding: vi.fn(),
+  reopenDepartmentTermEncoding: vi.fn(),
 }))
 
 vi.mock('@/routes/department-staff/academic-terms/academic-terms.api', () => api)
@@ -86,6 +88,7 @@ function setup() {
       create: useCreateSchoolTerm(),
       update: useUpdateSchoolTerm(),
       close: useCloseAcademicTermEncoding(),
+      reopen: useReopenAcademicTermEncoding(),
     }),
     { wrapper },
   )
@@ -97,6 +100,7 @@ beforeEach(() => {
   api.createSchoolTerm.mockReset()
   api.updateSchoolTerm.mockReset()
   api.closeSchoolTermEncoding.mockReset()
+  api.reopenDepartmentTermEncoding.mockReset()
 })
 
 afterEach(() => {
@@ -105,6 +109,48 @@ afterEach(() => {
 })
 
 describe('Academic term mutations', () => {
+  it('reopens department encoding and preserves an institution-wide lock from refreshed data', async () => {
+    const institutionallyLockedTerm = { ...original, is_locked: true }
+    const closedClosure = {
+      id: 'closure-1',
+      school_term_id: original.id,
+      department_id: scope.departmentId,
+      is_closed: true,
+    }
+    const reopenedClosure = { ...closedClosure, is_closed: false }
+    api.listAcademicTerms
+      .mockReset()
+      .mockResolvedValueOnce({
+        terms: [institutionallyLockedTerm],
+        departmentClosures: [closedClosure],
+      })
+      .mockResolvedValue({
+        terms: [institutionallyLockedTerm],
+        departmentClosures: [reopenedClosure],
+      })
+    api.reopenDepartmentTermEncoding.mockResolvedValue(reopenedClosure)
+    const { result } = setup()
+
+    await waitFor(() => expect(result.current.terms.isSuccess).toBe(true))
+    await act(async () =>
+      result.current.reopen.mutateAsync({ term: institutionallyLockedTerm }),
+    )
+
+    expect(api.reopenDepartmentTermEncoding).toHaveBeenCalledWith(
+      original.id,
+      {
+        scope: 'department',
+        department_id: scope.departmentId,
+      },
+    )
+    expect(api.reopenDepartmentTermEncoding.mock.calls[0]?.[1]).not.toMatchObject({
+      scope: 'institution',
+    })
+    await waitFor(() => expect(api.listAcademicTerms).toHaveBeenCalledTimes(2))
+    expect(result.current.terms.data?.terms[0]?.is_locked).toBe(true)
+    expect(result.current.terms.data?.departmentClosures[0]?.is_closed).toBe(false)
+  })
+
   it('closes encoding only for the resolved department and refreshes term metadata', async () => {
     api.closeSchoolTermEncoding.mockResolvedValue(original)
     const { result } = setup()

@@ -34,18 +34,29 @@ vi.mock('@/routes/department-staff/shared/use-staff-scope', () => ({
 
 vi.mock('./EncodingClosureDialog', () => ({
   EncodingClosureDialog: ({
+    mode,
     term,
     onClose,
     onComplete,
   }: {
+    mode: 'close' | 'reopen'
     term: AcademicTermsData['terms'][number]
     onClose: () => void
-    onComplete: () => void
+    onComplete: (action: 'closed' | 'reopened') => void
   }) => (
-    <div role="dialog" aria-label="Close department grade encoding">
+    <div
+      role="dialog"
+      aria-label={`${mode === 'close' ? 'Close' : 'Reopen'} department grade encoding`}
+    >
+      <span data-testid="closure-dialog-mode">{mode}</span>
       <span>{term.school_year}</span>
       <button type="button" onClick={onClose}>Cancel closure</button>
-      <button type="button" onClick={onComplete}>Complete closure</button>
+      <button
+        type="button"
+        onClick={() => onComplete(mode === 'close' ? 'closed' : 'reopened')}
+      >
+        Complete closure
+      </button>
     </div>
   ),
 }))
@@ -202,8 +213,13 @@ describe('AcademicTermsPage', () => {
           element.textContent?.includes('Recorded by Department Staff on') === true,
       ),
     ).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /reopen encoding/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /close encoding for/i })).toBeNull()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Reopen encoding for 2025 - 2026 2nd Semester',
+      }),
+    )
+    expect(screen.getByTestId('closure-dialog-mode').textContent).toBe('reopen')
   })
 
   it('does not infer an open state when no department closure record exists', () => {

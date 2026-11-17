@@ -12,10 +12,17 @@ const mocks = vi.hoisted(() => ({
     isError: false,
     error: null as unknown,
   },
+  reopen: {
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null as unknown,
+  },
 }))
 
 vi.mock('@/hooks/use-academic-terms', () => ({
   useCloseAcademicTermEncoding: () => mocks.close,
+  useReopenAcademicTermEncoding: () => mocks.reopen,
 }))
 
 const term: SchoolTerm = {
@@ -33,12 +40,19 @@ const term: SchoolTerm = {
   chronological_key: 20261,
 }
 
-function renderDialog() {
+function renderDialog({
+  mode = 'close',
+  currentTerm = term,
+}: {
+  mode?: 'close' | 'reopen'
+  currentTerm?: SchoolTerm
+} = {}) {
   const onClose = vi.fn()
   const onComplete = vi.fn()
   render(
     <EncodingClosureDialog
-      term={term}
+      mode={mode}
+      term={currentTerm}
       onClose={onClose}
       onComplete={onComplete}
     />,
@@ -60,6 +74,10 @@ beforeEach(() => {
   mocks.close.isPending = false
   mocks.close.isError = false
   mocks.close.error = null
+  mocks.reopen.mutateAsync.mockReset().mockResolvedValue(undefined)
+  mocks.reopen.isPending = false
+  mocks.reopen.isError = false
+  mocks.reopen.error = null
 })
 
 afterEach(cleanup)
@@ -120,6 +138,43 @@ describe('EncodingClosureDialog', () => {
     expect(onComplete).toHaveBeenCalledOnce()
   })
 
+  it('cancels reopening without sending a request', () => {
+    const { onClose } = renderDialog({ mode: 'reopen' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(mocks.reopen.mutateAsync).not.toHaveBeenCalled()
+    expect(mocks.close.mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('reopens only the department and leaves the institution lock in effect', async () => {
+    const lockedTerm = { ...term, is_locked: true }
+    let resolveMutation: (() => void) | undefined
+    mocks.reopen.mutateAsync.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveMutation = resolve
+        }),
+    )
+    const { onComplete } = renderDialog({
+      mode: 'reopen',
+      currentTerm: lockedTerm,
+    })
+
+    expect(screen.getByText(/that lock remains in effect/)).toBeTruthy()
+    expect(screen.queryByLabelText('Closure note (optional)')).toBeNull()
+    const submit = screen.getByRole('button', { name: 'Reopen grade encoding' })
+    fireEvent.click(submit)
+    fireEvent.click(submit)
+
+    await waitFor(() => expect(mocks.reopen.mutateAsync).toHaveBeenCalledOnce())
+    expect(mocks.reopen.mutateAsync).toHaveBeenCalledWith({ term: lockedTerm })
+    expect(submit.hasAttribute('disabled')).toBe(true)
+    resolveMutation?.()
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith('reopened'))
+  })
+
   it.each([
     [403, 'FORBIDDEN', 'not permitted to close encoding'],
     [409, 'CONFLICT', 'state changed'],
@@ -129,6 +184,20 @@ describe('EncodingClosureDialog', () => {
       mocks.close.isError = true
       mocks.close.error = apiError(status, code)
       renderDialog()
+
+      expect(screen.getByRole('alert').textContent).toContain(message)
+    },
+  )
+
+  it.each([
+    [403, 'FORBIDDEN', 'not permitted to reopen encoding'],
+    [409, 'CONFLICT', 'state changed'],
+  ] as const)(
+    'keeps a %i reopen denial visible',
+    (status, code, message) => {
+      mocks.reopen.isError = true
+      mocks.reopen.error = apiError(status, code)
+      renderDialog({ mode: 'reopen' })
 
       expect(screen.getByRole('alert').textContent).toContain(message)
     },
