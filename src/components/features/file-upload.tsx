@@ -1,16 +1,20 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { UploadIcon } from '@/components/icons'
-import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function FileUpload({ accept, disabled, onFile }: { accept: string; disabled?: boolean; onFile: (file: File | undefined) => void }) {
   const id = useId()
-  const input = useRef<HTMLInputElement>(null)
-  const [name, setName] = useState('')
-  return <div className="grid justify-items-center gap-3 rounded-md border border-dashed border-border bg-background px-5 py-8 text-center" onDragOver={event => { event.preventDefault() }} onDrop={event => { event.preventDefault(); if (disabled) return; const file = event.dataTransfer.files[0]; setName(file?.name ?? ''); onFile(file) }}>
-    <UploadIcon className="size-7 text-muted-foreground" aria-hidden />
-    <label htmlFor={id} className="text-sm font-semibold">Upload a file</label>
-    <p className="text-sm text-muted-foreground">{name || 'Drop a .json file here, or choose a file to validate.'}</p>
-    <input ref={input} id={id} type="file" accept={accept} disabled={disabled} className="sr-only" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; setName(file?.name ?? ''); onFile(file) }} />
-    <Button type="button" variant="outline" disabled={disabled} onClick={() => input.current?.click()}>Choose file</Button>
+  const [dragging, setDragging] = useState(false)
+  return <div
+    className={cn('rounded-md border-[1.5px] border-dashed bg-background px-5 py-9 text-center text-sm text-muted-foreground', dragging ? 'border-primary' : 'border-input')}
+    onDragEnter={event => { event.preventDefault(); setDragging(true) }}
+    onDragOver={event => { event.preventDefault(); setDragging(true) }}
+    onDragLeave={event => { event.preventDefault(); setDragging(false) }}
+    onDrop={event => { event.preventDefault(); setDragging(false); if (disabled) return; onFile(event.dataTransfer.files[0]) }}
+  >
+    <UploadIcon className="mx-auto mb-2.5 size-[26px] text-muted-foreground" aria-hidden />
+    Drop a .json file here, or{' '}
+    <label htmlFor={id} className="cursor-pointer font-semibold text-primary underline underline-offset-[3px]">choose a file</label>
+    <input id={id} type="file" accept={accept} disabled={disabled} className="sr-only" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; onFile(file) }} />
   </div>
 }

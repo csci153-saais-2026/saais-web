@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { Link } from 'react-router'
 import { AdviserPage } from '../Adviser'
 import { useAuth } from '@/hooks/use-auth'
 import { apiClient, unwrapApiResult } from '@/lib/api'
@@ -7,15 +6,147 @@ import type { ApiSchema } from '@/lib/api'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FileUpload } from '@/components/features/file-upload'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
-function ImportForm(){
- const [input,setInput]=useState<ApiSchema<'GradeBatchImportRequest'> | null>(null);const [preview,setPreview]=useState<ApiSchema<'GradeBatchImportResponse'> | null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [message,setMessage]=useState('')
- const fileRevision=useRef(0);const [uploadKey,setUploadKey]=useState(0)
- function download(){const blob=new Blob([JSON.stringify({school_term_id:'',rows:[{row_number:1,student_number:'',course_code:'',instructor:'',midterm_grade:null,final_grade:null}]},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download='grade-import-template.json';anchor.click();URL.revokeObjectURL(url)}
- async function read(file:File|undefined){const current=++fileRevision.current;setInput(null);setPreview(null);setError('');setMessage('');if(!file)return;try{const value:unknown=JSON.parse(await file.text());if(current!==fileRevision.current)return;if(!value||typeof value!=='object'||!('school_term_id' in value)||typeof value.school_term_id!=='string'||!('rows' in value)||!Array.isArray(value.rows))throw new Error('The file must contain school_term_id and a rows array.');setInput({school_term_id:value.school_term_id,rows:value.rows,mode:'preview'})}catch(e){if(current===fileRevision.current)setError(e instanceof Error?e.message:'Unable to read file.')}}
- async function run(mode:'preview'|'commit'){if(!input)return;setBusy(true);setError('');setMessage('');try{const result=unwrapApiResult(await apiClient.POST('/functions/v1/grades/import',{body:{...input,mode}}));if(mode==='preview')setPreview(result);else{setMessage(`Imported ${result.imported_count} rows.`);setPreview(null);setInput(null);setUploadKey(n=>n+1)}}catch(e){setError(e instanceof Error?e.message:'Import failed.')}finally{setBusy(false)}}
- return <><PageHeading title="Import grades (JSON)" subtitle="For many advisees or terms at once" actions={<Button variant="outline" onClick={download}>Download template</Button>}/><Panel title="Upload a file" description="Every row is checked before anything is saved."><FileUpload key={uploadKey} accept="application/json,.json" disabled={busy} onFile={file=>void read(file)}/>{input&&<p className="mt-2">{input.rows.length} rows selected for term {input.school_term_id || '(missing)' }.</p>}<Button className="mt-4" disabled={!input||!input.school_term_id||!input.rows.length||busy} onClick={()=>void run('preview')}>Validate file</Button></Panel>
- {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}<Panel title="Check results">{preview?<><p>{preview.valid_count} valid · {preview.warning_count} warnings · {preview.error_count} errors</p><ul className="my-4">{preview.results.map(row=><li key={row.row_number} className="border-b py-2">Row {row.row_number}: {row.student_number} · {row.course_code} · {row.outcome} {row.message}</li>)}</ul><Button disabled={busy||preview.valid_count===0} onClick={()=>void run('commit')}>{busy?'Saving…':'Confirm and save valid rows'}</Button></>:<p>Choose a file and validate it to preview results.</p>}<Button asChild variant="outline" className="ml-2"><Link to="/adviser/encode-grades">Cancel</Link></Button></Panel></>
+type ImportRequest = ApiSchema<'GradeBatchImportRequest'>
+type ImportResponse = ApiSchema<'GradeBatchImportResponse'>
+
+const TEMPLATE = { school_term_id: '', rows: [{ row_number: 1, student_number: '', course_code: '', instructor: '', midterm_grade: null, final_grade: null }] }
+
+function downloadTemplate() {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(TEMPLATE, null, 2)], { type: 'application/json' }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'grade-import-template.json'
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
-export default function AdviserImportGrades(){const {user}=useAuth();return <AdviserPage title="Import grades" sample={false}>{user&&<ImportForm key={user.id}/>}</AdviserPage>}
+
+function plural(n: number, one: string, many: string) {
+  return n === 1 ? one : many
+}
+
+function ImportForm() {
+  const [fileName, setFileName] = useState('')
+  const [input, setInput] = useState<ImportRequest | null>(null)
+  const [preview, setPreview] = useState<ImportResponse | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const fileRevision = useRef(0)
+  const [uploadKey, setUploadKey] = useState(0)
+
+  function reset() {
+    fileRevision.current++
+    setFileName('')
+    setInput(null)
+    setPreview(null)
+    setError('')
+    setUploadKey(n => n + 1)
+  }
+
+  async function post(body: ImportRequest, mode: 'preview' | 'commit') {
+    return unwrapApiResult(await apiClient.POST('/functions/v1/grades/import', { body: { ...body, mode } }))
+  }
+
+  async function read(file: File | undefined) {
+    const current = ++fileRevision.current
+    setInput(null)
+    setPreview(null)
+    setError('')
+    setMessage('')
+    if (!file) return
+    setFileName(file.name)
+    setBusy(true)
+    try {
+      const value: unknown = JSON.parse(await file.text())
+      if (current !== fileRevision.current) return
+      if (!value || typeof value !== 'object' || !('school_term_id' in value) || typeof value.school_term_id !== 'string' || !('rows' in value) || !Array.isArray(value.rows) || !value.rows.length) {
+        throw new Error('No rows found. The file needs a school_term_id and a rows list. Download the template to see the expected shape.')
+      }
+      if (!value.school_term_id) throw new Error('The file is missing a school_term_id.')
+      const body: ImportRequest = { school_term_id: value.school_term_id, rows: value.rows, mode: 'preview' }
+      const result = await post(body, 'preview')
+      if (current !== fileRevision.current) return
+      setInput(body)
+      setPreview(result)
+    } catch (e) {
+      if (current === fileRevision.current) {
+        setFileName('')
+        setError(e instanceof SyntaxError ? `${file.name} is not valid JSON, so nothing was read. Download the template to see the expected shape.` : e instanceof Error ? e.message : 'Unable to read file.')
+      }
+    } finally {
+      if (current === fileRevision.current) setBusy(false)
+    }
+  }
+
+  async function save() {
+    if (!input) return
+    setBusy(true)
+    setError('')
+    try {
+      const result = await post(input, 'commit')
+      setMessage(`Saved ${result.imported_count} grade ${plural(result.imported_count, 'row', 'rows')}. GWA is recomputed for the affected advisees and the import is in the audit log.`)
+      reset()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Import failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const rejected = preview?.results.filter(row => row.outcome === 'error') ?? []
+
+  return <>
+    <PageHeading title="Import grades (JSON)" subtitle="For many advisees or terms at once" actions={<Button variant="outline" onClick={downloadTemplate}>Download template</Button>} />
+    <Panel title="Upload a file" description="Every row is checked before anything is saved.">
+      <FileUpload key={uploadKey} accept="application/json,.json" disabled={busy} onFile={file => void read(file)} />
+      {error && <Alert variant="destructive" className="mt-4"><AlertDescription>{error}</AlertDescription></Alert>}
+      {message && <Alert variant="success" className="mt-4" role="status"><AlertDescription>{message}</AlertDescription></Alert>}
+    </Panel>
+    {preview && <Panel title="Check results">
+      <h3 className="mb-4 text-xl font-bold">{fileName}</h3>
+      <Alert variant={preview.valid_count ? 'success' : 'destructive'} role="status">
+        <AlertDescription>{preview.valid_count} {plural(preview.valid_count, 'row is', 'rows are')} valid{preview.valid_count ? ' and ready to save.' : '.'}</AlertDescription>
+      </Alert>
+      {rejected.length > 0 && <>
+        <Alert variant="advisory" className="mt-3" role="status">
+          <AlertDescription>{rejected.length} {plural(rejected.length, 'row was', 'rows were')} rejected. Nothing is saved until you confirm.</AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[70px] text-right">Row</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Course</TableHead>
+                <TableHead>Problem</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rejected.map(row => <TableRow key={row.row_number}>
+                <TableCell className="text-right">{row.row_number}</TableCell>
+                <TableCell className="font-mono text-[13px]">{row.student_number || '—'}</TableCell>
+                <TableCell>{row.course_code || '—'}</TableCell>
+                <TableCell className="whitespace-normal">{row.message}</TableCell>
+              </TableRow>)}
+            </TableBody>
+          </Table>
+        </div>
+      </>}
+      <div className="mt-5 flex gap-2.5">
+        <Button disabled={busy || preview.valid_count === 0} onClick={() => void save()}>
+          {busy ? 'Saving…' : `Save the ${preview.valid_count} valid ${plural(preview.valid_count, 'row', 'rows')}`}
+        </Button>
+        <Button variant="outline" disabled={busy} onClick={reset}>Cancel</Button>
+      </div>
+    </Panel>}
+  </>
+}
+
+export default function AdviserImportGrades() {
+  const { user } = useAuth()
+  return <AdviserPage title="Import grades" sample={false}>{user && <ImportForm key={user.id} />}</AdviserPage>
+}
