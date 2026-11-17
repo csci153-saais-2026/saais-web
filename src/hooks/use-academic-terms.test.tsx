@@ -6,12 +6,18 @@ import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-key
 import { StaffScopeContext } from '@/routes/department-staff/shared/use-staff-scope'
 import type { AcademicTermsData, SchoolTerm } from '@/routes/department-staff/academic-terms/academic-terms.api'
 import type { SchoolTermFormValues } from '@/routes/department-staff/academic-terms/school-term.schema'
-import { useAcademicTerms, useCreateSchoolTerm, useUpdateSchoolTerm } from './use-academic-terms'
+import {
+  useAcademicTerms,
+  useCloseAcademicTermEncoding,
+  useCreateSchoolTerm,
+  useUpdateSchoolTerm,
+} from './use-academic-terms'
 
 const api = vi.hoisted(() => ({
   listAcademicTerms: vi.fn(),
   createSchoolTerm: vi.fn(),
   updateSchoolTerm: vi.fn(),
+  closeSchoolTermEncoding: vi.fn(),
 }))
 
 vi.mock('@/routes/department-staff/academic-terms/academic-terms.api', () => api)
@@ -79,6 +85,7 @@ function setup() {
       terms: useAcademicTerms(),
       create: useCreateSchoolTerm(),
       update: useUpdateSchoolTerm(),
+      close: useCloseAcademicTermEncoding(),
     }),
     { wrapper },
   )
@@ -89,6 +96,7 @@ beforeEach(() => {
   api.listAcademicTerms.mockReset().mockResolvedValue(initialData)
   api.createSchoolTerm.mockReset()
   api.updateSchoolTerm.mockReset()
+  api.closeSchoolTermEncoding.mockReset()
 })
 
 afterEach(() => {
@@ -97,6 +105,56 @@ afterEach(() => {
 })
 
 describe('Academic term mutations', () => {
+  it('closes encoding only for the resolved department and refreshes term metadata', async () => {
+    api.closeSchoolTermEncoding.mockResolvedValue(original)
+    const { result } = setup()
+
+    await waitFor(() => expect(api.listAcademicTerms).toHaveBeenCalledOnce())
+    await act(async () =>
+      result.current.close.mutateAsync({
+        term: original,
+        closureNote: 'Grade review complete.',
+      }),
+    )
+
+    expect(api.closeSchoolTermEncoding).toHaveBeenCalledWith(
+      original.id,
+      {
+        scope: 'department',
+        department_id: 'department',
+        closure_note: 'Grade review complete.',
+      },
+    )
+    expect(api.closeSchoolTermEncoding.mock.calls[0]?.[1]).not.toMatchObject({
+      scope: 'institution',
+    })
+    await waitFor(() => expect(api.listAcademicTerms).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not close a department term that is already closed in the cache', async () => {
+    api.listAcademicTerms.mockResolvedValue({
+      ...initialData,
+      departmentClosures: [
+        {
+          id: 'closure-1',
+          school_term_id: original.id,
+          department_id: scope.departmentId,
+          is_closed: true,
+        },
+      ],
+    })
+    const { result } = setup()
+
+    await waitFor(() => expect(result.current.terms.isSuccess).toBe(true))
+    await expect(
+      result.current.close.mutateAsync({
+        term: original,
+        closureNote: null,
+      }),
+    ).rejects.toThrow('already closed')
+    expect(api.closeSchoolTermEncoding).not.toHaveBeenCalled()
+  })
+
   it('refreshes the scoped term list after creation', async () => {
     api.createSchoolTerm.mockResolvedValue({
       ...original,
