@@ -25,7 +25,7 @@ export function StandingRulesForm({ settings }: { settings: SettingsState }) {
   })
 
   return (
-    <Panel title="Scholastic standing thresholds" description="Percentage of the term’s units failed.">
+    <Panel title="Scholastic standing thresholds" description="Percentage of the term’s units failed. Defaults until VSU’s official values are confirmed.">
       <form noValidate onSubmit={handleSubmit(async (thresholds) => {
         try {
           await save.mutateAsync({ warning: thresholds.warning, probation: thresholds.probation, dismissal: thresholds.dismissal })
@@ -34,7 +34,7 @@ export function StandingRulesForm({ settings }: { settings: SettingsState }) {
           setError("dismissal", { message: failure instanceof Error ? failure.message : "Standing rules could not be saved." })
         }
       })}>
-        <div className="mb-4 grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           {([
             ["warning", "Warning from (%)"],
             ["probation", "Probation from (%)"],
@@ -45,7 +45,7 @@ export function StandingRulesForm({ settings }: { settings: SettingsState }) {
             </FormField>
           ))}
         </div>
-        <Button type="submit" disabled={save.isPending}>Save standing rules</Button>
+        <div className="mt-[18px] flex justify-end"><Button type="submit" disabled={save.isPending}>Save</Button></div>
       </form>
     </Panel>
   )

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { FormField } from "@/components/features/form-field"
 import { Panel } from "@/components/features/panel"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -88,28 +88,46 @@ function BackupRecordDialog({ settings, onClose }: { settings: SettingsState; on
   )
 }
 
-export function BackupRecordPanel({ settings }: { settings: SettingsState }) {
+const formatDate = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Manila", day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso))
+
+function useBackupOverdue(backup: SettingsState["latestBackup"]) {
   const closure = useLastEncodingClosure().data
+  return !backup || (closure != null && Date.parse(backup.completedAt) < Date.parse(closure))
+}
+
+export function BackupBanner({ settings }: { settings: SettingsState }) {
+  const backup = settings.latestBackup
+  const overdue = useBackupOverdue(backup)
+  return (
+    <Alert variant={overdue ? "advisory" : "success"} role="status">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5.5l3.5 2" /></svg>
+      <AlertDescription>
+        {backup ? <>Last backup: <b>{formatDate(backup.completedAt)}</b>. </> : null}
+        {overdue
+          ? <>{backup ? "No backup has been recorded since the latest encoding period closed. " : "No backup has been recorded yet. "}<b>Record a recent backup.</b></>
+          : "This records completion information only; it does not verify backup contents."}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+export function BackupRecordPanel({ settings }: { settings: SettingsState }) {
   const [open, setOpen] = useState(false)
   const backup = settings.latestBackup
-  const overdue = !backup || (closure != null && Date.parse(backup.completedAt) < Date.parse(closure))
 
   return (
-    <Panel title="Backup records" description="Metadata only. Keep actual backups in institutional storage.">
-      <Alert variant={overdue ? "advisory" : "success"} role="status" className="mb-5">
-        <AlertTitle>{overdue ? "A newer backup record is needed." : "Backup record is after the encoding closure."}</AlertTitle>
-        <AlertDescription>{overdue ? "No backup is recorded after the latest grade-encoding closure." : "This records completion information only; it does not verify backup contents."}</AlertDescription>
-      </Alert>
-      {backup ? (
-        <dl className="mb-5 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
+    <Panel title="Backups">
+      <p className="text-sm">Keep a completed, encrypted backup in institutional storage, then record it here.</p>
+      {backup && (
+        <dl className="mt-4 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
           <dt className="font-semibold text-muted-foreground">Completed</dt><dd>{new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" }).format(new Date(backup.completedAt))} PHT</dd>
           <dt className="font-semibold text-muted-foreground">Reference ID</dt><dd className="break-all font-mono text-xs">{backup.reference}</dd>
           <dt className="font-semibold text-muted-foreground">Storage location</dt><dd className="break-words">{backup.location}</dd>
           <dt className="font-semibold text-muted-foreground">Scope</dt><dd>{BACKUP_SCOPE_LABELS[backup.scope]}</dd>
         </dl>
-      ) : <p className="mb-5 text-sm text-muted-foreground">No completed backup record yet.</p>}
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
-        <Button type="button" variant="outline" onClick={() => setOpen(true)}>Record a completed backup</Button>
+        <Button type="button" className="mt-[18px]" onClick={() => setOpen(true)}>Record a backup made today</Button>
         {open && <BackupRecordDialog settings={settings} onClose={() => setOpen(false)} />}
       </Dialog>
     </Panel>

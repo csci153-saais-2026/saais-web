@@ -21,7 +21,7 @@ export function EmailSettingsForm({ settings }: { settings: SettingsState }) {
   })
 
   return (
-    <Panel title="Department email notifications" description="Sender address for department email notifications.">
+    <Panel title="Email" description="Notifications to students and advisers are sent from this address.">
       <form noValidate onSubmit={handleSubmit(async ({ senderEmail }) => {
         try {
           await save.mutateAsync(senderEmail)
@@ -30,10 +30,10 @@ export function EmailSettingsForm({ settings }: { settings: SettingsState }) {
           setError("senderEmail", { message: failure instanceof Error ? failure.message : "Email settings could not be saved." })
         }
       })}>
-        <FormField label="Sender address" htmlFor="settings-sender" error={errors.senderEmail?.message}>
+        <div className="max-w-[520px]"><FormField label="Sender address" htmlFor="settings-sender" error={errors.senderEmail?.message}>
           <Input id="settings-sender" type="email" autoComplete="off" aria-invalid={Boolean(errors.senderEmail)} {...register("senderEmail")} />
-        </FormField>
-        <Button type="submit" className="mt-5" disabled={save.isPending}>Save email settings</Button>
+        </FormField></div>
+        <div className="mt-[18px] flex justify-end"><Button type="submit" disabled={save.isPending}>Save</Button></div>
       </form>
     </Panel>
   )
