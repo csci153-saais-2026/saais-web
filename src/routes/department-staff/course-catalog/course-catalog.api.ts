@@ -26,6 +26,14 @@ export interface CourseCatalogPage {
   total: number | null
 }
 
+export type CatalogPrerequisiteType = 'strict' | 'co_requisite' | 'recommended'
+
+export interface CatalogPrerequisiteView {
+  id: string
+  type: CatalogPrerequisiteType
+  course: CatalogCourse | null
+}
+
 export async function createCatalogCourse(body: ApiSchema<'CourseInsert'>): Promise<CatalogCourse> {
   return unwrapApiResult<CatalogCourse>(await apiClient.POST('/functions/v1/catalog/course', { body }))
 }
@@ -40,6 +48,47 @@ export async function updateCatalogCourse(id: string, body: ApiSchema<'CourseUpd
 export async function deleteCatalogCourse(id: string): Promise<void> {
   unwrapApiResult(await apiClient.DELETE('/functions/v1/catalog/course/{id}', {
     params: { path: { id } },
+  }))
+}
+
+/** Reads one course's prerequisite rows, then resolves only their referenced course IDs. */
+export async function listCatalogPrerequisites(courseId: string, signal?: AbortSignal): Promise<CatalogPrerequisiteView[]> {
+  const relationshipsResult = await apiClient.GET('/rest/v1/prerequisite', {
+    params: { query: {
+      course_id: postgrestFilter.eq(courseId),
+      select: 'id,course_id,prerequisite_course_id,type',
+      order: 'type.asc,id.asc',
+      limit: READ_LIMIT,
+      offset: 0,
+    } },
+    signal,
+  })
+  const relationships = completeRead<ApiSchema<'Prerequisite'>>(relationshipsResult, 'Course prerequisites')
+    .filter(row => row.course_id === courseId)
+  const validRelationships = relationships.filter((row): row is ApiSchema<'Prerequisite'> & { type: CatalogPrerequisiteType } =>
+    row.type === 'strict' || row.type === 'co_requisite' || row.type === 'recommended',
+  )
+  const courseIds = [...new Set(validRelationships
+    .map(row => row.prerequisite_course_id)
+    .filter(id => typeof id === 'string' && id.length > 0))]
+  if (!courseIds.length) return validRelationships.map(row => ({ id: row.id, type: row.type, course: null }))
+
+  const coursesResult = await apiClient.GET('/rest/v1/course', {
+    params: { query: {
+      id: postgrestFilter.inList(courseIds),
+      select: 'id,department_id,code,title,units,status,repeatable_type,is_elective,category',
+      order: 'code.asc,id.asc',
+      limit: READ_LIMIT,
+      offset: 0,
+    } },
+    signal,
+  })
+  const courses = completeRead<CatalogCourse>(coursesResult, 'Prerequisite course references')
+  const coursesById = new Map(courses.map(course => [course.id, course]))
+  return validRelationships.map(row => ({
+    id: row.id,
+    type: row.type,
+    course: coursesById.get(row.prerequisite_course_id) ?? null,
   }))
 }
 

@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { DataTablePanel, type Column } from '@/components/features/data-table-panel'
 import { FormField } from '@/components/features/form-field'
@@ -6,6 +7,7 @@ import { Panel } from '@/components/features/panel'
 import { SearchInput } from '@/components/features/search-input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiClientError } from '@/lib/api'
 import { courseCatalogMaxOffset, courseCatalogPageSize, type CatalogCourse, type CatalogDepartment, type CatalogFaculty } from './course-catalog.api'
@@ -13,6 +15,7 @@ import { useCourseCatalog, useCourseCatalogReferences } from '@/hooks/use-course
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import { CourseDialog } from './CourseDialog'
 import { CourseCatalogActions } from './CourseCatalogActions'
+import { CoursePrerequisitesDialog } from './CoursePrerequisitesDialog'
 
 const courseTypeLabels: Record<string, string> = {
   major: 'Major', ge: 'GE', elective: 'Elective', pe: 'PE', nstp: 'NSTP', foundation: 'Foundation', service: 'Service',
@@ -73,6 +76,9 @@ function isValidSearch(value: string): boolean {
 }
 
 export default function CourseCatalogPage() {
+  const [prerequisiteCourse, setPrerequisiteCourse] = useState<CatalogCourse | null>(null)
+  const [prerequisiteDialogOpen, setPrerequisiteDialogOpen] = useState(false)
+  const prerequisiteTrigger = useRef<HTMLButtonElement | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const staffScope = useStaffScope()
   const filters = {
@@ -141,6 +147,17 @@ export default function CourseCatalogPage() {
         </div>
         : <span aria-label="Read only">—</span>,
     },
+    {
+      header: 'Prerequisites', className: 'sm:whitespace-nowrap',
+      cell: course => <DialogTrigger asChild>
+        <Button type="button" size="sm" variant="outline" onClick={event => {
+          prerequisiteTrigger.current = event.currentTarget
+          setPrerequisiteCourse(course)
+        }}>
+          View prerequisites for {course.code || 'course'}
+        </Button>
+      </DialogTrigger>,
+    },
   ]
 
   const data = catalog.data
@@ -150,6 +167,7 @@ export default function CourseCatalogPage() {
     ? end < data.total
     : (data?.courses.length ?? 0) === courseCatalogPageSize
   return (
+    <Dialog open={prerequisiteDialogOpen} onOpenChange={setPrerequisiteDialogOpen}>
     <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
       <PageHeading title="Course catalog" subtitle="Browse and maintain courses in your authorized department." />
 
@@ -240,6 +258,12 @@ export default function CourseCatalogPage() {
           )}
         />
       )}
+      <CoursePrerequisitesDialog
+        course={prerequisiteCourse}
+        open={prerequisiteDialogOpen}
+        onReturnFocus={() => prerequisiteTrigger.current?.focus()}
+      />
     </div>
+    </Dialog>
   )
 }
