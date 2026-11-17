@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react"
 import { useAuth } from "@/hooks/use-auth"
+import { postDeanAuditViewEvent } from "@/routes/dean/api/dean.api"
 import {
   DeanAuditContext,
   SEED_DEAN_AUDIT_ENTRIES,
@@ -57,6 +58,22 @@ export function DeanAuditProvider({ children }: { children: ReactNode }) {
           // Ignore storage write errors
         }
         return next
+      })
+
+      const eventType = input.details.includes("PDF")
+        ? "pdf_exported"
+        : input.details.includes("CSV")
+          ? "csv_exported"
+          : input.studentNumber
+            ? "student_record_viewed"
+            : "report_viewed"
+
+      void postDeanAuditViewEvent({
+        event_type: eventType,
+        report_type: "faculty",
+        details: input.details,
+      }).catch(() => {
+        // Session audit log remains intact even when offline or unmounted in tests
       })
     },
     [user?.fullName],
