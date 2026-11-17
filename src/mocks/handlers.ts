@@ -1089,10 +1089,42 @@ export const saaisMswHandlers = [
       'dean',
       'department_head',
       'department_staff',
-      'adviser',
     ])
     if ('response' in auth) return auth.response
     const db = getMockDatabase()
+    const params = new URL(request.url).searchParams
+    const requestedDepartmentId = params.get('department_id')
+    const requestedFacultyId = params.get('faculty_id')
+    if (requestedDepartmentId && !canAccessDepartment(auth.persona, requestedDepartmentId)) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot view accounts outside your authorized organization scope.')
+    }
+    if (requestedFacultyId && !canAccessFaculty(auth.persona, requestedFacultyId)) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot view accounts outside your authorized organization scope.')
+    }
+    const requiresDepartmentScope = auth.persona.roles.includes('department_staff')
+      || auth.persona.roles.includes('department_head')
+    const departmentId = requestedDepartmentId
+      ?? (requiresDepartmentScope ? auth.persona.departmentId : null)
+    const requiresFacultyScope = auth.persona.roles.includes('dean')
+      && !auth.persona.roles.includes('admin')
+      && !requiresDepartmentScope
+    const facultyId = requestedFacultyId ?? (requiresFacultyScope ? auth.persona.facultyId : null)
+    if (requiresDepartmentScope && !departmentId) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'An assigned department scope is required to view accounts.')
+    }
+    if (requiresFacultyScope && !facultyId) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'An assigned faculty scope is required to view accounts.')
+    }
+
+    const rawLimit = params.get('limit')
+    const rawOffset = params.get('offset')
+    const limit = rawLimit === null ? 20 : /^\d+$/.test(rawLimit) ? Number(rawLimit) : NaN
+    const offset = rawOffset === null ? 0 : /^\d+$/.test(rawOffset) ? Number(rawOffset) : NaN
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000
+      || !Number.isSafeInteger(offset) || offset < 0 || offset > 100_000) {
+      return errorJson(400, 'INVALID_INPUT', 'Account pagination parameters are outside the supported range.')
+    }
+
     const summaries: ApiSchema<'AccountSummary'>[] = db.profiles.map(
       (profile) => ({
         profile,
@@ -1104,7 +1136,26 @@ export const saaisMswHandlers = [
           null,
       }),
     )
-    return HttpResponse.json(summaries, { status: 200 })
+    const search = params.get('search')?.trim().toLocaleLowerCase() ?? ''
+    const requestedRole = params.get('role')
+    const scopedSummaries = summaries.filter(summary => {
+      const inDepartment = !departmentId
+        || summary.profile.department_id === departmentId
+        || summary.role_assignments?.some(assignment => assignment.department_id === departmentId)
+        || summary.student_organization?.department_id === departmentId
+      const inFaculty = !facultyId
+        || summary.profile.faculty_id === facultyId
+        || summary.role_assignments?.some(assignment => assignment.faculty_id === facultyId)
+        || summary.student_organization?.faculty_id === facultyId
+      const hasRole = !requestedRole
+        || summary.role_assignments?.some(assignment => assignment.role === requestedRole)
+        || summary.profile.role === requestedRole
+      const matchesSearch = !search
+        || summary.profile.full_name.toLocaleLowerCase().includes(search)
+        || summary.profile.email.toLocaleLowerCase().includes(search)
+      return inDepartment && inFaculty && hasRole && matchesSearch
+    })
+    return HttpResponse.json(scopedSummaries.slice(offset, offset + limit), { status: 200 })
   }),
 
   http.patch('*/functions/v1/accounts/:profile_id', async ({ request, params }) => {
