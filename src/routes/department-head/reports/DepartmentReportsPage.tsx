@@ -1,25 +1,35 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { GradeDistribution } from "@/components/features/grade-distribution"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { StatGrid } from "@/components/features/stat-tile"
 import { DownloadIcon } from "@/components/icons"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { QueryMessage } from "../shared/dh-ui"
 import { ReportCohortDialog } from "./ReportCohortDialog"
 import { ReportFilters } from "./ReportFilters"
-import { getDepartmentReport, REPORT_TERMS, type CohortSummary, type ProgramKey } from "./reports-data"
+import { ALL_PROGRAMS, buildDepartmentReport, getCohortStudents, type CohortSummary } from "./report-model"
 import { downloadReportPdf } from "./report-pdf"
+import { useReportSource } from "./reports-api"
 
 export default function DepartmentReportsPage() {
-  const [term, setTerm] = useState(REPORT_TERMS[0].value)
-  const [program, setProgram] = useState<ProgramKey>("all")
+  const source = useReportSource()
+  const [pickedTerm, setTerm] = useState("")
+  const [program, setProgram] = useState(ALL_PROGRAMS)
   const [cohort, setCohort] = useState<CohortSummary | null>(null)
   const [exportError, setExportError] = useState("")
-  const report = getDepartmentReport(term, program)
+  const data = source.data
+  const term = pickedTerm || data?.currentTermId || data?.terms[0]?.value || ""
+  const termLabel = data?.terms.find((option) => option.value === term)?.label ?? ""
+
+  // The roster describes the current term only, so no other term has a report to show.
+  const report = useMemo(() => data && data.students.length > 0 && term === data.currentTermId
+    ? buildDepartmentReport({ students: data.students, currentCurricula: data.currentCurricula, termId: term, termLabel, programKey: program })
+    : null, [data, term, termLabel, program])
+  const cohortStudents = useMemo(() => data && cohort ? getCohortStudents(data.students, cohort) : [], [data, cohort])
 
   function exportPdf() {
     if (!report) return
@@ -29,31 +39,33 @@ export default function DepartmentReportsPage() {
     }
   }
 
+  const heading = <PageHeading title="Department reports" subtitle="A semester snapshot of student progress across your department."
+    actions={<Button type="button" variant="outline" disabled={!report} onClick={exportPdf}><DownloadIcon />Export PDF</Button>} />
+  if (!data) return <>{heading}<QueryMessage query={source} label="department reports" /></>
+
   return (
     <>
-      <PageHeading title="Department reports" subtitle="A semester snapshot of student progress across your department."
-        actions={<Button type="button" variant="outline" disabled={!report} onClick={exportPdf}><DownloadIcon />Export PDF</Button>} />
-      <ReportFilters term={term} program={program}
+      {heading}
+      <ReportFilters term={term} program={program} terms={data.terms} programs={data.programs}
         onTermChange={(value) => { setTerm(value); setCohort(null); setExportError("") }}
         onProgramChange={(value) => { setProgram(value); setCohort(null); setExportError("") }} />
       {exportError && <Alert variant="destructive" className="mb-5"><AlertTitle>Export unsuccessful</AlertTitle><AlertDescription>{exportError}</AlertDescription></Alert>}
       {!report ? (
-        <Panel title="No sample report available">
-          <p className="text-muted-foreground">There are no sample records for this academic term and degree program.</p>
-          <Button type="button" variant="outline" className="mt-4" onClick={() => { setTerm(REPORT_TERMS[0].value); setProgram("all") }}>Show latest sample report</Button>
+        <Panel title="No report available">
+          <p className="text-muted-foreground">There are no records for this academic term and degree program.</p>
         </Panel>
       ) : (
         <div aria-label="Selected department report">
           <p className="sr-only" role="status">Showing {report.termLabel}, {report.programLabel}.</p>
           <StatGrid className="lg:grid-cols-3" items={[
             { label: "Currently enrolled", value: report.enrolled.toLocaleString("en-US"), note: report.enrolmentNote },
-            { label: "Mean GWA", value: report.meanGwa, note: "Supplied sample academic summary" },
-            { label: "Students with deficiencies", value: report.deficiencies, note: `${(report.deficiencies / report.enrolled * 100).toFixed(1)}% of enrolled students` },
+            { label: "Mean GWA", value: report.meanGwa, note: "Average of student cumulative GWAs" },
+            { label: "Students with deficiencies", value: report.deficiencies, note: report.enrolled ? `${(report.deficiencies / report.enrolled * 100).toFixed(1)}% of enrolled students` : "No enrolled students" },
           ]} />
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-            <Panel title="Final grade distribution" description={report.termLabel}>
+            <Panel title="GWA distribution" description={report.termLabel}>
               <GradeDistribution bands={report.distribution} />
-              <p className="mt-5 text-xs text-muted-foreground">{report.gradeRecords.toLocaleString("en-US")} course grade records · Percentages sum to 100%.<br />INC, DR and NA are excluded from this sample mean GWA.</p>
+              <p className="mt-5 text-xs text-muted-foreground">{report.gwaStudents.toLocaleString("en-US")} of {report.enrolled.toLocaleString("en-US")} students have a cumulative GWA · Percentages sum to 100%.</p>
             </Panel>
             <Panel title="Department curriculum summary" description={report.programLabel}>
               <ul className="divide-y divide-border">
@@ -66,7 +78,7 @@ export default function DepartmentReportsPage() {
               </ul>
             </Panel>
           </div>
-          <Panel title="GWA by batch and curriculum" description="Illustrative cohorts for the selected report; not the complete department population." flush>
+          <Panel title="GWA by batch and curriculum" description="Entry year, study range, and academic performance for each cohort." flush>
             <Table responsive aria-label="GWA by batch and curriculum">
               <TableHeader className="bg-secondary"><TableRow><TableHead>Entry year</TableHead><TableHead>Study range</TableHead><TableHead>Curriculum</TableHead><TableHead className="text-right">Students</TableHead><TableHead className="text-right">Mean GWA</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
               <TableBody>{report.cohorts.map((row) => (
@@ -80,12 +92,11 @@ export default function DepartmentReportsPage() {
                 </TableRow>
               ))}</TableBody>
             </Table>
-            <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">{report.cohorts.length} sample cohorts · {report.programLabel}</p>
+            <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">{report.cohorts.length} cohorts · {report.programLabel}</p>
           </Panel>
         </div>
       )}
-      <ReportCohortDialog cohort={cohort} onClose={() => setCohort(null)} />
-      <SampleFooter>Fictional report figures · Academic snapshot: 15 August 2025.</SampleFooter>
+      <ReportCohortDialog cohort={cohort} students={cohortStudents} onClose={() => setCohort(null)} />
     </>
   )
 }

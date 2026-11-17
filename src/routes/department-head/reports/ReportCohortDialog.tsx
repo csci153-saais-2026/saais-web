@@ -1,22 +1,19 @@
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { getCohortStudents, type CohortSummary } from "./reports-data"
+import type { CohortStudent, CohortSummary } from "./report-model"
 
-export function ReportCohortDialog({ cohort, onClose }: { cohort: CohortSummary | null; onClose: () => void }) {
-  const students = cohort ? getCohortStudents(cohort) : []
+export function ReportCohortDialog({ cohort, students, onClose }: { cohort: CohortSummary | null; students: CohortStudent[]; onClose: () => void }) {
   return (
     <Dialog open={cohort !== null} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Batch {cohort?.entryYear} · Student GWA</DialogTitle>
           <DialogDescription>
-            {cohort?.students} fictional students · {cohort?.program.toUpperCase()} · {cohort?.curriculum}
+            {students.length} students · {cohort?.program.toUpperCase()} · {cohort?.curriculum}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="secondary" className="rounded-sm">Sample data</Badge>
           <span>Study range: {cohort?.entryYear}–{cohort ? cohort.entryYear + 4 : ""}</span>
         </div>
         <div className="max-h-[50dvh] overflow-y-auto rounded-md border border-border">
@@ -36,8 +33,7 @@ export function ReportCohortDialog({ cohort, onClose }: { cohort: CohortSummary 
             </TableBody>
           </Table>
         </div>
-        <p className="text-xs text-muted-foreground">These generated examples illustrate a cohort drill-down. Their grades are not the input to the report’s summary GWA.</p>
-        <DialogFooter><DialogClose asChild><Button type="button" variant="outline">Close preview</Button></DialogClose></DialogFooter>
+        <DialogFooter><DialogClose asChild><Button type="button" variant="outline">Close</Button></DialogClose></DialogFooter>
       </DialogContent>
     </Dialog>
   )

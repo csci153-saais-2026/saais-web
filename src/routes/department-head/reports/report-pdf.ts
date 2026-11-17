@@ -1,4 +1,4 @@
-import type { DepartmentReport } from "./reports-data"
+import type { DepartmentReport } from "./report-model"
 
 // Adapted from the pagination/text/table approach in the project's
 // mockup/Department Head/pdf-export.js. This report uses searchable standard PDF
@@ -8,7 +8,7 @@ function printable(value: string | number): string {
     .replace(/[–—]/g, "-").replace(/·/g, " | ").replace(/→/g, "->")
     .replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/\u00a0/g, " ")
     .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
-  if (/[^\x20-\x7e\n\r\t]/.test(text)) throw new Error("The sample PDF font cannot represent some report text.")
+  if (/[^\x20-\x7e\n\r\t]/.test(text)) throw new Error("The PDF font cannot represent some report text.")
   return text.replace(/\s+/g, " ").trim()
 }
 
@@ -31,7 +31,7 @@ function wrap(value: string | number, capacity: number): string[] {
   return lines
 }
 
-/** Creates a local sample PDF containing the currently selected report, including all cohort rows. */
+/** Creates a local PDF containing the currently selected report, including all cohort rows. */
 export function createReportPdf(report: DepartmentReport): Uint8Array {
   const width = 595, height = 842, margin = 40, bodyWidth = width - margin * 2
   const pages: string[][] = []
@@ -93,18 +93,17 @@ export function createReportPdf(report: DepartmentReport): Uint8Array {
   }
 
   newPage()
-  paragraph("Fictional sample report | Academic snapshot: 15 August 2025", false, 9)
+  paragraph(`${report.termLabel} | ${report.programLabel}`, false, 9)
   paragraph(`Currently enrolled: ${report.enrolled.toLocaleString("en-US")} | ${report.enrolmentNote}`, true)
   paragraph(`Mean GWA: ${report.meanGwa} | Students with deficiencies: ${report.deficiencies}`, true)
-  table("Final grade distribution", ["Grade range", "Percent", "Grade records"], report.distribution.map((band) => [band.label, `${band.percent}%`, band.count]), [2, 1, 1.5])
-  paragraph(`${report.gradeRecords.toLocaleString("en-US")} course grade records. INC, DR and NA are excluded from this sample mean GWA.`, false, 9)
+  table("GWA distribution", ["GWA range", "Percent", "Students"], report.distribution.map((band) => [band.label, `${band.percent}%`, band.count]), [2, 1, 1.5])
+  paragraph(`${report.gwaStudents.toLocaleString("en-US")} of ${report.enrolled.toLocaleString("en-US")} students have a cumulative GWA.`, false, 9)
   table("Department curriculum summary", ["Curriculum", "Status", "Students"], report.curricula.map((curriculum) => [curriculum.name, curriculum.status, curriculum.students]), [2, 1, 1])
   table("GWA by batch and curriculum", ["Entry year", "Study range", "Curriculum", "Students", "Mean GWA"], report.cohorts.map((cohort) => [cohort.entryYear, `${cohort.entryYear}-${cohort.entryYear + 4}`, cohort.curriculum, cohort.students, cohort.meanGwa]), [1, 1.5, 1.5, 1, 1])
-  paragraph("Cohorts are illustrative examples, not a complete reconciliation of department totals. Summary GWA values are supplied mock figures, not a production calculation.", false, 9)
 
   pages.forEach((page, index) => {
     commands = page
-    text("Fictional sample records | SAAIS frontend preview", margin, height - 28, 8)
+    text("SAAIS | Department report", margin, height - 28, 8)
     text(`Page ${index + 1} of ${pages.length}`, width - 100, height - 28, 8)
   })
 

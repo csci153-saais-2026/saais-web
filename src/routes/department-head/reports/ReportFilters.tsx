@@ -1,14 +1,16 @@
 import { FormField } from "@/components/features/form-field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { REPORT_PROGRAMS, REPORT_TERMS, type ProgramKey } from "./reports-data"
+import { ALL_PROGRAMS, type ReportOption } from "./report-model"
 
 export function ReportFilters({
-  term, program, onTermChange, onProgramChange,
+  term, program, terms, programs, onTermChange, onProgramChange,
 }: {
   term: string
-  program: ProgramKey
+  program: string
+  terms: ReportOption[]
+  programs: ReportOption[]
   onTermChange: (value: string) => void
-  onProgramChange: (value: ProgramKey) => void
+  onProgramChange: (value: string) => void
 }) {
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2">
@@ -16,15 +18,16 @@ export function ReportFilters({
         <Select value={term} onValueChange={onTermChange}>
           <SelectTrigger id="report-term" className="w-full min-w-0"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {REPORT_TERMS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+            {terms.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </FormField>
       <FormField label="Degree program" htmlFor="report-program">
-        <Select value={program} onValueChange={(value) => onProgramChange(value as ProgramKey)}>
+        <Select value={program} onValueChange={onProgramChange}>
           <SelectTrigger id="report-program" className="w-full min-w-0"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {REPORT_PROGRAMS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+            <SelectItem value={ALL_PROGRAMS}>All department programs</SelectItem>
+            {programs.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </FormField>
