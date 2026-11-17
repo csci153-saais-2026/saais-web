@@ -20,6 +20,38 @@ describe('term advising identity',()=>{
   render(page());fireEvent.change(await screen.findByLabelText('School term'),{target:{value:'term-two'}});fireEvent.click(await screen.findByRole('checkbox',{name:/CS 2/}));fireEvent.click(screen.getByRole('button',{name:'Add selected to plan'}))
   await waitFor(()=>expect(saveAdvisingPlan).toHaveBeenCalledWith('student-two','term-two',null,'assignment-two',[{course_offering_id:'offering-two',curriculum_term_course_id:'slot-two'}]))
  })
+ it('keeps a saved recommendation checked and labels it in the plan',async()=>{
+  const savedData={...data,items:[{id:'item-two',course_offering_id:'offering-two',curriculum_term_course_id:'slot-two'}]} as typeof data
+  vi.mocked(getAdvisingTerms).mockResolvedValue([{id:'term-two',school_year:'2026',term_type:'1st Semester'}] as ApiSchema<'SchoolTerm'>[])
+  vi.mocked(getAdvisingData).mockResolvedValueOnce(data).mockResolvedValue(savedData)
+  vi.mocked(saveAdvisingPlan).mockResolvedValue({} as ApiSchema<'AdvisingPlanResponse'>)
+  render(page());fireEvent.change(await screen.findByLabelText('School term'),{target:{value:'term-two'}})
+  fireEvent.click(await screen.findByRole('checkbox',{name:/CS 2/}))
+  expect(screen.queryByText('In plan')).toBeNull()
+  fireEvent.click(screen.getByRole('button',{name:'Add selected to plan'}))
+  expect(await screen.findByText('In plan')).toBeTruthy()
+  expect((screen.getByRole('checkbox',{name:/CS 2/}) as HTMLInputElement).checked).toBe(true)
+ })
+ it('shows saved courses that are no longer recommended in the same table',async()=>{
+  const savedData={...data,items:[{id:'item-other',course_offering_id:'offering-other',curriculum_term_course_id:null}],offerings:[{id:'offering-other',course_id:'course-other'}],courses:[{id:'course-other',code:'CS 1',title:'Foundations',units:3}]} as unknown as typeof data
+  vi.mocked(getAdvisingTerms).mockResolvedValue([{id:'term-two',school_year:'2026',term_type:'1st Semester'}] as ApiSchema<'SchoolTerm'>[])
+  vi.mocked(getAdvisingData).mockResolvedValue(savedData)
+  render(page());fireEvent.change(await screen.findByLabelText('School term'),{target:{value:'term-two'}})
+  const checkbox=await screen.findByRole('checkbox',{name:/CS 1/}) as HTMLInputElement
+  expect(checkbox.checked).toBe(true)
+  expect(screen.getByText('In plan')).toBeTruthy()
+  expect(screen.queryByText('Saved plan')).toBeNull()
+  fireEvent.click(checkbox)
+  expect(checkbox.checked).toBe(false)
+ })
+ it('temporarily hides CSCI 153 from the recommendations',async()=>{
+  const course={...data.recommendations.items[0],course_offering_id:'offering-153',code:'CSCI 153',title:'Web Systems'}
+  vi.mocked(getAdvisingTerms).mockResolvedValue([{id:'term-two',school_year:'2026',term_type:'1st Semester'}] as ApiSchema<'SchoolTerm'>[])
+  vi.mocked(getAdvisingData).mockResolvedValue({...data,recommendations:{...data.recommendations,items:[...data.recommendations.items,course]}})
+  render(page());fireEvent.change(await screen.findByLabelText('School term'),{target:{value:'term-two'}})
+  expect(await screen.findByText('CS 2')).toBeTruthy()
+  expect(screen.queryByText('CSCI 153')).toBeNull()
+ })
  it('clears the plan while another account loads',async()=>{
   vi.mocked(getAdvisingTerms).mockResolvedValue([{id:'term-two',school_year:'2026',term_type:'1st Semester'}] as ApiSchema<'SchoolTerm'>[]);vi.mocked(getAdvisingData).mockResolvedValueOnce(data).mockImplementation(()=>new Promise(()=>{}))
   const view=render(page());fireEvent.change(await screen.findByLabelText('School term'),{target:{value:'term-two'}});expect(await screen.findByText(/CS 2/)).toBeTruthy();auth.user={id:'adviser-two'};view.rerender(page());expect(screen.queryByText(/CS 2/)).toBeNull()
