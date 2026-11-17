@@ -58,7 +58,7 @@ export function CourseCatalogActions({ course, departmentLabel, showDiscontinue 
             Discontinue
           </Button>
         )}
-        <Button type="button" size="sm" variant="outline" aria-label={`Delete ${course.code}`} onClick={() => openConfirmation('delete')}>
+        <Button type="button" size="sm" variant="destructive" aria-label={`Delete ${course.code}`} onClick={() => openConfirmation('delete')}>
           Delete
         </Button>
       </div>

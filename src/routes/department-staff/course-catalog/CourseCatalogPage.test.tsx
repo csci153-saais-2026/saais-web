@@ -109,7 +109,7 @@ describe('Department Staff course catalog', () => {
     expect(within(row).getByText('Active')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Edit CSCI 101' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Discontinue CSCI 101' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Delete CSCI 101' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Delete CSCI 101' }).getAttribute('data-variant')).toBe('destructive')
     expect(screen.getByRole('button', { name: 'View prerequisites for CSCI 101' }).textContent).toBe('Prerequisites')
     const catalogPanel = screen.getByText('Different course codes never imply equivalence.').closest('[data-slot="card"]')
     expect(catalogPanel?.contains(table)).toBe(true)
