@@ -212,6 +212,7 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
       <Panel
         title="Opened subjects filters"
         description="Filter explicit offerings by courses referenced in a department curriculum."
+        className="department-filter-typography"
         action={
           <Button
             type="button"

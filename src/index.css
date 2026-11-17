@@ -320,3 +320,7 @@
   .kicker { @apply text-kicker font-semibold uppercase; letter-spacing: var(--tracking-kicker); }
   .mono { @apply font-mono text-code font-medium; font-variant-ligatures: none; }
 }
+
+.department-filter-typography :is(label, input, select, [role="combobox"]) {
+  font-weight: 600;
+}

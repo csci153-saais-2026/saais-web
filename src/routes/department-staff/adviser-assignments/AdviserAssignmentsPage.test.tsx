@@ -134,7 +134,7 @@ describe('Department Staff adviser assignments', () => {
       screen.getByRole('heading', { name: 'Adviser assignments', level: 1 }),
     ).toBeTruthy()
     expect(
-      screen.getByText('Assign and reassign advisers to students in your department.'),
+      await screen.findByText('Assign and reassign advisers to students in the Department of Computer Science and Technology.'),
     ).toBeTruthy()
     expect(
       screen.getByText(/Reassignment takes effect on the selected date/),

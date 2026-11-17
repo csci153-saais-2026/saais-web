@@ -27,6 +27,7 @@ import {
   useStudents,
 } from './use-students'
 import { useAcademicTerms } from '@/hooks/use-academic-terms'
+import { useStaffDepartmentName } from '@/hooks/use-staff-department-name'
 import { StudentImportDialog } from './import/StudentImportDialog'
 import { useStaffScope } from '../shared/use-staff-scope'
 
@@ -154,6 +155,7 @@ function getCurrentAcademicTerm(
 export default function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const staffScope = useStaffScope()
+  const departmentName = useStaffDepartmentName()
   const importScope =
     staffScope.status === 'ready'
       ? {
@@ -309,7 +311,7 @@ export default function StudentsPage() {
   ].join(' · ')
 
   const filterControls = (
-    <div className="space-y-3">
+    <div className="department-filter-typography space-y-3">
       <div className="grid items-end gap-4 md:grid-cols-[minmax(16rem,1fr)_minmax(12rem,0.7fr)_minmax(12rem,0.7fr)_auto]">
         <FormField label="Search students" htmlFor="student-roster-search">
           <SearchInput
@@ -401,7 +403,7 @@ export default function StudentsPage() {
     <div className="-mt-6 space-y-6 md:-mt-(--content-pad-top)">
       <PageHeading
         title="Students"
-        subtitle="Find and maintain student records within your department."
+        subtitle={`Find and maintain student records within the ${departmentName.data ?? 'your department'}.`}
         actions={<StudentImportDialog scope={importScope} />}
       />
       {isPending && (

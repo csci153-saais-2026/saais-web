@@ -128,6 +128,7 @@ describe('Department Staff student directory', () => {
         { timeout: 5000 },
       ),
     ).toBeTruthy()
+    expect(await screen.findByText('Find and maintain student records within the Department of Computer Science and Technology.')).toBeTruthy()
     expect(
       await screen.findByText(MOCK_PERSONAS.student.fullName),
     ).toBeTruthy()

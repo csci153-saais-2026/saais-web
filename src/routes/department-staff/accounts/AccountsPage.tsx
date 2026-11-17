@@ -247,7 +247,7 @@ export default function AccountsPage() {
 
       {scope.status === 'ready' && (
         <Panel title="People" flush bodyClassName="gap-0">
-          <div className="grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5">
+          <div className="department-filter-typography grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5">
             <FormField label="Search accounts" htmlFor="accounts-search" hint="Search by name or institutional email.">
               <SearchInput
                 id="accounts-search"

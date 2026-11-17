@@ -68,7 +68,7 @@ export default function CurriculaPage() {
     {catalog.isError && <Panel title="Curriculum versions"><p role="alert">{errorMessage(catalog.error)}</p><Button type="button" variant="outline" disabled={catalog.isFetching} onClick={() => void catalog.refetch()}>Retry versions</Button></Panel>}
     {catalog.isSuccess && versions.length === 0 && <Panel title="Curriculum versions"><p>No curriculum versions are available for your department.</p></Panel>}
     {version && <>
-      <div className="flex flex-wrap items-end gap-3 pb-1">
+      <div className="department-filter-typography flex flex-wrap items-end gap-3 pb-1">
         <FormField label="Curriculum version" htmlFor="curriculum-version" className="min-w-[220px] flex-[0_1_280px]">
           <select id="curriculum-version" className="min-h-10 w-full rounded-sm border border-input bg-card px-3 text-sm" value={version.id} onChange={event => setSelection(event.target.value)}>
             {versions.map(item => <option key={item.id} value={item.id}>{catalog.data?.programs.find(program => program.id === item.program_id)?.code ?? 'Program unavailable'} - {item.version_label}</option>)}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { FormField } from '@/components/features/form-field'
 import { PageHeading } from '@/components/features/page-heading'
+import { useStaffDepartmentName } from '@/hooks/use-staff-department-name'
 import { Panel } from '@/components/features/panel'
 import { SearchInput } from '@/components/features/search-input'
 import { FlagIcon, SwapIcon } from '@/components/icons'
@@ -77,6 +78,7 @@ function getFilterOptionsErrorMessage(error: unknown): string {
 
 export default function AdviserAssignmentsPage() {
   const scope = useStaffScope()
+  const departmentName = useStaffDepartmentName()
   const [search, setSearch] = useState('')
   const [curriculumVersionId, setCurriculumVersionId] = useState('')
   const [adviserId, setAdviserId] = useState('')
@@ -153,7 +155,7 @@ export default function AdviserAssignmentsPage() {
     <div className="-mt-6 space-y-6 md:-mt-(--content-pad-top)">
       <PageHeading
         title="Adviser assignments"
-        subtitle="Assign and reassign advisers to students in your department."
+        subtitle={`Assign and reassign advisers to students in the ${departmentName.data ?? 'your department'}.`}
       />
 
       {submissionMessage && (
@@ -176,7 +178,7 @@ export default function AdviserAssignmentsPage() {
         flush
         bodyClassName="gap-0"
       >
-        <div className="grid gap-3 border-b border-line-soft px-5 py-4 md:grid-cols-[minmax(14rem,1.4fr)_minmax(12rem,1fr)_minmax(12rem,1fr)]">
+        <div className="department-filter-typography grid gap-3 border-b border-line-soft px-5 py-4 md:grid-cols-[minmax(14rem,1.4fr)_minmax(12rem,1fr)_minmax(12rem,1fr)]">
           <FormField label="Search students" htmlFor="adviser-roster-search">
             <SearchInput
               id="adviser-roster-search"

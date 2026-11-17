@@ -156,7 +156,7 @@ export default function CourseCatalogPage() {
         flush
         bodyClassName="gap-0"
       >
-        <div className="grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-4">
+        <div className="department-filter-typography grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-4">
           <FormField label="Search records" htmlFor="catalog-search" error={searchError} className="sm:col-span-2 xl:col-span-1">
             <SearchInput id="catalog-search" value={filters.search} placeholder="Search by course code or title" onChange={event => updateFilters({ q: event.target.value })} />
           </FormField>
