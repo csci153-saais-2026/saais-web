@@ -1,15 +1,17 @@
 import { useState } from 'react'
+import { AlertIcon, PlusIcon } from '@/components/icons'
 import { DataTablePanel, type Column } from '@/components/features/data-table-panel'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ApiClientError } from '@/lib/api'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
+import { useAcademicTerms } from '@/hooks/use-academic-terms'
 import type {
   DepartmentTermEncoding,
   SchoolTerm,
 } from './academic-terms.api'
-import { useAcademicTerms } from '@/hooks/use-academic-terms'
 import { SchoolTermDialog } from './SchoolTermDialog'
 import {
   EncodingClosureDialog,
@@ -27,7 +29,7 @@ function formatCalendarDate(value: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) return `Invalid date (${value})`
 
   return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
+    day: '2-digit',
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',
@@ -68,25 +70,29 @@ function getErrorMessage(error: unknown): string {
 function TermDetails({
   term,
   closure,
+  onEdit,
+  onReopen,
 }: {
   term: SchoolTerm
   closure?: DepartmentTermEncoding
+  onEdit: () => void
+  onReopen: () => void
 }) {
   return (
-    <details className="min-w-52">
+    <details className="min-w-28">
       <summary
-        className="min-h-11 cursor-pointer content-center font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="min-h-9 cursor-pointer content-center font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         aria-label={`View details for ${term.school_year}, ${termTypeLabel(term.term_type)}`}
       >
         View term
       </summary>
-      <dl className="mt-3 grid gap-2 rounded-md border bg-muted/20 p-3 text-sm sm:grid-cols-2">
+      <dl className="mt-2 grid min-w-64 gap-2 rounded-md border bg-card p-3 text-sm shadow-sm sm:grid-cols-2">
         <div>
-          <dt className="font-medium">School year</dt>
+          <dt className="font-medium">Academic year</dt>
           <dd className="text-muted-foreground">{term.school_year}</dd>
         </div>
         <div>
-          <dt className="font-medium">Term type</dt>
+          <dt className="font-medium">Semester</dt>
           <dd className="text-muted-foreground">{termTypeLabel(term.term_type)}</dd>
         </div>
         <div>
@@ -142,7 +148,37 @@ function TermDetails({
           </div>
         )}
       </dl>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onEdit}>
+          Edit term
+        </Button>
+        {closure?.is_closed && (
+          <Button type="button" variant="outline" size="sm" onClick={onReopen}>
+            Reopen encoding
+          </Button>
+        )}
+      </div>
     </details>
+  )
+}
+
+function EncodingStatus({ closure }: { closure?: DepartmentTermEncoding }) {
+  const label = closure
+    ? closure.is_closed
+      ? 'Closed'
+      : 'Open'
+    : 'Not recorded'
+  const tone = closure
+    ? closure.is_closed
+      ? 'bg-secondary text-muted-foreground'
+      : 'bg-status-pass-bg text-status-pass'
+    : 'bg-muted text-muted-foreground'
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-semibold ${tone}`}>
+      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+      {label}
+    </span>
   )
 }
 
@@ -160,16 +196,21 @@ export default function AcademicTermsPage() {
   const closureByTermId = new Map(
     closures.map((closure) => [closure.school_term_id, closure]),
   )
+  const openTerms = closures.filter((closure) => !closure.is_closed).length
+  const closedTerms = closures.filter((closure) => closure.is_closed).length
 
   const columns: Column<SchoolTerm>[] = [
     {
       header: 'Academic year',
       cell: (term) => (
-        <div className="flex flex-col">
-          <span className="font-medium text-foreground">{term.school_year}</span>
-          <span className="text-xs text-muted-foreground">{termTypeLabel(term.term_type)}</span>
-        </div>
+        <span className="font-semibold text-foreground">
+          {term.start_year}–{term.end_year}
+        </span>
       ),
+    },
+    {
+      header: 'Semester',
+      cell: (term) => termTypeLabel(term.term_type).toLowerCase(),
     },
     {
       header: 'Term dates',
@@ -184,74 +225,42 @@ export default function AcademicTermsPage() {
       cell: (term) => formatCalendarDate(term.encoding_deadline),
     },
     {
-      header: 'Institution-wide lock',
-      cell: (term) => (
-        <span className={term.is_locked ? 'font-medium text-destructive' : 'text-muted-foreground'}>
-          {term.is_locked ? 'Locked' : 'Not locked'}
-        </span>
-      ),
-    },
-    {
-      header: 'Department encoding',
-      cell: (term) => {
-        const closure = closureByTermId.get(term.id)
-        if (!closure) {
-          return (
-            <span className="text-muted-foreground">
-              No department-specific record
-            </span>
-          )
-        }
-
-        return (
-          <div className="flex flex-col">
-            <span className={closure.is_closed ? 'font-medium text-destructive' : 'text-muted-foreground'}>
-              {closure.is_closed ? 'Closed' : 'Open'}
-            </span>
-          </div>
-        )
-      },
-    },
-    {
-      header: 'Details',
-      cell: (term) => (
-        <TermDetails term={term} closure={closureByTermId.get(term.id)} />
-      ),
+      header: 'Status',
+      cell: (term) => <EncodingStatus closure={closureByTermId.get(term.id)} />,
     },
     {
       header: 'Actions',
       cell: (term) => {
         const closure = closureByTermId.get(term.id)
         return (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              aria-label={`Edit ${term.school_year} ${termTypeLabel(term.term_type)} academic term`}
-              onClick={() => {
+          <div className="flex flex-wrap items-center gap-2">
+            {scope.status === 'ready' && closure && !closure.is_closed && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={`Close encoding for ${term.school_year} ${termTypeLabel(term.term_type)}`}
+                onClick={() => {
+                  setSaveMessage(null)
+                  setClosureDialog({ mode: 'close', term })
+                }}
+              >
+                Close encoding
+              </Button>
+            )}
+            <TermDetails
+              term={term}
+              closure={closure}
+              onEdit={() => {
                 setDialogTerm(term)
                 setSaveMessage(null)
                 setDialogOpen(true)
               }}
-            >
-              Edit
-            </Button>
-            {scope.status === 'ready' && (
-              <Button
-                type="button"
-                variant="outline"
-                aria-label={`${closure?.is_closed ? 'Reopen' : 'Close'} encoding for ${term.school_year} ${termTypeLabel(term.term_type)}`}
-                onClick={() => {
-                  setSaveMessage(null)
-                  setClosureDialog({
-                    mode: closure?.is_closed ? 'reopen' : 'close',
-                    term,
-                  })
-                }}
-              >
-                {closure?.is_closed ? 'Reopen encoding' : 'Close encoding'}
-              </Button>
-            )}
+              onReopen={() => {
+                setSaveMessage(null)
+                setClosureDialog({ mode: 'reopen', term })
+              }}
+            />
           </div>
         )
       },
@@ -259,33 +268,33 @@ export default function AcademicTermsPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
       <PageHeading
         title="Academic terms"
-        subtitle="Review calendar dates and the encoding status for your department."
+        subtitle="Review semester dates and manage the grade encoding period."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => {
-                setDialogTerm(null)
-                setSaveMessage(null)
-                setDialogOpen(true)
-              }}
-            >
-              Add academic term
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void academicTerms.refetch()}
-              disabled={academicTerms.isFetching}
-            >
-              {academicTerms.isFetching ? 'Refreshing…' : 'Refresh'}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            onClick={() => {
+              setDialogTerm(null)
+              setSaveMessage(null)
+              setDialogOpen(true)
+            }}
+          >
+            <PlusIcon className="size-4" />
+            Add a term
+          </Button>
         }
       />
+
+      <Alert variant="advisory">
+        <AlertIcon />
+        <AlertDescription>
+          Closing encoding prevents further grade entry for the term. A backup
+          reminder is sent to the administrator; the Department Head can record
+          a completed backup in Settings.
+        </AlertDescription>
+      </Alert>
 
       {saveMessage && (
         <p role="status" className="text-sm text-muted-foreground">
@@ -320,22 +329,26 @@ export default function AcademicTermsPage() {
       )}
 
       {academicTerms.isSuccess && (
-        <>
-          <DataTablePanel
-            title="Academic term history"
-            description="Institution-wide calendar locks and department-specific encoding closures are shown separately."
-            columns={columns}
-            rows={[...academicTerms.data.terms]}
-            rowKey={(term) => term.id}
-            empty="No academic terms are available."
-            footer={
+        <DataTablePanel
+          title="Academic term history"
+          description="Encoding windows are tracked separately for each semester."
+          columns={columns}
+          rows={[...academicTerms.data.terms].sort(
+            (left, right) =>
+              right.chronological_key - left.chronological_key ||
+              left.id.localeCompare(right.id),
+          )}
+          rowKey={(term) => term.id}
+          empty="No academic terms are available."
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p role="status">
-                {academicTerms.data.terms.length} academic term
-                {academicTerms.data.terms.length === 1 ? '' : 's'}
+                {openTerms} open term{openTerms === 1 ? '' : 's'} · {closedTerms} closed term{closedTerms === 1 ? '' : 's'}
               </p>
-            }
-          />
-        </>
+              <span>Department scope</span>
+            </div>
+          }
+        />
       )}
 
       {dialogOpen && (
