@@ -20,7 +20,7 @@ export function getPortalBreadcrumbs(
       const recordHref = record.pathnameBase
       const section = record.params['*']?.replace(/\/+$/, '').toLowerCase() || 'checklist'
       return [
-        { ...root, to: '/adviser/dashboard' },
+        { label: 'Advising workspace', to: '/adviser/dashboard' },
         { label: 'Advisees', to: '/adviser/advisees' },
         { label: studentLabel, to: recordHref },
         { label: Object.hasOwn(adviserRecordSections, section) ? adviserRecordSections[section] : 'Page not found' },

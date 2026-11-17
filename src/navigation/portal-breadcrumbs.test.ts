@@ -11,7 +11,7 @@ describe('student record route labels', () => {
     const crumbs = getPortalBreadcrumbs(
       `/adviser/advisee/selected-id/${section}`, 'adviser', 'Adviser Portal', '/adviser', 'Selected student',
     )
-    expect(crumbs.map(crumb => crumb.label)).toEqual(['Adviser', 'Advisees', 'Selected student', label])
+    expect(crumbs.map(crumb => crumb.label)).toEqual(['Advising workspace', 'Advisees', 'Selected student', label])
     expect(crumbs[2].to).toBe('/adviser/advisee/selected-id')
   })
 })
