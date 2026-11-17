@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { FormField } from "@/components/features/form-field"
+import { AlertIcon } from "@/components/icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -38,13 +39,15 @@ export function ReassignAdviserDialog({ studentIds, advisers, open, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-[680px]">
         <DialogHeader>
           <DialogTitle>Reassign selected students</DialogTitle>
-          <DialogDescription>
-            {studentIds.length} selected student{studentIds.length === 1 ? "" : "s"}.
-          </DialogDescription>
+          <DialogDescription className="sr-only">Choose a new adviser for the selected students.</DialogDescription>
         </DialogHeader>
+        <Alert variant="advisory">
+          <AlertIcon />
+          <AlertDescription>{studentIds.length} selected student{studentIds.length === 1 ? "" : "s"}</AlertDescription>
+        </Alert>
         <form onSubmit={submit} noValidate className="grid gap-4">
           <FormField label="New adviser" htmlFor="reassignment-adviser">
             <Select value={adviserId} onValueChange={setAdviserId}>
@@ -54,7 +57,7 @@ export function ReassignAdviserDialog({ studentIds, advisers, open, onOpenChange
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Effective date" htmlFor="reassignment-date"
+          <FormField label="Effective since" htmlFor="reassignment-date"
             hint={future ? "A future date schedules the change and keeps the current adviser displayed." : "The date cannot precede any selected student's current assignment."}>
             <Input id="reassignment-date" type="date" value={effectiveDate} onChange={(event) => setEffectiveDate(event.target.value)} />
           </FormField>
@@ -62,6 +65,9 @@ export function ReassignAdviserDialog({ studentIds, advisers, open, onOpenChange
             <Textarea id="reassignment-reason" value={reason} onChange={(event) => setReason(event.target.value)}
               placeholder="Explain the adviser change." rows={3} />
           </FormField>
+          <p className="text-xs text-muted-foreground">
+            The previous adviser and original assignment date remain in the student’s assignment history.
+          </p>
           {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>

@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
+import { AlertIcon, SwapIcon } from "@/components/icons"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -13,6 +15,9 @@ import { todayInManila } from "../shared/dh-utils"
 import { QueryMessage } from "../shared/dh-ui"
 import { useNotify } from "../shared/notify-context"
 import type { DirectoryStudent } from "../shared/students-types"
+
+const TH = "h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase"
+const TD = "px-3.5 py-[11px] text-[13.5px] leading-normal"
 
 type Filters = { search: string; curriculum: string; adviser: string }
 
@@ -72,50 +77,54 @@ export default function AdviserAssignmentsPage() {
   return (
     <>
       {heading}
+      <Alert variant="advisory">
+        <AlertIcon />
+        <AlertDescription>
+          Reassignment takes effect on the selected date. The previous adviser and assignment history remain visible.
+        </AlertDescription>
+      </Alert>
       <Panel title="Student–adviser assignments" description="Select one or more students to reassign together." flush>
         <StudentDirectoryFilters students={students} {...filters}
           onSearchChange={(search) => changeFilters({ ...filters, search })}
           onCurriculumChange={(curriculum) => changeFilters({ ...filters, curriculum })}
           onAdviserChange={(adviser) => changeFilters({ ...filters, adviser })}
           onReset={() => changeFilters({ search: "", curriculum: "all", adviser: "all" })} />
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
-          <div className="flex items-start gap-3">
-            <Checkbox id="assignments-select-all" aria-label="Select all visible students" disabled={visible.length === 0}
-              checked={partiallySelected ? "indeterminate" : allSelected}
-              onCheckedChange={(checked) => setSelected(checked === true ? visible.map((student) => student.id) : [])}
-              className="mt-1 data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden" />
-            <div>
-              <label htmlFor="assignments-select-all" className="text-sm font-semibold">Select all visible students</label>
-              <p aria-live="polite" className="text-sm">{selectedVisible.length} student{selectedVisible.length === 1 ? "" : "s"} selected</p>
-            </div>
-          </div>
-          <Button type="button" onClick={openReassignment}>Reassign selected</Button>
+        <div className="flex flex-wrap items-center justify-end gap-4 border-b border-border px-5 py-4">
+          <span aria-live="polite" className="text-sm text-muted-foreground">
+            {selectedVisible.length} student{selectedVisible.length === 1 ? "" : "s"} selected
+          </span>
+          <Button type="button" onClick={openReassignment}><SwapIcon aria-hidden="true" />Reassign selected</Button>
         </div>
         <Table responsive aria-label="Student adviser assignments">
-          <TableHeader className="bg-secondary">
+          <TableHeader>
             <TableRow>
-              <TableHead className="w-12"><span className="sr-only">Select</span></TableHead>
-              <TableHead>Student</TableHead>
-              <TableHead>Current adviser</TableHead>
-              <TableHead>Since</TableHead>
-              <TableHead>Previous adviser</TableHead>
+              <TableHead className={`${TH} w-20`}>
+                <Checkbox aria-label="Select all visible students" disabled={visible.length === 0}
+                  checked={partiallySelected ? "indeterminate" : allSelected}
+                  onCheckedChange={(checked) => setSelected(checked === true ? visible.map((student) => student.id) : [])}
+                  className="data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden" />
+              </TableHead>
+              <TableHead className={TH}>Student</TableHead>
+              <TableHead className={TH}>Current adviser</TableHead>
+              <TableHead className={TH}>Since</TableHead>
+              <TableHead className={TH}>Previous adviser</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {visible.map((student) => (
-              <TableRow key={student.id} data-state={selected.includes(student.id) ? "selected" : undefined}>
-                <TableCell label="Select">
+              <TableRow key={student.id} className="border-line-soft hover:bg-line-soft" data-state={selected.includes(student.id) ? "selected" : undefined}>
+                <TableCell label="Select" className={`${TD} w-20`}>
                   <Checkbox aria-label={`Select ${student.name}`} checked={selected.includes(student.id)}
                     onCheckedChange={(checked) => toggleStudent(student.id, checked === true)} />
                 </TableCell>
-                <TableCell label="Student" className="whitespace-normal">
+                <TableCell label="Student" className={`${TD} whitespace-normal`}>
                   <div className="min-w-0">
-                    <span className="block font-semibold">{student.name}</span>
-                    <span className="block font-mono text-xs text-muted-foreground">{student.studentNumber}</span>
-                    <Badge variant="secondary" className="mt-1 rounded-sm">{student.curriculum}</Badge>
+                    <span className="block text-[13.5px] font-semibold">{student.name}</span>
+                    <span className="mt-0.5 block font-mono text-xs text-muted-foreground">{student.studentNumber}</span>
+                    <Badge variant="secondary" className="mt-1 gap-1.5 rounded-sm"><span aria-hidden="true" className="size-1.5 rounded-full bg-current" />{student.curriculum}</Badge>
                   </div>
                 </TableCell>
-                <TableCell label="Current adviser" className="whitespace-normal">
+                <TableCell label="Current adviser" className={`${TD} whitespace-normal`}>
                   <div className="min-w-0">
                     <span>{student.adviser}</span>
                     {student.scheduledAssignment && (
@@ -125,16 +134,17 @@ export default function AdviserAssignmentsPage() {
                     )}
                   </div>
                 </TableCell>
-                <TableCell label="Since">{assignmentDateLabel(student.adviserSince)}</TableCell>
-                <TableCell label="Previous adviser" className="whitespace-normal"><span className="min-w-0">{student.previousAdviser || "—"}</span></TableCell>
+                <TableCell label="Since" className={TD}>{assignmentDateLabel(student.adviserSince)}</TableCell>
+                <TableCell label="Previous adviser" className={`${TD} whitespace-normal`}><span className="min-w-0">{student.previousAdviser || "—"}</span></TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
         {visible.length === 0 && <p className="px-5 py-10 text-center text-sm text-muted-foreground">No students match these filters.</p>}
-        <p role="status" className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          Showing {visible.length} of {students.length} assignments
-        </p>
+        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          <span role="status">Showing {visible.length} of {students.length} assignments</span>
+          <span>DCST department scope</span>
+        </div>
       </Panel>
       {dialogOpen && <ReassignAdviserDialog studentIds={selectedVisible} advisers={advisers} open={dialogOpen}
         onOpenChange={setDialogOpen} onConfirm={apply} />}

@@ -53,7 +53,7 @@ describe("Adviser Assignments screen", () => {
     fireEvent.keyDown(within(dialog).getByRole("combobox", { name: "New adviser" }), { key: "ArrowDown" })
     fireEvent.click(await screen.findByRole("option", { name: adviser }))
     fireEvent.change(within(dialog).getByLabelText("Reason for reassignment"), { target: { value: reason } })
-    if (date) fireEvent.change(within(dialog).getByLabelText("Effective date"), { target: { value: date } })
+    if (date) fireEvent.change(within(dialog).getByLabelText("Effective since"), { target: { value: date } })
     fireEvent.click(within(dialog).getByRole("button", { name: /Apply reassignment|Schedule reassignment/ }))
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
   }
