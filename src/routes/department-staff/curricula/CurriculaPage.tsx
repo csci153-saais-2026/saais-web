@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PlusIcon } from '@/components/icons'
 import { PageHeading } from '@/components/features/page-heading'
 import { FormField } from '@/components/features/form-field'
 import { Panel } from '@/components/features/panel'
@@ -42,8 +43,8 @@ export default function CurriculaPage() {
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
   const statuses = { draft: 'Draft', active: 'Active', retired: 'Retired', teach_out: 'Teach out', closed: 'Closed' }
-  return <div className="space-y-6">
-    <PageHeading title="Curricula" subtitle="Shape the path to graduation." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setCreating(true) }}>Add version</Button>} />
+  return <div className="-mt-6 space-y-6 md:-mt-(--content-pad-top)">
+    <PageHeading title="Shape the path to graduation." subtitle="Versioned requirements keep past and present curricula distinct." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setCreating(true) }}><PlusIcon className="size-4" />Add version</Button>} />
     {created && <p role="status">Curriculum version created.</p>}
     {updated && <p role="status">Curriculum version updated.</p>}
     {lifecycleMessage && <p role="status">{lifecycleMessage}</p>}
@@ -67,22 +68,23 @@ export default function CurriculaPage() {
     {catalog.isError && <Panel title="Curriculum versions"><p role="alert">{errorMessage(catalog.error)}</p><Button type="button" variant="outline" disabled={catalog.isFetching} onClick={() => void catalog.refetch()}>Retry versions</Button></Panel>}
     {catalog.isSuccess && versions.length === 0 && <Panel title="Curriculum versions"><p>No curriculum versions are available for your department.</p></Panel>}
     {version && <>
-      <FormField label="Curriculum version" htmlFor="curriculum-version">
-        <select id="curriculum-version" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm md:max-w-xl" value={version.id} onChange={event => setSelection(event.target.value)}>
-          {versions.map(item => <option key={item.id} value={item.id}>{catalog.data?.programs.find(program => program.id === item.program_id)?.code ?? 'Program unavailable'} - {item.version_label}</option>)}
-        </select>
-      </FormField>
-      <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setEditing(version) }}>Edit version</Button>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching || !detail.isSuccess || detail.isFetching} onClick={() => { setTermMessage(''); setAddingTerm(version) }}>Add term</Button>
+      <div className="flex flex-wrap items-end gap-3 pb-1">
+        <FormField label="Curriculum version" htmlFor="curriculum-version" className="min-w-[220px] flex-[0_1_280px]">
+          <select id="curriculum-version" className="min-h-10 w-full rounded-sm border border-input bg-card px-3 text-sm" value={version.id} onChange={event => setSelection(event.target.value)}>
+            {versions.map(item => <option key={item.id} value={item.id}>{catalog.data?.programs.find(program => program.id === item.program_id)?.code ?? 'Program unavailable'} - {item.version_label}</option>)}
+          </select>
+        </FormField>
+        <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setEditing(version) }}>Edit version</Button>
         {version.status !== 'retired' && version.status !== 'closed' && <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'retire', version }) }}>Retire version</Button>}
         <Button type="button" variant="destructive" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'delete', version }) }}>Delete version</Button>
+        <div className="min-w-4 flex-1" aria-hidden="true" />
+        <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching || !detail.isSuccess || detail.isFetching} onClick={() => { setTermMessage(''); setAddingTerm(version) }}>Add term</Button>
       </div>
       <StatGrid items={[
-        { label: 'Required units', value: version.total_units ?? 'Unavailable' },
-        { label: 'Delinquency threshold', value: version.delinquency_threshold ?? 'Unavailable', note: 'Failed units' },
-        { label: 'Effective date', value: <span className="text-xl">{version.effective_start}</span>, note: version.effective_end ? `Ends ${version.effective_end}` : 'No end date specified' },
-        { label: 'Status', value: statuses[version.status], note: version.enrolled_student_count === undefined ? 'Assigned student count unavailable' : `${version.enrolled_student_count} assigned students` },
+        { label: 'Required units', value: <span className="text-[30px]">{version.total_units ?? 'Unavailable'}</span>, note: 'Full degree requirement' },
+        { label: 'Enrolled students', value: <span className="text-[30px]">{version.enrolled_student_count ?? 'Unavailable'}</span>, note: 'Students on this curriculum' },
+        { label: 'Effective from', value: <span className="text-[30px]">{version.effective_start}</span>, note: 'Version effectivity' },
+        { label: 'Status', value: <span className="text-[30px]">{statuses[version.status]}</span>, note: 'Curriculum lifecycle' },
       ]} />
       {detail.isPending && <p role="status">Loading curriculum requirements...</p>}
       {detail.isError && <Panel title="Curriculum requirements"><p role="alert">{errorMessage(detail.error)}</p><Button type="button" variant="outline" disabled={detail.isFetching} onClick={() => void detail.refetch()}>Retry requirements</Button></Panel>}

@@ -15,7 +15,7 @@ export function CurriculumTermPanel({ term, slots, courses, onAddRequirement, on
 }) {
   const references = new Map(courses.map(course => [course.id, course]))
   const columns: Column<CurriculumSlot>[] = [
-    { header: 'Requirement', cell: slot => {
+    { header: 'Course / slot', cell: slot => {
       const course = slot.course_id ? references.get(slot.course_id) : undefined
       const flexible = slot.is_elective_slot || slot.slot_type === 'elective'
       return <div className="max-w-sm whitespace-normal">
@@ -23,9 +23,9 @@ export function CurriculumTermPanel({ term, slots, courses, onAddRequirement, on
         <p className="text-muted-foreground">{course ? `${course.code} - ${course.title}` : slot.course_id ? 'Course reference unavailable' : flexible || slot.slot_type === 'ge' ? 'Flexible requirement; no fixed course assigned' : 'Course reference unavailable'}</p>
       </div>
     } },
+    { header: 'Nominal slot units', numeric: true, cell: slot => slot.nominal_units ?? 'Unavailable' },
     { header: 'Type', cell: slot => slot.slot_type === 'ge' ? 'General education' : slot.is_elective_slot || slot.slot_type === 'elective' ? 'Elective' : 'Required' },
     { header: 'Course units', numeric: true, cell: slot => slot.course_id ? references.get(slot.course_id)?.units ?? 'Unavailable' : 'Not fixed' },
-    { header: 'Nominal slot units', numeric: true, cell: slot => slot.nominal_units ?? 'Unavailable' },
     ...(onEditSlot || onDeleteSlot ? [{ header: 'Actions', cell: (slot: CurriculumSlot) => {
       const name = slot.slot_label || (slot.course_id ? references.get(slot.course_id)?.code : null) || slot.id
       return <div className="flex flex-wrap gap-2">
@@ -35,7 +35,7 @@ export function CurriculumTermPanel({ term, slots, courses, onAddRequirement, on
     } }] : []),
   ]
   const label = `Year ${term.year_level} - Term ${term.term_sequence}`
-  return <DataTablePanel title={label} description="Curriculum position; course units and nominal requirement units are shown separately." action={<div className="flex flex-wrap gap-2">
+  return <DataTablePanel title={label} description="Positional curriculum term; not a calendar school term. Course and nominal slot units are shown separately." action={<div className="flex flex-wrap gap-2">
     {onAddRequirement && <Button type="button" size="sm" variant="outline" disabled={actionsDisabled} aria-label={`Add requirement to ${label}`} onClick={onAddRequirement}>Add requirement</Button>}
     {onEdit && <Button type="button" size="sm" variant="outline" disabled={actionsDisabled} aria-label={`Edit ${label}`} onClick={onEdit}>Edit term</Button>}
     {onDelete && <Button type="button" size="sm" variant="destructive" disabled={actionsDisabled} aria-label={`Delete ${label}`} onClick={onDelete}>Delete term</Button>}

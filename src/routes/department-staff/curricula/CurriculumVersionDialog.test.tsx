@@ -164,7 +164,7 @@ describe('Create curriculum version', () => {
     expect(createCurriculumVersion).toHaveBeenCalledExactlyOnceWith({ ...values, effective_end: null })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect((screen.getByLabelText('Curriculum version') as HTMLSelectElement).value).toBe(saved.id)
-    expect(screen.getByText('0 assigned students')).toBeTruthy()
+    expect(screen.getByText('Enrolled students')).toBeTruthy()
     expect(vi.mocked(listCurricula).mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(client.getMutationCache().getAll()[0].options.retry).toBe(false)
   })
