@@ -1,10 +1,28 @@
-import { apiClient, unwrapApiResult, type ApiSchema, type OperationQuery } from '@/lib/api'
+import { apiClient, postgrestFilter, unwrapApiResult, type ApiSchema, type OperationQuery } from '@/lib/api'
 
 export const accountsPageSize = 20
 export const accountsMaxOffset = 100_000
 const ACCOUNT_LOOKAHEAD_LIMIT = accountsPageSize + 1
 
 export type DepartmentAccount = ApiSchema<'AccountSummary'>
+
+/** Reads only the department name for the already-resolved Staff scope. */
+export async function getStaffDepartmentName(departmentId: string, signal?: AbortSignal): Promise<string> {
+  if (!departmentId) throw new Error('Department lookup requires an authorized department assignment.')
+  const result = await apiClient.GET('/rest/v1/department', {
+    params: { query: {
+      id: postgrestFilter.eq(departmentId),
+      select: 'id,name',
+      limit: 1,
+      offset: 0,
+    } },
+    signal,
+  })
+  const departments = unwrapApiResult<ApiSchema<'Department'>[]>(result)
+  const department = departments.find(item => item.id === departmentId)
+  if (!department?.name?.trim()) throw new Error('The assigned department name is unavailable.')
+  return department.name
+}
 
 const staffResendRoles = new Set<ApiSchema<'RoleType'>>([
   'student',

@@ -82,14 +82,25 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 describe('Department Staff accounts directory', () => {
-  it('loads the lazy accounts route and renders profile fields and every returned role badge', async () => {
+  it('loads the lazy accounts route with the mockup columns, initials, email, and every returned role badge', async () => {
     renderAccounts()
 
     expect(await screen.findByRole('heading', { name: 'Accounts and roles', level: 1 })).toBeTruthy()
+    expect(await screen.findByText('Department of Computer Science and Technology')).toBeTruthy()
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Name' })).toBeTruthy()
+    expect(within(table).getByRole('columnheader', { name: 'VSU email' })).toBeTruthy()
+    expect(within(table).getByRole('columnheader', { name: 'Roles' })).toBeTruthy()
+    expect(within(table).queryByRole('columnheader', { name: 'Status' })).toBeNull()
+    const peoplePanel = screen.getByText('People').closest('[data-slot="card"]')
+    expect(peoplePanel?.contains(table)).toBe(true)
+    expect(peoplePanel?.contains(screen.getByRole('searchbox', { name: 'Search accounts' }))).toBe(true)
+    const addAccountButton = screen.getByRole('button', { name: 'Add account' })
+    expect(peoplePanel?.contains(addAccountButton)).toBe(false)
     const row = await screen.findByRole('row', { name: /Tan, Ron Nicolas/ })
     expect(within(row).getByText(MOCK_PERSONAS.dean_dept_head.fullName)).toBeTruthy()
     expect(within(row).getByText(MOCK_PERSONAS.dean_dept_head.email)).toBeTruthy()
-    expect(within(row).getByText('Active')).toBeTruthy()
+    expect(within(row).getByText('TR')).toBeTruthy()
     expect(within(row).getByText('Dean')).toBeTruthy()
     expect(within(row).getByText('Department Head')).toBeTruthy()
     expect(within(row).getByText('Adviser')).toBeTruthy()
@@ -152,138 +163,20 @@ describe('Department Staff accounts directory', () => {
     expect(mutationCalls).toBe(0)
   })
 
-  it('shows resend only for an invited account with eligible server invitation state and serializes that target', async () => {
-    let releaseResponse: (() => void) | undefined
-    let calls = 0
-    const responseGate = new Promise<void>(resolve => { releaseResponse = resolve })
-    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/resend-invite', async () => {
-      calls += 1
-      await responseGate
-      return HttpResponse.json({
-        success: true,
-        message: 'Invitation regenerated and dispatched.',
-        profile_id: MOCK_IDS.studentSecondary,
-        invitation_status: 'pending',
-        invitation_sent_at: '2026-11-17T09:00:00Z',
-        invitation_expires_at: '2026-11-24T09:00:00Z',
-      })
-    }))
-    const { queryClient } = renderAccounts()
-    const table = await screen.findByRole('table')
-    const accountsKey = staffQueryKeys.resource(
-      MOCK_PERSONAS.department_staff.profileId,
-      MOCK_IDS.deptDcst,
-      'accounts',
-    )
-    queryClient.setQueryData(accountsKey, { cached: true })
-    const eligibleRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
-    const resendButton = within(eligibleRow).getByRole('button', { name: 'Resend invitation' })
-    expect(within(eligibleRow).getByText('pending')).toBeTruthy()
-
-    const activeRow = await within(table).findByRole('row', { name: new RegExp(MOCK_PERSONAS.student.fullName) })
-    expect(within(activeRow).queryByRole('button', { name: 'Resend invitation' })).toBeNull()
-    expect(within(activeRow).queryByRole('button', { name: 'Revoke invitation' })).toBeNull()
-    fireEvent.click(resendButton)
-    await waitFor(() => expect(resendButton.hasAttribute('disabled')).toBe(true))
-    fireEvent.click(resendButton)
-    expect(calls).toBe(1)
-
-    releaseResponse?.()
-    expect((await within(eligibleRow).findByRole('status')).textContent).toContain('Invitation regenerated and dispatched')
-    expect(within(eligibleRow).getByRole('button', { name: 'Invitation resent' }).hasAttribute('disabled')).toBe(true)
-    await waitFor(() => expect(queryClient.getQueryState(accountsKey)?.isInvalidated).toBe(true))
-  })
-
-  it('explains server rate limits and the retry delay for a pending invitation', async () => {
-    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/resend-invite', () => HttpResponse.json(
-      { code: 'RATE_LIMITED', message: 'Please wait before resending.' },
-      { status: 429, headers: { 'Retry-After': '42' } },
-    )))
-    renderAccounts()
-    const table = await screen.findByRole('table')
-    const eligibleRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
-    fireEvent.click(within(eligibleRow).getByRole('button', { name: 'Resend invitation' }))
-
-    expect((await within(eligibleRow).findByRole('alert')).textContent).toContain('Try again in 42 seconds.')
-  })
-
-  it('names the target and sends no revoke request when confirmation is canceled', async () => {
-    let calls = 0
-    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/revoke-invite', () => {
-      calls += 1
-      return HttpResponse.json({})
-    }))
-    renderAccounts()
-    const table = await screen.findByRole('table')
-    const targetRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
-    fireEvent.click(within(targetRow).getByRole('button', { name: 'Revoke invitation' }))
-
-    const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByRole('heading', { name: 'Revoke invitation for Concoles, Cyril Jade M.?' })).toBeTruthy()
-    expect(dialog.textContent).toContain(MOCK_PERSONAS.student_secondary.email)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(calls).toBe(0)
-    expect(getMockDatabase().profiles.find(profile => profile.id === MOCK_IDS.studentSecondary)?.invitation_status).toBe('pending')
-  })
-
-  it('revokes through the dedicated endpoint, preserves the account and roles, and disables same-target actions while pending', async () => {
-    let releaseResponse: (() => void) | undefined
-    const responseGate = new Promise<void>(resolve => { releaseResponse = resolve })
-    const database = getMockDatabase()
-    const profile = database.profiles.find(item => item.id === MOCK_IDS.studentSecondary)!
-    const originalRoles = [...(profile.roles ?? [])]
-    let revokeCalls = 0
-    let destructiveCalls = 0
+  it('hides pending invitation actions and status from the directory row', async () => {
+    let mutationCalls = 0
     saaisMockServer.use(
-      http.post('*/functions/v1/accounts/:profile_id/revoke-invite', async () => {
-        revokeCalls += 1
-        await responseGate
-        const updatedProfile = { ...profile, invitation_status: 'revoked' as const, updated_at: '2026-11-17T09:30:00Z' }
-        database.profiles[database.profiles.findIndex(item => item.id === MOCK_IDS.studentSecondary)] = updatedProfile
-        return HttpResponse.json(updatedProfile)
-      }),
-      http.delete('*/functions/v1/accounts/:profile_id', () => { destructiveCalls += 1; return HttpResponse.json({}, { status: 500 }) }),
-      http.patch('*/functions/v1/accounts/:profile_id', () => { destructiveCalls += 1; return HttpResponse.json({}, { status: 500 }) }),
+      http.post('*/functions/v1/accounts/:profile_id/resend-invite', () => { mutationCalls += 1; return HttpResponse.json({}) }),
+      http.post('*/functions/v1/accounts/:profile_id/revoke-invite', () => { mutationCalls += 1; return HttpResponse.json({}) }),
     )
     renderAccounts()
     const table = await screen.findByRole('table')
-    const targetRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
-    fireEvent.click(within(targetRow).getByRole('button', { name: 'Revoke invitation' }))
-    const dialog = await screen.findByRole('dialog')
-    const confirm = within(dialog).getByRole('button', { name: 'Confirm revocation' })
-    fireEvent.click(confirm)
+    const pendingRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
 
-    await waitFor(() => expect(confirm.hasAttribute('disabled')).toBe(true))
-    expect(within(targetRow).getByRole('button', { name: 'Resend invitation', hidden: true }).hasAttribute('disabled')).toBe(true)
-    fireEvent.click(confirm)
-    expect(revokeCalls).toBe(1)
-    expect(destructiveCalls).toBe(0)
-
-    releaseResponse?.()
-    expect(await within(targetRow).findByText('revoked')).toBeTruthy()
-    expect(await within(targetRow).findByText(/Invitation revoked for/)).toBeTruthy()
-    await waitFor(() => expect(within(targetRow).queryByRole('button', { name: 'Revoke invitation' })).toBeNull())
-    expect(profile.status).toBe('invited')
-    expect(profile.roles).toEqual(originalRoles)
-    expect(getMockDatabase().profiles.some(item => item.id === MOCK_IDS.studentSecondary)).toBe(true)
-  })
-
-  it('shows stale revocation conflicts and refreshes the account status', async () => {
-    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/revoke-invite', () => HttpResponse.json(
-      { code: 'INVITATION_NOT_REVOCABLE', message: 'This invitation is no longer pending.' },
-      { status: 409 },
-    )))
-    renderAccounts()
-    const table = await screen.findByRole('table')
-    const targetRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
-    fireEvent.click(within(targetRow).getByRole('button', { name: 'Revoke invitation' }))
-    const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm revocation' }))
-
-    expect((await within(dialog).findByRole('alert')).textContent).toContain('Account status was refreshed')
-    expect(getMockDatabase().profiles.find(item => item.id === MOCK_IDS.studentSecondary)?.invitation_status).toBe('pending')
+    expect(within(pendingRow).queryByText('pending')).toBeNull()
+    expect(within(pendingRow).queryByRole('button', { name: 'Resend invitation' })).toBeNull()
+    expect(within(pendingRow).queryByRole('button', { name: 'Revoke invitation' })).toBeNull()
+    expect(mutationCalls).toBe(0)
   })
 
   it('requests account pages with the resolved department and bounded offsets', async () => {
@@ -397,7 +290,7 @@ describe('Department Staff accounts directory', () => {
       staffQueryKeys.resource(...scopePrefix, 'adviser-assignments'),
     ]
     affectedKeys.forEach(key => queryClient.setQueryData(key, { cached: true }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Prepare invitation' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add account' }))
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'New Student' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: 'new.student@vsu.edu.ph' } })
@@ -447,7 +340,7 @@ describe('Department Staff accounts directory', () => {
       return HttpResponse.json({ code: 'DUPLICATE_EMAIL', message: 'An account with this email already exists.' }, { status: 409 })
     }))
     renderAccounts()
-    fireEvent.click(await screen.findByRole('button', { name: 'Prepare invitation' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add account' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'Duplicate Person' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: 'duplicate.person@vsu.edu.ph' } })
     fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
@@ -468,7 +361,7 @@ describe('Department Staff accounts directory', () => {
       return HttpResponse.json({ success: true })
     }))
     renderAccounts()
-    fireEvent.click(await screen.findByRole('button', { name: 'Prepare invitation' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add account' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'Staff User' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: MOCK_PERSONAS.department_staff.email } })
     fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
