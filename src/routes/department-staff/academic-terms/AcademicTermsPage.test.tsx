@@ -141,11 +141,13 @@ describe('Department Staff academic terms', () => {
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeTruthy()
     expect(screen.getByText('2026–2027')).toBeTruthy()
     expect(screen.getByText('1st semester')).toBeTruthy()
-    expect(screen.getAllByText('10 Aug 2026 – 18 Dec 2026')).toHaveLength(2)
-    expect(screen.getAllByText('05 Jan 2027')).toHaveLength(2)
-    expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
-    expect(screen.getByText('Not recorded')).toBeTruthy()
-    expect(screen.getByText('1 open term · 0 closed terms')).toBeTruthy()
+    expect(screen.getByText('10 Aug 2026 – 18 Dec 2026')).toBeTruthy()
+    expect(screen.getByText('05 Jan 2027')).toBeTruthy()
+    expect(screen.getAllByText('Open')).toHaveLength(2)
+    expect(screen.queryByText('Not recorded')).toBeNull()
+    expect(screen.getByText('2 open terms · 0 closed terms')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /Close encoding for/ })).toHaveLength(2)
+    expect(screen.queryByText('View term')).toBeNull()
     const addTermButton = screen.getByRole('button', { name: 'Add a term' })
     expect(addTermButton.querySelector('svg')).not.toBeNull()
     const termRows = screen.getAllByRole('row').slice(1)
@@ -179,6 +181,13 @@ describe('Department Staff academic terms', () => {
       ),
     ).toBeTruthy()
     expect((await screen.findAllByText('Closed')).length).toBeGreaterThan(0)
+    expect(screen.getByText('1 open term · 1 closed term')).toBeTruthy()
+    expect(screen.getByText('View term')).toBeTruthy()
+    expect(
+      screen.queryByRole('button', {
+        name: 'Close encoding for 2026 - 2027 1st Semester',
+      }),
+    ).toBeNull()
 
     fireEvent.click(screen.getAllByText('View term')[0]!)
     fireEvent.click(await screen.findByRole('button', { name: 'Reopen encoding' }))

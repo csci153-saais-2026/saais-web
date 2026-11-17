@@ -163,16 +163,11 @@ function TermDetails({
 }
 
 function EncodingStatus({ closure }: { closure?: DepartmentTermEncoding }) {
-  const label = closure
-    ? closure.is_closed
-      ? 'Closed'
-      : 'Open'
-    : 'Not recorded'
-  const tone = closure
-    ? closure.is_closed
-      ? 'bg-secondary text-muted-foreground'
-      : 'bg-status-pass-bg text-status-pass'
-    : 'bg-muted text-muted-foreground'
+  const isClosed = closure?.is_closed ?? false
+  const label = isClosed ? 'Closed' : 'Open'
+  const tone = isClosed
+    ? 'bg-secondary text-muted-foreground'
+    : 'bg-status-pass-bg text-status-pass'
 
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-semibold ${tone}`}>
@@ -196,8 +191,11 @@ export default function AcademicTermsPage() {
   const closureByTermId = new Map(
     closures.map((closure) => [closure.school_term_id, closure]),
   )
-  const openTerms = closures.filter((closure) => !closure.is_closed).length
-  const closedTerms = closures.filter((closure) => closure.is_closed).length
+  const terms = academicTerms.data?.terms ?? []
+  const closedTerms = terms.filter(
+    (term) => closureByTermId.get(term.id)?.is_closed === true,
+  ).length
+  const openTerms = terms.length - closedTerms
 
   const columns: Column<SchoolTerm>[] = [
     {
@@ -234,7 +232,7 @@ export default function AcademicTermsPage() {
         const closure = closureByTermId.get(term.id)
         return (
           <div className="flex flex-wrap items-center gap-2">
-            {scope.status === 'ready' && closure && !closure.is_closed && (
+          {scope.status === 'ready' && !closure?.is_closed ? (
               <Button
                 type="button"
                 variant="outline"
@@ -247,7 +245,7 @@ export default function AcademicTermsPage() {
               >
                 Close encoding
               </Button>
-            )}
+          ) : (
             <TermDetails
               term={term}
               closure={closure}
@@ -261,6 +259,7 @@ export default function AcademicTermsPage() {
                 setClosureDialog({ mode: 'reopen', term })
               }}
             />
+          )}
           </div>
         )
       },
