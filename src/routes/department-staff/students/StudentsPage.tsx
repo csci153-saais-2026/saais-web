@@ -2,15 +2,31 @@ import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router'
 import { FormField } from '@/components/features/form-field'
 import { PageHeading } from '@/components/features/page-heading'
-import { DataTablePanel, type Column } from '@/components/features/data-table-panel'
+import type { Column } from '@/components/features/data-table-panel'
 import { Panel } from '@/components/features/panel'
 import { SearchInput } from '@/components/features/search-input'
 import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ApiClientError, type ApiSchema } from '@/lib/api'
 import {
   useStudentFilterOptions,
   useStudents,
 } from './use-students'
+import { useAcademicTerms } from '@/hooks/use-academic-terms'
 import { StudentImportDialog } from './import/StudentImportDialog'
 import { useStaffScope } from '../shared/use-staff-scope'
 
@@ -19,6 +35,8 @@ type StudentRosterItem = ApiSchema<'StudentRosterItem'>
 const STUDENT_PAGE_SIZE = 20
 const MAX_STUDENT_OFFSET = 100_000
 const MAX_SEARCH_LENGTH = 150
+const DIRECTORY_PANEL_TYPOGRAPHY =
+  '[&_[data-slot=card-title]]:font-sans [&_[data-slot=card-title]]:text-heading [&_[data-slot=card-title]]:font-semibold [&_[data-slot=card-description]]:font-sans [&_[data-slot=card-description]]:text-[13px] [&_[data-slot=card-description]]:leading-[1.5] [&_[data-slot=card-description]]:text-muted-2'
 const UUID_PATTERN =
   /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
 
@@ -35,14 +53,36 @@ const columns: Column<StudentRosterItem>[] = [
     ),
   },
   {
+    header: 'School email',
+    cell: (student) => student.email || '—',
+  },
+  {
     header: 'Curriculum',
     cell: (student) => student.curriculum_label,
+  },
+  {
+    header: 'Year standing',
+    cell: (student) => formatYearStanding(student.year_level),
   },
   {
     header: 'Adviser',
     cell: (student) => student.adviser_name ?? 'Unassigned',
   },
 ]
+
+function formatYearStanding(yearLevel: number): string {
+  const suffix =
+    yearLevel % 100 >= 11 && yearLevel % 100 <= 13
+      ? 'th'
+      : yearLevel % 10 === 1
+        ? 'st'
+        : yearLevel % 10 === 2
+          ? 'nd'
+          : yearLevel % 10 === 3
+            ? 'rd'
+            : 'th'
+  return `${yearLevel}${suffix} year`
+}
 
 function getRosterErrorMessage(error: unknown): string {
   if (error instanceof ApiClientError) {
@@ -91,6 +131,26 @@ function getUuidParam(params: URLSearchParams, key: string): string {
   return value && UUID_PATTERN.test(value) ? value : ''
 }
 
+function joinLabels(labels: readonly string[]): string {
+  if (labels.length < 2) return labels[0] ?? ''
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`
+  return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`
+}
+
+function getCurrentAcademicTerm(
+  terms: readonly ApiSchema<'SchoolTerm'>[],
+): ApiSchema<'SchoolTerm'> | undefined {
+  const today = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'Asia/Manila',
+  })
+  return terms.find(
+    (term) =>
+      Boolean(term.starts_on) &&
+      term.starts_on! <= today &&
+      term.ends_on >= today,
+  )
+}
+
 export default function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const staffScope = useStaffScope()
@@ -120,6 +180,8 @@ export default function StudentsPage() {
     [adviserId, curriculumVersionId, offset, search],
   )
   const filterOptions = useStudentFilterOptions()
+  const academicTerms = useAcademicTerms()
+  const enrollmentCount = useStudents({ limit: 1, offset: 0 })
   const {
     data,
     error,
@@ -207,66 +269,111 @@ export default function StudentsPage() {
     setSearchParams(next, { replace: true })
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeading
-        title="Student roster"
-        subtitle="Students in your authorized department."
-        actions={<StudentImportDialog scope={importScope} />}
-      />
-      <div className="grid gap-4 md:grid-cols-3">
-        <FormField
-          label="Search name or student number"
-          htmlFor="student-roster-search"
-          className="md:col-span-1"
-        >
+  function resetFilters() {
+    const next = new URLSearchParams(searchParams)
+    for (const key of [
+      'search',
+      'curriculum_version_id',
+      'adviser_id',
+      'offset',
+    ]) {
+      next.delete(key)
+    }
+    setSearchParams(next, { replace: true })
+  }
+
+  const resultNoun = data?.total_count === 1 ? 'student' : 'students'
+  const resultVerb = data?.total_count === 1 ? 'matches' : 'match'
+  const programCodes = [...new Set(
+    (filterOptions.data?.curricula ?? [])
+      .map((option) => option.label.split(' — ')[0]?.trim())
+      .filter((code): code is string => Boolean(code)),
+  )]
+  const currentTerm = academicTerms.data
+    ? getCurrentAcademicTerm(academicTerms.data.terms)
+    : undefined
+  const directoryDescription = [
+    enrollmentCount.data
+      ? `${enrollmentCount.data.total_count} enrolled ${enrollmentCount.data.total_count === 1 ? 'student' : 'students'}`
+      : 'Enrollment count unavailable',
+    programCodes.length > 0
+      ? joinLabels(programCodes)
+      : filterOptions.isPending
+        ? 'Loading courses'
+        : 'Courses unavailable',
+    currentTerm
+      ? `AY ${currentTerm.school_year}, ${currentTerm.term_type}`
+      : academicTerms.isPending
+        ? 'Loading academic year and term'
+        : 'Academic year and term unavailable',
+  ].join(' · ')
+
+  const filterControls = (
+    <div className="space-y-3">
+      <div className="grid items-end gap-4 md:grid-cols-[minmax(16rem,1fr)_minmax(12rem,0.7fr)_minmax(12rem,0.7fr)_auto]">
+        <FormField label="Search students" htmlFor="student-roster-search">
           <SearchInput
             id="student-roster-search"
             value={search}
             maxLength={MAX_SEARCH_LENGTH}
-            placeholder="Search students"
+            placeholder="Search by student name or ID"
             onChange={(event) => updateFilter('search', event.target.value)}
           />
         </FormField>
-        <FormField
-          label="Curriculum"
-          htmlFor="student-roster-curriculum"
-        >
-          <select
-            id="student-roster-curriculum"
-            value={curriculumVersionId}
+        <FormField label="Curriculum" htmlFor="student-roster-curriculum">
+          <Select
+            value={curriculumVersionId || 'all'}
             disabled={filterOptions.isPending || filterOptions.isError}
-            onChange={(event) =>
-              updateFilter('curriculum_version_id', event.target.value)
+            onValueChange={(value) =>
+              updateFilter(
+                'curriculum_version_id',
+                value === 'all' ? '' : value,
+              )
             }
-            className="min-h-11 rounded-md border border-input bg-background px-3 text-sm"
           >
-            <option value="">All curricula</option>
-            {(filterOptions.data?.curricula ?? []).map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="student-roster-curriculum" className="w-full">
+              <SelectValue placeholder="All curricula" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All curricula</SelectItem>
+              {(filterOptions.data?.curricula ?? []).map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </FormField>
         <FormField label="Adviser" htmlFor="student-roster-adviser">
-          <select
-            id="student-roster-adviser"
-            value={adviserId}
+          <Select
+            value={adviserId || 'all'}
             disabled={filterOptions.isPending || filterOptions.isError}
-            onChange={(event) =>
-              updateFilter('adviser_id', event.target.value)
+            onValueChange={(value) =>
+              updateFilter('adviser_id', value === 'all' ? '' : value)
             }
-            className="min-h-11 rounded-md border border-input bg-background px-3 text-sm"
           >
-            <option value="">All advisers</option>
-            {(filterOptions.data?.advisers ?? []).map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="student-roster-adviser" className="w-full">
+              <SelectValue placeholder="All advisers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All advisers</SelectItem>
+              {(filterOptions.data?.advisers ?? []).map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </FormField>
+        <Button
+          type="button"
+          variant="link"
+          className="justify-self-start px-1 md:justify-self-end"
+          onClick={resetFilters}
+          disabled={!search && !curriculumVersionId && !adviserId && offset === 0}
+        >
+          Reset filters
+        </Button>
       </div>
       {filterOptions.isPending && (
         <p role="status" className="text-sm text-muted-foreground">
@@ -274,7 +381,7 @@ export default function StudentsPage() {
         </p>
       )}
       {filterOptions.isError && (
-        <div className="space-y-3" role="alert">
+        <div className="flex flex-wrap items-center justify-between gap-3" role="alert">
           <p className="text-sm text-destructive">
             {getFilterOptionsErrorMessage(filterOptions.error)}
           </p>
@@ -287,16 +394,42 @@ export default function StudentsPage() {
           </Button>
         </div>
       )}
+    </div>
+  )
+
+  return (
+    <div className="-mt-6 space-y-6 md:-mt-(--content-pad-top)">
+      <PageHeading
+        title="Students"
+        subtitle="Find and maintain student records within your department."
+        actions={<StudentImportDialog scope={importScope} />}
+      />
       {isPending && (
-        <Panel title="Students">
-          <p role="status" className="p-6 text-sm text-muted-foreground">
+        <Panel
+          title="Department directory"
+          description={directoryDescription}
+          className={DIRECTORY_PANEL_TYPOGRAPHY}
+          flush
+        >
+          <div className="space-y-4 border-b border-border p-5">
+            {filterControls}
+          </div>
+          <p role="status" className="p-5 text-sm text-muted-foreground">
             Loading student roster…
           </p>
         </Panel>
       )}
       {isError && (
-        <Panel title="Students">
-          <div className="space-y-4 p-6">
+        <Panel
+          title="Department directory"
+          description={directoryDescription}
+          className={DIRECTORY_PANEL_TYPOGRAPHY}
+          flush
+        >
+          <div className="space-y-4 border-b border-border p-5">
+            {filterControls}
+          </div>
+          <div className="space-y-4 p-5">
             <p role="alert" className="text-sm text-destructive">
               {getRosterErrorMessage(error)}
             </p>
@@ -311,51 +444,80 @@ export default function StudentsPage() {
         </Panel>
       )}
       {data && !isError && (
-        <DataTablePanel
-          title="Students"
-          description="Roster records returned for your authorized department."
-          columns={columns}
-          rows={data.items}
-          rowKey={(student) => student.student_id}
-          empty={
-            data.total_count === 0
-              ? 'No students match these filters.'
-              : 'No students are on this page. Go to a previous page to view results.'
-          }
-          footer={
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p role="status">
-                {data.items.length > 0
-                  ? `Showing ${offset + 1}–${offset + data.items.length} of ${data.total_count} matching students`
-                  : `Showing 0 students on this page; ${data.total_count} students match these filters`}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={offset === 0 || isFetching}
-                  onClick={() =>
-                    updateOffset(Math.max(0, offset - STUDENT_PAGE_SIZE))
-                  }
-                >
-                  Previous
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    offset + STUDENT_PAGE_SIZE >= data.total_count ||
-                    offset >= MAX_STUDENT_OFFSET ||
-                    isFetching
-                  }
-                  onClick={() => updateOffset(offset + STUDENT_PAGE_SIZE)}
-                >
-                  Next
-                </Button>
-              </div>
+        <Panel
+          title="Department directory"
+          description={directoryDescription}
+          className={DIRECTORY_PANEL_TYPOGRAPHY}
+          flush
+        >
+          <div className="space-y-4 border-b border-border p-5">
+            {filterControls}
+          </div>
+          <Table responsive>
+            <TableHeader className="bg-secondary">
+              <TableRow>
+                {columns.map((column) => (
+                  <TableHead
+                    key={column.header}
+                    className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
+                  >
+                    {column.header}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.items.map((student) => (
+                <TableRow key={student.student_id}>
+                  {columns.map((column) => (
+                    <TableCell key={column.header} label={column.header} className="py-2.5 text-[13.5px]">
+                      {column.cell(student)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {data.items.length === 0 && (
+            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+              {data.total_count === 0
+                ? 'No students match these filters.'
+                : 'No students are on this page. Go to a previous page to view results.'}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
+            <p role="status">
+              {data.items.length > 0
+                ? `Showing ${offset + 1}–${offset + data.items.length} of ${data.total_count} ${resultNoun}`
+                : `No students shown; ${data.total_count} ${resultNoun} ${resultVerb} these filters`}
+            </p>
+            <span>Department-scoped records</span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={offset === 0 || isFetching}
+                onClick={() =>
+                  updateOffset(Math.max(0, offset - STUDENT_PAGE_SIZE))
+                }
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={
+                  offset + STUDENT_PAGE_SIZE >= data.total_count ||
+                  offset >= MAX_STUDENT_OFFSET ||
+                  isFetching
+                }
+                onClick={() => updateOffset(offset + STUDENT_PAGE_SIZE)}
+              >
+                Next
+              </Button>
             </div>
-          }
-        />
+          </div>
+        </Panel>
       )}
     </div>
   )

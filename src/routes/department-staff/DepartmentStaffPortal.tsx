@@ -83,9 +83,6 @@ function DepartmentStaffContent() {
                 </select>
               </label>
             )}
-            <p role="status" className="text-sm text-muted-foreground">
-              Staff requests are scoped to department {scope.departmentId}.
-            </p>
           </div>
           <Suspense fallback={<p role="status">Loading Department Staff page…</p>}>
             {isPortalIndex ? (

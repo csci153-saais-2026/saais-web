@@ -1913,6 +1913,14 @@ export const saaisMswHandlers = [
     if ('response' in auth) return auth.response
     const url = new URL(request.url)
     const scope = url.searchParams.get('assignment_scope') ?? 'all'
+    const departmentId = url.searchParams.get('department_id')
+    if (departmentId && !canAccessDepartment(auth.persona, departmentId)) {
+      return errorJson(
+        403,
+        'INSUFFICIENT_PRIVILEGE',
+        'Not authorized to view this department student roster.',
+      )
+    }
 
     const items: ApiSchema<'StudentRosterItem'>[] = [
       {
@@ -1989,34 +1997,58 @@ export const saaisMswHandlers = [
       },
     ]
 
-    const filtered = items.filter((item) => {
-      if (scope === 'current' || scope === 'my_active_advisees') {
-        return item.assignment_status === 'active'
-      }
-      if (scope === 'past' || scope === 'my_handed_over_advisees') {
-        return item.assignment_status === 'past'
-      }
-      if (scope === 'unassigned') {
-        return item.assignment_status === 'unassigned'
-      }
-      return true
+    const search = url.searchParams.get('search')?.trim().toLocaleLowerCase() ?? ''
+    const curriculumVersionId = url.searchParams.get('curriculum_version_id')
+    const adviserId = url.searchParams.get('adviser_id')
+    const matchingItems = items.filter((item) => {
+      const matchesAssignmentScope =
+        (scope !== 'current' && scope !== 'my_active_advisees' ||
+          item.assignment_status === 'active') &&
+        (scope !== 'past' && scope !== 'my_handed_over_advisees' ||
+          item.assignment_status === 'past') &&
+        (scope !== 'unassigned' || item.assignment_status === 'unassigned')
+      const matchesSearch =
+        !search ||
+        [item.full_name, item.student_number, item.email].some((value) =>
+          value.toLocaleLowerCase().includes(search),
+        )
+
+      return (
+        (!departmentId || item.department_id === departmentId) &&
+        matchesAssignmentScope &&
+        matchesSearch &&
+        (!curriculumVersionId ||
+          item.curriculum_version_id === curriculumVersionId) &&
+        (!adviserId || item.adviser_id === adviserId)
+      )
     })
+    const offsetValue = Number(url.searchParams.get('offset') ?? 0)
+    const limitValue = Number(url.searchParams.get('limit') ?? 20)
+    const offset = Number.isSafeInteger(offsetValue) && offsetValue >= 0
+      ? offsetValue
+      : 0
+    const limit = Number.isSafeInteger(limitValue) && limitValue > 0
+      ? Math.min(limitValue, 1000)
+      : 20
+    const filtered = matchingItems.slice(offset, offset + limit)
+    const countStanding = (standing: ApiSchema<'StudentRosterItem'>['standing']) =>
+      matchingItems.filter((item) => item.standing === standing).length
 
     const response: ApiSchema<'StudentRosterResponse'> = {
-      total_count: filtered.length,
-      unassigned_count: filtered.filter(
+      total_count: matchingItems.length,
+      unassigned_count: matchingItems.filter(
         (i) => i.assignment_status === 'unassigned',
       ).length,
-      with_deficiencies_count: filtered.filter((i) => i.deficiencies_count > 0)
+      with_deficiencies_count: matchingItems.filter((i) => i.deficiencies_count > 0)
         .length,
-      flagged_count: filtered.filter((i) => i.open_flags_count > 0).length,
-      open_inc_students_count: filtered.filter((i) => i.open_inc_count > 0)
+      flagged_count: matchingItems.filter((i) => i.open_flags_count > 0).length,
+      open_inc_students_count: matchingItems.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
-        good_standing: filtered.length,
-        warning: 0,
-        probation: 0,
-        dismissed: 0,
+        good_standing: countStanding('good_standing'),
+        warning: countStanding('warning'),
+        probation: countStanding('probation'),
+        dismissed: countStanding('dismissed'),
       },
       items: filtered,
     }

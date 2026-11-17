@@ -5,12 +5,12 @@ import type { ApiSchema } from '@/lib/api'
 import { STUDENT_IMPORT_HEADERS } from './student-import.schema'
 import { StudentImportDialog } from './StudentImportDialog'
 import {
-  previewStudentImport,
-  type StudentImportPreview,
+  commitStudentImport,
+  type StudentImportBatchResult,
 } from './student-import.api'
 
 vi.mock('./student-import.api', () => ({
-  previewStudentImport: vi.fn(),
+  commitStudentImport: vi.fn(),
 }))
 
 const PROFILE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -56,15 +56,15 @@ function csvFile(
   )
 }
 
-function previewResult(
-  results: StudentImportPreview['results'],
-): StudentImportPreview {
+function commitResult(
+  results: StudentImportBatchResult['results'],
+): StudentImportBatchResult {
   return {
-    mode: 'preview',
-    valid_count: results.filter((result) => result.outcome === 'valid').length,
+    mode: 'commit',
+    valid_count: results.filter((result) => result.outcome === 'imported').length,
     warning_count: results.filter((result) => result.outcome === 'warning').length,
     error_count: results.filter((result) => result.outcome === 'error').length,
-    imported_count: 0,
+    imported_count: results.filter((result) => result.outcome === 'imported').length,
     results,
   }
 }
@@ -74,8 +74,8 @@ function validResult(row: ApiSchema<'StudentBatchImportRowInput'>) {
     row_number: row.row_number,
     student_number: row.student_number,
     email: row.email,
-    outcome: 'valid' as const,
-    message: 'Validated successfully.',
+    outcome: 'imported' as const,
+    message: 'Imported successfully.',
   }
 }
 
@@ -99,7 +99,7 @@ function renderDialog(
 }
 
 beforeEach(() => {
-  vi.mocked(previewStudentImport).mockReset()
+  vi.mocked(commitStudentImport).mockReset()
 })
 
 afterEach(() => {
@@ -107,29 +107,58 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('StudentImportDialog server preview', () => {
-  it('keeps file selection local until a preview is explicitly requested', async () => {
-    vi.mocked(previewStudentImport).mockResolvedValue(
-      previewResult([validResult(importRow)]),
+describe('StudentImportDialog student import', () => {
+  it('keeps file selection local until valid rows are explicitly imported', async () => {
+    vi.mocked(commitStudentImport).mockResolvedValue(
+      commitResult([validResult(importRow)]),
     )
     const fetch = vi.fn()
     vi.stubGlobal('fetch', fetch)
     renderDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Import students' }))
-    fireEvent.change(screen.getByLabelText('Student file'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Import spreadsheet' }))
+    expect(screen.getByRole('heading', { name: 'Import students from spreadsheet' })).toBeTruthy()
+    expect(screen.getByText(/Required columns:/)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Validation example' })).toBeTruthy()
+    const dialog = screen.getByRole('dialog')
+    const dialogChildren = Array.from(dialog.children)
+    const scrollContent = dialogChildren[1] as HTMLElement
+    const footer = dialogChildren[2] as HTMLElement
+    expect(dialogChildren[0].getAttribute('data-slot')).toBe('dialog-header')
+    expect(scrollContent.className).toContain('overflow-y-auto')
+    expect(footer.className).toContain('border-t')
+    expect(footer.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(true)
+    expect(scrollContent.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(false)
+    const fileInput = screen.getByLabelText('Spreadsheet file') as HTMLInputElement
+    expect(fileInput.className).toContain('file:bg-[#efefef]')
+    expect(fileInput.className).toContain('file:border-[#767676]')
+    expect(fileInput.className).toContain('font-semibold')
+    expect(screen.getByText('2024-218')).toBeTruthy()
+    expect(screen.getByText('Invalid ID format')).toBeTruthy()
+    expect(screen.getByText('Duplicate ID')).toBeTruthy()
+    expect(
+      screen
+        .getByRole('table', { name: /example validation outcomes/i })
+        .querySelector('tbody')?.className,
+    ).toContain('text-xs')
+    expect((screen.getByRole('button', { name: 'Import valid rows' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Spreadsheet file'), {
       target: { files: [csvFile()] },
     })
 
     expect(
       await screen.findByText('1 of 1 rows passed local and canonical format checks.'),
     ).toBeTruthy()
-    expect(previewStudentImport).not.toHaveBeenCalled()
+    expect(fileInput.files?.[0]?.name).toBe('students.csv')
+    expect(screen.queryByText(/Selected file:/)).toBeNull()
+    expect(screen.queryByText('2024-218')).toBeNull()
+    expect(screen.queryByText('Duplicate ID')).toBeNull()
+    expect(commitStudentImport).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Check with server' }))
-    expect(await screen.findByText('Server validation results')).toBeTruthy()
-    expect(previewStudentImport).toHaveBeenCalledWith(
+    fireEvent.click(screen.getByRole('button', { name: 'Import valid rows' }))
+    expect(await screen.findByText('Import results')).toBeTruthy()
+    expect(commitStudentImport).toHaveBeenCalledWith(
       [importRow],
       expect.any(AbortSignal),
     )
@@ -140,23 +169,46 @@ describe('StudentImportDialog server preview', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('blocks noncanonical new student numbers before sending a preview', async () => {
+  it('blocks a row with an invalid student number before importing', async () => {
     renderDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Import students' }))
-    fireEvent.change(screen.getByLabelText('Student file'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Import spreadsheet' }))
+    fireEvent.change(screen.getByLabelText('Spreadsheet file'), {
       target: { files: [csvFile('00123')] },
     })
 
     expect(
-      await screen.findByText(/Student number must use YY-N-NNNNN format/),
+      await screen.findByText(/Invalid ID format/),
     ).toBeTruthy()
     expect(
-      screen.queryByRole('button', { name: 'Check with server' }),
-    ).toBeNull()
-    expect(previewStudentImport).not.toHaveBeenCalled()
+      (screen.getByRole('button', { name: 'Import valid rows' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+    expect(commitStudentImport).not.toHaveBeenCalled()
   })
 
-  it('shows server warning and error outcomes separately from valid rows', async () => {
+  it('imports only locally valid rows when a file also has invalid rows', async () => {
+    vi.mocked(commitStudentImport).mockResolvedValue(
+      commitResult([validResult(importRow)]),
+    )
+    renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'Import spreadsheet' }))
+    fireEvent.change(screen.getByLabelText('Spreadsheet file'), {
+      target: { files: [csvFile(STUDENT_NUMBER, 'students.csv', ['00124'])] },
+    })
+
+    expect(
+      await screen.findByText('1 of 2 rows passed local and canonical format checks.'),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Import valid rows' }))
+
+    expect(await screen.findByText('Import results')).toBeTruthy()
+    expect(commitStudentImport).toHaveBeenCalledWith(
+      [importRow],
+      expect.any(AbortSignal),
+    )
+  })
+
+  it('shows server warning and error outcomes separately from imported rows', async () => {
     const warningRow = {
       ...validResult(importRow),
       row_number: 3,
@@ -173,12 +225,12 @@ describe('StudentImportDialog server preview', () => {
       outcome: 'error' as const,
       message: 'The curriculum is inactive.',
     }
-    vi.mocked(previewStudentImport).mockResolvedValue(
-      previewResult([validResult(importRow), warningRow, errorRow]),
+    vi.mocked(commitStudentImport).mockResolvedValue(
+      commitResult([validResult(importRow), warningRow, errorRow]),
     )
     renderDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Import students' }))
-    fireEvent.change(screen.getByLabelText('Student file'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Import spreadsheet' }))
+    fireEvent.change(screen.getByLabelText('Spreadsheet file'), {
       target: {
         files: [
           csvFile(STUDENT_NUMBER, 'students.csv', [
@@ -189,78 +241,67 @@ describe('StudentImportDialog server preview', () => {
       },
     })
     await screen.findByText('3 of 3 rows passed local and canonical format checks.')
-    fireEvent.click(screen.getByRole('button', { name: 'Check with server' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Import valid rows' }))
 
-    expect(await screen.findByText('1 valid row, 1 warning, 1 error. No records were imported.')).toBeTruthy()
+    expect(await screen.findByText('1 student imported. 1 warning, 1 error.')).toBeTruthy()
     expect(
-      screen.getByText(/Warnings are not treated as valid or eligible/),
+      screen.getByText(/1 row needs review/),
     ).toBeTruthy()
     expect(screen.getByText('Review the provided entry year.')).toBeTruthy()
     expect(screen.getByText('The curriculum is inactive.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /commit|import rows/i })).toBeNull()
   })
 
-  it('aborts and ignores a late preview when a different file is selected', async () => {
-    let resolveFirst!: (result: StudentImportPreview) => void
-    let firstSignal: AbortSignal | undefined
-    vi.mocked(previewStudentImport)
-      .mockImplementationOnce((_rows, signal) => {
-        firstSignal = signal
-        return new Promise((resolve) => {
-          resolveFirst = resolve
-        })
+  it('keeps the active commit intact while file and close controls are disabled', async () => {
+    let resolveImport!: (result: StudentImportBatchResult) => void
+    let importSignal: AbortSignal | undefined
+    vi.mocked(commitStudentImport).mockImplementationOnce((_rows, signal) => {
+      importSignal = signal
+      return new Promise((resolve) => {
+        resolveImport = resolve
       })
-      .mockResolvedValueOnce(
-        previewResult([
-          validResult({ ...importRow, student_number: '24-1-00126' }),
-        ]),
-      )
+    })
     renderDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Import students' }))
-    fireEvent.change(screen.getByLabelText('Student file'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Import spreadsheet' }))
+    fireEvent.change(screen.getByLabelText('Spreadsheet file'), {
       target: { files: [csvFile('24-1-00127', 'first.csv')] },
     })
     await screen.findByText('1 of 1 rows passed local and canonical format checks.')
-    fireEvent.click(screen.getByRole('button', { name: 'Check with server' }))
-    await waitFor(() => expect(previewStudentImport).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Import valid rows' }))
+    await waitFor(() => expect(commitStudentImport).toHaveBeenCalledTimes(1))
 
-    fireEvent.change(screen.getByLabelText('Student file'), {
+    const fileInput = screen.getByLabelText('Spreadsheet file') as HTMLInputElement
+    expect(fileInput.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Spreadsheet file'), {
       target: { files: [csvFile('24-1-00126', 'second.csv')] },
     })
-    expect(firstSignal?.aborted).toBe(true)
-    await screen.findByText('Selected file: second.csv')
-    await screen.findByText('1 of 1 rows passed local and canonical format checks.')
-    fireEvent.click(screen.getByRole('button', { name: 'Check with server' }))
-    expect(await screen.findByText('24-1-00126')).toBeTruthy()
+    expect(importSignal?.aborted).toBe(false)
+    expect(screen.queryByText(/Selected file:/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('dialog')).toBeTruthy()
 
-    resolveFirst(
-      previewResult([
-        validResult({ ...importRow, student_number: '24-1-00127' }),
-      ]),
-    )
-    await waitFor(() =>
-      expect(screen.queryByText('24-1-00127')).toBeNull(),
-    )
-    expect(previewStudentImport).toHaveBeenCalledTimes(2)
+    resolveImport(commitResult([validResult(importRow)]))
+    expect(await screen.findByText('Import results')).toBeTruthy()
+    expect(fileInput.disabled).toBe(false)
   })
 
-  it('invalidates and aborts a preview when the authorized scope changes', async () => {
-    let resolvePreview!: (result: StudentImportPreview) => void
+  it('does not abort an active import when the authorized scope changes', async () => {
+    let resolveImport!: (result: StudentImportBatchResult) => void
     let signal: AbortSignal | undefined
-    vi.mocked(previewStudentImport).mockImplementationOnce((_rows, requestSignal) => {
+    vi.mocked(commitStudentImport).mockImplementationOnce((_rows, requestSignal) => {
       signal = requestSignal
       return new Promise((resolve) => {
-        resolvePreview = resolve
+        resolveImport = resolve
       })
     })
     const view = renderDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Import students' }))
-    fireEvent.change(screen.getByLabelText('Student file'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Import spreadsheet' }))
+    fireEvent.change(screen.getByLabelText('Spreadsheet file'), {
       target: { files: [csvFile()] },
     })
     await screen.findByText('1 of 1 rows passed local and canonical format checks.')
-    fireEvent.click(screen.getByRole('button', { name: 'Check with server' }))
-    await waitFor(() => expect(previewStudentImport).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Import valid rows' }))
+    await waitFor(() => expect(commitStudentImport).toHaveBeenCalledTimes(1))
 
     view.rerender(
       <QueryClientProvider client={view.queryClient}>
@@ -272,8 +313,8 @@ describe('StudentImportDialog server preview', () => {
         />
       </QueryClientProvider>,
     )
-    expect(signal?.aborted).toBe(true)
-    resolvePreview(previewResult([validResult(importRow)]))
-    expect(screen.queryByText('Server validation results')).toBeNull()
+    expect(signal?.aborted).toBe(false)
+    resolveImport(commitResult([validResult(importRow)]))
+    expect(await screen.findByText('Import results')).toBeTruthy()
   })
 })
