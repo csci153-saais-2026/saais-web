@@ -20,6 +20,47 @@ function alreadyPassedCourse(studentId: string, offeringId: string, existingAtte
   return Boolean(courseId && db.attemptResults.some(a => a.student_id === studentId && a.id !== existingAttemptId && a.effective_status === 'passed' && db.courseOfferings.some(o => o.id === a.course_offering_id && o.course_id === courseId)))
 }
 
+function isRequiredCourseInDepartment(
+  courseId: string,
+  departmentId: string,
+): boolean {
+  const db = getMockDatabase()
+  const departmentTermIds = new Set(
+    db.curriculumTerms
+      .filter((term) => {
+        const version = db.curriculumVersions.find(
+          (item) => item.id === term.curriculum_version_id,
+        )
+        const program = db.programs.find(
+          (item) => item.id === version?.program_id,
+        )
+        return program?.department_id === departmentId
+      })
+      .map((term) => term.id),
+  )
+
+  return db.curriculumTermCourses.some(
+    (slot) =>
+      slot.course_id === courseId &&
+      departmentTermIds.has(slot.curriculum_term_id) &&
+      !slot.is_elective_slot &&
+      slot.slot_type !== 'elective',
+  )
+}
+
+function courseOfferingHasHistory(offeringId: string): boolean {
+  const db = getMockDatabase()
+  return (
+    db.attempts.some((attempt) => attempt.course_offering_id === offeringId) ||
+    db.attemptResults.some(
+      (result) => result.course_offering_id === offeringId,
+    ) ||
+    db.advisingPlanItems.some(
+      (item) => item.course_offering_id === offeringId,
+    )
+  )
+}
+
 function markRetakeResults(attempts: ApiSchema<'AttemptResult'>[]): ApiSchema<'AttemptResult'>[] {
   const db = getMockDatabase()
   const courseId = (attempt: ApiSchema<'AttemptResult'>) => db.courseOfferings.find(o => o.id === attempt.course_offering_id)?.course_id
@@ -80,6 +121,7 @@ function studentMetrics(studentId: string, departmentId: string) {
 }
 
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
+const resendableInvitationStates = new Set(['pending', 'expired', 'revoked', 'declined'])
 
 function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
   if (persona.roles.includes('admin')) return true
@@ -322,6 +364,19 @@ function applyPostgrestQuery<T extends object>(
       return matchesPostgrestOperator(record[key], value)
     })
   })
+
+  // Bounded course search shape published by listCourses: search code OR title.
+  const courseSearch = url.searchParams.get('or')
+  if (courseSearch) {
+    const match = /^\(code\.ilike\.(.+),title\.ilike\.(.+)\)$/.exec(courseSearch)
+    if (match?.[1] && match[2]) {
+      filtered = filtered.filter((row) => {
+        const record = row as Record<string, unknown>
+        return matchesPostgrestOperator(record.code, match[1]!) ||
+          matchesPostgrestOperator(record.title, match[2]!)
+      })
+    }
+  }
 
   const andParam = url.searchParams.get('and')
   if (andParam) {
@@ -1063,10 +1118,42 @@ export const saaisMswHandlers = [
       'dean',
       'department_head',
       'department_staff',
-      'adviser',
     ])
     if ('response' in auth) return auth.response
     const db = getMockDatabase()
+    const params = new URL(request.url).searchParams
+    const requestedDepartmentId = params.get('department_id')
+    const requestedFacultyId = params.get('faculty_id')
+    if (requestedDepartmentId && !canAccessDepartment(auth.persona, requestedDepartmentId)) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot view accounts outside your authorized organization scope.')
+    }
+    if (requestedFacultyId && !canAccessFaculty(auth.persona, requestedFacultyId)) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot view accounts outside your authorized organization scope.')
+    }
+    const requiresDepartmentScope = auth.persona.roles.includes('department_staff')
+      || auth.persona.roles.includes('department_head')
+    const departmentId = requestedDepartmentId
+      ?? (requiresDepartmentScope ? auth.persona.departmentId : null)
+    const requiresFacultyScope = auth.persona.roles.includes('dean')
+      && !auth.persona.roles.includes('admin')
+      && !requiresDepartmentScope
+    const facultyId = requestedFacultyId ?? (requiresFacultyScope ? auth.persona.facultyId : null)
+    if (requiresDepartmentScope && !departmentId) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'An assigned department scope is required to view accounts.')
+    }
+    if (requiresFacultyScope && !facultyId) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'An assigned faculty scope is required to view accounts.')
+    }
+
+    const rawLimit = params.get('limit')
+    const rawOffset = params.get('offset')
+    const limit = rawLimit === null ? 20 : /^\d+$/.test(rawLimit) ? Number(rawLimit) : NaN
+    const offset = rawOffset === null ? 0 : /^\d+$/.test(rawOffset) ? Number(rawOffset) : NaN
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000
+      || !Number.isSafeInteger(offset) || offset < 0 || offset > 100_000) {
+      return errorJson(400, 'INVALID_INPUT', 'Account pagination parameters are outside the supported range.')
+    }
+
     const summaries: ApiSchema<'AccountSummary'>[] = db.profiles.map(
       (profile) => ({
         profile,
@@ -1078,7 +1165,27 @@ export const saaisMswHandlers = [
           null,
       }),
     )
-    return HttpResponse.json(summaries, { status: 200 })
+    const search = params.get('search')?.trim().toLocaleLowerCase() ?? ''
+    const requestedRole = params.get('role')
+    const scopedSummaries = summaries.filter(summary => {
+      const inDepartment = !departmentId
+        || summary.profile.department_id === departmentId
+        || summary.role_assignments?.some(assignment => assignment.department_id === departmentId)
+        || summary.student_organization?.department_id === departmentId
+      const inFaculty = !facultyId
+        || summary.profile.faculty_id === facultyId
+        || summary.role_assignments?.some(assignment => assignment.faculty_id === facultyId)
+        || summary.student_organization?.faculty_id === facultyId
+      const hasRole = !requestedRole
+        || summary.role_assignments?.some(assignment => assignment.role === requestedRole)
+        || summary.profile.roles?.includes(requestedRole as ApiSchema<'RoleType'>)
+        || summary.profile.role === requestedRole
+      const matchesSearch = !search
+        || summary.profile.full_name.toLocaleLowerCase().includes(search)
+        || summary.profile.email.toLocaleLowerCase().includes(search)
+      return inDepartment && inFaculty && hasRole && matchesSearch
+    })
+    return HttpResponse.json(scopedSummaries.slice(offset, offset + limit), { status: 200 })
   }),
 
   http.patch('*/functions/v1/accounts/:profile_id', async ({ request, params }) => {
@@ -1124,13 +1231,26 @@ export const saaisMswHandlers = [
       if (!canManageDepartmentInvite(auth.persona, profile)) {
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot manage this invitation.')
       }
+      if (profile.status !== 'invited' || !resendableInvitationStates.has(profile.invitation_status ?? '')) {
+        return errorJson(409, 'INVITATION_NOT_RESENDABLE', 'This invitation is no longer eligible to resend. Refresh account status.')
+      }
+      const resentAt = '2026-11-17T09:00:00Z'
+      const expiresAt = '2026-11-24T09:00:00Z'
+      const index = db.profiles.findIndex(item => item.id === profileId)
+      db.profiles[index] = {
+        ...profile,
+        invitation_status: 'pending',
+        invitation_sent_at: resentAt,
+        invitation_expires_at: expiresAt,
+        updated_at: resentAt,
+      }
       const res: ApiSchema<'ResendInviteResponse'> = {
         success: true,
         message: 'Invitation regenerated and dispatched.',
         profile_id: profileId,
         invitation_status: 'pending',
-        invitation_sent_at: '2026-11-10T09:00:00Z',
-        invitation_expires_at: '2026-11-17T09:00:00Z',
+        invitation_sent_at: resentAt,
+        invitation_expires_at: expiresAt,
       }
       return HttpResponse.json(res, { status: 200 })
     },
@@ -1154,10 +1274,13 @@ export const saaisMswHandlers = [
       if (!canManageDepartmentInvite(auth.persona, profile)) {
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot manage this invitation.')
       }
+      if (profile.status !== 'invited' || profile.invitation_status !== 'pending') {
+        return errorJson(409, 'INVITATION_NOT_REVOCABLE', 'This invitation is no longer pending. Refresh account status.')
+      }
       const updated: ApiSchema<'Profile'> = {
         ...profile,
-        status: 'disabled',
         invitation_status: 'revoked',
+        updated_at: '2026-11-17T09:30:00Z',
       }
       const idx = db.profiles.findIndex((p) => p.id === profileId)
       db.profiles[idx] = updated
@@ -1465,6 +1588,19 @@ export const saaisMswHandlers = [
     if (!body?.curriculum_term_id) {
       return errorJson(400, 'INVALID_INPUT', 'curriculum_term_id is required.')
     }
+    const db = getMockDatabase()
+    const term = db.curriculumTerms.find((item) => item.id === body.curriculum_term_id)
+    const version = db.curriculumVersions.find((item) => item.id === term?.curriculum_version_id)
+    const program = db.programs.find((item) => item.id === version?.program_id)
+    if (!term || !version || !program) {
+      return errorJson(404, 'NOT_FOUND', 'The target curriculum term was not found.')
+    }
+    if (!canAccessDepartment(auth.persona, program.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
+    }
+    if (body.course_id && !db.courses.some((course) => course.id === body.course_id)) {
+      return errorJson(400, 'INVALID_INPUT', 'The selected catalog course was not found.')
+    }
     const created: ApiSchema<'CurriculumTermCourse'> = {
       id: nextSyntheticUuid(),
       curriculum_term_id: body.curriculum_term_id,
@@ -1474,7 +1610,7 @@ export const saaisMswHandlers = [
       slot_label: body.slot_label ?? null,
       nominal_units: body.nominal_units,
     }
-    getMockDatabase().curriculumTermCourses.push(created)
+    db.curriculumTermCourses.push(created)
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -1489,6 +1625,14 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumTermCourses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum slot not found.')
+    const existing = db.curriculumTermCourses[idx]!
+    const term = db.curriculumTerms.find((item) => item.id === existing.curriculum_term_id)
+    const version = db.curriculumVersions.find((item) => item.id === term?.curriculum_version_id)
+    const program = db.programs.find((item) => item.id === version?.program_id)
+    if (!program) return errorJson(404, 'NOT_FOUND', 'The target curriculum was not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
+    }
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'CurriculumTermCourseUpdate'>
     const updated: ApiSchema<'CurriculumTermCourse'> = {
       ...db.curriculumTermCourses[idx]!,
@@ -1509,6 +1653,13 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumTermCourses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum slot not found.')
+    const term = db.curriculumTerms.find((item) => item.id === db.curriculumTermCourses[idx]?.curriculum_term_id)
+    const version = db.curriculumVersions.find((item) => item.id === term?.curriculum_version_id)
+    const program = db.programs.find((item) => item.id === version?.program_id)
+    if (!program) return errorJson(404, 'NOT_FOUND', 'The target curriculum was not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
+    }
     db.curriculumTermCourses.splice(idx, 1)
     return new HttpResponse(null, { status: 204 })
   }),
@@ -1526,6 +1677,19 @@ export const saaisMswHandlers = [
     if (!body?.code || !body?.title || !body?.department_id) {
       return errorJson(400, 'INVALID_INPUT', 'code, title, and department_id are required.')
     }
+    const db = getMockDatabase()
+    if (!db.departments.some((department) => department.id === body.department_id)) {
+      return errorJson(400, 'INVALID_INPUT', 'The requested department was not found.')
+    }
+    if (!canAccessDepartment(auth.persona, body.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Cannot create a course outside the authorized department.')
+    }
+    if (db.courses.some((course) =>
+      course.department_id === body.department_id &&
+      course.code.trim().toLowerCase() === body.code.trim().toLowerCase()
+    )) {
+      return errorJson(409, 'DUPLICATE_COURSE_CODE', 'A course with this code already exists in the department.')
+    }
     const created: ApiSchema<'Course'> = {
       id: nextSyntheticUuid(),
       department_id: body.department_id,
@@ -1537,7 +1701,7 @@ export const saaisMswHandlers = [
       status: body.status ?? 'active',
       repeatable_type: body.repeatable_type ?? 'none',
     }
-    getMockDatabase().courses.push(created)
+    db.courses.push(created)
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -1552,7 +1716,13 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, db.courses[idx]!.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course is outside the authorized department.')
+    }
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'CourseUpdate'>
+    if (body.status === 'discontinued' && db.courses[idx]!.status !== 'active') {
+      return errorJson(409, 'STALE_RECORD', 'Only an active course can be discontinued.')
+    }
     const updated: ApiSchema<'Course'> = { ...db.courses[idx]!, ...body }
     db.courses[idx] = updated
     return HttpResponse.json(updated, { status: 200 })
@@ -1569,11 +1739,21 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courses.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course not found.')
-    if (db.curriculumTermCourses.some((s) => s.course_id === id)) {
+    const course = db.courses[idx]!
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course is outside the authorized department.')
+    }
+    const offeringIds = new Set(db.courseOfferings.filter(offering => offering.course_id === id).map(offering => offering.id))
+    const hasProtectedReferences = db.curriculumTermCourses.some(slot => slot.course_id === id)
+      || db.courseOfferings.some(offering => offering.course_id === id)
+      || db.prerequisites.some(prerequisite => prerequisite.course_id === id || prerequisite.prerequisite_course_id === id)
+      || db.attempts.some(attempt => offeringIds.has(attempt.course_offering_id))
+      || db.attemptResults.some(attempt => offeringIds.has(attempt.course_offering_id))
+    if (hasProtectedReferences) {
       return errorJson(
         409,
         'DEPENDENT_RECORDS_EXIST',
-        'Cannot delete a course referenced by a curriculum slot.',
+        'Cannot delete a course referenced by curriculum, offerings, prerequisites, or attempts. Discontinue it instead.',
       )
     }
     db.courses.splice(idx, 1)
@@ -1726,16 +1906,36 @@ export const saaisMswHandlers = [
     if (!body?.school_term_id || !body?.course_id) {
       return errorJson(400, 'INVALID_INPUT', 'school_term_id and course_id are required.')
     }
+    const db = getMockDatabase()
+    const course = db.courses.find((item) => item.id === body.course_id)
+    if (!course) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course offering is outside the authorized department.')
+    }
+    if (!db.schoolTerms.some((term) => term.id === body.school_term_id)) {
+      return errorJson(404, 'NOT_FOUND', 'School term not found.')
+    }
+    if (
+      course.status === 'discontinued' &&
+      (!body.is_by_request ||
+        !isRequiredCourseInDepartment(course.id, course.department_id))
+    ) {
+      return errorJson(
+        400,
+        'INVALID_INPUT',
+        'Discontinued courses may only be offered by request when required by a department curriculum.',
+      )
+    }
     const created: ApiSchema<'CourseOffering'> = {
       id: nextSyntheticUuid(),
       school_term_id: body.school_term_id,
       course_id: body.course_id,
-      section: body.section ?? 'A',
-      schedule: body.schedule ?? 'MWF 08:00-09:00',
+      section: body.section ?? null,
+      schedule: body.schedule ?? null,
       instructor: body.instructor ?? null,
       is_by_request: body.is_by_request ?? false,
     }
-    getMockDatabase().courseOfferings.push(created)
+    db.courseOfferings.push(created)
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -1750,10 +1950,27 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courseOfferings.findIndex((o) => o.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course offering not found.')
+    const current = db.courseOfferings[idx]!
+    const course = db.courses.find((item) => item.id === current.course_id)
+    if (!course) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course offering is outside the authorized department.')
+    }
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'CourseOfferingUpdate'>
     const updated: ApiSchema<'CourseOffering'> = {
-      ...db.courseOfferings[idx]!,
+      ...current,
       ...body,
+    }
+    if (
+      course.status === 'discontinued' &&
+      (!updated.is_by_request ||
+        !isRequiredCourseInDepartment(course.id, course.department_id))
+    ) {
+      return errorJson(
+        400,
+        'INVALID_INPUT',
+        'Discontinued courses may only be offered by request when required by a department curriculum.',
+      )
     }
     db.courseOfferings[idx] = updated
     return HttpResponse.json(updated, { status: 200 })
@@ -1770,6 +1987,20 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.courseOfferings.findIndex((o) => o.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Course offering not found.')
+    const course = db.courses.find(
+      (item) => item.id === db.courseOfferings[idx]?.course_id,
+    )
+    if (!course) return errorJson(404, 'NOT_FOUND', 'Course not found.')
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(403, 'FORBIDDEN', 'Course offering is outside the authorized department.')
+    }
+    if (courseOfferingHasHistory(id)) {
+      return errorJson(
+        409,
+        'CONFLICT',
+        'Academic history or dependent advising records protect this course offering.',
+      )
+    }
     db.courseOfferings.splice(idx, 1)
     return new HttpResponse(null, { status: 204 })
   }),
@@ -1836,9 +2067,9 @@ export const saaisMswHandlers = [
               is_locked: true,
               closed_by: persona.profileId,
               closed_at: '2026-11-10T09:00:00Z',
+              closure_note: body.closure_note ?? null,
             }
           : {}),
-        closure_note: body.closure_note ?? null,
         department_closures: [closure],
       }
       db.schoolTerms[idx] = updated
@@ -1898,6 +2129,14 @@ export const saaisMswHandlers = [
     if ('response' in auth) return auth.response
     const url = new URL(request.url)
     const scope = url.searchParams.get('assignment_scope') ?? 'all'
+    const departmentId = url.searchParams.get('department_id')
+    if (departmentId && !canAccessDepartment(auth.persona, departmentId)) {
+      return errorJson(
+        403,
+        'INSUFFICIENT_PRIVILEGE',
+        'Not authorized to view this department student roster.',
+      )
+    }
 
     const db = getMockDatabase()
     const items: ApiSchema<'StudentRosterItem'>[] = []
@@ -1934,34 +2173,55 @@ export const saaisMswHandlers = [
       })
     }
     const search = url.searchParams.get('search')?.trim().toLowerCase()
-    const filtered = items.filter(item => {
+    const curriculumVersionId = url.searchParams.get('curriculum_version_id')
+    const adviserId = url.searchParams.get('adviser_id')
+    const standing = url.searchParams.get('standing')
+    const matchingItems = items.filter(item => {
       const ownAssignments = db.adviserAssignments.filter(a => a.student_id === item.student_id && a.adviser_id === auth.persona.profileId)
-      if ((scope === 'current' || scope === 'my_active_advisees') && !ownAssignments.some(a => a.end_date === null)) return false
-      if ((scope === 'past' || scope === 'my_handed_over_advisees') && (!ownAssignments.some(a => a.end_date !== null) || ownAssignments.some(a => a.end_date === null))) return false
+      const isAdviser = auth.persona.roles.includes('adviser')
+      if ((scope === 'current' || scope === 'my_active_advisees') && !(isAdviser
+        ? ownAssignments.some(a => a.end_date === null)
+        : item.assignment_status === 'active')) return false
+      if ((scope === 'past' || scope === 'my_handed_over_advisees') && !(isAdviser
+        ? ownAssignments.some(a => a.end_date !== null) && !ownAssignments.some(a => a.end_date === null)
+        : item.assignment_status === 'past')) return false
       if (scope === 'unassigned' && item.assignment_status !== 'unassigned') return false
-      if (search && !`${item.full_name} ${item.student_number}`.toLowerCase().includes(search)) return false
-      const standing = url.searchParams.get('standing')
+      if (departmentId && item.department_id !== departmentId) return false
+      if (curriculumVersionId && item.curriculum_version_id !== curriculumVersionId) return false
+      if (adviserId && item.adviser_id !== adviserId) return false
+      if (search && !`${item.full_name} ${item.student_number} ${item.email ?? ''}`.toLowerCase().includes(search)) return false
       if (standing && item.standing !== standing) return false
       return true
     })
+    const offsetValue = Number(url.searchParams.get('offset') ?? 0)
+    const limitValue = Number(url.searchParams.get('limit') ?? 20)
+    const offset = Number.isSafeInteger(offsetValue) && offsetValue >= 0
+      ? offsetValue
+      : 0
+    const limit = Number.isSafeInteger(limitValue) && limitValue > 0
+      ? Math.min(limitValue, 1000)
+      : 20
+    const pageItems = matchingItems.slice(offset, offset + limit)
+    const countStanding = (standing: ApiSchema<'StudentRosterItem'>['standing']) =>
+      matchingItems.filter((item) => item.standing === standing).length
 
     const response: ApiSchema<'StudentRosterResponse'> = {
-      total_count: filtered.length,
-      unassigned_count: filtered.filter(
+      total_count: matchingItems.length,
+      unassigned_count: matchingItems.filter(
         (i) => i.assignment_status === 'unassigned',
       ).length,
-      with_deficiencies_count: filtered.filter((i) => i.deficiencies_count > 0)
+      with_deficiencies_count: matchingItems.filter((i) => i.deficiencies_count > 0)
         .length,
-      flagged_count: filtered.filter((i) => i.open_flags_count > 0 || i.is_delinquent).length,
-      open_inc_students_count: filtered.filter((i) => i.open_inc_count > 0)
+      flagged_count: matchingItems.filter((i) => i.open_flags_count > 0).length,
+      open_inc_students_count: matchingItems.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
-        good_standing: filtered.filter(i => i.standing === 'good_standing').length,
-        warning: filtered.filter(i => i.standing === 'warning').length,
-        probation: filtered.filter(i => i.standing === 'probation').length,
-        dismissed: filtered.filter(i => i.standing === 'dismissed').length,
+        good_standing: countStanding('good_standing'),
+        warning: countStanding('warning'),
+        probation: countStanding('probation'),
+        dismissed: countStanding('dismissed'),
       },
-      items: filtered.slice(Number(url.searchParams.get('offset') ?? 0), Number(url.searchParams.get('offset') ?? 0) + Math.min(100, Number(url.searchParams.get('limit') ?? 100))),
+      items: pageItems,
     }
     return HttpResponse.json(response, { status: 200 })
   }),
@@ -3375,24 +3635,159 @@ export const saaisMswHandlers = [
       return errorJson(400, 'INVALID_INPUT', 'mode and rows are required.')
     }
     const db = getMockDatabase()
-    const valid = (r: ApiSchema<'StudentBatchImportRowInput'>) => {
-      const adviser = db.profiles.find(p => p.id === r.adviser_id && p.status === 'active' && p.roles?.includes('adviser'))
-      const program = db.programs.find(p => p.id === r.program_id)
-      return Boolean(adviser && program && adviser.department_id === program.department_id && db.curriculumVersions.some(c => c.id === r.curriculum_version_id && c.program_id === r.program_id && c.status === 'active'))
+    const seenNumbers = new Set<string>()
+    const seenEmails = new Set<string>()
+    const checks = body.rows.map((row) => {
+      const program = db.programs.find((item) => item.id === row.program_id)
+      const department = db.departments.find(
+        (item) => item.id === program?.department_id,
+      )
+      if (
+        program &&
+        !auth.persona.roles.includes('admin') &&
+        !canAccessDepartment(auth.persona, program.department_id)
+      ) {
+        return { row, error: 'The program is outside your authorized department.' as const, program: null, department: null, adviser: null }
+      }
+
+      const adviser = db.profiles.find(
+        (item) =>
+          item.id === row.adviser_id &&
+          item.status === 'active' &&
+          (item.roles ?? [item.role]).includes('adviser'),
+      )
+      const curriculum = db.curriculumVersions.find(
+        (item) =>
+          item.id === row.curriculum_version_id &&
+          item.program_id === row.program_id &&
+          item.status === 'active',
+      )
+      const normalizedEmail = row.email.trim().toLowerCase()
+      const duplicateNumber =
+        seenNumbers.has(row.student_number) ||
+        db.profiles.some((profile) => profile.student_number === row.student_number)
+      const duplicateEmail =
+        seenEmails.has(normalizedEmail) ||
+        db.profiles.some((profile) => profile.email.toLowerCase() === normalizedEmail)
+      seenNumbers.add(row.student_number)
+      seenEmails.add(normalizedEmail)
+
+      let error: string | null = null
+      if (!/^\d{2}-\d-\d{5}$/.test(row.student_number)) {
+        error = 'Student number must follow YY-N-NNNNN.'
+      } else if (duplicateNumber) {
+        error = 'Student number already exists.'
+      } else if (duplicateEmail) {
+        error = 'Institutional email already exists.'
+      } else if (!program || !department || !curriculum) {
+        error = 'A matching active program and curriculum are required.'
+      } else if (
+        !adviser ||
+        adviser.department_id !== program.department_id ||
+        !canAccessDepartment(auth.persona, program.department_id)
+      ) {
+        error = 'An eligible active adviser in the authorized department is required.'
+      }
+
+      return { row, error, program, department, adviser }
+    })
+    const unauthorized = checks.find(
+      (check) => check.error === 'The program is outside your authorized department.',
+    )
+    if (unauthorized) {
+      return errorJson(403, 'INSUFFICIENT_PRIVILEGE', unauthorized.error)
     }
-    const validCount = body.rows.filter(valid).length
+
+    const validChecks = checks.filter((check) => check.error === null)
+    const validCount = validChecks.length
+    if (body.mode === 'commit') {
+      const createdAt = '2026-11-10T09:00:00Z'
+      const importedByCurriculum = new Map<string, number>()
+      for (const { row, program, department, adviser } of validChecks) {
+        if (!program || !department || !adviser) continue
+        const studentId = nextSyntheticUuid()
+        const assignmentId = nextSyntheticUuid()
+        db.profiles.push({
+          id: studentId,
+          role: 'student',
+          roles: ['student'],
+          email: row.email.trim(),
+          full_name: row.full_name.trim(),
+          student_number: row.student_number,
+          status: 'active',
+          created_at: createdAt,
+          updated_at: createdAt,
+          faculty_id: department.faculty_id,
+          department_id: department.id,
+          avatar_url: null,
+          consultation_hours: null,
+        })
+        db.roleAssignments.push({
+          id: nextSyntheticUuid(),
+          profile_id: studentId,
+          role: 'student',
+          faculty_id: department.faculty_id,
+          department_id: department.id,
+          created_at: createdAt,
+        })
+        db.studentCurriculumAssignments.push({
+          id: assignmentId,
+          student_id: studentId,
+          curriculum_version_id: row.curriculum_version_id,
+          start_date: '2026-11-10',
+          end_date: null,
+          change_note: 'Initial curriculum assignment',
+          created_at: createdAt,
+        })
+        importedByCurriculum.set(
+          row.curriculum_version_id,
+          (importedByCurriculum.get(row.curriculum_version_id) ?? 0) + 1,
+        )
+        db.studentOrganizations.push({
+          student_id: studentId,
+          student_curriculum_assignment_id: assignmentId,
+          curriculum_version_id: row.curriculum_version_id,
+          program_id: program.id,
+          department_id: department.id,
+          faculty_id: department.faculty_id,
+          adviser_id: adviser.id,
+          entry_year: row.entry_year ?? null,
+        })
+        db.adviserAssignments.push({
+          id: nextSyntheticUuid(),
+          student_id: studentId,
+          adviser_id: adviser.id,
+          adviser_name: adviser.full_name,
+          adviser_email: adviser.email,
+          adviser_faculty_name: null,
+          adviser_consultation_hours: adviser.consultation_hours ?? null,
+          start_date: '2026-11-10',
+          end_date: null,
+          handed_over_to_adviser_id: null,
+          handed_over_to_name: null,
+          handover_label: null,
+          created_at: createdAt,
+        })
+      }
+      db.curriculumVersions = db.curriculumVersions.map((version) => ({
+        ...version,
+        enrolled_student_count:
+          version.enrolled_student_count + (importedByCurriculum.get(version.id) ?? 0),
+      }))
+    }
+
     const res: ApiSchema<'StudentBatchImportResponse'> = {
       mode: body.mode,
       valid_count: validCount,
       warning_count: 0,
       error_count: body.rows.length - validCount,
       imported_count: body.mode === 'commit' ? validCount : 0,
-      results: body.rows.map((r) => ({
-        row_number: r.row_number,
-        student_number: r.student_number,
-        email: r.email,
-        outcome: valid(r) ? (body.mode === 'commit' ? 'imported' : 'valid') : 'error',
-        message: valid(r) ? 'Validated successfully.' : 'An eligible active adviser and matching active curriculum are required.',
+      results: checks.map(({ row, error }) => ({
+        row_number: row.row_number,
+        student_number: row.student_number,
+        email: row.email,
+        outcome: error ? 'error' : body.mode === 'commit' ? 'imported' : 'valid',
+        message: error ?? 'Validated successfully.',
       })),
     }
     return HttpResponse.json(res, { status: 200 })

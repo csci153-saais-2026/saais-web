@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import rawCollection from "../../contract/postman/saais-api.postman_collection.json";
 import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
 import { saaisMockServer } from "./node";
-import { resetMockDatabase } from "./store";
+import { getMockDatabase, resetMockDatabase } from "./store";
 
 interface PostmanHeader {
   key: string;
@@ -125,6 +125,56 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
       resetMockDatabase();
       const req = item.request!;
       const [rawUrl, init] = buildRequest(req, env);
+
+      // The collection's deleteCourse success example names this ID as
+      // unreferenced, but the shared persona database also uses it in
+      // curriculum/history records. Isolate the success scenario as the
+      // collection describes; history-protected deletion is covered elsewhere.
+      if (
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteCourse)")
+      ) {
+        const db = getMockDatabase();
+        const courseId = new URL(rawUrl).pathname.split("/").at(-1);
+        const offeringIds = new Set(
+          db.courseOfferings
+            .filter((offering) => offering.course_id === courseId)
+            .map((offering) => offering.id),
+        );
+        db.curriculumTermCourses = db.curriculumTermCourses.filter(
+          (slot) => slot.course_id !== courseId,
+        );
+        db.prerequisites = db.prerequisites.filter(
+          (relationship) =>
+            relationship.course_id !== courseId &&
+            relationship.prerequisite_course_id !== courseId,
+        );
+        db.courseOfferings = db.courseOfferings.filter(
+          (offering) => offering.course_id !== courseId,
+        );
+        db.attempts = db.attempts.filter(
+          (attempt) => !offeringIds.has(attempt.course_offering_id),
+        );
+        db.attemptResults = db.attemptResults.filter(
+          (attempt) => !offeringIds.has(attempt.course_offering_id),
+        );
+      }
+      if (
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteCourseOffering)")
+      ) {
+        const db = getMockDatabase();
+        const offeringId = new URL(rawUrl).pathname.split("/").at(-1);
+        db.attempts = db.attempts.filter(
+          (attempt) => attempt.course_offering_id !== offeringId,
+        );
+        db.attemptResults = db.attemptResults.filter(
+          (attempt) => attempt.course_offering_id !== offeringId,
+        );
+        db.advisingPlanItems = db.advisingPlanItems.filter(
+          (item) => item.course_offering_id !== offeringId,
+        );
+      }
 
       const response = await fetch(rawUrl, init);
 
