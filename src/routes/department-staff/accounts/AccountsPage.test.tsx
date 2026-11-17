@@ -364,6 +364,8 @@ describe('Department Staff accounts directory', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Add account' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'Staff User' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: MOCK_PERSONAS.department_staff.email } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Adviser' }))
     fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
 
     expect((await screen.findByRole('alert')).textContent).toContain('You cannot grant roles to your own account.')
