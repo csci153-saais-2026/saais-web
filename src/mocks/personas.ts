@@ -21,6 +21,7 @@ export const MOCK_IDS = {
 
   curriculumBscs2024: '40000000-0000-4000-8000-000000000001',
   curriculumBscs2020: '40000000-0000-4000-8000-000000000002',
+  curriculumBscsDraft: '40000000-0000-4000-8000-000000000003',
 
   curriculumTerm1Y1S: '41000000-0000-4000-8000-000000000001',
   curriculumTerm1Y2S: '41000000-0000-4000-8000-000000000002',
@@ -50,6 +51,7 @@ export const MOCK_IDS = {
 
   deptEncodingDcstOpen: '61000000-0000-4000-8000-000000000001',
 
+  offeringCsci101: '62000000-0000-4000-8000-000000000005',
   offeringCsci153: '62000000-0000-4000-8000-000000000001',
   offeringCsci198: '62000000-0000-4000-8000-000000000002',
   offeringCsci102: '62000000-0000-4000-8000-000000000003',
@@ -95,6 +97,7 @@ export const MOCK_IDS = {
 } as const
 
 export type MockPersonaKey =
+  | `student_sample_${number}`
   | 'student'
   | 'student_secondary'
   | 'student_other_dept'
@@ -126,6 +129,18 @@ export interface MockPersona {
 }
 
 export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
+  ...Object.fromEntries(Array.from({ length: 24 }, (_, index) => {
+    const serial = index + 1
+    const key: MockPersonaKey = `student_sample_${serial}`
+    const profileId = `00000000-0000-4000-8001-${String(serial).padStart(12, '0')}`
+    return [key, {
+      key, profileId, email: `sample.student${String(serial).padStart(2, '0')}@vsu.edu.ph`,
+      fullName: `Sample Student ${String(serial).padStart(2, '0')}`, primaryRole: 'student',
+      roles: ['student'], roleScopes: [{ role: 'student', scope_type: 'department', scope_id: MOCK_IDS.deptDcst }],
+      facultyId: MOCK_IDS.facultyComputing, departmentId: MOCK_IDS.deptDcst,
+      token: `mock-jwt:${key}:${profileId}`,
+    } satisfies MockPersona]
+  })),
   student: {
     key: 'student',
     profileId: MOCK_IDS.studentPrimary,

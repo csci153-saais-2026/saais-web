@@ -1,6 +1,15 @@
 import { FlagIcon, GridIcon, PencilIcon, UploadIcon, UsersIcon } from "@/components/icons"
 import type { NavSection } from "@/components/features/sidebar"
 
+export const adviserRecordSections: Readonly<Record<string, string>> = {
+  checklist: "Checklist",
+  grades: "Grades",
+  curriculum: "Curriculum",
+  advising: "Advising",
+  notes: "Notes",
+  history: "Audit log",
+}
+
 export const adviserNav: NavSection = {
   title: "Adviser",
   items: [
