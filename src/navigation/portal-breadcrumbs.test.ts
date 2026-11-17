@@ -15,3 +15,26 @@ describe('student record route labels', () => {
     expect(crumbs[2].to).toBe('/adviser/advisee/selected-id')
   })
 })
+
+describe('dean portal breadcrumbs', () => {
+  it('labels top-level dean routes from navigation config', () => {
+    const crumbs = getPortalBreadcrumbs(
+      '/dean/reports', 'dean', 'Office of the Dean', '/dean/reports', '',
+    )
+    expect(crumbs).toEqual([
+      { label: 'Office of the Dean', to: '/dean/reports' },
+      { label: 'Faculty reports' },
+    ])
+  })
+
+  it('builds a three-level trail for dean student detail records', () => {
+    const crumbs = getPortalBreadcrumbs(
+      '/dean/students/23-1-01234', 'dean', 'Office of the Dean', '/dean/reports', '',
+    )
+    expect(crumbs).toEqual([
+      { label: 'Office of the Dean', to: '/dean/reports' },
+      { label: 'Students', to: '/dean/students' },
+      { label: '23-1-01234' },
+    ])
+  })
+})
