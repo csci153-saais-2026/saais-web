@@ -3,9 +3,10 @@ import type { ApiSchema } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Panel } from '@/components/features/panel'
 import { completeInc } from '../advisees/checklist/record.api'
-import { saveTermGrades } from './encode.api'
+import { deleteTermAttempt, saveTermGrades, type getTermOfferings } from './encode.api'
 import { GradeSelect } from '../GradeSelect'
-import { outcomeRemark } from './grade-encoding'
+import { outcomeRemark, outcomeStatus } from './grade-encoding'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 type GradeData = Awaited<ReturnType<typeof import('../advisees/checklist/record.api').getGrades>>
@@ -29,7 +30,7 @@ function PendingInc({ studentId, attempt, title, termLabel, studentName, onSaved
     </DialogContent></Dialog>
   </div>
 }
-function ExistingAttempt({ studentId, termId, attempt, title, onSaved }: { studentId: string; termId: string; attempt: ApiSchema<'AttemptResult'>; title: string; onSaved: () => void }) {
+function ExistingAttempt({ studentId, termId, attempt, title, instructorOptions, onSaved }: { studentId: string; termId: string; attempt: ApiSchema<'AttemptResult'>; title: string; instructorOptions: string[]; onSaved: () => void }) {
   const initialOutcome = outcomeRemark(attempt.recorded_status === 'dr' ? 'dr' : attempt.recorded_status === 'inc' && attempt.completion_grade == null ? 'inc' : (attempt.completion_grade ?? attempt.final_grade)?.toFixed(2) ?? '')
   const [midterm, setMidterm] = useState(''); const [final, setFinal] = useState(''); const [instructor, setInstructor] = useState(''); const [remark, setRemark] = useState(initialOutcome)
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [review, setReview] = useState(false)
@@ -53,11 +54,18 @@ function ExistingAttempt({ studentId, termId, attempt, title, onSaved }: { stude
   const displayedMidterm = attempt.midterm_status === 'dr' ? 'DR' : attempt.midterm_grade == null ? '—' : attempt.midterm_grade.toFixed(2)
   const displayedFinal = attempt.recorded_status === 'dr' ? 'DR' : attempt.recorded_status === 'inc' && attempt.completion_grade == null ? 'INC' : (attempt.completion_grade ?? attempt.final_grade)?.toFixed(2) ?? '—'
   const [code, ...name] = title.split(' · ')
+  const shownStatus = attempt.recorded_status === 'currently_enrolled' ? (final ? outcomeStatus(final) : 'enrolled' as const) : attempt.recorded_status === 'inc' && attempt.completion_grade == null ? 'inc' as const : attempt.effective_status === 'passed' || attempt.effective_status === 'failed' ? attempt.effective_status : outcomeStatus(attempt.recorded_status)
+  async function remove() {
+    setError(''); setBusy(true)
+    try { await deleteTermAttempt(studentId, attempt.id); onSaved() }
+    catch (e) { setError(e instanceof Error ? e.message : 'Unable to remove this course.') }
+    finally { setBusy(false) }
+  }
   return <form aria-label={`Edit ${title}`} onSubmit={save} className="grid gap-3 border-b border-border px-3 py-2 sm:grid-cols-2 lg:grid-cols-[minmax(160px,2fr)_minmax(160px,2fr)_110px_110px_minmax(150px,2.8fr)_28px] lg:items-center"><div><strong>{code}</strong>{name.length > 0 && <span className="block text-xs text-muted-foreground">{name.join(' · ')}</span>}</div>
-    {attempt.instructor ? <label><span className="sr-only">Instructor for {title}</span><select className="w-full rounded-md border border-border bg-card px-3 py-2" value={attempt.instructor} disabled><option>{attempt.instructor}</option></select></label> : <label><span className="sr-only">Instructor for {title}</span><input className="w-full rounded-md border border-border p-2" value={instructor} onChange={e=>{setInstructor(e.target.value);setReview(false)}} /></label>}
+    {attempt.instructor ? <label><span className="sr-only">Instructor for {title}</span><select className="w-full rounded-md border border-border bg-card px-3 py-2" value={attempt.instructor} disabled><option>{attempt.instructor}</option></select></label> : <label><span className="sr-only">Instructor for {title}</span><select className="w-full rounded-md border border-border bg-card p-2" value={instructor} onChange={e=>{setInstructor(e.target.value);setReview(false)}}><option value="">Select instructor</option>{instructorOptions.map(name => <option key={name} value={name}>{name}</option>)}</select></label>}
     {allowMidterm ? <label><span className="sr-only">New midterm grade</span><GradeSelect allowDrop placeholder="—" value={midterm} onChange={e=>{const value=e.target.value;setMidterm(value);if(value==='dr'){setFinal('dr');setRemark('DR')}else if(midterm==='dr'){setFinal('');setRemark('')}setReview(false)}} /></label> : <label><span className="sr-only">Midterm for {title}</span><GradeSelect allowDrop disabled placeholder="—" value={displayedMidterm === 'DR' ? 'dr' : displayedMidterm === '—' ? '' : displayedMidterm} /></label>}
     {allowFinal ? <label><span className="sr-only">New final grade</span><GradeSelect vsuScale includeStatuses disableDrop={midterm!=='dr'} disabled={midterm==='dr'} placeholder="—" value={final} onChange={e=>{setFinal(e.target.value);setRemark(outcomeRemark(e.target.value));setReview(false)}} /></label> : <label><span className="sr-only">Final for {title}</span><GradeSelect includeStatuses disabled placeholder="—" value={displayedFinal === 'DR' ? 'dr' : displayedFinal === 'INC' ? 'inc' : displayedFinal === '—' ? '' : displayedFinal} /></label>}
-    <label><span className="sr-only">Staff remark</span><input className="w-full rounded-md border border-border p-2" value={remark} onChange={e=>{setRemark(e.target.value);setReview(false)}} /></label><span />
+    <div aria-label={`Status for ${title}`}>{shownStatus ? <StatusBadge status={shownStatus} /> : <span className="text-muted-foreground">—</span>}</div><Button type="button" variant="ghost" size="icon-sm" className="justify-self-end" aria-label={`Remove ${code}`} title="Remove this course" disabled={busy} onClick={() => void remove()}>×</Button>
     <p className="sr-only">Previously recorded grades are changed through the grade correction workflow.</p>
     {review && <p className="sm:col-span-2 lg:col-span-6">Review this attempt for the selected student and term before confirming.</p>}{error && <p role="alert" className="sm:col-span-2 lg:col-span-6">{error}</p>}{changed && <div className="flex justify-end sm:col-span-2 lg:col-span-6"><Button disabled={busy} type="submit" size="sm">{busy ? 'Saving…' : review ? 'Confirm this attempt' : 'Review this attempt'}</Button></div>}
   </form>
@@ -66,7 +74,7 @@ export function PendingIncs({ data, studentId, onSaved }: { data: GradeData; stu
   const pending = data.terms.flatMap(term => term.attempts).filter(a => a.recorded_status === 'inc' && a.completion_grade == null)
   return <Panel className="min-w-0 h-full mb-0 lg:col-start-2 lg:row-start-1" title="INC resolution" description="Pending incomplete grades for the advisee chosen in the card on the left.">{pending.length ? pending.map(a => { const term = data.terms.find(item => item.attempts.some(attempt => attempt.id === a.id)); return <PendingInc key={a.id} studentId={studentId} studentName={data.studentName} attempt={a} title={labelFor(a, data)} termLabel={term ? `${term.school_year} · ${term.term_type}` : undefined} onSaved={onSaved} /> }) : <p>No pending INC records.</p>}</Panel>
 }
-export function ExistingCourseRows({ data, studentId, termId, onSaved }: { data: GradeData; studentId: string; termId: string; isMockMode: boolean; onSaved: () => void }) {
+export function ExistingCourseRows({ data, offerings, studentId, termId, onSaved }: { data: GradeData; offerings: Awaited<ReturnType<typeof getTermOfferings>>; studentId: string; termId: string; isMockMode: boolean; onSaved: () => void }) {
   const existing = data.terms.find(term => term.school_term_id === termId)?.attempts ?? []
-  return <>{existing.map(a => <ExistingAttempt key={a.id} studentId={studentId} termId={termId} attempt={a} title={labelFor(a, data)} onSaved={onSaved} />)}</>
+  return <>{existing.map(a => <ExistingAttempt key={a.id} studentId={studentId} termId={termId} attempt={a} title={labelFor(a, data)} instructorOptions={offerings.find(o => o.offering.id === a.course_offering_id)?.instructor_options ?? []} onSaved={onSaved} />)}</>
 }
