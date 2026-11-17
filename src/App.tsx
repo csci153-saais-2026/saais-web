@@ -4,6 +4,9 @@ import { AuthProvider } from '@/context/AuthProvider'
 import { DevRoleSwitcher } from '@/components/DevRoleSwitcher'
 import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
 
 const StyleguidePage = lazy(() => import('@/routes/styleguide/StyleguidePage'))
 const LoginPage = lazy(() => import('@/routes/auth/LoginPage'))
@@ -25,6 +28,7 @@ const DepartmentStaffPortal = lazy(
 )
 const DeanPortal = lazy(() => import('@/routes/dean/DeanPortal'))
 const AdminPortal = lazy(() => import('@/routes/admin/AdminPortal'))
+const NotificationsPage = lazy(() => import('@/routes/notifications/NotificationsPage'))
 
 function Home() {
   return (
@@ -53,6 +57,7 @@ function Home() {
 
 function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <BrowserRouter>
         <Suspense fallback={<div className="p-8 text-muted-foreground">Loading…</div>}>
@@ -71,6 +76,7 @@ function App() {
             {/* Authenticated shell wrapping all protected portals and settings */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AuthenticatedPortalLayout />}>
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<ChangePasswordPage />} />
                 <Route path="/change-password" element={<Navigate to="/settings" replace />} />
 
@@ -106,6 +112,7 @@ function App() {
         <DevRoleSwitcher />
       </BrowserRouter>
     </AuthProvider>
+    </QueryClientProvider>
   )
 }
 

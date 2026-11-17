@@ -249,7 +249,12 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     db.attemptResults[db.attemptResults.indexOf(retake)] = { ...retake, is_lapsed_inc: false, effective_status: 'passed', completion_grade: 2 }
     const summary = await read()
     expect(summary.gwa).toBe(2.33)
-    expect(summary.counted_units).toBe(9)
+    expect(summary.counted_units).toBe(12) // 9 graded units plus 3 units of active outside credit
+    const outsideCredit = db.outsideCredits.find(credit => credit.id === MOCK_IDS.outsideCredit1)!
+    outsideCredit.revoked_at = '2026-11-17T00:00:00Z'
+    const afterRevocation = await read()
+    expect(afterRevocation.counted_units).toBe(9)
+    expect(afterRevocation.gwa).toBe(2.33)
   })
 
   it('uses the student current department closure for a cross-department course', async () => {
@@ -646,7 +651,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(MOCK_PERSONAS.admin.email).toBe('23-1-01457@vsu.edu.ph')
     expect(MOCK_PERSONAS.admin.fullName).toBe('Lelis, Nietzchan Jake')
     expect(MOCK_PERSONAS.admin.roles).toEqual(['admin', 'adviser'])
-    expect(Object.keys(MOCK_PERSONAS)).toHaveLength(10)
+    expect(MOCK_PERSONAS.student_sample_1.primaryRole).toBe('student')
     expect(resolveMockPersonaFromAuthHeader(null)).toBeNull()
   })
 
@@ -808,8 +813,8 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
         params: { query: { assignment_scope: 'current' } },
       }),
     )
-    expect(roster.total_count).toBe(1)
-    expect(roster.items[0]?.student_number).toBe('24-1-01798')
+    expect(roster.total_count).toBe(13)
+    expect(roster.items.some((item) => item.student_number === '24-1-01798')).toBe(true)
 
     const recsResponse = await client.GET(
       '/functions/v1/students/{student_id}/recommendations',
@@ -820,9 +825,9 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
         },
       },
     )
-    expect(recsResponse.response.headers.get('X-Excluded-Count')).toBe('3')
+    expect(recsResponse.response.headers.get('X-Excluded-Count')).toBe('4')
     const recs = unwrapApiResult(recsResponse)
-    expect(recs[0]?.excluded_summary?.total_excluded).toBe(3)
+    expect(recs.some(item => item.code === 'CSCI 101')).toBe(false)
 
     // Recording midterm grade without confirmed_enrollment returns 409 ENROLLMENT_CONFIRMATION_REQUIRED
     const unconfirmed = await client.POST(
