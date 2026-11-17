@@ -1,19 +1,20 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { ApiSchema } from '@/lib/api'
 import Encode from './AdviserEncodeGrades'
-import { getEncodingChoices, getTermOfferings, saveTermGrades } from './encode.api'
+import { getElectiveSlots, getEncodingChoices, getTermOfferings, saveTermGrades } from './encode.api'
 import { completeInc, getGrades } from '../advisees/checklist/record.api'
 
 const auth = vi.hoisted(() => ({ user: { id: 'adviser-one' }, isMockMode: true }))
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => auth }))
 vi.mock('../Adviser', () => ({ AdviserPage: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
-vi.mock('./encode.api', () => ({ getEncodingChoices: vi.fn(), getTermOfferings: vi.fn(), saveTermGrades: vi.fn() }))
+vi.mock('./encode.api', () => ({ getElectiveSlots: vi.fn(), getEncodingChoices: vi.fn(), getTermOfferings: vi.fn(), saveTermGrades: vi.fn() }))
 vi.mock('../advisees/checklist/record.api', () => ({ getGrades: vi.fn(), completeInc: vi.fn() }))
 const attempt = { id:'attempt-one',student_id:'student-one',course_offering_id:'offering-one',recorded_status:'inc',effective_status:'inc',inc_deadline:'2027-05-30',midterm_status:'graded',midterm_grade:2,final_grade:null,completion_grade:null,revision:1,units_attempted:3,is_lapsed_inc:false,is_repeated:false,counts_toward_cumulative_gwa:false,gwa_grade:null } as ApiSchema<'AttemptResult'>
 const data = { terms:[{school_term_id:'term-one',school_year:'2026',term_type:'1st Semester',chronological_key:1,gwa:null,attempts:[attempt]}],offerings:[{id:'offering-one',course_id:'course-one'}],courses:[{id:'course-one',code:'CS 1',title:'Computing'}],canEdit:true } as unknown as Awaited<ReturnType<typeof getGrades>>
 const choices = { students:[{student_id:'student-one',full_name:'Student One',student_number:'01'},{student_id:'student-two',full_name:'Student Two',student_number:'02'}],terms:[{id:'term-one',school_year:'2026',term_type:'1st Semester'}] } as Awaited<ReturnType<typeof getEncodingChoices>>
+beforeEach(()=>{vi.mocked(getElectiveSlots).mockResolvedValue([])})
 afterEach(()=>{cleanup();vi.resetAllMocks();auth.user={id:'adviser-one'};auth.isMockMode=true})
 describe('encoding workspace identity',()=>{
  it('preselects only a student in the current adviser roster',async()=>{
