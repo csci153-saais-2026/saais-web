@@ -6,32 +6,33 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { todayInManila } from "../shared/preview-state"
+import type { DepartmentAdviser } from "../shared/dh-api"
+import { todayInManila } from "../shared/dh-utils"
 import type { ReassignmentInput } from "./assignment-model"
 
 type Props = {
   studentIds: string[]
-  advisers: string[]
+  advisers: DepartmentAdviser[]
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (input: ReassignmentInput) => void
+  onConfirm: (input: ReassignmentInput) => Promise<void>
 }
 
 /** Mount a fresh dialog for each selection so cancelled form values cannot leak to another group. */
 export function ReassignAdviserDialog({ studentIds, advisers, open, onOpenChange, onConfirm }: Props) {
-  const [adviser, setAdviser] = useState("")
+  const [adviserId, setAdviserId] = useState("")
   const [effectiveDate, setEffectiveDate] = useState(todayInManila)
   const [reason, setReason] = useState("")
   const [error, setError] = useState("")
   const future = effectiveDate > todayInManila()
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     try {
-      onConfirm({ studentIds, adviser, effectiveDate, reason })
+      await onConfirm({ studentIds, adviserId, effectiveDate, reason })
       onOpenChange(false)
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "The sample reassignment could not be applied.")
+      setError(failure instanceof Error ? failure.message : "The reassignment could not be applied.")
     }
   }
 
@@ -41,15 +42,15 @@ export function ReassignAdviserDialog({ studentIds, advisers, open, onOpenChange
         <DialogHeader>
           <DialogTitle>Reassign selected students</DialogTitle>
           <DialogDescription>
-            {studentIds.length} selected student{studentIds.length === 1 ? "" : "s"}. The current and previous adviser remain visible in this preview.
+            {studentIds.length} selected student{studentIds.length === 1 ? "" : "s"}.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} noValidate className="grid gap-4">
           <FormField label="New adviser" htmlFor="reassignment-adviser">
-            <Select value={adviser} onValueChange={setAdviser}>
+            <Select value={adviserId} onValueChange={setAdviserId}>
               <SelectTrigger id="reassignment-adviser" className="w-full"><SelectValue placeholder="Choose an adviser" /></SelectTrigger>
               <SelectContent>
-                {advisers.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                {advisers.map((adviser) => <SelectItem key={adviser.id} value={adviser.id}>{adviser.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </FormField>

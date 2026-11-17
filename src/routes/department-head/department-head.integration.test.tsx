@@ -2,9 +2,12 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import App from "@/App"
 import { setMockSessionToken } from "@/lib/api"
-import type { SyntheticPersonaKey } from "@/lib/auth/mock-auth-service"
-import { SAMPLE_AUDIT_EVENTS } from "./audit-log/audit-data"
+import { SYNTHETIC_DEPT_HEAD_ONLY_ID, type SyntheticPersonaKey } from "@/lib/auth/mock-auth-service"
+import { getMockDatabase, MOCK_IDS, MOCK_PERSONAS } from "@/mocks"
+import { getAuditEvents } from "./shared/dh-api"
+import { setupDepartmentHeadMockApi } from "./test-utils"
 
+setupDepartmentHeadMockApi()
 beforeEach(() => vi.stubEnv("VITE_API_MODE", "mock"))
 afterEach(() => {
   cleanup()
@@ -24,22 +27,22 @@ function openPortal(path: string, persona: SyntheticPersonaKey | null = "departm
   render(<App />)
 }
 
-describe("Department Head preview integration", () => {
-  it("retains an applied reassignment across pages and records its sample audit event", async () => {
+describe("Department Head integration", () => {
+  it("retains an applied reassignment across pages and records its audit event", async () => {
     openPortal("/department-head/adviser-assignments")
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Select Ana Marie Santos" }))
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Select Sta. Agata, Jerome Daniel S." }))
     fireEvent.click(screen.getByRole("button", { name: "Reassign selected" }))
     const dialog = screen.getByRole("dialog")
     fireEvent.keyDown(within(dialog).getByRole("combobox", { name: "New adviser" }), { key: "ArrowDown" })
-    fireEvent.click(await screen.findByRole("option", { name: "Prof. Marco Villanueva" }))
-    fireEvent.change(within(dialog).getByLabelText("Reason for reassignment"), { target: { value: "Demo workload adjustment" } })
+    fireEvent.click(await screen.findByRole("option", { name: "Coting, Eulo Rod M." }))
+    fireEvent.change(within(dialog).getByLabelText("Reason for reassignment"), { target: { value: "Workload adjustment" } })
     fireEvent.click(within(dialog).getByRole("button", { name: "Apply reassignment" }))
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     fireEvent.click(screen.getByRole("link", { name: "Students" }))
-    const row = await screen.findByRole("row", { name: /Ana Marie Santos/ })
-    expect(within(row).getByText("Prof. Marco Villanueva")).toBeTruthy()
+    const row = await screen.findByRole("row", { name: /Sta\. Agata, Jerome Daniel S\./ })
+    await waitFor(() => expect(within(row).getByText("Coting, Eulo Rod M.")).toBeTruthy())
     fireEvent.click(screen.getByRole("link", { name: "Audit log" }))
-    expect(await screen.findByText(/Reassigned to Prof. Marco Villanueva effective/)).toBeTruthy()
+    expect(await screen.findByText(/Reassigned to Coting, Eulo Rod M\. effective/)).toBeTruthy()
   })
 
   it.each([
@@ -90,15 +93,24 @@ describe("Department Head preview integration", () => {
     expect(document.querySelectorAll('[data-slot="sidebar-wrapper"]')).toHaveLength(1)
   })
 
-  it("shares notification read state between the list and the top bar", async () => {
+  it("shares API notification state between the list and the top bar", async () => {
+    // Test-local notifications for the signed-in department head; the shared store is reset before every test.
+    getMockDatabase().notifications.push(...[SYNTHETIC_DEPT_HEAD_ONLY_ID, MOCK_PERSONAS.department_head.profileId].flatMap((recipient, who) => [1, 2].map((index) => ({
+      id: `00000000-0000-4000-8000-0000000009${who}${index}`, recipient_id: recipient, kind: "transfer" as const,
+      event_type: "curriculum_transfer_endorsed" as const, title: `Transfer request ${index}`, body: "An adviser endorsed a curriculum transfer.",
+      target_route: "/department-head/curriculum-transfers", target_student_id: null, actor_id: MOCK_IDS.adviserPrimary,
+      entity_type: "curriculum_transfer_request", entity_id: null, dedupe_key: null, email_delivery_status: "sent" as const,
+      is_read: false, read_at: null, created_at: `2026-11-1${index}T08:00:00Z`,
+    }))))
     openPortal("/department-head/notifications")
     await screen.findByRole("heading", { name: "Notifications" })
-    expect(screen.getByRole("button", { name: "Notifications, 2 unread" })).toBeTruthy()
-    fireEvent.click(screen.getByRole("button", { name: "Mark all as read" }))
-    expect(screen.getByText("You are all caught up.")).toBeTruthy()
+    await screen.findByRole("button", { name: "Unread (2)" })
+    expect(await screen.findByRole("button", { name: "Notifications, 2 unread" })).toBeTruthy()
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark read" })[0])
+    await screen.findByRole("button", { name: "Unread (1)" })
     fireEvent.click(screen.getByRole("link", { name: "Students" }))
     await screen.findByRole("heading", { name: "Students" })
-    expect(screen.getByRole("button", { name: "Notifications" })).toBeTruthy()
+    expect(await screen.findByRole("button", { name: "Notifications, 1 unread" })).toBeTruthy()
   })
 
   it("opens reports from the sidebar at the canonical URL", async () => {
@@ -112,31 +124,32 @@ describe("Department Head preview integration", () => {
   })
 
   it("opens the read-only checklist without adding an audit event", async () => {
+    const before = (await getAuditEvents()).length
     openPortal("/department-head/students")
-    fireEvent.click(await screen.findByRole("button", { name: "View Sofia Isabel Garcia checklist" }))
-    const dialog = screen.getByRole("dialog", { name: "Sofia Isabel Garcia · Checklist" })
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close preview" }))
+    fireEvent.click(await screen.findByRole("button", { name: "View Sta. Agata, Jerome Daniel S. checklist" }))
+    const dialog = await screen.findByRole("dialog", { name: "Sta. Agata, Jerome Daniel S. · Checklist" })
+    await within(dialog).findByText(/Year 1 · Semester 1/)
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "Close" }).at(-1)!)
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     fireEvent.click(screen.getByRole("link", { name: "Audit log" }))
-    const count = SAMPLE_AUDIT_EVENTS.length
-    expect(await screen.findByText(`${count} matching events of ${count}`)).toBeTruthy()
+    expect(await screen.findByText(`${before} matching ${before === 1 ? "event" : "events"} of ${before}`)).toBeTruthy()
   })
 
   it("keeps a selected adviser filter visible after all their students move", async () => {
     openPortal("/department-head/adviser-assignments")
     fireEvent.keyDown(await screen.findByRole("combobox", { name: "Adviser" }), { key: "ArrowDown" })
-    fireEvent.click(await screen.findByRole("option", { name: "Dr. Elena Reyes" }))
+    fireEvent.click(await screen.findByRole("option", { name: "Coting, Eulo Rod M." }))
     fireEvent.click(screen.getByRole("checkbox", { name: "Select all visible students" }))
     fireEvent.click(screen.getByRole("button", { name: "Reassign selected" }))
     const dialog = screen.getByRole("dialog")
     fireEvent.keyDown(within(dialog).getByRole("combobox", { name: "New adviser" }), { key: "ArrowDown" })
-    fireEvent.click(await screen.findByRole("option", { name: "Prof. Marco Villanueva" }))
-    fireEvent.change(within(dialog).getByLabelText("Reason for reassignment"), { target: { value: "Demo roster redistribution" } })
+    fireEvent.click(await screen.findByRole("option", { name: "Polo, Marco Antonio P." }))
+    fireEvent.change(within(dialog).getByLabelText("Reason for reassignment"), { target: { value: "Roster redistribution" } })
     fireEvent.click(within(dialog).getByRole("button", { name: "Apply reassignment" }))
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
-    expect(screen.getByRole("combobox", { name: "Adviser" }).textContent).toContain("Dr. Elena Reyes")
-    expect(screen.getByText("No students match these filters.")).toBeTruthy()
+    expect(screen.getByRole("combobox", { name: "Adviser" }).textContent).toContain("Coting, Eulo Rod M.")
+    expect(await screen.findByText("No students match these filters.")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Reset filters" }))
-    expect(screen.getByText("Showing 8 of 8 sample assignments")).toBeTruthy()
+    expect(screen.getByText("Showing 26 of 26 assignments")).toBeTruthy()
   })
 })

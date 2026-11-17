@@ -1,4 +1,4 @@
-import type { AuditEvent } from "./audit-data"
+import type { AuditEvent } from "./audit-types"
 
 export type AuditFilters = {
   person: string

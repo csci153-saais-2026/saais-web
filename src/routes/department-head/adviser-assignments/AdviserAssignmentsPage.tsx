@@ -1,16 +1,18 @@
 import { useState } from "react"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ReassignAdviserDialog } from "./ReassignAdviserDialog"
 import { StudentDirectoryFilters } from "../shared/StudentDirectoryFilters"
-import { assignmentDateLabel, type ReassignmentInput } from "./assignment-model"
-import { todayInManila, useDepartmentHeadPreview } from "../shared/preview-state"
-import { SAMPLE_STUDENTS, type DirectoryStudent } from "../shared/students-data"
+import { assignmentDateLabel, validateReassignment, type ReassignmentInput } from "./assignment-model"
+import { useDepartmentAdvisers, useDirectoryStudents, useReassignStudents } from "../shared/dh-queries"
+import { todayInManila } from "../shared/dh-utils"
+import { QueryMessage } from "../shared/dh-ui"
+import { useNotify } from "../shared/notify-context"
+import type { DirectoryStudent } from "../shared/students-types"
 
 type Filters = { search: string; curriculum: string; adviser: string }
 
@@ -22,7 +24,11 @@ function matches(student: DirectoryStudent, filters: Filters) {
 }
 
 export default function AdviserAssignmentsPage() {
-  const { students, reassignStudents, notify } = useDepartmentHeadPreview()
+  const directory = useDirectoryStudents()
+  const adviserQuery = useDepartmentAdvisers()
+  const reassign = useReassignStudents()
+  const notify = useNotify()
+  const students = directory.data ?? []
   const [filters, setFilters] = useState<Filters>({ search: "", curriculum: "all", adviser: "all" })
   const [selected, setSelected] = useState<string[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -31,8 +37,7 @@ export default function AdviserAssignmentsPage() {
   const selectedVisible = selected.filter((id) => visibleIds.has(id))
   const allSelected = visible.length > 0 && selectedVisible.length === visible.length
   const partiallySelected = selectedVisible.length > 0 && !allSelected
-  // Keep the sample adviser roster available even after their last student is reassigned.
-  const advisers = [...new Set([...SAMPLE_STUDENTS, ...students].map((student) => student.adviser))].sort()
+  const advisers = adviserQuery.data ?? []
 
   function changeFilters(next: Filters) {
     setFilters(next)
@@ -53,17 +58,21 @@ export default function AdviserAssignmentsPage() {
     setDialogOpen(true)
   }
 
-  function apply(input: ReassignmentInput) {
-    const changed = students.filter((student) => input.studentIds.includes(student.id) && student.adviser !== input.adviser).length
-    reassignStudents(input)
+  async function apply(input: ReassignmentInput) {
+    const adviser = advisers.find((candidate) => candidate.id === input.adviserId)
+    const changed = validateReassignment(students, input, adviser?.name ?? "")
+    await reassign.mutateAsync(input)
     setSelected([])
-    notify(`${input.effectiveDate > todayInManila() ? "Scheduled reassignment for" : "Reassigned"} ${changed} sample student${changed === 1 ? "" : "s"}.`)
+    notify(`${input.effectiveDate > todayInManila() ? "Scheduled reassignment for" : "Reassigned"} ${changed} student${changed === 1 ? "" : "s"}.`)
   }
+
+  const heading = <PageHeading title="Adviser assignments" subtitle="Keep every student connected to an adviser in your department." />
+  if (!directory.data) return <>{heading}<QueryMessage query={directory} label="adviser assignments" /></>
 
   return (
     <>
-      <PageHeading title="Adviser assignments" subtitle="Keep every student connected to an adviser in your department." />
-      <Panel title="Student–adviser assignments" description="Reassignments retain the previous adviser and effective date." flush>
+      {heading}
+      <Panel title="Student–adviser assignments" description="Select one or more students to reassign together." flush>
         <StudentDirectoryFilters students={students} {...filters}
           onSearchChange={(search) => changeFilters({ ...filters, search })}
           onCurriculumChange={(curriculum) => changeFilters({ ...filters, curriculum })}
@@ -78,7 +87,6 @@ export default function AdviserAssignmentsPage() {
             <div>
               <label htmlFor="assignments-select-all" className="text-sm font-semibold">Select all visible students</label>
               <p aria-live="polite" className="text-sm">{selectedVisible.length} student{selectedVisible.length === 1 ? "" : "s"} selected</p>
-              <p className="mt-1 text-xs text-muted-foreground">Select all applies to the filtered list. Hidden students are deselected.</p>
             </div>
           </div>
           <Button type="button" onClick={openReassignment}>Reassign selected</Button>
@@ -125,12 +133,11 @@ export default function AdviserAssignmentsPage() {
         </Table>
         {visible.length === 0 && <p className="px-5 py-10 text-center text-sm text-muted-foreground">No students match these filters.</p>}
         <p role="status" className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          Showing {visible.length} of {students.length} sample assignments
+          Showing {visible.length} of {students.length} assignments
         </p>
       </Panel>
       {dialogOpen && <ReassignAdviserDialog studentIds={selectedVisible} advisers={advisers} open={dialogOpen}
         onOpenChange={setDialogOpen} onConfirm={apply} />}
-      <SampleFooter>Fictional records. Changes stay in this preview and do not update university records.</SampleFooter>
     </>
   )
 }

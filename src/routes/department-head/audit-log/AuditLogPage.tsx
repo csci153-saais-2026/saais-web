@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EMPTY_AUDIT_FILTERS, filterAuditEvents } from "./audit-model"
-import type { AuditAction, AuditEvent } from "./audit-data"
-import { useDepartmentHeadPreview } from "../shared/preview-state"
+import type { AuditAction, AuditEvent } from "./audit-types"
+import { useAuditEvents } from "../shared/dh-queries"
+import { QueryMessage } from "../shared/dh-ui"
 
 const actionClasses: Record<AuditAction, string> = {
   View: "bg-status-enrolled-bg text-status-enrolled",
@@ -21,7 +22,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Manila"
 const timeFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", hour12: true })
 
 export default function AuditLogPage() {
-  const { auditEvents } = useDepartmentHeadPreview()
+  const audit = useAuditEvents()
+  const auditEvents = audit.data ?? []
   const [filters, setFilters] = useState(EMPTY_AUDIT_FILTERS)
   const dateError = Boolean(filters.from && filters.to && filters.from > filters.to)
   const events = filterAuditEvents(auditEvents, filters)
@@ -31,9 +33,12 @@ export default function AuditLogPage() {
     setFilters((current) => ({ ...current, [key]: value }))
   }
 
+  const heading = <PageHeading title="Audit log" subtitle="Review record views, changes, and sign-ins within your department." />
+  if (!audit.data) return <>{heading}<QueryMessage query={audit} label="the audit log" /></>
+
   return (
     <>
-      <PageHeading title="Audit log" subtitle="Review record views, changes, and sign-ins within your department." />
+      {heading}
       <div className="mb-4 grid gap-3 rounded-md border border-border bg-card p-5 md:grid-cols-2 xl:grid-cols-5">
         <FormField label="Person" htmlFor="audit-person">
           <SearchInput id="audit-person" placeholder="Search person name" value={filters.person} onChange={(event) => changeFilter("person", event.target.value)} />
@@ -57,14 +62,13 @@ export default function AuditLogPage() {
           <Input id="audit-to" type="date" value={filters.to} onChange={(event) => changeFilter("to", event.target.value)} aria-invalid={dateError} aria-describedby={dateError ? "audit-date-error" : undefined} />
         </FormField>
         {dateError && <p id="audit-date-error" role="alert" className="text-sm text-destructive md:col-span-2 xl:col-span-5">From date must be on or before To date.</p>}
-        <div className="flex flex-wrap items-center justify-between gap-3 md:col-span-2 xl:col-span-5">
-          <p className="text-xs text-muted-foreground">Dates and timestamps use Philippine time.</p>
+        <div className="flex justify-end md:col-span-2 xl:col-span-5">
           <Button type="button" variant="outline" size="sm" disabled={!hasFilters} onClick={() => setFilters(EMPTY_AUDIT_FILTERS)}>Reset filters</Button>
         </div>
       </div>
       <DataTablePanel<AuditEvent>
         title="Department activity"
-        description="Sample activity plus changes made in this preview."
+        description="Record views are logged alongside changes and sign-ins."
         rows={events}
         rowKey={(event) => event.id}
         columns={[

@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BACKUP_SCOPE_LABELS, LAST_ENCODING_CLOSED_AT } from "./settings-data"
-import { useDepartmentHeadPreview } from "../shared/preview-state"
+import { BACKUP_SCOPE_LABELS, type BackupScope, type SettingsState } from "./settings-types"
+import { useLastEncodingClosure, useRecordBackup } from "../shared/dh-queries"
+import { useNotify } from "../shared/notify-context"
 
 /** datetime-local is explicitly interpreted in Philippine time (UTC+08:00). */
 function manilaInputValue(now: Date) {
@@ -28,11 +29,12 @@ const backupSchema = z.object({
     .refine((value) => !validDateTime(value) || Date.parse(`${value}:00+08:00`) <= Date.now(), "Completion cannot be in the future."),
   reference: z.string().trim().min(1, "Enter the backup reference."),
   location: z.string().trim().min(1, "Enter the institutional storage location."),
-  scope: z.enum(["department_records", "department_academic_records"]),
+  scope: z.enum(["department_records", "department_records_and_audit_log", "institution_wide"]),
 })
 
-function BackupRecordDialog({ onClose }: { onClose: () => void }) {
-  const { settings, updateSettings, notify } = useDepartmentHeadPreview()
+function BackupRecordDialog({ settings, onClose }: { settings: SettingsState; onClose: () => void }) {
+  const record = useRecordBackup()
+  const notify = useNotify()
   const { register, control, handleSubmit, setError, formState: { errors } } = useForm<z.infer<typeof backupSchema>>({
     resolver: zodResolver(backupSchema),
     defaultValues: { completedAt: manilaInputValue(new Date()), reference: "", location: "", scope: "department_records" },
@@ -42,17 +44,21 @@ function BackupRecordDialog({ onClose }: { onClose: () => void }) {
     <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Record a completed backup</DialogTitle>
-        <DialogDescription>Record sample metadata for an existing backup. This does not create a backup or upload a file.</DialogDescription>
+        <DialogDescription>Record metadata for an existing backup. This does not create a backup or upload a file.</DialogDescription>
       </DialogHeader>
-      <form noValidate className="space-y-4" onSubmit={handleSubmit((values) => {
+      <form noValidate className="space-y-4" onSubmit={handleSubmit(async (values) => {
         const completedAt = new Date(`${values.completedAt}:00+08:00`).toISOString()
         if (settings.latestBackup && Date.parse(completedAt) < Date.parse(settings.latestBackup.completedAt)) {
           setError("completedAt", { message: "Use a completion time on or after the latest recorded backup." })
           return
         }
-        updateSettings({ ...settings, latestBackup: { completedAt, reference: values.reference, location: values.location, scope: values.scope } })
-        notify("Completed backup record saved in this preview. No backup was created.")
-        onClose()
+        try {
+          await record.mutateAsync({ completedAt, reference: values.reference, location: values.location, scope: values.scope as BackupScope })
+          notify("Completed backup record saved.")
+          onClose()
+        } catch (failure) {
+          setError("completedAt", { message: failure instanceof Error ? failure.message : "The backup record could not be saved." })
+        }
       })}>
         <FormField label="Completion date and time (Philippine time)" htmlFor="backup-completed" error={errors.completedAt?.message}>
           <Input id="backup-completed" type="datetime-local" max={manilaInputValue(new Date())} aria-invalid={Boolean(errors.completedAt)} {...register("completedAt")} />
@@ -68,32 +74,31 @@ function BackupRecordDialog({ onClose }: { onClose: () => void }) {
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger id="backup-scope" className="w-full" ref={field.ref} onBlur={field.onBlur}><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="department_records">{BACKUP_SCOPE_LABELS.department_records}</SelectItem>
-                <SelectItem value="department_academic_records">{BACKUP_SCOPE_LABELS.department_academic_records}</SelectItem>
+                {(Object.keys(BACKUP_SCOPE_LABELS) as BackupScope[]).map((scope) => <SelectItem key={scope} value={scope}>{BACKUP_SCOPE_LABELS[scope]}</SelectItem>)}
               </SelectContent>
             </Select>
           )} />
         </FormField>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Save backup record</Button>
+          <Button type="submit" disabled={record.isPending}>Save backup record</Button>
         </DialogFooter>
       </form>
     </DialogContent>
   )
 }
 
-export function BackupRecordPanel() {
-  const { settings } = useDepartmentHeadPreview()
+export function BackupRecordPanel({ settings }: { settings: SettingsState }) {
+  const closure = useLastEncodingClosure().data
   const [open, setOpen] = useState(false)
   const backup = settings.latestBackup
-  const overdue = !backup || Date.parse(backup.completedAt) < Date.parse(LAST_ENCODING_CLOSED_AT)
+  const overdue = !backup || (closure != null && Date.parse(backup.completedAt) < Date.parse(closure))
 
   return (
-    <Panel title="Backup records" description="Sample metadata only. Keep actual backups in institutional storage.">
+    <Panel title="Backup records" description="Metadata only. Keep actual backups in institutional storage.">
       <Alert variant={overdue ? "advisory" : "success"} role="status" className="mb-5">
-        <AlertTitle>{overdue ? "A newer backup record is needed." : "Backup record is after the sample encoding closure."}</AlertTitle>
-        <AlertDescription>{overdue ? "No backup is recorded after the sample encoding period closed on 7 August 2025." : "This records completion information only; it does not verify backup contents."}</AlertDescription>
+        <AlertTitle>{overdue ? "A newer backup record is needed." : "Backup record is after the encoding closure."}</AlertTitle>
+        <AlertDescription>{overdue ? "No backup is recorded after the latest grade-encoding closure." : "This records completion information only; it does not verify backup contents."}</AlertDescription>
       </Alert>
       {backup ? (
         <dl className="mb-5 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
@@ -105,7 +110,7 @@ export function BackupRecordPanel() {
       ) : <p className="mb-5 text-sm text-muted-foreground">No completed backup record yet.</p>}
       <Dialog open={open} onOpenChange={setOpen}>
         <Button type="button" variant="outline" onClick={() => setOpen(true)}>Record a completed backup</Button>
-        {open && <BackupRecordDialog onClose={() => setOpen(false)} />}
+        {open && <BackupRecordDialog settings={settings} onClose={() => setOpen(false)} />}
       </Dialog>
     </Panel>
   )

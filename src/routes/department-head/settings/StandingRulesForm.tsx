@@ -5,7 +5,9 @@ import { FormField } from "@/components/features/form-field"
 import { Panel } from "@/components/features/panel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useDepartmentHeadPreview } from "../shared/preview-state"
+import { useSaveThresholds } from "../shared/dh-queries"
+import { useNotify } from "../shared/notify-context"
+import type { SettingsState } from "./settings-types"
 
 const percentage = z.string().trim().min(1, "Enter a whole percentage from 0 to 100.")
   .regex(/^\d+$/, "Enter a whole percentage from 0 to 100.")
@@ -14,18 +16,23 @@ const rulesSchema = z.object({ warning: percentage, probation: percentage, dismi
   .refine((value) => value.warning < value.probation, { path: ["probation"], message: "Probation must be higher than warning." })
   .refine((value) => value.probation < value.dismissal, { path: ["dismissal"], message: "Dismissal must be higher than probation." })
 
-export function StandingRulesForm() {
-  const { settings, updateSettings, notify } = useDepartmentHeadPreview()
-  const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof rulesSchema>, unknown, z.output<typeof rulesSchema>>({
+export function StandingRulesForm({ settings }: { settings: SettingsState }) {
+  const save = useSaveThresholds()
+  const notify = useNotify()
+  const { register, handleSubmit, setError, formState: { errors } } = useForm<z.input<typeof rulesSchema>, unknown, z.output<typeof rulesSchema>>({
     resolver: zodResolver(rulesSchema),
     defaultValues: Object.fromEntries(Object.entries(settings.thresholds).map(([key, value]) => [key, String(value)])),
   })
 
   return (
-    <Panel title="Scholastic standing thresholds" description="Percentage of the term’s units failed. These sample values await confirmation of official rules.">
-      <form noValidate onSubmit={handleSubmit((thresholds) => {
-        updateSettings({ ...settings, thresholds: { warning: thresholds.warning, probation: thresholds.probation, dismissal: thresholds.dismissal } })
-        notify("Standing rules saved in this preview.")
+    <Panel title="Scholastic standing thresholds" description="Percentage of the term’s units failed.">
+      <form noValidate onSubmit={handleSubmit(async (thresholds) => {
+        try {
+          await save.mutateAsync({ warning: thresholds.warning, probation: thresholds.probation, dismissal: thresholds.dismissal })
+          notify("Standing rules saved.")
+        } catch (failure) {
+          setError("dismissal", { message: failure instanceof Error ? failure.message : "Standing rules could not be saved." })
+        }
       })}>
         <div className="mb-4 grid gap-4 sm:grid-cols-3">
           {([
@@ -38,8 +45,7 @@ export function StandingRulesForm() {
             </FormField>
           ))}
         </div>
-        <p className="mb-4 text-xs text-muted-foreground">Use whole percentages from 0–100, ordered warning &lt; probation &lt; dismissal.</p>
-        <Button type="submit">Save standing rules</Button>
+        <Button type="submit" disabled={save.isPending}>Save standing rules</Button>
       </form>
     </Panel>
   )

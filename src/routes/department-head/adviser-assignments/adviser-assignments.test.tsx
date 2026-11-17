@@ -1,118 +1,112 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { describe, expect, it } from "vitest"
+import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import AdviserAssignmentsPage from "./AdviserAssignmentsPage"
-import { applyReassignment, type ReassignmentInput } from "./assignment-model"
-import { SAMPLE_STUDENTS } from "../shared/students-data"
-import { useDepartmentHeadPreview } from "../shared/preview-state"
-import { DEFAULT_SETTINGS } from "../settings/settings-data"
+import { validateReassignment, type ReassignmentInput } from "./assignment-model"
+import { getAuditEvents, getDirectoryStudents } from "../shared/dh-api"
+import { todayInManila } from "../shared/dh-utils"
+import type { DirectoryStudent } from "../shared/students-types"
+import { renderDepartmentHead, setupDepartmentHeadMockApi } from "../test-utils"
 
-vi.mock("../shared/preview-state", () => ({
-  todayInManila: () => "2026-11-06",
-  useDepartmentHeadPreview: vi.fn(),
-}))
+setupDepartmentHeadMockApi()
 
-const notify = vi.fn()
-const reassignStudents = vi.fn()
+const TOTAL = 26
 const today = "2026-11-06"
-const validInput: ReassignmentInput = {
-  studentIds: ["24-1-00124"], adviser: "Prof. Marco Villanueva", effectiveDate: today, reason: "Adviser workload redistribution.",
-}
-
-beforeAll(() => {
-  // Radix focuses selected options; jsdom has no scrolling implementation.
-  if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
+const student = (overrides: Partial<DirectoryStudent> = {}): DirectoryStudent => ({
+  id: "student-1", name: "Test Student", studentNumber: "26-1-00001", email: "test@vsu.edu.ph",
+  curriculum: "BSCS 2024", yearStanding: "1st year", adviser: "Adviser A", adviserSince: "2025-08-05", ...overrides,
 })
+const input: ReassignmentInput = { studentIds: ["student-1"], adviserId: "adviser-b", effectiveDate: today, reason: "Workload." }
 
-beforeEach(() => {
-  notify.mockReset()
-  reassignStudents.mockReset()
-  reassignStudents.mockImplementation((input: ReassignmentInput) => applyReassignment(SAMPLE_STUDENTS, input, today))
-  vi.mocked(useDepartmentHeadPreview).mockReturnValue({
-    students: SAMPLE_STUDENTS,
-    auditEvents: [],
-    settings: structuredClone(DEFAULT_SETTINGS),
-    notify,
-    reassignStudents,
-    updateSettings: vi.fn(),
-    resetPreview: vi.fn(),
-  })
-})
-afterEach(cleanup)
-
-describe("local reassignment rules", () => {
-  it("updates the current adviser and keeps the previous adviser without mutating fixtures", () => {
-    const result = applyReassignment(SAMPLE_STUDENTS, validInput, today)
-    expect(result[0].adviser).toBe("Prof. Marco Villanueva")
-    expect(result[0].previousAdviser).toBe("Dr. Elena Reyes")
-    expect(result[0].adviserSince).toBe(today)
-    expect(SAMPLE_STUDENTS[0].adviser).toBe("Dr. Elena Reyes")
-    expect(result[1]).toBe(SAMPLE_STUDENTS[1])
-  })
-
-  it("schedules a future change and preserves the current adviser", () => {
-    const result = applyReassignment(SAMPLE_STUDENTS, { ...validInput, effectiveDate: "2026-11-12" }, today)
-    expect(result[0].adviser).toBe("Dr. Elena Reyes")
-    expect(result[0].scheduledAssignment).toEqual({
-      adviser: "Prof. Marco Villanueva", effectiveDate: "2026-11-12", reason: validInput.reason,
-    })
+describe("reassignment form rules", () => {
+  it("counts the students whose adviser would change", () => {
+    expect(validateReassignment([student(), student({ id: "student-2", adviser: "Adviser B" })], { ...input, studentIds: ["student-1", "student-2"] }, "Adviser B")).toBe(1)
   })
 
   it.each([
-    [{ ...validInput, studentIds: [] }, /Select at least one student/],
-    [{ ...validInput, studentIds: ["not-in-directory"] }, /no longer in the directory/],
-    [{ ...validInput, reason: "   " }, /Add a reason/],
-    [{ ...validInput, adviser: "" }, /Choose the new adviser/],
-    [{ ...validInput, adviser: "Dr. Elena Reyes" }, /different adviser/],
-    [{ ...validInput, effectiveDate: "2026-02-30" }, /valid effective date/],
-  ] as const)("rejects an invalid reassignment: %j", (input, message) => {
-    expect(() => applyReassignment(SAMPLE_STUDENTS, input as ReassignmentInput, today)).toThrow(message)
+    [{ ...input, studentIds: [] }, /Select at least one student/],
+    [{ ...input, studentIds: ["missing"] }, /no longer in the directory/],
+    [{ ...input, reason: "   " }, /Add a reason/],
+    [{ ...input, adviserId: "" }, /Choose the new adviser/],
+    [{ ...input, effectiveDate: "2026-02-30" }, /valid effective date/],
+  ] as const)("rejects an invalid reassignment: %j", (value, message) => {
+    expect(() => validateReassignment([student()], value as ReassignmentInput, "Adviser B")).toThrow(message)
   })
 
-  it("rejects backdating before the current assignment and replacing a scheduled change", () => {
-    const dated = SAMPLE_STUDENTS.map((student) => ({ ...student, adviserSince: "2025-08-05" }))
-    expect(() => applyReassignment(dated, { ...validInput, effectiveDate: "2025-08-04" }, today)).toThrow(/cannot precede/)
-    const scheduled = applyReassignment(dated, { ...validInput, effectiveDate: "2026-11-12" }, today)
-    expect(() => applyReassignment(scheduled, validInput, today)).toThrow(/already has a scheduled/)
+  it("rejects the current adviser, backdating and replacing a scheduled change", () => {
+    expect(() => validateReassignment([student()], input, "Adviser A")).toThrow(/different adviser/)
+    expect(() => validateReassignment([student()], { ...input, effectiveDate: "2025-08-04" }, "Adviser B")).toThrow(/cannot precede/)
+    const scheduled = student({ scheduledAssignment: { adviser: "Adviser C", effectiveDate: "2026-12-01", reason: "" } })
+    expect(() => validateReassignment([scheduled], input, "Adviser B")).toThrow(/already has a scheduled/)
   })
 })
 
 describe("Adviser Assignments screen", () => {
-  it("shows useful feedback if reassignment is attempted without a selection", () => {
-    render(<AdviserAssignmentsPage />)
+  async function openPage() {
+    renderDepartmentHead(<AdviserAssignmentsPage />)
+    await screen.findByText(`Showing ${TOTAL} of ${TOTAL} assignments`)
+  }
+
+  async function reassign(name: string, adviser: string, reason: string, date?: string, alreadySelected = false) {
+    if (!alreadySelected) fireEvent.click(screen.getByRole("checkbox", { name: `Select ${name}` }))
     fireEvent.click(screen.getByRole("button", { name: "Reassign selected" }))
-    expect(notify).toHaveBeenCalledWith("Select at least one student to reassign.")
+    const dialog = screen.getByRole("dialog")
+    fireEvent.keyDown(within(dialog).getByRole("combobox", { name: "New adviser" }), { key: "ArrowDown" })
+    fireEvent.click(await screen.findByRole("option", { name: adviser }))
+    fireEvent.change(within(dialog).getByLabelText("Reason for reassignment"), { target: { value: reason } })
+    if (date) fireEvent.change(within(dialog).getByLabelText("Effective date"), { target: { value: date } })
+    fireEvent.click(within(dialog).getByRole("button", { name: /Apply reassignment|Schedule reassignment/ }))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+  }
+
+  it("asks for a selection before opening the reassignment dialog", async () => {
+    await openPage()
+    fireEvent.click(screen.getByRole("button", { name: "Reassign selected" }))
+    expect(await screen.findByText("Select at least one student to reassign.")).toBeTruthy()
     expect(screen.queryByRole("dialog")).toBeNull()
   })
 
-  it("has a mixed select-all state and removes selections hidden by filtering", () => {
-    render(<AdviserAssignmentsPage />)
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Ana Marie Santos" }))
+  it("has a mixed select-all state and removes selections hidden by filtering", async () => {
+    await openPage()
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Sta. Agata, Jerome Daniel S." }))
     expect(screen.getByRole("checkbox", { name: "Select all visible students" }).getAttribute("aria-checked")).toBe("mixed")
     expect(screen.getByText("1 student selected")).toBeTruthy()
-    fireEvent.change(screen.getByRole("searchbox", { name: "Search students" }), { target: { value: "Luis" } })
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search students" }), { target: { value: "Sample Student 02" } })
     expect(screen.getByText("0 students selected")).toBeTruthy()
     fireEvent.click(screen.getByRole("checkbox", { name: "Select all visible students" }))
-    expect(screen.getByRole("checkbox", { name: "Select Luis Miguel Cruz" }).getAttribute("aria-checked")).toBe("true")
+    expect(screen.getByRole("checkbox", { name: "Select Sample Student 02" }).getAttribute("aria-checked")).toBe("true")
     expect(screen.getByRole("checkbox", { name: "Select all visible students" }).getAttribute("aria-checked")).toBe("true")
     fireEvent.click(screen.getByRole("button", { name: "Reset filters" }))
     expect(screen.getByRole("checkbox", { name: "Select all visible students" }).getAttribute("aria-checked")).toBe("mixed")
   })
 
-  it("requires valid form values, then submits the chosen students and adviser", async () => {
-    render(<AdviserAssignmentsPage />)
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Ana Marie Santos" }))
+  it("requires an adviser, then reassigns through the API and records the previous adviser", async () => {
+    await openPage()
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Sta. Agata, Jerome Daniel S." }))
     fireEvent.click(screen.getByRole("button", { name: "Reassign selected" }))
-    const dialog = screen.getByRole("dialog")
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply reassignment" }))
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Apply reassignment" }))
     expect(await screen.findByText("Choose the new adviser.")).toBeTruthy()
-    fireEvent.keyDown(within(dialog).getByRole("combobox", { name: "New adviser" }), { key: "ArrowDown" })
-    const adviser = await screen.findByRole("option", { name: "Prof. Marco Villanueva" })
-    fireEvent.click(adviser)
-    fireEvent.change(within(dialog).getByLabelText("Reason for reassignment"), { target: { value: validInput.reason } })
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply reassignment" }))
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }))
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
-    expect(reassignStudents).toHaveBeenLastCalledWith(validInput)
+
+    await reassign("Sta. Agata, Jerome Daniel S.", "Coting, Eulo Rod M.", "Adviser workload redistribution.", undefined, true)
+    expect(await screen.findByText("Reassigned 1 student.")).toBeTruthy()
     expect(screen.getByText("0 students selected")).toBeTruthy()
-    expect(notify).toHaveBeenLastCalledWith("Reassigned 1 sample student.")
+    const row = await screen.findByRole("row", { name: /Sta\. Agata, Jerome Daniel S\./ })
+    await waitFor(() => expect(within(row).getByText("Coting, Eulo Rod M.")).toBeTruthy())
+    expect(within(row).getByText("Polo, Marco Antonio P.")).toBeTruthy()
+
+    const directory = await getDirectoryStudents()
+    expect(directory.find((item) => item.studentNumber === "24-1-01798")).toMatchObject({ adviser: "Coting, Eulo Rod M.", previousAdviser: "Polo, Marco Antonio P." })
+    expect((await getAuditEvents()).some((event) => /Reassigned to Coting, Eulo Rod M\. effective/.test(event.details))).toBe(true)
+  })
+
+  it("schedules a future change and keeps the current adviser displayed", async () => {
+    await openPage()
+    const future = `${Number(todayInManila().slice(0, 4)) + 1}-01-15`
+    await reassign("Sta. Agata, Jerome Daniel S.", "Coting, Eulo Rod M.", "Planned handover.", future)
+    expect(await screen.findByText("Scheduled reassignment for 1 student.")).toBeTruthy()
+    const row = await screen.findByRole("row", { name: /Sta\. Agata, Jerome Daniel S\./ })
+    await waitFor(() => expect(within(row).getByText(/Scheduled: Coting, Eulo Rod M\. from/)).toBeTruthy())
+    expect(within(row).getAllByText("Polo, Marco Antonio P.").length).toBeGreaterThan(0)
   })
 })
