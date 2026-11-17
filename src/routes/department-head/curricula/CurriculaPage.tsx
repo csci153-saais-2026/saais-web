@@ -3,7 +3,6 @@ import { PlusIcon } from "@/components/icons"
 import { FormField } from "@/components/features/form-field"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { StatGrid } from "@/components/features/stat-tile"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -30,22 +29,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { DepartmentToast } from "../shared/dh-ui"
-import {
-  formatDisplayDate,
-  useDepartmentToast,
-} from "../shared/dh-utils"
+import { QueryMessage } from "../shared/dh-ui"
+import { useNotify } from "../shared/notify-context"
+import { formatDisplayDate } from "../shared/dh-utils"
 import {
   CURRICULUM_SEMESTERS,
-  FACULTY_DEPARTMENTS,
-  MOCK_CURRICULA_VERSIONS,
+  useCurricula,
+  useCurriculaActions,
   type CurriculumCourseSlot,
   type CurriculumSemester,
   type CurriculumSlotType,
   type CurriculumTermBlock,
   type CurriculumVersionRecord,
   type CurriculumVersionStatus,
-} from "./preview-data"
+} from "./curricula-api"
 
 type CurriculaDialogState =
   | { kind: "add-version" }
@@ -64,7 +61,6 @@ const YEAR_LEVELS = ["1", "2", "3", "4", "5"] as const
 const TERM_OPTIONS = [1, 2, 3, 4, 5].flatMap((y) =>
   CURRICULUM_SEMESTERS.map((sem) => `Year ${y} · ${sem}`)
 )
-const FACULTY_LIST = Object.keys(FACULTY_DEPARTMENTS)
 const SLOT_TYPES: CurriculumSlotType[] = [
   "Required course",
   "Elective slot",
@@ -73,14 +69,6 @@ const SLOT_TYPES: CurriculumSlotType[] = [
 
 function versionLabel(v: CurriculumVersionRecord) {
   return `${v.prog} · ${v.year}`
-}
-
-function sortTerms(terms: CurriculumTermBlock[]) {
-  return [...terms].sort(
-    (a, b) =>
-      a.year - b.year ||
-      CURRICULUM_SEMESTERS.indexOf(a.sem) - CURRICULUM_SEMESTERS.indexOf(b.sem)
-  )
 }
 
 function versionReferenceReason(version: CurriculumVersionRecord) {
@@ -92,17 +80,16 @@ function versionReferenceReason(version: CurriculumVersionRecord) {
 }
 
 export default function CurriculaPage() {
-  const [versions, setVersions] = React.useState<CurriculumVersionRecord[]>(
-    MOCK_CURRICULA_VERSIONS
-  )
-  const [selectedVersionId, setSelectedVersionId] = React.useState<string>(
-    MOCK_CURRICULA_VERSIONS[0]?.id ?? ""
-  )
+  const query = useCurricula()
+  const actions = useCurriculaActions()
+  const versions = React.useMemo(() => query.data?.versions ?? [], [query.data])
+  const programs = query.data?.programs ?? []
+  const [selectedVersionId, setSelectedVersionId] = React.useState<string>("")
   const [dialog, setDialog] = React.useState<CurriculaDialogState>(null)
   const [formError, setFormError] = React.useState<string | null>(null)
 
   // Version form state
-  const [vProg, setVProg] = React.useState<"BSCS" | "BSIT">("BSCS")
+  const [vProg, setVProg] = React.useState("")
   const [vYear, setVYear] = React.useState("")
   const [vUnits, setVUnits] = React.useState("147")
   const [vFrom, setVFrom] = React.useState("")
@@ -121,13 +108,11 @@ export default function CurriculaPage() {
   const [ncCode, setNcCode] = React.useState("")
   const [ncTitle, setNcTitle] = React.useState("")
   const [ncUnits, setNcUnits] = React.useState("3")
-  const [ncFac, setNcFac] = React.useState(FACULTY_LIST[0])
-  const [ncDep, setNcDep] = React.useState(FACULTY_DEPARTMENTS[FACULTY_LIST[0]][0])
-  const [ncCurId, setNcCurId] = React.useState(MOCK_CURRICULA_VERSIONS[0]?.id ?? "")
+  const [ncCurId, setNcCurId] = React.useState("")
   const [ncTerm, setNcTerm] = React.useState(TERM_OPTIONS[0])
   const [ncKind, setNcKind] = React.useState<"Non-Elective" | "Elective">("Non-Elective")
 
-  const { message: toastMessage, showToast } = useDepartmentToast(5000)
+  const showToast = useNotify()
 
   const currentVersion =
     versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null
@@ -183,7 +168,7 @@ export default function CurriculaPage() {
   }
 
   const openAddVersion = () => {
-    setVProg("BSCS")
+    setVProg(programs[0]?.code ?? "")
     setVYear("")
     setVUnits("147")
     setVFrom("")
@@ -220,12 +205,9 @@ export default function CurriculaPage() {
 
   const openNewCourse = () => {
     if (!currentVersion) return
-    const defaultFac = FACULTY_LIST[0]
     setNcCode("")
     setNcTitle("")
     setNcUnits("3")
-    setNcFac(defaultFac)
-    setNcDep(FACULTY_DEPARTMENTS[defaultFac][0])
     setNcCurId(currentVersion.id)
     setNcTerm(TERM_OPTIONS[0])
     setNcKind("Non-Elective")
@@ -249,15 +231,22 @@ export default function CurriculaPage() {
     setDialog({ kind: "edit-slot", termId, slotId: slot.id })
   }
 
-  const handleConfirm = (e: React.FormEvent) => {
+  const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!dialog || deleteBlockReason) return
+    try {
+      await confirmDialog(dialog)
+    } catch (failure) {
+      setFormError(failure instanceof Error ? failure.message : "The change could not be saved.")
+    }
+  }
 
-    if (dialog.kind === "add-version" || dialog.kind === "edit-version") {
+  async function confirmDialog(active: NonNullable<CurriculaDialogState>) {
+    if (active.kind === "add-version" || active.kind === "edit-version") {
       const year = vYear.trim()
       const units = Number(vUnits)
       if (!year) {
-        setFormError("Enter the academic year, for example 2023–2024.")
+        setFormError("Enter the academic year, for example 2023\u20132024.")
         return
       }
       if (!Number.isFinite(units) || units <= 0) {
@@ -268,50 +257,34 @@ export default function CurriculaPage() {
         setFormError("Choose the date this version takes effect.")
         return
       }
-      const duplicate = versions.some(
-        (v) =>
-          (dialog.kind === "add-version" || v.id !== dialog.versionId) &&
-          v.prog === vProg &&
-          v.year === year
-      )
-      if (duplicate) {
-        setFormError(`${vProg} · ${year} already exists.`)
+      const program = programs.find((item) => item.code === vProg)
+      if (!program) {
+        setFormError("Choose a program.")
         return
       }
-
-      if (dialog.kind === "edit-version") {
-        setVersions((prev) =>
-          prev.map((v) =>
-            v.id === dialog.versionId
-              ? { ...v, prog: vProg, year, units, from: vFrom, status: vStatus }
-              : v
-          )
-        )
-      } else {
-        const nextId = `ver-${Date.now()}`
-        const created: CurriculumVersionRecord = {
-          id: nextId,
-          prog: vProg,
-          year,
-          units,
-          enrolled: 0,
-          from: vFrom,
-          status: vStatus,
-          terms: [],
-        }
-        setVersions((prev) => [...prev, created])
-        setSelectedVersionId(nextId)
+      const duplicate = versions.some(
+        (v) => (active.kind === "add-version" || v.id !== active.versionId) && v.prog === vProg && v.year === year
+      )
+      if (duplicate) {
+        setFormError(`${vProg} \u00b7 ${year} already exists.`)
+        return
       }
-      showToast(`${vProg} · ${year} was saved.`)
+      const label = `${vProg} ${year}`
+      if (active.kind === "edit-version") {
+        await actions.updateVersion(active.versionId, { label, start: vFrom, units, status: vStatus })
+      } else {
+        const created = await actions.createVersion({ programId: program.id, label, start: vFrom, units, status: vStatus })
+        setSelectedVersionId(created.id)
+      }
+      showToast(`${vProg} \u00b7 ${year} was saved.`)
       closeDialog()
       return
     }
 
-    if (dialog.kind === "del-version") {
-      const target = versions.find((v) => v.id === dialog.versionId)
-      const remaining = versions.filter((v) => v.id !== dialog.versionId)
-      setVersions(remaining)
-      setSelectedVersionId(remaining[0]?.id ?? "")
+    if (active.kind === "del-version") {
+      const target = versions.find((v) => v.id === active.versionId)
+      await actions.deleteVersion(active.versionId)
+      setSelectedVersionId("")
       showToast(`${target ? versionLabel(target) : "Version"} was deleted.`)
       closeDialog()
       return
@@ -319,53 +292,30 @@ export default function CurriculaPage() {
 
     if (!currentVersion) return
 
-    if (dialog.kind === "add-term" || dialog.kind === "edit-term") {
+    if (active.kind === "add-term" || active.kind === "edit-term") {
       const yearNum = Number(tYear)
       const duplicate = currentVersion.terms.some(
-        (t) =>
-          (dialog.kind === "add-term" || t.id !== dialog.termId) &&
-          t.year === yearNum &&
-          t.sem === tSem
+        (t) => (active.kind === "add-term" || t.id !== active.termId) && t.year === yearNum && t.sem === tSem
       )
       if (duplicate) {
-        setFormError(`Year ${yearNum} · ${tSem} already exists in this version.`)
+        setFormError(`Year ${yearNum} \u00b7 ${tSem} already exists in this version.`)
         return
       }
-
-      setVersions((prev) =>
-        prev.map((v) => {
-          if (v.id !== currentVersion.id) return v
-          const nextTerms =
-            dialog.kind === "edit-term"
-              ? v.terms.map((t) =>
-                  t.id === dialog.termId ? { ...t, year: yearNum, sem: tSem } : t
-                )
-              : [
-                  ...v.terms,
-                  { id: `term-${Date.now()}`, year: yearNum, sem: tSem, rows: [] },
-                ]
-          return { ...v, terms: sortTerms(nextTerms) }
-        })
-      )
-      showToast(`Year ${yearNum} · ${tSem} was saved.`)
+      if (active.kind === "edit-term") await actions.updateTerm(active.termId, yearNum, tSem)
+      else await actions.createTerm(currentVersion.id, yearNum, tSem)
+      showToast(`Year ${yearNum} \u00b7 ${tSem} was saved.`)
       closeDialog()
       return
     }
 
-    if (dialog.kind === "del-term") {
-      setVersions((prev) =>
-        prev.map((v) =>
-          v.id === currentVersion.id
-            ? { ...v, terms: v.terms.filter((t) => t.id !== dialog.termId) }
-            : v
-        )
-      )
+    if (active.kind === "del-term") {
+      await actions.deleteTerm(active.termId)
       showToast("The term was deleted.")
       closeDialog()
       return
     }
 
-    if (dialog.kind === "new-course") {
+    if (active.kind === "new-course") {
       const code = ncCode.trim()
       const title = ncTitle.trim()
       const unitsNum = Number(ncUnits)
@@ -382,11 +332,7 @@ export default function CurriculaPage() {
         return
       }
       const codeTaken = versions.some((v) =>
-        v.terms.some((t) =>
-          t.rows.some((r) =>
-            r.courseOrSlot.toLowerCase().startsWith(`${code.toLowerCase()} —`)
-          )
-        )
+        v.terms.some((t) => t.rows.some((r) => r.courseOrSlot.toLowerCase().startsWith(`${code.toLowerCase()} \u2014`)))
       )
       if (codeTaken) {
         setFormError(`${code} already exists. Course codes must be unique.`)
@@ -394,57 +340,21 @@ export default function CurriculaPage() {
       }
 
       const targetVersion = versions.find((v) => v.id === ncCurId) ?? currentVersion
-      const match = /^Year (\d) · (.+)$/.exec(ncTerm)
+      const match = /^Year (\d) \u00b7 (.+)$/.exec(ncTerm)
       const parsedYear = match ? Number(match[1]) : 1
       const parsedSem = (match?.[2] ?? "Semester 1") as CurriculumSemester
-      const slotName = `${code} — ${title}`
-      const slotType: CurriculumSlotType =
-        ncKind === "Elective" ? "Elective slot" : "Required course"
-
-      setVersions((prev) =>
-        prev.map((v) => {
-          if (v.id !== targetVersion.id) return v
-          const existingTerm = v.terms.find(
-            (t) => t.year === parsedYear && t.sem === parsedSem
-          )
-          const newSlot: CurriculumCourseSlot = {
-            id: `slot-${Date.now()}`,
-            courseOrSlot: slotName,
-            requiredUnits: unitsNum,
-            type: slotType,
-          }
-          const nextTerms = existingTerm
-            ? v.terms.map((t) =>
-                t.id === existingTerm.id
-                  ? {
-                      ...t,
-                      rows: t.rows.some((r) => r.courseOrSlot === slotName)
-                        ? t.rows
-                        : [...t.rows, newSlot],
-                    }
-                  : t
-              )
-            : sortTerms([
-                ...v.terms,
-                {
-                  id: `term-${Date.now()}`,
-                  year: parsedYear,
-                  sem: parsedSem,
-                  rows: [newSlot],
-                },
-              ])
-          return { ...v, terms: nextTerms }
-        })
-      )
+      let termId = targetVersion.terms.find((t) => t.year === parsedYear && t.sem === parsedSem)?.id
+      if (!termId) termId = (await actions.createTerm(targetVersion.id, parsedYear, parsedSem)).id
+      await actions.createCourse({
+        departmentId: targetVersion.departmentId, code, title, units: unitsNum, elective: ncKind === "Elective", termId,
+      })
       setSelectedVersionId(targetVersion.id)
-      showToast(
-        `${code} was added to ${versionLabel(targetVersion)}, ${ncTerm}.`
-      )
+      showToast(`${code} was added to ${versionLabel(targetVersion)}, ${ncTerm}.`)
       closeDialog()
       return
     }
 
-    if (dialog.kind === "add-slot" || dialog.kind === "edit-slot") {
+    if (active.kind === "add-slot" || active.kind === "edit-slot") {
       const name = sName.trim()
       const unitsNum = Number(sUnits)
       if (!name) {
@@ -455,59 +365,15 @@ export default function CurriculaPage() {
         setFormError("Required units must be zero or more.")
         return
       }
-
-      setVersions((prev) =>
-        prev.map((v) => {
-          if (v.id !== currentVersion.id) return v
-          return {
-            ...v,
-            terms: v.terms.map((t) => {
-              if (t.id !== dialog.termId) return t
-              if (dialog.kind === "edit-slot") {
-                return {
-                  ...t,
-                  rows: t.rows.map((r) =>
-                    r.id === dialog.slotId
-                      ? { ...r, courseOrSlot: name, requiredUnits: unitsNum, type: sType }
-                      : r
-                  ),
-                }
-              }
-              return {
-                ...t,
-                rows: [
-                  ...t.rows,
-                  {
-                    id: `slot-${Date.now()}`,
-                    courseOrSlot: name,
-                    requiredUnits: unitsNum,
-                    type: sType,
-                  },
-                ],
-              }
-            }),
-          }
-        })
-      )
+      if (active.kind === "edit-slot") await actions.updateSlot(active.slotId, name, unitsNum, sType)
+      else await actions.createSlot(active.termId, name, unitsNum, sType)
       showToast(`${name} was saved.`)
       closeDialog()
       return
     }
 
-    if (dialog.kind === "del-slot") {
-      setVersions((prev) =>
-        prev.map((v) => {
-          if (v.id !== currentVersion.id) return v
-          return {
-            ...v,
-            terms: v.terms.map((t) =>
-              t.id === dialog.termId
-                ? { ...t, rows: t.rows.filter((r) => r.id !== dialog.slotId) }
-                : t
-            ),
-          }
-        })
-      )
+    if (active.kind === "del-slot") {
+      await actions.deleteSlot(active.slotId)
       showToast("The course was removed.")
       closeDialog()
     }
@@ -538,6 +404,15 @@ export default function CurriculaPage() {
         return { title: "Delete record", confirmLabel: "Delete", isDelete: true }
     }
   })()
+
+  if (!query.data) {
+    return (
+      <div className="space-y-6">
+        <PageHeading title="Shape the path to graduation." subtitle="Versioned requirements keep past and present curricula distinct." />
+        <QueryMessage query={query} label="curricula" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -781,14 +656,15 @@ export default function CurriculaPage() {
                 <FormField label="Program" htmlFor="cu-prog">
                   <Select
                     value={vProg}
-                    onValueChange={(val) => setVProg(val as "BSCS" | "BSIT")}
+                    onValueChange={setVProg}
                   >
                     <SelectTrigger id="cu-prog" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BSCS">BSCS</SelectItem>
-                      <SelectItem value="BSIT">BSIT</SelectItem>
+                      {programs.map((program) => (
+                        <SelectItem key={program.id} value={program.code}>{program.code}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </FormField>
@@ -922,42 +798,6 @@ export default function CurriculaPage() {
                   />
                 </FormField>
 
-                <FormField label="Faculty" htmlFor="nc-fac">
-                  <Select
-                    value={ncFac}
-                    onValueChange={(fac) => {
-                      setNcFac(fac)
-                      setNcDep(FACULTY_DEPARTMENTS[fac]?.[0] ?? "")
-                    }}
-                  >
-                    <SelectTrigger id="nc-fac" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FACULTY_LIST.map((fac) => (
-                        <SelectItem key={fac} value={fac}>
-                          {fac}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField label="Department" htmlFor="nc-dep">
-                  <Select value={ncDep} onValueChange={setNcDep}>
-                    <SelectTrigger id="nc-dep" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(FACULTY_DEPARTMENTS[ncFac] ?? []).map((dep) => (
-                        <SelectItem key={dep} value={dep}>
-                          {dep}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
                 <FormField label="Curriculum" htmlFor="nc-cur">
                   <Select value={ncCurId} onValueChange={setNcCurId}>
                     <SelectTrigger id="nc-cur" className="w-full">
@@ -1081,11 +921,6 @@ export default function CurriculaPage() {
         </DialogContent>
       </Dialog>
 
-      <DepartmentToast message={toastMessage} />
-
-      <SampleFooter>
-        Sample records for presentation · Reference date: 15 August 2025 · Static design
-      </SampleFooter>
     </div>
   )
 }
