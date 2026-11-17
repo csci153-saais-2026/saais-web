@@ -120,7 +120,12 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     db.attemptResults[db.attemptResults.indexOf(retake)] = { ...retake, is_lapsed_inc: false, effective_status: 'passed', completion_grade: 2 }
     const summary = await read()
     expect(summary.gwa).toBe(2.33)
-    expect(summary.counted_units).toBe(9)
+    expect(summary.counted_units).toBe(12) // 9 graded units plus 3 units of active outside credit
+    const outsideCredit = db.outsideCredits.find(credit => credit.id === MOCK_IDS.outsideCredit1)!
+    outsideCredit.revoked_at = '2026-11-17T00:00:00Z'
+    const afterRevocation = await read()
+    expect(afterRevocation.counted_units).toBe(9)
+    expect(afterRevocation.gwa).toBe(2.33)
   })
 
   it('uses the student current department closure for a cross-department course', async () => {
