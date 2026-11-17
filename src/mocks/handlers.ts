@@ -3832,29 +3832,62 @@ export const saaisMswHandlers = [
   http.get('*/functions/v1/reports/faculty', ({ request }) => {
     const auth = authenticateRequest(request, ['admin', 'dean'])
     if ('response' in auth) return auth.response
+    const db = getMockDatabase()
+    const facultyId = auth.persona.facultyId ?? MOCK_IDS.facultyComputing
+    const url = new URL(request.url)
+    const departmentFilter = url.searchParams.get('department_id')
+    const facultyDepts = db.departments.filter((d) => d.faculty_id === facultyId)
+    const orgs = db.studentOrganizations.filter(
+      (org) =>
+        org.faculty_id === facultyId &&
+        (!departmentFilter || org.department_id === departmentFilter),
+    )
+    const metrics = orgs.map((org) => ({
+      org,
+      ...studentMetrics(org.student_id, org.department_id),
+    }))
+    const gwas = metrics
+      .map((m) => m.gwa)
+      .filter((value): value is number => value !== null)
+    const averageGwa = gwas.length
+      ? Number((gwas.reduce((sum, g) => sum + g, 0) / gwas.length).toFixed(2))
+      : 0
+
+    const departmentSummaries: ApiSchema<'FacultyReport'>['department_summaries'] = facultyDepts
+      .filter((dept) => !departmentFilter || dept.id === departmentFilter)
+      .map((dept) => {
+        const deptMetrics = metrics.filter((m) => m.org.department_id === dept.id)
+        const deptGwas = deptMetrics
+          .map((m) => m.gwa)
+          .filter((value): value is number => value !== null)
+        return {
+          department_id: dept.id,
+          department_name: dept.name,
+          student_count: deptMetrics.length,
+          average_gwa: deptGwas.length
+            ? Number((deptGwas.reduce((sum, g) => sum + g, 0) / deptGwas.length).toFixed(2))
+            : 0,
+          at_risk_count: deptMetrics.filter((m) => m.isDelinquent || m.flags.length > 0).length,
+        }
+      })
+
     const report: ApiSchema<'FacultyReport'> = {
-      faculty_id: MOCK_IDS.facultyComputing,
-      total_students: 2,
-      with_deficiencies_count: 1,
-      average_gwa: 1.75,
+      faculty_id: facultyId,
+      total_students: metrics.length,
+      with_deficiencies_count: metrics.filter(
+        (m) => m.failed.length + m.openInc.length + m.lapsed.length + m.flags.length > 0,
+      ).length,
+      average_gwa: averageGwa,
       standing_counts: {
-        good_standing: 2,
-        warning: 0,
-        probation: 0,
-        dismissed: 0,
+        good_standing: metrics.filter((m) => m.standing === 'good_standing').length,
+        warning: metrics.filter((m) => m.standing === 'warning').length,
+        probation: metrics.filter((m) => m.standing === 'probation').length,
+        dismissed: metrics.filter((m) => m.standing === 'dismissed').length,
       },
-      open_inc_count: 1,
-      at_risk_total_count: 0,
+      open_inc_count: metrics.reduce((sum, m) => sum + m.openInc.length, 0),
+      at_risk_total_count: metrics.filter((m) => m.isDelinquent || m.flags.length > 0).length,
       encoding_progress_pct: 85,
-      department_summaries: [
-        {
-          department_id: MOCK_IDS.deptDcst,
-          department_name: 'Department of Computer Science and Technology',
-          student_count: 2,
-          average_gwa: 1.75,
-          at_risk_count: 0,
-        },
-      ],
+      department_summaries: departmentSummaries,
       computed_at: '2026-11-10T09:00:00Z',
     }
     return HttpResponse.json(report, { status: 200 })
