@@ -12140,10 +12140,12 @@ components:
           type:
             - object
             - "null"
+          additionalProperties: true
         new_value:
           type:
             - object
             - "null"
+          additionalProperties: true
         reason:
           type:
             - string

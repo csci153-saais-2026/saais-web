@@ -4,7 +4,7 @@ import { AuthenticatedPortalLayout } from "@/components/features/AuthenticatedPo
 import { NotificationBell } from "@/components/features/notification-bell"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth"
-import { deptHeadNav } from "@/navigation/navigation-config"
+import { deptHeadNav } from "@/navigation/department-head"
 import { MOCK_DEPARTMENT_NOTIFICATIONS, type DepartmentNotificationsContext } from "./notifications/preview-data"
 import { PreviewStateProvider } from "./shared/PreviewStateProvider"
 
@@ -12,7 +12,7 @@ function DepartmentHeadWorkspace() {
   const { pathname } = useLocation()
   const pageTitle = pathname === "/department-head/notifications"
     ? "Notifications"
-    : deptHeadNav.items.find(({ to }) => to === pathname.replace(/\/$/, ""))?.label
+    : deptHeadNav.items.find(({ href }) => href === pathname.replace(/\/$/, ""))?.label
   const [notifications, setNotifications] = useState(MOCK_DEPARTMENT_NOTIFICATIONS)
 
   const markNotificationRead = (id: string) => {

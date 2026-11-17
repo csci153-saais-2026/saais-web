@@ -5,6 +5,9 @@ import { DevRoleSwitcher } from '@/components/DevRoleSwitcher'
 import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { DepartmentHeadLayout } from '@/routes/department-head/DepartmentHeadLayout'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
 
 const StyleguidePage = lazy(() => import('@/routes/styleguide/StyleguidePage'))
 const LoginPage = lazy(() => import('@/routes/auth/LoginPage'))
@@ -23,7 +26,7 @@ const CurriculaPage = lazy(() => import('@/routes/department-head/curricula/Curr
 const EquivalencePage = lazy(() => import('@/routes/department-head/equivalence/EquivalencePage'))
 const OutsideCreditsPage = lazy(() => import('@/routes/department-head/outside-credits/OutsideCreditsPage'))
 const AcademicTermsPage = lazy(() => import('@/routes/department-head/academic-terms/AcademicTermsPage'))
-const NotificationsPage = lazy(() => import('@/routes/department-head/notifications/NotificationsPage'))
+const DepartmentNotificationsPage = lazy(() => import('@/routes/department-head/notifications/NotificationsPage'))
 
 const StudentsPage = lazy(() => import('@/routes/department-head/students/StudentsPage'))
 const AdviserAssignmentsPage = lazy(() => import('@/routes/department-head/adviser-assignments/AdviserAssignmentsPage'))
@@ -35,6 +38,7 @@ const DepartmentStaffPortal = lazy(
 )
 const DeanPortal = lazy(() => import('@/routes/dean/DeanPortal'))
 const AdminPortal = lazy(() => import('@/routes/admin/AdminPortal'))
+const NotificationsPage = lazy(() => import('@/routes/notifications/NotificationsPage'))
 
 function Home() {
   return (
@@ -63,6 +67,7 @@ function Home() {
 
 function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <BrowserRouter>
         <Suspense fallback={<div className="p-8 text-muted-foreground">Loading…</div>}>
@@ -81,6 +86,7 @@ function App() {
             {/* Authenticated shell wrapping all protected portals and settings */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AuthenticatedPortalLayout />}>
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<ChangePasswordPage />} />
                 <Route path="/change-password" element={<Navigate to="/settings" replace />} />
 
@@ -115,7 +121,7 @@ function App() {
                   <Route path="equivalence" element={<EquivalencePage />} />
                   <Route path="outside-credits" element={<OutsideCreditsPage />} />
                   <Route path="academic-terms" element={<AcademicTermsPage />} />
-                  <Route path="notifications" element={<NotificationsPage />} />
+                  <Route path="notifications" element={<DepartmentNotificationsPage />} />
                   <Route path="students" element={<StudentsPage />} />
                   <Route path="adviser-assignments" element={<AdviserAssignmentsPage />} />
                   <Route path="reports" element={<DepartmentReportsPage />} />
@@ -130,6 +136,7 @@ function App() {
         <DevRoleSwitcher />
       </BrowserRouter>
     </AuthProvider>
+    </QueryClientProvider>
   )
 }
 

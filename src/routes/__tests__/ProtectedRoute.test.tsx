@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { ProtectedRoute } from '../ProtectedRoute'
 import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import { AuthContext, type AuthContextValue } from '@/context/auth-context'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 function renderPortalRoutes(
   authValue: Partial<AuthContextValue>,
@@ -38,6 +39,7 @@ function renderPortalRoutes(
   }
 
   return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
     <AuthContext.Provider value={fullAuthValue}>
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
@@ -69,6 +71,7 @@ function renderPortalRoutes(
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
+    </QueryClientProvider>,
   )
 }
 

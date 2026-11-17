@@ -4743,7 +4743,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{prior_curriculum_version_id}}",
+                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{curriculum_delete_id}}",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -4752,7 +4752,7 @@
                     "v1",
                     "catalog",
                     "curriculum_version",
-                    "{{prior_curriculum_version_id}}"
+                    "{{curriculum_delete_id}}"
                   ],
                   "query": []
                 },
@@ -4797,7 +4797,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{prior_curriculum_version_id}}",
+                  "raw": "{{base_url}}/functions/v1/catalog/curriculum_version/{{curriculum_delete_id}}",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -4806,7 +4806,7 @@
                     "v1",
                     "catalog",
                     "curriculum_version",
-                    "{{prior_curriculum_version_id}}"
+                    "{{curriculum_delete_id}}"
                   ],
                   "query": []
                 },
@@ -10328,7 +10328,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/grades",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{grade_correction_attempt_id}}/grades",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10338,7 +10338,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{grade_correction_attempt_id}}",
                     "grades"
                   ],
                   "query": []
@@ -10398,7 +10398,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/grades",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{grade_correction_attempt_id}}/grades",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10408,7 +10408,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{grade_correction_attempt_id}}",
                     "grades"
                   ],
                   "query": []
@@ -16106,7 +16106,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/curriculum-transfers",
+                  "raw": "{{base_url}}/functions/v1/students/{{transfer_student_id}}/curriculum-transfers",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -16114,7 +16114,7 @@
                     "functions",
                     "v1",
                     "students",
-                    "{{student_id}}",
+                    "{{transfer_student_id}}",
                     "curriculum-transfers"
                   ],
                   "query": []
@@ -16174,7 +16174,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/curriculum-transfers",
+                  "raw": "{{base_url}}/functions/v1/students/{{transfer_student_id}}/curriculum-transfers",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -16182,7 +16182,7 @@
                     "functions",
                     "v1",
                     "students",
-                    "{{student_id}}",
+                    "{{transfer_student_id}}",
                     "curriculum-transfers"
                   ],
                   "query": []
