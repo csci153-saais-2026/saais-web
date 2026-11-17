@@ -1,25 +1,21 @@
 import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes } from "react-router"
-import { DeanAuditProvider } from "@/routes/dean/context/DeanAuditContext"
 
 const DeanReportsPage = lazy(() => import("@/routes/dean/pages/DeanReportsPage"))
 const DeanStudentsPage = lazy(() => import("@/routes/dean/pages/DeanStudentsPage"))
-const DeanStudentDetailPage = lazy(() => import("@/routes/dean/pages/DeanStudentDetailPage"))
 const DeanAuditLogPage = lazy(() => import("@/routes/dean/pages/DeanAuditLogPage"))
 
 export default function DeanPortal() {
   return (
-    <DeanAuditProvider>
-      <Suspense fallback={<div className="py-8 text-sm text-muted-foreground">Loading…</div>}>
-        <Routes>
-          <Route index element={<Navigate to="reports" replace />} />
-          <Route path="reports" element={<DeanReportsPage />} />
-          <Route path="students" element={<DeanStudentsPage />} />
-          <Route path="students/:studentNumber" element={<DeanStudentDetailPage />} />
-          <Route path="audit-log" element={<DeanAuditLogPage />} />
-          <Route path="*" element={<Navigate to="reports" replace />} />
-        </Routes>
-      </Suspense>
-    </DeanAuditProvider>
+    <Suspense fallback={<div className="py-8 text-sm text-muted-foreground">Loading…</div>}>
+      <Routes>
+        <Route index element={<Navigate to="reports" replace />} />
+        <Route path="reports" element={<DeanReportsPage />} />
+        <Route path="students" element={<DeanStudentsPage />} />
+        <Route path="students/*" element={<Navigate to="/dean/students" replace />} />
+        <Route path="audit-log" element={<DeanAuditLogPage />} />
+        <Route path="*" element={<Navigate to="reports" replace />} />
+      </Routes>
+    </Suspense>
   )
 }

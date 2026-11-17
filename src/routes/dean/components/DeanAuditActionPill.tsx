@@ -10,7 +10,9 @@ export function DeanAuditActionPill({ action }: { action: DeanAuditAction }) {
         "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
         action === "View"
           ? "border-border bg-secondary/70 text-foreground"
-          : "border-amber-300 bg-amber-50 text-amber-900",
+          : action === "Change"
+            ? "border-amber-300 bg-amber-50 text-amber-900"
+            : "border-border bg-muted text-muted-foreground",
       )}
     >
       {action}
