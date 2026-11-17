@@ -1,7 +1,7 @@
 import { apiClient, postgrestFilter, unwrapApiResult } from '@/lib/api'
 import type { ApiSchema } from '@/lib/api'
 import { getRoster, getSelectedStudent } from '../advisees.api'
-export async function getAdvisingTerms(){return unwrapApiResult(await apiClient.GET('/rest/v1/school_term',{params:{query:{limit:1000}}}))}
+export async function getAdvisingTerms(){const terms=unwrapApiResult(await apiClient.GET('/rest/v1/school_term',{params:{query:{limit:1000}}}));return [...terms].sort((a,b)=>b.chronological_key-a.chronological_key)}
 export async function getAdvisingData(studentId:string,termId:string){
   await getSelectedStudent(studentId)
   const [plans,items,current,recommendations,assignments]=await Promise.all([

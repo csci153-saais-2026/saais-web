@@ -7,5 +7,6 @@ export async function getAdviserDashboard(schoolTermId?: string) {
 }
 
 export async function getSchoolTerms() {
-  return unwrapApiResult(await apiClient.GET('/rest/v1/school_term'))
+  const terms = unwrapApiResult(await apiClient.GET('/rest/v1/school_term'))
+  return [...terms].sort((a, b) => b.chronological_key - a.chronological_key)
 }
