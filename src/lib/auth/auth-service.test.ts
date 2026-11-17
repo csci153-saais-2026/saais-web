@@ -130,7 +130,7 @@ describe('auth service helpers and account actions', () => {
     vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co')
     vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-key')
     const auth = getSupabaseClient('supabase').auth
-    const recover = vi.spyOn(auth, 'resetPasswordForEmail').mockResolvedValue({ error: null })
+    const recover = vi.spyOn(auth, 'resetPasswordForEmail').mockResolvedValue({ data: {}, error: null })
     const update = vi.spyOn(auth, 'updateUser').mockResolvedValue({ data: { user: null }, error: null })
     const signOut = vi.spyOn(auth, 'signOut').mockResolvedValue({ error: null })
 
@@ -140,9 +140,9 @@ describe('auth service helpers and account actions', () => {
     await expect(changeAuthenticatedPassword('CurrentPassword123', 'NewPassword123')).resolves.toEqual({ simulated: false })
     expect(signOut).toHaveBeenCalledWith({ scope: 'others' })
 
-    recover.mockResolvedValueOnce({ error: new Error('recovery failed') })
+    recover.mockResolvedValueOnce({ error: new Error('recovery failed') as never })
     await expect(requestPasswordRecoveryEmail('student@vsu.edu.ph')).rejects.toThrow('recovery failed')
-    update.mockResolvedValueOnce({ data: { user: null }, error: new Error('update failed') })
+    update.mockResolvedValueOnce({ data: { user: null }, error: new Error('update failed') as never })
     await expect(completePasswordReset('AnotherPassword123')).rejects.toThrow('update failed')
   })
 
