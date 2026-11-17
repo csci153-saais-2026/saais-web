@@ -3,7 +3,7 @@ import { FormField } from "@/components/features/form-field"
 import { SearchInput } from "@/components/features/search-input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { DirectoryStudent } from "./students-data"
+import type { DirectoryStudent } from "./students-types"
 
 type Props = {
   students: DirectoryStudent[]

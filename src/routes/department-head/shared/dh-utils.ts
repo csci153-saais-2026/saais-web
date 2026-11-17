@@ -99,3 +99,10 @@ export function formatTermDateRange(startIso: string, endIso: string): string {
   }
   return `${startDay} ${sMonth} ${sy} – ${endDay} ${eMonth} ${ey}`
 }
+
+/** Today's calendar date in Philippine time, as YYYY-MM-DD. */
+export function todayInManila() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date())
+}

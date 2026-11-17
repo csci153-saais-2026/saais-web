@@ -280,6 +280,34 @@ function matchesPostgrestOperator(
   return true
 }
 
+/** Appends a "change" row to the shared audit log, as the real backend does for department-head writes. */
+function recordMockAudit(
+  persona: MockPersona,
+  entry: { action: string; entityType: string; entityId?: string | null; studentId?: string | null; label: string; details: string },
+) {
+  const db = getMockDatabase()
+  const student = entry.studentId ? db.profiles.find(profile => profile.id === entry.studentId) : undefined
+  db.auditLogEntries.push({
+    id: nextSyntheticUuid(),
+    actor_id: persona.profileId,
+    actor_name: persona.fullName,
+    actor_role: persona.primaryRole,
+    student_id: entry.studentId ?? null,
+    student_name: student?.full_name ?? null,
+    student_number: student?.student_number ?? null,
+    target_label: entry.label,
+    action: entry.action,
+    action_category: 'change',
+    entity_type: entry.entityType,
+    entity_id: entry.entityId ?? null,
+    details_summary: entry.details,
+    old_value: null,
+    new_value: null,
+    reason: null,
+    created_at: new Date().toISOString(),
+  })
+}
+
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
   url: URL,
@@ -2997,6 +3025,11 @@ export const saaisMswHandlers = [
         const org = db.studentOrganizations.find(o => o.student_id === current.student_id)
         if (org) db.studentOrganizations[db.studentOrganizations.indexOf(org)] = { ...org, adviser_id: adviser.id }
       })
+      assignments.forEach(assignment => recordMockAudit(auth.persona, {
+        action: 'adviser_reassigned', entityType: 'adviser_assignment', entityId: assignment.id, studentId: assignment.student_id,
+        label: 'Adviser assignment',
+        details: `Reassigned to ${adviser.full_name} effective ${body.effective_since}. Reason: ${body.reason?.trim()}`,
+      }))
       const res: ApiSchema<'BulkAdviserReassignmentResponse'> = {
         reassigned_count: assignments.length,
         assignments,
@@ -3226,12 +3259,13 @@ export const saaisMswHandlers = [
         grade: body.grade ?? '1.50',
         destination_curriculum_term_course_id:
           body.destination_curriculum_term_course_id ?? MOCK_IDS.slotCsci101,
-        units_credited: 3,
+        units_credited: body.units ?? 3,
         decided_by: auth.persona.profileId,
         decided_at: '2026-11-10T09:00:00Z',
         revoked_at: null,
         updated_at: '2026-11-10T09:00:00Z',
       }
+      getMockDatabase().outsideCredits.push(credit)
       return HttpResponse.json(credit, { status: 201 })
     },
   ),
@@ -3885,6 +3919,7 @@ export const saaisMswHandlers = [
       updated_at: '2026-11-10T09:00:00Z',
     }
     db.systemSettings[0] = updated
+    recordMockAudit(auth.persona, { action: 'settings_updated', entityType: 'system_settings', entityId: updated.id, label: 'Department settings', details: 'Updated department settings.' })
     return HttpResponse.json(updated, { status: 200 })
   }),
 
@@ -3905,6 +3940,7 @@ export const saaisMswHandlers = [
       updated_at: '2026-11-10T09:00:00Z',
     }
     db.systemSettings[0] = updated
+    recordMockAudit(auth.persona, { action: 'backup_recorded', entityType: 'system_settings', entityId: updated.id, label: 'Backup record', details: `Recorded backup ${updated.last_backup_reference ?? ''}.`.trim() })
     return HttpResponse.json(updated, { status: 200 })
   }),
 
