@@ -1,4 +1,5 @@
 import { FormField } from "@/components/features/form-field"
+import { SearchInput } from "@/components/features/search-input"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -37,67 +38,59 @@ export function FacultyAuditFilters({
     fromDate !== ""
 
   return (
-    <div className="grid gap-4 rounded-md border border-border bg-card p-4 md:grid-cols-12 md:items-end">
-      <div className="md:col-span-3">
-        <FormField label="Person" htmlFor="audit-person">
-          <Input
-            id="audit-person"
-            placeholder="Name or role"
-            value={person}
-            onChange={(e) => onPersonChange(e.target.value)}
-          />
-        </FormField>
-      </div>
+    <div className="grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-4">
+      <FormField label="Person" htmlFor="audit-person">
+        <SearchInput
+          id="audit-person"
+          placeholder="Search person name"
+          value={person}
+          onChange={(e) => onPersonChange(e.target.value)}
+        />
+      </FormField>
 
-      <div className="md:col-span-3">
-        <FormField label="Student" htmlFor="audit-student">
-          <Input
-            id="audit-student"
-            placeholder="Name or number"
-            value={student}
-            onChange={(e) => onStudentChange(e.target.value)}
-          />
-        </FormField>
-      </div>
+      <FormField label="Student" htmlFor="audit-student">
+        <SearchInput
+          id="audit-student"
+          placeholder="Search student name or ID"
+          value={student}
+          onChange={(e) => onStudentChange(e.target.value)}
+        />
+      </FormField>
 
-      <div className="md:col-span-2">
-        <FormField label="Action" htmlFor="audit-action">
-          <Select value={action} onValueChange={onActionChange}>
-            <SelectTrigger id="audit-action" aria-label="Action">
-              <SelectValue placeholder="All actions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All actions</SelectItem>
-              <SelectItem value="View">View</SelectItem>
-              <SelectItem value="Change">Change</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
-      </div>
+      <FormField label="Action" htmlFor="audit-action">
+        <Select value={action} onValueChange={onActionChange}>
+          <SelectTrigger id="audit-action" aria-label="Action" className="w-full min-w-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All actions</SelectItem>
+            <SelectItem value="View">View</SelectItem>
+            <SelectItem value="Change">Change</SelectItem>
+            <SelectItem value="Sign-in">Sign-in</SelectItem>
+          </SelectContent>
+        </Select>
+      </FormField>
 
-      <div className="md:col-span-3">
-        <FormField label="From" htmlFor="audit-from">
-          <Input
-            id="audit-from"
-            type="date"
-            value={fromDate}
-            onChange={(e) => onFromDateChange(e.target.value)}
-          />
-        </FormField>
-      </div>
+      <FormField label="From" htmlFor="audit-from">
+        <Input
+          id="audit-from"
+          type="date"
+          value={fromDate}
+          onChange={(e) => onFromDateChange(e.target.value)}
+        />
+      </FormField>
 
-      <div className="md:col-span-1 md:flex md:justify-end">
+      <div className="flex justify-end md:col-span-2 xl:col-span-4">
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
           disabled={!hasFilters}
           onClick={onReset}
         >
-          Clear
+          Reset filters
         </Button>
       </div>
     </div>
   )
 }
-
