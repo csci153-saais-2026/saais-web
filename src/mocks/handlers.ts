@@ -51,8 +51,9 @@ function studentMetrics(studentId: string, departmentId: string) {
         .filter(a => a.grade != null && a.units > 0)
       const countedUnits = counted.reduce((sum, row) => sum + row.units, 0)
       const gwa = countedUnits ? Number((counted.reduce((sum, row) => sum + row.grade! * row.units, 0) / countedUnits).toFixed(2)) : null
+      const outsideCreditUnits = db.outsideCredits.filter(credit => credit.student_id === studentId && credit.revoked_at == null).reduce((sum, credit) => sum + credit.units_credited, 0)
       const earnedUnits = results.filter(a => a.effective_status === 'passed' && a.counts_toward_cumulative_gwa)
-        .reduce((sum, row) => sum + row.units_attempted, 0) + db.outsideCredits.filter(credit => credit.student_id === studentId && credit.revoked_at == null).reduce((sum, credit) => sum + credit.units_credited, 0)
+        .reduce((sum, row) => sum + row.units_attempted, 0) + outsideCreditUnits
       const openInc = results.filter(a => a.recorded_status === 'inc' && a.completion_grade == null && !a.is_lapsed_inc)
       const lapsed = results.filter(a => a.is_lapsed_inc)
       const flags = db.gradeFlags.filter(flag => flag.student_id === studentId && flag.status === 'open')
@@ -75,7 +76,7 @@ function studentMetrics(studentId: string, departmentId: string) {
       .reduce((sum, a) => sum + a.units_attempted, 0)
     return failedInTerm >= curriculum.delinquency_threshold
   })
-  return { results, counted, countedUnits, gwa, earnedUnits, openInc, lapsed, flags, failed, failedUnits, failurePct, standing, isDelinquent }
+  return { results, counted, countedUnits, outsideCreditUnits, gwa, earnedUnits, openInc, lapsed, flags, failed, failedUnits, failurePct, standing, isDelinquent }
 }
 
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
@@ -1962,7 +1963,7 @@ export const saaisMswHandlers = [
       for (const credit of db.outsideCredits.filter(item => item.student_id === studentId && item.revoked_at == null)) passedSlots.add(credit.destination_curriculum_term_course_id)
       const summary: ApiSchema<'AcademicSummary'> = {
         student_id: studentId, gwa: metrics.gwa, earned_units: metrics.earnedUnits, required_units: curriculum.total_units,
-        counted_units: metrics.countedUnits, failed_units: metrics.failedUnits, in_progress_units: inProgress.reduce((sum, item) => sum + item.units_attempted, 0),
+        counted_units: metrics.countedUnits + metrics.outsideCreditUnits, failed_units: metrics.failedUnits, in_progress_units: inProgress.reduce((sum, item) => sum + item.units_attempted, 0),
         remaining_units: Math.max(0, curriculum.total_units - metrics.earnedUnits), failure_pct: metrics.failurePct,
         standing: metrics.standing, year_level: metrics.earnedUnits >= 110 ? 4 : metrics.earnedUnits >= 72 ? 3 : metrics.earnedUnits >= 36 ? 2 : 1,
         slots_satisfied: slots.filter(slot => passedSlots.has(slot.id)).length, total_slots: slots.length,
