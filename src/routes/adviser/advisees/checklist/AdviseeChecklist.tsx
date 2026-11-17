@@ -6,11 +6,11 @@ import { useScopedRequest } from '../use-scoped-request'
 import { useAuth } from '@/hooks/use-auth'
 import { StatGrid } from '@/components/features/stat-tile'
 import { Button } from '@/components/ui/button'
-import { ChevronDownIcon } from '@/components/icons'
+import { ChevronDownIcon, XIcon } from '@/components/icons'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Kicker } from '@/components/ui/kicker'
 import { StatusBadge, type Status } from '@/components/ui/status-badge'
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogClose, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { ApiSchema } from '@/lib/api'
 
@@ -38,14 +38,39 @@ function yearStanding(year: number | undefined) {
   const suffix = new Intl.PluralRules('en', { type: 'ordinal' }).select(year)
   return `${year}${suffix === 'one' ? 'st' : suffix === 'two' ? 'nd' : suffix === 'few' ? 'rd' : 'th'} year`
 }
-function AttemptDetails({ row, title }: { row: ApiSchema<'ChecklistSlotResult'>; title: string }) {
-  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm">Course info</Button></DialogTrigger><DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>Course info</DialogTitle><DialogDescription>{title}</DialogDescription></DialogHeader>
-    <div className="grid gap-3 rounded-md border border-border bg-secondary/40 p-4 sm:grid-cols-3"><div><Kicker>Units earned / required</Kicker><p className="mt-1 font-semibold">{row.earned_units} / {row.required_units}</p></div><div><Kicker>Status</Kicker><StatusBadge status={statusMap[row.status]} /></div><div><Kicker>Satisfaction source</Kicker><p className="mt-1">{row.satisfaction_source ?? '—'}</p></div></div>
-    {row.credited_course_code && <p>Credited: {row.credited_course_code} {row.credited_course_title}</p>}
-    <h3 className="font-semibold">Attempt history</h3>
-    {row.attempts?.length ? <ul className="space-y-3">{row.attempts.map(a => <li key={a.attempt_id} className="border-b pb-2"><strong>{a.term_label}</strong><p>Midterm: {a.midterm_grade ?? a.midterm_status ?? '—'} · Final: {a.final_grade ?? a.recorded_status} · Completion: {a.completion_grade ?? '—'}</p><p>Instructor: {a.instructor || 'Not recorded'}{a.inc_deadline && ` · INC deadline: ${a.inc_deadline}`}</p></li>)}</ul> : <p>No attempts recorded.</p>}
-    {!!row.grade_fix_history?.length && <div><h3 className="font-semibold">Grade fix history</h3><ul>{row.grade_fix_history.map((entry, index) => <li key={`${entry.changed_at}:${index}`}>{new Date(entry.changed_at).toLocaleString()} · {entry.old_grade ?? '—'} → {entry.new_grade ?? '—'}</li>)}</ul></div>}
-  </DialogContent></Dialog>
+const categoryLabels: Record<NonNullable<ApiSchema<'Course'>['category']>, string> = { major: 'Major', ge: 'GE', elective: 'Elective', pe: 'PE', nstp: 'NSTP', foundation: 'Foundation', service: 'Service' }
+function ordinal(n: number) {
+  const suffix = new Intl.PluralRules('en', { type: 'ordinal' }).select(n)
+  return `${n}${suffix === 'one' ? 'st' : suffix === 'two' ? 'nd' : suffix === 'few' ? 'rd' : 'th'}`
+}
+const attemptHeaders = ['Attempt', 'Term', 'Midterm', 'Final', 'Completion', 'Instructor', 'Result']
+const grade = (value: number | null | undefined) => value == null ? null : value.toFixed(2)
+function AttemptDetails({ row, title, meta }: { row: ApiSchema<'ChecklistSlotResult'>; title: string; meta: string }) {
+  const attempts = row.attempts ?? []
+  const fixes = row.grade_fix_history ?? []
+  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm">Course info</Button></DialogTrigger>
+    <DialogContent showCloseButton={false} className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0 sm:max-w-[960px]">
+      <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border px-5 pt-[18px] pb-4">
+        <div><DialogTitle>{title}</DialogTitle><DialogDescription className="mt-1.5 text-[13px]">{meta}</DialogDescription></div>
+        <DialogClose asChild><Button variant="ghost" size="icon" className="size-[34px] shrink-0 text-muted-foreground" aria-label="Close"><XIcon className="size-[18px]" aria-hidden /></Button></DialogClose>
+      </DialogHeader>
+      <div className="p-5">
+        <div className="flex items-center gap-2.5 text-sm"><span>Status:</span><StatusBadge status={statusMap[row.status]} /><span className="text-muted-foreground">· {attempts.length} {attempts.length === 1 ? 'attempt' : 'attempts'}</span></div>
+        {attempts.length ? <Table className="mt-4"><TableHeader className="bg-secondary"><TableRow>{attemptHeaders.map(header => <TableHead key={header} className="px-3.5 text-[11.5px] font-semibold tracking-[0.09em] whitespace-nowrap text-muted-2 uppercase">{header}</TableHead>)}</TableRow></TableHeader><TableBody>
+          {attempts.map((a, index) => <TableRow key={a.attempt_id}>
+            <TableCell className="px-3.5 py-[11px]">{index + 1}</TableCell>
+            <TableCell className="px-3.5 py-[11px] whitespace-normal">{a.term_label}</TableCell>
+            <TableCell className="px-3.5 py-[11px]">{grade(a.midterm_grade) ?? (a.midterm_status === 'dr' ? 'DR' : '—')}</TableCell>
+            <TableCell className="px-3.5 py-[11px]">{grade(a.final_grade) ?? '—'}</TableCell>
+            <TableCell className="px-3.5 py-[11px]">{grade(a.completion_grade) ?? '—'}</TableCell>
+            <TableCell className="px-3.5 py-[11px]">{a.instructor || '—'}</TableCell>
+            <TableCell className="px-3.5 py-[11px]"><StatusBadge status={statusMap[a.effective_status]} /></TableCell>
+          </TableRow>)}
+        </TableBody></Table> : <p className="mt-4 text-[13.5px] text-muted-foreground">No attempts recorded yet.</p>}
+        <h3 className="mt-[22px] text-[15.5px] font-semibold">Grade fix history</h3>
+        {fixes.length ? <ul className="mt-2.5 grid gap-1.5 text-[13.5px] text-muted-foreground">{fixes.map((entry, index) => <li key={`${entry.changed_at}:${index}`}>{new Date(entry.changed_at).toLocaleString()} · {entry.old_grade ?? '—'} → {entry.new_grade ?? '—'}</li>)}</ul> : <p className="mt-2 text-[13.5px] text-muted-foreground">No grade fixes recorded.</p>}
+      </div>
+    </DialogContent></Dialog>
 }
 export default function AdviseeChecklist() {
   const { id } = useParams<{ id: string }>()
@@ -90,11 +115,11 @@ export default function AdviseeChecklist() {
             </span>
           </CollapsibleTrigger>
           <CollapsibleContent><Table responsive><TableHeader className="bg-secondary"><TableRow>{['Requirement','Units earned / required','Status','Satisfaction source','Attempts','Course info'].map(header=><TableHead key={header} className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">{header}</TableHead>)}</TableRow></TableHeader><TableBody>
-            {items.filter(matchesFilter).map(r=>{const slot=data.slots.find(s=>s.id===r.curriculum_term_course_id);const course=data.courses.find(c=>c.id===slot?.course_id);const title=course ? `${course.code} · ${course.title}` : slot?.slot_label ?? 'Requirement';const sourceAttempt=r.attempts?.find(attempt=>attempt.attempt_id===r.source_attempt_id);const sourceGrade=sourceAttempt?.completion_grade ?? sourceAttempt?.final_grade;return <TableRow key={r.curriculum_term_course_id}>
+            {items.filter(matchesFilter).map(r=>{const slot=data.slots.find(s=>s.id===r.curriculum_term_course_id);const course=data.courses.find(c=>c.id===slot?.course_id);const title=course ? `${course.code} · ${course.title}` : slot?.slot_label ?? 'Requirement';const term=data.terms.find(t=>t.id===slot?.curriculum_term_id);const meta=[`${r.required_units} ${r.required_units===1?'unit':'units'}`,course?.category?categoryLabels[course.category]:null,term?`${ordinal(term.year_level)} Year, ${ordinal(term.term_sequence)} Semester`:null].filter(Boolean).join(' · ');const sourceAttempt=r.attempts?.find(attempt=>attempt.attempt_id===r.source_attempt_id);const sourceGrade=sourceAttempt?.completion_grade ?? sourceAttempt?.final_grade;return <TableRow key={r.curriculum_term_course_id}>
               <TableCell label="Requirement"><b className="block">{course?.code ?? slot?.slot_label ?? 'Requirement unavailable'}</b><span className="text-xs text-muted-foreground">{course?.title ?? (slot ? 'Elective requirement' : r.curriculum_term_course_id)}</span></TableCell>
               <TableCell label="Units earned / required">{r.earned_units} / {r.required_units}</TableCell><TableCell label="Status"><StatusBadge status={statusMap[r.status]} /></TableCell>
               <TableCell label="Satisfaction source">{r.satisfaction_source ?? '—'}{(r.credited_course_code || sourceGrade != null) && <span className="block text-xs text-muted-foreground">{r.credited_course_code}{r.credited_course_code && sourceGrade != null ? ' · ' : ''}{sourceGrade != null ? `grade ${sourceGrade.toFixed(2)}` : ''}</span>}</TableCell>
-              <TableCell label="Attempts">{r.attempts?.length ? `${r.attempts.length} ${r.attempts.length === 1 ? 'attempt' : 'attempts'}` : '—'}</TableCell><TableCell label="Course info"><AttemptDetails row={r} title={title} /></TableCell>
+              <TableCell label="Attempts">{r.attempts?.length ? `${r.attempts.length} ${r.attempts.length === 1 ? 'attempt' : 'attempts'}` : '—'}</TableCell><TableCell label="Course info"><AttemptDetails row={r} title={title} meta={meta} /></TableCell>
             </TableRow>})}
           </TableBody></Table></CollapsibleContent>
         </Collapsible>
