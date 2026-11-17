@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import {
+  closeSchoolTermEncoding,
   createSchoolTerm,
   listAcademicTerms,
   updateSchoolTerm,
   type AcademicTermsData,
   type SchoolTerm,
+  type SchoolTermCloseEncodingRequest,
   type SchoolTermInsert,
   type SchoolTermUpdate,
 } from '@/routes/department-staff/academic-terms/academic-terms.api'
@@ -168,6 +170,84 @@ export function useUpdateSchoolTerm() {
 
       return {
         term,
+        profileId: scope.profileId,
+        departmentId: scope.departmentId,
+      }
+    },
+    onSuccess: async ({ profileId, departmentId }) => {
+      await refreshAcademicTerms(profileId, departmentId)
+    },
+    onError: async (_error, _change, context) => {
+      if (context) {
+        await refreshAcademicTerms(context.profileId, context.departmentId)
+      }
+    },
+    onMutate: () =>
+      scope.status === 'ready'
+        ? { profileId: scope.profileId, departmentId: scope.departmentId }
+        : undefined,
+  })
+}
+
+export function useCloseAcademicTermEncoding() {
+  const { scope, queryClient, refreshAcademicTerms } = useAcademicTermWrite()
+
+  return useMutation({
+    retry: false,
+    mutationFn: async ({
+      term,
+      closureNote,
+    }: {
+      term: SchoolTerm
+      closureNote: string | null
+    }) => {
+      if (scope.status !== 'ready') {
+        throw new Error(
+          'An authorized department is required to close grade encoding.',
+        )
+      }
+
+      const queryKey = academicTermsQueryKey(
+        scope.profileId,
+        scope.departmentId,
+      )
+      const data = queryClient.getQueryData<AcademicTermsData>(queryKey)
+      const current = data?.terms.find((item) => item.id === term.id)
+      if (
+        !current ||
+        current.school_year !== term.school_year ||
+        current.term_type !== term.term_type ||
+        current.is_locked !== term.is_locked
+      ) {
+        throw new Error(
+          'This school term changed or is no longer available. Refresh the term list and try again.',
+        )
+      }
+
+      const currentClosure = data?.departmentClosures.find(
+        (closure) =>
+          closure.school_term_id === term.id &&
+          closure.department_id === scope.departmentId,
+      )
+      if (currentClosure?.is_closed) {
+        throw new Error(
+          'Department grade encoding is already closed for this term. Refresh the term list.',
+        )
+      }
+
+      const body: SchoolTermCloseEncodingRequest = {
+        scope: 'department',
+        department_id: scope.departmentId,
+        closure_note: closureNote,
+      }
+      const updated = await closeSchoolTermEncoding(term.id, body)
+      if (updated.id !== term.id || updated.is_locked !== current.is_locked) {
+        throw new Error(
+          'The service returned an unexpected term status. Refresh the term list before continuing.',
+        )
+      }
+
+      return {
         profileId: scope.profileId,
         departmentId: scope.departmentId,
       }
