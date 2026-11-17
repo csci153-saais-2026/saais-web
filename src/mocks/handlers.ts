@@ -1851,9 +1851,9 @@ export const saaisMswHandlers = [
               is_locked: true,
               closed_by: persona.profileId,
               closed_at: '2026-11-10T09:00:00Z',
+              closure_note: body.closure_note ?? null,
             }
           : {}),
-        closure_note: body.closure_note ?? null,
         department_closures: [closure],
       }
       db.schoolTerms[idx] = updated
