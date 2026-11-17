@@ -24,24 +24,23 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { SampleFooter } from "@/components/features/sample-footer"
-import { DepartmentToast } from "../shared/dh-ui"
-import {
-  formatDisplayDate,
-  formatTermDateRange,
-  useDepartmentToast,
-} from "../shared/dh-utils"
-import { MOCK_ACADEMIC_TERMS, type AcademicTermRecord } from "./preview-data"
+import { QueryMessage } from "../shared/dh-ui"
+import { useNotify } from "../shared/notify-context"
+import { useAcademicTerms, useCloseEncoding, useCreateTerm, type AcademicTermRecord } from "./terms-api"
 
 const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const
 
 export default function AcademicTermsPage() {
-  const [terms, setTerms] = React.useState<AcademicTermRecord[]>(MOCK_ACADEMIC_TERMS)
+  const termsQuery = useAcademicTerms()
+  const createTerm = useCreateTerm()
+  const closeEncoding = useCloseEncoding()
+  const terms = termsQuery.data ?? []
+  const [formError, setFormError] = React.useState("")
   const [isAddTermOpen, setIsAddTermOpen] = React.useState(false)
   const [termToClose, setTermToClose] = React.useState<AcademicTermRecord | null>(null)
   const [termToView, setTermToView] = React.useState<AcademicTermRecord | null>(null)
   const [closureNote, setClosureNote] = React.useState("")
-  const { message: toastMessage, showToast } = useDepartmentToast()
+  const showToast = useNotify()
 
   // Add term form states
   const [newAY, setNewAY] = React.useState("2025–2026")
@@ -62,43 +61,40 @@ export default function AcademicTermsPage() {
     }
   }
 
-  const handleCreateTerm = () => {
-    const created: AcademicTermRecord = {
-      id: `term-${Date.now()}`,
-      academicYear: newAY.trim() || "2025–2026",
-      semester: newSem,
-      termDates: formatTermDateRange(newStartDate, newEndDate),
-      encodingDeadline: formatDisplayDate(newDeadline),
-      status: newStatus,
-      closedBy: newStatus === "Closed" ? "Dr. Andrea Dela Cruz" : undefined,
-      startDate: newStartDate,
-      endDate: newEndDate,
+  const handleCreateTerm = async () => {
+    setFormError("")
+    try {
+      const created = await createTerm.mutateAsync({
+        academicYear: newAY.trim() || "2025–2026", semester: newSem,
+        startDate: newStartDate, endDate: newEndDate, deadline: newDeadline, closed: newStatus === "Closed",
+      })
+      setIsAddTermOpen(false)
+      showToast(`Added academic term ${created.start_year}–${created.end_year} ${newSem}.`)
+    } catch (failure) {
+      setFormError(failure instanceof Error ? failure.message : "The term could not be added.")
     }
-
-    setTerms((prev) => [created, ...prev])
-    setIsAddTermOpen(false)
-    showToast(`Added academic term ${created.academicYear} ${created.semester}.`)
   }
 
-  const handleCloseEncoding = () => {
+  const handleCloseEncoding = async () => {
     if (!termToClose) return
-    const trimmedNote = closureNote.trim()
-    setTerms((prev) =>
-      prev.map((t) =>
-        t.id === termToClose.id
-          ? {
-              ...t,
-              status: "Closed",
-              closedBy: "Dr. Andrea Dela Cruz",
-              closureNote: trimmedNote || undefined,
-            }
-          : t
-      )
-    )
     const closedName = `${termToClose.academicYear} · ${termToClose.semester}`
-    setTermToClose(null)
-    setClosureNote("")
-    showToast(`Encoding closed for ${closedName}. Administrator notified.`)
+    try {
+      await closeEncoding.mutateAsync({ termId: termToClose.id, note: closureNote.trim() || undefined })
+      setTermToClose(null)
+      setClosureNote("")
+      showToast(`Encoding closed for ${closedName}. Administrator notified.`)
+    } catch (failure) {
+      showToast(failure instanceof Error ? failure.message : "Encoding could not be closed.")
+    }
+  }
+
+  if (!termsQuery.data) {
+    return (
+      <div className="space-y-6">
+        <PageHeading title="Academic terms" subtitle="Review semester dates and manage the grade encoding period." />
+        <QueryMessage query={termsQuery} label="academic terms" />
+      </div>
+    )
   }
 
   const openCount = terms.filter((t) => t.status === "Open").length
@@ -279,11 +275,12 @@ export default function AcademicTermsPage() {
             </div>
           </div>
 
+          {formError && <Alert variant="destructive"><AlertDescription>{formError}</AlertDescription></Alert>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddTermOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateTerm}>Add term</Button>
+            <Button onClick={handleCreateTerm} disabled={createTerm.isPending}>Add term</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -404,11 +401,7 @@ export default function AcademicTermsPage() {
         </DialogContent>
       </Dialog>
 
-      <DepartmentToast message={toastMessage} />
 
-      <SampleFooter>
-        Sample records for presentation · Reference date: 15 August 2025 · Static design
-      </SampleFooter>
     </div>
   )
 }
