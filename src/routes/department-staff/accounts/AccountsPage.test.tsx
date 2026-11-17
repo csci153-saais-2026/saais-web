@@ -152,6 +152,60 @@ describe('Department Staff accounts directory', () => {
     expect(mutationCalls).toBe(0)
   })
 
+  it('shows resend only for an invited account with eligible server invitation state and serializes that target', async () => {
+    let releaseResponse: (() => void) | undefined
+    let calls = 0
+    const responseGate = new Promise<void>(resolve => { releaseResponse = resolve })
+    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/resend-invite', async () => {
+      calls += 1
+      await responseGate
+      return HttpResponse.json({
+        success: true,
+        message: 'Invitation regenerated and dispatched.',
+        profile_id: MOCK_IDS.studentSecondary,
+        invitation_status: 'pending',
+        invitation_sent_at: '2026-11-17T09:00:00Z',
+        invitation_expires_at: '2026-11-24T09:00:00Z',
+      })
+    }))
+    const { queryClient } = renderAccounts()
+    const table = await screen.findByRole('table')
+    const accountsKey = staffQueryKeys.resource(
+      MOCK_PERSONAS.department_staff.profileId,
+      MOCK_IDS.deptDcst,
+      'accounts',
+    )
+    queryClient.setQueryData(accountsKey, { cached: true })
+    const eligibleRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
+    const resendButton = within(eligibleRow).getByRole('button', { name: 'Resend invitation' })
+    expect(within(eligibleRow).getByText('pending')).toBeTruthy()
+
+    const activeRow = await within(table).findByRole('row', { name: new RegExp(MOCK_PERSONAS.student.fullName) })
+    expect(within(activeRow).queryByRole('button', { name: 'Resend invitation' })).toBeNull()
+    fireEvent.click(resendButton)
+    await waitFor(() => expect(resendButton.hasAttribute('disabled')).toBe(true))
+    fireEvent.click(resendButton)
+    expect(calls).toBe(1)
+
+    releaseResponse?.()
+    expect((await within(eligibleRow).findByRole('status')).textContent).toContain('Invitation regenerated and dispatched')
+    expect(within(eligibleRow).getByRole('button', { name: 'Invitation resent' }).hasAttribute('disabled')).toBe(true)
+    await waitFor(() => expect(queryClient.getQueryState(accountsKey)?.isInvalidated).toBe(true))
+  })
+
+  it('explains server rate limits and the retry delay for a pending invitation', async () => {
+    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/resend-invite', () => HttpResponse.json(
+      { code: 'RATE_LIMITED', message: 'Please wait before resending.' },
+      { status: 429, headers: { 'Retry-After': '42' } },
+    )))
+    renderAccounts()
+    const table = await screen.findByRole('table')
+    const eligibleRow = await within(table).findByRole('row', { name: /Concoles, Cyril Jade M\./ })
+    fireEvent.click(within(eligibleRow).getByRole('button', { name: 'Resend invitation' }))
+
+    expect((await within(eligibleRow).findByRole('alert')).textContent).toContain('Try again in 42 seconds.')
+  })
+
   it('requests account pages with the resolved department and bounded offsets', async () => {
     let requestedQuery = new URLSearchParams()
     saaisMockServer.use(http.get('*/functions/v1/accounts', ({ request }) => {

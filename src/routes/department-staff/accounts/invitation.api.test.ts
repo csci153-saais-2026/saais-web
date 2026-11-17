@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import type { ApiSchema } from '@/lib/api'
 import { getMockDatabase, loginAsMockPersona, logoutMockPersona, MOCK_IDS, MOCK_PERSONAS, resetMockDatabase } from '@/mocks'
 import { saaisMockServer } from '@/mocks/node'
+import { canResendDepartmentInvitation, resendDepartmentAccountInvitation } from './accounts.api'
 import { sendDepartmentInvitation } from './invitation.api'
 
 vi.mock('@/lib/api', async importOriginal => {
@@ -105,6 +106,76 @@ describe('department account invitation API', () => {
 
     await expect(sendDepartmentInvitation(scopedPayload('adviser', 'network.fail@vsu.edu.ph')))
       .rejects.toMatchObject({ status: 0, isNetworkError: true })
+    expect(calls).toBe(1)
+  })
+
+  it('enables resend only from eligible server account state within Staff scope', () => {
+    const database = getMockDatabase()
+    const eligibleProfile = database.profiles.find(profile => profile.id === MOCK_IDS.studentSecondary)!
+    const eligible = {
+      profile: eligibleProfile,
+      role_assignments: database.roleAssignments.filter(assignment => assignment.profile_id === eligibleProfile.id),
+      student_organization: database.studentOrganizations.find(item => item.student_id === eligibleProfile.id) ?? null,
+    } satisfies ApiSchema<'AccountSummary'>
+    const activeProfile = database.profiles.find(profile => profile.id === MOCK_IDS.studentPrimary)!
+    const activeAccount = { ...eligible, profile: activeProfile }
+    const deanProfile = database.profiles.find(profile => profile.id === MOCK_IDS.deanDeptHeadComputing)!
+    const deanAccount = {
+      ...eligible,
+      profile: { ...deanProfile, status: 'invited' as const, invitation_status: 'pending' as const },
+    }
+    const missingState = { ...eligible, profile: { ...eligibleProfile, invitation_status: null } }
+
+    expect(canResendDepartmentInvitation(eligible, MOCK_PERSONAS.department_staff.profileId)).toBe(true)
+    for (const invitation_status of ['expired', 'revoked', 'declined'] as const) {
+      expect(canResendDepartmentInvitation({
+        ...eligible,
+        profile: { ...eligibleProfile, invitation_status },
+      }, MOCK_PERSONAS.department_staff.profileId)).toBe(true)
+    }
+    expect(canResendDepartmentInvitation(activeAccount, MOCK_PERSONAS.department_staff.profileId)).toBe(false)
+    expect(canResendDepartmentInvitation(deanAccount, MOCK_PERSONAS.department_staff.profileId)).toBe(false)
+    expect(canResendDepartmentInvitation(eligible, eligibleProfile.id)).toBe(false)
+    expect(canResendDepartmentInvitation(missingState, MOCK_PERSONAS.department_staff.profileId)).toBe(false)
+  })
+
+  it('resends through the dedicated operation and reads the updated server lifecycle fields', async () => {
+    const profileId = MOCK_IDS.studentSecondary
+    const result = await resendDepartmentAccountInvitation(profileId)
+
+    expect(result).toMatchObject({
+      success: true,
+      profile_id: profileId,
+      invitation_status: 'pending',
+      message: 'Invitation regenerated and dispatched.',
+    })
+    expect(getMockDatabase().profiles.find(profile => profile.id === profileId)).toMatchObject({
+      status: 'invited',
+      invitation_status: 'pending',
+      invitation_sent_at: result.invitation_sent_at,
+      invitation_expires_at: result.invitation_expires_at,
+    })
+  })
+
+  it('surfaces stale-state and foreign-scope resend denials as 409 and 403', async () => {
+    await expect(resendDepartmentAccountInvitation(MOCK_IDS.studentPrimary))
+      .rejects.toMatchObject({ status: 409, isConflict: true, code: 'INVITATION_NOT_RESENDABLE' })
+    await expect(resendDepartmentAccountInvitation(MOCK_IDS.studentOtherDept))
+      .rejects.toMatchObject({ status: 403, isForbidden: true })
+  })
+
+  it('surfaces rate limiting without replaying the resend request', async () => {
+    let calls = 0
+    saaisMockServer.use(http.post('*/functions/v1/accounts/:profile_id/resend-invite', () => {
+      calls += 1
+      return HttpResponse.json({ code: 'RATE_LIMITED', message: 'Wait before retrying.' }, {
+        status: 429,
+        headers: { 'Retry-After': '30' },
+      })
+    }))
+
+    await expect(resendDepartmentAccountInvitation(MOCK_IDS.studentSecondary))
+      .rejects.toMatchObject({ status: 429, isRateLimited: true, retryAfterSeconds: 30 })
     expect(calls).toBe(1)
   })
 })

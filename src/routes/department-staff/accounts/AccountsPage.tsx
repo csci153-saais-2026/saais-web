@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useDepartmentAccounts } from '@/hooks/use-department-accounts'
 import { ApiClientError, type ApiSchema } from '@/lib/api'
 import { useStaffScope } from '../shared/use-staff-scope'
-import { accountsMaxOffset, accountsPageSize, type DepartmentAccount } from './accounts.api'
+import { accountsMaxOffset, accountsPageSize, canResendDepartmentInvitation, type DepartmentAccount } from './accounts.api'
+import { useResendDepartmentInvitation } from '@/hooks/use-resend-department-invitation'
 import InviteAccountDialog from './InviteAccountDialog'
 
 const roleLabels: Record<ApiSchema<'RoleType'>, string> = {
@@ -54,6 +55,47 @@ const columns: Column<DepartmentAccount>[] = [
   },
 ]
 
+function resendFailureMessage(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.isConflict) return `${error.message} Account status was refreshed; resend only if the server still shows an eligible invitation.`
+    if (error.isRateLimited) {
+      return error.retryAfterSeconds === null
+        ? 'The server is rate limiting invitation resends. Wait before trying again.'
+        : `The server is rate limiting invitation resends. Try again in ${error.retryAfterSeconds} seconds.`
+    }
+    if (error.isForbidden) return error.message
+    if (error.isNetworkError) return 'The resend result is uncertain. Account status was refreshed; check it before trying again.'
+    return error.message
+  }
+  return error instanceof Error ? error.message : 'The invitation could not be resent.'
+}
+
+function InvitationActions({ account, actingProfileId }: { account: DepartmentAccount; actingProfileId: string }) {
+  const resend = useResendDepartmentInvitation()
+  if (!canResendDepartmentInvitation(account, actingProfileId)) {
+    return <span className="text-muted-foreground">No resend action</span>
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={resend.isPending || resend.isSuccess}
+        onClick={() => resend.mutate(account.profile.id)}
+      >
+        {resend.isPending ? 'Resending…' : resend.isSuccess ? 'Invitation resent' : 'Resend invitation'}
+      </Button>
+      {resend.isSuccess && (
+        <p role="status" className="max-w-56 text-xs text-muted-foreground">
+          {resend.data.message} Expires {new Date(resend.data.invitation_expires_at).toLocaleString()}.
+        </p>
+      )}
+      {resend.isError && <p role="alert" className="max-w-56 text-xs text-destructive">{resendFailureMessage(resend.error)}</p>}
+    </div>
+  )
+}
+
 function parseOffset(value: string | null): number {
   if (!value || !/^\d+$/.test(value)) return 0
   const offset = Number(value)
@@ -84,6 +126,22 @@ export default function AccountsPage() {
   const role = parseRole(searchParams.get('role'))
   const offset = parseOffset(searchParams.get('offset'))
   const accounts = useDepartmentAccounts({ search, role: role || undefined, offset })
+  const accountColumns = scope.status === 'ready'
+    ? [...columns, {
+      header: 'Invitation',
+      className: 'min-w-52',
+      cell: (account: DepartmentAccount) => (
+        <div className="space-y-1">
+          <span className="capitalize">{account.profile.invitation_status ?? 'Unavailable'}</span>
+          {account.profile.invitation_expires_at && <p className="text-xs text-muted-foreground">Expires {new Date(account.profile.invitation_expires_at).toLocaleDateString()}</p>}
+        </div>
+      ),
+    }, {
+      header: 'Actions',
+      className: 'min-w-52',
+      cell: (account: DepartmentAccount) => <InvitationActions account={account} actingProfileId={scope.profileId} />,
+    } satisfies Column<DepartmentAccount>]
+    : columns
 
   function updateFilters(updates: Record<string, string>) {
     const next = new URLSearchParams(searchParams)
@@ -161,7 +219,7 @@ export default function AccountsPage() {
         <DataTablePanel
           title="Department accounts"
           description="Read-only directory. Account status and role assignments are managed by authorized account owners."
-          columns={columns}
+          columns={accountColumns}
           rows={accounts.data.accounts}
           rowKey={account => account.profile.id}
           empty={search || role ? 'No accounts match the current search and role filters.' : 'No accounts are listed for this department.'}

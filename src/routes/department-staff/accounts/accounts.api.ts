@@ -6,9 +6,46 @@ const ACCOUNT_LOOKAHEAD_LIMIT = accountsPageSize + 1
 
 export type DepartmentAccount = ApiSchema<'AccountSummary'>
 
+const staffResendRoles = new Set<ApiSchema<'RoleType'>>([
+  'student',
+  'adviser',
+  'department_staff',
+  'department_head',
+])
+const resendableInvitationStates = new Set(['pending', 'expired', 'revoked', 'declined'])
+
+/** Eligibility is derived only from the token-free account lifecycle fields returned by the server. */
+export function canResendDepartmentInvitation(
+  account: DepartmentAccount,
+  actingProfileId: string,
+): boolean {
+  const { profile } = account
+  const invitationStatus = profile.invitation_status
+  const roles = [...new Set([
+    ...(account.role_assignments ?? []).map(assignment => assignment.role),
+    ...(profile.roles?.length ? profile.roles : [profile.role]),
+  ])]
+  return profile.id !== actingProfileId
+    && profile.status === 'invited'
+    && invitationStatus !== null
+    && invitationStatus !== undefined
+    && resendableInvitationStates.has(invitationStatus)
+    && roles.length > 0
+    && roles.every(role => staffResendRoles.has(role))
+}
+
 export interface DepartmentAccountsPage {
   accounts: DepartmentAccount[]
   hasNext: boolean
+}
+
+export async function resendDepartmentAccountInvitation(
+  profileId: string,
+): Promise<ApiSchema<'ResendInviteResponse'>> {
+  const result = await apiClient.POST('/functions/v1/accounts/{profile_id}/resend-invite', {
+    params: { path: { profile_id: profileId } },
+  })
+  return unwrapApiResult<ApiSchema<'ResendInviteResponse'>>(result)
 }
 
 export type DepartmentAccountsFilters = Pick<

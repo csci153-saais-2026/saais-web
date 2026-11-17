@@ -121,6 +121,7 @@ function studentMetrics(studentId: string, departmentId: string) {
 }
 
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
+const resendableInvitationStates = new Set(['pending', 'expired', 'revoked', 'declined'])
 
 function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
   if (persona.roles.includes('admin')) return true
@@ -1202,13 +1203,26 @@ export const saaisMswHandlers = [
       if (!canManageDepartmentInvite(auth.persona, profile)) {
         return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Cannot manage this invitation.')
       }
+      if (profile.status !== 'invited' || !resendableInvitationStates.has(profile.invitation_status ?? '')) {
+        return errorJson(409, 'INVITATION_NOT_RESENDABLE', 'This invitation is no longer eligible to resend. Refresh account status.')
+      }
+      const resentAt = '2026-11-17T09:00:00Z'
+      const expiresAt = '2026-11-24T09:00:00Z'
+      const index = db.profiles.findIndex(item => item.id === profileId)
+      db.profiles[index] = {
+        ...profile,
+        invitation_status: 'pending',
+        invitation_sent_at: resentAt,
+        invitation_expires_at: expiresAt,
+        updated_at: resentAt,
+      }
       const res: ApiSchema<'ResendInviteResponse'> = {
         success: true,
         message: 'Invitation regenerated and dispatched.',
         profile_id: profileId,
         invitation_status: 'pending',
-        invitation_sent_at: '2026-11-10T09:00:00Z',
-        invitation_expires_at: '2026-11-17T09:00:00Z',
+        invitation_sent_at: resentAt,
+        invitation_expires_at: expiresAt,
       }
       return HttpResponse.json(res, { status: 200 })
     },
