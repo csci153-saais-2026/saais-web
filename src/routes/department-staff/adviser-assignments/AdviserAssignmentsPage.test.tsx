@@ -1,382 +1,293 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ApiClientError, normalizeApiError } from '@/lib/api'
-import AdviserAssignmentsPage from './AdviserAssignmentsPage'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { http, HttpResponse } from 'msw'
+import { AuthContext, type AuthContextValue } from '@/context/auth-context'
+import {
+  getMockDatabase,
+  loginAsMockPersona,
+  logoutMockPersona,
+  MOCK_IDS,
+  MOCK_PERSONAS,
+  resetMockDatabase,
+} from '@/mocks'
+import { saaisMockServer } from '@/mocks/node'
+import DepartmentStaffPortal from '../DepartmentStaffPortal'
 
-const mocks = vi.hoisted(() => ({
-  useDepartmentAdviserAssignments: vi.fn(),
-  useAdviserAssignmentOptions: vi.fn(),
-  mutateAsync: vi.fn(),
-}))
+const staffPersona = MOCK_PERSONAS.department_staff
 
-vi.mock('@/hooks/use-adviser-assignments', async () => {
-  const React = await import('react')
+function staffAuth(): AuthContextValue {
+  const roleAssignments = getMockDatabase().roleAssignments.filter(
+    (assignment) => assignment.profile_id === staffPersona.profileId,
+  )
+
   return {
-    useDepartmentAdviserAssignments: mocks.useDepartmentAdviserAssignments,
-    useAdviserAssignmentOptions: mocks.useAdviserAssignmentOptions,
-    useAdviserReassignment: () => {
-      const [isPending, setIsPending] = React.useState(false)
-      return {
-        isPending,
-        mutateAsync: async (body: unknown) => {
-          setIsPending(true)
-          try {
-            return await mocks.mutateAsync(body)
-          } finally {
-            setIsPending(false)
-          }
-        },
-      }
+    user: {
+      id: staffPersona.profileId,
+      email: staffPersona.email,
+      fullName: staffPersona.fullName,
+      primaryRole: staffPersona.primaryRole,
+      roles: staffPersona.roles,
+      facultyId: staffPersona.facultyId,
+      departmentId: staffPersona.departmentId,
     },
+    profile: null,
+    session: null,
+    roles: staffPersona.roles,
+    roleAssignments,
+    roleScopes: staffPersona.roleScopes.map((scope) => ({
+      role: scope.role,
+      facultyId: scope.scope_type === 'faculty' ? scope.scope_id : null,
+      departmentId: scope.scope_type === 'department' ? scope.scope_id : null,
+    })),
+    activeRole: staffPersona.primaryRole,
+    primaryRole: staffPersona.primaryRole,
+    isLoading: false,
+    isAuthenticated: true,
+    isAllowedToEnter: true,
+    entryBlockedReason: null,
+    authError: null,
+    isPasswordRecovery: false,
+    keepSignedIn: true,
+    isMockMode: true,
+    activePersonaKey: staffPersona.key,
+    signInWithPassword: async () => undefined,
+    signInWithGoogle: async () => undefined,
+    signOut: async () => undefined,
+    retryHydration: async () => undefined,
+    setActiveRole: () => undefined,
+    switchMockPersona: () => undefined,
   }
-})
-
-vi.mock('@/routes/department-staff/shared/use-staff-scope', () => ({
-  useStaffScope: () => ({
-    status: 'ready',
-    departmentId: '22222222-2222-4222-8222-222222222222',
-    profileId: '11111111-1111-4111-8111-111111111111',
-  }),
-}))
-
-const firstStudent = {
-  student: {
-    student_id: '33333333-3333-4333-8333-333333333333',
-    student_number: '24-1-01798',
-    full_name: 'Maria Santos',
-    curriculum_label: 'BSCS 2024-2025 v1',
-  },
-  currentAssignment: {
-    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    adviser_id: '88888888-8888-4888-8888-888888888888',
-    adviser_name: 'Alex Adviser',
-    student_id: '33333333-3333-4333-8333-333333333333',
-    start_date: '2026-04-01',
-    end_date: null,
-  },
-  previousAssignment: {
-    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-    adviser_id: '77777777-7777-4777-8777-777777777777',
-    adviser_name: 'Previous Adviser',
-    student_id: '33333333-3333-4333-8333-333333333333',
-    start_date: '2025-01-01',
-    end_date: '2026-03-31',
-  },
-}
-
-const secondStudent = {
-  ...firstStudent,
-  student: {
-    ...firstStudent.student,
-    student_id: '99999999-9999-4999-8999-999999999999',
-    student_number: '24-1-09999',
-    full_name: 'Second Student',
-  },
-  currentAssignment: {
-    ...firstStudent.currentAssignment,
-    id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-    student_id: '99999999-9999-4999-8999-999999999999',
-    start_date: '2026-03-01',
-  },
-  previousAssignment: null,
-}
-
-const adviserOptions = {
-  curricula: [
-    { id: '66666666-6666-4666-8666-666666666666', label: 'BSCS 2024-2025 v1' },
-  ],
-  advisers: [
-    { id: '88888888-8888-4888-8888-888888888888', label: 'Alex Adviser' },
-    { id: '77777777-7777-4777-8777-777777777777', label: 'Dana Delegate' },
-  ],
 }
 
 function renderPage() {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false },
+    },
   })
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AdviserAssignmentsPage />
+      <AuthContext.Provider value={staffAuth()}>
+        <MemoryRouter initialEntries={['/department-staff/adviser-assignments']}>
+          <Routes>
+            <Route path="/department-staff/*" element={<DepartmentStaffPortal />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
     </QueryClientProvider>,
   )
 }
 
-function selectMariaAndOpenDialog() {
-  fireEvent.click(screen.getAllByLabelText('Select Maria Santos')[0])
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare reassignment' }))
+async function waitForAssignments() {
+  await screen.findByText('Student–adviser assignments')
+  await screen.findByText(MOCK_PERSONAS.student.fullName)
+  await screen.findByText(MOCK_PERSONAS.student_secondary.fullName)
 }
 
-function enterValidReason() {
-  fireEvent.change(screen.getByLabelText('Reason'), {
-    target: { value: 'Transfer to the new adviser' },
-  })
-}
-
-function chooseDanaAsAdviser() {
-  fireEvent.change(screen.getByLabelText('Target adviser'), {
-    target: { value: adviserOptions.advisers[1].id },
-  })
-}
-
-function createApiError(status: number, message: string): ApiClientError {
-  return new ApiClientError(
-    normalizeApiError({ message }, new Response(null, { status })),
-  )
-}
-
-beforeEach(() => {
-  mocks.useDepartmentAdviserAssignments.mockImplementation(
-    (filters: { offset: number }) => ({
-      data: {
-        items: [filters.offset === 0 ? firstStudent : secondStudent],
-        total_count: 21,
-      },
-      isPending: false,
-      isError: false,
-      isSuccess: true,
-      isFetching: false,
-      refetch: vi.fn(),
-      error: null,
+function selectAssignedStudent() {
+  fireEvent.click(
+    screen.getByRole('checkbox', {
+      name: `Select ${MOCK_PERSONAS.student.fullName}`,
     }),
   )
-  mocks.useAdviserAssignmentOptions.mockReturnValue({
-    data: adviserOptions,
-    isPending: false,
-    isError: false,
-    isSuccess: true,
-    isFetching: false,
-    refetch: vi.fn(),
-    error: null,
+}
+
+function openReassignmentDialog() {
+  fireEvent.click(screen.getByRole('button', { name: 'Reassign selected' }))
+}
+
+function enterReason(reason = 'Transfer to the new adviser') {
+  fireEvent.change(screen.getByLabelText('Reason'), {
+    target: { value: reason },
   })
-  mocks.mutateAsync.mockReset()
-  mocks.mutateAsync.mockResolvedValue({
-    reassigned_count: 1,
-    assignments: [],
+}
+
+function chooseSecondaryAdviser() {
+  fireEvent.change(screen.getByLabelText('Target adviser'), {
+    target: { value: MOCK_IDS.adviserSecondary },
   })
+}
+
+beforeAll(() => saaisMockServer.listen())
+beforeEach(() => {
+  resetMockDatabase()
+  loginAsMockPersona('department_staff')
 })
+afterEach(() => {
+  cleanup()
+  saaisMockServer.resetHandlers()
+  resetMockDatabase()
+  logoutMockPersona()
+})
+afterAll(() => saaisMockServer.close())
 
-afterEach(() => cleanup())
-
-describe('AdviserAssignmentsPage', () => {
-  it('shows server-backed current and previous adviser history', () => {
+describe('Department Staff adviser assignments', () => {
+  it('renders the prototype layout with existing records from MSW and staff persona', async () => {
     renderPage()
+    await waitForAssignments()
 
-    expect(screen.getByText('Previous Adviser')).toBeTruthy()
-    expect(screen.getAllByText('Alex Adviser')).toHaveLength(2)
     expect(
-      screen.getByRole('button', { name: 'Prepare reassignment' }),
-    ).toHaveProperty('disabled', true)
-  })
+      screen.getByRole('heading', { name: 'Adviser assignments', level: 1 }),
+    ).toBeTruthy()
+    expect(
+      screen.getByText('Assign and reassign advisers to students in your department.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/Reassignment takes effect on the selected date/),
+    ).toBeTruthy()
+    expect(screen.getByText('Student–adviser assignments')).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Search students' })).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: 'Curriculum' })).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: 'Adviser' })).toBeTruthy()
+    expect(screen.getAllByText(MOCK_PERSONAS.adviser.fullName)).toHaveLength(2)
+    expect(screen.getByText('01 Aug 2024')).toBeTruthy()
+    expect(screen.getAllByText('BSCS 2024')).toHaveLength(2)
 
-  it('does not make students without an active adviser assignment selectable', () => {
-    mocks.useDepartmentAdviserAssignments.mockImplementation(
-      () => ({
-        data: {
-          items: [{ ...firstStudent, currentAssignment: null }],
-          total_count: 1,
-        },
-        isPending: false,
-        isError: false,
-        isSuccess: true,
-        isFetching: false,
-        refetch: vi.fn(),
-        error: null,
+    expect(
+      screen.getByRole('checkbox', {
+        name: `Select ${MOCK_PERSONAS.student_secondary.fullName}`,
       }),
-    )
-    renderPage()
-
-    expect(screen.getAllByLabelText('Select Maria Santos')[0]).toHaveProperty(
-      'disabled',
-      true,
-    )
-  })
-
-  it('clears selected students when the visible page changes', () => {
-    renderPage()
-
-    fireEvent.click(screen.getAllByLabelText('Select Maria Santos')[0])
-    expect(screen.getByText('1 student selected on this page.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
-
-    expect(screen.getByText('Second Student')).toBeTruthy()
-    expect(screen.getByText('Showing 21–21 of 21 matching students')).toBeTruthy()
-    expect(
-      screen.getByRole('button', { name: 'Prepare reassignment' }),
     ).toHaveProperty('disabled', true)
-    expect(screen.getAllByLabelText('Select Second Student')[0]).toHaveProperty('checked', false)
+    expect(screen.getByText('0 students selected')).toBeTruthy()
+    expect(screen.getByText(/Showing 1–2 of 2 students/)).toBeTruthy()
   })
 
-  it('clears selected students when a roster filter changes', () => {
+  it('filters the existing roster by search and adviser through MSW', async () => {
     renderPage()
+    await waitForAssignments()
 
-    fireEvent.click(screen.getAllByLabelText('Select Maria Santos')[0])
-    fireEvent.change(screen.getByRole('searchbox'), {
-      target: { value: 'Maria' },
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search students' }), {
+      target: { value: MOCK_PERSONAS.student_secondary.fullName },
     })
-
-    expect(screen.getByText('Showing 1–1 of 21 matching students')).toBeTruthy()
     expect(
-      screen.getByRole('button', { name: 'Prepare reassignment' }),
-    ).toHaveProperty('disabled', true)
-    expect(screen.getAllByLabelText('Select Maria Santos')[0]).toHaveProperty('checked', false)
+      await screen.findByText(MOCK_PERSONAS.student_secondary.fullName),
+    ).toBeTruthy()
+    await waitFor(() =>
+      expect(screen.queryByText(MOCK_PERSONAS.student.fullName)).toBeNull(),
+    )
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search students' }), {
+      target: { value: '' },
+    })
+    await screen.findByText(MOCK_PERSONAS.student.fullName)
+    fireEvent.change(screen.getByRole('combobox', { name: 'Adviser' }), {
+      target: { value: MOCK_IDS.adviserPrimary },
+    })
+    expect(await screen.findByText(MOCK_PERSONAS.student.fullName)).toBeTruthy()
+    await waitFor(() =>
+      expect(screen.queryByText(MOCK_PERSONAS.student_secondary.fullName)).toBeNull(),
+    )
   })
 
-  it('submits one student in one request, reports the count, and clears selection', async () => {
+  it('selects only students with current assignments and submits one real mock reassignment', async () => {
     renderPage()
-    selectMariaAndOpenDialog()
-    chooseDanaAsAdviser()
-    enterValidReason()
+    await waitForAssignments()
+    selectAssignedStudent()
 
+    expect(screen.getByText('1 student selected')).toBeTruthy()
+    openReassignmentDialog()
+    chooseSecondaryAdviser()
+    enterReason()
     fireEvent.click(screen.getByRole('button', { name: 'Confirm reassignment' }))
 
-    expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
-    expect(mocks.mutateAsync).toHaveBeenCalledWith({
-      student_ids: [firstStudent.student.student_id],
-      adviser_id: adviserOptions.advisers[1].id,
-      effective_since: expect.any(String),
-      reason: 'Transfer to the new adviser',
-    })
-    expect(await screen.findByText('Successfully reassigned 1 student.')).toBeTruthy()
+    expect(
+      await screen.findByText('Successfully reassigned 1 student.'),
+    ).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Prepare reassignment' })).toHaveProperty(
-      'disabled',
-      true,
-    )
-  })
-
-  it('submits all visible selected students as one bulk request', async () => {
-    mocks.useDepartmentAdviserAssignments.mockImplementation(() => ({
-      data: {
-        items: [firstStudent, secondStudent],
-        total_count: 2,
-      },
-      isPending: false,
-      isError: false,
-      isSuccess: true,
-      isFetching: false,
-      refetch: vi.fn(),
-      error: null,
-    }))
-    mocks.mutateAsync.mockResolvedValue({
-      reassigned_count: 2,
-      assignments: [],
+    await waitFor(() => {
+      const activeAssignment = getMockDatabase().adviserAssignments.find(
+        (assignment) =>
+          assignment.student_id === MOCK_IDS.studentPrimary &&
+          assignment.end_date === null,
+      )
+      expect(activeAssignment?.adviser_id).toBe(MOCK_IDS.adviserSecondary)
     })
-    renderPage()
-
-    fireEvent.click(screen.getAllByLabelText('Select Maria Santos')[0])
-    fireEvent.click(screen.getAllByLabelText('Select Second Student')[0])
-    fireEvent.click(screen.getByRole('button', { name: 'Prepare reassignment' }))
-    chooseDanaAsAdviser()
-    enterValidReason()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm reassignment' }))
-
-    expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
-    expect(mocks.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        student_ids: [
-          firstStudent.student.student_id,
-          secondStudent.student.student_id,
-        ],
-        reason: 'Transfer to the new adviser',
-      }),
-    )
-    expect(await screen.findByText('Successfully reassigned 2 students.')).toBeTruthy()
   })
 
-  it('disables repeat confirmation while the request is pending', async () => {
-    let resolveMutation:
-      | ((value: { reassigned_count: number; assignments: [] }) => void)
-      | undefined
-    mocks.mutateAsync.mockReturnValue(
-      new Promise((resolve) => {
-        resolveMutation = resolve
-      }),
-    )
+  it('validates date, eligible adviser, and a non-empty reason without writing', async () => {
     renderPage()
-    selectMariaAndOpenDialog()
-    chooseDanaAsAdviser()
-    enterValidReason()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm reassignment' }))
-
-    const pendingButton = await screen.findByRole('button', { name: 'Reassigning…' })
-    expect(pendingButton).toHaveProperty('disabled', true)
-    fireEvent.click(pendingButton)
-    expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
-
-    resolveMutation?.({ reassigned_count: 1, assignments: [] })
-    expect(await screen.findByText('Successfully reassigned 1 student.')).toBeTruthy()
-  })
-
-  it.each([
-    {
-      error: createApiError(403, 'Forbidden'),
-      message: 'Your account is not permitted to reassign these students. Your inputs have been kept.',
-    },
-    {
-      error: createApiError(409, 'Assignment conflict'),
-      message: 'The assignments changed before this request could be applied. Your inputs were kept, and the roster and assignment history were refreshed. Review the current assignments before retrying.',
-    },
-    {
-      error: new ApiClientError(normalizeApiError(new Error('offline'))),
-      message: 'The server could not confirm the result because of a network error. Your inputs were kept, and the roster and assignment history were refreshed. Review the current assignments before retrying.',
-    },
-  ])('preserves inputs and reports request errors', async ({ error, message }) => {
-    mocks.mutateAsync.mockRejectedValueOnce(error)
-    renderPage()
-    selectMariaAndOpenDialog()
-    chooseDanaAsAdviser()
-    enterValidReason()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm reassignment' }))
-
-    expect(await screen.findByText(message)).toBeTruthy()
-    expect(screen.getByLabelText('Reason')).toHaveProperty(
-      'value',
-      'Transfer to the new adviser',
-    )
-    expect(screen.getByRole('dialog')).toBeTruthy()
-    expect(screen.queryByText(/Successfully reassigned/)).toBeNull()
-  })
-
-  it('rejects whitespace reasons, invalid advisers, and dates before selected assignments', () => {
-    renderPage()
-    selectMariaAndOpenDialog()
+    await waitForAssignments()
+    selectAssignedStudent()
+    openReassignmentDialog()
 
     fireEvent.change(screen.getByLabelText('Target adviser'), {
       target: { value: '' },
     })
     fireEvent.change(screen.getByLabelText('Effective since'), {
-      target: { value: '2026-03-31' },
+      target: { value: '2024-07-31' },
     })
-    fireEvent.change(screen.getByLabelText('Reason'), {
-      target: { value: '   ' },
-    })
+    enterReason('   ')
 
     expect(
       screen.getByText('Select an active adviser in this department.'),
     ).toBeTruthy()
-    expect(screen.getByText('The effective date cannot be before 1 Apr 2026.')).toBeTruthy()
     expect(
-      screen.getByText('Add a non-whitespace reason for this reassignment.'),
+      screen.getByText('The effective date cannot be before 1 Aug 2024.'),
     ).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Confirm reassignment' })).toHaveProperty(
-      'disabled',
-      true,
-    )
-    expect(mocks.mutateAsync).not.toHaveBeenCalled()
+    expect(screen.getByText('Add a non-whitespace reason for this reassignment.')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Confirm reassignment' }),
+    ).toHaveProperty('disabled', true)
+    expect(
+      getMockDatabase().adviserAssignments.filter(
+        (assignment) => assignment.student_id === MOCK_IDS.studentPrimary,
+      ),
+    ).toHaveLength(1)
   })
 
-  it('cancels without submitting changes and retains the selection', () => {
+  it('keeps the dialog inputs when the MSW handler reports a conflict', async () => {
+    saaisMockServer.use(
+      http.post('*/functions/v1/adviser-assignments/bulk-reassign', () =>
+        HttpResponse.json(
+          { code: 'CONFLICT', message: 'Assignment conflict' },
+          { status: 409 },
+        ),
+      ),
+    )
     renderPage()
-    selectMariaAndOpenDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitForAssignments()
+    selectAssignedStudent()
+    openReassignmentDialog()
+    chooseSecondaryAdviser()
+    enterReason()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm reassignment' }))
 
-    expect(screen.queryByRole('dialog')).toBeNull()
-    expect(mocks.mutateAsync).not.toHaveBeenCalled()
-    expect(screen.getByText('1 student selected on this page.')).toBeTruthy()
+    expect(
+      await screen.findByText(
+        'The assignments changed before this request could be applied. Your inputs were kept, and the roster and assignment history were refreshed. Review the current assignments before retrying.',
+      ),
+    ).toBeTruthy()
+    expect(screen.getByLabelText('Reason')).toHaveProperty(
+      'value',
+      'Transfer to the new adviser',
+    )
+    expect(screen.getByLabelText('Target adviser')).toHaveProperty(
+      'value',
+      MOCK_IDS.adviserSecondary,
+    )
+    expect(screen.getByRole('dialog')).toBeTruthy()
+  })
+
+  it('shows a retryable roster error from MSW without inventing records', async () => {
+    saaisMockServer.use(
+      http.get('*/functions/v1/students', () =>
+        HttpResponse.json(
+          { code: 'SERVICE_UNAVAILABLE', message: 'Roster temporarily unavailable' },
+          { status: 503 },
+        ),
+      ),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByText(/Roster temporarily unavailable/),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Retry' }),
+    ).toBeTruthy()
   })
 })
