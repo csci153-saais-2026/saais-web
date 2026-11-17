@@ -298,68 +298,6 @@ export function ReassignAdviserDialog({
               </p>
             )}
 
-            <section
-              aria-labelledby="reassignment-preview-heading"
-              className="space-y-3 rounded-md border bg-muted/20 p-4"
-            >
-              <div>
-                <h3
-                  id="reassignment-preview-heading"
-                  className="font-semibold text-foreground"
-                >
-                  Reassignment preview
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Confirming submits one atomic request; no partial success is reported.
-                </p>
-              </div>
-              <ul className="divide-y">
-                {students.map((item) => {
-                  const currentAssignment = item.currentAssignment
-                  const currentAdviser =
-                    currentAssignment?.adviser_name ?? 'Adviser name unavailable'
-                  return (
-                    <li
-                      key={item.student.student_id}
-                      className="grid gap-1 py-3 text-sm sm:grid-cols-2"
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {item.student.full_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.student.student_number}
-                        </p>
-                      </div>
-                      <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
-                        <dt className="text-muted-foreground">Current adviser</dt>
-                        <dd>{currentAdviser}</dd>
-                        <dt className="text-muted-foreground">New adviser</dt>
-                        <dd>{selectedAdviser?.label ?? 'Select a target adviser'}</dd>
-                        <dt className="text-muted-foreground">Current since</dt>
-                        <dd>
-                          {currentAssignment
-                            ? formatCalendarDate(currentAssignment.start_date)
-                            : 'No current assignment'}
-                        </dd>
-                        <dt className="text-muted-foreground">Effective since</dt>
-                        <dd>
-                          {effectiveSince
-                            ? formatCalendarDate(effectiveSince)
-                            : 'Choose a date'}
-                        </dd>
-                      </dl>
-                    </li>
-                  )
-                })}
-              </ul>
-              <div className="border-t pt-3 text-sm">
-                <p className="font-medium text-foreground">Reason</p>
-                <p className="whitespace-pre-wrap text-muted-foreground">
-                  {reason.trim() || 'Enter a reason to complete the reassignment.'}
-                </p>
-              </div>
-            </section>
           </div>
 
           <DialogFooter className="mt-6">
