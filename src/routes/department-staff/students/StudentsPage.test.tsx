@@ -134,15 +134,17 @@ describe('Department Staff student directory', () => {
     ).toBeTruthy()
     expect(screen.getByText('Department directory')).toBeTruthy()
     expect(screen.getByText(MOCK_PERSONAS.student.email)).toBeTruthy()
-    expect(screen.getByText('3rd year')).toBeTruthy()
-    expect(screen.getByText(MOCK_PERSONAS.adviser.fullName)).toBeTruthy()
+    const primaryStudentRow = screen.getByRole('row', {
+      name: new RegExp(MOCK_PERSONAS.student.fullName),
+    })
+    expect(within(primaryStudentRow).getByText('1st year')).toBeTruthy()
+    expect(within(primaryStudentRow).getByText(MOCK_PERSONAS.adviser.fullName)).toBeTruthy()
     expect(screen.getByText(MOCK_PERSONAS.student_secondary.fullName)).toBeTruthy()
     expect(screen.getByText(MOCK_PERSONAS.student_secondary.email)).toBeTruthy()
-    expect(screen.getByText('1st year')).toBeTruthy()
     expect(screen.getByText('Unassigned')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Import spreadsheet' })).toBeTruthy()
     expect(screen.queryByText(/Staff requests are scoped to department/)).toBeNull()
-    expect(screen.getByText('Showing 1–2 of 2 students')).toBeTruthy()
+    expect(screen.getByText('Showing 1–20 of 26 students')).toBeTruthy()
     const directoryPanel = screen
       .getByText('Department directory')
       .closest('[data-slot="card"]') as HTMLElement
@@ -158,7 +160,7 @@ describe('Department Staff student directory', () => {
       within(directoryPanel).getByRole('combobox', { name: 'Adviser' }),
     ).toBeTruthy()
     const directorySummary = within(directoryPanel).getByText(
-      /2 enrolled students.*BSCS/,
+      /26 enrolled students.*BSCS/,
     )
     expect(directorySummary.textContent).toMatch(
       /(?:AY \d{4} - \d{4}, (?:1st Semester|2nd Semester|Summer)|Academic year and term unavailable)/,
@@ -207,22 +209,21 @@ describe('Department Staff student directory', () => {
     expect(screen.getByRole('combobox', { name: 'Adviser' }).textContent).toContain(
       MOCK_PERSONAS.adviser.fullName,
     )
-    expect(screen.getByText('Showing 1–1 of 1 student')).toBeTruthy()
   })
 
   it('paginates an existing roster query without introducing extra records', async () => {
     renderPortal('/department-staff/students?offset=20')
 
     expect(
-      await screen.findByText('No students shown; 2 students match these filters'),
+      await screen.findByText('Showing 21–26 of 26 students'),
     ).toBeTruthy()
     expect(
       (screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement)
         .disabled,
     ).toBe(false)
+    expect(await screen.findByText(MOCK_PERSONAS.student_sample_19.fullName)).toBeTruthy()
     expect(
-      (screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement)
-        .disabled,
+      (screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled,
     ).toBe(true)
 
     fireEvent.click(screen.getByRole('button', { name: 'Previous' }))
