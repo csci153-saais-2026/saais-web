@@ -54,7 +54,7 @@ describe('encoding workspace identity',()=>{
    expect(await screen.findByText(/Previously recorded grades/)).toBeTruthy();expect(screen.queryByLabelText('New final grade')).toBeNull();expect(saveTermGrades).not.toHaveBeenCalled()
  })
  it('retains draft rows and checks refreshed eligibility after another grade is saved',async()=>{
-   const offering={offering:{id:'offering-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
+   const offering={offering:{id:'offering-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:'slot-two',has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValueOnce([offering]).mockResolvedValueOnce([]);vi.mocked(completeInc).mockResolvedValue({} as ApiSchema<'INCResolution'>)
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
    fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:/CS 2/}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}));fireEvent.change(screen.getByLabelText('Remark'),{target:{value:'Keep draft'}})
@@ -64,7 +64,7 @@ describe('encoding workspace identity',()=>{
    expect((screen.getByRole('button',{name:'Review grades'}) as HTMLButtonElement).disabled).toBe(true)
  })
  it('sets the final and remark from midterm DR and derives remarks from final results',async()=>{
-   const offering={offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
+   const offering={offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:'slot-two',has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue([offering]);vi.mocked(saveTermGrades).mockResolvedValue([])
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
    fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:/CS 2/}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}))
@@ -81,8 +81,8 @@ describe('encoding workspace identity',()=>{
 
  it('invalidates review when adding a course and locks drafts while the save is pending',async()=>{
    const offerings=[
-     {offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Second course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false},
-     {offering:{id:'offering-three',course_id:'course-three'},code:'CS 3',title:'Third course',direct_curriculum_slot_id:null,has_unmet_strict_prerequisites:false},
+     {offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Second course',direct_curriculum_slot_id:'slot-two',has_unmet_strict_prerequisites:false},
+     {offering:{id:'offering-three',course_id:'course-three'},code:'CS 3',title:'Third course',direct_curriculum_slot_id:'slot-three',has_unmet_strict_prerequisites:false},
    ] as Awaited<ReturnType<typeof getTermOfferings>>
    let finishSave!:()=>void
    vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue(offerings)
