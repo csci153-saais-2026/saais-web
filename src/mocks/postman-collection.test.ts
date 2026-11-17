@@ -72,6 +72,16 @@ function flattenRequests(
   return results;
 }
 
+function buildRequest(req: PostmanRequest, env: Record<string, string>): [string, RequestInit] {
+  const headers: Record<string, string> = {};
+  for (const h of req.header ?? []) headers[h.key] = interpolate(h.value, env);
+  const init: RequestInit = { method: req.method, headers };
+  if (req.body?.raw && !["GET", "HEAD", "DELETE"].includes(req.method)) {
+    init.body = interpolate(req.body.raw, env);
+  }
+  return [interpolate(req.url.raw, env), init];
+}
+
 describe("SAAIS Postman Collection against MSW Mock Server", () => {
   beforeAll(() => {
     saaisMockServer.listen();
@@ -86,6 +96,24 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
     saaisMockServer.close();
   });
 
+  it("endorses a different active curriculum for an assigned advisee", async () => {
+    const requests = flattenRequests((rawCollection as unknown as PostmanCollection).item);
+    const entry = requests.find(({ fullName, item }) =>
+      fullName.includes("(endorseCurriculumTransfer)") && item.name.startsWith("Authorized"),
+    );
+    expect(entry).toBeDefined();
+    const [url, init] = buildRequest(entry!.item.request!, loadEnvironmentMap());
+    const requestBody = JSON.parse(init.body as string);
+    const response = await fetch(url, init);
+    expect(response.status).toBe(201);
+    const transfer = await response.json();
+    expect(transfer.student_id).toBe(url.split("/").at(-2));
+    expect(transfer.to_curriculum_version_id).toBe(requestBody.to_curriculum_version_id);
+    expect(transfer.from_curriculum_version_id).not.toBe(transfer.to_curriculum_version_id);
+    expect(transfer.endorsement_note).toBe(requestBody.endorsement_note);
+    expect(transfer.status).toBe("pending");
+  });
+
   it("executes OpenAPI operations (Authorized 2xx and Denied 401/403) and role/scope scenarios", async () => {
     const collection = rawCollection as unknown as PostmanCollection;
     const env = loadEnvironmentMap();
@@ -96,24 +124,7 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
     for (const { fullName, item } of requests) {
       resetMockDatabase();
       const req = item.request!;
-      const rawUrl = interpolate(req.url.raw, env);
-      const headers: Record<string, string> = {};
-      for (const h of req.header ?? []) {
-        headers[h.key] = interpolate(h.value, env);
-      }
-
-      const init: RequestInit = {
-        method: req.method,
-        headers,
-      };
-      if (
-        req.body?.raw &&
-        req.method !== "GET" &&
-        req.method !== "HEAD" &&
-        req.method !== "DELETE"
-      ) {
-        init.body = interpolate(req.body.raw, env);
-      }
+      const [rawUrl, init] = buildRequest(req, env);
 
       const response = await fetch(rawUrl, init);
 
