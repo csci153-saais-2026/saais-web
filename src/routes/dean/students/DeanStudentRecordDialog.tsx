@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { RecordTabs } from "@/components/features/student-record-header"
 import { Button } from "@/components/ui/button"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,17 @@ export function DeanStudentRecordDialog({
 
         {student && (
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
+            <div className="min-w-0">
+              <h2 className="text-3xl leading-tight">{student.name}</h2>
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <span className="font-mono text-[13px]">{student.studentNumber}</span>
+                <span>· {student.program}</span>
+                <span>· {student.yearLabel}</span>
+                <span>· {student.email}</span>
+                <StatusBadge status={student.standing} />
+              </p>
+            </div>
+
             <RecordTabs
               tabs={DEAN_RECORD_TABS}
               value={activeTab}

@@ -61,6 +61,8 @@ describe("DeanStudentRecordDialog", () => {
       </QueryClientProvider>,
     )
 
+    expect(screen.getByRole("heading", { name: "Student Primary" })).toBeTruthy()
+    expect(screen.queryByText("SP")).toBeNull()
     expect(await screen.findByText("36 units earned")).toBeTruthy()
     expect(screen.queryByText(/Read-only Dean inspection/i)).toBeNull()
 
