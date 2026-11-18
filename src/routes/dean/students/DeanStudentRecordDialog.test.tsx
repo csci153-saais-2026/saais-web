@@ -77,7 +77,7 @@ describe("DeanStudentRecordDialog", () => {
     expect(await screen.findByText("Record audit trail")).toBeTruthy()
     expect(screen.queryByText(/Immutable view and grade change events/i)).toBeNull()
 
-    fireEvent.click(screen.getByRole("button", { name: "Close" }))
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
