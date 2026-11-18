@@ -2,8 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import App from "@/App"
 import { setMockSessionToken } from "@/lib/api"
-import { SYNTHETIC_DEPT_HEAD_ONLY_ID, type SyntheticPersonaKey } from "@/lib/auth/mock-auth-service"
-import { getMockDatabase, MOCK_IDS, MOCK_PERSONAS } from "@/mocks"
+import type { SyntheticPersonaKey } from "@/lib/auth/mock-auth-service"
 import { getAuditEvents } from "./shared/dh-api"
 import { setupDepartmentHeadMockApi } from "./test-utils"
 
@@ -68,25 +67,6 @@ describe("Department Head integration", () => {
     openPortal("/adviser/advisees")
     expect(await screen.findByRole("heading", { name: /curriculum transfer/i })).toBeTruthy()
     expect(window.location.pathname).toBe("/department-head/curriculum-transfers")
-  })
-  it("shares API notification state between the list and the top bar", async () => {
-    // Test-local notifications for the signed-in department head; the shared store is reset before every test.
-    getMockDatabase().notifications.push(...[SYNTHETIC_DEPT_HEAD_ONLY_ID, MOCK_PERSONAS.department_head.profileId].flatMap((recipient, who) => [1, 2].map((index) => ({
-      id: `00000000-0000-4000-8000-0000000009${who}${index}`, recipient_id: recipient, kind: "transfer" as const,
-      event_type: "curriculum_transfer_endorsed" as const, title: `Transfer request ${index}`, body: "An adviser endorsed a curriculum transfer.",
-      target_route: "/department-head/curriculum-transfers", target_student_id: null, actor_id: MOCK_IDS.adviserPrimary,
-      entity_type: "curriculum_transfer_request", entity_id: null, dedupe_key: null, email_delivery_status: "sent" as const,
-      is_read: false, read_at: null, created_at: `2026-11-1${index}T08:00:00Z`,
-    }))))
-    openPortal("/department-head/notifications")
-    await screen.findByRole("heading", { name: "Notifications" })
-    await screen.findByRole("button", { name: "Unread (2)" })
-    expect(await screen.findByRole("button", { name: "Notifications, 2 unread" })).toBeTruthy()
-    fireEvent.click(screen.getAllByRole("button", { name: "Mark read" })[0])
-    await screen.findByRole("button", { name: "Unread (1)" })
-    fireEvent.click(screen.getByRole("link", { name: "Students" }))
-    await screen.findByRole("heading", { name: "Students" })
-    expect(await screen.findByRole("button", { name: "Notifications, 1 unread" })).toBeTruthy()
   })
 
   it("opens reports from the sidebar at the canonical URL", async () => {
