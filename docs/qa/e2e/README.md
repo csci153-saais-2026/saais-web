@@ -2,26 +2,28 @@
 
 These are reviewable test specifications for the Milestone 2 contract/mock work. They are based on the role mockup screens and decisions recorded by the project owner. The Playwright suite under `mockup/e2e/` automates visible role screens and prototype interactions using the static prototype's existing demo data. It does not exercise the React application or MSW contract handlers.
 
+> **Coverage status: Partial prototype coverage.**
+
 Run the suite with `npm run test:prototype:e2e`. No app fixtures or new prototype personas are added by these tests. Prototype checks demonstrate the selected mockup flow; they do not establish that API handlers or production authorization enforce the same rules.
+
+`npm run format:check` checks changed human-authored files, as CI does. It avoids failing on unrelated formatting debt elsewhere in the repository. `npm run format:check:all` remains available for a full-repository scan. Generated `package-lock.json` is excluded from the changed-file check.
 
 ## Coverage
 
-| Case | Primary role | Coverage |
-| --- | --- | --- |
-| Case | Automated prototype coverage | Not verified by this prototype suite |
-| --- | --- | --- |
-| TC-01 | Student dashboard, checklist, grades, history, notes panel and notification screen; staff grade controls are absent from student screens | Archived-note status and cross-account privacy enforcement |
-| TC-02 | Prerequisite recommendations, locally saved term plan and note, assistant preview | Contract persistence, adviser authorization, and the requested “AI can make mistakes” copy (the current mockup says to verify before acting) |
-| TC-03 | Grade dialog requires a reason before saving | Passed-course retake denial, audit persistence, failed-retake GWA replacement |
-| TC-04 | INC completion action and retained attempt display | Deadline enforcement and contract-level audit/authorization |
-| TC-05 | Department Staff roster and adviser filter | Student provisioning/required initial adviser and grade-closure behavior |
-| TC-06 | Adviser assignment workspace and table | Reassignment reason validation, history persistence and former-adviser scope |
-| TC-07 | Pending transfer review workspace | Approve/reject persistence and keeping the old adviser until separate reassignment |
-| TC-08 | Outside-credit and equivalency workspaces/actions are visible | 1.00–3.00 validation, revocation behavior and historical report preservation |
-| TC-09 | Adviser grade-attempt and checklist views | Additional-credit classification, beyond-requirement units/GWA and passed-course retake denial |
-| TC-10 | Dean faculty report screen and summary metrics | Direct-route authorization denial and multi-role permission enforcement |
-| TC-11 | System Admin accounts/roles and audit-log screens | Required-adviser validation, role enforcement, and the audited override action |
-| TC-12 | Notification inbox screens for available role personas | Recipient isolation and independent read state between accounts |
+| Case  | Automated prototype coverage                                                                                                             | Not verified by this prototype suite                                                                                                         |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-01 | Student dashboard, checklist, grades, history, notes panel and notification screen; staff grade controls are absent from student screens | Archived-note status and cross-account privacy enforcement                                                                                   |
+| TC-02 | Prerequisite recommendations, locally saved term plan and note, assistant preview                                                        | Contract persistence, adviser authorization, and the requested “AI can make mistakes” copy (the current mockup says to verify before acting) |
+| TC-03 | Grade dialog requires a reason before saving                                                                                             | Passed-course retake denial, audit persistence, failed-retake GWA replacement                                                                |
+| TC-04 | INC completion action and retained attempt display                                                                                       | Deadline enforcement and contract-level audit/authorization                                                                                  |
+| TC-05 | Department Staff roster and adviser filter                                                                                               | Student provisioning/required initial adviser and grade-closure behavior                                                                     |
+| TC-06 | Adviser assignment workspace and table                                                                                                   | Reassignment reason validation, history persistence and former-adviser scope                                                                 |
+| TC-07 | Pending transfer review workspace                                                                                                        | Approve/reject persistence and keeping the old adviser until separate reassignment                                                           |
+| TC-08 | Outside-credit and equivalency workspaces/actions are visible                                                                            | 1.00–3.00 validation, revocation behavior and historical report preservation                                                                 |
+| TC-09 | Adviser grade-attempt and checklist views                                                                                                | Additional-credit classification, beyond-requirement units/GWA and passed-course retake denial                                               |
+| TC-10 | Dean faculty report screen and summary metrics                                                                                           | Direct-route authorization denial and multi-role permission enforcement                                                                      |
+| TC-11 | System Admin accounts/roles and audit-log screens                                                                                        | Required-adviser validation, role enforcement, and the audited override action                                                               |
+| TC-12 | Notification inbox screens for available role personas                                                                                   | Recipient isolation and independent read state between accounts                                                                              |
 
 ## Source and execution notes
 

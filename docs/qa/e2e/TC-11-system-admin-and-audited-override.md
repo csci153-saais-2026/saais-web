@@ -23,6 +23,6 @@
 - Student accounts require an initial adviser.
 - One account may have multiple assigned roles; role-specific access remains explicit.
 - The project owner approved a direct, audited System Administrator override when the mockup does not define a separate workflow.
-- QA approval: [ ]  System/academic reviewer approval: [ ]
+- QA approval: [ ] System/academic reviewer approval: [ ]
 
 **Execution status:** Automated prototype coverage: account/role and audit-log screens are visible. Student initial-adviser validation, role enforcement, and the audited override action are not exposed as interactive flows.

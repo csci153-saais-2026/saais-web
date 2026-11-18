@@ -19,10 +19,10 @@
 5. After the correction in step 3 and before grading the retake, calculate and record the expected cumulative GWA from the shared record: sum each counted grade multiplied by its units, divided by the total counted units, rounded to two decimal places. Include the original failing attempt and exclude the unposted retake. Compare this expected value with the displayed GWA.
 6. Post a numeric result for the retake. Recalculate the expected cumulative GWA from the same shared record and formula, replacing the original failing attempt with the new result. The old failing attempt remains on the transcript marked as repeated and excluded from cumulative GWA; the new result is counted. Compare this expected value with the displayed GWA.
 
-| GWA checkpoint | Counted grades × units / total counted units | Expected cumulative GWA |
-| --- | --- | --- |
+| GWA checkpoint       | Counted grades × units / total counted units                                      | Expected cumulative GWA               |
+| -------------------- | --------------------------------------------------------------------------------- | ------------------------------------- |
 | Before retake result | Fill from shared record after step 3; include prior fail, exclude unposted retake | Calculate and record before execution |
-| After retake result | Use the same record, replacing prior fail with the posted retake grade | Calculate and record before execution |
+| After retake result  | Use the same record, replacing prior fail with the posted retake grade            | Calculate and record before execution |
 
 ## Review checks
 
@@ -30,6 +30,6 @@
 - A failed course may be retaken; a passed course may not.
 - Use the mockup’s displayed GWA behavior; do not require an additional semestral-GWA presentation.
 - If the shared mock database has no single student record satisfying all preconditions, or the expected-value table cannot be filled from that record, this case is blocked pending the shared mock-data owner’s fixture. Do not invent a case-local dataset or guess GWA values.
-- QA approval: [ ]  Adviser/academic-rule reviewer approval: [ ]
+- QA approval: [ ] Adviser/academic-rule reviewer approval: [ ]
 
 **Execution status:** Automated prototype coverage: the grade dialog blocks a save without a reason and accepts a grade after one is supplied. Passed-course retake denial, auditable correction persistence, and failed-retake GWA checkpoints are not implemented in this prototype.

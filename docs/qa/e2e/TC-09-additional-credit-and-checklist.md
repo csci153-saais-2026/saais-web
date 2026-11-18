@@ -21,6 +21,6 @@
 
 - Distinguish an explicitly additional-credit repeatable offering from an ordinary already-passed course.
 - Preserve past reports and transcript history.
-- QA approval: [ ]  Adviser/academic-rule reviewer approval: [ ]
+- QA approval: [ ] Adviser/academic-rule reviewer approval: [ ]
 
 **Execution status:** Automated prototype coverage: adviser attempt and checklist views. The prototype does not identify additional-credit-repeatable offerings or expose the related retake/GWA policy actions.
