@@ -155,6 +155,7 @@ function ExistingAttempt({
   disabled,
   onDraft,
   onSaved,
+  onRemoved,
 }: {
   studentId: string;
   attempt: ApiSchema<"AttemptResult">;
@@ -164,6 +165,7 @@ function ExistingAttempt({
   disabled: boolean;
   onDraft: (draft: ExistingDraft) => void;
   onSaved: () => void;
+  onRemoved: (code: string) => void;
 }) {
   const { midterm, final, instructor } = draft;
   const [busy, setBusy] = useState(false);
@@ -207,6 +209,7 @@ function ExistingAttempt({
     setBusy(true);
     try {
       await deleteTermAttempt(studentId, attempt.id);
+      onRemoved(code);
       onSaved();
     } catch (e) {
       setError(
@@ -405,6 +408,7 @@ export function ExistingCourseRows({
   disabled,
   onDraft,
   onSaved,
+  onRemoved,
 }: {
   data: GradeData;
   offerings: Awaited<ReturnType<typeof getTermOfferings>>;
@@ -415,6 +419,7 @@ export function ExistingCourseRows({
   onDraft: (attemptId: string, draft: ExistingDraft) => void;
   isMockMode: boolean;
   onSaved: () => void;
+  onRemoved: (code: string) => void;
 }) {
   const existing =
     data.terms.find((term) => term.school_term_id === termId)?.attempts ?? [];
@@ -434,6 +439,7 @@ export function ExistingCourseRows({
           disabled={disabled}
           onDraft={(draft) => onDraft(a.id, draft)}
           onSaved={onSaved}
+          onRemoved={onRemoved}
         />
       ))}
     </>
