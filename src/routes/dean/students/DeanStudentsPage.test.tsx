@@ -90,6 +90,7 @@ describe("DeanStudentsPage", () => {
     expect(await screen.findByText("Faculty of Computing")).toBeTruthy()
     expect(screen.queryByText(/opening a record is logged/i)).toBeNull()
     expect(screen.queryByText(/read-only/i)).toBeNull()
+    expect(screen.queryByRole("columnheader", { name: "Standing" })).toBeNull()
   })
 
   it("shows empty state without Faculty of Computing fallback when faculty record is unavailable", async () => {

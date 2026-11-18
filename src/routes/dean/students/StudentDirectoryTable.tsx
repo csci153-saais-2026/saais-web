@@ -1,6 +1,5 @@
 import { Panel } from "@/components/features/panel"
 import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Table,
   TableBody,
@@ -49,7 +48,6 @@ export function StudentDirectoryTable({
             <TableHead>Department</TableHead>
             <TableHead>Curriculum</TableHead>
             <TableHead>Adviser</TableHead>
-            <TableHead>Standing</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -78,15 +76,12 @@ export function StudentDirectoryTable({
                 <TableCell label="Department">{student.department}</TableCell>
                 <TableCell label="Curriculum">{student.curriculum}</TableCell>
                 <TableCell label="Adviser">{student.adviser}</TableCell>
-                <TableCell label="Standing">
-                  <StatusBadge status={student.standing} />
-                </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={5}
                 className="py-10 text-center text-muted-foreground"
               >
                 <div className="flex flex-col items-center gap-3">
