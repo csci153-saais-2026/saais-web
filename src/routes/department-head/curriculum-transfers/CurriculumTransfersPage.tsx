@@ -5,8 +5,7 @@ import { FormField } from "@/components/features/form-field"
 import { PageHeading } from "@/components/features/page-heading"
 import { RecordTabs } from "@/components/features/student-record-header"
 import { StatGrid } from "@/components/features/stat-tile"
-import { Panel } from "@/components/features/panel"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTablePanel } from "@/components/features/data-table-panel"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -34,6 +33,7 @@ export default function CurriculumTransfersPage() {
   const [selectedRequest, setSelectedRequest] = React.useState<TransferRequest | null>(null)
   const [decisionReason, setDecisionReason] = React.useState("")
   const [rejectionError, setRejectionError] = React.useState(false)
+  const [decisionError, setDecisionError] = React.useState("")
   const showToast = useNotify()
 
   const handleTabChange = (nextTab: string) => {
@@ -50,21 +50,27 @@ export default function CurriculumTransfersPage() {
     setSelectedRequest(req)
     setDecisionReason("")
     setRejectionError(false)
+    setDecisionError("")
   }
 
   const submitDecision = async (decision: "approved" | "rejected") => {
-    if (!selectedRequest) return
+    if (!selectedRequest || decide.isPending) return
     const note = decisionReason.trim()
     if (decision === "rejected" && !note) {
       setRejectionError(true)
       return
     }
+    if (note.length > 2000) {
+      setDecisionError("Use at most 2,000 characters for the decision reason.")
+      return
+    }
+    setDecisionError("")
     try {
       await decide.mutateAsync({ id: selectedRequest.id, decision, note })
       showToast(`Request for ${selectedRequest.studentName} ${decision}.`)
       setSelectedRequest(null)
     } catch (failure) {
-      showToast(failure instanceof Error ? failure.message : "The decision could not be saved.")
+      setDecisionError(failure instanceof Error ? failure.message : "The decision could not be saved.")
     }
   }
   const handleApprove = () => submitDecision("approved")
@@ -76,7 +82,7 @@ export default function CurriculumTransfersPage() {
 
   if (!transfers.data) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
         <PageHeading title="Curriculum transfers" subtitle="Review adviser-endorsed requests to move students to another curriculum." />
         <QueryMessage query={transfers} label="curriculum transfers" />
       </div>
@@ -84,7 +90,7 @@ export default function CurriculumTransfersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
       <PageHeading
         title="Curriculum transfers"
         subtitle="Review adviser-endorsed requests to move students to another curriculum."
@@ -121,62 +127,23 @@ export default function CurriculumTransfersPage() {
       />
 
       {activeTab === "pending" ? (
-        <div className="space-y-6">
-          <Panel
+        <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
+          <DataTablePanel
             title="Transfer requests"
             description="Review the student record and adviser's reason before making a decision."
-            flush
-          >
-            <Table responsive>
-              <TableHeader className="bg-secondary">
-                <TableRow>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Student</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Current curriculum</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Requested curriculum</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Adviser</TableHead>
-                  <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Submitted</TableHead>
-                  <TableHead className="text-right" aria-label="Actions" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingRequests.map((req) => (
-                  <TableRow key={req.id}>
-                    <TableCell label="Student">
-                      <strong className="block font-semibold text-foreground">{req.studentName}</strong>
-                      <small className="block font-mono text-xs text-muted-2">{req.studentId}</small>
-                    </TableCell>
-                    <TableCell label="Current curriculum" className="text-muted-foreground">{req.currentCurriculum}</TableCell>
-                    <TableCell label="Requested curriculum" className="font-medium text-foreground">{req.requestedCurriculum}</TableCell>
-                    <TableCell label="Adviser" className="text-muted-foreground">{req.adviser}</TableCell>
-                    <TableCell label="Submitted" className="text-muted-foreground">{req.submittedDate}</TableCell>
-                    <TableCell label="Actions" className="text-right">
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto px-0 py-1 font-semibold underline-offset-4 cursor-pointer"
-                        onClick={() => handleOpenReview(req)}
-                      >
-                        Review request →
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {pendingRequests.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                      No transfer requests currently awaiting review.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-              <span>
-                {pendingRequests.length} {pendingRequests.length === 1 ? "request" : "requests"} awaiting a decision
-              </span>
-              <span>DCST department scope</span>
-            </div>
-          </Panel>
+            rows={pendingRequests}
+            rowKey={(row) => row.id}
+            empty="No transfer requests currently awaiting review."
+            columns={[
+              { header: "Student", cell: (row) => <div><strong className="block font-semibold">{row.studentName}</strong><small className="block font-mono text-xs text-muted-2">{row.studentId}</small></div> },
+              { header: "Current curriculum", cell: (row) => row.currentCurriculum },
+              { header: "Requested curriculum", cell: (row) => row.requestedCurriculum },
+              { header: "Adviser", cell: (row) => row.adviser },
+              { header: "Submitted", cell: (row) => row.submittedDate },
+              { header: "Actions", className: "text-right", cell: (row) => <Button variant="link" size="sm" className="h-auto px-0 py-1 font-semibold" onClick={() => handleOpenReview(row)}>Review request →</Button> },
+            ]}
+            footer={<div className="flex flex-wrap justify-between gap-2"><span>{pendingRequests.length} {pendingRequests.length === 1 ? "request" : "requests"} awaiting a decision</span><span>DCST department scope</span></div>}
+          />
 
           <Alert variant="advisory">
             <AlertIcon />
@@ -186,59 +153,26 @@ export default function CurriculumTransfersPage() {
           </Alert>
         </div>
       ) : (
-        <Panel
+        <DataTablePanel
           title="Transfer decision history"
           description={`${totalDecisionsCount} recorded decisions.`}
-          flush
-        >
-          <Table responsive>
-            <TableHeader className="bg-secondary">
-              <TableRow>
-                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Student</TableHead>
-                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Curriculum transfer</TableHead>
-                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Adviser</TableHead>
-                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Decision</TableHead>
-                <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Decision reason</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {decisionHistory.map((hist) => (
-                <TableRow key={hist.id}>
-                  <TableCell label="Student">
-                    <span className="font-medium text-foreground">{hist.studentName}</span>{" "}
-                    <span className="font-mono text-xs text-muted-2">· {hist.studentId}</span>
-                  </TableCell>
-                  <TableCell label="Curriculum transfer" className="font-mono text-xs">
-                    {hist.currentCurriculum} → {hist.requestedCurriculum}
-                  </TableCell>
-                  <TableCell label="Adviser" className="text-muted-foreground">{hist.adviser}</TableCell>
-                  <TableCell label="Decision">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={hist.decision === "Approved" ? "passed" : "failed"}>
-                        {hist.decision}
-                      </StatusBadge>
-                      <span className="text-xs text-muted-2">· {hist.decisionDate}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell label="Decision reason" className="text-sm text-muted-foreground max-w-xs">
-                    {hist.decisionReason}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-            <span>
-              {decisionHistory.length} decisions of {totalDecisionsCount}
-            </span>
-            <span>DCST department scope</span>
-          </div>
-        </Panel>
+          rows={decisionHistory}
+          rowKey={(row) => row.id}
+          empty="No transfer decisions have been recorded."
+          columns={[
+            { header: "Student", cell: (row) => <div><strong className="block font-semibold">{row.studentName}</strong><small className="block font-mono text-xs text-muted-2">{row.studentId}</small></div> },
+            { header: "Curriculum transfer", cell: (row) => <>{row.currentCurriculum} → {row.requestedCurriculum}</> },
+            { header: "Adviser", cell: (row) => row.adviser },
+            { header: "Decision", cell: (row) => <div className="flex items-center gap-2"><StatusBadge status={row.decision === "Approved" ? "passed" : "failed"}>{row.decision}</StatusBadge><span>· {row.decisionDate}</span></div> },
+            { header: "Decision reason", className: "max-w-xs whitespace-normal", cell: (row) => row.decisionReason || "—" },
+          ]}
+          footer={<div className="flex flex-wrap justify-between gap-2"><span>{decisionHistory.length} decisions of {totalDecisionsCount}</span><span>DCST department scope</span></div>}
+        />
       )}
 
       {/* Review Dialog */}
-      <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
-        <DialogContent className="max-w-xl">
+      <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && !decide.isPending && setSelectedRequest(null)}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]">
           <DialogHeader>
             <DialogTitle>Review curriculum transfer</DialogTitle>
             <DialogDescription>
@@ -295,6 +229,8 @@ export default function CurriculumTransfersPage() {
               >
                 <Textarea
                   id="decision-reason"
+                  maxLength={2000}
+                  disabled={decide.isPending}
                   placeholder="Enter a reason for this decision"
                   value={decisionReason}
                   aria-invalid={rejectionError || undefined}
@@ -307,14 +243,15 @@ export default function CurriculumTransfersPage() {
             </div>
           )}
 
+          {decisionError && <p role="alert" className="text-sm text-destructive">{decisionError}</p>}
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setSelectedRequest(null)}>
+            <Button disabled={decide.isPending} variant="outline" onClick={() => setSelectedRequest(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleReject}>
+            <Button disabled={decide.isPending} variant="destructive" onClick={handleReject}>
               Reject request
             </Button>
-            <Button onClick={handleApprove}>
+            <Button disabled={decide.isPending} onClick={handleApprove}>
               Approve request
             </Button>
           </DialogFooter>

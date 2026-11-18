@@ -3592,7 +3592,13 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ['admin', 'department_head'])
       if ('response' in auth) return auth.response
       const transferId = String(params.transfer_id)
-      const body = (await request.json().catch(() => ({ decision: 'approved' }))) as ApiSchema<'CurriculumTransferDecisionRequest'>
+      const body = (await request.json().catch(() => null)) as ApiSchema<'CurriculumTransferDecisionRequest'> | null
+      if (!body || Object.keys(body).some(key => !['decision', 'decision_note'].includes(key)) ||
+        !['approved', 'rejected'].includes(body.decision) ||
+        (body.decision_note != null && (typeof body.decision_note !== 'string' || body.decision_note.length > 2000)) ||
+        (body.decision === 'rejected' && (typeof body.decision_note !== 'string' || !body.decision_note.trim()))) {
+        return errorJson(400, 'INVALID_INPUT', 'Choose a valid decision and provide a rejection reason of at most 2,000 characters.')
+      }
       const db = getMockDatabase()
       const existing = db.curriculumTransferRequests.find(t => t.id === transferId)
       if (!existing) return errorJson(404, 'NOT_FOUND', 'Transfer request not found.')
