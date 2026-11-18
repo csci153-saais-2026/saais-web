@@ -23,4 +23,4 @@
 - A completion action is attributable to the adviser and appears in audit history.
 - QA approval: [ ]  Adviser/academic-rule reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run.
+**Execution status:** Automated prototype coverage: an unresolved INC can be completed and its attempt remains displayed. Deadline enforcement, role authorization, and contract audit persistence are not tested.
