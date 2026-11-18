@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
-import type { FacultyDepartmentReport } from "@/routes/dean/types"
 import {
   buildFacultyReportFilename,
   buildFacultyReportPdfLines,
-} from "@/routes/dean/utils/faculty-report-pdf"
+} from "@/routes/dean/reports/faculty-report-pdf"
+import type { FacultyDepartmentReport } from "@/routes/dean/types"
 
 const SAMPLE_REPORT: FacultyDepartmentReport = {
   department: "DCST",
@@ -29,12 +29,18 @@ describe("faculty-report-pdf", () => {
     )
   })
 
-  it("formats report summary, grade distribution, and batch GWA rows into lines", () => {
-    const lines = buildFacultyReportPdfLines(SAMPLE_REPORT, "Dr. Paz Villanueva")
+  it("formats report summary without read-only text or hardcoded faculty fallback", () => {
+    const lines = buildFacultyReportPdfLines(
+      SAMPLE_REPORT,
+      "Dr. Paz Villanueva",
+      "Faculty of Science",
+    )
     const joined = lines.join("\n")
 
     expect(joined).toContain("SAAIS - Office of the Dean | Faculty Reports")
-    expect(joined).toContain("Faculty of Computing | DCST | read-only")
+    expect(joined).toContain("Faculty of Science | DCST")
+    expect(joined).not.toContain("Faculty of Computing")
+    expect(joined).not.toMatch(/read-only/i)
     expect(joined).toContain("Students: 42 | Mean GWA: 1.85 | With deficiencies: 5")
     expect(joined).toContain("1.00–1.50: 40%")
     expect(joined).toContain("2024 | BSCS 2024 | 42 | 1.85")

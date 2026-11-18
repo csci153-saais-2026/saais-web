@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { CohortStudentsDialog } from "@/routes/dean/components/CohortStudentsDialog"
+import { CohortStudentsDialog } from "@/routes/dean/reports/CohortStudentsDialog"
 
 describe("CohortStudentsDialog", () => {
   afterEach(() => {
