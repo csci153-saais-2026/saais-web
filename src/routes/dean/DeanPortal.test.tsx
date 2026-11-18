@@ -68,7 +68,7 @@ function makeMockAuth(): AuthContextValue {
   }
 }
 
-function renderDeanAt(initialEntry: string) {
+export function renderDeanAt(initialEntry: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -95,14 +95,15 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 describe("DeanPortal (MSW integration)", () => {
-  it("loads Reports from MSW, opens cohort drill-down into student modal, and opens PDF preview", async () => {
+  it("loads Reports from MSW with faculty-only subheading, opens cohort drill-down into student modal, and opens PDF preview", async () => {
     loginAsMockPersona("dean")
     renderDeanAt("/dean/reports")
 
     expect(
       await screen.findByRole("heading", { name: "Reports" }, { timeout: 5000 }),
     ).toBeTruthy()
-    expect(await screen.findByText(/Faculty of Computing · read-only/)).toBeTruthy()
+    expect(await screen.findByText("Faculty of Computing")).toBeTruthy()
+    expect(screen.queryByText(/read-only/i)).toBeNull()
     expect(screen.queryByRole("button", { name: "Export CSV" })).toBeNull()
     expect(await screen.findByText("Final grade distribution")).toBeTruthy()
     expect(screen.getByText("GWA by batch and curriculum")).toBeTruthy()
@@ -115,7 +116,7 @@ describe("DeanPortal (MSW integration)", () => {
     fireEvent.click(screen.getByRole("button", { name: firstStudent.full_name }))
 
     expect(await screen.findByRole("tab", { name: "Checklist" })).toBeTruthy()
-    expect(screen.queryByText(/Read-only Dean view\./)).toBeNull()
+    expect(screen.queryByText(/Read-only/i)).toBeNull()
     fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
 
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }))
@@ -140,14 +141,15 @@ describe("DeanPortal (MSW integration)", () => {
     expect(await screen.findByText("Final grade distribution")).toBeTruthy()
   })
 
-  it("loads Students from MSW, filters, opens 3-tab modal without notice banner, and logs view event", async () => {
+  it("loads Students from MSW with faculty-only subheading, filters, opens 3-tab modal without read-only copy, and logs view event", async () => {
     loginAsMockPersona("dean")
     renderDeanAt("/dean/students")
 
     expect(
       await screen.findByRole("heading", { name: "Students" }, { timeout: 5000 }),
     ).toBeTruthy()
-    expect(await screen.findByText(/opening a record is logged/)).toBeTruthy()
+    expect(await screen.findByText("Faculty of Computing")).toBeTruthy()
+    expect(screen.queryByText(/opening a record is logged/i)).toBeNull()
 
     const firstStudent = getMockDatabase().profiles.find(
       (p) => p.student_number != null,
@@ -160,12 +162,12 @@ describe("DeanPortal (MSW integration)", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Reset filters" })[0])
     const studentRow = await screen.findByRole("button", {
-      name: `Open read-only record for ${firstStudent.full_name}`,
+      name: `Open record for ${firstStudent.full_name}`,
     })
     fireEvent.click(studentRow)
 
     expect(await screen.findByRole("tab", { name: "Checklist" })).toBeTruthy()
-    expect(screen.queryByText(/Read-only Dean view\./)).toBeNull()
+    expect(screen.queryByText(/Read-only/i)).toBeNull()
     expect(screen.getByRole("tab", { name: "Grades" })).toBeTruthy()
     expect(screen.getByRole("tab", { name: "Audit log" })).toBeTruthy()
 
@@ -173,11 +175,13 @@ describe("DeanPortal (MSW integration)", () => {
     fireEvent.mouseDown(gradesTab, { button: 0 })
     fireEvent.click(gradesTab)
     expect(await screen.findByText("Grades by term")).toBeTruthy()
+    expect(screen.queryByText(/Read-only transcript summary/i)).toBeNull()
 
     const auditTab = screen.getByRole("tab", { name: "Audit log" })
     fireEvent.mouseDown(auditTab, { button: 0 })
     fireEvent.click(auditTab)
     expect(await screen.findByText("Record audit trail")).toBeTruthy()
+    expect(screen.queryByText(/Immutable view and grade change events/i)).toBeNull()
 
     await waitFor(() => {
       expect(
@@ -188,14 +192,16 @@ describe("DeanPortal (MSW integration)", () => {
     })
   })
 
-  it("loads and filters the faculty audit log from MSW with Asia/Manila dates", async () => {
+  it("loads and filters the faculty audit log from MSW with faculty-only subheading", async () => {
     loginAsMockPersona("dean")
     renderDeanAt("/dean/audit-log")
 
     expect(
       await screen.findByRole("heading", { name: "Audit log" }, { timeout: 5000 }),
     ).toBeTruthy()
-    expect(await screen.findByText(/read-only, cannot be edited/)).toBeTruthy()
+    expect(await screen.findByText("Faculty of Computing")).toBeTruthy()
+    expect(screen.queryByText(/read-only/i)).toBeNull()
+    expect(screen.queryByText(/cannot be edited/i)).toBeNull()
     expect(await screen.findByText("Audit events")).toBeTruthy()
 
     const personInput = screen.getByLabelText("Person")
