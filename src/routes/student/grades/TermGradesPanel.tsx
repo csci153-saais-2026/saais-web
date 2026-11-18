@@ -54,6 +54,15 @@ export interface TermGradesPanelProps {
   readonly className?: string
 }
 
+const GRADES_COLUMNS = [
+  { label: "Course", className: "md:w-[30%]" },
+  { label: "Units", className: "md:w-[10%]" },
+  { label: "Midterm", className: "md:w-[12%]" },
+  { label: "Final / completion", className: "md:w-[18%]" },
+  { label: "Status", className: "md:w-[16%]" },
+  { label: "Flag", className: "md:w-[14%]" },
+] as const
+
 const SHORT_MONTHS = [
   "Jan",
   "Feb",
@@ -181,23 +190,19 @@ export function TermGradesPanel({
 
       <CollapsibleContent>
         {term.attempts.length > 0 ? (
-          <Table responsive>
+          <Table responsive className="md:table-fixed">
             <TableHeader className="bg-secondary">
               <TableRow>
-                {[
-                  "Course",
-                  "Units",
-                  "Midterm",
-                  "Final / completion",
-                  "Status",
-                  "Flag",
-                ].map((header) => (
+                {GRADES_COLUMNS.map(({ label, className: colClass }) => (
                   <TableHead
-                    key={header}
+                    key={label}
                     scope="col"
-                    className="px-3.5 py-2.5 text-kicker font-semibold text-muted-2 uppercase"
+                    className={cn(
+                      colClass,
+                      "px-3.5 py-2.5 text-kicker font-semibold text-muted-2 uppercase"
+                    )}
                   >
-                    {header}
+                    {label}
                   </TableHead>
                 ))}
               </TableRow>
