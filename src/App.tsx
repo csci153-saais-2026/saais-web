@@ -109,25 +109,24 @@ function App() {
                 <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                   <Route path="/admin/*" element={<AdminPortal />} />
                 </Route>
-              </Route>
-
-              <Route element={<ProtectedRoute allowedRoles={['department_head']} />}>
-                <Route path="/department-head" element={<DepartmentHeadLayout />}>
-                  <Route index element={<Navigate to="curriculum-transfers" replace />} />
-                  <Route path="transfers" element={<Navigate to="../curriculum-transfers" replace />} />
-                  <Route path="curriculum-transfers" element={<CurriculumTransfersPage />} />
-                  <Route path="curricula" element={<CurriculaPage />} />
-                  <Route path="equivalence" element={<EquivalencePage />} />
-                  <Route path="outside-credits" element={<OutsideCreditsPage />} />
-                  <Route path="academic-terms" element={<AcademicTermsPage />} />
-                  <Route path="notifications" element={<NotificationsPage />} />
-                  <Route path="students" element={<StudentsPage />} />
-                  <Route path="adviser-assignments" element={<AdviserAssignmentsPage />} />
-                  <Route path="reports" element={<DepartmentReportsPage />} />
-                  <Route path="audit-log" element={<AuditLogPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
+                <Route element={<ProtectedRoute allowedRoles={['department_head']} />}>
+                  <Route path="/department-head" element={<DepartmentHeadLayout />}>
+                    <Route index element={<Navigate to="curriculum-transfers" replace />} />
+                    <Route path="transfers" element={<Navigate to="../curriculum-transfers" replace />} />
+                    <Route path="curriculum-transfers" element={<CurriculumTransfersPage />} />
+                    <Route path="curricula" element={<CurriculaPage />} />
+                    <Route path="equivalence" element={<EquivalencePage />} />
+                    <Route path="outside-credits" element={<OutsideCreditsPage />} />
+                    <Route path="academic-terms" element={<AcademicTermsPage />} />
+                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="students" element={<StudentsPage />} />
+                    <Route path="adviser-assignments" element={<AdviserAssignmentsPage />} />
+                    <Route path="reports" element={<DepartmentReportsPage />} />
+                    <Route path="audit-log" element={<AuditLogPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                  </Route>
+                  <Route path="/dept-head/*" element={<Navigate to="/department-head" replace />} />
                 </Route>
-                <Route path="/dept-head/*" element={<Navigate to="/department-head" replace />} />
               </Route>
             </Route>
           </Routes>

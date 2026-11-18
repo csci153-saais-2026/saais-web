@@ -1,21 +1,12 @@
-import { Outlet, useLocation } from "react-router"
-import { AuthenticatedPortalLayout } from "@/components/features/AuthenticatedPortalLayout"
+import { Outlet } from "react-router"
 import { useAuth } from "@/hooks/use-auth"
-import { deptHeadNav } from "@/navigation/department-head"
 import { DepartmentToastProvider } from "./shared/DepartmentToastProvider"
 
 function DepartmentHeadWorkspace() {
-  const { pathname } = useLocation()
-  const pageTitle = pathname === "/department-head/notifications"
-    ? "Notifications"
-    : deptHeadNav.items.find(({ href }) => href === pathname.replace(/\/$/, ""))?.label
-
   return (
-    <AuthenticatedPortalLayout currentPage={pageTitle}>
-      <DepartmentToastProvider>
-        <Outlet />
-      </DepartmentToastProvider>
-    </AuthenticatedPortalLayout>
+    <DepartmentToastProvider>
+      <Outlet />
+    </DepartmentToastProvider>
   )
 }
 
