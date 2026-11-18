@@ -1506,14 +1506,26 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumVersions.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum version not found.')
-    if ((db.curriculumVersions[idx]?.enrolled_student_count ?? 0) > 0) {
-      return errorJson(
-        409,
-        'DEPENDENT_RECORDS_EXIST',
-        'Cannot delete a curriculum version with enrolled students.',
-      )
-    }
+    const version = db.curriculumVersions[idx]!
+    const program = db.programs.find(row => row.id === version.program_id)
+    if (!program) return errorJson(404, 'NOT_FOUND', 'Curriculum program not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) return errorJson(403, 'FORBIDDEN', 'The curriculum is outside your authorized department.')
+    const referenced = (version.enrolled_student_count ?? 0) > 0 ||
+      db.studentCurriculumAssignments.some(row => row.curriculum_version_id === version.id) ||
+      db.studentOrganizations.some(row => row.curriculum_version_id === version.id) ||
+      db.curriculumTransferRequests.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id) ||
+      db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id)
+    const termIds = new Set(db.curriculumTerms.filter(row => row.curriculum_version_id === id).map(row => row.id))
+    const slotIds = new Set(db.curriculumTermCourses.filter(row => termIds.has(row.curriculum_term_id)).map(row => row.id))
+    const hasHistory = [...db.attempts, ...db.attemptResults, ...db.advisingPlanItems, ...db.electiveMappings].some(row => row.curriculum_term_course_id != null && slotIds.has(row.curriculum_term_course_id)) ||
+      db.outsideCredits.some(row => slotIds.has(row.destination_curriculum_term_course_id)) ||
+      db.equivalencyDecisions.some(row => slotIds.has(row.destination_curriculum_term_course_id))
+    if (referenced || hasHistory) return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'Retire this curriculum to preserve student assignments, transfers, equivalence rules, or academic history.')
+    // The existing catalog workflow deletes an unreferenced structure together; never leave orphan children.
+    db.curriculumTermCourses = db.curriculumTermCourses.filter(row => !slotIds.has(row.id))
+    db.curriculumTerms = db.curriculumTerms.filter(row => !termIds.has(row.id))
     db.curriculumVersions.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_version_deleted', entityType: 'curriculum_version', entityId: id, label: version.version_label, details: 'Deleted an unreferenced curriculum structure.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -1571,7 +1583,27 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumTerms.findIndex((t) => t.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum term not found.')
+    const term = db.curriculumTerms[idx]!
+    const version = db.curriculumVersions.find(row => row.id === term.curriculum_version_id)
+    const program = db.programs.find(row => row.id === version?.program_id)
+    if (!version || !program) return errorJson(404, 'NOT_FOUND', 'Curriculum parent not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) return errorJson(403, 'FORBIDDEN', 'The curriculum is outside your authorized department.')
+    const referenced = (version.enrolled_student_count ?? 0) > 0 ||
+      db.studentCurriculumAssignments.some(row => row.curriculum_version_id === version.id) ||
+      db.studentOrganizations.some(row => row.curriculum_version_id === version.id) ||
+      db.curriculumTransferRequests.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id) ||
+      db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id)
+    if (referenced && db.curriculumTerms.filter(row => row.curriculum_version_id === version.id).length <= 1) {
+      return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'A referenced curriculum must retain at least one term.')
+    }
+    const slotIds = new Set(db.curriculumTermCourses.filter(row => row.curriculum_term_id === id).map(row => row.id))
+    const hasHistory = [...db.attempts, ...db.attemptResults, ...db.advisingPlanItems, ...db.electiveMappings].some(row => row.curriculum_term_course_id != null && slotIds.has(row.curriculum_term_course_id)) ||
+      db.outsideCredits.some(row => slotIds.has(row.destination_curriculum_term_course_id)) ||
+      db.equivalencyDecisions.some(row => slotIds.has(row.destination_curriculum_term_course_id))
+    if (hasHistory) return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'This term contains slots used by academic history.')
+    db.curriculumTermCourses = db.curriculumTermCourses.filter(row => !slotIds.has(row.id))
     db.curriculumTerms.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_term_deleted', entityType: 'curriculum_term', entityId: id, label: version.version_label, details: 'Deleted an unreferenced curriculum term and its unreferenced slots.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -1660,7 +1692,22 @@ export const saaisMswHandlers = [
     if (!canAccessDepartment(auth.persona, program.department_id)) {
       return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
     }
+    if (!version || !term) return errorJson(404, 'NOT_FOUND', 'Curriculum parent not found.')
+    const slotIds = new Set([id])
+    const hasHistory = [...db.attempts, ...db.attemptResults, ...db.advisingPlanItems, ...db.electiveMappings].some(row => row.curriculum_term_course_id != null && slotIds.has(row.curriculum_term_course_id)) ||
+      db.outsideCredits.some(row => slotIds.has(row.destination_curriculum_term_course_id)) ||
+      db.equivalencyDecisions.some(row => slotIds.has(row.destination_curriculum_term_course_id))
+    if (hasHistory) return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'This slot is used by academic history.')
+    const referenced = (version.enrolled_student_count ?? 0) > 0 ||
+      db.studentCurriculumAssignments.some(row => row.curriculum_version_id === version.id) ||
+      db.studentOrganizations.some(row => row.curriculum_version_id === version.id) ||
+      db.curriculumTransferRequests.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id) ||
+      db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id)
+    if (referenced && db.curriculumTermCourses.filter(row => row.curriculum_term_id === term.id).length <= 1) {
+      return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'Each term in a referenced curriculum must retain at least one slot.')
+    }
     db.curriculumTermCourses.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_slot_deleted', entityType: 'curriculum_term_course', entityId: id, label: version.version_label, details: 'Deleted an unreferenced curriculum slot.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
