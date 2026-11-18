@@ -1,0 +1,530 @@
+import * as React from "react"
+import { Link } from "react-router"
+import {
+  AssignmentHistoryDialog,
+  type AdviserAssignmentRecord,
+} from "@/components/features/assignment-history-dialog"
+import { PageHeading } from "@/components/features/page-heading"
+import { Panel } from "@/components/features/panel"
+import { SampleFooter } from "@/components/features/sample-footer"
+import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  apiClient,
+  postgrestFilter,
+  unwrapApiResult,
+  type ApiSchema,
+} from "@/lib/api"
+import { CurriculumHistoryDialog } from "./CurriculumHistoryDialog"
+import { ProfileDetailsPanel } from "./ProfileDetailsPanel"
+import { ProfilePhotoCard } from "./ProfilePhotoCard"
+
+export interface StudentProfileViewProps {
+  readonly profile: ApiSchema<"Profile">
+  readonly programName?: string | null
+  readonly departmentName?: string | null
+  readonly collegeName?: string | null
+  readonly adviserAssignments?: readonly AdviserAssignmentRecord[]
+  readonly curriculumAssignments?: readonly ApiSchema<"StudentCurriculumAssignment">[]
+  readonly curriculumTransfers?: readonly ApiSchema<"CurriculumTransferRequest">[]
+  readonly curriculumLabels?: Readonly<Record<string, string>>
+  readonly onUploadPhoto?: (file: File) => Promise<void> | void
+  readonly onRemovePhoto?: () => Promise<void> | void
+  readonly isPhotoBusy?: boolean
+}
+
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const
+
+function formatShortDate(dateValue: string | null | undefined): string {
+  if (!dateValue) return "—"
+  const trimmed = dateValue.trim()
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (isoMatch) {
+    const year = Number(isoMatch[1])
+    const monthIndex = Number(isoMatch[2]) - 1
+    const day = Number(isoMatch[3])
+    const monthLabel = SHORT_MONTHS[monthIndex]
+    if (monthLabel && day >= 1 && day <= 31) {
+      return `${day} ${monthLabel} ${year}`
+    }
+  }
+  return trimmed
+}
+
+function getInitials(fullName?: string | null): string {
+  if (!fullName || !fullName.trim()) return "ST"
+  const parts = fullName.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "ST"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result)
+      } else {
+        reject(new Error("Could not read image file."))
+      }
+    }
+    reader.onerror = () => reject(new Error("Could not read image file."))
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * Pure Student Profile view accepting typed `ApiSchema` payloads.
+ */
+export function StudentProfileView({
+  profile,
+  programName,
+  departmentName,
+  collegeName,
+  adviserAssignments = [],
+  curriculumAssignments = [],
+  curriculumTransfers = [],
+  curriculumLabels,
+  onUploadPhoto,
+  onRemovePhoto,
+  isPhotoBusy = false,
+}: StudentProfileViewProps) {
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = React.useState(false)
+  const [curriculumDialogOpen, setCurriculumDialogOpen] = React.useState(false)
+
+  const initials = getInitials(profile.full_name)
+
+  const activeCurriculum = React.useMemo(() => {
+    const current =
+      curriculumAssignments.find((a) => a.end_date == null) ??
+      curriculumAssignments[0]
+    if (!current) return null
+    return (
+      curriculumLabels?.[current.curriculum_version_id]?.trim() ||
+      current.curriculum_version_id
+    )
+  }, [curriculumAssignments, curriculumLabels])
+
+  return (
+    <div>
+      <PageHeading
+        title="Your student profile."
+        subtitle="Your identity and academic assignments are maintained by an administrator."
+        actions={
+          <Button
+            asChild
+            variant="outline"
+            className="min-h-11 md:min-h-[38px]"
+          >
+            <Link to="/settings">Change password</Link>
+          </Button>
+        }
+      />
+
+      <div className="grid items-start gap-grid lg:grid-cols-[minmax(0,1.75fr)_minmax(270px,1fr)]">
+        <div className="grid min-w-0 gap-grid">
+          <ProfilePhotoCard
+            initials={initials}
+            avatarUrl={profile.avatar_url}
+            fullName={profile.full_name}
+            onUpload={onUploadPhoto}
+            onRemove={onRemovePhoto}
+            isBusy={isPhotoBusy}
+          />
+
+          <ProfileDetailsPanel
+            profile={profile}
+            programName={programName}
+            departmentName={departmentName}
+            collegeName={collegeName}
+          />
+        </div>
+
+        <div className="grid min-w-0 gap-grid">
+          <Panel
+            title="Adviser assignment history"
+            description="Continuous support, with every transition preserved."
+            flush
+          >
+            {adviserAssignments.length > 0 ? (
+              <Table responsive>
+                <TableHeader className="bg-secondary">
+                  <TableRow>
+                    {["Adviser", "Start", "End"].map((header) => (
+                      <TableHead
+                        key={header}
+                        scope="col"
+                        className="px-3.5 py-2.5 text-kicker font-semibold text-muted-2 uppercase"
+                      >
+                        {header}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adviserAssignments.map((assignment) => {
+                    const fromRaw =
+                      assignment.effective_from ?? assignment.start_date
+                    const toRaw =
+                      assignment.effective_to !== undefined
+                        ? assignment.effective_to
+                        : assignment.end_date
+                    const isActive = toRaw == null
+
+                    return (
+                      <TableRow
+                        key={assignment.id}
+                        className="border-line-soft"
+                      >
+                        <TableCell
+                          label="Adviser"
+                          className="px-3.5 py-row text-cell font-medium text-foreground"
+                        >
+                          {assignment.adviser_name?.trim() ||
+                            assignment.adviser_id}
+                        </TableCell>
+                        <TableCell
+                          label="Start"
+                          className="px-3.5 py-row text-cell tabular-nums text-foreground"
+                        >
+                          {formatShortDate(fromRaw)}
+                        </TableCell>
+                        <TableCell
+                          label="End"
+                          className="px-3.5 py-row text-cell tabular-nums text-foreground"
+                        >
+                          {isActive ? "Current" : formatShortDate(toRaw)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="px-5 py-6 text-center text-cell text-muted-foreground">
+                No adviser assignments recorded yet.
+              </p>
+            )}
+
+            <div className="border-t border-line-soft px-5 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAssignmentDialogOpen(true)}
+                className="min-h-11 md:min-h-[38px]"
+              >
+                View assignment history
+              </Button>
+            </div>
+          </Panel>
+
+          <Panel
+            title="Curriculum assignment"
+            description="One active curriculum at a time."
+          >
+            {activeCurriculum && (
+              <p className="mb-3 text-cell font-medium text-foreground">
+                Active curriculum:{" "}
+                <span className="font-mono tabular-nums">
+                  {activeCurriculum}
+                </span>
+              </p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCurriculumDialogOpen(true)}
+              className="min-h-11 md:min-h-[38px]"
+            >
+              View curriculum history
+            </Button>
+          </Panel>
+        </div>
+      </div>
+
+      <SampleFooter>
+        Sample records for presentation · Reference date: 19 September 2026
+      </SampleFooter>
+
+      <AssignmentHistoryDialog
+        open={assignmentDialogOpen}
+        onOpenChange={setAssignmentDialogOpen}
+        assignments={adviserAssignments}
+      />
+
+      <CurriculumHistoryDialog
+        open={curriculumDialogOpen}
+        onOpenChange={setCurriculumDialogOpen}
+        assignments={curriculumAssignments}
+        transfers={curriculumTransfers}
+        curriculumLabels={curriculumLabels}
+      />
+    </div>
+  )
+}
+
+interface ProfilePageData {
+  readonly profile: ApiSchema<"Profile">
+  readonly programName: string | null
+  readonly departmentName: string | null
+  readonly collegeName: string | null
+  readonly adviserAssignments: readonly AdviserAssignmentRecord[]
+  readonly curriculumAssignments: readonly ApiSchema<"StudentCurriculumAssignment">[]
+  readonly curriculumTransfers: readonly ApiSchema<"CurriculumTransferRequest">[]
+  readonly curriculumLabels: Readonly<Record<string, string>>
+}
+
+async function fetchStudentProfileData(
+  studentId: string
+): Promise<ProfilePageData> {
+  const [
+    profilesRes,
+    orgsRes,
+    programsRes,
+    departmentsRes,
+    facultiesRes,
+    adviserAssignmentsRes,
+    currAssignmentsRes,
+    currVersionsRes,
+    currTransfersRes,
+  ] = await Promise.all([
+    apiClient.GET("/rest/v1/profile", {
+      params: { query: { id: postgrestFilter.eq(studentId) } },
+    }),
+    apiClient.GET("/rest/v1/student_organization", {
+      params: { query: { student_id: postgrestFilter.eq(studentId) } },
+    }),
+    apiClient.GET("/rest/v1/program"),
+    apiClient.GET("/rest/v1/department"),
+    apiClient.GET("/rest/v1/faculty"),
+    apiClient.GET("/rest/v1/adviser_assignment", {
+      params: {
+        query: {
+          student_id: postgrestFilter.eq(studentId),
+          select:
+            "id,adviser_id,adviser_name,adviser_email,adviser_faculty_name,adviser_consultation_hours,student_id,start_date,end_date,handed_over_to_adviser_id,handed_over_to_name,handover_label,created_at",
+          order: "start_date.desc",
+        },
+      },
+    }),
+    apiClient.GET("/rest/v1/student_curriculum_assignment", {
+      params: {
+        query: {
+          student_id: postgrestFilter.eq(studentId),
+          select:
+            "id,student_id,curriculum_version_id,start_date,end_date,change_note,created_at",
+          order: "start_date.desc",
+        },
+      },
+    }),
+    apiClient.GET("/rest/v1/curriculum_version"),
+    apiClient.GET("/rest/v1/curriculum_transfer_request", {
+      params: {
+        query: {
+          student_id: postgrestFilter.eq(studentId),
+          order: "created_at.desc",
+        },
+      },
+    }),
+  ])
+
+  const profiles = unwrapApiResult(profilesRes)
+  const profile = profiles[0]
+  if (!profile) {
+    throw new Error("Student profile not found.")
+  }
+
+  const org = orgsRes.data?.[0] ?? null
+  const programs = programsRes.data ?? []
+  const departments = departmentsRes.data ?? []
+  const faculties = facultiesRes.data ?? []
+  const currVersions = currVersionsRes.data ?? []
+
+  const program = programs.find((p) => p.id === org?.program_id) ?? null
+  const department =
+    departments.find((d) => d.id === (org?.department_id ?? profile.department_id)) ??
+    null
+  const faculty =
+    faculties.find((f) => f.id === (org?.faculty_id ?? profile.faculty_id)) ??
+    null
+
+  const curriculumLabels: Record<string, string> = {}
+  for (const version of currVersions) {
+    curriculumLabels[version.id] = version.version_label
+  }
+
+  return {
+    profile,
+    programName: program?.name ?? null,
+    departmentName: department?.name ?? null,
+    collegeName: faculty?.name ?? null,
+    adviserAssignments: adviserAssignmentsRes.data ?? [],
+    curriculumAssignments: currAssignmentsRes.data ?? [],
+    curriculumTransfers: currTransfersRes.data ?? [],
+    curriculumLabels,
+  }
+}
+
+/**
+ * Student Profile page container handling loading, error/retry, and profile photo updates.
+ */
+export function StudentProfilePage({ studentId }: { studentId: string }) {
+  const [state, setState] = React.useState<{
+    data: ProfilePageData | null
+    isPending: boolean
+    isError: boolean
+  }>({
+    data: null,
+    isPending: true,
+    isError: false,
+  })
+  const [isPhotoBusy, setIsPhotoBusy] = React.useState(false)
+
+  const refetch = React.useCallback(async () => {
+    setState((prev) => ({ ...prev, isPending: true, isError: false }))
+    try {
+      const result = await fetchStudentProfileData(studentId)
+      setState({ data: result, isPending: false, isError: false })
+    } catch {
+      setState({ data: null, isPending: false, isError: true })
+    }
+  }, [studentId])
+
+  React.useEffect(() => {
+    let cancelled = false
+    fetchStudentProfileData(studentId)
+      .then((result) => {
+        if (!cancelled) {
+          setState({ data: result, isPending: false, isError: false })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setState({ data: null, isPending: false, isError: true })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [studentId])
+
+  async function handleUploadPhoto(file: File) {
+    setIsPhotoBusy(true)
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg"
+      const ext = mimeType === "image/png" ? "png" : "jpg"
+      const res = await apiClient.PUT("/functions/v1/students/{student_id}/photo", {
+        params: { path: { student_id: studentId } },
+        body: {
+          storage_object_path: `students/${studentId}/avatar.${ext}`,
+          avatar_url: dataUrl,
+          mime_type: mimeType,
+          file_size_bytes: file.size,
+        },
+      })
+      const updated = unwrapApiResult(res)
+      setState((prev) =>
+        prev.data
+          ? {
+              ...prev,
+              data: {
+                ...prev.data,
+                profile: updated,
+              },
+            }
+          : prev
+      )
+    } finally {
+      setIsPhotoBusy(false)
+    }
+  }
+
+  async function handleRemovePhoto() {
+    setIsPhotoBusy(true)
+    try {
+      const res = await apiClient.DELETE(
+        "/functions/v1/students/{student_id}/photo",
+        {
+          params: { path: { student_id: studentId } },
+        }
+      )
+      const updated = unwrapApiResult(res)
+      setState((prev) =>
+        prev.data
+          ? {
+              ...prev,
+              data: {
+                ...prev.data,
+                profile: updated,
+              },
+            }
+          : prev
+      )
+    } finally {
+      setIsPhotoBusy(false)
+    }
+  }
+
+  if (state.isPending) {
+    return <p role="status">Loading...</p>
+  }
+
+  if (state.isError || !state.data) {
+    return (
+      <Panel
+        title="Unable to load profile"
+        description="We could not load your student profile right now."
+      >
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void refetch()}
+        >
+          Try again
+        </Button>
+      </Panel>
+    )
+  }
+
+  return (
+    <StudentProfileView
+      profile={state.data.profile}
+      programName={state.data.programName}
+      departmentName={state.data.departmentName}
+      collegeName={state.data.collegeName}
+      adviserAssignments={state.data.adviserAssignments}
+      curriculumAssignments={state.data.curriculumAssignments}
+      curriculumTransfers={state.data.curriculumTransfers}
+      curriculumLabels={state.data.curriculumLabels}
+      onUploadPhoto={handleUploadPhoto}
+      onRemovePhoto={handleRemovePhoto}
+      isPhotoBusy={isPhotoBusy}
+    />
+  )
+}
+
+export default StudentProfilePage
