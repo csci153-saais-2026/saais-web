@@ -18,5 +18,7 @@ test("TC-04 adviser completes an unresolved INC and preserves its attempt", asyn
 
   await expect(frame.locator("#gr-done")).toContainText(/INC resolved/i);
   await expect(frame.locator("main")).toContainText(originalCourse ?? "INC");
-  await expect(frame.locator("main")).toContainText(/completion history|resolved/i);
+  await expect(frame.locator("main")).toContainText(
+    /completion history|resolved/i,
+  );
 });

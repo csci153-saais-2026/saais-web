@@ -15,9 +15,13 @@ test("TC-03 adviser grade changes require a reason and update the record", async
   await dialog.locator("[data-save=grade]").click();
   await expect(dialog.locator("#gr-msg")).toContainText(/give a reason/i);
 
-  await dialog.locator("#gr-reason").fill("Verified against the signed class record.");
+  await dialog
+    .locator("#gr-reason")
+    .fill("Verified against the signed class record.");
   await dialog.locator("[data-save=grade]").click();
-  await expect(frame.locator("#gr-done")).toContainText(/grade recorded|grade updated/i);
+  await expect(frame.locator("#gr-done")).toContainText(
+    /grade recorded|grade updated/i,
+  );
   await expect(
     frame.locator("tr").filter({ hasText: "CSIT 103" }).first(),
   ).toContainText("2.00");

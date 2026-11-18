@@ -6,5 +6,7 @@ test("prototype router loads role screens through the browser iframe", async ({
 }) => {
   const frame = await openPrototypeRoute(page, "student/dashboard");
 
-  await expect(frame.locator("body")).toContainText(/dashboard|welcome|student/i);
+  await expect(frame.locator("body")).toContainText(
+    /dashboard|welcome|student/i,
+  );
 });
