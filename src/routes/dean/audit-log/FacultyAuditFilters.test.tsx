@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { FacultyAuditFilters } from "@/routes/dean/components/FacultyAuditFilters"
+import { FacultyAuditFilters } from "@/routes/dean/audit-log/FacultyAuditFilters"
 
 describe("FacultyAuditFilters", () => {
   afterEach(() => {
