@@ -1,0 +1,8 @@
+name: is_locked
+in: query
+description: Filter by lock state (e.g. `eq.true`)
+required: false
+schema:
+  type: string
+  pattern: ^eq\.(true|false)$
+  maxLength: 250

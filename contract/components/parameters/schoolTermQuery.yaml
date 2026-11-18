@@ -1,0 +1,7 @@
+name: school_term_id
+in: query
+required: true
+description: Actual school-term UUID, not a curriculum position or term-type label.
+schema:
+  type: string
+  format: uuid

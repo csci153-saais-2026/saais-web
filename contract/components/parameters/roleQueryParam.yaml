@@ -1,0 +1,8 @@
+name: role
+in: query
+description: Filter by role (e.g. `eq.student`)
+required: false
+schema:
+  type: string
+  pattern: ^eq\.(student|adviser|department_head|department_staff|dean|admin)$
+  maxLength: 250

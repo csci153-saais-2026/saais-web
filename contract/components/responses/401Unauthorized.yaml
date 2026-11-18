@@ -1,0 +1,15 @@
+description: >-
+  Missing/invalid project apikey or missing, invalid or expired user session JWT on protected
+  operations. Invitation redemption does not require a user JWT. Gateway rejections may have a
+  different error shape than application/PostgREST responses.
+content:
+  application/json:
+    schema:
+      anyOf:
+        - $ref: "../schemas/Error.yaml"
+        - $ref: "../schemas/SupabaseGatewayAuthError.yaml"
+    example:
+      code: PGRST301
+      message: JWT expired or signature verification failed
+      details: null
+      hint: "Refresh session token and pass Authorization: Bearer <token>"

@@ -1,0 +1,7 @@
+name: search
+in: query
+required: false
+description: Search text. Server uses parameterized queries; no client-defined query language.
+schema:
+  type: string
+  maxLength: 150
