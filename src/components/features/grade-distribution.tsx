@@ -16,6 +16,10 @@ const tones: Record<NonNullable<GradeBand["tone"]>, string> = {
   inc: "[&_[data-slot=progress-indicator]]:bg-status-inc",
   neutral: "[&_[data-slot=progress-indicator]]:bg-muted-2",
 }
+const percentTones: Partial<Record<NonNullable<GradeBand["tone"]>, string>> = {
+  fail: "text-status-fail",
+  inc: "text-status-inc",
+}
 
 /** Horizontal bar rows showing share of grades per band. */
 function GradeDistribution({ bands, inline = false }: { bands: GradeBand[]; inline?: boolean }) {
@@ -31,7 +35,7 @@ function GradeDistribution({ bands, inline = false }: { bands: GradeBand[]; inli
             </span>}
           </div>
           <Progress value={b.percent} aria-label={b.label} className={cn(inline ? 'h-3.5' : 'h-1.5', tones[b.tone ?? "primary"])} />
-          {inline && <span className="min-w-12 text-right font-mono text-sm">{b.percent}%</span>}
+          {inline && <span className={cn("min-w-12 text-right font-mono text-sm", b.tone && percentTones[b.tone])}>{b.percent}%</span>}
         </li>
       ))}
     </ul>

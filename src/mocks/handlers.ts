@@ -4147,7 +4147,7 @@ export const saaisMswHandlers = [
       { label: '1.00–1.50', min_grade: 1, max_grade: 1.5 },
       { label: '1.75–2.25', min_grade: 1.75, max_grade: 2.25 },
       { label: '2.50–3.00', min_grade: 2.5, max_grade: 3 },
-      { label: '3.25–5.00', min_grade: 3.25, max_grade: 5 },
+      { label: '5.00', min_grade: 5, max_grade: 5 },
     ]
     const pendingInc = attempts.filter(attempt => attempt.recorded_status === 'inc' && attempt.completion_grade == null && !attempt.is_lapsed_inc).length
     const report: ApiSchema<'AdviserDashboardReport'> = {
