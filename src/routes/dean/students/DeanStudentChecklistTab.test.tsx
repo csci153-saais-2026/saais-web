@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { loginAsMockPersona, logoutMockPersona, MOCK_IDS, resetMockDatabase } from "@/mocks"
 import { saaisMockServer } from "@/mocks/node"
-import { DeanStudentChecklistTab } from "@/routes/dean/components/DeanStudentChecklistTab"
+import { DeanStudentChecklistTab } from "@/routes/dean/students/DeanStudentChecklistTab"
 import type { DeanStudentSummary } from "@/routes/dean/types"
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -29,7 +29,7 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 describe("DeanStudentChecklistTab", () => {
-  it("loads checklist from MSW and opens Adviser-style Course Info modal", async () => {
+  it("loads checklist from MSW without read-only copy and opens Adviser-style Course Info modal", async () => {
     loginAsMockPersona("dean")
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -62,6 +62,7 @@ describe("DeanStudentChecklistTab", () => {
 
     expect(await screen.findByText("36 units earned")).toBeTruthy()
     expect(await screen.findByText(/Year 1 · Semester 1/)).toBeTruthy()
+    expect(screen.queryByText(/Read-only/i)).toBeNull()
 
     const infoButtons = screen.getAllByRole("button", { name: "Course info" })
     fireEvent.click(infoButtons[0])
