@@ -2,16 +2,25 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChecklistTermGroup, type ChecklistRow } from "@/components/features/checklist-term-group"
 import { DegreeProgress } from "@/components/features/degree-progress"
+import { XIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { Status } from "@/components/ui/status-badge"
+import { StatusBadge, type Status } from "@/components/ui/status-badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import type { ApiSchema } from "@/lib/api"
 import { getDeanStudentChecklist } from "@/routes/dean/api/dean.api"
 import { DeanQueryState } from "@/routes/dean/components/DeanQueryState"
@@ -25,6 +34,35 @@ const STATUS_MAP: Record<ApiSchema<"ChecklistSlotResult">["status"], Status> = {
   inc: "inc",
   dr: "dr",
   na: "na",
+}
+
+const CATEGORY_LABELS: Record<NonNullable<ApiSchema<"Course">["category"]>, string> = {
+  major: "Major",
+  ge: "GE",
+  elective: "Elective",
+  pe: "PE",
+  nstp: "NSTP",
+  foundation: "Foundation",
+  service: "Service",
+}
+
+const ATTEMPT_HEADERS = [
+  "Attempt",
+  "Term",
+  "Midterm",
+  "Final",
+  "Completion",
+  "Instructor",
+  "Result",
+]
+
+function ordinal(n: number) {
+  const suffix = new Intl.PluralRules("en", { type: "ordinal" }).select(n)
+  return `${n}${suffix === "one" ? "st" : suffix === "two" ? "nd" : suffix === "few" ? "rd" : "th"}`
+}
+
+function formatGrade(value: number | null | undefined) {
+  return value == null ? null : value.toFixed(2)
 }
 
 function buildChecklistTerms(data: {
@@ -83,10 +121,41 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
     )
   }
 
-  const terms = buildChecklistTerms(checklistQuery.data)
+  const data = checklistQuery.data
+  const terms = buildChecklistTerms(data)
+
   const selectedCourse = selectedCourseCode
-    ? checklistQuery.data.courses.find((c) => c.code === selectedCourseCode) ?? null
+    ? data.courses.find((c) => c.code === selectedCourseCode) ?? null
     : null
+  const selectedSlot = selectedCourseCode
+    ? data.slots.find((s) =>
+        selectedCourse ? s.course_id === selectedCourse.id : s.slot_label === selectedCourseCode,
+      ) ?? null
+    : null
+  const selectedResult = selectedSlot
+    ? data.results.find((r) => r.curriculum_term_course_id === selectedSlot.id) ?? null
+    : null
+  const selectedTerm = selectedSlot
+    ? data.terms.find((t) => t.id === selectedSlot.curriculum_term_id) ?? null
+    : null
+
+  const modalTitle = selectedCourse
+    ? `${selectedCourse.code} · ${selectedCourse.title}`
+    : selectedSlot?.slot_label ?? selectedCourseCode ?? "Course info"
+
+  const requiredUnits = selectedResult?.required_units ?? selectedCourse?.units ?? 0
+  const modalMeta = [
+    `${requiredUnits} ${requiredUnits === 1 ? "unit" : "units"}`,
+    selectedCourse?.category ? CATEGORY_LABELS[selectedCourse.category] : null,
+    selectedTerm
+      ? `${ordinal(selectedTerm.year_level)} Year, ${ordinal(selectedTerm.term_sequence)} Semester`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
+  const attempts = selectedResult?.attempts ?? []
+  const fixes = selectedResult?.grade_fix_history ?? []
 
   return (
     <div className="space-y-6">
@@ -125,37 +194,103 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
           if (!open) setSelectedCourseCode(null)
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedCourse
-                ? `${selectedCourse.code} · ${selectedCourse.title}`
-                : selectedCourseCode}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedCourse
-                ? `${selectedCourse.units} units · Category: ${selectedCourse.category}`
-                : "Course catalog metadata"}
-            </DialogDescription>
+        <DialogContent
+          showCloseButton={false}
+          className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0 sm:max-w-240"
+        >
+          <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border px-5 pt-4.5 pb-4">
+            <div>
+              <DialogTitle>{modalTitle}</DialogTitle>
+              <DialogDescription className="mt-1.5 text-[13px]">
+                {modalMeta}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8.5 shrink-0 text-muted-foreground"
+                aria-label="Close"
+              >
+                <XIcon className="size-4.5" aria-hidden />
+              </Button>
+            </DialogClose>
           </DialogHeader>
 
-          <p className="text-sm text-muted-foreground">
-            {selectedCourse
-              ? selectedCourse.status === "active"
-                ? "Active catalog course in this student's curriculum."
-                : "Archived catalog course."
-              : "No additional catalog metadata is recorded for this requirement."}
-          </p>
+          <div className="p-5">
+            {selectedResult && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <span>Status:</span>
+                <StatusBadge status={STATUS_MAP[selectedResult.status]} />
+                <span className="text-muted-foreground">
+                  · {attempts.length} {attempts.length === 1 ? "attempt" : "attempts"}
+                </span>
+              </div>
+            )}
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setSelectedCourseCode(null)}
-            >
-              Close
-            </Button>
-          </DialogFooter>
+            {attempts.length > 0 ? (
+              <Table className="mt-4">
+                <TableHeader className="bg-secondary">
+                  <TableRow>
+                    {ATTEMPT_HEADERS.map((header) => (
+                      <TableHead
+                        key={header}
+                        className="px-3.5 text-[11.5px] font-semibold tracking-[0.09em] whitespace-nowrap text-muted-2 uppercase"
+                      >
+                        {header}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attempts.map((a, index) => (
+                    <TableRow key={a.attempt_id}>
+                      <TableCell className="px-3.5 py-2.75">{index + 1}</TableCell>
+                      <TableCell className="px-3.5 py-2.75 whitespace-normal">
+                        {a.term_label}
+                      </TableCell>
+                      <TableCell className="px-3.5 py-2.75">
+                        {formatGrade(a.midterm_grade) ?? (a.midterm_status === "dr" ? "DR" : "—")}
+                      </TableCell>
+                      <TableCell className="px-3.5 py-2.75">
+                        {formatGrade(a.final_grade) ?? "—"}
+                      </TableCell>
+                      <TableCell className="px-3.5 py-2.75">
+                        {formatGrade(a.completion_grade) ?? "—"}
+                      </TableCell>
+                      <TableCell className="px-3.5 py-2.75">
+                        {a.instructor || "—"}
+                      </TableCell>
+                      <TableCell className="px-3.5 py-2.75">
+                        <StatusBadge status={STATUS_MAP[a.effective_status]} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="mt-4 text-[13.5px] text-muted-foreground">
+                No attempts recorded yet.
+              </p>
+            )}
+
+            <h3 className="mt-5.5 text-[15.5px] font-semibold">Grade fix history</h3>
+            {fixes.length > 0 ? (
+              <ul className="mt-2.5 grid gap-1.5 text-[13.5px] text-muted-foreground">
+                {fixes.map((entry, index) => (
+                  <li key={`${entry.changed_at}:${index}`}>
+                    {new Date(entry.changed_at).toLocaleString()} · {entry.old_grade ?? "—"} →{" "}
+                    {entry.new_grade ?? "—"}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-[13.5px] text-muted-foreground">
+                No grade fixes recorded.
+              </p>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
