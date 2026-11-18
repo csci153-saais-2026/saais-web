@@ -11,12 +11,14 @@ import {
 import type { DepartmentFilter } from "@/routes/dean/types"
 
 export function FacultyReportHeader({
+  facultyName = "Faculty of Computing",
   department,
   departments = ["All departments"],
   onDepartmentChange,
   onExportPdf,
   disabled = false,
 }: {
+  facultyName?: string
   department: DepartmentFilter
   departments?: string[]
   onDepartmentChange: (department: DepartmentFilter) => void
@@ -25,12 +27,12 @@ export function FacultyReportHeader({
 }) {
   const scopeMeta =
     department === "All departments"
-      ? "Faculty of Computing · read-only"
-      : `Faculty of Computing · ${department} · read-only`
+      ? `${facultyName} · read-only`
+      : `${facultyName} · ${department} · read-only`
 
   return (
     <PageHeading
-      title="Faculty reports"
+      title="Reports"
       subtitle={scopeMeta}
       actions={
         <div className="flex flex-wrap items-center gap-2">

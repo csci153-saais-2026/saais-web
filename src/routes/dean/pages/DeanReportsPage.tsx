@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import {
   getDeanAttemptResults,
+  getDeanFaculties,
   getDeanStudents,
   getFacultyDepartments,
   getFacultyReport,
@@ -27,15 +28,24 @@ export default function DeanReportsPage() {
   const reportsQuery = useQuery({
     queryKey: ["dean", "faculty-report"],
     queryFn: async () => {
-      const [facultyReport, departments, roster, attemptResults] = await Promise.all([
+      const [facultyReport, faculties, departments, roster, attemptResults] = await Promise.all([
         getFacultyReport(),
+        getDeanFaculties(),
         getFacultyDepartments(),
         getDeanStudents(),
         getDeanAttemptResults(),
       ])
-      return { facultyReport, departments, roster, attemptResults }
+      return { facultyReport, faculties, departments, roster, attemptResults }
     },
   })
+
+  const facultyName = useMemo(() => {
+    const id = reportsQuery.data?.facultyReport.faculty_id
+    return (
+      reportsQuery.data?.faculties.find((f) => f.id === id)?.name ??
+      "Faculty of Computing"
+    )
+  }, [reportsQuery.data])
 
   const departmentOptions = useMemo(() => {
     const depts = reportsQuery.data?.departments ?? []
@@ -87,6 +97,7 @@ export default function DeanReportsPage() {
   return (
     <div className="space-y-6">
       <FacultyReportHeader
+        facultyName={facultyName}
         department={department}
         departments={departmentOptions}
         onDepartmentChange={setDepartment}

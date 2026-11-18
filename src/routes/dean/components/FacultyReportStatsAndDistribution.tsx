@@ -38,7 +38,7 @@ export function FacultyReportStatsAndDistribution({
         title="Final grade distribution"
         description="Share of final grades across the selected scope."
       >
-        <GradeDistribution bands={report.bands} />
+        <GradeDistribution inline bands={report.bands} />
       </Panel>
     </div>
   )
