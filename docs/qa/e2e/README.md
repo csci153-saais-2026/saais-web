@@ -1,25 +1,29 @@
 # SAAIS manual end-to-end test cases
 
-These are reviewable manual test specifications for the Milestone 2 contract/mock work. They are based on the role mockup screens and decisions recorded by the project owner. They are not automated Playwright tests, and they have not been executed against handlers.
+These are reviewable test specifications for the Milestone 2 contract/mock work. They are based on the role mockup screens and decisions recorded by the project owner. The Playwright suite under `mockup/e2e/` automates visible role screens and prototype interactions using the static prototype's existing demo data. It does not exercise the React application or MSW contract handlers.
 
-Use only the shared synthetic personas and records documented in src/mocks/README.md and src/mocks/SCENARIOS.md. Do not add test-specific application fixtures. If a scenario needs a record that is missing, identify that as a shared mock-data prerequisite for the mock-data owner.
+> **Coverage status: Partial prototype coverage.**
+
+Run the suite with `npm run test:prototype:e2e`. No app fixtures or new prototype personas are added by these tests. Prototype checks demonstrate the selected mockup flow; they do not establish that API handlers or production authorization enforce the same rules.
+
+`npm run format:check` checks changed human-authored files, as CI does. It avoids failing on unrelated formatting debt elsewhere in the repository. `npm run format:check:all` remains available for a full-repository scan. Generated `package-lock.json` is excluded from the changed-file check.
 
 ## Coverage
 
-| Case | Primary role | Coverage |
-| --- | --- | --- |
-| TC-01 | Student | Own checklist, grades, notes including archived notes, data privacy |
-| TC-02 | Adviser | Advisee checklist, prerequisites, term recommendations, saved plan and note |
-| TC-03 | Adviser | Grade entry/correction, passed-course retake restriction, failed-retake GWA behavior |
-| TC-04 | Adviser | INC deadline, completion grade, preserved attempt |
-| TC-05 | Department Staff | Student provisioning with initial adviser; current-department grade closure |
-| TC-06 | Department Staff / Department Head | Separate adviser reassignment, reason and history |
-| TC-07 | Department Head | Cross-department transfer; old adviser remains until separate reassignment |
-| TC-08 | Department Head | Outside-credit grade limits, equivalency and historical preservation |
-| TC-09 | Adviser | Additional-credit repeatable course attempts and checklist/GWA results |
-| TC-10 | Dean | Faculty-scoped reporting and role-specific access |
-| TC-11 | System Administrator | Account/role administration and audited lock override |
-| TC-12 | All six roles | Current account’s notifications and multi-role inbox behavior |
+| Case  | Automated prototype coverage                                                                                                             | Not verified by this prototype suite                                                                                                         |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-01 | Student dashboard, checklist, grades, history, notes panel and notification screen; staff grade controls are absent from student screens | Archived-note status and cross-account privacy enforcement                                                                                   |
+| TC-02 | Prerequisite recommendations, locally saved term plan and note, assistant preview                                                        | Contract persistence, adviser authorization, and the requested “AI can make mistakes” copy (the current mockup says to verify before acting) |
+| TC-03 | Grade dialog requires a reason before saving                                                                                             | Passed-course retake denial, audit persistence, failed-retake GWA replacement                                                                |
+| TC-04 | INC completion action and retained attempt display                                                                                       | Deadline enforcement and contract-level audit/authorization                                                                                  |
+| TC-05 | Department Staff roster and adviser filter                                                                                               | Student provisioning/required initial adviser and grade-closure behavior                                                                     |
+| TC-06 | Adviser assignment workspace and table                                                                                                   | Reassignment reason validation, history persistence and former-adviser scope                                                                 |
+| TC-07 | Pending transfer review workspace                                                                                                        | Approve/reject persistence and keeping the old adviser until separate reassignment                                                           |
+| TC-08 | Outside-credit and equivalency workspaces/actions are visible                                                                            | 1.00–3.00 validation, revocation behavior and historical report preservation                                                                 |
+| TC-09 | Adviser grade-attempt and checklist views                                                                                                | Additional-credit classification, beyond-requirement units/GWA and passed-course retake denial                                               |
+| TC-10 | Dean faculty report screen and summary metrics                                                                                           | Direct-route authorization denial and multi-role permission enforcement                                                                      |
+| TC-11 | System Admin accounts/roles and audit-log screens                                                                                        | Required-adviser validation, role enforcement, and the audited override action                                                               |
+| TC-12 | Notification inbox screens for available role personas                                                                                   | Recipient isolation and independent read state between accounts                                                                              |
 
 ## Source and execution notes
 
@@ -33,12 +37,13 @@ Use only the shared synthetic personas and records documented in src/mocks/READM
 - Do not add semestral GWA expectations beyond what the mockup displays.
 - Issue #45 requires QA and an appropriate project reviewer to approve each case. Approval checkboxes are intentionally left unchecked.
 
-## Review blockers to resolve before execution
+## Prototype limits and later app acceptance
 
-1. The documented dean and dean_dept_head personas include additional roles. A Dean-only access scenario needs a shared Dean-only test account if reviewers require it; do not create a local fixture in this folder.
-2. The agreed System Administrator audited override has no clearly identified control in the current System Admin mockup. The expected audit behavior is recorded in TC-11; the UI/action route needs owner review before that case can be executed.
-3. TC-05 requires a shared record where a course is offered by a different department than the student’s current department. Confirm the shared scenario provides it before execution.
-4. TC-03 requires a shared failed-course retake scenario, including a pending retake. If the shared dataset does not contain one, request it from the shared mock-data owner.
+- Several test specifications contain policy assertions that the static prototype does not implement as interactive behavior. Those assertions remain manual acceptance criteria for the future React/MSW implementation; the browser suite does not mark them as passed.
+- The prototype's route selector is a presentation/demo mechanism, not authentication. Screens can be opened directly, so role-denial tests cannot be meaningfully run against it.
+- Account provisioning, transfer decisions, outside-credit grade validation, adviser reassignment persistence, additional-credit attempt rules, audited overrides and per-account notification isolation need a real app/handler test target and the shared scenarios described in the individual case files.
+- The student-facing notes panel shows notes, but does not expose active versus archived status as a testable distinction. Keep the agreed rule that archived notes remain visible when adding app-level coverage.
+- The mockup assistant currently displays “Always verify before acting.” The later requested caution “AI can make mistakes” is not present in the prototype copy; the current test does not claim to verify that wording.
 
 ## Individual cases
 

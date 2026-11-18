@@ -23,6 +23,6 @@
 - An adviser cannot open or change a student outside their permitted assignment/scope.
 - No enrollment is recorded merely by viewing recommendations or asking the preview assistant.
 - Archived notes remain student-visible.
-- QA approval: [ ]  Adviser/product reviewer approval: [ ]
+- QA approval: [ ] Adviser/product reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. If current mock handlers do not persist a plan, note, or assistant preview, track that as later handler work rather than changing the expected product behavior.
+**Execution status:** Automated prototype coverage: prerequisite recommendations, local term-plan save, note save, and an assistant-caution text check. The test does not open the assistant or verify its visible preview state, and it does not test API persistence or authorization.

@@ -21,6 +21,6 @@
 - Do not assume all Dean accounts are multi-role or that the demo’s combined persona represents a Dean-only account.
 - Verify denial through direct route access; absence of a menu item is not an authorization check.
 - Current shared dean personas include Adviser; a Dean-only fixture may be needed to execute step 3.
-- QA approval: [ ]  Dean/project reviewer approval: [ ]
+- QA approval: [ ] Dean/project reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. Shared-data prerequisite: identify an existing Dean-only test account or ask the mock-data owner to provide one.
+**Execution status:** Automated prototype coverage: Dean faculty reporting view and summary metrics. Direct-route denial and multi-role authorization are not testable in the route-switching prototype.

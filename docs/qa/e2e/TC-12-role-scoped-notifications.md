@@ -22,6 +22,6 @@
 
 - The bell and notifications page derive the recipient from the authenticated account, not from a manually chosen role/persona label.
 - Each role’s navigation and permitted actions still follow its assigned roles.
-- QA approval: [ ]  Auth/notification reviewer approval: [ ]
+- QA approval: [ ] Auth/notification reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run.
+**Execution status:** Automated prototype coverage: inbox routes and read controls are visible for available role personas. Recipient isolation and independent read state across accounts are not enforced by the static prototype.

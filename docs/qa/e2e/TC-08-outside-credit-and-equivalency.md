@@ -23,6 +23,6 @@
 - Only passing outside-credit grades from 1.00 through 3.00 are accepted.
 - Keep the existing shared catalog titles and codes.
 - Past reports are preserved when a mapping is revoked.
-- QA approval: [ ]  Department Head/academic reviewer approval: [ ]
+- QA approval: [ ] Department Head/academic reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. Do not infer a revocation UI if none exists in the current mockup.
+**Execution status:** Automated prototype coverage: outside-credit and equivalency workspaces and their entry actions are visible. Grade boundaries, revocation, and historical preservation are not interactive prototype behaviors.
