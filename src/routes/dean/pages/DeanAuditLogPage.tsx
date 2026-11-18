@@ -1,9 +1,17 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { DataTablePanel } from "@/components/features/data-table-panel"
 import { PageHeading } from "@/components/features/page-heading"
+import { Panel } from "@/components/features/panel"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import type { ApiSchema } from "@/lib/api"
-import { getDeanAuditLogEntries } from "@/routes/dean/api/dean.api"
+import { getDeanAuditLogEntries, getDeanFaculties } from "@/routes/dean/api/dean.api"
 import { DeanAuditActionPill } from "@/routes/dean/components/DeanAuditActionPill"
 import { DeanQueryState } from "@/routes/dean/components/DeanQueryState"
 import { FacultyAuditFilters } from "@/routes/dean/components/FacultyAuditFilters"
@@ -57,11 +65,22 @@ export default function DeanAuditLogPage() {
 
   const auditQuery = useQuery({
     queryKey: ["dean", "audit-log"],
-    queryFn: getDeanAuditLogEntries,
+    queryFn: async () => {
+      const [entries, faculties] = await Promise.all([
+        getDeanAuditLogEntries(),
+        getDeanFaculties(),
+      ])
+      return { entries, faculties }
+    },
   })
 
+  const facultyName = useMemo(
+    () => auditQuery.data?.faculties[0]?.name ?? "Faculty of Computing",
+    [auditQuery.data],
+  )
+
   const entries = useMemo(
-    () => (auditQuery.data ?? []).map(toDeanAuditEntry),
+    () => (auditQuery.data?.entries ?? []).map(toDeanAuditEntry),
     [auditQuery.data],
   )
 
@@ -92,7 +111,7 @@ export default function DeanAuditLogPage() {
     <div className="space-y-6">
       <PageHeading
         title="Audit log"
-        subtitle="Immutable record of faculty report exports, drill-downs, and student record views."
+        subtitle={`${facultyName} · read-only, cannot be edited`}
       />
 
       {!auditQuery.data ? (
@@ -103,55 +122,60 @@ export default function DeanAuditLogPage() {
           onRetry={() => void auditQuery.refetch()}
         />
       ) : (
-        <div className="space-y-4">
-          <div className="rounded-md border border-border bg-card">
-            <FacultyAuditFilters
-              person={person}
-              onPersonChange={setPerson}
-              student={student}
-              onStudentChange={setStudent}
-              action={action}
-              onActionChange={setAction}
-              fromDate={fromDate}
-              onFromDateChange={setFromDate}
-              onReset={handleReset}
-            />
-          </div>
-
-          <DataTablePanel
-            title="Audit events"
-            description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
-            rows={filteredEntries}
-            rowKey={(row) => row.id}
-            empty="No audit records match these filters."
-            columns={[
-              {
-                header: "When",
-                cell: (row) => (
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {row.timestamp}
-                  </span>
-                ),
-              },
-              {
-                header: "Who",
-                cell: (row) => <span className="font-medium">{row.actor}</span>,
-              },
-              {
-                header: "Action",
-                cell: (row) => <DeanAuditActionPill action={row.action} />,
-              },
-              {
-                header: "Student",
-                cell: (row) => row.student,
-              },
-              {
-                header: "Details",
-                cell: (row) => row.details,
-              },
-            ]}
+        <Panel
+          title="Audit events"
+          description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
+          flush
+        >
+          <FacultyAuditFilters
+            person={person}
+            onPersonChange={setPerson}
+            student={student}
+            onStudentChange={setStudent}
+            action={action}
+            onActionChange={setAction}
+            fromDate={fromDate}
+            onFromDateChange={setFromDate}
+            onReset={handleReset}
           />
-        </div>
+
+          <Table responsive>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>Who</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredEntries.length > 0 ? (
+                filteredEntries.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell label="When" className="font-mono text-xs text-muted-foreground">
+                      {row.timestamp}
+                    </TableCell>
+                    <TableCell label="Who" className="font-medium">
+                      {row.actor}
+                    </TableCell>
+                    <TableCell label="Action">
+                      <DeanAuditActionPill action={row.action} />
+                    </TableCell>
+                    <TableCell label="Student">{row.student}</TableCell>
+                    <TableCell label="Details">{row.details}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    No audit records match these filters.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Panel>
       )}
     </div>
   )
