@@ -4,12 +4,32 @@ export async function getFacultyReport(): Promise<ApiSchema<"FacultyReport">> {
   return unwrapApiResult(await apiClient.GET("/functions/v1/reports/faculty"))
 }
 
+export async function getDeanFaculties(): Promise<ApiSchema<"Faculty">[]> {
+  return unwrapApiResult(await apiClient.GET("/rest/v1/faculty"))
+}
+
 export async function getFacultyDepartments(): Promise<ApiSchema<"Department">[]> {
   return unwrapApiResult(await apiClient.GET("/rest/v1/department"))
 }
 
 export async function getDeanStudents(): Promise<ApiSchema<"StudentRosterResponse">> {
-  return unwrapApiResult(await apiClient.GET("/functions/v1/students"))
+  const items: ApiSchema<"StudentRosterItem">[] = []
+  let lastPage: ApiSchema<"StudentRosterResponse"> | null = null
+
+  for (let offset = 0; ; offset += 100) {
+    const page = unwrapApiResult(
+      await apiClient.GET("/functions/v1/students", {
+        params: { query: { limit: 100, offset } },
+      }),
+    )
+    lastPage = page
+    items.push(...page.items)
+    if (items.length >= page.total_count || page.items.length === 0) {
+      return { ...page, items }
+    }
+  }
+
+  return lastPage!
 }
 
 export async function getDeanStudentChecklist(studentId: string): Promise<{
