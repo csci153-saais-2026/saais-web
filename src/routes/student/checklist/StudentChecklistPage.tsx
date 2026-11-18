@@ -2,7 +2,7 @@ import * as React from "react"
 import {
   ChecklistTermGroup,
   type ChecklistRow,
-} from "@/components/features/checklist-term-group"
+} from "@/components/features/checklist-term-table"
 import {
   CourseInfoDialog,
   type CourseInfoSlotRecord,
