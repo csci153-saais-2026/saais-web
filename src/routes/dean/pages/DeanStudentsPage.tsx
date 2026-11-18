@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { PageHeading } from "@/components/features/page-heading"
-import { getDeanStudents } from "@/routes/dean/api/dean.api"
+import { getDeanFaculties, getDeanStudents } from "@/routes/dean/api/dean.api"
 import { DeanQueryState } from "@/routes/dean/components/DeanQueryState"
 import { DeanStudentRecordDialog } from "@/routes/dean/components/DeanStudentRecordDialog"
 import { StudentDirectoryFilters } from "@/routes/dean/components/StudentDirectoryFilters"
@@ -17,11 +17,25 @@ export default function DeanStudentsPage() {
 
   const studentsQuery = useQuery({
     queryKey: ["dean", "students"],
-    queryFn: getDeanStudents,
+    queryFn: async () => {
+      const [roster, faculties] = await Promise.all([
+        getDeanStudents(),
+        getDeanFaculties(),
+      ])
+      return { roster, faculties }
+    },
   })
 
+  const facultyName = useMemo(() => {
+    return (
+      studentsQuery.data?.roster.items[0]?.faculty_name ??
+      studentsQuery.data?.faculties[0]?.name ??
+      "Faculty of Computing"
+    )
+  }, [studentsQuery.data])
+
   const students = useMemo(
-    () => (studentsQuery.data?.items ?? []).map(toDeanStudentSummary),
+    () => (studentsQuery.data?.roster.items ?? []).map(toDeanStudentSummary),
     [studentsQuery.data],
   )
 
@@ -57,7 +71,7 @@ export default function DeanStudentsPage() {
     <div className="space-y-6">
       <PageHeading
         title="Students"
-        subtitle="Faculty-wide read-only directory across constituent departments."
+        subtitle={`${facultyName} · opening a record is logged`}
       />
 
       {!studentsQuery.data ? (

@@ -49,8 +49,8 @@ export function DeanStudentRecordDialog({
 
   return (
     <Dialog open={student !== null} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="flex h-[min(85dvh,760px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
           <DialogTitle>
             {student ? `${student.name} · Academic record` : "Student record"}
           </DialogTitle>
@@ -62,7 +62,7 @@ export function DeanStudentRecordDialog({
         </DialogHeader>
 
         {student && (
-          <div className="min-w-0 space-y-5">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
             <DeanReadOnlyNotice />
 
             <StudentRecordHeader
@@ -87,7 +87,7 @@ export function DeanStudentRecordDialog({
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t border-border px-6 py-3">
           <Button type="button" variant="outline" onClick={onClose}>
             Close
           </Button>
