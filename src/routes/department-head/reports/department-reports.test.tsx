@@ -44,7 +44,7 @@ describe("Department Reports", () => {
     expect(screen.getByText("No report available")).toBeTruthy()
     expect(screen.queryByRole("table", { name: "GWA by batch and curriculum" })).toBeNull()
     expect((screen.getByRole("button", { name: "Export PDF" }) as HTMLButtonElement).disabled).toBe(true)
-  }, 30_000)
+  })
 
   it("opens the selected report in the PDF viewer before downloading", async () => {
     URL.createObjectURL = vi.fn(() => "blob:report")
