@@ -3,12 +3,33 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
-const yaml = require("js-yaml");
+const { execFileSync, spawnSync } = require("node:child_process");
+
+const bundleDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "saais-server-policy-bundle-"));
+const bundlePath = path.join(bundleDirectory, "openapi.json");
+let original;
+try {
+  execFileSync(
+    process.execPath,
+    [
+      "node_modules/@redocly/cli/bin/cli.js",
+      "bundle",
+      "contract/openapi.yaml",
+      "--config",
+      "contract/redocly.yaml",
+      "--output",
+      bundlePath,
+    ],
+    { stdio: "pipe" },
+  );
+  original = JSON.parse(fs.readFileSync(bundlePath, "utf8"));
+} finally {
+  if (fs.existsSync(bundlePath)) fs.unlinkSync(bundlePath);
+  fs.rmdirSync(bundleDirectory);
+}
 
 test("server URL policy rejects HTTP at root, path and operation level", () => {
-  const original = yaml.load(fs.readFileSync("contract/openapi.yaml", "utf8"));
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "saais-server-policy-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "saais-server-policy-case-"));
   try {
     for (const level of ["root", "path", "operation"]) {
       const spec = structuredClone(original);
