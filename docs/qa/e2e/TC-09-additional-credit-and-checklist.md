@@ -23,4 +23,4 @@
 - Preserve past reports and transcript history.
 - QA approval: [ ]  Adviser/academic-rule reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. Confirm the shared mock data contains this additional-credit scenario; request it from the shared mock-data owner if missing.
+**Execution status:** Automated prototype coverage: adviser attempt and checklist views. The prototype does not identify additional-credit-repeatable offerings or expose the related retake/GWA policy actions.
