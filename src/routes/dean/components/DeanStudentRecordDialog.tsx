@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { postDeanAuditViewEvent } from "@/routes/dean/api/dean.api"
-import { DeanReadOnlyNotice } from "@/routes/dean/components/DeanReadOnlyNotice"
 import { DeanStudentAuditTab } from "@/routes/dean/components/DeanStudentAuditTab"
 import { DeanStudentChecklistTab } from "@/routes/dean/components/DeanStudentChecklistTab"
 import { DeanStudentGradesTab } from "@/routes/dean/components/DeanStudentGradesTab"
@@ -50,21 +49,19 @@ export function DeanStudentRecordDialog({
   return (
     <Dialog open={student !== null} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="flex h-[min(85dvh,760px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
-        <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+        <DialogHeader className="sr-only">
           <DialogTitle>
             {student ? `${student.name} · Academic record` : "Student record"}
           </DialogTitle>
           <DialogDescription>
             {student
-              ? `${student.studentNumber} · ${student.department} · ${student.curriculum} · Adviser: ${student.adviser}`
+              ? `${student.studentNumber} · ${student.program} · ${student.yearLabel}`
               : ""}
           </DialogDescription>
         </DialogHeader>
 
         {student && (
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
-            <DeanReadOnlyNotice />
-
             <StudentRecordHeader
               name={student.name}
               initials={student.initials}
