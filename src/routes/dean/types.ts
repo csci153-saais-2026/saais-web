@@ -21,6 +21,7 @@ export interface CohortStudentSample {
 export interface FacultyDepartmentReport {
   department: DepartmentFilter
   departmentCode?: string
+  departmentSummaryLabel?: string
   students: number
   meanGwa: string
   withDeficiencies: number
