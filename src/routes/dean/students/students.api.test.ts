@@ -2,14 +2,7 @@ import { http, HttpResponse } from "msw"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { loginAsMockPersona, logoutMockPersona, resetMockDatabase } from "@/mocks"
 import { saaisMockServer } from "@/mocks/node"
-import {
-  getDeanAuditLogEntries,
-  getDeanFaculties,
-  getDeanStudents,
-  getFacultyReport,
-  postDeanAuditViewEvent,
-} from "@/routes/dean/api/dean.api"
-import { toManilaDayKey } from "@/routes/dean/utils/audit-date"
+import { getDeanStudents } from "@/routes/dean/students/students.api"
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const api = await importOriginal<typeof import("@/lib/api")>()
@@ -32,21 +25,7 @@ afterEach(() => {
 })
 afterAll(() => saaisMockServer.close())
 
-describe("dean.api", () => {
-  it("fetches faculty report and faculties for an authorized dean and rejects unauthorized roles", async () => {
-    loginAsMockPersona("dean")
-    const [report, faculties] = await Promise.all([
-      getFacultyReport(),
-      getDeanFaculties(),
-    ])
-
-    expect(report.total_students).toBeGreaterThanOrEqual(0)
-    expect(faculties.some((f) => f.id === report.faculty_id)).toBe(true)
-
-    loginAsMockPersona("student")
-    await expect(getFacultyReport()).rejects.toThrow()
-  })
-
+describe("students.api", () => {
   it("paginates through all pages when fetching dean students", async () => {
     loginAsMockPersona("dean")
     const seenOffsets: string[] = []
@@ -110,23 +89,5 @@ describe("dean.api", () => {
     const response = await getDeanStudents()
     expect(seenOffsets).toEqual(["0", "100"])
     expect(response.items).toHaveLength(101)
-  })
-
-  it("posts audit view events and derives Manila day keys accurately", async () => {
-    loginAsMockPersona("dean")
-
-    const created = await postDeanAuditViewEvent({
-      event_type: "pdf_exported",
-      report_type: "faculty",
-      details: "Exported faculty report (All departments) as PDF",
-    })
-
-    expect(created.action).toBe("pdf_exported")
-    const entries = await getDeanAuditLogEntries()
-    expect(entries.some((entry) => entry.id === created.id)).toBe(true)
-
-    // 2026-10-14T18:00:00Z is 2026-10-15 02:00 in Asia/Manila (UTC+8)
-    expect(toManilaDayKey("2026-10-14T18:00:00Z")).toBe("2026-10-15")
-    expect(toManilaDayKey("invalid-date")).toBe("")
   })
 })
