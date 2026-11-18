@@ -1,4 +1,4 @@
-import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api"
+import { apiClient, postgrestFilter, unwrapApiResult, type ApiSchema } from "@/lib/api"
 import { getRoster } from "@/routes/adviser/advisees/advisees.api"
 import type { AuditAction, AuditEvent } from "../audit-log/audit-types"
 import type { BackupScope, SettingsState } from "../settings/settings-types"
@@ -77,9 +77,10 @@ const ACTIONS: Partial<Record<ApiSchema<"AuditActionCategory">, AuditAction>> = 
   view: "View", record_view: "View", export: "View", sign_in: "Sign-in",
 }
 
-export async function getAuditEvents(): Promise<AuditEvent[]> {
+/** Department-wide audit events, or only those for one student when `studentId` is given. */
+export async function getAuditEvents(studentId?: string): Promise<AuditEvent[]> {
   const rows = await allPages((offset) => apiClient.GET("/rest/v1/audit_log_entry", {
-    params: { query: { order: "created_at.desc", limit: PAGE, offset } },
+    params: { query: { ...(studentId ? { student_id: postgrestFilter.eq(studentId) } : {}), order: "created_at.desc", limit: PAGE, offset } },
   }).then(unwrapApiResult))
   return rows.map((row) => ({
     id: row.id,

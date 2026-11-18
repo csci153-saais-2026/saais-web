@@ -48,16 +48,31 @@ describe("Students directory", () => {
     expect(screen.getByRole("combobox", { name: "Adviser" }).textContent).toContain("All advisers")
   })
 
-  it("opens the student's read-only checklist loaded from the API", async () => {
+  it("opens the student's read-only record with checklist, grades and audit log tabs", async () => {
     await openDirectory()
     fireEvent.click(screen.getByRole("button", { name: "View Sta. Agata, Jerome Daniel S. checklist" }))
-    const dialog = await screen.findByRole("dialog", { name: "Sta. Agata, Jerome Daniel S. · Checklist" })
+    const dialog = await screen.findByRole("dialog", { name: "Sta. Agata, Jerome Daniel S. · Student record" })
     expect(await within(dialog).findByText(/Year 1 · Semester 1/)).toBeTruthy()
     expect(within(dialog).queryByRole("button", { name: /save|edit|record grade/i })).toBeNull()
-    fireEvent.click(within(dialog).getAllByRole("button", { name: "Course info" })[0])
-    expect(within(dialog).getByText(/This requirement carries \d+ units/)).toBeTruthy()
-    fireEvent.click(within(dialog).getAllByRole("button", { name: "Close" }).at(-1)!)
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    for (const tab of ["Checklist", "Grades", "Audit log"]) expect(within(dialog).getByRole("tab", { name: tab })).toBeTruthy()
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Grades" }))
+    expect(await within(dialog).findAllByText(/GWA/)).not.toHaveLength(0)
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Audit log" }))
+    await waitFor(() => expect(within(dialog).queryByRole("table", { name: "Student audit log" }) ?? within(dialog).queryByText(/No audit events have been recorded/)).toBeTruthy())
+  })
+
+  it("opens course info for a checklist requirement", async () => {
+    await openDirectory()
+    fireEvent.click(screen.getByRole("button", { name: "View Sta. Agata, Jerome Daniel S. checklist" }))
+    const record = await screen.findByRole("dialog", { name: "Sta. Agata, Jerome Daniel S. · Student record" })
+    await within(record).findByText(/Year 1 · Semester 1/)
+    fireEvent.click(within(record).getAllByRole("button", { name: "Course info" })[0])
+    await screen.findByText("Grade fix history")
+    const info = screen.getAllByRole("dialog").at(-1)!
+    expect(within(info).getByText("Status:")).toBeTruthy()
+    fireEvent.click(within(info).getByRole("button", { name: "Close" }))
+    await waitFor(() => expect(screen.queryByText("Grade fix history")).toBeNull())
+    expect(screen.getByRole("dialog", { name: "Sta. Agata, Jerome Daniel S. · Student record" })).toBeTruthy()
   })
 })
 
@@ -68,46 +83,47 @@ describe("Student spreadsheet import", () => {
   async function openImport() {
     await openDirectory()
     fireEvent.click(screen.getByRole("button", { name: "Import spreadsheet" }))
-    return screen.getByRole("dialog", { name: "Import spreadsheet" })
+    return screen.getByRole("dialog", { name: "Import students from spreadsheet" })
   }
 
   function choose(dialog: HTMLElement, name: string, contents: string) {
-    fireEvent.change(within(dialog).getByLabelText("Student spreadsheet"), { target: { files: [new File([contents], name, { type: "text/csv" })] } })
+    fireEvent.change(within(dialog).getByLabelText("Spreadsheet file"), { target: { files: [new File([contents], name, { type: "text/csv" })] } })
   }
 
-  it("rejects absent, unsupported and workbook selections", async () => {
+  it("shows the required columns, the student ID format and an empty validation preview", async () => {
     const dialog = await openImport()
-    fireEvent.click(within(dialog).getByRole("button", { name: "Check file" }))
-    expect(await within(dialog).findByText("Choose a .xlsx or .csv file first.")).toBeTruthy()
+    expect(within(dialog).getByText(/Required columns:/)).toBeTruthy()
+    expect(within(dialog).getByText(/YY-N-NNNNN \(example: 24-1-00124\)/)).toBeTruthy()
+    expect(within(dialog).getByRole("region", { name: "Validation preview" })).toBeTruthy()
+  })
+
+  it("rejects unsupported selections", async () => {
+    const dialog = await openImport()
     choose(dialog, "notes.txt", "x")
-    fireEvent.click(within(dialog).getByRole("button", { name: "Check file" }))
     expect(await within(dialog).findByText("Choose a .xlsx or .csv file.")).toBeTruthy()
-    choose(dialog, "students.xlsx", "x")
-    fireEvent.click(within(dialog).getByRole("button", { name: "Check file" }))
-    expect(await within(dialog).findByText(/Save the sheet as a \.csv file/)).toBeTruthy()
   })
 
   it("reports a missing column before contacting the API", async () => {
     const dialog = await openImport()
     choose(dialog, "students.csv", "student_number,full_name\n26-1-20001,Test Student")
-    fireEvent.click(within(dialog).getByRole("button", { name: "Check file" }))
     expect(await within(dialog).findByText(/Missing columns: email, program, curriculum, adviser_email/)).toBeTruthy()
   })
 
   it("flags invalid rows and imports nothing until every row is valid", async () => {
     const dialog = await openImport()
-    choose(dialog, "students.csv", `${header}\n26-1-20001,Test Student,26-1-20001@vsu.edu.ph,BSCS,BSCS 2024-2025 v1,${adviserEmail},2026\n26-1-20002,Other Student,26-1-20002@vsu.edu.ph,NOPE,BSCS 2024-2025 v1,${adviserEmail},2026`)
-    fireEvent.click(within(dialog).getByRole("button", { name: "Check file" }))
-    const results = await within(dialog).findByRole("region", { name: "Validation results" })
-    expect(within(results).getByText("1 valid · 1 with errors")).toBeTruthy()
+    choose(dialog, "students.csv", `${header}
+26-1-20001,Test Student,26-1-20001@vsu.edu.ph,BSCS,BSCS 2024-2025 v1,${adviserEmail},2026
+26-1-20002,Other Student,26-1-20002@vsu.edu.ph,NOPE,BSCS 2024-2025 v1,${adviserEmail},2026`)
+    const results = await within(dialog).findByRole("region", { name: "Validation preview" })
+    expect(await within(results).findByText("1 valid · 1 with errors")).toBeTruthy()
     expect(within(results).getByText('Unknown program "NOPE".')).toBeTruthy()
     expect(within(dialog).queryByRole("button", { name: /^Import \d+ student/ })).toBeNull()
   })
 
   it("imports a valid file through the API", async () => {
     const dialog = await openImport()
-    choose(dialog, "students.csv", `${header}\n26-1-20001,Test Student,26-1-20001@vsu.edu.ph,BSCS,BSCS 2024-2025 v1,${adviserEmail},2026`)
-    fireEvent.click(within(dialog).getByRole("button", { name: "Check file" }))
+    choose(dialog, "students.csv", `${header}
+26-1-20001,Test Student,26-1-20001@vsu.edu.ph,BSCS,BSCS 2024-2025 v1,${adviserEmail},2026`)
     fireEvent.click(await within(dialog).findByRole("button", { name: "Import 1 student" }))
     expect(await within(dialog).findByText("1 imported")).toBeTruthy()
     expect(await screen.findByText("Imported 1 student.")).toBeTruthy()

@@ -14,7 +14,8 @@ const keys = {
 
 export const useDirectoryStudents = () => useQuery({ queryKey: keys.students, queryFn: getDirectoryStudents })
 export const useDepartmentAdvisers = () => useQuery({ queryKey: keys.advisers, queryFn: getDepartmentAdvisers })
-export const useAuditEvents = () => useQuery({ queryKey: keys.audit, queryFn: getAuditEvents })
+export const useAuditEvents = () => useQuery({ queryKey: keys.audit, queryFn: () => getAuditEvents() })
+export const useStudentAuditEvents = (studentId: string) => useQuery({ queryKey: [...keys.audit, studentId], queryFn: () => getAuditEvents(studentId) })
 export const useDepartmentSettings = () => useQuery({ queryKey: keys.settings, queryFn: getSettings })
 export const useLastEncodingClosure = () => useQuery({ queryKey: keys.closure, queryFn: getLastEncodingClosure })
 
