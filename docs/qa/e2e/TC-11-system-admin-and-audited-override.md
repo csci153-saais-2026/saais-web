@@ -25,4 +25,4 @@
 - The project owner approved a direct, audited System Administrator override when the mockup does not define a separate workflow.
 - QA approval: [ ]  System/academic reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. The current System Admin mockup does not clearly expose the override control. Reviewer must identify the intended action path before this case can be executed.
+**Execution status:** Automated prototype coverage: account/role and audit-log screens are visible. Student initial-adviser validation, role enforcement, and the audited override action are not exposed as interactive flows.
