@@ -23,4 +23,4 @@
 - Follow the mockup’s cross-department transfer flow and preserve its decision history.
 - QA approval: [ ]  Department Head/academic reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run.
+**Execution status:** Automated prototype coverage: pending transfer review screen is visible. Approval/rejection persistence and separate adviser reassignment are not implemented as testable prototype actions.
