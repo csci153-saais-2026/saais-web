@@ -58,10 +58,12 @@ describe("Adviser Assignments screen", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
   }
 
-  it("asks for a selection before opening the reassignment dialog", async () => {
+  it("disables reassignment until a student is selected", async () => {
     await openPage()
-    fireEvent.click(screen.getByRole("button", { name: "Reassign selected" }))
-    expect(await screen.findByText("Select at least one student to reassign.")).toBeTruthy()
+    const button = screen.getByRole("button", { name: "Reassign selected" }) as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    fireEvent.click(screen.getAllByRole("row")[1])
+    expect(button.disabled).toBe(false)
     expect(screen.queryByRole("dialog")).toBeNull()
   })
 

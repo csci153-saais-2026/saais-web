@@ -26,10 +26,10 @@ async function fillCredit(dialog: ReturnType<typeof within>, {
   code = "CS 205",
   origin = "Western State College",
   slot = /^CSCI 153/,
-  units = "3.25",
+  units = "3",
 } = {}) {
   await select(dialog, "Student", /Sta\. Agata/)
-  await select(dialog, "Destination curriculum slot", slot)
+  await select(dialog, "Equivalent course", slot)
   for (const [label, value] of [
     ["Original course code", code],
     ["Original course name", "Algorithms"],
@@ -73,10 +73,10 @@ describe("Outside Credits form", () => {
       "Choose a student.",
       "Enter the original course code.",
       "Enter the original course name.",
-      "Enter positive units in increments of 0.25.",
+      "Enter units as a whole number of 1 or more.",
       "Enter a passing grade from 1.00 to 3.00 with two decimal places.",
       "Enter the school or degree of origin.",
-      "Choose a destination curriculum slot.",
+      "Choose an equivalent course.",
       "Enter the reason for crediting the course.",
     ])
     expect(screen.getByText(INITIAL_COUNT)).toBeTruthy()
@@ -92,12 +92,12 @@ describe("Outside Credits form", () => {
     expect(screen.queryByText("CS 205 · Algorithms")).toBeNull()
   })
 
-  it.each(["0", "-0.25", "1.1"])("rejects invalid units %s", async (units) => {
+  it.each(["0", "-1", "1.5"])("rejects invalid units %s", async (units) => {
     const dialog = await openDialog()
     await fillCredit(dialog, { units })
     submit(dialog)
 
-    expect(await dialog.findByRole("alert")).toHaveProperty("textContent", "Enter positive units in increments of 0.25.")
+    expect(await dialog.findByRole("alert")).toHaveProperty("textContent", "Enter units as a whole number of 1 or more.")
     expect(screen.getByText(INITIAL_COUNT)).toBeTruthy()
   })
 
@@ -108,7 +108,7 @@ describe("Outside Credits form", () => {
     expect(await dialog.findByText("This student already has credit for this course from this origin.")).toBeTruthy()
 
     fireEvent.change(dialog.getByLabelText("Original course code"), { target: { value: "CS 205" } })
-    await select(dialog, "Destination curriculum slot", /^CSCI 101/)
+    await select(dialog, "Equivalent course", /^CSCI 101/)
     submit(dialog)
     expect(await dialog.findByText("This slot already has an outside credit.")).toBeTruthy()
     expect(screen.getByText(INITIAL_COUNT)).toBeTruthy()
@@ -122,7 +122,7 @@ describe("Outside Credits form", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     const row = await screen.findByRole("row", { name: /CS 205 · Algorithms/ })
     expect(within(row).getByText(grade)).toBeTruthy()
-    expect(within(row).getByText("3.25 units")).toBeTruthy()
+    expect(within(row).getByText("3 units")).toBeTruthy()
     expect(within(row).getByText(/^CSCI 153 · /)).toBeTruthy()
     expect(await screen.findByText("2 credited subjects")).toBeTruthy()
   })

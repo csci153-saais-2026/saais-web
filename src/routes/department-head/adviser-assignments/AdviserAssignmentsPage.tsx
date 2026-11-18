@@ -43,6 +43,10 @@ export default function AdviserAssignmentsPage() {
   const allSelected = visible.length > 0 && selectedVisible.length === visible.length
   const partiallySelected = selectedVisible.length > 0 && !allSelected
   const advisers = adviserQuery.data ?? []
+  // Hide the adviser every selected student already has; they cannot be a "new" adviser.
+  const currentAdvisers = new Set(students.filter((student) => selectedVisible.includes(student.id)).map((student) => student.adviser))
+  const sharedAdviser = currentAdvisers.size === 1 ? [...currentAdvisers][0] : null
+  const assignableAdvisers = advisers.filter((adviser) => adviser.name !== sharedAdviser)
 
   function changeFilters(next: Filters) {
     setFilters(next)
@@ -93,7 +97,7 @@ export default function AdviserAssignmentsPage() {
           <span aria-live="polite" className="text-sm text-muted-foreground">
             {selectedVisible.length} student{selectedVisible.length === 1 ? "" : "s"} selected
           </span>
-          <Button type="button" onClick={openReassignment}><SwapIcon aria-hidden="true" />Reassign selected</Button>
+          <Button type="button" disabled={selectedVisible.length === 0} onClick={openReassignment}><SwapIcon aria-hidden="true" />Reassign selected</Button>
         </div>
         <Table responsive aria-label="Student adviser assignments">
           <TableHeader>
@@ -112,8 +116,8 @@ export default function AdviserAssignmentsPage() {
           </TableHeader>
           <TableBody>
             {visible.map((student) => (
-              <TableRow key={student.id} className="border-line-soft hover:bg-line-soft" data-state={selected.includes(student.id) ? "selected" : undefined}>
-                <TableCell label="Select" className={`${TD} w-20`}>
+              <TableRow key={student.id} className="cursor-pointer border-line-soft hover:bg-line-soft" onClick={() => toggleStudent(student.id, !selected.includes(student.id))} data-state={selected.includes(student.id) ? "selected" : undefined}>
+                <TableCell label="Select" className={`${TD} w-20`} onClick={(event) => event.stopPropagation()}>
                   <Checkbox aria-label={`Select ${student.name}`} checked={selected.includes(student.id)}
                     onCheckedChange={(checked) => toggleStudent(student.id, checked === true)} />
                 </TableCell>
@@ -146,7 +150,7 @@ export default function AdviserAssignmentsPage() {
           <span>DCST department scope</span>
         </div>
       </Panel>
-      {dialogOpen && <ReassignAdviserDialog studentIds={selectedVisible} advisers={advisers} open={dialogOpen}
+      {dialogOpen && <ReassignAdviserDialog studentIds={selectedVisible} advisers={assignableAdvisers} open={dialogOpen}
         onOpenChange={setDialogOpen} onConfirm={apply} />}
     </>
   )

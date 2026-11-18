@@ -44,7 +44,7 @@ export default function StudentsPage() {
           </TableRow></TableHeader>
           <TableBody>
             {filtered.map((student) => (
-              <TableRow key={student.id}>
+              <TableRow key={student.id} className="cursor-pointer" onClick={() => setSelected(student)}>
                 <TableCell label="Student" className="px-5 py-3 whitespace-normal">
                   <Button type="button" variant="ghost" className="h-auto min-w-0 flex-col items-start gap-0.5 rounded-sm p-0 text-left font-normal whitespace-normal hover:bg-transparent hover:text-primary" onClick={() => setSelected(student)} aria-label={`View ${student.name} checklist`}>
                     <span className="block font-semibold">{student.name}</span>

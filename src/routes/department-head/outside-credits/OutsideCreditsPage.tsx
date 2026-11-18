@@ -40,11 +40,11 @@ const outsideCreditSchema = z.object({
   originalTitle: z.string().trim().min(1, "Enter the original course name.").max(250, "Use at most 250 characters."),
   originalUnits: z.string().trim().refine((value) => {
     const units = Number(value)
-    return Number.isFinite(units) && units > 0 && Number.isInteger(units * 4)
-  }, "Enter positive units in increments of 0.25."),
+    return Number.isInteger(units) && units >= 1
+  }, "Enter units as a whole number of 1 or more."),
   grade: z.string().trim().regex(/^(?:[12]\.\d{2}|3\.00)$/, "Enter a passing grade from 1.00 to 3.00 with two decimal places."),
   originSchool: z.string().trim().min(1, "Enter the school or degree of origin.").max(250, "Use at most 250 characters."),
-  destinationCode: z.string().min(1, "Choose a destination curriculum slot."),
+  destinationCode: z.string().min(1, "Choose an equivalent course."),
   reason: z.string().trim().min(1, "Enter the reason for crediting the course.").max(2000, "Use at most 2,000 characters."),
 })
 
@@ -90,7 +90,7 @@ function CreditCourseDialog({
     const student = students.find((option) => option.id === values.studentId)
     const slot = slots.find((option) => option.id === values.destinationCode && option.curriculumId === student?.curriculumId)
     if (!student) setError("studentId", { message: "Choose a student." }, { shouldFocus: true })
-    if (!slot) setError("destinationCode", { message: "Choose a destination curriculum slot." }, { shouldFocus: Boolean(student) })
+    if (!slot) setError("destinationCode", { message: "Choose an equivalent course." }, { shouldFocus: Boolean(student) })
     if (!student || !slot) return
 
     const studentCredits = credits.filter((credit) => credit.studentUuid === student.id)
@@ -180,7 +180,7 @@ function CreditCourseDialog({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField label="Units" htmlFor="cr-units" error={errors.originalUnits?.message}>
-              <Input id="cr-units" type="number" min="0.25" step="0.25" aria-invalid={Boolean(errors.originalUnits)} {...register("originalUnits")} />
+              <Input id="cr-units" type="number" inputMode="numeric" min="1" step="1" aria-invalid={Boolean(errors.originalUnits)} {...register("originalUnits")} />
             </FormField>
             <FormField label="Grade" htmlFor="cr-grade" error={errors.grade?.message}>
               <Input id="cr-grade" inputMode="decimal" placeholder="e.g. 1.50" aria-invalid={Boolean(errors.grade)} {...register("grade")} />
@@ -191,11 +191,11 @@ function CreditCourseDialog({
             <Input id="cr-school" placeholder="e.g. Northern State College" aria-invalid={Boolean(errors.originSchool)} {...register("originSchool")} />
           </FormField>
 
-          <FormField label="Destination curriculum slot" htmlFor="cr-equiv" error={errors.destinationCode?.message}>
+          <FormField label="Equivalent course" hint="Pick the course in the student's curriculum that this credit replaces."  htmlFor="cr-equiv" error={errors.destinationCode?.message}>
             <Controller name="destinationCode" control={control} render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger id="cr-equiv" className="w-full" aria-invalid={Boolean(errors.destinationCode)} ref={field.ref} onBlur={field.onBlur}>
-                  <SelectValue placeholder="Choose a destination slot" />
+                  <SelectValue placeholder="Choose an equivalent course" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableSlots.map((slot) => (

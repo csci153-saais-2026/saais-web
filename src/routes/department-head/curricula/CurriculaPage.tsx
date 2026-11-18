@@ -441,7 +441,7 @@ export default function CurriculaPage() {
             <SelectTrigger id="cu-version" className="w-full bg-card">
               <SelectValue placeholder="No versions" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" side="bottom" avoidCollisions={false}>
               {versions.map((v) => (
                 <SelectItem key={v.id} value={v.id}>
                   {versionLabel(v)}
@@ -461,7 +461,7 @@ export default function CurriculaPage() {
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="destructive"
           disabled={!currentVersion}
           onClick={() =>
             currentVersion &&
@@ -555,7 +555,7 @@ export default function CurriculaPage() {
                       </Button>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="destructive"
                         size="sm"
                         onClick={() =>
                           setDialog({ kind: "del-term", termId: term.id })
@@ -617,7 +617,7 @@ export default function CurriculaPage() {
                                 </Button>
                                 <Button
                                   type="button"
-                                  variant="outline"
+                                  variant="destructive"
                                   size="sm"
                                   onClick={() =>
                                     setDialog({
@@ -661,7 +661,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-prog" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       {programs.map((program) => (
                         <SelectItem key={program.id} value={program.code}>{program.code}</SelectItem>
                       ))}
@@ -705,7 +705,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-status" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       <SelectItem value="active">active</SelectItem>
                       <SelectItem value="draft">draft</SelectItem>
                       <SelectItem value="retired">retired</SelectItem>
@@ -732,7 +732,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-tyear" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       {YEAR_LEVELS.map((y) => (
                         <SelectItem key={y} value={y}>
                           {y}
@@ -750,7 +750,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-tsem" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       {CURRICULUM_SEMESTERS.map((sem) => (
                         <SelectItem key={sem} value={sem}>
                           {sem}
@@ -803,7 +803,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="nc-cur" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       {versions.map((v) => (
                         <SelectItem key={v.id} value={v.id}>
                           {versionLabel(v)}
@@ -818,7 +818,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="nc-term" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       {TERM_OPTIONS.map((tOpt) => (
                         <SelectItem key={tOpt} value={tOpt}>
                           {tOpt}
@@ -838,7 +838,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="nc-kind" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       <SelectItem value="Non-Elective">Non-Elective</SelectItem>
                       <SelectItem value="Elective">Elective</SelectItem>
                     </SelectContent>
@@ -877,7 +877,7 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-stype" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
                       {SLOT_TYPES.map((st) => (
                         <SelectItem key={st} value={st}>
                           {st}

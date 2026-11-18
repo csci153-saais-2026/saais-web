@@ -180,7 +180,7 @@ export default function EquivalencePage() {
           { header: "Equivalent course units", headerContent: "Units", cell: row => row.targetCourse.units },
           { header: "Curriculum pair", cell: () => <>{fromLabel} → {toLabel}</> },
           { header: "Status", cell: () => <StatusBadge status="passed">Equivalent</StatusBadge> },
-          { header: "Actions", cell: row => <Button variant="link" size="sm" onClick={() => { setDeleteTarget(row); setDeleteError("") }} aria-label={`Delete equivalence ${row.sourceCourse.code} to ${row.targetCourse.code}`}>Delete</Button> }
+          { header: "Actions", cell: row => <Button variant="destructive" size="sm" onClick={() => { setDeleteTarget(row); setDeleteError("") }} aria-label={`Delete equivalence ${row.sourceCourse.code} to ${row.targetCourse.code}`}>Delete</Button> }
         ]}
         footer={<div className="flex flex-wrap justify-between gap-2"><span>{displayedEquivalencies.length} course equivalencies</span><span>DCST department scope</span></div>}
       />
