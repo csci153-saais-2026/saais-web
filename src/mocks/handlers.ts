@@ -1802,14 +1802,30 @@ export const saaisMswHandlers = [
     const auth = authenticateRequest(request, [
       'admin',
       'department_head',
-      'department_staff',
     ])
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => null)) as
       | ApiSchema<'CurriculumPairEquivalenceInsert'>
       | null
-    if (!body?.from_curriculum_version_id || !body?.to_curriculum_version_id) {
-      return errorJson(400, 'INVALID_INPUT', 'Source and target curriculum versions are required.')
+    const fields = ['from_curriculum_version_id', 'to_curriculum_version_id', 'source_course_id', 'target_course_id', 'note']
+    const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    if (!body || Object.keys(body).some(key => !fields.includes(key)) ||
+      ![body.from_curriculum_version_id, body.to_curriculum_version_id, body.source_course_id, body.target_course_id].every(uuid) ||
+      (body.note != null && (typeof body.note !== 'string' || body.note.length > 1000))) {
+      return errorJson(400, 'INVALID_INPUT', 'Choose valid curriculum and course IDs and use at most 1,000 characters for the note.')
+    }
+    const db = getMockDatabase()
+    const versions = [body.from_curriculum_version_id, body.to_curriculum_version_id].map(id => db.curriculumVersions.find(row => row.id === id))
+    if (versions.some(row => !row) || !db.courses.some(row => row.id === body.source_course_id) || !db.courses.some(row => row.id === body.target_course_id)) {
+      return errorJson(400, 'INVALID_INPUT', 'The selected curriculum or course no longer exists.')
+    }
+    if (versions.some(version => !db.programs.some(program => program.id === version?.program_id && canAccessDepartment(auth.persona, program.department_id)))) {
+      return errorJson(403, 'FORBIDDEN', 'The curriculum pair is outside your authorized department.')
+    }
+    if (db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === body.from_curriculum_version_id &&
+      row.to_curriculum_version_id === body.to_curriculum_version_id &&
+      (row.source_course_id === body.source_course_id || row.target_course_id === body.target_course_id))) {
+      return errorJson(409, 'EQUIVALENCE_CONFLICT', 'A selected course is already mapped in this curriculum pair.')
     }
     const created: ApiSchema<'CurriculumPairEquivalence'> = {
       id: nextSyntheticUuid(),
@@ -1822,6 +1838,7 @@ export const saaisMswHandlers = [
       created_at: '2026-11-10T09:00:00Z',
     }
     getMockDatabase().curriculumPairEquivalences.push(created)
+    recordMockAudit(auth.persona, { action: 'curriculum_pair_equivalence_created', entityType: 'curriculum_pair_equivalence', entityId: created.id, label: 'Course equivalence', details: 'Created a curriculum-pair course equivalence.' })
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -1829,14 +1846,19 @@ export const saaisMswHandlers = [
     const auth = authenticateRequest(request, [
       'admin',
       'department_head',
-      'department_staff',
     ])
     if ('response' in auth) return auth.response
     const id = String(params.id)
     const db = getMockDatabase()
     const idx = db.curriculumPairEquivalences.findIndex((e) => e.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Equivalence rule not found.')
+    const rule = db.curriculumPairEquivalences[idx]!
+    const versionIds = [rule.from_curriculum_version_id, rule.to_curriculum_version_id]
+    if (versionIds.some(versionId => !db.curriculumVersions.some(version => version.id === versionId && db.programs.some(program => program.id === version.program_id && canAccessDepartment(auth.persona, program.department_id))))) {
+      return errorJson(403, 'FORBIDDEN', 'The curriculum pair is outside your authorized department.')
+    }
     db.curriculumPairEquivalences.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_pair_equivalence_deleted', entityType: 'curriculum_pair_equivalence', entityId: id, label: 'Course equivalence', details: 'Deleted a curriculum-pair course equivalence rule.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
