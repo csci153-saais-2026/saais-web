@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { matchPath, useLocation, useNavigate } from 'react-router'
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout'
 import { useAuth } from '@/hooks/use-auth'
@@ -65,19 +64,13 @@ function resolveRoleFromPath(
   return assignedRoles.includes(fallbackRole) ? fallbackRole : assignedRoles[0] ?? fallbackRole
 }
 
-interface AuthenticatedPortalLayoutProps {
-  currentPage?: string
-  topbarTrailing?: ReactNode
-  children?: ReactNode
-}
-
-export function AuthenticatedPortalLayout({ currentPage, topbarTrailing, children }: AuthenticatedPortalLayoutProps) {
+export function AuthenticatedPortalLayout() {
   const { user, roles, roleAssignments, activeRole, isLoading, isAllowedToEnter, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const currentRole = resolveRoleFromPath(location.pathname, roles, activeRole ?? roles[0] ?? user?.primaryRole ?? 'student')
   const notificationRoute = '/notifications'
-  const notifications = useNotifications(user?.id, isLoading || isAllowedToEnter === false || topbarTrailing != null, currentRole, notificationRoute)
+  const notifications = useNotifications(user?.id, isLoading || isAllowedToEnter === false, currentRole, notificationRoute)
   const recordMatch = matchPath('/adviser/advisee/:id/*', location.pathname)
   const studentLabel = useStudentRecordLabel(
     !isLoading && isAllowedToEnter !== false && roles.includes('adviser') ? user?.id : undefined,
@@ -103,9 +96,7 @@ export function AuthenticatedPortalLayout({ currentPage, topbarTrailing, childre
 
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
-  const crumbs = currentPage
-    ? [{ label: portalLabel, to: homeHref }, { label: currentPage }]
-    : getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)
+  const crumbs = getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)
 
   const handleSignOut = async () => {
     await signOut()
@@ -126,9 +117,7 @@ export function AuthenticatedPortalLayout({ currentPage, topbarTrailing, childre
         onSignOut: () => void handleSignOut(),
       }}
       crumbs={crumbs}
-      topbarTrailing={topbarTrailing ?? <NotificationBell items={notifications.bellItems} allHref={notifications.allHref} onMarkAllRead={notifications.markAllRead} loading={notifications.loading} error={notifications.error} showUnreadCount={!notifications.capped} />}
-    >
-      {children}
-    </AuthenticatedLayout>
+      topbarTrailing={<NotificationBell items={notifications.bellItems} allHref={notifications.allHref} onMarkAllRead={notifications.markAllRead} loading={notifications.loading} error={notifications.error} showUnreadCount={!notifications.capped} />}
+    />
   )
 }
