@@ -2,8 +2,7 @@ import * as React from "react"
 import { AlertIcon, PlusIcon } from "@/components/icons"
 import { FormField } from "@/components/features/form-field"
 import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTablePanel } from "@/components/features/data-table-panel"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -24,11 +23,26 @@ import {
 } from "@/components/ui/select"
 import { QueryMessage } from "../shared/dh-ui"
 import { useNotify } from "../shared/notify-context"
-import { useAddEquivalence, useEquivalenceData } from "./equivalence-api"
+import { useAddEquivalence, useDeleteEquivalence, useEquivalenceData, type CourseEquivalence } from "./equivalence-api"
 
 export default function EquivalencePage() {
   const query = useEquivalenceData()
   const addEquivalence = useAddEquivalence()
+  const deletion = useDeleteEquivalence()
+  const [deleteTarget, setDeleteTarget] = React.useState<CourseEquivalence | null>(null)
+  const [deleteError, setDeleteError] = React.useState("")
+
+  async function confirmDelete() {
+    if (!deleteTarget || deletion.isPending) return
+    setDeleteError("")
+    try {
+      await deletion.mutateAsync(deleteTarget.id)
+      setDeleteTarget(null)
+      showToast("Course equivalence deleted.")
+    } catch (failure) {
+      setDeleteError(failure instanceof Error ? failure.message : "The equivalence could not be deleted.")
+    }
+  }
   const showToast = useNotify()
   const curricula = query.data?.curricula ?? []
   const courses = query.data?.courses ?? []
@@ -56,10 +70,11 @@ export default function EquivalencePage() {
   }
 
   async function handleAddEquivalence() {
+    if (addEquivalence.isPending) return
     const sourceCourse = courses.find((course) => course.id === sourceCourseId)
     const targetCourse = courses.find((course) => course.id === targetCourseId)
-    if (!sourceCourse || !targetCourse) {
-      setFormError("Select both courses before adding an equivalence.")
+    if (!curricula.some(item => item.id === modalFromId) || !curricula.some(item => item.id === modalToId) || !sourceCourse || !targetCourse) {
+      setFormError("Select both curricula and courses before adding an equivalence.")
       return
     }
 
@@ -92,7 +107,7 @@ export default function EquivalencePage() {
 
   if (!query.data) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
         <PageHeading title="Equivalence" subtitle="Define one-to-one course equivalencies between curriculum versions." />
         <QueryMessage query={query} label="equivalencies" />
       </div>
@@ -100,12 +115,12 @@ export default function EquivalencePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
       <PageHeading
         title="Equivalence"
         subtitle="Define one-to-one course equivalencies between curriculum versions."
         actions={
-          <Button onClick={openAddDialog} className="gap-2 cursor-pointer">
+          <Button disabled={!curricula.length || !courses.length} onClick={openAddDialog} className="gap-2 cursor-pointer">
             <PlusIcon className="size-4" />
             Add course equivalence
           </Button>
@@ -119,11 +134,10 @@ export default function EquivalencePage() {
         </AlertDescription>
       </Alert>
 
-      <Panel
+      <DataTablePanel
         title="Curriculum equivalencies"
         description="Different codes and titles, the same credited requirement."
-        flush
-      >
+        toolbar={
         <div className="flex flex-wrap items-end gap-4 border-b border-line-soft bg-card px-5 py-3">
           <FormField label="From curriculum" htmlFor="from-curr" className="w-44">
             <Select value={fromCurriculumId} onValueChange={setFromCurriculumId}>
@@ -155,71 +169,34 @@ export default function EquivalencePage() {
             </Select>
           </FormField>
         </div>
-
-        <Table responsive>
-          <TableHeader className="bg-secondary">
-            <TableRow>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Old course subject</TableHead>
-              <TableHead className="w-20 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase text-right">Units</TableHead>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Equivalent course subject</TableHead>
-              <TableHead className="w-20 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase text-right">Units</TableHead>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Curriculum pair</TableHead>
-              <TableHead className="w-28 text-right" aria-label="Status" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayedEquivalencies.map((eq) => (
-              <TableRow key={eq.id}>
-                <TableCell label="Old course subject">
-                  <strong className="block font-semibold text-foreground">{eq.sourceCourse.code}</strong>
-                  <small className="block text-xs text-muted-2">{eq.sourceCourse.title}</small>
-                </TableCell>
-                <TableCell label="Units" className="text-right font-mono font-medium">
-                  {eq.sourceCourse.units}
-                </TableCell>
-                <TableCell label="Equivalent course subject">
-                  <strong className="block font-semibold text-foreground">{eq.targetCourse.code}</strong>
-                  <small className="block text-xs text-muted-2">{eq.targetCourse.title}</small>
-                </TableCell>
-                <TableCell label="Units" className="text-right font-mono font-medium">
-                  {eq.targetCourse.units}
-                </TableCell>
-                <TableCell label="Curriculum pair" className="font-mono text-xs text-muted-foreground">
-                  {fromLabel} → {toLabel}
-                </TableCell>
-                <TableCell label="Status" className="text-right">
-                  <StatusBadge status="passed">Equivalent</StatusBadge>
-                </TableCell>
-              </TableRow>
-            ))}
-            {displayedEquivalencies.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                  No equivalencies recorded for this pair.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-
-        <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-          <span>{displayedEquivalencies.length} course equivalencies</span>
-          <span>DCST department scope</span>
-        </div>
-      </Panel>
+        }
+        rows={displayedEquivalencies}
+        rowKey={row => row.id}
+        empty="No equivalencies recorded for this pair."
+        columns={[
+          { header: "Old course subject", cell: row => <div><strong className="block font-semibold">{row.sourceCourse.code}</strong><small className="block text-xs text-muted-2">{row.sourceCourse.title}</small></div> },
+          { header: "Old course units", headerContent: "Units", cell: row => row.sourceCourse.units },
+          { header: "Equivalent course subject", cell: row => <div><strong className="block font-semibold">{row.targetCourse.code}</strong><small className="block text-xs text-muted-2">{row.targetCourse.title}</small></div> },
+          { header: "Equivalent course units", headerContent: "Units", cell: row => row.targetCourse.units },
+          { header: "Curriculum pair", cell: () => <>{fromLabel} → {toLabel}</> },
+          { header: "Status", cell: () => <StatusBadge status="passed">Equivalent</StatusBadge> },
+          { header: "Actions", cell: row => <Button variant="link" size="sm" onClick={() => { setDeleteTarget(row); setDeleteError("") }} aria-label={`Delete equivalence ${row.sourceCourse.code} to ${row.targetCourse.code}`}>Delete</Button> }
+        ]}
+        footer={<div className="flex flex-wrap justify-between gap-2"><span>{displayedEquivalencies.length} course equivalencies</span><span>DCST department scope</span></div>}
+      />
 
       {/* Add Equivalence Dialog */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+      <Dialog open={isAddModalOpen} onOpenChange={open => !addEquivalence.isPending && setIsAddModalOpen(open)}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]" showCloseButton={!addEquivalence.isPending}>
+          <DialogHeader className="pr-6">
             <DialogTitle>Add course equivalence</DialogTitle>
             <DialogDescription>
               Establish a direct 1-to-1 credit mapping between courses across curriculum versions.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2 text-sm">
-            <div className="grid grid-cols-2 gap-3">
+          <fieldset disabled={addEquivalence.isPending} className="min-w-0 space-y-4 py-2 text-sm">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="From curriculum" htmlFor="m-from">
                 <Select value={modalFromId} onValueChange={(id) => { setModalFromId(id); setFormError("") }}>
                   <SelectTrigger id="m-from" className="w-full">
@@ -289,13 +266,26 @@ export default function EquivalencePage() {
                 <AlertDescription>{formError}</AlertDescription>
               </Alert>
             )}
-          </div>
+          </fieldset>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+            <Button disabled={addEquivalence.isPending} variant="outline" onClick={() => setIsAddModalOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleAddEquivalence} disabled={addEquivalence.isPending}>Add equivalence</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!deleteTarget} onOpenChange={open => !open && !deletion.isPending && setDeleteTarget(null)}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]" showCloseButton={!deletion.isPending}>
+          <DialogHeader className="pr-6">
+            <DialogTitle>Delete course equivalence</DialogTitle>
+            <DialogDescription>Remove the rule mapping {deleteTarget?.sourceCourse.code} to {deleteTarget?.targetCourse.code}? Existing student credit decisions are preserved.</DialogDescription>
+          </DialogHeader>
+          {deleteError && <p role="alert" className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button disabled={deletion.isPending} variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button disabled={deletion.isPending} variant="destructive" onClick={confirmDelete}>{deletion.isPending ? "Deleting…" : "Delete equivalence"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

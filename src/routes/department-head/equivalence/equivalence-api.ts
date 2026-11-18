@@ -23,11 +23,23 @@ export interface CurriculumOption {
 
 const KEY = ["department-head", "equivalence"] as const
 
+// Contract-supported offset pagination; do not truncate catalogs at the first page.
+async function readPages<T>(read: (offset: number) => Promise<T[]>): Promise<T[]> {
+  const rows: T[] = []
+  for (let offset = 0; offset <= 100000;) {
+    const page = await read(offset)
+    if (!page.length) return rows
+    rows.push(...page)
+    offset += page.length
+  }
+  throw new Error("Too many equivalence records to load. Contact your administrator.")
+}
+
 async function getEquivalenceData() {
   const [versions, courses, pairs] = await Promise.all([
-    apiClient.GET("/rest/v1/curriculum_version", { params: { query: { select: "*", order: "version_label.asc", limit: 100 } } }).then(unwrapApiResult),
-    apiClient.GET("/rest/v1/course", { params: { query: { select: "*", order: "code.asc", limit: 100 } } }).then(unwrapApiResult),
-    apiClient.GET("/rest/v1/curriculum_pair_equivalence", { params: { query: { select: "*", order: "created_at.desc", limit: 100 } } }).then(unwrapApiResult),
+    readPages((offset) => apiClient.GET("/rest/v1/curriculum_version", { params: { query: { select: "id,version_label", order: "version_label.asc,id.asc", limit: 100, offset } } }).then(unwrapApiResult)),
+    readPages((offset) => apiClient.GET("/rest/v1/course", { params: { query: { select: "id,code,title,units", order: "code.asc,id.asc", limit: 100, offset } } }).then(unwrapApiResult)),
+    readPages((offset) => apiClient.GET("/rest/v1/curriculum_pair_equivalence", { params: { query: { select: "id,from_curriculum_version_id,to_curriculum_version_id,source_course_id,target_course_id", order: "created_at.desc,id.asc", limit: 100, offset } } }).then(unwrapApiResult)),
   ])
   const courseOptions: EquivalenceCourse[] = courses.map((course) => ({ id: course.id, code: course.code, title: course.title, units: course.units }))
   const equivalencies = pairs.flatMap((pair): CourseEquivalence[] => {
@@ -54,5 +66,13 @@ export function useAddEquivalence() {
         },
       })),
     onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
+  })
+}
+
+export function useDeleteEquivalence() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => unwrapApiResult(await apiClient.DELETE("/functions/v1/catalog/curriculum-pair-equivalences/{id}", { params: { path: { id } } })),
+    onSuccess: () => client.invalidateQueries({ queryKey: KEY })
   })
 }
