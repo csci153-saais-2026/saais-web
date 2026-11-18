@@ -138,7 +138,7 @@ export default function EquivalencePage() {
         title="Curriculum equivalencies"
         description="Different codes and titles, the same credited requirement."
         toolbar={
-        <div className="flex flex-wrap items-end gap-4 border-b border-line-soft bg-card px-5 py-3">
+        <div className="flex flex-wrap items-end gap-4">
           <FormField label="From curriculum" htmlFor="from-curr" className="w-44">
             <Select value={fromCurriculumId} onValueChange={setFromCurriculumId}>
               <SelectTrigger id="from-curr" className="w-full">
@@ -197,7 +197,7 @@ export default function EquivalencePage() {
 
           <fieldset disabled={addEquivalence.isPending} className="min-w-0 space-y-4 py-2 text-sm">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="From curriculum" htmlFor="m-from">
+              <FormField label="From curriculum" htmlFor="m-from" className="min-w-0">
                 <Select value={modalFromId} onValueChange={(id) => { setModalFromId(id); setFormError("") }}>
                   <SelectTrigger id="m-from" className="w-full">
                     <SelectValue />
@@ -212,7 +212,7 @@ export default function EquivalencePage() {
                 </Select>
               </FormField>
 
-              <FormField label="To curriculum" htmlFor="m-to">
+              <FormField label="To curriculum" htmlFor="m-to" className="min-w-0">
                 <Select value={modalToId} onValueChange={(id) => { setModalToId(id); setFormError("") }}>
                   <SelectTrigger id="m-to" className="w-full">
                     <SelectValue />
@@ -228,9 +228,9 @@ export default function EquivalencePage() {
               </FormField>
             </div>
 
-            <FormField label="Old course subject" htmlFor="m-old">
+            <FormField label="Old course subject" htmlFor="m-old" className="min-w-0">
               <Select value={sourceCourseId} onValueChange={(id) => { setSourceCourseId(id); setFormError("") }}>
-                <SelectTrigger id="m-old" className="w-full">
+                <SelectTrigger id="m-old" className="w-full min-w-0 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,9 +243,9 @@ export default function EquivalencePage() {
               </Select>
             </FormField>
 
-            <FormField label="Equivalent course subject" htmlFor="m-equiv">
+            <FormField label="Equivalent course subject" htmlFor="m-equiv" className="min-w-0">
               <Select value={targetCourseId} onValueChange={(id) => { setTargetCourseId(id); setFormError("") }}>
-                <SelectTrigger id="m-equiv" className="w-full">
+                <SelectTrigger id="m-equiv" className="w-full min-w-0 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
