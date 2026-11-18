@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { ProtectedRoute } from '../ProtectedRoute'
 import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import { AuthContext, type AuthContextValue } from '@/context/auth-context'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 function renderPortalRoutes(
   authValue: Partial<AuthContextValue>,
@@ -38,6 +39,7 @@ function renderPortalRoutes(
   }
 
   return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
     <AuthContext.Provider value={fullAuthValue}>
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
@@ -46,6 +48,9 @@ function renderPortalRoutes(
             <Route element={<AuthenticatedPortalLayout />}>
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/student" element={<div>Student Portal Content</div>} />
+              </Route>
+              <Route element={<ProtectedRoute allowedRoles={['department_staff']} />}>
+                <Route path="/department-staff/*" element={<div>Department Staff Portal Content</div>} />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={['adviser']} />}>
                 <Route path="/adviser" element={<div>Adviser Portal Content</div>} />
@@ -69,6 +74,7 @@ function renderPortalRoutes(
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
+    </QueryClientProvider>,
   )
 }
 
@@ -80,6 +86,33 @@ describe('ProtectedRoute & AuthenticatedPortalLayout', () => {
   it('shows loading state while verifying session', () => {
     renderPortalRoutes({ isLoading: true }, '/admin')
     expect(screen.getByText(/Verifying session/i)).toBeTruthy()
+  })
+
+  it('redirects a signed-out direct visit to a protected Department Staff URL to login', () => {
+    renderPortalRoutes({}, '/department-staff/students')
+    expect(screen.getByText('Login Page')).toBeTruthy()
+    expect(screen.queryByText('Department Staff Portal Content')).toBeNull()
+  })
+
+  it('redirects a wrong-role direct visit to a protected Department Staff URL to the assigned portal', () => {
+    renderPortalRoutes(
+      {
+        user: {
+          id: 'student-1',
+          email: 'student@vsu.edu.ph',
+          fullName: 'Sample Student',
+          primaryRole: 'student',
+          roles: ['student'],
+          status: 'active',
+        },
+        roles: ['student'],
+        activeRole: 'student',
+        isAllowedToEnter: true,
+      },
+      '/department-staff/accounts',
+    )
+    expect(screen.getByText('Student Portal Content')).toBeTruthy()
+    expect(screen.queryByText('Department Staff Portal Content')).toBeNull()
   })
 
   it('fails closed with Retry / Sign out when authError occurs during hydration', () => {

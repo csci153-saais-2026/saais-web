@@ -1,9 +1,12 @@
-import { Outlet, useLocation, useNavigate } from 'react-router'
-import { AppShell } from '@/components/features/app-shell'
+import { matchPath, useLocation, useNavigate } from 'react-router'
+import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout'
 import { useAuth } from '@/hooks/use-auth'
+import { useStudentRecordLabel } from '@/hooks/use-student-record-label'
+import { getPortalBreadcrumbs } from '@/navigation/portal-breadcrumbs'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
-import { getNavigationSections } from '@/navigation/navigation-config'
 import type { SaaisRole } from '@/mocks/personas'
+import { useNotifications } from '@/hooks/use-notifications'
+import { NotificationBell } from '@/components/features/notification-bell'
 
 const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
   student: 'Student Portal',
@@ -62,11 +65,19 @@ function resolveRoleFromPath(
 }
 
 export function AuthenticatedPortalLayout() {
-  const { user, roles, activeRole, isLoading, signOut } = useAuth()
+  const { user, roles, roleAssignments, activeRole, isLoading, isAllowedToEnter, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const currentRole = resolveRoleFromPath(location.pathname, roles, activeRole ?? roles[0] ?? user?.primaryRole ?? 'student')
+  const notificationRoute = '/notifications'
+  const notifications = useNotifications(user?.id, isLoading || isAllowedToEnter === false, currentRole, notificationRoute)
+  const recordMatch = matchPath('/adviser/advisee/:id/*', location.pathname)
+  const studentLabel = useStudentRecordLabel(
+    !isLoading && isAllowedToEnter !== false && roles.includes('adviser') ? user?.id : undefined,
+    recordMatch?.params.id,
+  )
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-primary">
@@ -79,14 +90,13 @@ export function AuthenticatedPortalLayout() {
     )
   }
 
-  const currentRole = resolveRoleFromPath(
-    location.pathname,
-    roles,
-    activeRole ?? roles[0] ?? user.primaryRole,
-  )
+  if (!user || isAllowedToEnter === false) {
+    return <main className="mx-auto grid min-h-screen max-w-lg content-center gap-3 px-6"><h1 className="text-xl font-semibold">Workspace unavailable</h1><p className="text-muted-foreground">{!user ? 'Sign in with an authorized account to continue.' : 'This account is inactive or is not authorized to access this workspace.'}</p><a className="text-primary underline" href="/login">Return to sign in</a></main>
+  }
+
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
-  const sections = getNavigationSections(roles)
+  const crumbs = getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)
 
   const handleSignOut = async () => {
     await signOut()
@@ -94,10 +104,10 @@ export function AuthenticatedPortalLayout() {
   }
 
   return (
-    <AppShell
+    <AuthenticatedLayout
+      assignments={roleAssignments}
       sidebar={{
         portalLabel,
-        sections,
         user: {
           name: user.fullName,
           subtitle: user.email,
@@ -106,9 +116,8 @@ export function AuthenticatedPortalLayout() {
         profileHref: '/settings',
         onSignOut: () => void handleSignOut(),
       }}
-      crumbs={[{ label: portalLabel, to: homeHref }]}
-    >
-      <Outlet />
-    </AppShell>
+      crumbs={crumbs}
+      topbarTrailing={<NotificationBell items={notifications.bellItems} allHref={notifications.allHref} onMarkAllRead={notifications.markAllRead} loading={notifications.loading} error={notifications.error} showUnreadCount={!notifications.capped} />}
+    />
   )
 }

@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import rawCollection from "../../contract/postman/saais-api.postman_collection.json";
 import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
 import { saaisMockServer } from "./node";
-import { resetMockDatabase } from "./store";
+import { getMockDatabase, resetMockDatabase } from "./store";
 
 interface PostmanHeader {
   key: string;
@@ -72,6 +72,16 @@ function flattenRequests(
   return results;
 }
 
+function buildRequest(req: PostmanRequest, env: Record<string, string>): [string, RequestInit] {
+  const headers: Record<string, string> = {};
+  for (const h of req.header ?? []) headers[h.key] = interpolate(h.value, env);
+  const init: RequestInit = { method: req.method, headers };
+  if (req.body?.raw && !["GET", "HEAD", "DELETE"].includes(req.method)) {
+    init.body = interpolate(req.body.raw, env);
+  }
+  return [interpolate(req.url.raw, env), init];
+}
+
 describe("SAAIS Postman Collection against MSW Mock Server", () => {
   beforeAll(() => {
     saaisMockServer.listen();
@@ -86,6 +96,24 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
     saaisMockServer.close();
   });
 
+  it("endorses a different active curriculum for an assigned advisee", async () => {
+    const requests = flattenRequests((rawCollection as unknown as PostmanCollection).item);
+    const entry = requests.find(({ fullName, item }) =>
+      fullName.includes("(endorseCurriculumTransfer)") && item.name.startsWith("Authorized"),
+    );
+    expect(entry).toBeDefined();
+    const [url, init] = buildRequest(entry!.item.request!, loadEnvironmentMap());
+    const requestBody = JSON.parse(init.body as string);
+    const response = await fetch(url, init);
+    expect(response.status).toBe(201);
+    const transfer = await response.json();
+    expect(transfer.student_id).toBe(url.split("/").at(-2));
+    expect(transfer.to_curriculum_version_id).toBe(requestBody.to_curriculum_version_id);
+    expect(transfer.from_curriculum_version_id).not.toBe(transfer.to_curriculum_version_id);
+    expect(transfer.endorsement_note).toBe(requestBody.endorsement_note);
+    expect(transfer.status).toBe("pending");
+  });
+
   it("executes OpenAPI operations (Authorized 2xx and Denied 401/403) and role/scope scenarios", async () => {
     const collection = rawCollection as unknown as PostmanCollection;
     const env = loadEnvironmentMap();
@@ -96,23 +124,56 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
     for (const { fullName, item } of requests) {
       resetMockDatabase();
       const req = item.request!;
-      const rawUrl = interpolate(req.url.raw, env);
-      const headers: Record<string, string> = {};
-      for (const h of req.header ?? []) {
-        headers[h.key] = interpolate(h.value, env);
-      }
+      const [rawUrl, init] = buildRequest(req, env);
 
-      const init: RequestInit = {
-        method: req.method,
-        headers,
-      };
+      // The collection's deleteCourse success example names this ID as
+      // unreferenced, but the shared persona database also uses it in
+      // curriculum/history records. Isolate the success scenario as the
+      // collection describes; history-protected deletion is covered elsewhere.
       if (
-        req.body?.raw &&
-        req.method !== "GET" &&
-        req.method !== "HEAD" &&
-        req.method !== "DELETE"
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteCourse)")
       ) {
-        init.body = interpolate(req.body.raw, env);
+        const db = getMockDatabase();
+        const courseId = new URL(rawUrl).pathname.split("/").at(-1);
+        const offeringIds = new Set(
+          db.courseOfferings
+            .filter((offering) => offering.course_id === courseId)
+            .map((offering) => offering.id),
+        );
+        db.curriculumTermCourses = db.curriculumTermCourses.filter(
+          (slot) => slot.course_id !== courseId,
+        );
+        db.prerequisites = db.prerequisites.filter(
+          (relationship) =>
+            relationship.course_id !== courseId &&
+            relationship.prerequisite_course_id !== courseId,
+        );
+        db.courseOfferings = db.courseOfferings.filter(
+          (offering) => offering.course_id !== courseId,
+        );
+        db.attempts = db.attempts.filter(
+          (attempt) => !offeringIds.has(attempt.course_offering_id),
+        );
+        db.attemptResults = db.attemptResults.filter(
+          (attempt) => !offeringIds.has(attempt.course_offering_id),
+        );
+      }
+      if (
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteCourseOffering)")
+      ) {
+        const db = getMockDatabase();
+        const offeringId = new URL(rawUrl).pathname.split("/").at(-1);
+        db.attempts = db.attempts.filter(
+          (attempt) => attempt.course_offering_id !== offeringId,
+        );
+        db.attemptResults = db.attemptResults.filter(
+          (attempt) => attempt.course_offering_id !== offeringId,
+        );
+        db.advisingPlanItems = db.advisingPlanItems.filter(
+          (item) => item.course_offering_id !== offeringId,
+        );
       }
 
       const response = await fetch(rawUrl, init);
