@@ -11,6 +11,12 @@ const StudentChecklistPage = lazy(
 const StudentGradesPage = lazy(
   () => import('./grades/StudentGradesPage'),
 )
+const StudentEnrollmentHistoryPage = lazy(
+  () => import('./enrollment-history/StudentEnrollmentHistoryPage'),
+)
+const StudentProfilePage = lazy(
+  () => import('./profile/StudentProfilePage'),
+)
 
 export default function StudentPortal() {
   const { user } = useAuth()
@@ -34,6 +40,18 @@ export default function StudentPortal() {
         <Route
           path="grades"
           element={<StudentGradesPage studentId={user.id} />}
+        />
+        <Route
+          path="enrollment-history"
+          element={<StudentEnrollmentHistoryPage studentId={user.id} />}
+        />
+        <Route
+          path="history"
+          element={<Navigate to="/student/enrollment-history" replace />}
+        />
+        <Route
+          path="profile"
+          element={<StudentProfilePage studentId={user.id} />}
         />
         <Route path="*" element={<Navigate to="/student" replace />} />
       </Routes>
