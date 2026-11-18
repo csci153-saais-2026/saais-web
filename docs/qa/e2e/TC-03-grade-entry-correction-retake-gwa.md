@@ -32,4 +32,4 @@
 - If the shared mock database has no single student record satisfying all preconditions, or the expected-value table cannot be filled from that record, this case is blocked pending the shared mock-data owner’s fixture. Do not invent a case-local dataset or guess GWA values.
 - QA approval: [ ]  Adviser/academic-rule reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. The current shared seed has no pre-seeded repeated-course/retake result, so it does not currently provide the failed attempt with an unposted retake required here. Execution remains blocked until the shared mock-data owner supplies one record that also meets the flagged-grade and previously-passed-course preconditions. Calculate both expected GWA values from that record before execution.
+**Execution status:** Automated prototype coverage: the grade dialog blocks a save without a reason and accepts a grade after one is supplied. Passed-course retake denial, auditable correction persistence, and failed-retake GWA checkpoints are not implemented in this prototype.
