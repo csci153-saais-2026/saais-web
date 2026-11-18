@@ -98,6 +98,7 @@ function studentMetrics(studentId: string, departmentId: string) {
       const openInc = results.filter(a => a.recorded_status === 'inc' && a.completion_grade == null && !a.is_lapsed_inc)
       const lapsed = results.filter(a => a.is_lapsed_inc)
       const flags = db.gradeFlags.filter(flag => flag.student_id === studentId && flag.status === 'open')
+      const deficiencies = results.filter(a => !a.is_repeated && (a.effective_status === 'failed' || a.effective_status === 'dr' || (a.recorded_status === 'inc' && a.completion_grade == null)))
       const failed = counted.filter(row => row.grade! > 3)
       const failedUnits = failed.reduce((sum, row) => sum + row.units, 0)
       const settings = db.systemSettings.find(setting => setting.department_id === departmentId)
@@ -117,7 +118,7 @@ function studentMetrics(studentId: string, departmentId: string) {
       .reduce((sum, a) => sum + a.units_attempted, 0)
     return failedInTerm >= curriculum.delinquency_threshold
   })
-  return { results, counted, countedUnits, outsideCreditUnits, gwa, earnedUnits, openInc, lapsed, flags, failed, failedUnits, failurePct, standing, isDelinquent }
+  return { results, counted, countedUnits, outsideCreditUnits, gwa, earnedUnits, openInc, lapsed, flags, deficiencies, failed, failedUnits, failurePct, standing, isDelinquent }
 }
 
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
@@ -2126,7 +2127,7 @@ export const saaisMswHandlers = [
         (auth.persona.roles.some(role => role === 'department_head' || role === 'department_staff') && canAccessDepartment(auth.persona, org.department_id)) ||
         (auth.persona.roles.includes('adviser') && !!ownAssignment)
       if (!visible) continue
-      const { gwa, earnedUnits, openInc, lapsed, flags, failed, standing, isDelinquent } = studentMetrics(org.student_id, org.department_id)
+      const { gwa, earnedUnits, openInc, lapsed, flags, deficiencies, standing, isDelinquent } = studentMetrics(org.student_id, org.department_id)
       const adviser = activeAssignment && db.profiles.find(p => p.id === activeAssignment.adviser_id)
       items.push({
         student_id: org.student_id, student_number: profile.student_number ?? '', full_name: profile.full_name,
@@ -2136,7 +2137,7 @@ export const saaisMswHandlers = [
         curriculum_version_id: curriculum.id, curriculum_label: curriculum.version_label, entry_year: org.entry_year,
         year_level: earnedUnits >= 110 ? 4 : earnedUnits >= 72 ? 3 : earnedUnits >= 36 ? 2 : 1,
         gwa, earned_units: earnedUnits, required_units: curriculum.total_units, standing,
-        is_delinquent: isDelinquent, deficiencies_count: failed.length + openInc.length + lapsed.length + flags.length,
+        is_delinquent: isDelinquent, deficiencies_count: deficiencies.length,
         open_inc_count: openInc.length, lapsed_inc_count: lapsed.length, open_flags_count: flags.length,
         nearest_inc_deadline: openInc.map(row => row.inc_deadline).filter((date): date is string => !!date).sort()[0] ?? null,
         assignment_status: activeAssignment ? 'active' : ownAssignment ? 'past' : 'unassigned',
@@ -2228,7 +2229,7 @@ export const saaisMswHandlers = [
         standing: metrics.standing, year_level: metrics.earnedUnits >= 110 ? 4 : metrics.earnedUnits >= 72 ? 3 : metrics.earnedUnits >= 36 ? 2 : 1,
         slots_satisfied: slots.filter(slot => passedSlots.has(slot.id)).length, total_slots: slots.length,
         open_inc_count: metrics.openInc.length, lapsed_inc_count: metrics.lapsed.length, open_flags_count: metrics.flags.length,
-        deficiencies_count: metrics.failed.length + metrics.openInc.length + metrics.lapsed.length + metrics.flags.length,
+        deficiencies_count: metrics.deficiencies.length,
         is_delinquent: metrics.isDelinquent, computed_at: '2026-11-10T08:00:00Z',
       }
       return HttpResponse.json(summary)
