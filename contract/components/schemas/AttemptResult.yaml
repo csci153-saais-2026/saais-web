@@ -1,0 +1,121 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  course_offering_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  recorded_status:
+    $ref: "./AttemptStatus.yaml"
+  midterm_status:
+    anyOf:
+      - $ref: "./MidtermStatus.yaml"
+      - type: "null"
+  midterm_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  final_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  inc_deadline:
+    type:
+      - string
+      - "null"
+    format: date
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  prerequisite_override:
+    type: boolean
+  prerequisite_grade_override:
+    type: boolean
+  grade_fix_history:
+    type: array
+    maxItems: 50
+    items:
+      $ref: "./GradeFixHistoryEntry.yaml"
+  units_attempted:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+    readOnly: true
+  revision:
+    type: integer
+    minimum: 0
+    readOnly: true
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+  completion_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  resolved_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  effective_status:
+    $ref: "./AttemptStatus.yaml"
+  gwa_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  is_lapsed_inc:
+    type: boolean
+  is_repeated:
+    type: boolean
+    readOnly: true
+    description: True when this failing attempt is superseded by a later numeric retake result; show Repeated on the transcript.
+  counts_toward_cumulative_gwa:
+    type: boolean
+    readOnly: true
+    description: True when this attempt contributes to cumulative GWA after retake replacement rules.
+required:
+  - id
+  - student_id
+  - course_offering_id
+  - recorded_status
+  - effective_status
+  - units_attempted
+  - revision
+  - midterm_grade
+  - final_grade
+  - completion_grade
+  - gwa_grade
+  - is_lapsed_inc
+  - is_repeated
+  - counts_toward_cumulative_gwa

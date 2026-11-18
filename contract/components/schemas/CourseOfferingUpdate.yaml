@@ -1,0 +1,21 @@
+type: object
+properties:
+  section:
+    type:
+      - string
+      - "null"
+    maxLength: 64
+  schedule:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  is_by_request:
+    type: boolean
+additionalProperties: false
+minProperties: 1

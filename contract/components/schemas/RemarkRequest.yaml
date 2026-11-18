@@ -1,0 +1,31 @@
+type: object
+additionalProperties: false
+properties:
+  body_text:
+    type: string
+    minLength: 1
+    maxLength: 8000
+    pattern: \S
+  attempt_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type: string
+    format: uuid
+required:
+  - body_text
+oneOf:
+  - required:
+      - attempt_id
+    not:
+      required:
+        - curriculum_term_course_id
+      properties:
+        curriculum_term_course_id: {}
+  - required:
+      - curriculum_term_course_id
+    not:
+      required:
+        - attempt_id
+      properties:
+        attempt_id: {}

@@ -1,0 +1,29 @@
+type: object
+additionalProperties: false
+required:
+  - curriculum_version_id
+  - year_level
+  - term_sequence
+properties:
+  curriculum_version_id:
+    type: string
+    format: uuid
+  year_level:
+    type: integer
+    minimum: 1
+    maximum: 8
+  term_sequence:
+    type: integer
+    minimum: 1
+    maximum: 3
+  slot_type:
+    $ref: "./CurriculumSlotType.yaml"
+    default: required
+  slot_label:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+description: >-
+  Optional curriculum term slot attachment executed atomically when adding a new course from a
+  curriculum term's "+ Create new course for this term" action.

@@ -1,0 +1,44 @@
+type: object
+additionalProperties: false
+properties:
+  entry_year:
+    type: integer
+    minimum: 1900
+    maximum: 3000
+  program_id:
+    type: string
+    format: uuid
+  program_code:
+    type: string
+    maxLength: 100
+  curriculum_version_id:
+    type: string
+    format: uuid
+  curriculum_label:
+    type: string
+    maxLength: 100
+  student_count:
+    type: integer
+    minimum: 0
+  mean_gwa:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+  good_standing_count:
+    type: integer
+    minimum: 0
+  at_risk_count:
+    type: integer
+    minimum: 0
+required:
+  - entry_year
+  - program_id
+  - program_code
+  - curriculum_version_id
+  - curriculum_label
+  - student_count
+  - mean_gwa
+  - good_standing_count
+  - at_risk_count

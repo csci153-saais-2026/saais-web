@@ -1,0 +1,23 @@
+type: object
+additionalProperties: false
+properties:
+  attempt_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type: string
+    format: uuid
+  justification:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+  expected_updated_at:
+    type: string
+    format: date-time
+required:
+  - attempt_id
+  - curriculum_term_course_id
+  - justification
+  - expected_updated_at
+minProperties: 1

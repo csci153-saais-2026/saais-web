@@ -1,0 +1,7 @@
+type: string
+enum:
+  - none
+deprecated: true
+description: >-
+  Legacy compatibility field; only none is accepted. A student may retake a course that
+  has not been passed, but cannot take the same course again after passing it.

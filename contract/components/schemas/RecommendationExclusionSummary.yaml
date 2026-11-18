@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+required:
+  - total_excluded
+properties:
+  total_excluded:
+    type: integer
+    minimum: 0
+  completed_count:
+    type: integer
+    minimum: 0
+  enrolled_count:
+    type: integer
+    minimum: 0
+  not_offered_count:
+    type: integer
+    minimum: 0
+description: >-
+  Breakdown of curriculum courses excluded from the recommendation list (`completed`,
+  `currently_enrolled`, or `not_offered` in the selected school term).

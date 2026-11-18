@@ -1,0 +1,89 @@
+type: object
+additionalProperties: false
+properties:
+  school_term_id:
+    type: string
+    format: uuid
+  course_offering_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    description: >-
+      Optional target curriculum slot UUID. When an elective course is recorded directly into
+      an elective slot (`is_elective_slot=true`), the server atomically creates the
+      corresponding `ElectiveMapping` row in the same transaction.
+  elective_mapping_justification:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+    description: >-
+      Optional justification recorded when `curriculum_term_course_id` maps an elective
+      attempt to an elective curriculum slot during grade recording.
+  midterm_status:
+    anyOf:
+      - $ref: "./MidtermStatus.yaml"
+      - type: "null"
+  midterm_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  final_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  status:
+    type:
+      - string
+      - "null"
+    enum:
+      - inc
+      - dr
+      - na
+      - null
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  remark:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+    description: >-
+      Optional staff remark appended as an `AttemptRemark` row when non-empty and not
+      duplicating the latest remark on the attempt.
+  confirmed_enrollment:
+    type: boolean
+    default: false
+  continue_with_prerequisite_override:
+    type: boolean
+    default: false
+  prerequisite_override_reason:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+required:
+  - school_term_id
+  - course_offering_id
+description: >-
+  Omitted/null grades mean blank. Server derives student from path, actor from verified
+  session, actual units and direct slot from records (or maps to `curriculum_term_course_id`
+  when an elective slot is selected). Under the VSU DR midterm rule, midterm_status=dr
+  automatically sets status=dr and final_grade=null. For a new offering with midterm supplied,
+  first return 409 ENROLLMENT_CONFIRMATION_REQUIRED until confirmed_enrollment=true. Existing
+  populated submitted grade always rejects the whole request and directs to Grades;
+  blank/blank on existing offering rejects duplicate. Unmet strict prerequisites require
+  explicit audited override or prerequisite grade correction.

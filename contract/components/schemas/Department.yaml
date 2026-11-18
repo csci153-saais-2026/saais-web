@@ -1,0 +1,48 @@
+type: object
+required:
+  - id
+  - faculty_id
+  - name
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  faculty_id:
+    type: string
+    format: uuid
+  code:
+    type:
+      - string
+      - "null"
+    maxLength: 50
+    example: DCS
+  name:
+    type: string
+    example: Department of Computer Science
+  letterhead_prefix:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    example: Department of Computer Science
+  letterhead_name:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+    example: College of Engineering and Technology
+  department_head_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Derived active Department Head display name for organization and letterhead headers.
+  dean_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Derived active parent Faculty Dean display name.
