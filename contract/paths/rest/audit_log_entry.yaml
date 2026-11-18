@@ -1,0 +1,199 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Read immutable scoped audit history
+  operationId: listAuditLogEntries
+  description: >-
+    Read-only, row-scoped PostgREST collection. Advisers view assigned advisees; Department
+    Heads view department-scoped entries; Deans view faculty-scoped entries; Admins view all
+    entries. Supports actor, action, action_category, entity_type, student, free-text search,
+    and bounded created_at range filtering (both single boundary via `created_at` and lower+upper
+    bounds via `and=(created_at.gte.<from>,created_at.lte.<to>)`).
+  x-required-roles:
+    - adviser
+    - department_head
+    - dean
+    - admin
+  x-access-scope:
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/studentIdQueryParam.yaml"
+    - name: actor_id
+      in: query
+      required: false
+      description: Filter by actor UUID (`eq.UUID`, `neq.UUID`, or `in.(UUID,...)`).
+      schema:
+        type: string
+        maxLength: 1900
+        pattern: >-
+          ^(?:(?:eq|neq)\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\.\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\))$
+    - name: actor_name
+      in: query
+      required: false
+      description: Filter by actor display name (`eq.`, `ilike.`, `like.`).
+      schema:
+        type: string
+        maxLength: 160
+        pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,150}$
+    - name: student_name
+      in: query
+      required: false
+      description: Filter by target student display name (`eq.`, `ilike.`, `like.`).
+      schema:
+        type: string
+        maxLength: 160
+        pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,150}$
+    - name: student_number
+      in: query
+      required: false
+      description: Filter by target student number (`eq.`, `ilike.`, `like.`).
+      schema:
+        type: string
+        maxLength: 70
+        pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,64}$
+    - name: action
+      in: query
+      required: false
+      description: Filter by audit action identifier or pattern (`eq.`, `ilike.`, `like.`).
+      schema:
+        type: string
+        maxLength: 120
+        pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,100}$
+    - name: action_category
+      in: query
+      required: false
+      description: >-
+        Filter by UI action category (`eq.view`, `eq.change`, `eq.sign_in`, `eq.record_view`,
+        `eq.grade_update`, `eq.plan_save`, `eq.note_change`, `eq.override`, `eq.export`,
+        `eq.auth_account`, `eq.catalog_term`, or `in.(...)`).
+      schema:
+        type: string
+        maxLength: 260
+        pattern: >-
+          ^(?:eq\.(?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)|in\.\((?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)(?:,(?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)){0,10}\))$
+    - name: entity_type
+      in: query
+      required: false
+      description: Filter by audited entity type (`eq.<type>`).
+      schema:
+        type: string
+        maxLength: 110
+        pattern: ^eq\.[^\x00-\x1f]{1,100}$
+    - name: created_at
+      in: query
+      required: false
+      description: Filter by single timestamp boundary (`gte.`, `lte.`, `gt.`, `lt.`, `eq.`).
+      schema:
+        type: string
+        maxLength: 64
+        pattern: ^(?:gte|lte|gt|lt|eq)\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+-Z]+)?$
+    - name: and
+      in: query
+      required: false
+      description: >-
+        Bounded PostgREST conjunction for closed date-range filtering:
+        `and=(created_at.gte.<from>,created_at.lte.<to>)`.
+      schema:
+        type: string
+        maxLength: 160
+        pattern: >-
+          ^\(created_at\.(?:gte|gt)\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+-Z]+)?,created_at\.(?:lte|lt)\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+-Z]+)?\)$
+    - name: or
+      in: query
+      required: false
+      description: >-
+        Bounded PostgREST disjunction for audit log search across `actor_name`, `student_name`,
+        `student_number`, `target_label`, `action`, `details_summary`, and `reason`.
+      schema:
+        type: string
+        maxLength: 700
+        pattern: >-
+          ^\((?:(?:actor_name|student_name|student_number|target_label|action|details_summary|reason)\.(?:ilike|like|eq)\.[^\x00-\x1f,()]{1,100})(?:,(?:actor_name|student_name|student_number|target_label|action|details_summary|reason)\.(?:ilike|like|eq)\.[^\x00-\x1f,()]{1,100}){0,6}\)$
+    - name: select
+      in: query
+      required: false
+      description: >-
+        Only these flat safe columns. On private-column tables the client must explicitly send
+        this projection; PostgREST does not apply OpenAPI defaults.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)(?:,(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at))*$
+        default: >-
+          id,actor_id,actor_name,actor_role,student_id,student_name,student_number,target_label,action,action_category,entity_type,entity_id,details_summary,old_value,new_value,reason,created_at
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only; whitelist and enforce at runtime.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: created_at.desc,id.desc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Visible rows; empty array if no visible matches.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/AuditLogEntry.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection if the gateway reports a partial range.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/AuditLogEntry.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-projection-fields:
+    - id
+    - actor_id
+    - actor_name
+    - actor_role
+    - student_id
+    - student_name
+    - student_number
+    - target_label
+    - action
+    - action_category
+    - entity_type
+    - entity_id
+    - details_summary
+    - old_value
+    - new_value
+    - reason
+    - created_at
