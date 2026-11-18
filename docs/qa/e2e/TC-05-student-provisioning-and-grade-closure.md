@@ -28,4 +28,4 @@
 - The grade action is performed by the student’s current adviser so the test reaches the closure rule rather than failing adviser-role authorization.
 - QA approval: [ ]  Department operations reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. Confirm the shared fixture for a cross-department offering before execution.
+**Execution status:** Automated prototype coverage: Department Staff roster and adviser filter screens. Student creation with required initial adviser and current-department grade-closure behavior are not interactive prototype flows.
