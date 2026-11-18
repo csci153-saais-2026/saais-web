@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react"
+import type { ComponentProps } from "react"
 import { Outlet, useLocation } from "react-router"
 import { AppShell } from "@/components/features/app-shell"
 import type { AppSidebar } from "@/components/features/sidebar"
@@ -14,13 +14,11 @@ export function AuthenticatedLayout({
   sidebar,
   crumbs,
   topbarTrailing,
-  children,
 }: {
   assignments: readonly { role: NavigationRole }[]
   sidebar?: SidebarOptions
   crumbs: Crumb[]
   topbarTrailing?: ComponentProps<typeof AppShell>["topbarTrailing"]
-  children?: ReactNode
 }) {
   const { pathname } = useLocation()
 
@@ -30,7 +28,7 @@ export function AuthenticatedLayout({
       crumbs={crumbs}
       topbarTrailing={topbarTrailing}
     >
-      {children ?? <Outlet />}
+      <Outlet />
     </AppShell>
   )
 }
