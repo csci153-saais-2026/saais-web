@@ -6,5 +6,6 @@ export function DeficiencySubjects({ studentId, userId, count }: { studentId: st
   if (!count) return <span>—</span>
   if (error) return <span className="text-muted-foreground">Subjects unavailable</span>
   if (!data) return <span role="status">Loading…</span>
-  return <span>{data.length ? data.join(', ') : 'Details unavailable'}</span>
+  if (!data.length) return <span>Details unavailable</span>
+  return <span title={data.join(', ')}>{data.slice(0, 2).join(', ')}{data.length > 2 && '…'}</span>
 }
