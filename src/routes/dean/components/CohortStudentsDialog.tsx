@@ -1,4 +1,3 @@
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -29,65 +28,66 @@ export function CohortStudentsDialog({
   students: CohortStudentSample[]
   open: boolean
   onOpenChange: (open: boolean) => void
-  onOpenStudent?: (studentNumber: string) => void
+  onOpenStudent?: (studentId: string) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Students behind this number</DialogTitle>
+          <DialogTitle>
+            {batch ? `Batch ${batch.batch} · Student GWA` : "Batch · Student GWA"}
+          </DialogTitle>
           <DialogDescription>
             {batch
-              ? `Batch ${batch.batch} · ${batch.curriculum} (${batch.students} students)`
-              : "Cohort student sample"}
+              ? `${batch.curriculum} · ${batch.students} ${batch.students === 1 ? "student" : "students"}`
+              : "Cohort student list"}
           </DialogDescription>
         </DialogHeader>
 
-        <Alert className="border-border bg-secondary/60 text-foreground">
-          <AlertDescription>
-            Opening this list is recorded in the audit log.
-          </AlertDescription>
-        </Alert>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead className="text-right">GWA</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.length > 0 ? (
-              students.map((student) => (
-                <TableRow key={student.studentNumber}>
-                  <TableCell>
-                    {onOpenStudent ? (
-                      <button
-                        type="button"
-                        className="text-left font-medium text-primary hover:underline"
-                        onClick={() => onOpenStudent(student.studentNumber)}
-                      >
-                        {student.name}
-                      </button>
-                    ) : (
-                      <span className="font-medium">{student.name}</span>
-                    )}
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {student.studentNumber}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">{student.gwa}</TableCell>
-                </TableRow>
-              ))
-            ) : (
+        <div className="max-h-[55vh] overflow-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={2} className="py-6 text-center text-muted-foreground">
-                  No student samples available for this cohort.
-                </TableCell>
+                <TableHead>Student</TableHead>
+                <TableHead>Student ID</TableHead>
+                <TableHead>Curriculum</TableHead>
+                <TableHead className="text-right">GWA</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {students.length > 0 ? (
+                students.map((student) => (
+                  <TableRow key={student.studentId}>
+                    <TableCell>
+                      {onOpenStudent ? (
+                        <button
+                          type="button"
+                          className="text-left font-semibold text-primary underline"
+                          onClick={() => onOpenStudent(student.studentId)}
+                        >
+                          {student.name}
+                        </button>
+                      ) : (
+                        <span className="font-semibold">{student.name}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {student.studentNumber}
+                    </TableCell>
+                    <TableCell>{student.curriculum}</TableCell>
+                    <TableCell className="text-right font-mono">{student.gwa}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                    No students match this cohort.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -98,4 +98,3 @@ export function CohortStudentsDialog({
     </Dialog>
   )
 }
-

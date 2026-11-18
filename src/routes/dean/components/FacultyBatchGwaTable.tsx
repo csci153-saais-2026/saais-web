@@ -11,15 +11,15 @@ export function FacultyBatchGwaTable({
 }) {
   return (
     <DataTablePanel
-      title="GWA by batch and curriculum version"
-      description="Select a cohort to inspect the underlying student list."
+      title="GWA by batch and curriculum"
+      description="Entry year and academic performance across the selected scope."
       rows={rows}
       rowKey={(row) => `${row.batch}-${row.curriculum}`}
       empty="No cohort records available for this department."
       columns={[
         {
           header: "Batch",
-          cell: (row) => <span className="font-mono font-medium">{row.batch}</span>,
+          cell: (row) => row.batch,
         },
         {
           header: "Curriculum",
@@ -36,16 +36,19 @@ export function FacultyBatchGwaTable({
           cell: (row) => row.meanGwa,
         },
         {
-          header: "",
-          className: "text-right",
+          header: "Actions",
           cell: (row) => (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => onSelectBatch(row)}
             >
-              View students
+              View students <span aria-hidden="true">→</span>
+              <span className="sr-only">
+                {" "}
+                for {row.batch} {row.curriculum}
+              </span>
             </Button>
           ),
         },
@@ -53,4 +56,3 @@ export function FacultyBatchGwaTable({
     />
   )
 }
-
