@@ -127,7 +127,7 @@ describe("Department Head integration", () => {
     const before = (await getAuditEvents()).length
     openPortal("/department-head/students")
     fireEvent.click(await screen.findByRole("button", { name: "View Sta. Agata, Jerome Daniel S. checklist" }))
-    const dialog = await screen.findByRole("dialog", { name: "Sta. Agata, Jerome Daniel S. · Checklist" })
+    const dialog = await screen.findByRole("dialog", { name: "Sta. Agata, Jerome Daniel S. · Student record" })
     await within(dialog).findByText(/Year 1 · Semester 1/)
     fireEvent.click(within(dialog).getAllByRole("button", { name: "Close" }).at(-1)!)
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())

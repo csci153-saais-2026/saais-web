@@ -41,7 +41,38 @@ const ALIASES: Record<string, (typeof IMPORT_COLUMNS)[number]> = {
 }
 
 export function readImportLines(text: string): ImportLine[] {
-  const [header, ...body] = parseCsv(text)
+  return readImportTable(parseCsv(text))
+}
+
+function cellText(value: unknown) {
+  if (value == null) return ""
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value)
+}
+
+function readFile<T extends string | ArrayBuffer>(read: (reader: FileReader) => void) {
+  return new Promise<T>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as T)
+    reader.onerror = () => reject(new Error("The file could not be read."))
+    read(reader)
+  })
+}
+
+/** Reads a .csv or .xlsx file (first worksheet) into validated import lines. */
+export async function readImportFile(file: File): Promise<ImportLine[]> {
+  if (!/\.xlsx$/i.test(file.name)) return readImportLines(await readFile<string>((reader) => reader.readAsText(file)))
+  try {
+    const { readSheet } = await import("read-excel-file/browser")
+    const sheet = await readSheet(await readFile<ArrayBuffer>((reader) => reader.readAsArrayBuffer(file)), 1)
+    return readImportTable(sheet.map((cells) => cells.map(cellText)).filter((cells) => cells.some((cell) => cell.trim() !== "")))
+  } catch (failure) {
+    if (failure instanceof Error && /^(The file|Missing column)/.test(failure.message)) throw failure
+    throw new Error("The .xlsx workbook could not be read. Check that it is a valid, unencrypted file.", { cause: failure })
+  }
+}
+
+function readImportTable(table: string[][]): ImportLine[] {
+  const [header, ...body] = table
   if (!header) throw new Error("The file is empty.")
   const columns = header.map((cell) => { const key = normalise(cell); return ALIASES[key] ?? key })
   const missing = IMPORT_COLUMNS.filter((name) => name !== "entry_year" && !columns.includes(name))
