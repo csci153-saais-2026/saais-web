@@ -5,7 +5,9 @@ const os = require("node:os");
 const path = require("node:path");
 const { execFileSync, spawnSync } = require("node:child_process");
 
-const bundleDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "saais-server-policy-bundle-"));
+const bundleDirectory = fs.mkdtempSync(
+  path.join(os.tmpdir(), "saais-server-policy-bundle-"),
+);
 const bundlePath = path.join(bundleDirectory, "openapi.json");
 let original;
 try {
@@ -29,7 +31,9 @@ try {
 }
 
 test("server URL policy rejects HTTP at root, path and operation level", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "saais-server-policy-case-"));
+  const dir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "saais-server-policy-case-"),
+  );
   try {
     for (const level of ["root", "path", "operation"]) {
       const spec = structuredClone(original);

@@ -70,11 +70,13 @@ event_driven:
     recipients: [adviser, student]
   - event_type: credit_decision_recorded
     kind: grade
-    source_operations: [createElectiveMapping, createEquivalencyDecision, createOutsideCredit]
+    source_operations:
+      [createElectiveMapping, createEquivalencyDecision, createOutsideCredit]
     recipients: [student]
   - event_type: credit_decision_revoked
     kind: alert
-    source_operations: [revokeElectiveMapping, revokeEquivalencyDecision, revokeOutsideCredit]
+    source_operations:
+      [revokeElectiveMapping, revokeEquivalencyDecision, revokeOutsideCredit]
     recipients: [student, adviser]
   - event_type: invitation_accepted
     kind: person
@@ -90,7 +92,13 @@ event_driven:
     recipients: [adviser, department_head, admin]
   - event_type: catalog_updated
     kind: report
-    source_operations: [createCourse, updateCourse, createCurriculumVersion, updateCurriculumVersion]
+    source_operations:
+      [
+        createCourse,
+        updateCourse,
+        createCurriculumVersion,
+        updateCurriculumVersion,
+      ]
     recipients: [department_head, dean]
 scheduled_and_threshold:
   - event_type: inc_deadline_approaching
