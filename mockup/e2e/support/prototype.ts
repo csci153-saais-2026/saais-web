@@ -8,7 +8,9 @@ export async function openPrototypeRoute(
   page: Page,
   route: string,
 ): Promise<FrameLocator> {
-  await page.goto(`/prototype.html#/${route}`);
+  // A fresh shell load is needed between role screens; the mockup sometimes
+  // keeps the previous iframe document when only the parent hash changes.
+  await page.goto(`/prototype.html?e2e=${encodeURIComponent(route)}#/${route}`);
   const frame = page.locator("#portal-frame");
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute("title", /SAAIS/);
