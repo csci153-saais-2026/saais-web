@@ -16,6 +16,7 @@ import { DeanAuditActionPill } from "@/routes/dean/components/DeanAuditActionPil
 import { DeanQueryState } from "@/routes/dean/components/DeanQueryState"
 import { FacultyAuditFilters } from "@/routes/dean/components/FacultyAuditFilters"
 import type { DeanAuditAction, DeanAuditEntry } from "@/routes/dean/types"
+import { toManilaDayKey } from "@/routes/dean/utils/audit-date"
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Manila",
@@ -34,9 +35,7 @@ function mapCategoryToAction(category: string): DeanAuditAction {
 
 function toDeanAuditEntry(entry: ApiSchema<"AuditLogEntry">): DeanAuditEntry & { dayKey: string } {
   const created = new Date(entry.created_at)
-  const dayKey = Number.isNaN(created.getTime())
-    ? ""
-    : created.toISOString().slice(0, 10)
+  const dayKey = toManilaDayKey(entry.created_at)
   const studentDisplay =
     entry.student_number || entry.student_name
       ? [entry.student_number, entry.student_name].filter(Boolean).join(" · ")
