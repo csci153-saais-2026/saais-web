@@ -25,4 +25,4 @@
 - Past reports are preserved when a mapping is revoked.
 - QA approval: [ ]  Department Head/academic reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run. Do not infer a revocation UI if none exists in the current mockup.
+**Execution status:** Automated prototype coverage: outside-credit and equivalency workspaces and their entry actions are visible. Grade boundaries, revocation, and historical preservation are not interactive prototype behaviors.
