@@ -1,9 +1,9 @@
 import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes } from "react-router"
 
-const DeanReportsPage = lazy(() => import("@/routes/dean/pages/DeanReportsPage"))
-const DeanStudentsPage = lazy(() => import("@/routes/dean/pages/DeanStudentsPage"))
-const DeanAuditLogPage = lazy(() => import("@/routes/dean/pages/DeanAuditLogPage"))
+const DeanReportsPage = lazy(() => import("@/routes/dean/reports/DeanReportsPage"))
+const DeanStudentsPage = lazy(() => import("@/routes/dean/students/DeanStudentsPage"))
+const DeanAuditLogPage = lazy(() => import("@/routes/dean/audit-log/DeanAuditLogPage"))
 
 export default function DeanPortal() {
   return (
