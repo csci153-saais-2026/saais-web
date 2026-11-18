@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 
 export type Column<T> = {
   header: string;
+  /** Optional displayed header; header remains the stable key and mobile label. */
+  headerContent?: React.ReactNode;
   cell: (row: T) => React.ReactNode;
   className?: string;
   /** Right-align numeric columns. */
@@ -60,7 +62,7 @@ function DataTablePanel<T>({
                   c.numeric && "text-right",
                 )}
               >
-                {c.header}
+                {c.headerContent ?? c.header}
               </TableHead>
             ))}
           </TableRow>
