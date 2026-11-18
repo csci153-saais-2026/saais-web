@@ -6,8 +6,7 @@ import { PlusIcon } from "@/components/icons"
 import { FormField } from "@/components/features/form-field"
 import { PageHeading } from "@/components/features/page-heading"
 import { StatGrid } from "@/components/features/stat-tile"
-import { Panel } from "@/components/features/panel"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTablePanel } from "@/components/features/data-table-panel"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import {
@@ -68,7 +67,7 @@ function CreditCourseDialog({
   onCredit: (credit: NewOutsideCredit) => Promise<void>
   onClose: () => void
 }) {
-  const { control, formState: { errors }, handleSubmit, register, setError, setValue } = useForm<CreditForm>({
+  const { control, formState: { errors, isSubmitting }, handleSubmit, register, setError, setValue } = useForm<CreditForm>({
     resolver: zodResolver(outsideCreditSchema),
     defaultValues: {
       studentId: "",
@@ -127,8 +126,8 @@ function CreditCourseDialog({
   }
 
   return (
-    <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
-      <DialogHeader>
+    <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]">
+      <DialogHeader className="pr-6">
         <DialogTitle>Credit an outside course</DialogTitle>
         <DialogDescription>
           Credit a course from another school or degree program.
@@ -136,17 +135,72 @@ function CreditCourseDialog({
       </DialogHeader>
 
       <form noValidate className="space-y-4" onSubmit={handleSubmit(creditCourse)}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField label="Student" htmlFor="cr-student" error={errors.studentId?.message}>
-            <Controller name="studentId" control={control} render={({ field }) => (
-              <Select value={field.value} onValueChange={(value) => { field.onChange(value); setValue("destinationCode", "") }}>
-                <SelectTrigger id="cr-student" className="w-full" aria-invalid={Boolean(errors.studentId)} ref={field.ref} onBlur={field.onBlur}>
-                  <SelectValue placeholder="Choose a student" />
+        <fieldset disabled={isSubmitting} className="min-w-0 space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="Student" htmlFor="cr-student" error={errors.studentId?.message}>
+              <Controller name="studentId" control={control} render={({ field }) => (
+                <Select value={field.value} onValueChange={(value) => { field.onChange(value); setValue("destinationCode", "") }}>
+                  <SelectTrigger id="cr-student" className="w-full" aria-invalid={Boolean(errors.studentId)} ref={field.ref} onBlur={field.onBlur}>
+                    <SelectValue placeholder="Choose a student" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {students.map((student) => (
+                      <SelectItem key={student.id} value={student.id}>
+                        {student.name} · {student.studentNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )} />
+            </FormField>
+
+            <FormField label="Entry type" htmlFor="cr-entry">
+              <Controller name="entryType" control={control} render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="cr-entry" className="w-full" ref={field.ref} onBlur={field.onBlur}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Transferee">Transferee</SelectItem>
+                    <SelectItem value="Shiftee">Shiftee</SelectItem>
+                  </SelectContent>
+                </Select>
+              )} />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="Original course code" htmlFor="cr-code" error={errors.originalCode?.message}>
+              <Input id="cr-code" placeholder="e.g. CS 101" aria-invalid={Boolean(errors.originalCode)} {...register("originalCode")} />
+            </FormField>
+            <FormField label="Original course name" htmlFor="cr-title" error={errors.originalTitle?.message}>
+              <Input id="cr-title" placeholder="e.g. Computing Fundamentals" aria-invalid={Boolean(errors.originalTitle)} {...register("originalTitle")} />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="Units" htmlFor="cr-units" error={errors.originalUnits?.message}>
+              <Input id="cr-units" type="number" min="0.25" step="0.25" aria-invalid={Boolean(errors.originalUnits)} {...register("originalUnits")} />
+            </FormField>
+            <FormField label="Grade" htmlFor="cr-grade" error={errors.grade?.message}>
+              <Input id="cr-grade" inputMode="decimal" placeholder="e.g. 1.50" aria-invalid={Boolean(errors.grade)} {...register("grade")} />
+            </FormField>
+          </div>
+
+          <FormField label="School / degree of origin" htmlFor="cr-school" error={errors.originSchool?.message}>
+            <Input id="cr-school" placeholder="e.g. Northern State College" aria-invalid={Boolean(errors.originSchool)} {...register("originSchool")} />
+          </FormField>
+
+          <FormField label="Destination curriculum slot" htmlFor="cr-equiv" error={errors.destinationCode?.message}>
+            <Controller name="destinationCode" control={control} render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="cr-equiv" className="w-full" aria-invalid={Boolean(errors.destinationCode)} ref={field.ref} onBlur={field.onBlur}>
+                  <SelectValue placeholder="Choose a destination slot" />
                 </SelectTrigger>
                 <SelectContent>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name} · {student.studentNumber}
+                  {availableSlots.map((slot) => (
+                    <SelectItem key={slot.id} value={slot.id}>
+                      {slot.code} · {slot.title} · {slot.units} units
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -154,67 +208,14 @@ function CreditCourseDialog({
             )} />
           </FormField>
 
-          <FormField label="Entry type" htmlFor="cr-entry">
-            <Controller name="entryType" control={control} render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="cr-entry" className="w-full" ref={field.ref} onBlur={field.onBlur}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Transferee">Transferee</SelectItem>
-                  <SelectItem value="Shiftee">Shiftee</SelectItem>
-                </SelectContent>
-              </Select>
-            )} />
+          <FormField label="Reason" htmlFor="cr-reason" error={errors.reason?.message}>
+            <Textarea id="cr-reason" rows={2} aria-invalid={Boolean(errors.reason)} {...register("reason")} />
           </FormField>
-        </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField label="Original course code" htmlFor="cr-code" error={errors.originalCode?.message}>
-            <Input id="cr-code" placeholder="e.g. CS 101" aria-invalid={Boolean(errors.originalCode)} {...register("originalCode")} />
-          </FormField>
-          <FormField label="Original course name" htmlFor="cr-title" error={errors.originalTitle?.message}>
-            <Input id="cr-title" placeholder="e.g. Computing Fundamentals" aria-invalid={Boolean(errors.originalTitle)} {...register("originalTitle")} />
-          </FormField>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField label="Units" htmlFor="cr-units" error={errors.originalUnits?.message}>
-            <Input id="cr-units" type="number" min="0.25" step="0.25" aria-invalid={Boolean(errors.originalUnits)} {...register("originalUnits")} />
-          </FormField>
-          <FormField label="Grade" htmlFor="cr-grade" error={errors.grade?.message}>
-            <Input id="cr-grade" inputMode="decimal" placeholder="e.g. 1.50" aria-invalid={Boolean(errors.grade)} {...register("grade")} />
-          </FormField>
-        </div>
-
-        <FormField label="School / degree of origin" htmlFor="cr-school" error={errors.originSchool?.message}>
-          <Input id="cr-school" placeholder="e.g. Northern State College" aria-invalid={Boolean(errors.originSchool)} {...register("originSchool")} />
-        </FormField>
-
-        <FormField label="Destination curriculum slot" htmlFor="cr-equiv" error={errors.destinationCode?.message}>
-          <Controller name="destinationCode" control={control} render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger id="cr-equiv" className="w-full" aria-invalid={Boolean(errors.destinationCode)} ref={field.ref} onBlur={field.onBlur}>
-                <SelectValue placeholder="Choose a destination slot" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableSlots.map((slot) => (
-                  <SelectItem key={slot.id} value={slot.id}>
-                    {slot.code} · {slot.title} · {slot.units} units
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )} />
-        </FormField>
-
-        <FormField label="Reason" htmlFor="cr-reason" error={errors.reason?.message}>
-          <Textarea id="cr-reason" rows={2} aria-invalid={Boolean(errors.reason)} {...register("reason")} />
-        </FormField>
-
+        </fieldset>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Credit course</Button>
+          <Button disabled={isSubmitting} type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={isSubmitting} type="submit">{isSubmitting ? "Saving…" : "Credit course"}</Button>
         </DialogFooter>
       </form>
     </DialogContent>
@@ -244,7 +245,7 @@ export default function OutsideCreditsPage() {
 
   if (!query.data) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
         <PageHeading title="Outside credits" subtitle="Review credited subjects for shiftees and transferees in your department." />
         <QueryMessage query={query} label="outside credits" />
       </div>
@@ -252,7 +253,7 @@ export default function OutsideCreditsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
       <PageHeading
         title="Outside credits"
         subtitle="Review credited subjects for shiftees and transferees in your department."
@@ -285,68 +286,24 @@ export default function OutsideCreditsPage() {
         ]}
       />
 
-      <Panel
+      <DataTablePanel
         title="Outside credit records"
         description="Recognized subjects from another school or degree program."
-        flush
-      >
-        <Table responsive>
-          <TableHeader className="bg-secondary">
-            <TableRow>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Student</TableHead>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Original course / units</TableHead>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">School / origin</TableHead>
-              <TableHead className="w-20 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase text-right">Grade</TableHead>
-              <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">Equivalent subject / units</TableHead>
-              <TableHead className="w-28 text-right" aria-label="Type" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {credits.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell label="Student">
-                  <strong className="block font-semibold text-foreground">{c.studentName}</strong>
-                  <small className="block font-mono text-xs text-muted-2">{c.studentId}</small>
-                </TableCell>
-                <TableCell label="Original course / units">
-                  <strong className="block font-semibold text-foreground">
-                    {c.originalCode} · {c.originalTitle}
-                  </strong>
-                  <small className="block text-xs text-muted-2">{c.originalUnits} units</small>
-                </TableCell>
-                <TableCell label="School / origin" className="text-muted-foreground text-xs">
-                  {c.originSchool}
-                </TableCell>
-                <TableCell label="Grade" className="text-right font-mono font-medium">
-                  {c.grade}
-                </TableCell>
-                <TableCell label="Equivalent subject / units">
-                  <strong className="block font-semibold text-foreground">
-                    {c.equivalentCode} · {c.equivalentTitle}
-                  </strong>
-                  <small className="block text-xs text-muted-2">
-                    {c.equivalentUnits} units · {c.targetCurriculum}
-                  </small>
-                </TableCell>
-                <TableCell label="Type" className="text-right">
-                  <StatusBadge status={c.entryType === "Transferee" ? "enrolled" : "not-taken"}>
-                    {c.entryType}
-                  </StatusBadge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        rows={credits}
+        rowKey={(row) => row.id}
+        empty="No outside credits have been recorded."
+        columns={[
+          { header: "Student", cell: (row) => <div><strong className="block font-semibold">{row.studentName}</strong><small className="block font-mono text-xs text-muted-2">{row.studentId}</small></div> },
+          { header: "Original course / units", cell: (row) => <div><strong className="block font-semibold">{row.originalCode} · {row.originalTitle}</strong><small className="block text-xs text-muted-2">{row.originalUnits} units</small></div> },
+          { header: "School / origin", cell: (row) => row.originSchool },
+          { header: "Grade", cell: (row) => row.grade },
+          { header: "Equivalent subject / units", cell: (row) => <div><strong className="block font-semibold">{row.equivalentCode} · {row.equivalentTitle}</strong><small className="block text-xs text-muted-2">{row.equivalentUnits} units · {row.targetCurriculum}</small></div> },
+          { header: "Type", cell: (row) => <StatusBadge status={row.entryType === "Transferee" ? "enrolled" : "not-taken"}>{row.entryType}</StatusBadge> },
+        ]}
+        footer={<div className="flex flex-wrap justify-between gap-2"><span>{credits.length} credited {credits.length === 1 ? "subject" : "subjects"}</span><span>DCST department scope</span></div>}
+      />
 
-        <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-          <span>
-            {credits.length} credited {credits.length === 1 ? "subject" : "subjects"}
-          </span>
-          <span>DCST department scope</span>
-        </div>
-      </Panel>
-
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      <Dialog open={isAddOpen} onOpenChange={(open) => !creditCourse.isPending && setIsAddOpen(open)}>
         {isAddOpen && <CreditCourseDialog credits={credits} students={query.data.students} slots={query.data.slots} onCredit={addCredit} onClose={() => setIsAddOpen(false)} />}
       </Dialog>
 

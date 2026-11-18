@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
+import { delay, http, HttpResponse } from "msw"
+import { saaisMockServer } from "@/mocks/node"
 import OutsideCreditsPage from "./OutsideCreditsPage"
 import { renderDepartmentHead, setupDepartmentHeadMockApi } from "../test-utils"
 
@@ -23,7 +25,7 @@ async function fillCredit(dialog: ReturnType<typeof within>, {
   grade = "1.00",
   code = "CS 205",
   origin = "Western State College",
-  slot = /^CSCI 102/,
+  slot = /^CSCI 153/,
   units = "3.25",
 } = {}) {
   await select(dialog, "Student", /Sta\. Agata/)
@@ -45,6 +47,23 @@ function submit(dialog: ReturnType<typeof within>) {
 }
 
 describe("Outside Credits form", () => {
+  it("prevents repeated submission and retains entered values after an API rejection", async () => {
+    let writes = 0
+    saaisMockServer.use(http.post("*/functions/v1/students/:id/outside-credits", async () => {
+      writes++
+      await delay(250)
+      return HttpResponse.json({ code: "CONFLICT", message: "Credit was rejected by the API." }, { status: 409 })
+    }))
+    const dialog = await openDialog()
+    await fillCredit(dialog)
+    submit(dialog)
+    expect(await dialog.findByRole("button", { name: "Saving…" })).toHaveProperty("disabled", true)
+    fireEvent.click(dialog.getByRole("button", { name: "Saving…" }))
+    expect(await dialog.findByText("Credit was rejected by the API.")).toBeTruthy()
+    expect(dialog.getByLabelText("Original course code")).toHaveProperty("value", "CS 205")
+    expect(writes).toBe(1)
+    expect(screen.getByText(INITIAL_COUNT)).toBeTruthy()
+  })
   it("shows errors for missing details, including the destination and reason", async () => {
     const dialog = await openDialog()
     fireEvent.change(dialog.getByLabelText("Reason"), { target: { value: "  " } })
@@ -104,7 +123,7 @@ describe("Outside Credits form", () => {
     const row = await screen.findByRole("row", { name: /CS 205 · Algorithms/ })
     expect(within(row).getByText(grade)).toBeTruthy()
     expect(within(row).getByText("3.25 units")).toBeTruthy()
-    expect(within(row).getByText(/^CSCI 102 · /)).toBeTruthy()
+    expect(within(row).getByText(/^CSCI 153 · /)).toBeTruthy()
     expect(await screen.findByText("2 credited subjects")).toBeTruthy()
   })
 })

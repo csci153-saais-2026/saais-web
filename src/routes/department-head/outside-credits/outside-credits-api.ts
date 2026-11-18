@@ -51,13 +51,26 @@ export interface NewOutsideCredit {
 
 const KEY = ["department-head", "outside-credits"] as const
 
+// These collection endpoints support limit/offset (contract offset maximum: 100,000).
+// Read until empty so a gateway cap smaller than our requested page does not truncate data.
+async function readPages<T>(read: (offset: number) => Promise<T[]>): Promise<T[]> {
+  const rows: T[] = []
+  for (let offset = 0; offset <= 100000;) {
+    const page = await read(offset)
+    if (page.length === 0) return rows
+    rows.push(...page)
+    offset += page.length
+  }
+  throw new Error("Too many records to load. Contact your administrator.")
+}
+
 async function getOutsideCredits() {
   const [credits, roster, slots, terms, courses] = await Promise.all([
-    apiClient.GET("/rest/v1/outside_credit", { params: { query: { select: "*", order: "decided_at.desc", limit: 100 } } }).then(unwrapApiResult),
+    readPages((offset) => apiClient.GET("/rest/v1/outside_credit", { params: { query: { select: "id,student_id,entry_type,origin_school,original_course_code,original_course_title,units,grade,destination_curriculum_term_course_id,units_credited,revoked_at", order: "decided_at.desc,id.asc", limit: 100, offset } } }).then(unwrapApiResult)),
     getRoster("all"),
-    apiClient.GET("/rest/v1/curriculum_term_course", { params: { query: { select: "*", limit: 100 } } }).then(unwrapApiResult),
-    apiClient.GET("/rest/v1/curriculum_term", { params: { query: { select: "*", limit: 100 } } }).then(unwrapApiResult),
-    apiClient.GET("/rest/v1/course", { params: { query: { select: "*", limit: 100 } } }).then(unwrapApiResult),
+    readPages((offset) => apiClient.GET("/rest/v1/curriculum_term_course", { params: { query: { select: "id,curriculum_term_id,course_id,nominal_units", order: "id.asc", limit: 100, offset } } }).then(unwrapApiResult)),
+    readPages((offset) => apiClient.GET("/rest/v1/curriculum_term", { params: { query: { select: "id,curriculum_version_id", order: "id.asc", limit: 100, offset } } }).then(unwrapApiResult)),
+    readPages((offset) => apiClient.GET("/rest/v1/course", { params: { query: { select: "id,code,title", order: "id.asc", limit: 100, offset } } }).then(unwrapApiResult)),
   ])
   const students: CreditStudentOption[] = roster.map((student) => ({
     id: student.student_id, name: student.full_name, studentNumber: student.student_number,

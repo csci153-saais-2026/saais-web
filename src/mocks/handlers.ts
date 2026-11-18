@@ -3500,13 +3500,46 @@ export const saaisMswHandlers = [
     async ({ request, params }) => {
       const auth = authenticateRequest(request, [
         'admin',
-        'dean',
         'department_head',
-        'adviser',
       ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      const body = (await request.json().catch(() => ({}))) as ApiSchema<'OutsideCreditCreateRequest'>
+      const body = (await request.json().catch(() => null)) as ApiSchema<'OutsideCreditCreateRequest'> | null
+      const fields = ['entry_type', 'origin_school', 'original_course_code', 'original_course_title', 'units', 'grade', 'destination_curriculum_term_course_id', 'reason']
+      const text = (value: unknown, max: number): value is string => typeof value === 'string' && !!value.trim() && value.length <= max
+      if (!body || Object.keys(body).some(key => !fields.includes(key)) ||
+        !['transferee', 'shiftee'].includes(body.entry_type) ||
+        !text(body.origin_school, 250) || !text(body.original_course_code, 100) ||
+        !text(body.original_course_title, 250) || !text(body.reason, 2000) ||
+        typeof body.units !== 'number' || !Number.isFinite(body.units) || body.units <= 0 || !Number.isInteger(body.units * 4) ||
+        typeof body.grade !== 'string' || !/^(?:[12]\.\d{2}|3\.00)$/.test(body.grade) ||
+        typeof body.destination_curriculum_term_course_id !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.destination_curriculum_term_course_id)) {
+        return errorJson(400, 'INVALID_INPUT', 'Provide valid outside-credit details and a reason.')
+      }
+      const db = getMockDatabase()
+      const org = db.studentOrganizations.find(row => row.student_id === studentId)
+      const slot = db.curriculumTermCourses.find(row => row.id === body.destination_curriculum_term_course_id)
+      if (!org || !slot) return errorJson(404, 'NOT_FOUND', 'Student or destination slot not found.')
+      if (!auth.persona.roles.includes('admin') && !canAccessDepartment(auth.persona, org.department_id)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Student is outside your department.')
+      }
+      const term = db.curriculumTerms.find(row => row.id === slot.curriculum_term_id)
+      if (term?.curriculum_version_id !== org.curriculum_version_id) {
+        return errorJson(400, 'INVALID_INPUT', 'Choose a slot in the student curriculum.')
+      }
+      const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
+      const live = db.outsideCredits.filter(row => row.student_id === studentId && !row.revoked_at)
+      if (live.some(row => normalize(row.origin_school) === normalize(body.origin_school) && normalize(row.original_course_code) === normalize(body.original_course_code))) {
+        return errorJson(409, 'DUPLICATE_CREDIT', 'This student already has credit for this course from this origin.')
+      }
+      const passed = db.attemptResults.some(row => row.student_id === studentId && row.effective_status === 'passed' &&
+        (row.curriculum_term_course_id === slot.id || (!!slot.course_id && db.courseOfferings.some(offering => offering.id === row.course_offering_id && offering.course_id === slot.course_id))))
+      const mapped = db.electiveMappings.some(row => row.student_id === studentId && !row.revoked_at && row.curriculum_term_course_id === slot.id)
+      const equivalent = db.equivalencyDecisions.some(row => row.student_id === studentId && !row.revoked_at && row.destination_curriculum_term_course_id === slot.id)
+      if (passed || mapped || equivalent || live.some(row => row.destination_curriculum_term_course_id === slot.id)) {
+        return errorJson(409, 'SLOT_ALREADY_SATISFIED', 'This curriculum slot is already satisfied.')
+      }
       const credit: ApiSchema<'OutsideCredit'> = {
         id: nextSyntheticUuid(),
         student_id: studentId,
