@@ -44,7 +44,8 @@ describe("Department Reports", () => {
     expect(screen.getByText("No report available")).toBeTruthy()
     expect(screen.queryByRole("table", { name: "GWA by batch and curriculum" })).toBeNull()
     expect((screen.getByRole("button", { name: "Export PDF" }) as HTMLButtonElement).disabled).toBe(true)
-  })
+    // Opening the Radix term select over the rendered report is very slow in jsdom (~30s here), so allow extra time.
+  }, 120_000)
 
   it("opens the selected report in the PDF viewer before downloading", async () => {
     URL.createObjectURL = vi.fn(() => "blob:report")
