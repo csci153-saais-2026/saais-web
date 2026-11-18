@@ -5,6 +5,12 @@ import { useAuth } from '@/hooks/use-auth'
 const StudentDashboardPage = lazy(
   () => import('./dashboard/StudentDashboardPage'),
 )
+const StudentChecklistPage = lazy(
+  () => import('./checklist/StudentChecklistPage'),
+)
+const StudentGradesPage = lazy(
+  () => import('./grades/StudentGradesPage'),
+)
 
 export default function StudentPortal() {
   const { user } = useAuth()
@@ -20,6 +26,14 @@ export default function StudentPortal() {
         <Route
           path="dashboard"
           element={<StudentDashboardPage studentId={user.id} />}
+        />
+        <Route
+          path="checklist"
+          element={<StudentChecklistPage studentId={user.id} />}
+        />
+        <Route
+          path="grades"
+          element={<StudentGradesPage studentId={user.id} />}
         />
         <Route path="*" element={<Navigate to="/student" replace />} />
       </Routes>
