@@ -6,7 +6,7 @@ import { QueryProvider } from '@/context/QueryProvider'
 import { resolveSaaisEnvConfig } from '@/lib/supabase/client'
 
 async function enableMockingIfConfigured(): Promise<void> {
-  if (!import.meta.env.DEV) {
+  if (!import.meta.env.DEV && import.meta.env.VITE_API_MODE?.trim().toLowerCase() !== 'mock') {
     return
   }
   const envConfig = resolveSaaisEnvConfig()

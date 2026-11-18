@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 
 export type Column<T> = {
   header: string;
+  /** Optional displayed header; header remains the stable key and mobile label. */
+  headerContent?: React.ReactNode;
   cell: (row: T) => React.ReactNode;
   className?: string;
   /** Right-align numeric columns. */
@@ -31,6 +33,7 @@ function DataTablePanel<T>({
   rowKey,
   rowProps,
   empty = "No records match. Try another search or filter.",
+  toolbar,
   footer,
 }: {
   title: string;
@@ -41,10 +44,13 @@ function DataTablePanel<T>({
   rowKey: (row: T) => string;
   rowProps?: (row: T) => React.ComponentProps<"tr">;
   empty?: string;
+  /** Filters rendered inside the panel, between its heading and the table. */
+  toolbar?: React.ReactNode;
   footer?: React.ReactNode;
 }) {
   return (
     <Panel title={title} description={description} action={action} flush>
+      {toolbar && <div className="border-b border-line-soft p-5">{toolbar}</div>}
       <Table responsive>
         <TableHeader className="bg-secondary">
           <TableRow>
@@ -56,7 +62,7 @@ function DataTablePanel<T>({
                   c.numeric && "text-right",
                 )}
               >
-                {c.header}
+                {c.headerContent ?? c.header}
               </TableHead>
             ))}
           </TableRow>

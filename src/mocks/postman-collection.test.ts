@@ -3,6 +3,8 @@ import rawCollection from "../../contract/postman/saais-api.postman_collection.j
 import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
 import { saaisMockServer } from "./node";
 import { getMockDatabase, resetMockDatabase } from "./store";
+import { MOCK_IDS } from "./personas";
+import { createSaaisApiClient, unwrapApiResult } from "@/lib/api";
 
 interface PostmanHeader {
   key: string;
@@ -124,7 +126,40 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
     for (const { fullName, item } of requests) {
       resetMockDatabase();
       const req = item.request!;
-      const [rawUrl, init] = buildRequest(req, env);
+      const [collectionUrl, init] = buildRequest(req, env);
+      let rawUrl = collectionUrl;
+
+      // The collection example duplicates a live seeded credit and targets a
+      // satisfied requirement. Use the supported unsatisfied slot exercised by
+      // the Outside Credits API suite, preserving duplicate/history checks.
+      if (item.name.startsWith("Authorized") && fullName.includes("(createOutsideCredit)")) {
+        init.body = JSON.stringify({
+          ...JSON.parse(init.body as string),
+          origin_school: "Western State College",
+          original_course_code: "CS 205",
+          original_course_title: "Algorithms",
+          destination_curriculum_term_course_id: MOCK_IDS.slotCsci153,
+        });
+      }
+
+      // The collection's success example points at a seeded history-backed slot.
+      // Create an unreferenced requirement through the real catalog API instead;
+      // do not remove academic history or weaken the 409 dependency safeguard.
+      if (item.name.startsWith("Authorized") && fullName.includes("(deleteCurriculumTermCourse)")) {
+        const sourceId = new URL(rawUrl).pathname.split("/").at(-1);
+        const source = getMockDatabase().curriculumTermCourses.find(slot => slot.id === sourceId)!;
+        const headers = new Headers(init.headers);
+        const client = createSaaisApiClient({
+          baseUrl: new URL(rawUrl).origin,
+          mode: "mock",
+          apiKey: headers.get("apikey"),
+          getAccessToken: () => headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? null,
+        });
+        const created = unwrapApiResult(await client.POST("/functions/v1/catalog/curriculum_term_course", {
+          body: { curriculum_term_id: source.curriculum_term_id, course_id: source.course_id!, is_elective_slot: false, slot_type: "required", nominal_units: source.nominal_units },
+        }));
+        rawUrl = `${new URL(rawUrl).origin}/functions/v1/catalog/curriculum_term_course/${created.id}`;
+      }
 
       // The collection's deleteCourse success example names this ID as
       // unreferenced, but the shared persona database also uses it in
