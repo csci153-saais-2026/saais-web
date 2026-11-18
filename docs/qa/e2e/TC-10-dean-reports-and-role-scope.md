@@ -13,12 +13,13 @@
 
 1. Sign in and open Dean reports. Reports are limited to the Dean’s faculty scope and show the available department/batch/curriculum filters.
 2. Drill into a report row or student list. The details remain within the allowed faculty scope.
-3. Attempt to open Department Head, Adviser, or System Administrator routes using a Dean-only account. Access is denied or the route is absent, according to the mockup’s role navigation.
+3. Directly navigate to the Department Head, Adviser, and System Administrator routes listed in mockup/prototype-routes.js while signed in as a Dean-only account. Each unassigned route must be denied by the application’s route authorization. A hidden navigation link alone does not pass this step.
 4. Repeat with a multi-role account. Only routes corresponding to roles assigned to that account are available; the account’s primary role does not erase its additional assigned roles.
 
 ## Review checks
 
 - Do not assume all Dean accounts are multi-role or that the demo’s combined persona represents a Dean-only account.
+- Verify denial through direct route access; absence of a menu item is not an authorization check.
 - Current shared dean personas include Adviser; a Dean-only fixture may be needed to execute step 3.
 - QA approval: [ ]  Dean/project reviewer approval: [ ]
 
