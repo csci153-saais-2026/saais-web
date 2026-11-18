@@ -7,27 +7,24 @@ describe("FacultyReportHeader", () => {
     cleanup()
   })
 
-  it("renders scope subtitle and triggers PDF and CSV export callbacks", () => {
+  it("renders Reports heading, faculty subtitle, and triggers PDF export without CSV", () => {
     const onDepartmentChange = vi.fn()
     const onExportPdf = vi.fn()
-    const onExportCsv = vi.fn()
 
     render(
       <FacultyReportHeader
+        facultyName="Faculty of Computing"
         department="DCST"
         onDepartmentChange={onDepartmentChange}
         onExportPdf={onExportPdf}
-        onExportCsv={onExportCsv}
       />,
     )
 
+    expect(screen.getByRole("heading", { name: "Reports" })).toBeTruthy()
     expect(screen.getByText("Faculty of Computing · DCST · read-only")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Export CSV" })).toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }))
     expect(onExportPdf).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }))
-    expect(onExportCsv).toHaveBeenCalledTimes(1)
   })
 })
-

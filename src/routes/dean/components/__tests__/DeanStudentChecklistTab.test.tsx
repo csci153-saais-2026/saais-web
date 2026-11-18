@@ -29,7 +29,7 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 describe("DeanStudentChecklistTab", () => {
-  it("loads checklist from MSW and opens read-only Course Info modal", async () => {
+  it("loads checklist from MSW and opens Adviser-style Course Info modal", async () => {
     loginAsMockPersona("dean")
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -66,7 +66,10 @@ describe("DeanStudentChecklistTab", () => {
     const infoButtons = screen.getAllByRole("button", { name: "Course info" })
     fireEvent.click(infoButtons[0])
 
-    expect(await screen.findByText(/units · Category:/)).toBeTruthy()
-    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
+    expect(await screen.findByText("Status:")).toBeTruthy()
+    expect(screen.getByText("Grade fix history")).toBeTruthy()
+    expect(screen.getByText(/Instructor|No attempts recorded yet\./)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }))
   })
 })

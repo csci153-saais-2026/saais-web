@@ -7,7 +7,7 @@ describe("CohortStudentsDialog", () => {
     cleanup()
   })
 
-  it("renders cohort student rows, audit notice, and triggers student drill-down", () => {
+  it("renders Adviser-style cohort table and passes studentId on click", () => {
     const onOpenChange = vi.fn()
     const onOpenStudent = vi.fn()
 
@@ -20,8 +20,20 @@ describe("CohortStudentsDialog", () => {
           meanGwa: "2.02",
         }}
         students={[
-          { studentId: "stu-1", studentNumber: "23-1-01234", name: "Ana Reyes", gwa: "1.72" },
-          { studentId: "stu-2", studentNumber: "23-1-01301", name: "Ben Lopez", gwa: "2.10" },
+          {
+            studentId: "stu-1",
+            studentNumber: "23-1-01234",
+            name: "Ana Reyes",
+            curriculum: "BSCS 2025–present",
+            gwa: "1.72",
+          },
+          {
+            studentId: "stu-2",
+            studentNumber: "23-1-01301",
+            name: "Ben Lopez",
+            curriculum: "BSCS 2025–present",
+            gwa: "2.10",
+          },
         ]}
         open
         onOpenChange={onOpenChange}
@@ -29,13 +41,11 @@ describe("CohortStudentsDialog", () => {
       />,
     )
 
-    expect(screen.getByText("Students behind this number")).toBeTruthy()
-    expect(
-      screen.getByText("Opening this list is recorded in the audit log."),
-    ).toBeTruthy()
-    expect(screen.getByText("Batch 2023 · BSCS 2025–present (96 students)")).toBeTruthy()
+    expect(screen.getByText("Batch 2023 · Student GWA")).toBeTruthy()
+    expect(screen.getByText("BSCS 2025–present · 96 students")).toBeTruthy()
+    expect(screen.getByText("Student ID")).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: "Ana Reyes" }))
-    expect(onOpenStudent).toHaveBeenCalledWith("23-1-01234")
+    expect(onOpenStudent).toHaveBeenCalledWith("stu-1")
   })
 })
