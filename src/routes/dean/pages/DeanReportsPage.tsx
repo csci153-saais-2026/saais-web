@@ -16,7 +16,6 @@ import { FacultyReportHeader } from "@/routes/dean/components/FacultyReportHeade
 import { FacultyReportStatsAndDistribution } from "@/routes/dean/components/FacultyReportStatsAndDistribution"
 import type { BatchCurriculumRow, DepartmentFilter, FacultyDepartmentReport } from "@/routes/dean/types"
 import { buildFacultyDepartmentReport } from "@/routes/dean/utils/build-faculty-report"
-import { downloadFacultyReportCsv } from "@/routes/dean/utils/faculty-report-csv"
 
 export default function DeanReportsPage() {
   const navigate = useNavigate()
@@ -57,7 +56,7 @@ export default function DeanReportsPage() {
   }, [reportsQuery.data, department])
 
   const recordView = (
-    eventType: "report_viewed" | "pdf_exported" | "csv_exported",
+    eventType: "report_viewed" | "pdf_exported",
     details: string,
   ) => {
     void postDeanAuditViewEvent({
@@ -72,12 +71,6 @@ export default function DeanReportsPage() {
   const handleOpenPdfPreview = () => {
     if (!report) return
     setPdfPreviewReport(report)
-  }
-
-  const handleExportCsv = () => {
-    if (!report) return
-    downloadFacultyReportCsv(report)
-    recordView("csv_exported", `Exported faculty report (${department}) as CSV`)
   }
 
   const handleSelectBatch = (row: BatchCurriculumRow) => {
@@ -98,7 +91,6 @@ export default function DeanReportsPage() {
         departments={departmentOptions}
         onDepartmentChange={setDepartment}
         onExportPdf={handleOpenPdfPreview}
-        onExportCsv={handleExportCsv}
         disabled={!report}
       />
 

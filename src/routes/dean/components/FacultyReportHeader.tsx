@@ -15,14 +15,12 @@ export function FacultyReportHeader({
   departments = ["All departments"],
   onDepartmentChange,
   onExportPdf,
-  onExportCsv,
   disabled = false,
 }: {
   department: DepartmentFilter
   departments?: string[]
   onDepartmentChange: (department: DepartmentFilter) => void
   onExportPdf: () => void
-  onExportCsv?: () => void
   disabled?: boolean
 }) {
   const scopeMeta =
@@ -52,13 +50,6 @@ export function FacultyReportHeader({
               ))}
             </SelectContent>
           </Select>
-
-          {onExportCsv && (
-            <Button type="button" variant="outline" onClick={onExportCsv} disabled={disabled}>
-              <DownloadIcon />
-              Export CSV
-            </Button>
-          )}
 
           <Button type="button" variant="outline" onClick={onExportPdf} disabled={disabled}>
             <DownloadIcon />
