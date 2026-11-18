@@ -8,6 +8,8 @@ import {
   getMockDatabase,
   loginAsMockPersona,
   logoutMockPersona,
+  MOCK_IDS,
+  MOCK_PERSONAS,
   resetMockDatabase,
 } from "@/mocks"
 import { saaisMockServer } from "@/mocks/node"
@@ -26,14 +28,15 @@ vi.mock("@/lib/api", async (importOriginal) => {
   }
 })
 
-function makeMockAuth(): AuthContextValue {
+function makeMockAuth(facultyId: string | null = MOCK_IDS.facultyComputing): AuthContextValue {
   return {
     user: {
-      id: "dean-1",
-      email: "paz.villanueva@example.edu.ph",
-      fullName: "Dr. Paz Villanueva",
+      id: MOCK_PERSONAS.dean.profileId,
+      email: MOCK_PERSONAS.dean.email,
+      fullName: MOCK_PERSONAS.dean.fullName,
       primaryRole: "dean",
       roles: ["dean"],
+      facultyId,
       status: "active",
     },
     profile: null,
@@ -42,12 +45,13 @@ function makeMockAuth(): AuthContextValue {
     roleAssignments: [
       {
         id: "ra-1",
-        profile_id: "dean-1",
+        profile_id: MOCK_PERSONAS.dean.profileId,
         role: "dean",
+        faculty_id: facultyId,
         created_at: "2026-10-01T00:00:00Z",
       },
     ],
-    roleScopes: [{ role: "dean", facultyId: null, departmentId: null }],
+    roleScopes: [{ role: "dean", facultyId, departmentId: null }],
     activeRole: "dean",
     primaryRole: "dean",
     isLoading: false,
@@ -68,13 +72,16 @@ function makeMockAuth(): AuthContextValue {
   }
 }
 
-export function renderDeanAt(initialEntry: string) {
+function renderDeanAt(
+  initialEntry: string,
+  facultyId: string | null = MOCK_IDS.facultyComputing,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <AuthContext.Provider value={makeMockAuth()}>
+      <AuthContext.Provider value={makeMockAuth(facultyId)}>
         <MemoryRouter initialEntries={[initialEntry]}>
           <Routes>
             <Route path="/dean/*" element={<DeanPortal />} />
@@ -210,5 +217,24 @@ describe("DeanPortal (MSW integration)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reset filters" }))
     expect(screen.queryByText("No audit records match these filters.")).toBeNull()
+  })
+
+  it("shows unavailable state instead of Faculty of Computing fallback when faculty is missing", async () => {
+    loginAsMockPersona("dean")
+    saaisMockServer.use(http.get("*/rest/v1/faculty", () => HttpResponse.json([])))
+
+    renderDeanAt("/dean/reports")
+    expect(await screen.findByText("Faculty unavailable")).toBeTruthy()
+    expect(screen.queryByText(/Faculty of Computing/i)).toBeNull()
+
+    cleanup()
+    renderDeanAt("/dean/students")
+    expect(await screen.findByText("Faculty unavailable")).toBeTruthy()
+    expect(screen.queryByText(/Faculty of Computing/i)).toBeNull()
+
+    cleanup()
+    renderDeanAt("/dean/audit-log")
+    expect(await screen.findByText("Faculty unavailable")).toBeTruthy()
+    expect(screen.queryByText(/Faculty of Computing/i)).toBeNull()
   })
 })
