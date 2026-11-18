@@ -1,0 +1,52 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Append advising note
+  operationId: addAdvisingNote
+  description: >-
+    Current adviser or authorized admin appends an advising note; historical advisers read
+    only. Server stamps author/time. Under B9, active and archived advising notes are
+    read-only visible to the student on their Notes tab, while attempt_remark remains strictly
+    staff-only.
+  x-required-roles:
+    - adviser
+    - admin
+  x-access-scope: current-adviser-or-admin
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "201":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AdvisingNote.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/NoteRequest.yaml"

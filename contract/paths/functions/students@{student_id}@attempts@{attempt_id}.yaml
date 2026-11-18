@@ -1,0 +1,50 @@
+delete:
+  tags:
+    - Advising & Exceptions
+  summary: Remove unsubmitted or erroneous open-term enrollment row
+  operationId: deleteOpenTermAttempt
+  description: >-
+    Current adviser removes an ungraded or erroneously added enrollment row from an unlocked
+    school term on the Encode Grades screen. Rejects with 409 Conflict if the school term is
+    locked without override or if the attempt has INC completions, credit/equivalency decisions,
+    or grade flags referencing it.
+  x-department-closure: >-
+    A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
+    with 409 until reopened; the global lock and its override remain independently enforced.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-adviser-only
+  x-atomic: true
+  x-request-validation: >-
+    Verify JWT, current adviser assignment, unlocked term, and absence of dependent records;
+    commit audit log entry atomically.
+  responses:
+    "204":
+      description: Open-term enrollment row removed and audited.
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: attempt_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

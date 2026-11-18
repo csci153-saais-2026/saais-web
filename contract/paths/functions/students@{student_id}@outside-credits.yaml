@@ -1,0 +1,58 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Credit an outside or shiftee course to a curriculum slot
+  operationId: createOutsideCredit
+  description: >-
+    Department Head or Admin credits a passed course from a previous school (Transferee) or
+    previous VSU program (Shiftee) toward an open curriculum slot (FR-CRD-01). In the same
+    transaction, reject duplicate live credit for the same student, normalized origin and
+    original course code (trimmed, whitespace-collapsed and case-folded), and reject a slot
+    already satisfied by direct completion, an elective
+    mapping, equivalency or other outside credit. Lock the affected student and decisions to
+    prevent concurrent duplicates. Correct an existing credit through audited revocation and
+    replacement; never count the same source or slot twice.
+  x-required-roles:
+    - department_head
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "201":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/OutsideCredit.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/OutsideCreditCreateRequest.yaml"

@@ -1,0 +1,43 @@
+put:
+  tags:
+    - Notifications & Settings
+  summary: Update academic standing delinquency thresholds and sender email
+  operationId: updateSystemSettings
+  description: >-
+    Department Head or Admin updates configurable academic standing failure-percentage
+    thresholds (0 < warning_pct < probation_pct < dismissal_pct <= 100) and sender_email
+    (FR-SET-01).
+  x-required-roles:
+    - department_head
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role at runtime; derive audit actor/time server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/SystemSettings.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/SystemSettingsUpdateRequest.yaml"

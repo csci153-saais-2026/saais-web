@@ -1,0 +1,58 @@
+post:
+  tags:
+    - Profile
+  summary: Revoke a pending account invitation
+  operationId: revokeAccountInvite
+  description: >-
+    Department Head, Department Staff, or Admin revokes a pending account invitation before
+    redemption, invalidating its token hash, setting `invitation_status` to `revoked`, and
+    writing an audit log entry. Department Head and Department Staff may only revoke invitations
+    for Students, Advisers, Department Staff, and Department Heads within their own department
+    (`admin` and `dean` accounts are Admin-only). Already redeemed (`accepted`) invitations
+    cannot be revoked and return `409 Conflict`.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped-student-adviser-staff-and-head-invites-only
+    department_staff: department-scoped-student-adviser-staff-and-head-invites-only
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/department scope at runtime; reject already
+    redeemed invitations with 409 Conflict; derive audit actor/time server-side.
+  parameters:
+    - name: profile_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/RevokeInviteRequest.yaml"
+  responses:
+    "200":
+      description: Pending invitation revoked atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/Profile.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
