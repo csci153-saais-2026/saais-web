@@ -95,19 +95,27 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 describe("DeanPortal (MSW integration)", () => {
-  it("loads Faculty reports from MSW, opens cohort drill-down, and opens PDF preview modal", async () => {
+  it("loads Reports from MSW, opens cohort drill-down into student modal, and opens PDF preview", async () => {
     loginAsMockPersona("dean")
     renderDeanAt("/dean/reports")
 
     expect(
-      await screen.findByRole("heading", { name: "Faculty reports" }, { timeout: 5000 }),
+      await screen.findByRole("heading", { name: "Reports" }, { timeout: 5000 }),
     ).toBeTruthy()
+    expect(await screen.findByText(/Faculty of Computing · read-only/)).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Export CSV" })).toBeNull()
     expect(await screen.findByText("Final grade distribution")).toBeTruthy()
-    expect(screen.getByText("GWA by batch and curriculum version")).toBeTruthy()
+    expect(screen.getByText("GWA by batch and curriculum")).toBeTruthy()
 
-    const viewButtons = screen.getAllByRole("button", { name: "View students" })
+    const viewButtons = screen.getAllByRole("button", { name: /View students/ })
     fireEvent.click(viewButtons[0])
-    expect(await screen.findByText("Students behind this number")).toBeTruthy()
+    expect(await screen.findByText(/Batch \d+ · Student GWA/)).toBeTruthy()
+
+    const firstStudent = getMockDatabase().profiles.find((p) => p.student_number != null)!
+    fireEvent.click(screen.getByRole("button", { name: firstStudent.full_name }))
+
+    expect(await screen.findByRole("tab", { name: "Checklist" })).toBeTruthy()
+    expect(screen.queryByText(/Read-only Dean view\./)).toBeNull()
     fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
 
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }))
@@ -132,13 +140,14 @@ describe("DeanPortal (MSW integration)", () => {
     expect(await screen.findByText("Final grade distribution")).toBeTruthy()
   })
 
-  it("loads Students from MSW, filters, opens 3-tab modal, and logs view event", async () => {
+  it("loads Students from MSW, filters, opens 3-tab modal without notice banner, and logs view event", async () => {
     loginAsMockPersona("dean")
     renderDeanAt("/dean/students")
 
     expect(
       await screen.findByRole("heading", { name: "Students" }, { timeout: 5000 }),
     ).toBeTruthy()
+    expect(await screen.findByText(/opening a record is logged/)).toBeTruthy()
 
     const firstStudent = getMockDatabase().profiles.find(
       (p) => p.student_number != null,
@@ -155,8 +164,8 @@ describe("DeanPortal (MSW integration)", () => {
     })
     fireEvent.click(studentRow)
 
-    expect(await screen.findByText(/Read-only Dean view\./)).toBeTruthy()
-    expect(screen.getByRole("tab", { name: "Checklist" })).toBeTruthy()
+    expect(await screen.findByRole("tab", { name: "Checklist" })).toBeTruthy()
+    expect(screen.queryByText(/Read-only Dean view\./)).toBeNull()
     expect(screen.getByRole("tab", { name: "Grades" })).toBeTruthy()
     expect(screen.getByRole("tab", { name: "Audit log" })).toBeTruthy()
 
@@ -179,20 +188,21 @@ describe("DeanPortal (MSW integration)", () => {
     })
   })
 
-  it("loads and filters the faculty audit log from MSW", async () => {
+  it("loads and filters the faculty audit log from MSW with Asia/Manila dates", async () => {
     loginAsMockPersona("dean")
     renderDeanAt("/dean/audit-log")
 
     expect(
       await screen.findByRole("heading", { name: "Audit log" }, { timeout: 5000 }),
     ).toBeTruthy()
+    expect(await screen.findByText(/read-only, cannot be edited/)).toBeTruthy()
     expect(await screen.findByText("Audit events")).toBeTruthy()
 
     const personInput = screen.getByLabelText("Person")
     fireEvent.change(personInput, { target: { value: "nonexistent-actor-xyz" } })
     expect(screen.getByText("No audit records match these filters.")).toBeTruthy()
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Reset filters" })[0])
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }))
     expect(screen.queryByText("No audit records match these filters.")).toBeNull()
   })
 })

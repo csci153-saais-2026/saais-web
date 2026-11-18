@@ -14,7 +14,6 @@ export async function getFacultyDepartments(): Promise<ApiSchema<"Department">[]
 
 export async function getDeanStudents(): Promise<ApiSchema<"StudentRosterResponse">> {
   const items: ApiSchema<"StudentRosterItem">[] = []
-  let lastPage: ApiSchema<"StudentRosterResponse"> | null = null
 
   for (let offset = 0; ; offset += 100) {
     const page = unwrapApiResult(
@@ -22,14 +21,11 @@ export async function getDeanStudents(): Promise<ApiSchema<"StudentRosterRespons
         params: { query: { limit: 100, offset } },
       }),
     )
-    lastPage = page
     items.push(...page.items)
     if (items.length >= page.total_count || page.items.length === 0) {
       return { ...page, items }
     }
   }
-
-  return lastPage!
 }
 
 export async function getDeanStudentChecklist(studentId: string): Promise<{
