@@ -23,4 +23,4 @@
 - Confirm the archived note stays visible to the student, per the project owner’s clarification.
 - QA approval: [ ]  Role reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run.
+**Execution status:** Automated prototype coverage: student dashboard, notes panel, checklist, grades, history, and inbox. The prototype does not distinguish archived notes or enforce cross-account privacy.
