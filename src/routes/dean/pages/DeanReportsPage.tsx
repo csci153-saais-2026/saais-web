@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "react-router"
 import {
   getDeanAttemptResults,
   getDeanFaculties,
@@ -12,17 +11,24 @@ import {
 import { CohortStudentsDialog } from "@/routes/dean/components/CohortStudentsDialog"
 import { DeanPdfViewerDialog } from "@/routes/dean/components/DeanPdfViewerDialog"
 import { DeanQueryState } from "@/routes/dean/components/DeanQueryState"
+import { DeanStudentRecordDialog } from "@/routes/dean/components/DeanStudentRecordDialog"
 import { FacultyBatchGwaTable } from "@/routes/dean/components/FacultyBatchGwaTable"
 import { FacultyReportHeader } from "@/routes/dean/components/FacultyReportHeader"
 import { FacultyReportStatsAndDistribution } from "@/routes/dean/components/FacultyReportStatsAndDistribution"
-import type { BatchCurriculumRow, DepartmentFilter, FacultyDepartmentReport } from "@/routes/dean/types"
+import type {
+  BatchCurriculumRow,
+  DeanStudentSummary,
+  DepartmentFilter,
+  FacultyDepartmentReport,
+} from "@/routes/dean/types"
 import { buildFacultyDepartmentReport } from "@/routes/dean/utils/build-faculty-report"
+import { toDeanStudentSummary } from "@/routes/dean/utils/to-dean-student-summary"
 
 export default function DeanReportsPage() {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [department, setDepartment] = useState<DepartmentFilter>("All departments")
   const [selectedBatch, setSelectedBatch] = useState<BatchCurriculumRow | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<DeanStudentSummary | null>(null)
   const [pdfPreviewReport, setPdfPreviewReport] = useState<FacultyDepartmentReport | null>(null)
 
   const reportsQuery = useQuery({
@@ -132,10 +138,21 @@ export default function DeanReportsPage() {
         onOpenChange={(open) => {
           if (!open) setSelectedBatch(null)
         }}
-        onOpenStudent={() => {
+        onOpenStudent={(studentId) => {
+          const matched = reportsQuery.data?.roster.items.find(
+            (item) => item.student_id === studentId,
+          )
           setSelectedBatch(null)
-          navigate("/dean/students")
+          if (matched) {
+            setSelectedStudent(toDeanStudentSummary(matched))
+          }
         }}
+      />
+
+      <DeanStudentRecordDialog
+        key={selectedStudent?.studentId ?? "closed"}
+        student={selectedStudent}
+        onClose={() => setSelectedStudent(null)}
       />
 
       <DeanPdfViewerDialog
