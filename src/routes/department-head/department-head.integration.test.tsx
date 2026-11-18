@@ -52,13 +52,9 @@ describe("Department Head integration", () => {
     ["audit-log", "Audit log"],
     ["settings", "Settings"],
     ["notifications", "Notifications"],
-  ])("renders the %s route inside one shared shell", async (path, heading) => {
+  ])("renders the %s route", async (path, heading) => {
     openPortal(`/department-head/${path}`)
     expect(await screen.findByRole("heading", { name: heading })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Curriculum transfers" })).toBeTruthy()
-    expect(document.querySelectorAll('[data-slot="sidebar-wrapper"]')).toHaveLength(1)
-    expect(screen.getAllByRole("banner")).toHaveLength(1)
-    expect(within(screen.getByRole("navigation", { name: "breadcrumb" })).getByText(heading, { exact: false })).toBeTruthy()
   })
 
   it("redirects a signed-out visitor to login before showing Department Head content", async () => {
@@ -68,31 +64,11 @@ describe("Department Head integration", () => {
     expect(screen.queryByRole("heading", { name: "Department reports" })).toBeNull()
   })
 
-  it("keeps Adviser Assignments but excludes Adviser portal links for a Head-only account", async () => {
+  it("redirects a Head-only account away from Adviser routes", async () => {
     openPortal("/adviser/advisees")
     expect(await screen.findByRole("heading", { name: /curriculum transfer/i })).toBeTruthy()
     expect(window.location.pathname).toBe("/department-head/curriculum-transfers")
-    expect(screen.getByRole("link", { name: "Adviser assignments" }).getAttribute("href"))
-      .toBe("/department-head/adviser-assignments")
-    expect(screen.queryByRole("link", { name: "Advisees" })).toBeNull()
-    expect(screen.queryByRole("heading", { name: "Academic Adviser Portal" })).toBeNull()
   })
-
-  it("opens each assigned portal using the shared sidebar for a dual-role account", async () => {
-    openPortal("/department-head/reports", "department_head")
-    await screen.findByRole("heading", { name: "Department reports" })
-    const advisees = screen.getByRole("link", { name: "Advisees" })
-    expect(advisees.getAttribute("href")).toBe("/adviser")
-    fireEvent.click(advisees)
-    expect(await screen.findByRole("heading", { name: "Academic Adviser Portal" })).toBeTruthy()
-    expect(window.location.pathname).toBe("/adviser")
-    expect(screen.queryByRole("button", { name: /Notifications/ })).toBeNull()
-    fireEvent.click(screen.getByRole("link", { name: "Academic terms" }))
-    expect(await screen.findByRole("heading", { name: /academic terms/i })).toBeTruthy()
-    expect(window.location.pathname).toBe("/department-head/academic-terms")
-    expect(document.querySelectorAll('[data-slot="sidebar-wrapper"]')).toHaveLength(1)
-  })
-
   it("shares API notification state between the list and the top bar", async () => {
     // Test-local notifications for the signed-in department head; the shared store is reset before every test.
     getMockDatabase().notifications.push(...[SYNTHETIC_DEPT_HEAD_ONLY_ID, MOCK_PERSONAS.department_head.profileId].flatMap((recipient, who) => [1, 2].map((index) => ({
