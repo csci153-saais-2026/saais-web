@@ -27,20 +27,50 @@ function getEvent() {
 
 const event = getEvent();
 const isPullRequest = process.env.GITHUB_EVENT_NAME === "pull_request";
-let base =
-  process.argv[2] ??
-  event.pull_request?.base?.sha ??
-  (event.before && !/^0+$/.test(event.before) ? event.before : undefined);
+const isCi = Boolean(process.env.GITHUB_EVENT_NAME);
+const explicitBase = process.argv[2];
+let base = explicitBase ?? event.pull_request?.base?.sha;
+let useMergeBase = isPullRequest || Boolean(explicitBase);
 
 if (!base) {
-  const defaultBranch = event.repository?.default_branch;
-  base = defaultBranch
-    ? `origin/${defaultBranch}`
-    : "origin/feat/contract-mock";
+  const before =
+    event.before && !/^0+$/.test(event.before) ? event.before : null;
+  if (before) {
+    try {
+      execFileSync("git", ["cat-file", "-e", `${before}^{commit}`], {
+        stdio: "ignore",
+      });
+      base = before;
+    } catch {
+      try {
+        execFileSync("git", ["fetch", "--no-tags", "origin", before], {
+          stdio: "ignore",
+        });
+        execFileSync("git", ["cat-file", "-e", `${before}^{commit}`], {
+          stdio: "ignore",
+        });
+        base = before;
+      } catch {
+        // A force-pushed-away tip may no longer be fetchable. Compare the
+        // pushed branch with its configured base instead of failing the check.
+        const defaultBranch = event.repository?.default_branch;
+        base = defaultBranch
+          ? `origin/${defaultBranch}`
+          : "origin/feat/contract-mock";
+        useMergeBase = true;
+      }
+    }
+  } else {
+    const defaultBranch = event.repository?.default_branch;
+    base = defaultBranch
+      ? `origin/${defaultBranch}`
+      : "origin/feat/contract-mock";
+    useMergeBase = isCi;
+  }
 }
 
 const head = process.env.GITHUB_SHA ?? "HEAD";
-const range = `${base}${isPullRequest || process.argv[2] ? "..." : ".."}${head}`;
+const range = `${base}${useMergeBase ? "..." : ".."}${head}`;
 let changedOutput;
 try {
   changedOutput = execFileSync(
@@ -59,7 +89,26 @@ const changedPaths = changedOutput
   .filter((file) => file !== "package-lock.json")
   .filter((file) => supportedExtensions.has(path.extname(file).toLowerCase()));
 
-if (changedPaths.length === 0) {
+if (!isCi && !explicitBase) {
+  const workingTreeChanges = [
+    ["diff", "--name-only", "-z", "--diff-filter=ACMR"],
+    ["diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
+    ["ls-files", "--others", "--exclude-standard", "-z"],
+  ].flatMap((args) =>
+    execFileSync("git", args, { encoding: "utf8" }).split("\0").filter(Boolean),
+  );
+  changedPaths.push(
+    ...workingTreeChanges.filter(
+      (file) =>
+        file !== "package-lock.json" &&
+        supportedExtensions.has(path.extname(file).toLowerCase()),
+    ),
+  );
+}
+
+const uniqueChangedPaths = [...new Set(changedPaths)];
+
+if (uniqueChangedPaths.length === 0) {
   console.log("No changed human-authored files need a formatting check.");
   process.exit(0);
 }
@@ -77,7 +126,15 @@ const prettierCli = path.join(
 try {
   execFileSync(
     process.execPath,
-    [prettierCli, "--check", "--ignore-path", ".gitignore", ...changedPaths],
+    [
+      prettierCli,
+      "--check",
+      "--ignore-path",
+      ".gitignore",
+      "--ignore-path",
+      ".prettierignore",
+      ...uniqueChangedPaths,
+    ],
     { stdio: "inherit" },
   );
 } catch (error) {

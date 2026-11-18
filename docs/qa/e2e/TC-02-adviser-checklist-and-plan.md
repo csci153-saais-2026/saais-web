@@ -25,4 +25,4 @@
 - Archived notes remain student-visible.
 - QA approval: [ ] Adviser/product reviewer approval: [ ]
 
-**Execution status:** Automated prototype coverage: prerequisite recommendations, local term-plan save, note save, and assistant preview. This does not test API persistence or authorization; the current mockup caution copy is not the later requested AI-mistake wording.
+**Execution status:** Automated prototype coverage: prerequisite recommendations, local term-plan save, note save, and an assistant-caution text check. The test does not open the assistant or verify its visible preview state, and it does not test API persistence or authorization.

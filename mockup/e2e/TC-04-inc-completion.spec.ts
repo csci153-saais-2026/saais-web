@@ -7,7 +7,10 @@ test("TC-04 adviser completes an unresolved INC and preserves its attempt", asyn
   const frame = await openPrototypeRoute(page, "adviser/advisees/grades");
   const inc = frame.locator("button[data-resolve]").first();
   await expect(inc).toBeVisible();
-  const originalCourse = await inc.getAttribute("data-course");
+  const attempt = inc.locator("xpath=ancestor::tr");
+  const attemptId = await attempt.getAttribute("data-attempt");
+  expect(attemptId).toBeTruthy();
+  await expect(attempt).toContainText(/INC/i);
   await inc.click();
 
   const dialog = frame.locator("#dlg-inc");
@@ -17,8 +20,16 @@ test("TC-04 adviser completes an unresolved INC and preserves its attempt", asyn
   await dialog.locator("[data-save=inc]").click();
 
   await expect(frame.locator("#gr-done")).toContainText(/INC resolved/i);
-  await expect(frame.locator("main")).toContainText(originalCourse ?? "INC");
-  await expect(frame.locator("main")).toContainText(
-    /completion history|resolved/i,
+  const completedAttempt = frame.locator(
+    `tr[data-attempt="${attemptId}"]`,
+  );
+  await expect(completedAttempt).toBeVisible();
+  await expect(completedAttempt.locator("[data-fin]")).toHaveText("2.00");
+  await expect(completedAttempt.locator("[data-st]")).toContainText("Passed");
+  await expect(completedAttempt.locator("button[data-resolve]")).toHaveText(
+    "Resolved",
+  );
+  await expect(frame.locator("#gr-done")).toContainText(
+    /original attempt is preserved/i,
   );
 });
