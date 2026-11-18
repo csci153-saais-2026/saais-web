@@ -1,6 +1,6 @@
 # SAAIS manual end-to-end test cases
 
-These are reviewable manual test specifications for the Milestone 2 contract/mock work. They are based on the role mockup screens and decisions recorded by the project owner. They are not automated Playwright tests, and they have not been executed against handlers.
+These are reviewable test specifications for the Milestone 2 contract/mock work. They are based on the role mockup screens and decisions recorded by the project owner. The Playwright suite under `mockup/e2e/` automates browser flows in the static interactive prototype using its existing demo data. It does not exercise the React application or MSW contract handlers; use these specifications for app/handler acceptance checks when those screens are available.
 
 Use only the shared synthetic personas and records documented in src/mocks/README.md and src/mocks/SCENARIOS.md. Do not add test-specific application fixtures. If a scenario needs a record that is missing, identify that as a shared mock-data prerequisite for the mock-data owner.
 

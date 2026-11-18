@@ -87,6 +87,12 @@ jobs:
       - name: Build Production Bundle
         run: npm run build
 
+      - name: Install Chromium for prototype browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mockup prototype browser tests
+        run: npm run test:prototype:e2e
+
       - name: Check production documentation assets
         run: node --test scripts/docs-build.test.js
 

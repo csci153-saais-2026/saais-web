@@ -11,6 +11,8 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:prototype:e2e": "playwright test --config=playwright.config.ts",
+    "dev:mockup": "vite mockup --host 127.0.0.1 --port 4173 --strictPort",
     "contract:lint": "redocly lint contract/openapi.yaml --config contract/redocly.yaml",
     "contract:gen": "openapi-typescript contract/openapi.yaml -o contract/generated/schema.d.ts",
     "contract:check": "npm run contract:gen && git diff --exit-code contract/generated",
@@ -49,6 +51,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@redocly/cli": "^2.51.2",
     "@stoplight/prism-cli": "^5.14.2",
     "@stoplight/spectral-cli": "^6.17.1",
