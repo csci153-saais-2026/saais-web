@@ -23,4 +23,4 @@
 - No assignment history is erased.
 - QA approval: [ ]  Department/adviser reviewer approval: [ ]
 
-**Execution status:** Specification only; not yet run.
+**Execution status:** Automated prototype coverage: adviser assignment workspace and current table are visible. Reassignment reason validation, assignment-history persistence, and adviser access changes are not tested.
