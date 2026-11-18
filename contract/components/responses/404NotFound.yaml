@@ -1,0 +1,12 @@
+description: >-
+  Edge Function resource is absent or outside the caller’s permitted scope. Collection
+  PostgREST GET instead returns 200 with an empty array.
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/Error.yaml"
+    example:
+      code: NOT_FOUND
+      message: Resource not found.
+      details: null
+      hint: null

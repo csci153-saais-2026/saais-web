@@ -1,0 +1,10 @@
+type: string
+enum:
+  - major
+  - ge
+  - elective
+  - pe
+  - nstp
+  - foundation
+  - service
+description: Course catalog category filter/badge (Major, GE, Elective, PE, NSTP, Foundation, Service)

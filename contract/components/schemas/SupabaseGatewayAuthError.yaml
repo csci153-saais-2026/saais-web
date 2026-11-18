@@ -1,0 +1,27 @@
+type: object
+description: >-
+  Upstream Supabase gateway/authentication rejection, which need not have the
+  application/PostgREST error shape. Consumers must tolerate additional provider fields and
+  must not depend on message text for authorization.
+properties:
+  message:
+    type: string
+  error:
+    type: string
+  error_description:
+    type: string
+  code:
+    type:
+      - string
+      - integer
+anyOf:
+  - required:
+      - message
+    properties:
+      message:
+        type: string
+  - required:
+      - error
+    properties:
+      error:
+        type: string

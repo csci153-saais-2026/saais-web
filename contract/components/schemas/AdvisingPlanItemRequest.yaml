@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+properties:
+  course_offering_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+required:
+  - course_offering_id

@@ -1,0 +1,59 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Resolve or reject a student grade flag
+  operationId: resolveGradeFlag
+  description: >-
+    Current adviser (or Department Head / Admin for unassigned or escalated flags) resolves an
+    open grade flag by either correcting the grade (obeying term lock/override rules and VSU DR
+    invariants, and incrementing Attempt.revision) or rejecting the flag with a required
+    resolution_note, notifying the student and writing an audit log entry.
+  x-department-closure: >-
+    A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
+    with 409 until reopened; the global lock and its override remain independently enforced.
+  x-required-roles:
+    - adviser
+    - department_head
+    - admin
+  x-access-scope:
+    adviser: current-adviser-only
+    department_head: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/GradeFlag.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: flag_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/GradeFlagResolveRequest.yaml"

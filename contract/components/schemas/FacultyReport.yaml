@@ -1,0 +1,84 @@
+type: object
+additionalProperties: false
+properties:
+  faculty_id:
+    type: string
+    format: uuid
+  total_students:
+    type: integer
+    minimum: 0
+  with_deficiencies_count:
+    type: integer
+    minimum: 0
+    description: >-
+      Total number of students in the faculty/college who have at least one active academic
+      deficiency, unclipped by the bounded `at_risk_roster` array.
+  average_gwa:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+  standing_counts:
+    $ref: "./StandingCounts.yaml"
+  open_inc_count:
+    type: integer
+    minimum: 0
+  at_risk_total_count:
+    type: integer
+    minimum: 0
+  encoding_progress_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  department_summaries:
+    type: array
+    maxItems: 100
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        department_id:
+          type: string
+          format: uuid
+        department_name:
+          type: string
+        student_count:
+          type: integer
+          minimum: 0
+        average_gwa:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 5
+        at_risk_count:
+          type: integer
+          minimum: 0
+      required:
+        - department_id
+        - department_name
+        - student_count
+        - average_gwa
+        - at_risk_count
+  batch_curriculum_gwa:
+    type: array
+    maxItems: 500
+    items:
+      $ref: "./BatchCurriculumGwaRow.yaml"
+  grade_distribution:
+    $ref: "./GradeDistributionBreakdown.yaml"
+  at_risk_roster:
+    type: array
+    maxItems: 500
+    items:
+      $ref: "./DeficiencyStudentSummary.yaml"
+  computed_at:
+    type: string
+    format: date-time
+required:
+  - faculty_id
+  - total_students
+  - average_gwa
+  - department_summaries
+  - computed_at

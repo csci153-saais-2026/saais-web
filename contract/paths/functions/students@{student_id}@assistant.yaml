@@ -1,0 +1,51 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Ask record-grounded adviser assistant
+  operationId: askAdvisingAssistant
+  description: >-
+    Verify adviser identity and authorized student scope before retrieving records or calling
+    provider. Real record-grounded response with permanent verification notice; credentials
+    server-side. No autonomous academic writes, fabricated clearance or student access. Apply
+    provider cost/output/time budgets and request rate limits.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-or-historic-assigned-students-read-only
+  x-atomic: false
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AdvisingAIResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/AdvisingAIRequest.yaml"

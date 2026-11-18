@@ -1,0 +1,24 @@
+type: object
+required:
+  - id
+  - curriculum_version_id
+  - year_level
+  - term_sequence
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  curriculum_version_id:
+    type: string
+    format: uuid
+  year_level:
+    type: integer
+    minimum: 1
+    maximum: 8
+    example: 1
+  term_sequence:
+    type: integer
+    minimum: 1
+    maximum: 3
+    example: 1

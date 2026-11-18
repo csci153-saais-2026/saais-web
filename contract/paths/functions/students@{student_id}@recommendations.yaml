@@ -1,0 +1,64 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Read eligible course recommendations
+  operationId: listRecommendations
+  description: >-
+    One curriculum term beyond furthest recorded attempt; eligible unfulfilled and failed/lapsed
+    retakes, with actual selected-term offerings, strict clearance and Elective/By
+    request/Retake badges. Exclude completed/currently enrolled/unavailable requirements; timing
+    is student choice. Returns the excluded-courses count in the `X-Excluded-Count` response
+    header so the UI can render "Excluded: N courses (completed, enrolled, or not offered)"
+    alongside the recommendation items.
+  x-required-roles:
+    - adviser
+    - department_head
+    - dean
+    - admin
+  x-access-scope: current-or-historic-assigned-or-scoped-read-only
+  x-atomic: false
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      headers:
+        X-Excluded-Count:
+          description: >-
+            Total number of curriculum courses excluded from recommendations because they are
+            already completed, currently enrolled, or not offered in the selected term.
+          schema:
+            type: integer
+            minimum: 0
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/Recommendation.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+    - $ref: "../../components/parameters/schoolTermQuery.yaml"

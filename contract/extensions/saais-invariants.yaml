@@ -1,0 +1,37 @@
+roles:
+  - student
+  - adviser
+  - department_head
+  - department_staff
+  - dean
+  - admin
+course_retakes: >-
+  Students may retake a course that has not been passed. Once passed, including by INC
+  completion, no new attempt for the same course may be created by any enrollment or import path.
+  Audited corrections and existing historical attempts remain available.
+student_profile: >-
+  Read-only to the student; provisioned by Admin or authorized department Head/Staff with an
+  eligible active initial adviser in the same transaction. A role update must not create a student
+  lacking a valid student record and active adviser assignment.
+dean_roles: >-
+  A Dean assignment may exist alone or alongside additional independently authorized roles.
+prerequisite_override: >-
+  current adviser replaces the original failed prerequisite final grade with a passing grade and
+  reason; no approval queue or enrollment-only bypass
+equivalency: student-specific passed attempt to one destination; no global code-to-code equivalence
+inc: >-
+  original INC remains stored; completion <=3 Passed, >3 Failed; first completion on or before
+  deadline is allowed during institution lock and department encoding closure; corrections obey both.
+  Lapsed INC is 5.00 for term GWA; a nonnumeric retake does not duplicate an earlier failure in cumulative GWA
+midterm_dr_rule: >-
+  under VSU grading policy, midterm_status=dr automatically forces attempt status=dr and
+  final_grade=null
+record_grades: >-
+  enroll or fill missing grades only; populated submitted grade rejects entire request even if
+  identical
+history: past advisers read-only; server rechecks current assignment at commit
+credit_units: actual source attempt snapshot, never client supplied
+department_encoding_closure: >-
+  A closed department and term blocks grade writes for affected students until reopened;
+  the institution-wide lock and its Admin-only override remain independent.
+schema_boundary: Schema design is delivered separately; this contract does not deploy it.

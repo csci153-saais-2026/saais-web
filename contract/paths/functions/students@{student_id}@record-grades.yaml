@@ -1,0 +1,59 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Record enrollment or missing grades
+  operationId: recordGrades
+  description: >-
+    Lock student/offering/attempt and recheck current assignment, selected term membership and
+    strict clearance at commit (or record an audited prerequisite override when
+    continue_with_prerequisite_override is true with prerequisite_override_reason). Blank new
+    grades enroll; first new midterm requires confirmation. Existing submitted populated grade
+    rejects entire request even if identical. Return actionable conflict codes; no partial grade
+    or audit write. Derive final-only Passed/Failed or explicit INC/DR/NA status. Term lock
+    blocks writes unless override applies. Reject a new attempt if the student has already passed
+    the same course, including via a passed INC completion; corrections to the existing attempt
+    remain available through their audited operations.
+  x-department-closure: >-
+    A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
+    with 409 until reopened; the global lock and its override remain independently enforced.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-adviser-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AttemptResult.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/RecordGradesRequest.yaml"

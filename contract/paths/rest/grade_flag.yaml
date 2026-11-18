@@ -1,0 +1,112 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Query student grade flags
+  operationId: listGradeFlags
+  description: >-
+    Read-only PostgREST collection of student-submitted grade flags (FR-FLG-01). Students read
+    their own grade flags; advisers read flags for assigned advisees; Department Heads read
+    department-scoped flags; Admins read all flags.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - admin
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    admin: institution-wide
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/studentIdQueryParam.yaml"
+    - $ref: "../../components/parameters/attemptIdQueryParam.yaml"
+    - name: status
+      in: query
+      required: false
+      description: Filter grade flag lifecycle status.
+      schema:
+        type: string
+        maxLength: 40
+        pattern: ^eq\.(open|corrected|rejected)$
+    - name: select
+      in: query
+      required: false
+      description: Only these flat safe columns.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)(?:,(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at))*$
+        default: >-
+          id,student_id,attempt_id,reported_stage,reported_grade_text,issue_type,details,status,resolution_action,corrected_grade,corrected_status,resolution_note,resolved_by,resolved_at,created_at,updated_at
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: created_at.desc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Visible rows; empty array if no visible matches.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/GradeFlag.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/GradeFlag.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-projection-fields:
+    - id
+    - student_id
+    - attempt_id
+    - reported_stage
+    - reported_grade_text
+    - issue_type
+    - details
+    - status
+    - resolution_action
+    - corrected_grade
+    - corrected_status
+    - resolution_note
+    - resolved_by
+    - resolved_at
+    - created_at
+    - updated_at
