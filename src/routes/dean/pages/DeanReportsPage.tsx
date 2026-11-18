@@ -92,7 +92,9 @@ export default function DeanReportsPage() {
   }
 
   const cohortStudents =
-    report && selectedBatch ? report.cohortSamples[selectedBatch.batch] ?? [] : []
+    report && selectedBatch
+      ? report.cohortSamples[`${selectedBatch.batch}::${selectedBatch.curriculum}`] ?? []
+      : []
 
   return (
     <div className="space-y-6">

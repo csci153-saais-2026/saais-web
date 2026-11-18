@@ -14,6 +14,7 @@ export interface CohortStudentSample {
   studentId: string
   studentNumber: string
   name: string
+  curriculum: string
   gwa: string
 }
 

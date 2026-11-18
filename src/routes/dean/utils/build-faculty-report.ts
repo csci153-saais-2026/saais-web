@@ -135,15 +135,13 @@ export function buildFacultyDepartmentReport({
       meanGwa,
     })
 
-    cohortSamples[batch] = [
-      ...(cohortSamples[batch] ?? []),
-      ...group.map((s) => ({
-        studentId: s.student_id,
-        studentNumber: s.student_number,
-        name: s.full_name,
-        gwa: typeof s.gwa === "number" ? s.gwa.toFixed(2) : "—",
-      })),
-    ]
+    cohortSamples[key] = group.map((s) => ({
+      studentId: s.student_id,
+      studentNumber: s.student_number,
+      name: s.full_name,
+      curriculum: s.curriculum_label,
+      gwa: typeof s.gwa === "number" ? s.gwa.toFixed(2) : "—",
+    }))
   }
 
   batchRows.sort((a, b) => a.batch.localeCompare(b.batch))
