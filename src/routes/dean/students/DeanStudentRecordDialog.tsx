@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import {
-  RecordTabs,
-  StudentRecordHeader,
-} from "@/components/features/student-record-header"
+import { RecordTabs } from "@/components/features/student-record-header"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -62,16 +59,6 @@ export function DeanStudentRecordDialog({
 
         {student && (
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
-            <StudentRecordHeader
-              name={student.name}
-              initials={student.initials}
-              studentNumber={student.studentNumber}
-              program={student.program}
-              yearLabel={student.yearLabel}
-              email={student.email}
-              standing={student.standing}
-            />
-
             <RecordTabs
               tabs={DEAN_RECORD_TABS}
               value={activeTab}
