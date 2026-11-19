@@ -16,7 +16,6 @@ export type Column<T> = {
   headerContent?: React.ReactNode;
   cell: (row: T) => React.ReactNode;
   className?: string;
-  headerClassName?: string;
   /** Right-align numeric columns. */
   numeric?: boolean;
 };
@@ -36,7 +35,6 @@ function DataTablePanel<T>({
   empty = "No records match. Try another search or filter.",
   toolbar,
   footer,
-  tableClassName,
 }: {
   title: string;
   description?: string;
@@ -49,7 +47,6 @@ function DataTablePanel<T>({
   /** Filters rendered inside the panel, between its heading and the table. */
   toolbar?: React.ReactNode;
   footer?: React.ReactNode;
-  tableClassName?: string;
 }) {
   return (
     <Panel title={title} description={description} action={action} flush>
@@ -63,7 +60,6 @@ function DataTablePanel<T>({
                 className={cn(
                   "text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase",
                   c.numeric && "text-right",
-                  c.headerClassName,
                 )}
               >
                 {c.headerContent ?? c.header}
