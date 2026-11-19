@@ -16,7 +16,7 @@ export type BulkAdviserReassignmentRequest = OperationRequestBody<'bulkReassignA
 export type BulkAdviserReassignmentResponse = OperationResponse<'bulkReassignAdvisers'>
 export type AdviserAssignment = ApiSchema<'AdviserAssignment'>
 
-/** Eligibility comes from department-scoped adviser role assignments, including secondary roles. */
+/** Adviser role assignments establish the role; profile department scope must also match reassignment authorization. */
 export async function listDepartmentAssignmentAdvisers(departmentId: string, signal?: AbortSignal): Promise<{ id: string; label: string }[]> {
   const ids = new Set<string>()
   const pageSize = 100
@@ -31,9 +31,9 @@ export async function listDepartmentAssignmentAdvisers(departmentId: string, sig
   for (let start = 0; start < allIds.length; start += 50) {
     const batch = allIds.slice(start, start + 50)
     for (let offset = 0; ; offset += pageSize) {
-      const result = await apiClient.GET('/rest/v1/profile', { params: { query: { id: postgrestFilter.inList(batch), status: postgrestFilter.eq('active'), select: 'id,full_name,status', order: 'id.asc', limit: pageSize, offset } }, signal })
+      const result = await apiClient.GET('/rest/v1/profile', { params: { query: { id: postgrestFilter.inList(batch), department_id: postgrestFilter.eq(departmentId), status: postgrestFilter.eq('active'), select: 'id,full_name,status,department_id', order: 'id.asc', limit: pageSize, offset } }, signal })
       const rows = unwrapApiResult<ApiSchema<'Profile'>[]>(result)
-      advisers.push(...rows.filter(row => batch.includes(row.id) && row.status === 'active' && row.full_name?.trim()).map(row => ({ id: row.id, label: row.full_name })))
+      advisers.push(...rows.filter(row => batch.includes(row.id) && row.department_id === departmentId && row.status === 'active' && row.full_name?.trim()).map(row => ({ id: row.id, label: row.full_name })))
       if (rows.length < pageSize) break
     }
   }

@@ -163,6 +163,7 @@ describe('Adviser assignment preparation reads', () => {
     const eligibleId = '88888888-8888-4888-8888-888888888888'
     const inactiveId = '77777777-7777-4777-8777-777777777777'
     const otherDepartmentId = '66666666-6666-4666-8666-666666666666'
+    const mismatchedPrimaryDepartmentId = '44444444-4444-4444-8444-444444444444'
 
     server.use(
       http.get('*/rest/v1/program', () => HttpResponse.json([])),
@@ -200,12 +201,14 @@ describe('Adviser assignment preparation reads', () => {
       http.get('*/rest/v1/profile', ({ request }) => {
         const query = new URL(request.url).searchParams
         expect(query.get('status')).toBe('eq.active')
-        expect(query.get('select')).toBe('id,full_name,status')
+        expect(query.get('department_id')).toBe(`eq.${departmentId}`)
+        expect(query.get('select')).toBe('id,full_name,status,department_id')
         return HttpResponse.json([
-          { id: eligibleId, full_name: 'Active Adviser', status: 'active', role: 'department_head', department_id: 'different-primary-department' },
+          { id: eligibleId, full_name: 'Active Adviser', status: 'active', department_id: departmentId },
           { id: inactiveId, full_name: 'Inactive Adviser', status: 'inactive', department_id: departmentId },
           { id: otherDepartmentId, full_name: 'Foreign Adviser', status: 'active' },
           { id: '55555555-5555-4555-8555-555555555555', full_name: 'Not Adviser', status: 'active' },
+          { id: mismatchedPrimaryDepartmentId, full_name: 'Mismatched Adviser', status: 'active', department_id: 'another-department' },
         ])
       }),
     )
@@ -217,6 +220,17 @@ describe('Adviser assignment preparation reads', () => {
   })
 
   describe('Bulk adviser reassignment requests', () => {
+    it('surfaces the 403 response for a reassignment target in another primary department', async () => {
+      const mismatchedAdviserId = '44444444-4444-4444-8444-444444444444'
+      server.use(http.post('*/functions/v1/adviser-assignments/bulk-reassign', async ({ request }) => {
+        const body = await request.json() as BulkAdviserReassignmentRequest
+        expect(body.adviser_id).toBe(mismatchedAdviserId)
+        return HttpResponse.json({ code: 'INSUFFICIENT_PRIVILEGE', message: 'Reassignment is limited to your department.' }, { status: 403 })
+      }))
+
+      await expect(bulkReassignAdvisers({ ...requestBody, adviser_id: mismatchedAdviserId })).rejects.toMatchObject({ status: 403, isForbidden: true })
+    })
+
     it.each([
       { label: 'one student', ids: [studentIds[0]] },
       { label: 'multiple students', ids: studentIds },
