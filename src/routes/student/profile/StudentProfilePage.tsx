@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router"
 import {
   AssignmentHistoryDialog,
@@ -22,10 +23,10 @@ import { ProfileDetailsPanel } from "./ProfileDetailsPanel"
 import { ProfilePhotoCard } from "./ProfilePhotoCard"
 import {
   deleteStudentPhoto,
-  fetchStudentProfileData,
   updateStudentPhoto,
   type StudentProfileData,
 } from "./student-profile.api"
+import { useStudentProfile } from "./use-student-profile"
 import {
   studentPhotoSchema,
   type StudentPhotoValues,
@@ -295,44 +296,9 @@ export function StudentProfileView({
  * Student Profile page container handling loading, error/retry, and profile photo updates.
  */
 export function StudentProfilePage({ studentId }: { studentId: string }) {
-  const [state, setState] = React.useState<{
-    data: StudentProfileData | null
-    isPending: boolean
-    isError: boolean
-  }>({
-    data: null,
-    isPending: true,
-    isError: false,
-  })
+  const queryClient = useQueryClient()
+  const { data, isPending, isError, refetch } = useStudentProfile(studentId)
   const [isPhotoBusy, setIsPhotoBusy] = React.useState(false)
-
-  const refetch = React.useCallback(async () => {
-    setState((prev) => ({ ...prev, isPending: true, isError: false }))
-    try {
-      const result = await fetchStudentProfileData(studentId)
-      setState({ data: result, isPending: false, isError: false })
-    } catch {
-      setState({ data: null, isPending: false, isError: true })
-    }
-  }, [studentId])
-
-  React.useEffect(() => {
-    let cancelled = false
-    fetchStudentProfileData(studentId)
-      .then((result) => {
-        if (!cancelled) {
-          setState({ data: result, isPending: false, isError: false })
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState({ data: null, isPending: false, isError: true })
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [studentId])
 
   async function handleUploadPhoto(file: File) {
     setIsPhotoBusy(true)
@@ -347,16 +313,9 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
         file_size_bytes: file.size,
       })
       const updated = await updateStudentPhoto(studentId, payload)
-      setState((prev) =>
-        prev.data
-          ? {
-              ...prev,
-              data: {
-                ...prev.data,
-                profile: updated,
-              },
-            }
-          : prev
+      queryClient.setQueryData<StudentProfileData>(
+        ["student", studentId, "profile"],
+        (prev) => (prev ? { ...prev, profile: updated } : prev)
       )
     } finally {
       setIsPhotoBusy(false)
@@ -367,27 +326,20 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
     setIsPhotoBusy(true)
     try {
       const updated = await deleteStudentPhoto(studentId)
-      setState((prev) =>
-        prev.data
-          ? {
-              ...prev,
-              data: {
-                ...prev.data,
-                profile: updated,
-              },
-            }
-          : prev
+      queryClient.setQueryData<StudentProfileData>(
+        ["student", studentId, "profile"],
+        (prev) => (prev ? { ...prev, profile: updated } : prev)
       )
     } finally {
       setIsPhotoBusy(false)
     }
   }
 
-  if (state.isPending) {
+  if (isPending) {
     return <p role="status">Loading...</p>
   }
 
-  if (state.isError || !state.data) {
+  if (isError || !data) {
     return (
       <Panel
         title="Unable to load profile"
@@ -406,14 +358,14 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
 
   return (
     <StudentProfileView
-      profile={state.data.profile}
-      programName={state.data.programName}
-      departmentName={state.data.departmentName}
-      collegeName={state.data.collegeName}
-      adviserAssignments={state.data.adviserAssignments}
-      curriculumAssignments={state.data.curriculumAssignments}
-      curriculumTransfers={state.data.curriculumTransfers}
-      curriculumLabels={state.data.curriculumLabels}
+      profile={data.profile}
+      programName={data.programName}
+      departmentName={data.departmentName}
+      collegeName={data.collegeName}
+      adviserAssignments={data.adviserAssignments}
+      curriculumAssignments={data.curriculumAssignments}
+      curriculumTransfers={data.curriculumTransfers}
+      curriculumLabels={data.curriculumLabels}
       onUploadPhoto={handleUploadPhoto}
       onRemovePhoto={handleRemovePhoto}
       isPhotoBusy={isPhotoBusy}

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router"
 import { apiClient, type ApiSchema } from "@/lib/api"
@@ -165,10 +166,16 @@ describe("StudentProfilePage", () => {
       }) as never
     })
 
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
     render(
-      <MemoryRouter>
-        <StudentProfilePage studentId="stu-1" />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <StudentProfilePage studentId="stu-1" />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(screen.getByRole("status").textContent).toBe("Loading...")
