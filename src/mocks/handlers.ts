@@ -2950,15 +2950,13 @@ export const saaisMswHandlers = [
   http.delete(
     '*/functions/v1/students/:student_id/attempts/:attempt_id',
     ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        'admin',
-        'dean',
-        'department_head',
-        'adviser',
-      ])
+      const auth = authenticateRequest(request, ['adviser'])
       if ('response' in auth) return auth.response
-      if (attemptEncodingClosed(String(params.student_id), String(params.attempt_id))) return encodingClosedResponse()
-      return new HttpResponse(null, { status: 204 })
+      const studentId = String(params.student_id)
+      const attemptId = String(params.attempt_id)
+      if (!getMockDatabase().adviserAssignments.some(assignment => assignment.student_id === studentId && assignment.adviser_id === auth.persona.profileId && assignment.end_date === null)) return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Out of scope.')
+      if (!getMockDatabase().attemptResults.some(attempt => attempt.student_id === studentId && attempt.id === attemptId)) return errorJson(404, 'NOT_FOUND', 'Course attempt not found.')
+      return errorJson(409, 'CONFLICT', 'Saved course attempts cannot be deleted.')
     },
   ),
 
