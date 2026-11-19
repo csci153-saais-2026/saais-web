@@ -211,9 +211,40 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
         );
       }
 
+      const rejectsSavedAttempt =
+        req.method === "DELETE" &&
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteOpenTermAttempt)");
+      let originalAttempt: ReturnType<typeof structuredClone> | undefined;
+      let originalResult: ReturnType<typeof structuredClone> | undefined;
+      if (rejectsSavedAttempt) {
+        const db = getMockDatabase();
+        const attempt = db.attempts.find((row) => row.id === env.attempt_id);
+        const result = db.attemptResults.find((row) => row.id === env.attempt_id);
+        expect(attempt?.student_id).toBe(env.student_id);
+        expect(attempt?.status).toBe("inc");
+        expect(result?.student_id).toBe(env.student_id);
+        expect(db.adviserAssignments.some((assignment) =>
+          assignment.student_id === env.student_id &&
+          assignment.adviser_id === MOCK_IDS.adviserPrimary &&
+          assignment.end_date === null,
+        )).toBe(true);
+        expect(new URL(rawUrl).pathname).toBe(`/functions/v1/students/${env.student_id}/attempts/${env.attempt_id}`);
+        originalAttempt = structuredClone(attempt);
+        originalResult = structuredClone(result);
+      }
+
       const response = await fetch(rawUrl, init);
 
-      if (item.name.startsWith("Authorized")) {
+      if (rejectsSavedAttempt) {
+        expect(response.status, `Expected 409 for ${fullName}`).toBe(409);
+        expect(await response.json()).toMatchObject({
+          code: "CONFLICT",
+          message: "Saved course attempts cannot be deleted.",
+        });
+        expect(getMockDatabase().attempts.find((row) => row.id === env.attempt_id)).toEqual(originalAttempt);
+        expect(getMockDatabase().attemptResults.find((row) => row.id === env.attempt_id)).toEqual(originalResult);
+      } else if (item.name.startsWith("Authorized")) {
         expect(
           response.status,
           `Expected 2xx for ${fullName} (${req.method} ${rawUrl}), got ${response.status}`,
