@@ -9,16 +9,17 @@ import {
 import { SampleFooter } from "@/components/features/sample-footer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import {
-  apiClient,
-  postgrestFilter,
-  unwrapApiResult,
-  type ApiSchema,
-} from "@/lib/api"
+import { apiClient, postgrestFilter, type ApiSchema } from "@/lib/api"
 import {
   formatGradeSummaryReport,
   type PdfReportPayload,
 } from "@/lib/pdf/student-report-formatter"
+import {
+  createStudentGradeFlag,
+  fetchStudentGradeFlags,
+  fetchStudentGrades,
+  recordGradesExportEvent,
+} from "./student-grades.api"
 import {
   FlagGradeDialog,
   type FlagGradeTarget,
@@ -326,16 +327,10 @@ interface GradesPageData {
 async function fetchStudentGradesData(
   studentId: string
 ): Promise<GradesPageData> {
-  const gradesRes = await apiClient.GET(
-    "/functions/v1/students/{student_id}/grades",
-    {
-      params: { path: { student_id: studentId } },
-    }
-  )
-  const rawTerms = unwrapApiResult(gradesRes)
+  const rawTerms = await fetchStudentGrades(studentId)
 
   const [
-    flagsRes,
+    flags,
     schoolTermsRes,
     offeringsRes,
     coursesRes,
@@ -347,14 +342,7 @@ async function fetchStudentGradesData(
     departmentsRes,
     facultiesRes,
   ] = await Promise.all([
-    apiClient.GET("/rest/v1/grade_flag", {
-      params: {
-        query: {
-          student_id: postgrestFilter.eq(studentId),
-          order: "created_at.desc",
-        },
-      },
-    }),
+    fetchStudentGradeFlags(studentId),
     apiClient.GET("/rest/v1/school_term"),
     apiClient.GET("/rest/v1/course_offering"),
     apiClient.GET("/rest/v1/course"),
@@ -431,7 +419,7 @@ async function fetchStudentGradesData(
 
   return {
     terms,
-    flags: flagsRes.data ?? [],
+    flags,
     courseDetails,
     studentName: profile?.full_name ?? null,
     studentNumber: profile?.student_number ?? null,
@@ -496,14 +484,7 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
     setIsSubmittingFlag(true)
     setFlagSubmitError(null)
     try {
-      const res = await apiClient.POST(
-        "/functions/v1/students/{student_id}/grade-flags",
-        {
-          params: { path: { student_id: studentId } },
-          body: payload,
-        }
-      )
-      const created = unwrapApiResult(res)
+      const created = await createStudentGradeFlag(studentId, payload)
       setState((prev) =>
         prev.data
           ? {
@@ -563,6 +544,9 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
       onCreateFlag={handleCreateFlag}
       isSubmittingFlag={isSubmittingFlag}
       flagSubmitError={flagSubmitError}
+      onPrintReport={() => {
+        void recordGradesExportEvent(studentId).catch(() => {})
+      }}
     />
   )
 }
