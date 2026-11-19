@@ -98,6 +98,25 @@ test("Postman collection covers every OpenAPI operation with authorized and deni
   }
 });
 
+test("saved attempt deletion is deprecated and expects conflict", () => {
+  const route = "/functions/v1/students/{student_id}/attempts/{attempt_id}";
+  const operation = spec.paths[route].delete;
+  assert.equal(operation.deprecated, true);
+  assert.ok(operation.responses["409"]);
+  assert.equal(operation.responses["204"], undefined);
+  const folder = collection.item
+    .flatMap((group) => group.item || [])
+    .find((item) => item.name === `[DELETE] ${route} (deleteOpenTermAttempt)`);
+  assert.ok(folder);
+  const script = folder.item[0].event
+    .find((event) => event.listen === "test")
+    .script.exec.join("\n");
+  assert.match(
+    script,
+    /pm\.expect\(\[409\]\)\.to\.include\(pm\.response\.code\)/,
+  );
+});
+
 test("Postman environments use placeholders/synthetic tokens only and never commit real credentials", () => {
   const rawCollection = fs.readFileSync(collectionPath, "utf8");
   const rawMockEnv = fs.readFileSync(mockEnvPath, "utf8");

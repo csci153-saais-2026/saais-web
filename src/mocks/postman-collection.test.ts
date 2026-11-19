@@ -135,7 +135,12 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
 
       const response = await fetch(rawUrl, init);
 
-      if (item.name.startsWith("Authorized")) {
+      if (
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteOpenTermAttempt)")
+      ) {
+        expect(response.status, `Expected 409 for ${fullName}`).toBe(409);
+      } else if (item.name.startsWith("Authorized")) {
         expect(
           response.status,
           `Expected 2xx for ${fullName} (${req.method} ${rawUrl}), got ${response.status}`,

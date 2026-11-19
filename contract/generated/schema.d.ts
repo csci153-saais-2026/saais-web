@@ -1147,8 +1147,9 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Remove unsubmitted or erroneous open-term enrollment row
-         * @description Current adviser removes an ungraded or erroneously added enrollment row from an unlocked school term on the Encode Grades screen. Rejects with 409 Conflict if the school term is locked without override or if the attempt has INC completions, credit/equivalency decisions, or grade flags referencing it.
+         * Reject deletion of saved course attempts
+         * @deprecated
+         * @description Saved course attempts cannot be deleted (FR-ENR-06). A request for a saved attempt returns 409 Conflict. Unsaved rows are removed locally before submission; drops are recorded as DR under FR-GRD-03.
          */
         delete: operations["deleteOpenTermAttempt"];
         options?: never;
@@ -6826,13 +6827,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Open-term enrollment row removed and audited. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];
