@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { AdviserCard } from "@/components/features/adviser-card"
 import {
@@ -23,12 +24,7 @@ import {
   type CourseRecommendationRow,
 } from "./CourseRecommendationsPanel"
 import { IncRadarPanel, type IncRadarDeficiencyItem } from "./IncRadarPanel"
-import {
-  fetchStudentAcademicSummary,
-  fetchStudentAdviserAssignments,
-  fetchStudentAdvisingNotes,
-  fetchStudentPlanItems,
-} from "./student-dashboard.api"
+import { useStudentDashboard } from "./use-student-dashboard"
 
 export interface StudentDashboardViewProps {
   readonly summary: ApiSchema<"AcademicSummary">
@@ -222,8 +218,8 @@ export function StudentDashboardView({
           />
 
           <DegreeProgress
-            program={programName}
-            curriculum={curriculumLabel}
+            program={programName ?? "BS Computer Science"}
+            curriculum={curriculumLabel ?? "2023–2024"}
             earned={summary.earned_units}
             required={summary.required_units}
             action={
@@ -280,27 +276,20 @@ export function StudentDashboardView({
   )
 }
 
-interface DashboardPageData {
-  readonly summary: ApiSchema<"AcademicSummary">
+interface DashboardMetaData {
   readonly studentName: string | null
   readonly programName: string
   readonly curriculumLabel: string
-  readonly adviserAssignments: readonly AdviserAssignmentRecord[]
-  readonly recommendations: readonly CourseRecommendationRow[]
-  readonly notes: readonly ApiSchema<"AdvisingNote">[]
+  readonly offeringMap: ReadonlyMap<string, ApiSchema<"CourseOffering">>
+  readonly courseMap: ReadonlyMap<string, ApiSchema<"Course">>
 }
 
-async function fetchStudentDashboardData(
+async function fetchDashboardMeta(
   studentId: string
-): Promise<DashboardPageData> {
-  const summary = await fetchStudentAcademicSummary(studentId)
-
+): Promise<DashboardMetaData> {
   const [
     profilesRes,
     orgsRes,
-    adviserAssignments,
-    notes,
-    rawPlanItems,
     offeringsRes,
     coursesRes,
     programsRes,
@@ -312,9 +301,6 @@ async function fetchStudentDashboardData(
     apiClient.GET("/rest/v1/student_organization", {
       params: { query: { student_id: postgrestFilter.eq(studentId) } },
     }),
-    fetchStudentAdviserAssignments(studentId).catch(() => []),
-    fetchStudentAdvisingNotes(studentId).catch(() => []),
-    fetchStudentPlanItems(studentId).catch(() => []),
     apiClient.GET("/rest/v1/course_offering"),
     apiClient.GET("/rest/v1/course"),
     apiClient.GET("/rest/v1/program"),
@@ -331,30 +317,12 @@ async function fetchStudentDashboardData(
   const program = programs.find((p) => p.id === org?.program_id)
   const curriculum = curricula.find((c) => c.id === org?.curriculum_version_id)
 
-  const offeringMap = new Map(offerings.map((o) => [o.id, o]))
-  const courseMap = new Map(courses.map((c) => [c.id, c]))
-
-  const recommendations: CourseRecommendationRow[] = rawPlanItems.map(
-    (item) => {
-      const offering = offeringMap.get(item.course_offering_id)
-      const course = offering ? courseMap.get(offering.course_id) : undefined
-      return {
-        ...item,
-        code: course?.code ?? null,
-        title: course?.title ?? null,
-        units: course?.units ?? null,
-      }
-    }
-  )
-
   return {
-    summary,
     studentName: profile?.full_name ?? null,
     programName: program?.name ?? "BS Computer Science",
     curriculumLabel: curriculum?.version_label ?? "2024–2025",
-    adviserAssignments,
-    recommendations,
-    notes,
+    offeringMap: new Map(offerings.map((o) => [o.id, o])),
+    courseMap: new Map(courses.map((c) => [c.id, c])),
   }
 }
 
@@ -366,49 +334,34 @@ export function StudentDashboardPage({
 }: {
   studentId: string
 }) {
-  const [state, setState] = React.useState<{
-    data: DashboardPageData | null
-    isPending: boolean
-    isError: boolean
-  }>({
-    data: null,
-    isPending: true,
-    isError: false,
+  const dashboard = useStudentDashboard(studentId)
+  const metaQuery = useQuery({
+    queryKey: ["student", studentId, "dashboard-meta"],
+    queryFn: () => fetchDashboardMeta(studentId),
+    enabled: Boolean(studentId),
   })
 
-  const refetch = React.useCallback(async () => {
-    setState((prev) => ({ ...prev, isPending: true, isError: false }))
-    try {
-      const result = await fetchStudentDashboardData(studentId)
-      setState({ data: result, isPending: false, isError: false })
-    } catch {
-      setState({ data: null, isPending: false, isError: true })
-    }
-  }, [studentId])
+  const recommendations = React.useMemo<CourseRecommendationRow[]>(() => {
+    const planItems = dashboard.data?.planItems ?? []
+    const offeringMap = metaQuery.data?.offeringMap
+    const courseMap = metaQuery.data?.courseMap
+    return planItems.map((item) => {
+      const offering = offeringMap?.get(item.course_offering_id)
+      const course = offering ? courseMap?.get(offering.course_id) : undefined
+      return {
+        ...item,
+        code: course?.code ?? null,
+        title: course?.title ?? null,
+        units: course?.units ?? null,
+      }
+    })
+  }, [dashboard.data?.planItems, metaQuery.data])
 
-  React.useEffect(() => {
-    let cancelled = false
-    fetchStudentDashboardData(studentId)
-      .then((result) => {
-        if (!cancelled) {
-          setState({ data: result, isPending: false, isError: false })
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState({ data: null, isPending: false, isError: true })
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [studentId])
-
-  if (state.isPending) {
+  if (dashboard.isPending || metaQuery.isPending) {
     return <p role="status">Loading...</p>
   }
 
-  if (state.isError || !state.data) {
+  if (dashboard.isError || !dashboard.data) {
     return (
       <Panel
         title="Unable to load dashboard"
@@ -417,7 +370,9 @@ export function StudentDashboardPage({
         <Button
           type="button"
           variant="outline"
-          onClick={() => void refetch()}
+          onClick={() =>
+            void Promise.all([dashboard.refetch(), metaQuery.refetch()])
+          }
         >
           Try again
         </Button>
@@ -427,13 +382,13 @@ export function StudentDashboardPage({
 
   return (
     <StudentDashboardView
-      summary={state.data.summary}
-      studentName={state.data.studentName}
-      programName={state.data.programName}
-      curriculumLabel={state.data.curriculumLabel}
-      adviserAssignments={state.data.adviserAssignments}
-      recommendations={state.data.recommendations}
-      notes={state.data.notes}
+      summary={dashboard.data.summary}
+      studentName={metaQuery.data?.studentName ?? null}
+      programName={metaQuery.data?.programName ?? "BS Computer Science"}
+      curriculumLabel={metaQuery.data?.curriculumLabel ?? "2024–2025"}
+      adviserAssignments={dashboard.data.adviserAssignments}
+      recommendations={recommendations}
+      notes={dashboard.data.notes}
     />
   )
 }
