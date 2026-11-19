@@ -106,6 +106,16 @@ describe('Department Staff accounts directory', () => {
     expect(within(row).getByText('Adviser')).toBeTruthy()
   })
 
+  it('offers all six roles in the primary role selector', async () => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() })
+    renderAccounts()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add account' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
+    for (const role of ['Student', 'Adviser', 'Department Staff', 'Department Head', 'Dean', 'Admin']) {
+      expect(await screen.findByRole('option', { name: role })).toBeTruthy()
+    }
+  })
+
   it('uses the assigned department scope and paginates without exposing another department', async () => {
     renderAccounts()
 

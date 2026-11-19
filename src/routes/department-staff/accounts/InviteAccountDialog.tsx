@@ -151,7 +151,7 @@ export default function InviteAccountDialog() {
             <Select value={values.role} onValueChange={value => updateRole(value as DepartmentInviteRole)}>
               <SelectTrigger id="invite-role" className="h-11! w-full min-w-0 max-w-full overflow-hidden [&_[data-slot=select-value]]:block [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {departmentInviteRoles.filter(role => auth.roles.includes('admin') || (role !== 'admin' && role !== 'dean')).map(role => <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>)}
+                {departmentInviteRoles.map(role => <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>)}
               </SelectContent>
             </Select>
           </FormField>
