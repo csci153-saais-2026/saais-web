@@ -1,3 +1,4 @@
+import '../shared/staff-filters.css'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Column } from '@/components/features/data-table-panel'
@@ -103,7 +104,7 @@ function InvitationActions({ account, actingProfileId, departmentId }: { account
         disabled={targetBusy || resend.isSuccess}
         onClick={() => resend.mutate(account.profile.id)}
       >
-        {resend.isPending ? 'Resending…' : resend.isSuccess ? 'Invitation resent' : 'Resend invitation'}
+        {resend.isPending ? 'Resendingâ€¦' : resend.isSuccess ? 'Invitation resent' : 'Resend invitation'}
       </Button>}
       {canRevoke && (
         <Dialog open={confirmationOpen} onOpenChange={open => { if (!targetBusy) setConfirmationOpen(open) }}>
@@ -121,7 +122,7 @@ function InvitationActions({ account, actingProfileId, departmentId }: { account
             <DialogFooter>
               <Button type="button" variant="outline" disabled={targetBusy} onClick={() => setConfirmationOpen(false)}>Cancel</Button>
               <Button type="button" variant="destructive" disabled={targetBusy} onClick={() => revoke.mutate(account.profile.id)}>
-                {revoke.isPending ? 'Revoking…' : 'Confirm revocation'}
+                {revoke.isPending ? 'Revokingâ€¦' : 'Confirm revocation'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -235,7 +236,7 @@ export default function AccountsPage() {
     <div className="-mt-6 space-y-5 md:-mt-(--content-pad-top)">
       <PageHeading
         title="Accounts and roles"
-        subtitle={departmentName.data ?? (departmentName.isError ? 'Department details unavailable.' : 'Loading department…')}
+        subtitle={departmentName.data ?? (departmentName.isError ? 'Department details unavailable.' : 'Loading departmentâ€¦')}
         actions={scope.status === 'ready' ? <InviteAccountDialog /> : undefined}
       />
 
@@ -247,7 +248,7 @@ export default function AccountsPage() {
 
       {scope.status === 'ready' && (
         <Panel title="People" flush bodyClassName="gap-0">
-          <div className="department-filter-typography grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5">
+          <div className="staff-filter-controls department-filter-typography grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5">
             <FormField label="Search accounts" htmlFor="accounts-search" hint="Search by name or institutional email.">
               <SearchInput
                 id="accounts-search"

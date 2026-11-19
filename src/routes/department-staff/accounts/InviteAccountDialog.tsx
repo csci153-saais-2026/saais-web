@@ -155,20 +155,18 @@ export default function InviteAccountDialog() {
             </Select>
           </FormField>
 
-          {values.role !== 'student' && <fieldset className="space-y-2"> 
+          {values.role !== 'student' && <fieldset className="space-y-2">
             <legend className="text-[13px] font-semibold text-muted-foreground">Additional roles</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {departmentInviteRoles.filter(role => role !== values.role && role !== 'student').map(role => {
-                const studentMustBePrimary = role === 'student'
                 return (
                   <label key={role} className="flex items-center gap-2 text-sm">
                     <Checkbox
                       checked={values.additional_roles.includes(role)}
-                      disabled={studentMustBePrimary}
                       onCheckedChange={checked => toggleAdditionalRole(role, checked === true)}
                       aria-label={`Additional role ${roleLabels[role]}`}
                     />
-                    <span>{roleLabels[role]}{studentMustBePrimary ? ' (select as primary to provide student details)' : ''}</span>
+                    <span>{roleLabels[role]}</span>
                   </label>
                 )
               })}
@@ -242,7 +240,7 @@ export default function InviteAccountDialog() {
 
           <DialogFooter>
             <Button type="submit" disabled={!values.full_name.trim() || !values.email.trim() || (values.role === 'student' && (!values.student_number.trim() || !values.program_id || !values.curriculum_version_id || !values.adviser_id)) || invitation.isPending || invitation.isSuccess}>
-              {invitation.isPending ? 'Sending invitation…' : invitation.isSuccess ? 'Invitation sent' : 'Send invitation'}
+              {invitation.isPending ? 'Sending invitationâ€¦' : invitation.isSuccess ? 'Invitation sent' : 'Send invitation'}
             </Button>
           </DialogFooter>
         </form>
@@ -250,7 +248,3 @@ export default function InviteAccountDialog() {
     </Dialog>
   )
 }
-
-
-
-

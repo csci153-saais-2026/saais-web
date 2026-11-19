@@ -1,4 +1,5 @@
-﻿import { useState } from 'react'
+import '../shared/staff-filters.css'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -117,7 +118,7 @@ export default function AdviserAssignmentsPage() {
     <Alert variant="advisory"><AlertIcon /><AlertDescription>Reassignment takes effect on the selected date. The previous adviser and assignment history remain visible.</AlertDescription></Alert>
     {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
     <Panel title="Student–adviser assignments" description="Select one or more students to reassign together." flush>
-      <div className="grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
+      <div className="staff-filter-controls grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
         <FormField label="Search students" htmlFor="staff-assignment-search"><SearchInput id="staff-assignment-search" placeholder="Search by student name or ID" value={filters.search} onChange={(event) => changeFilters({ ...filters, search: event.target.value })} /></FormField>
         <FormField label="Curriculum" htmlFor="staff-assignment-curriculum"><Select value={filters.curriculum} onValueChange={(curriculum) => changeFilters({ ...filters, curriculum })}><SelectTrigger id="staff-assignment-curriculum" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All curricula</SelectItem>{curricula.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></FormField>
         <FormField label="Adviser" htmlFor="staff-assignment-adviser"><Select value={filters.adviser} onValueChange={(adviser) => changeFilters({ ...filters, adviser })}><SelectTrigger id="staff-assignment-adviser" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All advisers</SelectItem>{adviserNames.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></FormField>

@@ -1,3 +1,4 @@
+import '../shared/staff-filters.css'
 import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Column } from '@/components/features/data-table-panel'
@@ -159,7 +160,7 @@ export default function CourseCatalogPage() {
         flush
         bodyClassName="gap-0"
       >
-        <div className="department-filter-typography grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-4">
+        <div className="staff-filter-controls department-filter-typography grid gap-4 border-b border-border bg-card px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-4">
           <FormField label="Search records" htmlFor="catalog-search" error={searchError} className="sm:col-span-2 xl:col-span-1">
             <SearchInput id="catalog-search" value={filters.search} placeholder="Search by course code or title" onChange={event => updateFilters({ q: event.target.value })} />
           </FormField>
@@ -194,14 +195,14 @@ export default function CourseCatalogPage() {
         </div>
 
         {!searchError && (references.isPending || catalog.isPending) && (
-          <p role="status" className="border-t border-border px-5 py-6 text-sm text-muted-foreground">Loading courses and department references…</p>
+          <p role="status" className="border-t border-border px-5 py-6 text-sm text-muted-foreground">Loading courses and department referencesâ€¦</p>
         )}
 
         {(references.isError || catalog.isError) && (
           <div className="space-y-4 border-t border-border p-5">
             <p role="alert" className="text-sm text-destructive">{errorMessage(references.error ?? catalog.error)}</p>
             <Button type="button" variant="outline" onClick={() => { void references.refetch(); void catalog.refetch() }} disabled={references.isFetching || catalog.isFetching}>
-              {references.isFetching || catalog.isFetching ? 'Retrying…' : 'Retry'}
+              {references.isFetching || catalog.isFetching ? 'Retryingâ€¦' : 'Retry'}
             </Button>
           </div>
         )}
@@ -224,7 +225,7 @@ export default function CourseCatalogPage() {
             </Table>
             {data.courses.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted-foreground">No courses match these filters.</p>}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              <p className="text-sm" aria-live="polite">{data.total != null ? `${start}–${end} of ${data.total}` : `Page ${filters.page + 1}`}</p>
+              <p className="text-sm" aria-live="polite">{data.total != null ? `${start}â€“${end} of ${data.total}` : `Page ${filters.page + 1}`}</p>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => updateFilters({ page: String(filters.page - 1) }, false)} disabled={filters.page === 0 || catalog.isFetching}>Previous</Button>
                 <Button type="button" variant="outline" onClick={() => updateFilters({ page: String(filters.page + 1) }, false)} disabled={!hasNext || catalog.isFetching}>Next</Button>

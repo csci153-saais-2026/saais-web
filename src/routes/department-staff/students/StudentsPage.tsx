@@ -1,4 +1,5 @@
-﻿import { useState } from 'react'
+import '../shared/staff-filters.css'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -14,6 +15,7 @@ import { useStaffScope } from '../shared/use-staff-scope'
 import { staffQueryKeys } from '../shared/staff-query-keys'
 import { listDepartmentPrograms, listStudentRoster } from './students.api'
 import { StudentImportDialog } from './import/StudentImportDialog'
+import { listDepartmentAssignmentAdvisers } from '../adviser-assignments/adviser-assignments.api'
 
 const PAGE_SIZE = 100
 
@@ -22,6 +24,15 @@ export default function StudentsPage() {
   const department = useStaffDepartmentName()
   const active = scope.status === 'ready' ? scope : null
   const academicTerms = useAcademicTerms()
+  const departmentAdvisers = useQuery({
+    queryKey: staffQueryKeys.resource(active?.profileId ?? '', active?.departmentId ?? '', 'directory-advisers'),
+    enabled: !!active,
+    retry: false,
+    queryFn: ({ signal }) => {
+      if (!active) throw new Error('An authorized department is required.')
+      return listDepartmentAssignmentAdvisers(active.departmentId, signal)
+    },
+  })
   const programs = useQuery({
     queryKey: staffQueryKeys.resource(active?.profileId ?? '', active?.departmentId ?? '', 'directory-programs'),
     enabled: !!active,
@@ -57,7 +68,10 @@ export default function StudentsPage() {
     (adviser === 'all' || (student.adviser_name ?? 'Unassigned') === adviser),
   )
   const curricula = [...new Set(students.map((s) => s.curriculum_label))].sort()
-  const advisers = [...new Set(students.map((s) => s.adviser_name ?? 'Unassigned'))].sort()
+  const advisers = [...new Set([
+    ...(departmentAdvisers.data ?? []).map(item => item.label),
+    ...students.map(s => s.adviser_name ?? 'Unassigned'),
+  ])].sort()
   const codes = [...new Set((programs.data ?? []).map((program) => program.code))].sort()
   const programLabel = codes.length > 1 ? `${codes.slice(0, -1).join(', ')} and ${codes.at(-1)}` : codes[0]
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
@@ -73,7 +87,7 @@ export default function StudentsPage() {
   return <>
     {heading}
     <Panel title="Department directory" description={description} flush>
-      <div className="grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
+      <div className="staff-filter-controls grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
         <FormField label="Search students" htmlFor="staff-student-search"><SearchInput id="staff-student-search" placeholder="Search by student name or ID" value={search} onChange={(event) => setSearch(event.target.value)} /></FormField>
         <FormField label="Curriculum" htmlFor="staff-student-curriculum"><Select value={curriculum} onValueChange={setCurriculum}><SelectTrigger id="staff-student-curriculum" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All curricula</SelectItem>{curricula.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></FormField>
         <FormField label="Adviser" htmlFor="staff-student-adviser"><Select value={adviser} onValueChange={setAdviser}><SelectTrigger id="staff-student-adviser" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All advisers</SelectItem>{advisers.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></FormField>

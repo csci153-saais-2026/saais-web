@@ -225,7 +225,7 @@ export function StudentImportDialog({
     open={isOpen}
     onOpenChange={handleOpenChange}
     trigger={<Button type="button"><UploadIcon />Import spreadsheet</Button>}
-    notice={<>Required columns: student_number, full_name, email, program, curriculum, and adviser_email. Entry year is optional. <a href={sampleUrl} download="student-import-sample.csv" className="font-semibold underline">Download sample spreadsheet</a>. Replace the sample values with your department?s records.</>}
+    notice={<>Required columns: student_number, full_name, email, program, curriculum, and adviser_email. Entry year is optional. <a href={sampleUrl} download="student-import-sample.csv" className="font-semibold underline">Download sample spreadsheet</a>. Replace the sample values with your department's records.</>}
     fileHint={`XLSX or CSV · IDs must follow YY-N-NNNNN (example: 24-1-00124). Maximum ${FILE_SIZE_LABEL}, ${MAX_STUDENT_IMPORT_ROWS} rows.`}
     fileError={localError ?? undefined}
     fileDisabled={isImporting}

@@ -1,3 +1,4 @@
+import { listDepartmentAssignmentAdvisers as listEligibleDepartmentAdvisers } from '../adviser-assignments/adviser-assignments.api'
 import {
   apiClient,
   parseContentRange,
@@ -148,16 +149,10 @@ async function listDepartmentCurricula(
         },
         signal,
       })
-      const versions = unwrapApiResult<ApiSchema<'CurriculumVersion'>[]>(
+      return completeReferenceRead<ApiSchema<'CurriculumVersion'>>(
         result,
+        'Curriculum',
       )
-      if (!Array.isArray(versions)) {
-        throw new Error(
-          'The curriculum reference read returned invalid data.',
-        )
-      }
-      assertCompleteReferenceRead(versions, 'Curriculum')
-      return versions
     }),
   )
 
@@ -165,81 +160,12 @@ async function listDepartmentCurricula(
     .flat()
     .map((version) => ({
       id: version.id,
-      label: `${programLabels.get(version.program_id) ?? 'Program'} — ${version.version_label}`,
+      label: `${programLabels.get(version.program_id) ?? 'Program'} â€” ${version.version_label}`,
     }))
     .sort((left, right) => left.label.localeCompare(right.label))
 }
 
-export async function listEligibleDepartmentAdvisers(
-  departmentId: string,
-  signal?: AbortSignal,
-): Promise<StudentFilterOption[]> {
-  const assignmentsResult = await apiClient.GET('/rest/v1/role_assignment', {
-    params: {
-      query: {
-        role: postgrestFilter.eq('adviser'),
-        department_id: postgrestFilter.eq(departmentId),
-        select: 'id,profile_id,role,department_id',
-        order: 'profile_id.asc,id.asc',
-        limit: FILTER_REFERENCE_LIMIT,
-        offset: 0,
-      },
-    },
-    signal,
-  })
-  const assignments = completeReferenceRead<ApiSchema<'RoleAssignment'>>(
-    assignmentsResult,
-    'Department adviser assignments',
-  ).filter(
-    (assignment) =>
-      assignment.role === 'adviser' &&
-      assignment.department_id === departmentId,
-  )
-  const adviserIds = [...new Set(assignments.map((assignment) => assignment.profile_id))]
-  const adviserBatches: string[][] = []
-  for (
-    let start = 0;
-    start < adviserIds.length;
-    start += PROGRAM_FILTER_BATCH_SIZE
-  ) {
-    adviserBatches.push(
-      adviserIds.slice(start, start + PROGRAM_FILTER_BATCH_SIZE),
-    )
-  }
-
-  const adviserProfiles = await Promise.all(
-    adviserBatches.map(async (ids) => {
-      const result = await apiClient.GET('/rest/v1/profile', {
-        params: {
-          query: {
-            id: postgrestFilter.inList(ids),
-            status: postgrestFilter.eq('active'),
-            select: 'id,full_name,status',
-            order: 'full_name.asc,id.asc',
-            limit: FILTER_REFERENCE_LIMIT,
-            offset: 0,
-          },
-        },
-        signal,
-      })
-      return completeReferenceRead<ApiSchema<'Profile'>>(
-        result,
-        'Active department adviser profiles',
-      ).filter(
-        (profile) =>
-          ids.includes(profile.id) &&
-          profile.status === 'active' &&
-          typeof profile.full_name === 'string' &&
-          profile.full_name.trim().length > 0,
-      )
-    }),
-  )
-
-  return adviserProfiles
-    .flat()
-    .map((profile) => ({ id: profile.id, label: profile.full_name }))
-    .sort((left, right) => left.label.localeCompare(right.label))
-}
+export { listDepartmentAssignmentAdvisers as listEligibleDepartmentAdvisers } from '../adviser-assignments/adviser-assignments.api'
 
 export async function listStudentFilterOptions(
   departmentId: string,
