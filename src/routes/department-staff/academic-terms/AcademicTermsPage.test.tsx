@@ -12,6 +12,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -98,7 +99,7 @@ function renderPage() {
   )
 }
 
-beforeAll(() => saaisMockServer.listen())
+beforeAll(() => { Element.prototype.scrollIntoView = () => {}; saaisMockServer.listen() })
 beforeEach(() => {
   resetMockDatabase()
   loginAsMockPersona('department_staff')
@@ -112,6 +113,54 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 describe('Department Staff academic terms', () => {
+  it('adds a term with the head-style modal using staff data', async () => {
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a term' }))
+    expect(screen.getByRole('dialog', { name: 'Add academic term' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Academic year'), { target: { value: '2027–2028' } })
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2027-08-01' } })
+    fireEvent.change(screen.getByLabelText('Actual end date'), { target: { value: '2027-12-20' } })
+    fireEvent.change(screen.getByLabelText('Encoding deadline'), { target: { value: '2028-01-15' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add term' }))
+    expect(await screen.findByText('Academic term created.')).toBeTruthy()
+    expect(getMockDatabase().schoolTerms.some((term) => term.start_year === 2027 && term.term_type === '1st Semester')).toBe(true)
+  })
+
+  it('creates a term with department encoding closed when selected', async () => {
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a term' }))
+    fireEvent.change(screen.getByLabelText('Academic year'), { target: { value: '2027–2028' } })
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2027-08-01' } })
+    fireEvent.change(screen.getByLabelText('Actual end date'), { target: { value: '2027-12-20' } })
+    fireEvent.change(screen.getByLabelText('Encoding deadline'), { target: { value: '2028-01-15' } })
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Encoding status' }), { key: 'ArrowDown' })
+    fireEvent.click(await screen.findByRole('option', { name: 'Closed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add term' }))
+    expect(await screen.findByText('Academic term created.')).toBeTruthy()
+    const term = getMockDatabase().schoolTerms.find((item) => item.start_year === 2027)!
+    expect(getMockDatabase().departmentTermEncodings.some((item) => item.school_term_id === term.id && item.department_id === staffPersona.departmentId && item.is_closed)).toBe(true)
+  })
+
+  it('retries a failed encoding closure without creating the term twice', async () => {
+    let attempts = 0
+    saaisMockServer.use(http.post('*/functions/v1/school-terms/:school_term_id/close-encoding', () => {
+      attempts += 1
+      if (attempts === 1) return HttpResponse.json({ message: 'Closure failed' }, { status: 500 })
+    }))
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a term' }))
+    fireEvent.change(screen.getByLabelText('Academic year'), { target: { value: '2027–2028' } })
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2027-08-01' } })
+    fireEvent.change(screen.getByLabelText('Actual end date'), { target: { value: '2027-12-20' } })
+    fireEvent.change(screen.getByLabelText('Encoding deadline'), { target: { value: '2028-01-15' } })
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Encoding status' }), { key: 'ArrowDown' })
+    fireEvent.click(await screen.findByRole('option', { name: 'Closed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add term' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry closing encoding' }))
+    expect(await screen.findByText('Academic term created.')).toBeTruthy()
+    expect(getMockDatabase().schoolTerms.filter((term) => term.start_year === 2027)).toHaveLength(1)
+    expect(attempts).toBe(2)
+  })
   it('renders the prototype term history with records from the staff persona MSW handlers', async () => {
     renderPage()
 
@@ -143,11 +192,21 @@ describe('Department Staff academic terms', () => {
     expect(screen.getByText('1st semester')).toBeTruthy()
     expect(screen.getByText('10 Aug 2026 – 18 Dec 2026')).toBeTruthy()
     expect(screen.getByText('05 Jan 2027')).toBeTruthy()
-    expect(screen.getAllByText('Open')).toHaveLength(2)
+    expect(screen.getAllByText('Open')).toHaveLength(1)
+    expect(screen.getAllByText('Closed')).toHaveLength(1)
     expect(screen.queryByText('Not recorded')).toBeNull()
-    expect(screen.getByText('2 open terms · 0 closed terms')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: /Close encoding for/ })).toHaveLength(2)
-    expect(screen.queryByText('View term')).toBeNull()
+    expect(screen.getByText('1 open term · 1 closed term')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /Close encoding for/ })).toHaveLength(1)
+    expect(screen.getByText('View term')).toBeTruthy()
+    const lockedTerm = screen.getByRole('row', { name: /2025–2026/ })
+    fireEvent.click(within(lockedTerm).getByText('View term'))
+    const details = screen.getByRole('dialog', { name: 'Academic term details' })
+    expect(within(details).getByText('2025–2026')).toBeTruthy()
+    expect(within(details).getByText('Closed')).toBeTruthy()
+    expect(within(details).getByText('End of 2nd Semester AY 2025-2026')).toBeTruthy()
+    expect(within(details).queryByRole('button', { name: 'Edit term' })).toBeNull()
+    expect(within(details).queryByRole('button', { name: 'Reopen encoding' })).toBeNull()
+    fireEvent.click(within(details).getAllByRole('button', { name: 'Close' })[0])
     const addTermButton = screen.getByRole('button', { name: 'Add a term' })
     expect(addTermButton.querySelector('svg')).not.toBeNull()
     const termRows = screen.getAllByRole('row').slice(1)
@@ -181,15 +240,15 @@ describe('Department Staff academic terms', () => {
       ),
     ).toBeTruthy()
     expect((await screen.findAllByText('Closed')).length).toBeGreaterThan(0)
-    expect(screen.getByText('1 open term · 1 closed term')).toBeTruthy()
-    expect(screen.getByText('View term')).toBeTruthy()
+    expect(screen.getByText('0 open terms · 2 closed terms')).toBeTruthy()
     expect(
       screen.queryByRole('button', {
         name: 'Close encoding for 2026 - 2027 1st Semester',
       }),
     ).toBeNull()
 
-    fireEvent.click(screen.getAllByText('View term')[0]!)
+    const currentTerm = screen.getByRole('row', { name: /2026–2027/ })
+    fireEvent.click(within(currentTerm).getByText('View term'))
     fireEvent.click(await screen.findByRole('button', { name: 'Reopen encoding' }))
     expect(
       await screen.findByRole('dialog', {
