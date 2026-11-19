@@ -20,12 +20,12 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import type { ApiSchema } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
+import {
+  gradeFlagSchema,
+  type GradeFlagValues,
+} from "./grade-flag-schema"
 
-export type FlagGradeIssueType =
-  | "incorrect_grade"
-  | "missing_grade"
-  | "wrong_course_credited"
-  | "other"
+export type FlagGradeIssueType = GradeFlagValues["issue_type"]
 
 export interface FlagGradeTarget {
   readonly attemptId: string
@@ -92,20 +92,26 @@ export function FlagGradeDialog({
     e.preventDefault()
     if (!target) return
 
-    const trimmedDetails = details.trim()
-    if (!trimmedDetails) {
-      setDetailsError("Please describe the grade issue before submitting.")
-      return
-    }
-    setDetailsError(undefined)
-
-    await onSubmit({
+    const parsed = gradeFlagSchema.safeParse({
       attempt_id: target.attemptId,
       reported_stage: target.reportedStage ?? "final",
       reported_grade_text: target.recordedGrade,
       issue_type: issueType,
-      details: trimmedDetails,
+      details,
     })
+
+    if (!parsed.success) {
+      const detailsIssue = parsed.error.issues.find(
+        (issue) => issue.path[0] === "details"
+      )
+      setDetailsError(
+        detailsIssue?.message ?? "Please describe the grade issue before submitting."
+      )
+      return
+    }
+
+    setDetailsError(undefined)
+    await onSubmit(parsed.data)
   }
 
   const courseDisplay = target ? `${target.code} · ${target.title}` : "—"
