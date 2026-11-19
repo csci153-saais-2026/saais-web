@@ -1,0 +1,16 @@
+@media (min-width: 768px) {
+  .advisees-roster table {
+    min-width: 1100px;
+    table-layout: fixed;
+  }
+
+  .advisees-roster th:nth-child(1) { width: 20%; }
+  .advisees-roster th:nth-child(2) { width: 27%; }
+  .advisees-roster th:nth-child(3) { width: 14%; }
+  .advisees-roster th:nth-child(4) { width: 7%; }
+  .advisees-roster th:nth-child(5) { width: 10%; }
+  .advisees-roster th:nth-child(6) { width: 14%; }
+  .advisees-roster th:nth-child(7) { width: 8%; }
+
+  .advisees-roster td:last-child { overflow-wrap: anywhere; }
+}

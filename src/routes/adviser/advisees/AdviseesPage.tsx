@@ -11,6 +11,7 @@ import { SearchInput } from '@/components/features/search-input'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { DeficiencySubjects } from './DeficiencySubjects'
+import './advisees-roster.css'
 
 export default function AdviseesPage() {
   const { user } = useAuth()
@@ -32,10 +33,10 @@ export default function AdviseesPage() {
     </div>
     {!data && !error && <p role="status">Loading advisees…</p>}
     {error && <div role="alert"><p>{error}</p><Button variant="outline" onClick={() => setRevision(n => n + 1)}>Try again</Button></div>}
-    {rows && <DataTablePanel title="Advisees" description={`${rows.length} matching records`} tableClassName="md:min-w-[1100px] md:table-fixed" rows={rows} rowKey={r => r.student_id} rowProps={r => ({ tabIndex: 0, 'aria-label': `Open ${r.full_name}'s record`, className: 'cursor-pointer hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-2px]', onClick: event => { if (!(event.target as HTMLElement).closest('a,button,input,select,textarea')) navigate(`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`) }, onKeyDown: event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); navigate(`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`) } } })} columns={[
-      { header: 'Student', headerClassName: 'md:w-[19%]', cell: r => <div className="min-w-0 max-w-full"><Link to={`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`} title={r.full_name} className="block truncate font-semibold underline">{r.full_name}</Link><span className="block font-mono text-xs text-muted-foreground">{r.student_number}</span></div> },
-      { header: 'Program', headerClassName: 'md:w-[27%]', cell: r => <div className="min-w-0 max-w-full"><span className="block truncate" title={r.program_name}>{r.program_name}</span><span className="block truncate text-xs text-muted-foreground">Curriculum {r.curriculum_label}</span></div> },
-      { header: 'Year standing', headerClassName: 'md:w-[12%]', cell: r => `Year ${r.year_level}` }, { header: 'GWA', headerClassName: 'md:w-[7%]', numeric: true, cell: r => r.gwa == null ? '—' : r.gwa.toFixed(2) }, { header: 'Open flags', headerClassName: 'md:w-[9%]', numeric: true, cell: r => r.open_flags_count }, { header: 'Standing', headerClassName: 'md:w-[12%]', cell: r => <StatusBadge status={isFlagged(r) ? 'flagged' : 'good'} /> }, { header: 'Deficiencies', headerClassName: 'md:w-[14%]', cell: r => <DeficiencySubjects userId={user!.id} studentId={r.student_id} count={r.deficiencies_count} /> },
-    ]} footer="Past advisees are read-only. Their records stay with their current adviser." />}
+    {rows && <div className="advisees-roster"><DataTablePanel title="Advisees" description={`${rows.length} matching records`} rows={rows} rowKey={r => r.student_id} rowProps={r => ({ tabIndex: 0, 'aria-label': `Open ${r.full_name}'s record`, className: 'cursor-pointer hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-2px]', onClick: event => { if (!(event.target as HTMLElement).closest('a,button,input,select,textarea')) navigate(`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`) }, onKeyDown: event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); navigate(`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`) } } })} columns={[
+      { header: 'Student', cell: r => <div className="min-w-0 max-w-full"><Link to={`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`} title={r.full_name} className="block truncate font-semibold underline">{r.full_name}</Link><span className="block font-mono text-xs text-muted-foreground">{r.student_number}</span></div> },
+      { header: 'Program', cell: r => <div className="min-w-0 max-w-full"><span className="block truncate" title={r.program_name}>{r.program_name}</span><span className="block truncate text-xs text-muted-foreground">Curriculum {r.curriculum_label}</span></div> },
+      { header: 'Year standing', cell: r => `Year ${r.year_level}` }, { header: 'GWA', numeric: true, cell: r => r.gwa == null ? '—' : r.gwa.toFixed(2) }, { header: 'Open flags', numeric: true, cell: r => r.open_flags_count }, { header: 'Standing', cell: r => <StatusBadge status={isFlagged(r) ? 'flagged' : 'good'} /> }, { header: 'Deficiencies', cell: r => <DeficiencySubjects userId={user!.id} studentId={r.student_id} count={r.deficiencies_count} /> },
+    ]} footer="Past advisees are read-only. Their records stay with their current adviser." /></div>}
   </AdviserPage>
 }
