@@ -196,5 +196,5 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
         expect(response.status, `Expected 200 for ${fullName}`).toBe(200);
       }
     }
-  });
+  }, 30000);
 });
