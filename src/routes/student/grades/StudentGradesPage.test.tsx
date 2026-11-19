@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { apiClient, type ApiSchema } from "@/lib/api"
 import { StudentGradesPage, StudentGradesView } from "./StudentGradesPage"
@@ -179,7 +180,15 @@ describe("StudentGradesPage", () => {
       }) as never
     })
 
-    render(<StudentGradesPage studentId="stu-1" />)
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <StudentGradesPage studentId="stu-1" />
+      </QueryClientProvider>
+    )
 
     expect(screen.getByRole("status").textContent).toBe("Loading...")
 

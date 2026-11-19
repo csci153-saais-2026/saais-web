@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertIcon, DownloadIcon } from "@/components/icons"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
@@ -16,10 +17,12 @@ import {
 } from "@/lib/pdf/student-report-formatter"
 import {
   createStudentGradeFlag,
-  fetchStudentGradeFlags,
-  fetchStudentGrades,
   recordGradesExportEvent,
 } from "./student-grades.api"
+import {
+  useStudentGradeFlags,
+  useStudentGrades,
+} from "./use-student-grades"
 import {
   FlagGradeDialog,
   type FlagGradeTarget,
@@ -324,13 +327,26 @@ interface GradesPageData {
   readonly faculty: Partial<ApiSchema<"Faculty">> | null
 }
 
-async function fetchStudentGradesData(
-  studentId: string
-): Promise<GradesPageData> {
-  const rawTerms = await fetchStudentGrades(studentId)
+interface GradesMetadata {
+  readonly schoolTerms: readonly ApiSchema<"SchoolTerm">[]
+  readonly offerings: readonly ApiSchema<"CourseOffering">[]
+  readonly courses: readonly ApiSchema<"Course">[]
+  readonly profile: ApiSchema<"Profile"> | null
+  readonly org: ApiSchema<"StudentOrganization"> | null
+  readonly programs: readonly ApiSchema<"Program">[]
+  readonly curricula: readonly ApiSchema<"CurriculumVersion">[]
+  readonly assignments: readonly Pick<
+    ApiSchema<"AdviserAssignment">,
+    "id" | "adviser_id" | "adviser_name" | "start_date" | "end_date"
+  >[]
+  readonly departments: readonly ApiSchema<"Department">[]
+  readonly faculties: readonly ApiSchema<"Faculty">[]
+}
 
+async function fetchStudentGradesMetadata(
+  studentId: string
+): Promise<GradesMetadata> {
   const [
-    flags,
     schoolTermsRes,
     offeringsRes,
     coursesRes,
@@ -342,7 +358,6 @@ async function fetchStudentGradesData(
     departmentsRes,
     facultiesRes,
   ] = await Promise.all([
-    fetchStudentGradeFlags(studentId),
     apiClient.GET("/rest/v1/school_term"),
     apiClient.GET("/rest/v1/course_offering"),
     apiClient.GET("/rest/v1/course"),
@@ -367,16 +382,35 @@ async function fetchStudentGradesData(
     apiClient.GET("/rest/v1/faculty"),
   ])
 
-  const schoolTerms = schoolTermsRes.data ?? []
-  const offerings = offeringsRes.data ?? []
-  const courses = coursesRes.data ?? []
-  const profile = profilesRes.data?.[0] ?? null
-  const org = orgsRes.data?.[0] ?? null
-  const programs = programsRes.data ?? []
-  const curricula = curriculaRes.data ?? []
-  const assignments = assignmentsRes.data ?? []
-  const departments = departmentsRes.data ?? []
-  const faculties = facultiesRes.data ?? []
+  return {
+    schoolTerms: schoolTermsRes.data ?? [],
+    offerings: offeringsRes.data ?? [],
+    courses: coursesRes.data ?? [],
+    profile: profilesRes.data?.[0] ?? null,
+    org: orgsRes.data?.[0] ?? null,
+    programs: programsRes.data ?? [],
+    curricula: curriculaRes.data ?? [],
+    assignments: assignmentsRes.data ?? [],
+    departments: departmentsRes.data ?? [],
+    faculties: facultiesRes.data ?? [],
+  }
+}
+
+function buildGradesPageData(
+  rawTerms: readonly ApiSchema<"TermGrades">[],
+  flags: readonly ApiSchema<"GradeFlag">[],
+  metadata: GradesMetadata | null
+): GradesPageData {
+  const schoolTerms = metadata?.schoolTerms ?? []
+  const offerings = metadata?.offerings ?? []
+  const courses = metadata?.courses ?? []
+  const profile = metadata?.profile ?? null
+  const org = metadata?.org ?? null
+  const programs = metadata?.programs ?? []
+  const curricula = metadata?.curricula ?? []
+  const assignments = metadata?.assignments ?? []
+  const departments = metadata?.departments ?? []
+  const faculties = metadata?.faculties ?? []
 
   const termLockMap = new Map(schoolTerms.map((t) => [t.id, t.is_locked]))
   const courseMap = new Map(courses.map((c) => [c.id, c]))
@@ -436,47 +470,40 @@ async function fetchStudentGradesData(
  * and grade summary PDF preview.
  */
 export function StudentGradesPage({ studentId }: { studentId: string }) {
-  const [state, setState] = React.useState<{
-    data: GradesPageData | null
-    isPending: boolean
-    isError: boolean
-  }>({
-    data: null,
-    isPending: true,
-    isError: false,
+  const queryClient = useQueryClient()
+  const gradesQuery = useStudentGrades(studentId)
+  const flagsQuery = useStudentGradeFlags(studentId)
+  const metaQuery = useQuery({
+    queryKey: ["student", studentId, "grades-meta"],
+    queryFn: () => fetchStudentGradesMetadata(studentId),
+    enabled: Boolean(studentId),
   })
+
   const [isSubmittingFlag, setIsSubmittingFlag] = React.useState(false)
   const [flagSubmitError, setFlagSubmitError] = React.useState<string | null>(
     null
   )
 
-  const refetch = React.useCallback(async () => {
-    setState((prev) => ({ ...prev, isPending: true, isError: false }))
-    try {
-      const result = await fetchStudentGradesData(studentId)
-      setState({ data: result, isPending: false, isError: false })
-    } catch {
-      setState({ data: null, isPending: false, isError: true })
-    }
-  }, [studentId])
+  const data = React.useMemo(() => {
+    if (!gradesQuery.data) return null
+    return buildGradesPageData(
+      gradesQuery.data,
+      flagsQuery.data ?? [],
+      metaQuery.data ?? null
+    )
+  }, [gradesQuery.data, flagsQuery.data, metaQuery.data])
 
-  React.useEffect(() => {
-    let cancelled = false
-    fetchStudentGradesData(studentId)
-      .then((result) => {
-        if (!cancelled) {
-          setState({ data: result, isPending: false, isError: false })
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState({ data: null, isPending: false, isError: true })
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [studentId])
+  const isPending =
+    gradesQuery.isPending || flagsQuery.isPending || metaQuery.isPending
+  const isError = gradesQuery.isError || flagsQuery.isError
+
+  const refetch = React.useCallback(async () => {
+    await Promise.all([
+      gradesQuery.refetch(),
+      flagsQuery.refetch(),
+      metaQuery.refetch(),
+    ])
+  }, [gradesQuery, flagsQuery, metaQuery])
 
   async function handleCreateFlag(
     payload: ApiSchema<"GradeFlagCreateRequest">
@@ -485,16 +512,9 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
     setFlagSubmitError(null)
     try {
       const created = await createStudentGradeFlag(studentId, payload)
-      setState((prev) =>
-        prev.data
-          ? {
-              ...prev,
-              data: {
-                ...prev.data,
-                flags: [created, ...prev.data.flags],
-              },
-            }
-          : prev
+      queryClient.setQueryData<ApiSchema<"GradeFlag">[]>(
+        ["student", studentId, "grade-flags"],
+        (prev) => [created, ...(prev ?? [])]
       )
     } catch (err) {
       const message =
@@ -508,11 +528,11 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
     }
   }
 
-  if (state.isPending) {
+  if (isPending) {
     return <p role="status">Loading...</p>
   }
 
-  if (state.isError || !state.data) {
+  if (isError || !data) {
     return (
       <Panel
         title="Unable to load grades"
@@ -531,16 +551,16 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
 
   return (
     <StudentGradesView
-      terms={state.data.terms}
-      flags={state.data.flags}
-      courseDetails={state.data.courseDetails}
-      studentName={state.data.studentName}
-      studentNumber={state.data.studentNumber}
-      programLabel={state.data.programLabel}
-      curriculumLabel={state.data.curriculumLabel}
-      adviserName={state.data.adviserName}
-      department={state.data.department}
-      faculty={state.data.faculty}
+      terms={data.terms}
+      flags={data.flags}
+      courseDetails={data.courseDetails}
+      studentName={data.studentName}
+      studentNumber={data.studentNumber}
+      programLabel={data.programLabel}
+      curriculumLabel={data.curriculumLabel}
+      adviserName={data.adviserName}
+      department={data.department}
+      faculty={data.faculty}
       onCreateFlag={handleCreateFlag}
       isSubmittingFlag={isSubmittingFlag}
       flagSubmitError={flagSubmitError}
