@@ -1,0 +1,29 @@
+type: object
+properties:
+  department_id:
+    type: string
+    format: uuid
+  code:
+    type: string
+    minLength: 2
+    maxLength: 250
+    pattern: \S
+  title:
+    type: string
+    minLength: 3
+    maxLength: 250
+    pattern: \S
+  category:
+    $ref: "./CourseCategory.yaml"
+  units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  is_elective:
+    type: boolean
+  status:
+    $ref: "./CourseStatus.yaml"
+  repeatable_type:
+    $ref: "./RepeatableType.yaml"
+additionalProperties: false
+minProperties: 1

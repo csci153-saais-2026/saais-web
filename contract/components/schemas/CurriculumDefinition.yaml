@@ -1,0 +1,38 @@
+type: object
+additionalProperties: false
+properties:
+  version_label:
+    type: string
+    minLength: 1
+    maxLength: 100
+    pattern: \S
+  effective_start:
+    type: string
+    format: date
+  effective_end:
+    type:
+      - string
+      - "null"
+    format: date
+  delinquency_threshold:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  total_units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  status:
+    $ref: "./CurriculumVersionStatus.yaml"
+  terms:
+    type: array
+    minItems: 0
+    maxItems: 24
+    items:
+      $ref: "./CurriculumTermDefinition.yaml"
+required:
+  - version_label
+  - effective_start
+  - delinquency_threshold
+  - total_units
+  - terms

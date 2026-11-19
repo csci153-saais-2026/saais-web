@@ -667,7 +667,7 @@ export interface paths {
         put?: never;
         /**
          * Create or clone curriculum version
-         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Supports creating a blank version or cloning terms and course slots from an existing version via clone_from_version_id. Only a Department Head acting within their department may clone an existing version; Department Staff and Admin may create a blank version but cannot use clone_from_version_id without an independently assigned Department Head role. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Supports creating a blank version or cloning terms and course slots from an existing version via clone_from_version_id. Only a Department Head acting within their department may clone an existing version; Department Staff and Admin may create a blank version but cannot clone without an independently assigned Department Head role. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createCurriculumVersion"];
         delete?: never;
@@ -1147,8 +1147,9 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Remove unsubmitted or erroneous open-term enrollment row
-         * @description Current adviser removes an ungraded or erroneously added enrollment row from an unlocked school term on the Encode Grades screen. Rejects with 409 Conflict if the school term is locked without override or if the attempt has INC completions, credit/equivalency decisions, or grade flags referencing it.
+         * Reject deletion of saved course attempts
+         * @deprecated
+         * @description Saved course attempts cannot be deleted (FR-ENR-06). A request for a saved attempt returns 409 Conflict. Unsaved rows are removed locally before submission; drops are recorded as DR under FR-GRD-03.
          */
         delete: operations["deleteOpenTermAttempt"];
         options?: never;
@@ -4413,7 +4414,7 @@ export interface components {
         destinationCurriculumTermCourseIdQueryParam: string;
         /** @description Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs. URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string. */
         courseOfferingIdQueryParam: string;
-        /** @description Filter by student number (e.g. `eq.2023-04412`) */
+        /** @description Filter by student number (e.g. `eq.23-1-04412`) */
         studentNumberQueryParam: string;
         /** @description Filter by name equality or pattern matching */
         nameQueryParam: string;
@@ -4577,7 +4578,7 @@ export interface operations {
                 role?: components["parameters"]["roleQueryParam"];
                 /** @description Filter this entity’s valid status. */
                 status?: string;
-                /** @description Filter by student number (e.g. `eq.2023-04412`) */
+                /** @description Filter by student number (e.g. `eq.23-1-04412`) */
                 student_number?: components["parameters"]["studentNumberQueryParam"];
                 /** @description Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults. */
                 select?: string;
@@ -6826,13 +6827,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Open-term enrollment row removed and audited. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             400: components["responses"]["400BadRequest"];
             401: components["responses"]["401Unauthorized"];
             403: components["responses"]["403Forbidden"];

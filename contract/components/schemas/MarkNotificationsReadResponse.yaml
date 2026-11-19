@@ -1,0 +1,8 @@
+type: object
+additionalProperties: false
+properties:
+  updated_count:
+    type: integer
+    minimum: 0
+required:
+  - updated_count

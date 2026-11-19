@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+properties:
+  mode:
+    type: string
+    enum:
+      - preview
+      - commit
+  school_term_id:
+    type: string
+    format: uuid
+  rows:
+    type: array
+    minItems: 1
+    maxItems: 500
+    items:
+      $ref: "./GradeBatchImportRowInput.yaml"
+required:
+  - mode
+  - school_term_id
+  - rows

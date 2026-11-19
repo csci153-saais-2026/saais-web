@@ -1,0 +1,75 @@
+type: object
+additionalProperties: false
+properties:
+  student_id:
+    type: string
+    format: uuid
+  gwa:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+  earned_units:
+    type: number
+    minimum: 0
+  required_units:
+    type: number
+    minimum: 0
+  counted_units:
+    type: number
+    minimum: 0
+  failed_units:
+    type: number
+    minimum: 0
+  in_progress_units:
+    type: number
+    minimum: 0
+  remaining_units:
+    type: number
+    minimum: 0
+  failure_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  standing:
+    $ref: "./AcademicStanding.yaml"
+  year_level:
+    type: integer
+    minimum: 1
+    maximum: 8
+  slots_satisfied:
+    type: integer
+    minimum: 0
+  total_slots:
+    type: integer
+    minimum: 0
+  open_inc_count:
+    type: integer
+    minimum: 0
+  lapsed_inc_count:
+    type: integer
+    minimum: 0
+  open_flags_count:
+    type: integer
+    minimum: 0
+  deficiencies_count:
+    type: integer
+    minimum: 0
+  deficiencies:
+    type: array
+    maxItems: 200
+    items:
+      $ref: "./StudentDeficiencyItem.yaml"
+  is_delinquent:
+    type: boolean
+  computed_at:
+    type: string
+    format: date-time
+required:
+  - student_id
+  - gwa
+  - earned_units
+  - required_units
+  - is_delinquent
+  - computed_at

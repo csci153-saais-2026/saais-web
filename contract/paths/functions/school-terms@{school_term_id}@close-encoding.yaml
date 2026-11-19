@@ -1,0 +1,61 @@
+post:
+  tags:
+    - Terms & Offerings
+  summary: Close grade encoding for a school term
+  operationId: closeSchoolTermEncoding
+  description: >-
+    Department Head, Department Staff, or Admin closes grade encoding for the specified school
+    term. Department Head and Department Staff close grade encoding for their own department
+    (`scope: department`, updating the department's `(school_term_id, department_id)` closure
+    state with `is_closed=true` and stamping `closed_by` and `closed_at` server-side). System
+    Administrators may close grade encoding for a specific department (`scope: department`,
+    requiring `department_id`) or institution-wide (`scope: institution`, setting global
+    `SchoolTerm.is_locked=true`). Cross-department or non-Admin institution-wide closure
+    requests are rejected with `403 Forbidden`. Commits an audit log entry in the same
+    transaction.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/department scope at runtime; restrict
+    institution-wide lock (`scope: institution`) to admin; derive audit actor/time server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/SchoolTerm.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: school_term_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/SchoolTermCloseEncodingRequest.yaml"

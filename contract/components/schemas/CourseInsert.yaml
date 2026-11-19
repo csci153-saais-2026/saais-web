@@ -1,0 +1,41 @@
+type: object
+required:
+  - department_id
+  - code
+  - title
+  - units
+properties:
+  department_id:
+    type: string
+    format: uuid
+  code:
+    type: string
+    minLength: 2
+    maxLength: 250
+    pattern: \S
+  title:
+    type: string
+    minLength: 3
+    maxLength: 250
+    pattern: \S
+  category:
+    $ref: "./CourseCategory.yaml"
+    default: major
+  units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  is_elective:
+    type: boolean
+    default: false
+  status:
+    $ref: "./CourseStatus.yaml"
+    default: active
+  repeatable_type:
+    $ref: "./RepeatableType.yaml"
+    default: none
+  initial_curriculum_slot:
+    anyOf:
+      - $ref: "./InitialCurriculumSlotInput.yaml"
+      - type: "null"
+additionalProperties: false

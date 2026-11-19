@@ -1,0 +1,48 @@
+type: object
+additionalProperties: false
+required:
+  - id
+  - school_term_id
+  - department_id
+  - is_closed
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  school_term_id:
+    type: string
+    format: uuid
+  department_id:
+    type: string
+    format: uuid
+  is_closed:
+    type: boolean
+    example: true
+  closed_by:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+  closed_by_name:
+    type: [string, "null"]
+    readOnly: true
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+  closed_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  closure_note:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+description: >-
+  Department-scoped grade encoding closure state for a `(school_term_id, department_id)` pair,
+  distinct from the institution-wide `SchoolTerm.is_locked` flag.

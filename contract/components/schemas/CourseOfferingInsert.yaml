@@ -1,0 +1,30 @@
+type: object
+required:
+  - school_term_id
+  - course_id
+properties:
+  school_term_id:
+    type: string
+    format: uuid
+  course_id:
+    type: string
+    format: uuid
+  section:
+    type:
+      - string
+      - "null"
+    maxLength: 64
+  schedule:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  is_by_request:
+    type: boolean
+    default: false
+additionalProperties: false

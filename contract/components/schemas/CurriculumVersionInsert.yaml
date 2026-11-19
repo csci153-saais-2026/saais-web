@@ -1,0 +1,45 @@
+type: object
+additionalProperties: false
+properties:
+  program_id:
+    type: string
+    format: uuid
+  clone_from_version_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    description: Optional existing curriculum version UUID to clone terms and slots from; only a Department Head with scope over the source and target may use it.
+  version_label:
+    type: string
+    minLength: 1
+    maxLength: 100
+    pattern: \S
+  effective_start:
+    type: string
+    format: date
+  effective_end:
+    type:
+      - string
+      - "null"
+    format: date
+  delinquency_threshold:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  total_units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  status:
+    $ref: "./CurriculumVersionStatus.yaml"
+  curriculum:
+    $ref: "./CurriculumDefinition.yaml"
+required:
+  - program_id
+anyOf:
+  - required:
+      - curriculum
+  - required:
+      - version_label
+      - effective_start

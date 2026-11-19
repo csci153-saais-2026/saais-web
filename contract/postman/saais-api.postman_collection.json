@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "00000000-0000-4000-8000-5aa15c011ec7",
     "name": "SAAIS OpenAPI 3.1 Contract Collection (6 Roles)",
-    "description": "Generated directly from `contract/openapi.yaml`. Covers operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both authorized (`2xx`) and unauthorized/denied (`401`/`403`/`409`) verification requests. Uses placeholder variables and synthetic test IDs only.",
+    "description": "Generated directly from `contract/openapi.yaml`. Covers operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with authorized and unauthorized/denied verification requests. The deprecated saved-attempt deletion operation expects `409` for an authorized adviser. Uses placeholder variables and synthetic test IDs only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -882,7 +882,7 @@
                     {
                       "key": "student_number",
                       "value": "",
-                      "description": "Filter by student number (e.g. `eq.2023-04412`)",
+                      "description": "Filter by student number (e.g. `eq.23-1-04412`)",
                       "disabled": true
                     },
                     {
@@ -996,7 +996,7 @@
                     {
                       "key": "student_number",
                       "value": "",
-                      "description": "Filter by student number (e.g. `eq.2023-04412`)",
+                      "description": "Filter by student number (e.g. `eq.23-1-04412`)",
                       "disabled": true
                     },
                     {
@@ -10430,18 +10430,25 @@
         },
         {
           "name": "[DELETE] /functions/v1/students/{student_id}/attempts/{attempt_id} (deleteOpenTermAttempt)",
-          "description": "Remove unsubmitted or erroneous open-term enrollment row\n\nAuthorized roles: adviser\nScope rules: `\"current-adviser-only\"`",
+          "description": "Reject deletion of saved course attempts\n\nAuthorized roles: adviser\nScope rules: `\"current-adviser-only\"`",
           "item": [
             {
-              "name": "Authorized (adviser) — DELETE /functions/v1/students/{student_id}/attempts/{attempt_id}",
+              "name": "Authorized (adviser, 409 Conflict for saved attempt) — DELETE /functions/v1/students/{student_id}/attempts/{attempt_id}",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"deleteOpenTermAttempt — status is one of [204]\", function () {",
-                      "  pm.expect([204]).to.include(pm.response.code);",
+                      "pm.test(\"deleteOpenTermAttempt — status is one of [409]\", function () {",
+                      "  pm.expect([409]).to.include(pm.response.code);",
+                      "});",
+                      "pm.test(\"deleteOpenTermAttempt — error response includes sanitized code and message\", function () {",
+                      "  if (pm.response.code >= 400 && pm.response.headers.get(\"Content-Type\")?.includes(\"application/json\")) {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.be.an(\"object\");",
+                      "    pm.expect(body.code || body.error || body.message).to.be.ok;",
+                      "  }",
                       "});"
                     ]
                   }
@@ -10476,7 +10483,7 @@
                   ],
                   "query": []
                 },
-                "description": "Remove unsubmitted or erroneous open-term enrollment row\n\n- **Operation ID**: `deleteOpenTermAttempt`\n- **Authorized roles: adviser**\nScope rules: `\"current-adviser-only\"`"
+                "description": "Reject deletion of saved course attempts\n\nSaved course attempts cannot be deleted (FR-ENR-06). A request for a saved attempt returns 409 Conflict. Unsaved rows are removed locally before submission; drops are recorded as DR under FR-GRD-03.\n\n- **Operation ID**: `deleteOpenTermAttempt`\n- **Authorized roles: adviser**\nScope rules: `\"current-adviser-only\"`"
               },
               "response": []
             },
@@ -10854,7 +10861,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/inc-completion",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{editable_term_attempt_id}}/inc-completion",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10864,7 +10871,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{editable_term_attempt_id}}",
                     "inc-completion"
                   ],
                   "query": []
@@ -10924,7 +10931,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{attempt_id}}/inc-completion",
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/attempts/{{editable_term_attempt_id}}/inc-completion",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -10934,7 +10941,7 @@
                     "students",
                     "{{student_id}}",
                     "attempts",
-                    "{{attempt_id}}",
+                    "{{editable_term_attempt_id}}",
                     "inc-completion"
                   ],
                   "query": []

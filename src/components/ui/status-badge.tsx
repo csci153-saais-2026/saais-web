@@ -1,7 +1,7 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { FlagIcon } from "@/components/icons"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { FlagIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
 
 /**
  * Status vocabulary from the design system. Status is never conveyed by color alone:
@@ -35,10 +35,12 @@ const statusBadgeVariants = cva(
       },
     },
     defaultVariants: { status: "not-taken" },
-  }
-)
+  },
+);
 
-export type Status = NonNullable<VariantProps<typeof statusBadgeVariants>["status"]>
+export type Status = NonNullable<
+  VariantProps<typeof statusBadgeVariants>["status"]
+>;
 
 export const statusLabels: Record<Status, string> = {
   passed: "Passed",
@@ -57,10 +59,10 @@ export const statusLabels: Record<Status, string> = {
   archived: "Archived",
   invited: "Invited",
   disabled: "Disabled",
-}
+};
 
 /** Statuses that show a flag glyph instead of a dot. */
-const flagStatuses: ReadonlySet<Status> = new Set(["delinquent", "flagged"])
+const flagStatuses: ReadonlySet<Status> = new Set(["delinquent", "flagged"]);
 
 function StatusBadge({
   className,
@@ -68,7 +70,7 @@ function StatusBadge({
   children,
   ...props
 }: React.ComponentProps<"span"> & VariantProps<typeof statusBadgeVariants>) {
-  const key = (status ?? "not-taken") as Status
+  const key = (status ?? "not-taken") as Status;
   return (
     <span
       data-slot="status-badge"
@@ -88,7 +90,7 @@ function StatusBadge({
       )}
       {children ?? statusLabels[key]}
     </span>
-  )
+  );
 }
 
-export { StatusBadge, statusBadgeVariants }
+export { StatusBadge, statusBadgeVariants };

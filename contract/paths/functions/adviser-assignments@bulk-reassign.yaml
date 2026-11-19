@@ -1,0 +1,48 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Bulk reassign adviser for multiple students
+  operationId: bulkReassignAdvisers
+  description: >-
+    Department Head or Department Staff atomically reassigns one or more students to an
+    eligible active adviser within their department, closing each prior
+    AdviserAssignment and opening the new one on identical dates with audit logging and
+    notifications. The caller's department must be each student's current destination department;
+    an existing adviser may belong to the student's former department after a transfer.
+  x-required-roles:
+    - department_head
+    - department_staff
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/BulkAdviserReassignmentResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/BulkAdviserReassignmentRequest.yaml"

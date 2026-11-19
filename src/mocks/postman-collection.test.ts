@@ -2,8 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import rawCollection from "../../contract/postman/saais-api.postman_collection.json";
 import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
 import { saaisMockServer } from "./node";
-import { getMockDatabase, resetMockDatabase } from "./store";
 import { MOCK_IDS } from "./personas";
+import { getMockDatabase, resetMockDatabase } from "./store";
 
 interface PostmanHeader {
   key: string;
@@ -96,21 +96,59 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
 
     for (const { fullName, item } of requests) {
       resetMockDatabase();
-      // A correction is allowed only after a completion and when the term is editable.
-      if (fullName.includes("(correctINCCompletion)") && item.name.startsWith("Authorized")) {
-        const db = getMockDatabase();
-        const term = db.schoolTerms.find(value => value.id === MOCK_IDS.term2025Sem2Closed)!;
-        term.is_locked = false;
-        db.incResolutions.push({
-          id: MOCK_IDS.incResolution1, student_id: MOCK_IDS.studentPrimary,
-          attempt_id: MOCK_IDS.attemptCsci102Inc, completion_grade: 2,
-          resolved_by: MOCK_IDS.adviserPrimary, resolved_at: "2026-11-10T09:00:00Z",
-          updated_by: MOCK_IDS.adviserPrimary, updated_at: "2026-11-10T09:00:00Z",
-          effective_status: "passed",
-        });
-      }
       const req = item.request!;
-      const rawUrl = interpolate(req.url.raw, env);
+      let rawUrl = interpolate(req.url.raw, env);
+      if (
+        req.method === "DELETE" &&
+        fullName.includes("(deleteCourse)") &&
+        item.name.startsWith("Authorized")
+      ) {
+        const db = getMockDatabase();
+        const unusedId = "50000000-0000-4000-8009-000000000001";
+        db.courses.push({
+          ...db.courses[0]!,
+          id: unusedId,
+          code: "TEST 999",
+          title: "Unused test course",
+        });
+        rawUrl = rawUrl.replace(
+          /\/catalog\/course\/[^/?]+/,
+          `/catalog/course/${unusedId}`,
+        );
+      }
+      const isSavedAttemptDelete =
+        req.method === "DELETE" &&
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteOpenTermAttempt)");
+      let attemptsBefore: ReturnType<typeof structuredClone> | undefined;
+      let attemptResultsBefore: ReturnType<typeof structuredClone> | undefined;
+      if (isSavedAttemptDelete) {
+        const db = getMockDatabase();
+        const attempt = db.attempts.find(
+          (row) => row.id === MOCK_IDS.attemptCsci153Open,
+        );
+        expect(attempt?.student_id).toBe(MOCK_IDS.studentPrimary);
+        const offering = db.courseOfferings.find(
+          (row) => row.id === attempt?.course_offering_id,
+        );
+        const term = db.schoolTerms.find(
+          (row) => row.id === offering?.school_term_id,
+        );
+        expect(term?.is_locked).toBe(false);
+        expect(
+          db.departmentTermEncodings.find(
+            (row) =>
+              row.school_term_id === term?.id &&
+              row.department_id === MOCK_IDS.deptDcst,
+          )?.is_closed,
+        ).toBe(false);
+        rawUrl = rawUrl.replace(
+          /\/attempts\/[^/?]+/,
+          `/attempts/${MOCK_IDS.attemptCsci153Open}`,
+        );
+        attemptsBefore = structuredClone(db.attempts);
+        attemptResultsBefore = structuredClone(db.attemptResults);
+      }
       const headers: Record<string, string> = {};
       for (const h of req.header ?? []) {
         headers[h.key] = interpolate(h.value, env);
@@ -131,7 +169,12 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
 
       const response = await fetch(rawUrl, init);
 
-      if (item.name.startsWith("Authorized")) {
+      if (isSavedAttemptDelete) {
+        expect(response.status, `Expected 409 for ${fullName}`).toBe(409);
+        expect(await response.json()).toMatchObject({ code: "CONFLICT" });
+        expect(getMockDatabase().attempts).toEqual(attemptsBefore);
+        expect(getMockDatabase().attemptResults).toEqual(attemptResultsBefore);
+      } else if (item.name.startsWith("Authorized")) {
         expect(
           response.status,
           `Expected 2xx for ${fullName} (${req.method} ${rawUrl}), got ${response.status}`,

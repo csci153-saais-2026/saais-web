@@ -1,0 +1,15 @@
+type: object
+required:
+  - course_id
+  - prerequisite_course_id
+  - type
+properties:
+  course_id:
+    type: string
+    format: uuid
+  prerequisite_course_id:
+    type: string
+    format: uuid
+  type:
+    $ref: "./PrerequisiteType.yaml"
+additionalProperties: false

@@ -1,0 +1,83 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  recipient_id:
+    type: string
+    format: uuid
+  kind:
+    $ref: "./NotificationKind.yaml"
+  event_type:
+    $ref: "./NotificationEventType.yaml"
+  title:
+    type: string
+    minLength: 1
+    maxLength: 250
+  body:
+    type: string
+    minLength: 1
+    maxLength: 2000
+  target_route:
+    type:
+      - string
+      - "null"
+    maxLength: 1000
+  target_student_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  actor_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  entity_type:
+    type:
+      - string
+      - "null"
+    maxLength: 100
+  entity_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  dedupe_key:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+  email_delivery_status:
+    type:
+      - string
+      - "null"
+    enum:
+      - pending
+      - sent
+      - skipped
+      - failed
+      - null
+  is_read:
+    type: boolean
+  read_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - recipient_id
+  - kind
+  - event_type
+  - title
+  - body
+  - is_read
+  - created_at

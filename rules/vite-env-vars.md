@@ -3,10 +3,12 @@
 Vite exposes environment variables on the `import.meta.env` object. Unlike server-side frameworks, all variables are embedded into the JavaScript bundle at build time.
 
 ## Why it matters
+
 - **Security:** Accidental exposure of private keys (`DB_PASSWORD`) to the client.
 - **Confusion:** Expecting variables to break at runtime if the environment changes (they are "baked in" at build time).
 
 ## Incorrect
+
 Using `process.env` or non-prefixed variables.
 
 ```tsx
@@ -18,6 +20,7 @@ console.log(import.meta.env.SECRET_KEY);
 ```
 
 ## Correct
+
 Prefix public variables with `VITE_` and access via `import.meta.env`.
 
 ```env
@@ -36,7 +39,9 @@ const dbPass = import.meta.env.DB_PASSWORD; // undefined
 ```
 
 ### Type Safety (Recommended)
+
 Create `src/vite-env.d.ts`:
+
 ```ts
 /// <reference types="vite/client" />
 

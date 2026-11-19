@@ -48,7 +48,7 @@ TYPE_SPECS = [
      'thing that gets recorded.</p>', "IBM Plex Sans 400 · 15/1.55"),
     ("Table cell", '<span style="font-size: 13.5px">Design and Analysis of Algorithms</span>',
      "IBM Plex Sans 400 · 13.5/1.5"),
-    ("Numeric / code", '<span class="mono" style="font-size: 14px">CS 132 · 1.75 · 2023-04412</span>',
+    ("Numeric / code", '<span class="mono" style="font-size: 14px">CS 132 · 1.75 · 23-1-04412</span>',
      "IBM Plex Mono 500 · tabular"),
 ]
 
@@ -129,7 +129,7 @@ SYSTEM = (f'<div style="background: {CREAM}; padding: 48px 56px 60px">'
                      f'<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px">'
                      f'{field("Text field", "CS 132")}'
                      f'{select("Select", "grade_replacement")}'
-                     f'{field("Disabled", "2023-04412", disabled=True)}'
+                     f'{field("Disabled", "23-1-04412", disabled=True)}'
                      f'<div>{searchbar("Search", "100%")}</div></div>'
                      f'<div style="height: 1px; background: {LINE_SF}; margin: 24px 0"></div>'
                      f'<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px">'
@@ -317,17 +317,17 @@ M_ADV_BODY = (
             for t, on in [("Active 48", True), ("Flagged 3", False), ("Open INC 5", False)]) +
     '</div>'
     f'<div style="background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; overflow: hidden">'
-    + m_advisee("Cruz, Angelo P.", "2022-01188", "AC", "BSCS 3rd", "3.42",
+    + m_advisee("Cruz, Angelo P.", "22-1-01188", "AC", "BSCS 3rd", "3.42",
                 status("failed", "Delinquent"))
-    + m_advisee("Bautista, Maria Isabel L.", "2023-04412", "MB", "BSCS 2nd", "1.68",
+    + m_advisee("Bautista, Maria Isabel L.", "23-1-04412", "MB", "BSCS 2nd", "1.68",
                 badge("INC · 47 days", INC_FG, INC_BG))
-    + m_advisee("Lim, Joshua T.", "2023-02940", "JL", "BSCS 2nd", "2.14",
+    + m_advisee("Lim, Joshua T.", "23-1-02940", "JL", "BSCS 2nd", "2.14",
                 badge("INC · 12 days", INC_FG, INC_BG))
-    + m_advisee("Santos, Kier B.", "2021-03310", "KS", "BSCS 4th", "2.88",
+    + m_advisee("Santos, Kier B.", "21-1-03310", "KS", "BSCS 4th", "2.88",
                 badge("Watchlist", INC_FG, INC_BG))
-    + m_advisee("Domingo, Grace A.", "2023-01553", "GD", "BSCS 2nd", "1.44",
+    + m_advisee("Domingo, Grace A.", "23-1-01553", "GD", "BSCS 2nd", "1.44",
                 status("passed", "Good standing"))
-    + m_advisee("Reyes, Paolo M.", "2022-04120", "PR", "BSCS 3rd", "2.05",
+    + m_advisee("Reyes, Paolo M.", "22-1-04120", "PR", "BSCS 3rd", "2.05",
                 status("passed", "Good standing"))
     + '</div>')
 

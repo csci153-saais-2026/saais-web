@@ -1,4 +1,4 @@
-export { saaisMswHandlers } from './handlers'
+export { saaisMswHandlers } from "./handlers";
 export {
   canAccessDepartment,
   canAccessFaculty,
@@ -13,9 +13,9 @@ export {
   type MockRoleScope,
   type SaaisRole,
   type SaaisScopeType,
-} from './personas'
+} from "./personas";
 export {
   getMockDatabase,
   resetMockDatabase,
   type MockDatabaseState,
-} from './store'
+} from "./store";

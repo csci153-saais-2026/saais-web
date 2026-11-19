@@ -1,0 +1,36 @@
+type: object
+required:
+  - id
+  - school_term_id
+  - course_id
+  - is_by_request
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  school_term_id:
+    type: string
+    format: uuid
+  course_id:
+    type: string
+    format: uuid
+  section:
+    type:
+      - string
+      - "null"
+    maxLength: 64
+  schedule:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    description: Default instructor name for this course offering/section.
+  is_by_request:
+    type: boolean
+    example: false

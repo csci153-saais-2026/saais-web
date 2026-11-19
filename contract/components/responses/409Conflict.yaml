@@ -1,0 +1,10 @@
+description: Conflict with existing unique constraint, natural key, or immutable state.
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/Error.yaml"
+    example:
+      code: "23505"
+      message: duplicate key value violates unique constraint
+      details: Key (code)=(BSCS) already exists.
+      hint: Provide unique identifier.

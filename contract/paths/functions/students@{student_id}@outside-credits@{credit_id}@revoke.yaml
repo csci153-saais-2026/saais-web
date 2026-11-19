@@ -1,0 +1,59 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Revoke an outside or shiftee credit decision
+  operationId: revokeOutsideCredit
+  description: >-
+    Department Head or Admin soft-revokes an outside credit decision with a required reason and
+    expected_updated_at optimistic concurrency guard, preserving historical records and writing
+    an audit log entry.
+  x-required-roles:
+    - department_head
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Outside credit soft-revoked atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/OutsideCredit.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: credit_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/RevokeCreditDecisionRequest.yaml"

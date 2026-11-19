@@ -1,0 +1,10 @@
+description: Internal PostgreSQL or Edge Function execution error.
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/Error.yaml"
+    example:
+      code: XX000
+      message: Internal server error
+      details: Unexpected exception occurred during processing.
+      hint: null

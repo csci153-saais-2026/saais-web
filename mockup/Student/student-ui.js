@@ -245,7 +245,7 @@
       stats: [{ label: 'Units earned', value: earned + ' of ' + req }],
       sections: sections
     }, ctx.pdf);
-    savePdf(report, 'SAAIS-curriculum-checklist.pdf', function () { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '2023-04412', 'Downloaded checklist'); });
+    savePdf(report, 'SAAIS-curriculum-checklist.pdf', function () { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '23-1-04412', 'Downloaded checklist'); });
   }
 
   function downloadGrades(main) {
@@ -263,7 +263,7 @@
       info: studentInfo(nm, id, ctx),
       stats: [], sections: sections
     }, ctx.pdf), 'SAAIS-grade-summary.pdf', function () {
-      if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '2023-04412', 'Downloaded grade summary');
+      if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '23-1-04412', 'Downloaded grade summary');
     });
   }
 
@@ -485,7 +485,7 @@
     FLAGS = loadFlags();
     FLAGS.unshift({ id: 'sf' + Date.now(), status: 'open', studentName: nm ? nm.textContent.trim() : 'Student', studentId: id ? id.textContent.trim() : '', code: current.code, title: current.title, grade: current.grade, reason: f.reason.value, details: f.details.value.trim(), filed: today() });
     saveFlags();
-    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'Change', 'Maria Isabel Bautista', 'Filed a grade flag on ' + current.code + ' (' + f.reason.value + ')', '2023-04412');
+    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'Change', 'Maria Isabel Bautista', 'Filed a grade flag on ' + current.code + ' (' + f.reason.value + ')', '23-1-04412');
     markFlagged();
     dlg.close();
   });
