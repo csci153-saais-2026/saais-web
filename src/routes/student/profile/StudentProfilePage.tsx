@@ -1,5 +1,4 @@
 import * as React from "react"
-import { useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router"
 import {
   AssignmentHistoryDialog,
@@ -22,10 +21,9 @@ import { CurriculumHistoryDialog } from "./CurriculumHistoryDialog"
 import { ProfileDetailsPanel } from "./ProfileDetailsPanel"
 import { ProfilePhotoCard } from "./ProfilePhotoCard"
 import {
-  deleteStudentPhoto,
-  updateStudentPhoto,
-  type StudentProfileData,
-} from "./student-profile.api"
+  useDeleteStudentPhoto,
+  useUpdateStudentPhoto,
+} from "./use-student-photo"
 import { useStudentProfile } from "./use-student-profile"
 import {
   studentPhotoSchema,
@@ -296,43 +294,28 @@ export function StudentProfileView({
  * Student Profile page container handling loading, error/retry, and profile photo updates.
  */
 export function StudentProfilePage({ studentId }: { studentId: string }) {
-  const queryClient = useQueryClient()
   const { data, isPending, isError, refetch } = useStudentProfile(studentId)
-  const [isPhotoBusy, setIsPhotoBusy] = React.useState(false)
+  const updatePhotoMutation = useUpdateStudentPhoto(studentId)
+  const deletePhotoMutation = useDeleteStudentPhoto(studentId)
+
+  const isPhotoBusy =
+    updatePhotoMutation.isPending || deletePhotoMutation.isPending
 
   async function handleUploadPhoto(file: File) {
-    setIsPhotoBusy(true)
-    try {
-      const dataUrl = await readFileAsDataUrl(file)
-      const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg"
-      const ext = mimeType === "image/png" ? "png" : "jpg"
-      const payload: StudentPhotoValues = studentPhotoSchema.parse({
-        storage_object_path: `students/${studentId}/avatar.${ext}`,
-        avatar_url: dataUrl,
-        mime_type: mimeType,
-        file_size_bytes: file.size,
-      })
-      const updated = await updateStudentPhoto(studentId, payload)
-      queryClient.setQueryData<StudentProfileData>(
-        ["student", studentId, "profile"],
-        (prev) => (prev ? { ...prev, profile: updated } : prev)
-      )
-    } finally {
-      setIsPhotoBusy(false)
-    }
+    const dataUrl = await readFileAsDataUrl(file)
+    const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg"
+    const ext = mimeType === "image/png" ? "png" : "jpg"
+    const payload: StudentPhotoValues = studentPhotoSchema.parse({
+      storage_object_path: `students/${studentId}/avatar.${ext}`,
+      avatar_url: dataUrl,
+      mime_type: mimeType,
+      file_size_bytes: file.size,
+    })
+    await updatePhotoMutation.mutateAsync(payload)
   }
 
   async function handleRemovePhoto() {
-    setIsPhotoBusy(true)
-    try {
-      const updated = await deleteStudentPhoto(studentId)
-      queryClient.setQueryData<StudentProfileData>(
-        ["student", studentId, "profile"],
-        (prev) => (prev ? { ...prev, profile: updated } : prev)
-      )
-    } finally {
-      setIsPhotoBusy(false)
-    }
+    await deletePhotoMutation.mutateAsync()
   }
 
   if (isPending) {

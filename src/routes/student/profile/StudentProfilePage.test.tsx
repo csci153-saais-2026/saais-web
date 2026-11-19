@@ -187,4 +187,62 @@ describe("StudentProfilePage", () => {
       expect(screen.getByText("Your student profile.")).toBeTruthy()
     })
   })
+
+  it("removes profile photo via useDeleteStudentPhoto and invalidates profile query", async () => {
+    const profileWithAvatar: ApiSchema<"Profile"> = {
+      ...mockProfile,
+      avatar_url: "https://example.com/avatar.jpg",
+    }
+
+    vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {
+      if (path === "/rest/v1/profile") {
+        return Promise.resolve({
+          data: [profileWithAvatar],
+          response: new Response(),
+        }) as never
+      }
+      return Promise.resolve({
+        data: [],
+        response: new Response(),
+      }) as never
+    })
+
+    const deleteSpy = vi.spyOn(apiClient, "DELETE").mockResolvedValue({
+      data: { ...profileWithAvatar, avatar_url: null },
+      response: new Response(),
+    } as never)
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <StudentProfilePage studentId="stu-1" />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const removeBtn = await screen.findByRole("button", {
+      name: "Remove photo",
+    })
+    fireEvent.click(removeBtn)
+
+    await waitFor(() => {
+      expect(deleteSpy).toHaveBeenCalledWith(
+        "/functions/v1/students/{student_id}/photo",
+        {
+          params: { path: { student_id: "stu-1" } },
+        }
+      )
+    })
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["student", "stu-1", "profile"],
+      })
+    })
+  })
 })
