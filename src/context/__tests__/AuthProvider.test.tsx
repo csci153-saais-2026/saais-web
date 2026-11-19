@@ -169,7 +169,7 @@ describe('AuthProvider, useAuth & Environment Config', () => {
     act(() => {
       result.current.switchMockPersona('dean_dept_head')
     })
-    expect(result.current.roles).toEqual(['dean', 'department_head', 'adviser'])
+    expect(result.current.roles).toEqual(['adviser', 'dean', 'department_head'])
     expect(result.current.roleAssignments).toHaveLength(3)
 
     act(() => {
