@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { AlertIcon, DownloadIcon } from "@/components/icons"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
@@ -16,10 +16,8 @@ import {
   type PdfReportPayload,
 } from "@/lib/pdf/student-report-formatter"
 import {
-  createStudentGradeFlag,
-  recordGradesExportEvent,
-} from "./student-grades.api"
-import {
+  useCreateGradeFlag,
+  useRecordGradesExport,
   useStudentGradeFlags,
   useStudentGrades,
 } from "./use-student-grades"
@@ -470,7 +468,6 @@ function buildGradesPageData(
  * and grade summary PDF preview.
  */
 export function StudentGradesPage({ studentId }: { studentId: string }) {
-  const queryClient = useQueryClient()
   const gradesQuery = useStudentGrades(studentId)
   const flagsQuery = useStudentGradeFlags(studentId)
   const metaQuery = useQuery({
@@ -478,11 +475,8 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
     queryFn: () => fetchStudentGradesMetadata(studentId),
     enabled: Boolean(studentId),
   })
-
-  const [isSubmittingFlag, setIsSubmittingFlag] = React.useState(false)
-  const [flagSubmitError, setFlagSubmitError] = React.useState<string | null>(
-    null
-  )
+  const createFlagMutation = useCreateGradeFlag(studentId)
+  const recordExportMutation = useRecordGradesExport(studentId)
 
   const data = React.useMemo(() => {
     if (!gradesQuery.data) return null
@@ -508,25 +502,14 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
   async function handleCreateFlag(
     payload: ApiSchema<"GradeFlagCreateRequest">
   ) {
-    setIsSubmittingFlag(true)
-    setFlagSubmitError(null)
-    try {
-      const created = await createStudentGradeFlag(studentId, payload)
-      queryClient.setQueryData<ApiSchema<"GradeFlag">[]>(
-        ["student", studentId, "grade-flags"],
-        (prev) => [created, ...(prev ?? [])]
-      )
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Could not submit your grade flag. Please try again."
-      setFlagSubmitError(message)
-      throw err
-    } finally {
-      setIsSubmittingFlag(false)
-    }
+    await createFlagMutation.mutateAsync(payload)
   }
+
+  const flagSubmitError = createFlagMutation.error
+    ? createFlagMutation.error instanceof Error
+      ? createFlagMutation.error.message
+      : "Could not submit your grade flag. Please try again."
+    : null
 
   if (isPending) {
     return <p role="status">Loading...</p>
@@ -562,10 +545,10 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
       department={data.department}
       faculty={data.faculty}
       onCreateFlag={handleCreateFlag}
-      isSubmittingFlag={isSubmittingFlag}
+      isSubmittingFlag={createFlagMutation.isPending}
       flagSubmitError={flagSubmitError}
       onPrintReport={() => {
-        void recordGradesExportEvent(studentId).catch(() => {})
+        recordExportMutation.mutate(undefined)
       }}
     />
   )

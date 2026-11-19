@@ -199,4 +199,77 @@ describe("StudentGradesPage", () => {
       expect(screen.getByText(/2025 - 2026 · 1st Semester/)).toBeTruthy()
     })
   })
+
+  it("submits a grade flag via useCreateGradeFlag and invalidates grade-flags and academic-summary queries", async () => {
+    vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {
+      if (path === "/functions/v1/students/{student_id}/grades") {
+        return Promise.resolve({
+          data: mockTerms,
+          response: new Response(),
+        }) as never
+      }
+      return Promise.resolve({
+        data: [],
+        response: new Response(),
+      }) as never
+    })
+
+    const postSpy = vi.spyOn(apiClient, "POST").mockResolvedValue({
+      data: {
+        id: "flag-new",
+        attempt_id: "att-1",
+        student_id: "stu-1",
+        reported_stage: "final",
+        reported_grade_text: "2.00",
+        issue_type: "incorrect_grade",
+        details: "Final grade should be 1.50.",
+        status: "open",
+        resolution_notes: null,
+        resolved_by: null,
+        resolved_at: null,
+        created_at: "2026-01-12T08:00:00Z",
+        updated_at: "2026-01-12T08:00:00Z",
+      },
+      response: new Response(),
+    } as never)
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <StudentGradesPage studentId="stu-1" />
+      </QueryClientProvider>
+    )
+
+    const flagButtons = await screen.findAllByRole("button", {
+      name: "Flag Grade",
+    })
+    fireEvent.click(flagButtons[0])
+
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Final grade should be 1.50." },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Submit flag" }))
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith(
+        "/functions/v1/students/{student_id}/grade-flags",
+        expect.objectContaining({
+          params: { path: { student_id: "stu-1" } },
+        })
+      )
+    })
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["student", "stu-1", "grade-flags"],
+      })
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["student", "stu-1", "academic-summary"],
+      })
+    })
+  })
 })
