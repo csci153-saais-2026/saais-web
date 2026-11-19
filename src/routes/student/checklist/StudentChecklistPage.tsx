@@ -32,6 +32,10 @@ import {
   ChecklistToolbar,
   type ChecklistFilterValue,
 } from "./ChecklistToolbar"
+import {
+  fetchStudentChecklist,
+  recordChecklistExportEvent,
+} from "./student-checklist.api"
 
 export interface ChecklistSlotDisplayItem
   extends ApiSchema<"ChecklistSlotResult"> {
@@ -436,17 +440,14 @@ interface ChecklistPageData {
 async function fetchStudentChecklistData(
   studentId: string
 ): Promise<ChecklistPageData> {
-  const [summaryRes, checklistRes] = await Promise.all([
+  const [summaryRes, slotResults] = await Promise.all([
     apiClient.GET("/functions/v1/students/{student_id}/academic-summary", {
       params: { path: { student_id: studentId } },
     }),
-    apiClient.GET("/functions/v1/students/{student_id}/checklist", {
-      params: { path: { student_id: studentId } },
-    }),
+    fetchStudentChecklist(studentId),
   ])
 
   const summary = unwrapApiResult(summaryRes)
-  const slotResults = unwrapApiResult(checklistRes)
 
   const [
     profilesRes,
@@ -672,6 +673,9 @@ export function StudentChecklistPage({
       adviserName={state.data.adviserName}
       department={state.data.department}
       faculty={state.data.faculty}
+      onPrintReport={() => {
+        void recordChecklistExportEvent(studentId).catch(() => undefined)
+      }}
     />
   )
 }
