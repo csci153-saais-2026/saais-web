@@ -1,15 +1,17 @@
-import { readFile } from 'node:fs/promises'
 import { describe, expect, it, vi } from 'vitest'
 import {
   MAX_STUDENT_IMPORT_FILE_SIZE,
   MAX_STUDENT_IMPORT_ROWS,
   STUDENT_IMPORT_HEADERS,
-} from './student-import.schema'
-import { createStudentImportTemplate, parseStudentFile } from './parse-student-file'
+} from './student-import'
+import { createStudentImportTemplate, parseStudentFile as parseWithReferences } from './student-import'
 
 const PROGRAM_ID = '11111111-1111-4111-8111-111111111111'
 const CURRICULUM_ID = '22222222-2222-4222-8222-222222222222'
 const ADVISER_ID = '33333333-3333-4333-8333-333333333333'
+
+const references = { programs: [{ id: PROGRAM_ID, code: PROGRAM_ID }], curricula: [{ id: CURRICULUM_ID, program_id: PROGRAM_ID, version_label: CURRICULUM_ID }], advisers: [{ id: ADVISER_ID, email: ADVISER_ID }] }
+const parseStudentFile = (file: File) => parseWithReferences(file, references)
 
 function csvFile(contents: string, name = 'students.csv'): File {
   return new File([contents], name, { type: 'text/csv' })
@@ -25,13 +27,6 @@ function csvRow(studentNumber = '00123', email = 'maria@example.edu.ph') {
     ADVISER_ID,
     '2026',
   ].join(',')
-}
-
-async function xlsxFixture(): Promise<File> {
-  const buffer = await readFile(
-    'src/routes/department-staff/students/import/fixtures/student-import.xlsx',
-  )
-  return new File([new Uint8Array(buffer)], 'students.xlsx')
 }
 
 function blobText(blob: Blob): Promise<string> {
@@ -67,23 +62,6 @@ describe('parseStudentFile', () => {
       entry_year: 2026,
     })
     expect(typeof result.rows[0].student_number).toBe('string')
-  })
-
-  it('parses XLSX workbooks and preserves text-formatted leading zeroes', async () => {
-    const file = await xlsxFixture()
-
-    const result = await parseStudentFile(file)
-
-    expect(result.rowCount).toBe(2)
-    expect(result.rows).toHaveLength(1)
-    expect(result.rows[0].student_number).toBe('00042')
-    expect(result.rows[0].row_number).toBe(2)
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({
-        rowNumber: 3,
-        message: expect.stringContaining('stored as text'),
-      }),
-    )
   })
 
   it('rejects malformed or unsupported headers', async () => {

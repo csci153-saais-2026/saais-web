@@ -1,12 +1,57 @@
+import { apiClient, postgrestFilter, unwrapApiResult, type ApiSchema } from '@/lib/api'
+import { z } from 'zod'
+
+export const MAX_STUDENT_IMPORT_ROWS = 500
+export const MAX_STUDENT_IMPORT_FILE_SIZE = 10 * 1024 * 1024
+
+export const STUDENT_IMPORT_HEADERS = [
+  'student_number',
+  'full_name',
+  'email',
+  'program',
+  'curriculum',
+  'adviser_email',
+  'entry_year',
+] as const
+
+export const REQUIRED_STUDENT_IMPORT_HEADERS = STUDENT_IMPORT_HEADERS.slice(
+  0,
+  6,
+)
+
+export const studentImportRowSchema = z
+  .object({
+    row_number: z.number().int().min(1),
+    student_number: z
+      .string()
+      .trim()
+      .min(1, 'Student number is required.')
+      .max(64, 'Student number must be 64 characters or fewer.'),
+    full_name: z
+      .string()
+      .trim()
+      .min(1, 'Full name is required.')
+      .max(150, 'Full name must be 150 characters or fewer.'),
+    email: z
+      .string()
+      .trim()
+      .email('Enter a valid email address.')
+      .max(254, 'Email must be 254 characters or fewer.'),
+    program_id: z.uuid('Program ID must be a UUID.'),
+    curriculum_version_id: z.uuid('Curriculum version ID must be a UUID.'),
+    adviser_id: z.uuid('Adviser ID must be a UUID.'),
+    entry_year: z
+      .number()
+      .int('Entry year must be a whole number.')
+      .min(1900, 'Entry year must be 1900 or later.')
+      .max(3000, 'Entry year must be 3000 or earlier.')
+      .nullable()
+      .optional(),
+  })
+  .strict() satisfies z.ZodType<ApiSchema<'StudentBatchImportRowInput'>>
+
+
 import Papa from 'papaparse'
-import type { ApiSchema } from '@/lib/api'
-import {
-  MAX_STUDENT_IMPORT_FILE_SIZE,
-  MAX_STUDENT_IMPORT_ROWS,
-  REQUIRED_STUDENT_IMPORT_HEADERS,
-  STUDENT_IMPORT_HEADERS,
-  studentImportRowSchema,
-} from './student-import.schema'
 
 type StudentImportRow = ApiSchema<'StudentBatchImportRowInput'>
 
@@ -25,6 +70,8 @@ interface SourceRow {
   readonly rowNumber: number
   readonly cells: readonly unknown[]
 }
+
+export interface ImportReferences { programs: { id: string; code: string }[]; curricula: { id: string; program_id: string; version_label: string }[]; advisers: { id: string; email: string }[] }
 
 interface CandidateRow {
   readonly rowNumber: number
@@ -223,6 +270,7 @@ function toEntryYear(value: string): number | undefined {
 
 function parseDataRows(
   records: ParsedRecords,
+  references: ImportReferences,
 ): StudentImportParseResult {
   const headerIndexes = getHeaderIndexes(records.header)
   const candidates: CandidateRow[] = []
@@ -262,20 +310,22 @@ function parseDataRows(
     const numericStudentNumber = typeof studentNumberCell === 'number'
     const rawEntryYear = textFor('entry_year')
     const entryYear = toEntryYear(rawEntryYear)
+    const program = references.programs.find((item) => item.code.toLowerCase() === textFor('program').trim().toLowerCase())
+    const curriculum = references.curricula.find((item) => item.program_id === program?.id && item.version_label.toLowerCase() === textFor('curriculum').trim().toLowerCase())
+    const adviser = references.advisers.find((item) => item.email.toLowerCase() === textFor('adviser_email').trim().toLowerCase())
+    const referenceIssues = [!program ? 'Unknown department program.' : '', !curriculum ? 'Unknown curriculum for this program.' : '', !adviser ? 'No active department adviser has this email.' : ''].filter(Boolean)
     const source: Record<string, unknown> = {
       row_number: sourceRow.rowNumber,
       student_number: textFor('student_number'),
       full_name: textFor('full_name'),
       email: textFor('email'),
-      program_id: textFor('program_id'),
-      curriculum_version_id: textFor('curriculum_version_id'),
-      adviser_id: textFor('adviser_id'),
+      program_id: program?.id,
+      curriculum_version_id: curriculum?.id,
+      adviser_id: adviser?.id,
       ...(entryYear === undefined ? {} : { entry_year: entryYear }),
     }
     const parsed = studentImportRowSchema.safeParse(source)
-    const rowIssues = parsed.success
-      ? []
-      : parsed.error.issues.map((issue) => issue.message)
+    const rowIssues = [...referenceIssues, ...(parsed.success ? [] : parsed.error.issues.filter((issue) => !['program_id', 'curriculum_version_id', 'adviser_id'].includes(String(issue.path[0]))).map((issue) => issue.message))]
 
     if (numericStudentNumber) {
       rowIssues.push(
@@ -348,6 +398,7 @@ function parseDataRows(
 
 export async function parseStudentFile(
   file: File,
+  references: ImportReferences,
 ): Promise<StudentImportParseResult> {
   if (file.size > MAX_STUDENT_IMPORT_FILE_SIZE) {
     throw new Error(
@@ -370,11 +421,34 @@ export async function parseStudentFile(
       ? parseCsvRecords((await readFileAsText(file)).replace(/^\uFEFF/, ''))
       : await parseXlsxRecords(file)
 
-  return parseDataRows(records)
+  return parseDataRows(records, references)
 }
 
 export function createStudentImportTemplate(): Blob {
   return new Blob([`\uFEFF${STUDENT_IMPORT_TEMPLATE_HEADERS}\r\n`], {
     type: 'text/csv;charset=utf-8',
   })
+}
+
+import { listEligibleDepartmentAdvisers } from '../students.api'
+
+const LIMIT = 1000
+function complete<T>(rows: T[], label: string): T[] {
+  if (rows.length >= LIMIT) throw new Error(`${label} reference list may be incomplete.`)
+  return rows
+}
+
+export async function loadImportReferences(departmentId: string): Promise<ImportReferences> {
+  const [programResult, adviserOptions] = await Promise.all([
+    apiClient.GET('/rest/v1/program', { params: { query: { department_id: postgrestFilter.eq(departmentId), limit: LIMIT } } }),
+    listEligibleDepartmentAdvisers(departmentId),
+  ])
+  const programs = complete(unwrapApiResult<ApiSchema<'Program'>[]>(programResult), 'Program').filter((p) => p.department_id === departmentId)
+  const programIds = programs.map((p) => p.id)
+  const adviserIds = adviserOptions.map((a) => a.id)
+  const [versions, profiles] = await Promise.all([
+    programIds.length ? apiClient.GET('/rest/v1/curriculum_version', { params: { query: { program_id: postgrestFilter.inList(programIds), limit: LIMIT } } }).then((r) => complete(unwrapApiResult<ApiSchema<'CurriculumVersion'>[]>(r), 'Curriculum')) : Promise.resolve([]),
+    adviserIds.length ? apiClient.GET('/rest/v1/profile', { params: { query: { id: postgrestFilter.inList(adviserIds), limit: LIMIT } } }).then((r) => complete(unwrapApiResult<ApiSchema<'Profile'>[]>(r), 'Adviser')) : Promise.resolve([]),
+  ])
+  return { programs, curricula: versions.filter((v) => programIds.includes(v.program_id)), advisers: profiles.filter((p) => adviserIds.includes(p.id) && p.status === 'active') }
 }

@@ -87,7 +87,7 @@ export function listStudentRoster(
     })
 }
 
-async function listDepartmentPrograms(
+export async function listDepartmentPrograms(
   departmentId: string,
   signal?: AbortSignal,
 ): Promise<ApiSchema<'Program'>[]> {
@@ -108,7 +108,7 @@ async function listDepartmentPrograms(
     throw new Error('The department program reference read returned invalid data.')
   }
   assertCompleteReferenceRead(programs, 'Department program')
-  return programs
+  return programs.filter((program) => program.department_id === departmentId)
 }
 
 async function listDepartmentCurricula(
