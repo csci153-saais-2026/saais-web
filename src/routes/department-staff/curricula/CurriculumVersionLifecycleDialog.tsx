@@ -46,23 +46,16 @@ export function CurriculumVersionLifecycleDialog({ action, version, programLabel
   return <Dialog open onOpenChange={open => { if (!open && !mutation.isPending) onClose() }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!mutation.isPending} onEscapeKeyDown={event => { if (mutation.isPending) event.preventDefault() }} onInteractOutside={event => { if (mutation.isPending) event.preventDefault() }}>
       <DialogHeader>
-        <DialogTitle>{deleting ? 'Delete curriculum version' : 'Retire curriculum version'}</DialogTitle>
-        <DialogDescription>{deleting
-          ? 'Delete this version only if the server confirms it has no protected references. Student history, transfer requests, equivalences and required remaining versions can prevent deletion.'
-          : 'Mark this version as retired. Existing student assignments, terms, requirements and historical records are preserved; students are not migrated.'}</DialogDescription>
+        <DialogTitle>{deleting ? 'Delete record' : 'Retire curriculum version'}</DialogTitle>
+        <DialogDescription className="sr-only">{deleting ? 'Confirm curriculum deletion.' : 'Confirm curriculum retirement.'}</DialogDescription>
       </DialogHeader>
-      <dl className="grid gap-2 rounded-sm border bg-secondary/40 p-4 text-sm">
-        <div><dt className="font-semibold">Program</dt><dd>{programLabel}</dd></div>
-        <div><dt className="font-semibold">Version</dt><dd className="break-words">{version.version_label}</dd></div>
-        <div><dt className="font-semibold">Assigned students</dt><dd>{version.enrolled_student_count ?? 'Unavailable'}</dd></div>
-      </dl>
-      {deleting && <p className="text-sm text-muted-foreground">A zero or unavailable student count does not guarantee that deletion is allowed. No dependent records will be removed by this page.</p>}
+      <p className="text-sm text-foreground">{deleting ? 'Delete ' : 'Retire '}<strong>{version.version_label.startsWith(`${programLabel} `) ? version.version_label : `${programLabel} · ${version.version_label}`}</strong>{deleting ? " and all of its terms? This can't be undone." : '? Existing student records will be preserved.'}</p>
       {mutation.isError && <p role="alert" className="text-sm text-destructive">{actionError(mutation.error)}</p>}
       <DialogFooter>
         <Button type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>Cancel</Button>
         {deleting && conflict && canRetire && <Button type="button" variant="outline" disabled={mutation.isPending} onClick={onRetireInstead}>Review retirement instead</Button>}
         <Button type="button" variant={deleting ? 'destructive' : 'default'} disabled={mutation.isPending} onClick={() => void confirm()}>
-          {mutation.isPending ? deleting ? 'Deleting version...' : 'Retiring version...' : deleting ? 'Confirm deletion' : 'Confirm retirement'}
+          {mutation.isPending ? deleting ? 'Deleting version...' : 'Retiring version...' : deleting ? 'Delete' : 'Confirm retirement'}
         </Button>
       </DialogFooter>
     </DialogContent>

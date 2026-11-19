@@ -4,6 +4,8 @@ import type { DepartmentInvitationOptions } from './invitation.api'
 
 export const departmentInviteRoles = [
   'student',
+  'dean',
+  'admin',
   'adviser',
   'department_staff',
   'department_head',
@@ -24,6 +26,7 @@ export interface DepartmentInviteFormValues {
 }
 
 export interface DepartmentInviteContext extends DepartmentInvitationOptions {
+  canInvitePrivilegedRoles?: boolean
   ownEmail: string
   departmentId: string | null
   facultyId: string | null
@@ -62,7 +65,9 @@ export function buildDepartmentInvitePreview(
     errors.push('A department and faculty scope from your approved assignment are required.')
   }
 
-  const additionalRoles = values.additional_roles ?? []
+  const additionalRoles = values.role === 'student' ? [] : values.additional_roles ?? []
+  if (!context.canInvitePrivilegedRoles && ([values.role, ...additionalRoles].some(role => role === 'admin' || role === 'dean'))) errors.push('Admin authority is required to invite Dean or Admin roles.')
+  if (values.role === 'adviser' && additionalRoles.some(role => role === 'admin' || role === 'dean')) errors.push('Adviser invitations cannot include Dean or Admin roles.')
   if (additionalRoles.some(role => !allowedRoles.has(role) || role === 'student' || role === values.role)) {
     errors.push('Additional roles must be unique permitted non-student roles, with Student selected as the primary role when needed.')
   }
@@ -118,6 +123,8 @@ export function buildDepartmentInvitePreview(
       ...(values.entry_year.trim() ? { entry_year: Number(values.entry_year) } : {}),
       ...(roleAssignments.length ? { role_assignments: roleAssignments } : {}),
     }
+  } else if (values.role === 'admin') {
+    payload = { email: emailValue, full_name: nameValue, role: 'admin', ...(roleAssignments.length ? { role_assignments: roleAssignments } : {}) }
   } else if (values.role === 'adviser') {
     payload = {
       email: emailValue,
@@ -140,3 +147,4 @@ export function buildDepartmentInvitePreview(
 
   return { ok: true, payload, roles: [values.role, ...additionalRoles] }
 }
+

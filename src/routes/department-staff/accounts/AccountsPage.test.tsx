@@ -106,6 +106,16 @@ describe('Department Staff accounts directory', () => {
     expect(within(row).getByText('Adviser')).toBeTruthy()
   })
 
+  it('offers all six roles in the primary role selector', async () => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() })
+    renderAccounts()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add account' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
+    for (const role of ['Student', 'Adviser', 'Department Staff', 'Department Head', 'Dean', 'Admin']) {
+      expect(await screen.findByRole('option', { name: role })).toBeTruthy()
+    }
+  })
+
   it('uses the assigned department scope and paginates without exposing another department', async () => {
     renderAccounts()
 
@@ -295,7 +305,7 @@ describe('Department Staff accounts directory', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), { target: { value: 'New Student' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: 'new.student@vsu.edu.ph' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Canonical student number' }), { target: { value: '26-1-00042' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Additional role Adviser' }))
+    expect(screen.queryByRole('checkbox', { name: 'Additional role Adviser' })).toBeNull()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Program' }))
     fireEvent.click(await screen.findByRole('option', { name: /BSCS - Bachelor of Science in Computer Science/ }))
@@ -303,13 +313,7 @@ describe('Department Staff accounts directory', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'BSCS 2024-2025 v1' }))
     fireEvent.click(screen.getByRole('combobox', { name: 'Eligible initial adviser' }))
     fireEvent.click(await screen.findByRole('option', { name: MOCK_PERSONAS.adviser.fullName }))
-    fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
 
-    const summary = await screen.findByRole('region', { name: 'Invitation review' })
-    expect(within(summary).getByText(/new\.student@vsu\.edu\.ph/)).toBeTruthy()
-    expect(within(summary).getByText(/Student, Adviser/)).toBeTruthy()
-    expect(within(summary).getByText('26-1-00042')).toBeTruthy()
-    expect(within(summary).getByText(/BSCS 2024-2025 v1/)).toBeTruthy()
     const sendButton = screen.getByRole('button', { name: 'Send invitation' })
     expect(sendButton.hasAttribute('disabled')).toBe(false)
     fireEvent.click(sendButton)
@@ -325,7 +329,6 @@ describe('Department Staff accounts directory', () => {
       program_id: MOCK_IDS.programBscs,
       curriculum_version_id: MOCK_IDS.curriculumBscs2024,
       adviser_id: MOCK_IDS.adviserPrimary,
-      role_assignments: [{ role: 'adviser', department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing }],
     })
     expect(screen.getByRole('button', { name: 'Invitation sent' }).hasAttribute('disabled')).toBe(true)
     await waitFor(() => {
@@ -345,7 +348,6 @@ describe('Department Staff accounts directory', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: 'duplicate.person@vsu.edu.ph' } })
     fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Adviser' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
 
     expect(await screen.findByText('An account with this email already exists.')).toBeTruthy()
@@ -366,10 +368,10 @@ describe('Department Staff accounts directory', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Institutional email' }), { target: { value: MOCK_PERSONAS.department_staff.email } })
     fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Adviser' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Review invitation' }))
 
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
     expect((await screen.findByRole('alert')).textContent).toContain('You cannot grant roles to your own account.')
-    expect(screen.getByRole('button', { name: 'Send invitation' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Send invitation' }).hasAttribute('disabled')).toBe(false)
     expect(calls).toBe(0)
   })
 })

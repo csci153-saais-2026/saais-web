@@ -40,14 +40,13 @@ export function CurriculumTermDeleteDialog({ term, version, requirementCount, on
   return <Dialog open onOpenChange={open => { if (!open && !deletion.isPending) onClose() }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!deletion.isPending} onEscapeKeyDown={event => { if (deletion.isPending) event.preventDefault() }} onInteractOutside={event => { if (deletion.isPending) event.preventDefault() }}>
       <DialogHeader>
-        <DialogTitle>Delete curriculum term</DialogTitle>
-        <DialogDescription>Delete Year {term.year_level} - Term {term.term_sequence} from {version.version_label}? This term contains {requirementCount} requirement(s). Those requirements will no longer be shown under this term if deletion succeeds.</DialogDescription>
+        <DialogTitle>Delete record</DialogTitle>
+        <DialogDescription>Delete Year {term.year_level} · {term.term_sequence === 3 ? 'Midyear' : `Semester ${term.term_sequence}`} from {version.version_label} and its {requirementCount} course(s)?</DialogDescription>
       </DialogHeader>
-      <p className="text-sm text-muted-foreground">The server must allow this deletion. Referenced history and required remaining terms are protected. The page will not delete child requirements separately or bypass a rejection.</p>
       {deletion.isError && <p role="alert" className="text-sm text-destructive">{deletionError(deletion.error)}</p>}
       <DialogFooter>
         <Button type="button" variant="outline" disabled={deletion.isPending} onClick={onClose}>Cancel</Button>
-        <Button type="button" variant="destructive" disabled={deletion.isPending} onClick={() => void confirm()}>{deletion.isPending ? 'Deleting term...' : 'Confirm term deletion'}</Button>
+        <Button type="button" variant="destructive" disabled={deletion.isPending} onClick={() => void confirm()}>{deletion.isPending ? 'Deleting term...' : 'Delete'}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

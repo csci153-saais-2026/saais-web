@@ -7,7 +7,7 @@ import { AuthContext, type AuthContextValue } from '@/context/auth-context'
 import { createSaaisApiClient, getMockSessionToken } from '@/lib/api'
 import { getMockDatabase, loginAsMockPersona, logoutMockPersona, MOCK_IDS, MOCK_PERSONAS, resetMockDatabase } from '@/mocks'
 import { saaisMswHandlers } from '@/mocks/handlers'
-import { STUDENT_IMPORT_HEADERS } from './students/import/student-import.schema'
+import { STUDENT_IMPORT_HEADERS } from './students/import/student-import'
 import DepartmentStaffPortal from './DepartmentStaffPortal'
 
 const persona = MOCK_PERSONAS.department_staff
@@ -99,14 +99,14 @@ function csvFile(): File {
   return new File(
     [
       `${STUDENT_IMPORT_HEADERS.join(',')}\n` +
-        `26-1-00991,Cross-page import student,step41.student@vsu.edu.ph,${MOCK_IDS.programBscs},${MOCK_IDS.curriculumBscs2024},${MOCK_IDS.adviserPrimary},2026`,
+        `26-1-00991,Cross-page import student,step41.student@vsu.edu.ph,BSCS,BSCS 2024-2025 v1,23-1-02224@vsu.edu.ph,2026`,
     ],
     'step-41-import.csv',
     { type: 'text/csv' },
   )
 }
 
-beforeAll(() => workflowServer.listen())
+beforeAll(() => { Element.prototype.scrollIntoView = () => {}; workflowServer.listen() })
 beforeEach(() => {
   resetMockDatabase()
   loginAsMockPersona('department_staff')
@@ -130,7 +130,7 @@ describe('Department Staff cross-page workflows', () => {
       target: { files: [csvFile()] },
     })
     await screen.findByText('1 of 1 rows passed local and canonical format checks.')
-    fireEvent.click(screen.getByRole('button', { name: 'Import valid rows' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Import 1 student' }))
     await screen.findByText('Import results')
 
     expect(getMockDatabase().profiles.some((profile) =>
@@ -145,7 +145,7 @@ describe('Department Staff cross-page workflows', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     fireEvent.change(await screen.findByRole('searchbox', { name: 'Search students' }), {
-      target: { value: 'step41.student@vsu.edu.ph' },
+      target: { value: 'Cross-page import student' },
     })
     expect(await screen.findByText('Cross-page import student')).toBeTruthy()
     expect(screen.getByText('step41.student@vsu.edu.ph')).toBeTruthy()
@@ -163,14 +163,15 @@ describe('Department Staff cross-page workflows', () => {
       name: `Select ${MOCK_PERSONAS.student.fullName}`,
     }))
     fireEvent.click(screen.getByRole('button', { name: 'Reassign selected' }))
-    fireEvent.change(screen.getByLabelText('Target adviser'), {
-      target: { value: MOCK_IDS.adviserSecondary },
-    })
-    fireEvent.change(screen.getByLabelText('Reason'), {
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'New adviser' }).hasAttribute('disabled')).toBe(false))
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'New adviser' }), { key: 'ArrowDown' })
+    fireEvent.click(await screen.findByRole('option', { name: MOCK_PERSONAS.adviser_secondary.fullName }))
+    fireEvent.change(screen.getByLabelText('Reason for reassignment'), {
       target: { value: 'Step 41 integration handoff' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm reassignment' }))
-    await screen.findByText('Successfully reassigned 1 student.')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Apply reassignment' }).hasAttribute('disabled')).toBe(false))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply reassignment' }))
+    await screen.findByText('Reassigned 1 student.')
 
     fireEvent.click(screen.getByRole('link', { name: 'Students' }))
     const search = await screen.findByRole('searchbox', { name: 'Search students' })

@@ -10,6 +10,7 @@ import {
 function context(): DepartmentInviteContext {
   const db = getMockDatabase()
   return {
+    canInvitePrivilegedRoles: true,
     ownEmail: MOCK_PERSONAS.department_staff.email,
     departmentId: MOCK_IDS.deptDcst,
     facultyId: MOCK_IDS.facultyComputing,
@@ -49,7 +50,10 @@ describe('department invitation preview validation', () => {
       full_name: 'New Person',
       role,
     })
-    if (role !== 'student') {
+    if (role === 'admin') {
+      expect(result.payload).not.toHaveProperty('faculty_id')
+      expect(result.payload).not.toHaveProperty('department_id')
+    } else if (role !== 'student') {
       expect(result.payload).toMatchObject({
         faculty_id: MOCK_IDS.facultyComputing,
         department_id: MOCK_IDS.deptDcst,
@@ -72,11 +76,13 @@ describe('department invitation preview validation', () => {
       curriculum_version_id: MOCK_IDS.curriculumBscs2024,
       adviser_id: MOCK_IDS.adviserPrimary,
       entry_year: 2026,
-      role_assignments: [
-        { role: 'adviser', faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst },
-        { role: 'department_staff', faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst },
-      ],
+
     })
+  })
+
+  it.each(['admin', 'dean'] as const)('rejects %s invitations and secondary roles without Admin authority', role => {
+    expect(buildDepartmentInvitePreview(values(role), { ...context(), canInvitePrivilegedRoles: false }).ok).toBe(false)
+    expect(buildDepartmentInvitePreview({ ...values('adviser'), additional_roles: [role] }, { ...context(), canInvitePrivilegedRoles: false }).ok).toBe(false)
   })
 
   it('rejects malformed, non-institutional, and self email identities', () => {
@@ -129,13 +135,13 @@ describe('department invitation preview validation', () => {
     if (noScope.ok === false) expect(noScope.errors.join(' ')).toContain('approved assignment')
   })
 
-  it('never permits Dean or Admin roles or a secondary Student assignment', () => {
+  it('offers Dean and Admin and ignores additional roles for students', () => {
     const input = values('student')
     input.additional_roles = ['admin' as DepartmentInviteFormValues['role']]
-    const result = buildDepartmentInvitePreview(input, context())
-    expect(result.ok).toBe(false)
+    const result = buildDepartmentInvitePreview(input, { ...context(), canInvitePrivilegedRoles: false })
+    expect(result.ok).toBe(true)
 
-    expect(departmentInviteRoles).not.toContain('dean')
-    expect(departmentInviteRoles).not.toContain('admin')
+    expect(departmentInviteRoles).toContain('dean')
+    expect(departmentInviteRoles).toContain('admin')
   })
 })

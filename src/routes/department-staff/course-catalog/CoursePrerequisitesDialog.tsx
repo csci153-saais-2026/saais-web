@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { coursePrerequisiteError, useCourseCatalogPrerequisites } from '@/hooks/use-course-catalog-prerequisites'
 import {
   coursePrerequisiteMutationError,
@@ -16,19 +19,14 @@ import {
 import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
 import type { CatalogCourse, CatalogPrerequisiteType } from './course-catalog.api'
 
-const relationshipLabels: Record<CatalogPrerequisiteType, string> = {
-  strict: 'Prerequisite',
-  co_requisite: 'Co-requisite',
-  recommended: 'Recommended',
-}
-
 interface CoursePrerequisitesDialogProps {
   course: CatalogCourse | null
   open: boolean
   onReturnFocus: () => void
+  onClose: () => void
 }
 
-export function CoursePrerequisitesDialog({ course, open, onReturnFocus }: CoursePrerequisitesDialogProps) {
+export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose }: CoursePrerequisitesDialogProps) {
   const prerequisites = useCourseCatalogPrerequisites(course?.id ?? '', open)
   const staffScope = useStaffScope()
   const canManage = staffScope.status === 'ready'
@@ -38,186 +36,102 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus }: Cours
   const candidates = useDepartmentPrerequisiteCandidates(course?.department_id ?? '', open && canManage)
   const create = useCreateCoursePrerequisite()
   const remove = useDeleteCoursePrerequisite()
-  const [selectedCourseId, setSelectedCourseId] = useState('')
-  const [selectedType, setSelectedType] = useState<CatalogPrerequisiteType>('strict')
-  const [removalId, setRemovalId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Record<string, boolean>>({})
+  const [types, setTypes] = useState<Record<string, CatalogPrerequisiteType>>({})
+  const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const mutationPending = create.isPending || remove.isPending
-  const linkedIds = new Set((prerequisites.data ?? []).map(row => row.prerequisiteCourseId))
-  const duplicateSelection = selectedCourseId !== '' && linkedIds.has(selectedCourseId)
-  const selfSelection = selectedCourseId !== '' && selectedCourseId === course?.id
+  const submitting = useRef(false)
+  const pending = saving || create.isPending || remove.isPending
 
-  async function addRelationship(event: React.FormEvent<HTMLFormElement>) {
+  const existingTypes = Object.fromEntries((prerequisites.data ?? []).map(item => [item.prerequisiteCourseId, item.type]))
+  const resolvedSelected = Object.fromEntries((candidates.data ?? []).filter(item => item.id !== course?.id).map(item => [item.id, selected[item.id] ?? (item.id in existingTypes)]))
+  const resolvedTypes = { ...types, ...existingTypes }
+
+  async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!course || !canManage || mutationPending) return
-    if (selfSelection) {
-      setMessage('A course cannot be linked as its own prerequisite.')
-      return
-    }
-    if (duplicateSelection) {
-      setMessage('This course is already linked; duplicate relationships are not allowed.')
-      return
-    }
-    if (!selectedCourseId) {
-      setMessage('Choose a course to link.')
-      return
-    }
+    if (!course || !canManage || pending || submitting.current || !prerequisites.isSuccess || !candidates.isSuccess) return
+    submitting.current = true
+    setSaving(true)
     setMessage('')
     create.reset()
-    try {
-      await create.mutateAsync({
-        departmentId: course.department_id,
-        body: {
-          course_id: course.id,
-          prerequisite_course_id: selectedCourseId,
-          type: selectedType,
-        },
-      })
-      setSelectedCourseId('')
-      setMessage('Prerequisite relationship added.')
-    } catch {
-      // The server message is rendered below; keep the chosen values for correction.
-    }
-  }
-
-  async function removeRelationship(id: string) {
-    if (!course || !canManage || mutationPending) return
-    setMessage('')
     remove.reset()
     try {
-      await remove.mutateAsync({ departmentId: course.department_id, id })
-      setRemovalId(null)
-      setMessage('Prerequisite relationship removed.')
+      const existing = new Map(prerequisites.data.map(item => [item.prerequisiteCourseId, item]))
+      const candidateIds = new Set(candidates.data.map(item => item.id))
+      const desired = new Set(Object.entries(resolvedSelected).filter(([, enabled]) => enabled).map(([id]) => id))
+      for (const item of prerequisites.data) {
+        if (!candidateIds.has(item.prerequisiteCourseId)) continue
+        if (!desired.has(item.prerequisiteCourseId)) {
+          await remove.mutateAsync({ departmentId: course.department_id, id: item.id })
+        }
+      }
+      for (const id of desired) {
+        const current = existing.get(id)
+        if (!current) {
+          await create.mutateAsync({
+            departmentId: course.department_id,
+            body: { course_id: course.id, prerequisite_course_id: id, type: resolvedTypes[id] ?? 'strict' },
+          })
+        }
+      }
+      setMessage('Prerequisites saved.')
     } catch {
-      // Keep the confirmation context visible so the user can retry or cancel.
+      setMessage('Some changes could not be saved. The list will refresh with the server state.')
+      void prerequisites.refetch()
+    } finally {
+      submitting.current = false
+      setSaving(false)
     }
   }
 
+  const isLoading = prerequisites.isPending || (canManage && candidates.isPending)
+  const loadError = prerequisites.error ?? (candidates.isError ? candidates.error : null)
+
   return (
-        <DialogContent
-          className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-[600px]"
-          onCloseAutoFocus={event => { event.preventDefault(); onReturnFocus() }}
-        >
-          <DialogHeader>
-            <DialogTitle>Prerequisite relationships</DialogTitle>
-            <DialogDescription>
-              {course?.code || 'Course'} · {course?.title || 'Course details unavailable'}
-            </DialogDescription>
-          </DialogHeader>
+    <DialogContent
+      className="flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[750px]"
+      showCloseButton={!pending}
+      onCloseAutoFocus={event => { event.preventDefault(); onReturnFocus() }}
+      onEscapeKeyDown={event => { if (pending) event.preventDefault() }}
+      onInteractOutside={event => { if (pending) event.preventDefault() }}
+    >
+      <DialogHeader className="shrink-0 border-b border-border px-6 py-5">
+        <DialogTitle>Prerequisites · {course?.code || 'Course'}</DialogTitle>
+        <DialogDescription>
+          Choose the courses a student must take first, or alongside, <strong>{course?.code || 'this course'}</strong>. Different course codes never imply equivalence.
+        </DialogDescription>
+      </DialogHeader>
 
-          {prerequisites.isPending && (
-            <p role="status" className="py-4 text-sm text-muted-foreground">Loading prerequisite relationships…</p>
-          )}
-
-          {prerequisites.isError && (
-            <div className="space-y-3 py-2">
-              <p role="alert" className="text-sm text-destructive">{coursePrerequisiteError(prerequisites.error)}</p>
-              <Button type="button" variant="outline" onClick={() => { void prerequisites.refetch() }} disabled={prerequisites.isFetching}>
-                {prerequisites.isFetching ? 'Retrying…' : 'Retry'}
-              </Button>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={event => { void save(event) }}>
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
+          {canManage && Object.keys(existingTypes).length > 0 && <p className="text-xs text-muted-foreground">Existing relationship types cannot be changed here. Their current type will be preserved.</p>}
+          {!canManage && prerequisites.isSuccess && prerequisites.data.map(item => <div key={item.id} className="rounded-sm border border-border p-3"><p>{item.course?.code} {item.course?.title}</p><p>{item.type === 'strict' ? 'Prerequisite' : item.type === 'co_requisite' ? 'Co-requisite' : 'Recommended'}</p></div>)}
+          {isLoading && <p role="status" className="py-4 text-sm text-muted-foreground">Loading department courses and prerequisites…</p>}
+          {loadError && <div className="space-y-2 py-3"><p role="alert" className="text-sm text-destructive">{coursePrerequisiteError(loadError)}</p><Button type="button" variant="outline" onClick={() => { void prerequisites.refetch(); if (candidates.isError) void candidates.refetch() }}>Retry</Button></div>}
+          {prerequisites.isSuccess && candidates.isSuccess && candidates.data.filter(item => item.id !== course?.id).length === 0 && <p className="py-4 text-sm text-muted-foreground">No other courses are available in this department.</p>}
+          {prerequisites.isSuccess && candidates.isSuccess && candidates.data.filter(item => item.id !== course?.id).map(candidate => {
+            const checked = resolvedSelected[candidate.id] ?? false
+            const id = `prerequisite-course-${candidate.id}`
+            return <div key={candidate.id} className="flex min-w-0 items-center gap-3 rounded-sm border border-border p-2.5 sm:px-4 sm:py-2">
+              <Checkbox id={id} checked={checked} disabled={!canManage || pending} onCheckedChange={value => { setSelected(previous => ({ ...previous, [candidate.id]: value === true })); setMessage('') }} />
+              <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer truncate font-semibold text-muted-foreground" title={`${candidate.code} ${candidate.title}`}>
+                <span className="font-mono">{candidate.code}</span>{' '}{candidate.title}
+              </label>
+              <Select value={resolvedTypes[candidate.id] ?? 'strict'} disabled={!canManage || pending || candidate.id in existingTypes} onValueChange={value => { setTypes(previous => ({ ...previous, [candidate.id]: value as CatalogPrerequisiteType })); setMessage('') }}>
+                <SelectTrigger aria-label={`Relationship type for ${candidate.code}`} className="w-[175px] shrink-0"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="strict">Prerequisite</SelectItem><SelectItem value="co_requisite">Co-requisite</SelectItem><SelectItem value="recommended">Recommended</SelectItem></SelectContent>
+              </Select>
             </div>
-          )}
-
-          {prerequisites.isSuccess && prerequisites.data.length === 0 && (
-            <p role="status" className="py-4 text-sm text-muted-foreground">No prerequisite relationships are recorded for this course.</p>
-          )}
-
-          {prerequisites.isSuccess && prerequisites.data.length > 0 && (
-            <div className="space-y-4">
-              <ul aria-label="Prerequisite relationships" className="divide-y divide-border rounded-md border border-border">
-                {prerequisites.data.map(relationship => (
-                  <li key={relationship.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <div className="min-w-0 space-y-1">
-                      <span className="block font-medium">{relationshipLabels[relationship.type]}</span>
-                      <span className="block min-w-0 break-words text-sm text-muted-foreground">
-                        {relationship.course
-                          ? <><span className="font-mono font-medium text-foreground">{relationship.course.code || 'Code unavailable'}</span>{' · '}{relationship.course.title || 'Title unavailable'}</>
-                          : 'Course reference unavailable'}
-                      </span>
-                    </div>
-                    {canManage && (removalId === relationship.id ? (
-                      <div className="flex shrink-0 items-center gap-2" aria-label={`Confirm removal of ${relationship.course?.code || 'course relationship'}`}>
-                        <span className="text-xs text-muted-foreground">Remove this relationship?</span>
-                        <Button type="button" size="sm" variant="outline" disabled={mutationPending} onClick={() => { setRemovalId(null); setMessage('') }}>Cancel</Button>
-                        <Button type="button" size="sm" variant="destructive" disabled={mutationPending} onClick={() => void removeRelationship(relationship.id)}>
-                          {remove.isPending ? 'Removing…' : 'Confirm remove'}
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button type="button" size="sm" variant="outline" disabled={mutationPending} aria-label={`Remove ${relationship.course?.code || 'prerequisite relationship'}`} onClick={() => { setRemovalId(relationship.id); setMessage('') }}>
-                        Remove
-                      </Button>
-                    ))}
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted-foreground">
-                Recommended relationships are advisory. Similar course codes do not imply equivalence.
-              </p>
-            </div>
-          )}
-
-          {prerequisites.isSuccess && prerequisites.data.length === 0 && canManage && (
-            <p className="text-xs text-muted-foreground">The current course cannot be selected as its own prerequisite. Existing relationships cannot be added twice.</p>
-          )}
-
-          {canManage && prerequisites.isSuccess && (
-            <form className="space-y-3 border-t border-border pt-4" onSubmit={event => { void addRelationship(event) }}>
-              <h3 className="font-semibold">Add relationship</h3>
-              {candidates.isPending && <p role="status" className="text-sm text-muted-foreground">Loading department course options…</p>}
-              {candidates.isError && (
-                <div className="space-y-2">
-                  <p role="alert" className="text-sm text-destructive">{coursePrerequisiteError(candidates.error)}</p>
-                  <Button type="button" size="sm" variant="outline" onClick={() => { void candidates.refetch() }} disabled={candidates.isFetching}>Retry course options</Button>
-                </div>
-              )}
-              {candidates.isSuccess && (
-                <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                  <label className="grid min-w-0 gap-1 text-sm font-medium" htmlFor="prerequisite-course-choice">
-                    Course
-                    <select
-                      id="prerequisite-course-choice"
-                      className="min-h-10 w-full min-w-0 max-w-full rounded-sm border border-input bg-card px-3 font-normal"
-                      value={selectedCourseId}
-                      disabled={mutationPending}
-                      onChange={event => { setSelectedCourseId(event.target.value); setMessage('') }}
-                    >
-                      <option value="">Choose a department course</option>
-                      {candidates.data.map(candidate => {
-                        const isSelf = candidate.id === course.id
-                        const isDuplicate = linkedIds.has(candidate.id)
-                        return <option key={candidate.id} value={candidate.id} disabled={isSelf || isDuplicate}>
-                          {candidate.code || 'Course code unavailable'} — {candidate.title || 'Title unavailable'}{isSelf ? ' (cannot link to itself)' : isDuplicate ? ' (already linked)' : ''}
-                        </option>
-                      })}
-                    </select>
-                  </label>
-                  <label className="grid min-w-0 gap-1 text-sm font-medium" htmlFor="prerequisite-type-choice">
-                    Relationship type
-                    <select
-                      id="prerequisite-type-choice"
-                      className="min-h-10 w-full min-w-0 max-w-full rounded-sm border border-input bg-card px-3 font-normal"
-                      value={selectedType}
-                      disabled={mutationPending}
-                      onChange={event => setSelectedType(event.target.value as CatalogPrerequisiteType)}
-                    >
-                      <option value="strict">Prerequisite</option>
-                      <option value="co_requisite">Co-requisite</option>
-                      <option value="recommended">Recommended</option>
-                    </select>
-                  </label>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">Self-links and duplicate course links are not allowed. Changing an existing relationship type is unavailable until replacement semantics are agreed.</p>
-              {selfSelection && <p role="status" className="text-sm text-destructive">A course cannot be linked as its own prerequisite.</p>}
-              {duplicateSelection && <p role="status" className="text-sm text-destructive">This course is already linked and cannot be added again.</p>}
-              {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
-              {(create.isError || remove.isError) && <p role="alert" className="text-sm text-destructive">{coursePrerequisiteMutationError(create.error ?? remove.error)}</p>}
-              <Button type="submit" size="sm" disabled={!candidates.isSuccess || mutationPending || !selectedCourseId || duplicateSelection || selfSelection}>
-                {create.isPending ? 'Adding…' : 'Add relationship'}
-              </Button>
-            </form>
-          )}
-        </DialogContent>
+          })}
+          {prerequisites.isSuccess && prerequisites.data.some(item => !candidates.data?.some(candidate => candidate.id === item.prerequisiteCourseId)) && <p className="text-xs text-muted-foreground">Some existing links refer to courses outside the available department list and will be preserved.</p>}
+          {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
+          {(create.isError || remove.isError) && <p role="alert" className="text-sm text-destructive">{coursePrerequisiteMutationError(create.error ?? remove.error)}</p>}
+        </div>
+        <DialogFooter className="shrink-0 flex-row border-t border-border px-6 py-4">
+          <Button type="button" variant="outline" disabled={pending} onClick={onClose}>Cancel</Button>
+          {canManage && <Button type="submit" disabled={!prerequisites.isSuccess || !candidates.isSuccess || pending}>{pending ? 'Saving prerequisites…' : 'Save prerequisites'}</Button>}
+        </DialogFooter>
+      </form>
+    </DialogContent>
   )
 }

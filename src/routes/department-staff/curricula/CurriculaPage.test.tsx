@@ -106,6 +106,12 @@ afterEach(() => {
 })
 afterAll(() => saaisMockServer.close())
 
+async function chooseOption(label: string, option: string) {
+  Element.prototype.scrollIntoView = () => {}
+  fireEvent.keyDown(screen.getByRole('combobox', { name: label }), { key: 'ArrowDown' })
+  fireEvent.click(await screen.findByRole('option', { name: option }))
+}
+
 describe('Department Staff curricula', () => {
   it('renders the prototype heading, version toolbar, summary cards, and MSW curriculum records', async () => {
     renderPage()
@@ -129,16 +135,17 @@ describe('Department Staff curricula', () => {
     fireEvent.change(screen.getByLabelText('Curriculum version'), {
       target: { value: MOCK_IDS.curriculumBscs2024 },
     })
-    expect(await screen.findByText('Year 1 - Term 1')).toBeTruthy()
-    expect(screen.getByText('CSCI 101 - Introduction to Computing')).toBeTruthy()
-    expect(screen.getByText('Required units')).toBeTruthy()
+    expect(await screen.findByText('Year 1 · Semester 1')).toBeTruthy()
+    expect(screen.getByText('CSCI 101 — Introduction to Computing')).toBeTruthy()
+    expect(screen.getAllByText('Required units').length).toBeGreaterThan(0)
     expect(screen.getByText('Enrolled students')).toBeTruthy()
     expect(screen.getByText('Effective from')).toBeTruthy()
     expect(screen.getByText('Curriculum lifecycle')).toBeTruthy()
     expect(screen.getAllByRole('columnheader', { name: 'Course / slot' })).toHaveLength(4)
-    expect(screen.getAllByRole('columnheader', { name: 'Nominal slot units' })).toHaveLength(4)
-    expect(screen.getAllByRole('columnheader', { name: 'Course units' })).toHaveLength(4)
-    expect(screen.getAllByText('Positional curriculum term; not a calendar school term. Course and nominal slot units are shown separately.')).toHaveLength(4)
+    expect(screen.getAllByRole('columnheader', { name: 'Required units' })).toHaveLength(4)
+    expect(screen.getAllByText('Positional curriculum term; not a calendar school term.')).toHaveLength(4)
+    expect(screen.queryByRole('button', { name: 'New course' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retire version' })).toBeNull()
   })
 
   it('adds an empty positional term through the Department Staff MSW handler', async () => {
@@ -149,10 +156,8 @@ describe('Department Staff curricula', () => {
     const addTermButton = await screen.findByRole('button', { name: 'Add term' })
     await waitFor(() => expect((addTermButton as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(addTermButton)
-    await screen.findByRole('dialog', { name: 'Add curriculum term' })
-    fireEvent.change(screen.getByLabelText('Term position'), {
-      target: { value: '3' },
-    })
+    await screen.findByRole('dialog', { name: 'Add term' })
+    await chooseOption('Term', 'Midyear')
     fireEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
         name: /^Add term$/,
@@ -160,7 +165,7 @@ describe('Department Staff curricula', () => {
     )
 
     expect(await screen.findByText('Curriculum term added.')).toBeTruthy()
-    expect(await screen.findByText('Year 1 - Term 3')).toBeTruthy()
+    expect(await screen.findByText('Year 1 · Midyear')).toBeTruthy()
     await waitFor(() => {
       expect(
         getMockDatabase().curriculumTerms.some(

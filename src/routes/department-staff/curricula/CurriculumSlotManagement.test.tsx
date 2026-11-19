@@ -53,11 +53,17 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); vi.resetAllMocks() })
 
+async function chooseOption(label: string, option: string) {
+  Element.prototype.scrollIntoView = () => {}
+  fireEvent.keyDown(screen.getByRole('combobox', { name: label }), { key: 'ArrowDown' })
+  fireEvent.click(await screen.findByRole('option', { name: option }))
+}
+
 describe('Manage curriculum requirements', () => {
   it('edits an existing fixed-course requirement and refreshes its scoped cache', async () => {
     const { client, onComplete } = mount()
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '3.5' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save requirement' }))
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '3.5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await vi.waitFor(() => expect(updateCurriculumSlot).toHaveBeenCalledOnce())
     expect(updateCurriculumSlot).toHaveBeenCalledWith('slot', {
       course_id: course.id, is_elective_slot: false, slot_type: 'required', slot_label: null, nominal_units: 3.5,
@@ -69,10 +75,10 @@ describe('Manage curriculum requirements', () => {
   it('converts a flexible elective into a named GE requirement without a course reference', async () => {
     const flexible: CurriculumSlot = { id: 'slot', curriculum_term_id: 'term', course_id: null, is_elective_slot: true, slot_type: 'elective', slot_label: 'Open elective', nominal_units: 3 }
     mount({ original: flexible })
-    fireEvent.change(screen.getByLabelText('Requirement type'), { target: { value: 'ge' } })
-    fireEvent.change(screen.getByLabelText('Requirement name'), { target: { value: 'Humanities GE' } })
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '2.5' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save requirement' }))
+    await chooseOption('Type', 'GE slot')
+    fireEvent.change(screen.getByLabelText('Course / slot'), { target: { value: 'Humanities GE' } })
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '2.5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await vi.waitFor(() => expect(updateCurriculumSlot).toHaveBeenCalledOnce())
     expect(updateCurriculumSlot).toHaveBeenCalledWith('slot', {
       course_id: null, is_elective_slot: false, slot_type: 'ge', slot_label: 'Humanities GE', nominal_units: 2.5,
@@ -82,16 +88,16 @@ describe('Manage curriculum requirements', () => {
   it('allows retaining an existing course reference when it is absent from active choices', async () => {
     mount({ courseChoices: [] })
     expect(screen.getByRole('option', { name: 'Current course reference unavailable or inactive' })).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '3.25' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save requirement' }))
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '3.25' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await vi.waitFor(() => expect(updateCurriculumSlot).toHaveBeenCalledOnce())
     expect(updateCurriculumSlot).toHaveBeenCalledWith('slot', expect.objectContaining({ course_id: course.id, nominal_units: 3.25 }))
   })
 
   it('rejects invalid units before sending an edit', async () => {
     mount()
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '1.1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save requirement' }))
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '1.1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await screen.findByText('Use quarter-unit increments (for example, 3.25).')
     expect(updateCurriculumSlot).not.toHaveBeenCalled()
   })
@@ -99,7 +105,7 @@ describe('Manage curriculum requirements', () => {
   it('blocks a stale slot snapshot before updating', async () => {
     const { client } = mount()
     client.setQueryData(detailKey, { ...detail, slots: [{ ...slot, nominal_units: 4 }] })
-    fireEvent.click(screen.getByRole('button', { name: 'Save requirement' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await screen.findByText('This requirement changed while the dialog was open. Close it and review the refreshed requirement.')
     expect(updateCurriculumSlot).not.toHaveBeenCalled()
   })
@@ -107,14 +113,14 @@ describe('Manage curriculum requirements', () => {
   it('blocks an out-of-scope curriculum before sending a delete', async () => {
     const { client } = mount({ action: 'delete' })
     client.setQueryData(catalogKey, { programs: [{ ...program, department_id: 'other' }], versions: [version] })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm requirement deletion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await screen.findByText('This version is no longer available in your authorized department. Refresh the list.')
     expect(deleteCurriculumSlot).not.toHaveBeenCalled()
   })
 
   it('removes the slot from cache only after server deletion succeeds', async () => {
     const { client, onComplete } = mount({ action: 'delete' })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm requirement deletion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await vi.waitFor(() => expect(deleteCurriculumSlot).toHaveBeenCalledOnce())
     expect(deleteCurriculumSlot).toHaveBeenCalledWith('slot')
     expect(onComplete).toHaveBeenCalledWith('version')
@@ -124,7 +130,7 @@ describe('Manage curriculum requirements', () => {
   it('keeps the requirement and reports protected history after a conflict', async () => {
     vi.mocked(deleteCurriculumSlot).mockRejectedValue(conflict('Attempt history protects this requirement.'))
     const { client, onComplete } = mount({ action: 'delete' })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm requirement deletion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await screen.findByText(/Attempt history protects this requirement/)
     expect((client.getQueryData(detailKey) as typeof detail).slots).toEqual([slot])
     expect(deleteCurriculumSlot).toHaveBeenCalledOnce()
@@ -134,10 +140,10 @@ describe('Manage curriculum requirements', () => {
   it.each([403, 409, 429, 500])('preserves edit values and does not retry on HTTP %i', async status => {
     vi.mocked(updateCurriculumSlot).mockRejectedValue(conflict('The requirement changed.', status))
     mount()
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '2.5' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save requirement' }))
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '2.5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await screen.findByRole('alert')
-    expect((screen.getByLabelText('Nominal requirement units') as HTMLInputElement).value).toBe('2.5')
+    expect((screen.getByLabelText('Required units') as HTMLInputElement).value).toBe('2.5')
     expect(updateCurriculumSlot).toHaveBeenCalledOnce()
   })
 })

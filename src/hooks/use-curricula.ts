@@ -130,7 +130,7 @@ export function useCreateCurriculumSlot() {
       const coursesKey = staffQueryKeys.resource(scope.profileId, scope.departmentId, 'curriculum-course-options')
       const courses = queryClient.getQueryData<Course[]>(coursesKey) ?? []
       const course = fixedCourse ? courses.find(item => item.id === parsed.course_id && item.department_id === scope.departmentId && item.status === 'active') : undefined
-      if (fixedCourse && !course) throw new Error('Select an active course from your department catalog and retry.')
+      if (fixedCourse && parsed.course_id && !course) throw new Error('Select an active course from your department catalog and retry.')
       const request = curriculumSlotRequest(term.id, parsed)
       const slot = await createCurriculumSlot(request)
       if (!slot?.id || slot.curriculum_term_id !== term.id) {
@@ -203,7 +203,7 @@ export function useManageCurriculumSlot() {
       const courses = queryClient.getQueryData<Course[]>(coursesKey) ?? []
       const course = fixedCourse ? courses.find(item => item.id === parsed.course_id && item.department_id === scope.departmentId && item.status === 'active') : undefined
       const retainingOriginalCourse = fixedCourse && current.course_id === parsed.course_id
-      if (fixedCourse && !course && !retainingOriginalCourse) throw new Error('Select an active course from your department catalog and retry.')
+      if (fixedCourse && parsed.course_id && !course && !retainingOriginalCourse) throw new Error('Select an active course from your department catalog and retry.')
       const request = curriculumSlotUpdateRequest(parsed)
       const response = await updateCurriculumSlot(current.id, request)
       if (!response?.id || response.id !== current.id || response.curriculum_term_id !== current.curriculum_term_id ||

@@ -4,12 +4,14 @@ import { act, cleanup, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ApiClientError, normalizeApiError } from '@/lib/api'
 import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
+import { useSendDepartmentInvitation } from './use-send-department-invitation'
 import { useResendDepartmentInvitation } from './use-resend-department-invitation'
 import { useRevokeDepartmentInvitation } from './use-revoke-department-invitation'
 
 const mocks = vi.hoisted(() => ({
   useStaffScope: vi.fn(),
   useAuth: vi.fn(),
+  send: vi.fn(),
   resend: vi.fn(),
   revoke: vi.fn(),
 }))
@@ -18,6 +20,7 @@ vi.mock('@/routes/department-staff/shared/use-staff-scope', () => ({
   useStaffScope: mocks.useStaffScope,
 }))
 vi.mock('@/hooks/use-auth', () => ({ useAuth: mocks.useAuth }))
+vi.mock('@/routes/department-staff/accounts/invitation.api', () => ({ sendDepartmentInvitation: mocks.send }))
 vi.mock('@/routes/department-staff/accounts/accounts.api', () => ({
   resendDepartmentAccountInvitation: mocks.resend,
   revokeDepartmentAccountInvitation: mocks.revoke,
@@ -39,6 +42,7 @@ function setup() {
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
   const hooks = renderHook(() => ({
+    send: useSendDepartmentInvitation(),
     resend: useResendDepartmentInvitation(),
     revoke: useRevokeDepartmentInvitation(),
   }), { wrapper })
@@ -47,7 +51,7 @@ function setup() {
 
 beforeEach(() => {
   mocks.useStaffScope.mockReturnValue(scope)
-  mocks.useAuth.mockReturnValue({ user: { id: 'staff-id' } })
+  mocks.useAuth.mockReturnValue({ user: { id: 'staff-id', email: 'staff@example.test' }, roles: ['department_staff'], roleAssignments: [{ profile_id: 'staff-id', role: 'department_staff', department_id: 'department-id', faculty_id: 'faculty-id' }] })
 })
 
 afterEach(() => {
@@ -56,6 +60,14 @@ afterEach(() => {
 })
 
 describe('department invitation actions', () => {
+  it.each(['dean', 'admin'] as const)('rejects unprivileged %s invitations before sending', async role => {
+    const { result } = setup()
+    await act(async () => {
+      await expect(result.current.send.mutateAsync({ role, email: 'invitee@example.test', full_name: 'Sample Invitee', faculty_id: 'faculty-id', department_id: 'department-id' })).rejects.toThrow('Admin authority')
+      await expect(result.current.send.mutateAsync({ role: 'adviser', email: 'invitee@example.test', full_name: 'Sample Invitee', faculty_id: 'faculty-id', department_id: 'department-id', role_assignments: [{ role, faculty_id: 'faculty-id', department_id: 'department-id' }] })).rejects.toThrow('Admin authority')
+    })
+    expect(mocks.send).not.toHaveBeenCalled()
+  })
   it('calls both actions and refreshes the account directory after success', async () => {
     mocks.resend.mockResolvedValue({ message: 'Resent' })
     mocks.revoke.mockResolvedValue({ id: 'target-id' })
