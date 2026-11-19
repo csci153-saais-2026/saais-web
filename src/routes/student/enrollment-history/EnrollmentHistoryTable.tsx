@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table"
 import type { ApiSchema } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
+import type { EnrollmentHistoryOfferingDetail } from "./student-enrollment-history.api"
 
 export type EnrollmentHistoryRow = ApiSchema<"AttemptResult"> & {
   readonly course_code?: string | null
@@ -21,14 +22,7 @@ export type EnrollmentHistoryRow = ApiSchema<"AttemptResult"> & {
 export interface EnrollmentHistoryTableProps {
   readonly attempts: readonly EnrollmentHistoryRow[]
   readonly offeringDetails?: Readonly<
-    Record<
-      string,
-      {
-        readonly code: string
-        readonly title?: string | null
-        readonly termLabel?: string | null
-      }
-    >
+    Record<string, EnrollmentHistoryOfferingDetail>
   >
   readonly slotLabels?: Readonly<Record<string, string>>
   readonly className?: string
