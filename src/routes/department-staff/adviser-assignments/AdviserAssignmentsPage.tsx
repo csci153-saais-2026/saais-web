@@ -1,5 +1,5 @@
 import '../shared/staff-filters.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -81,13 +81,21 @@ export default function AdviserAssignmentsPage() {
       return listDepartmentAssignmentAdvisers(active.departmentId, signal)
     },
   })
-  const students = (directory.data?.students ?? []).map((student) => {
-        const assignments = (directory.data?.history ?? []).filter((entry) => entry.student_id === student.student_id).sort((a, b) => a.start_date.localeCompare(b.start_date))
+  const students = useMemo(() => {
+    const historyByStudent = new Map<string, NonNullable<typeof directory.data>['history']>()
+    for (const assignment of directory.data?.history ?? []) {
+      const assignments = historyByStudent.get(assignment.student_id) ?? []
+      assignments.push(assignment)
+      historyByStudent.set(assignment.student_id, assignments)
+    }
+    return (directory.data?.students ?? []).map((student) => {
+        const assignments = (historyByStudent.get(student.student_id) ?? []).sort((a, b) => a.start_date.localeCompare(b.start_date))
         const current = assignments.filter((entry) => entry.start_date <= today && (!entry.end_date || entry.end_date > today)).at(-1)
         const previous = assignments.filter((entry) => entry.end_date && entry.end_date <= today).at(-1)
         const scheduled = assignments.find((entry) => entry.start_date > today)
         return { student, current, previous, scheduled, adviser: current?.adviser_name ?? 'Unassigned' }
       })
+  }, [directory.data, today])
   const matches = (item: (typeof students)[number], value: Filters) => {
     const query = value.search.trim().toLowerCase()
     return (item.student.full_name.toLowerCase().includes(query) || item.student.student_number.toLowerCase().includes(query)) &&

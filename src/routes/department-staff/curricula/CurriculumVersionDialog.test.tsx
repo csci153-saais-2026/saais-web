@@ -177,6 +177,15 @@ describe('Create curriculum version', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+  it('validates the version label length after adding the program code', async () => {
+    mount()
+    await openForm()
+    fillForm()
+    fireEvent.change(screen.getByLabelText('Academic year'), { target: { value: 'x'.repeat(96) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add version' }))
+    expect(await screen.findByText('Use at most 100 characters after adding the program code.')).toBeTruthy()
+    expect(createCurriculumVersion).not.toHaveBeenCalled()
+  })
   it.each([403, 409, 429, 500])('retains form inputs after a %i server denial without automatic retry', async status => {
     vi.mocked(createCurriculumVersion).mockRejectedValue(new ApiClientError(normalizeApiError({ message: 'Creation rejected' }, new Response(null, { status }))))
     mount()

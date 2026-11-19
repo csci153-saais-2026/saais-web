@@ -38,7 +38,7 @@ export function CurriculumVersionDialog({ programs, onClose, onCreated, version,
     : version?.version_label ?? ''
   const mutation = editing ? update : creation
   const submitting = useRef(false)
-  const { register, control, handleSubmit, formState: { errors, isSubmitting } } = useForm<CurriculumVersionValues>({
+  const { register, control, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<CurriculumVersionValues>({
     resolver: zodResolver(editing ? curriculumVersionEditSchema : curriculumVersionSchema),
     defaultValues: version ? { program_id: version.program_id, version_label: initialYear, effective_start: version.effective_start, effective_end: version.effective_end ?? '', total_units: version.total_units, delinquency_threshold: version.delinquency_threshold, status: version.status } : { program_id: programs[0]?.id ?? '', version_label: '', effective_start: '', effective_end: '', total_units: 147, delinquency_threshold: 0, status: 'draft' },
   })
@@ -51,6 +51,11 @@ export function CurriculumVersionDialog({ programs, onClose, onCreated, version,
       const code = programs.find(program => program.id === values.program_id)?.code
       const label = values.version_label.trim()
       const input = { ...values, version_label: code && !label.toLowerCase().startsWith(`${code.toLowerCase()} `) ? `${code} ${label}` : label }
+      const labelLimit = editing ? 250 : 100
+      if (input.version_label.length > labelLimit) {
+        setError('version_label', { type: 'maxLength', message: `Use at most ${labelLimit} characters after adding the program code.` })
+        return
+      }
       if (version) {
         const result = await update.mutateAsync({ original: version, values: input })
         onUpdated(result.version.id)

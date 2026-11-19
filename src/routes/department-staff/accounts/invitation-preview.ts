@@ -65,8 +65,8 @@ export function buildDepartmentInvitePreview(
     errors.push('A department and faculty scope from your approved assignment are required.')
   }
 
-  if (!context.canInvitePrivilegedRoles && ([values.role, ...values.additional_roles].some(role => role === 'admin' || role === 'dean'))) errors.push('Admin authority is required to invite Dean or Admin roles.')
   const additionalRoles = values.role === 'student' ? [] : values.additional_roles ?? []
+  if (!context.canInvitePrivilegedRoles && ([values.role, ...additionalRoles].some(role => role === 'admin' || role === 'dean'))) errors.push('Admin authority is required to invite Dean or Admin roles.')
   if (values.role === 'adviser' && additionalRoles.some(role => role === 'admin' || role === 'dean')) errors.push('Adviser invitations cannot include Dean or Admin roles.')
   if (additionalRoles.some(role => !allowedRoles.has(role) || role === 'student' || role === values.role)) {
     errors.push('Additional roles must be unique permitted non-student roles, with Student selected as the primary role when needed.')

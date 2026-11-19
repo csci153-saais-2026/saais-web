@@ -138,7 +138,7 @@ describe('department invitation preview validation', () => {
   it('offers Dean and Admin and ignores additional roles for students', () => {
     const input = values('student')
     input.additional_roles = ['admin' as DepartmentInviteFormValues['role']]
-    const result = buildDepartmentInvitePreview(input, context())
+    const result = buildDepartmentInvitePreview(input, { ...context(), canInvitePrivilegedRoles: false })
     expect(result.ok).toBe(true)
 
     expect(departmentInviteRoles).toContain('dean')

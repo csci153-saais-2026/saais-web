@@ -45,7 +45,7 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
 
   const existingTypes = Object.fromEntries((prerequisites.data ?? []).map(item => [item.prerequisiteCourseId, item.type]))
   const resolvedSelected = Object.fromEntries((candidates.data ?? []).filter(item => item.id !== course?.id).map(item => [item.id, selected[item.id] ?? (item.id in existingTypes)]))
-  const resolvedTypes = { ...existingTypes, ...types }
+  const resolvedTypes = { ...types, ...existingTypes }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
