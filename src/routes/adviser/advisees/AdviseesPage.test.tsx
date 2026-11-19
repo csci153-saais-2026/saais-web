@@ -13,9 +13,21 @@ vi.mock('./DeficiencySubjects', () => ({ DeficiencySubjects: ({ count }: { count
 const student = (id: string, name: string) => ({ student_id: id, full_name: name, student_number: `number-${id}`, email: `${id}@example.test`, program_name: 'Computing', curriculum_label: '2023', year_level: 2, gwa: 1.5, open_flags_count: 0, deficiencies_count: 0, standing: 'good_standing', is_delinquent: false }) as ApiSchema<'StudentRosterItem'>
 const first = student('11111111-1111-4111-8111-111111111111', 'First Student')
 const second = student('22222222-2222-4222-8222-222222222222', 'Second Student')
-afterEach(() => { cleanup(); vi.resetAllMocks(); auth.user = { id: 'adviser-one' } })
+afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); auth.user = { id: 'adviser-one' } })
 
 describe('advisee identity', () => {
+  it('shows up to ten students per page on mobile', async () => {
+    vi.stubGlobal('innerWidth', 375)
+    const students = Array.from({ length: 12 }, (_, i) => student(`mobile-${i}`, `Mobile Student ${i}`))
+    vi.mocked(getRoster).mockResolvedValue(students)
+    render(<MemoryRouter><AdviseesPage /></MemoryRouter>)
+    expect(await screen.findByText('Mobile Student 9')).toBeTruthy()
+    expect(screen.queryByText('Mobile Student 10')).toBeNull()
+    expect(screen.getByText('Page 1 of 2')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('Mobile Student 10')).toBeTruthy()
+    expect(screen.queryByText('Mobile Student 9')).toBeNull()
+  })
   it('paginates the matching roster and resets the page when the filter changes', async () => {
     const students = Array.from({ length: 18 }, (_, i): ApiSchema<'StudentRosterItem'> => ({ ...student(`id-${i}`, `Student ${i}`), standing: i === 17 ? 'warning' : 'good_standing' }))
     vi.mocked(getRoster).mockResolvedValue(students)

@@ -14,7 +14,7 @@ import { DeficiencySubjects } from './DeficiencySubjects'
 import './advisees-roster.css'
 
 function rosterPageSize() {
-  if (window.innerWidth < 768) return 1
+  if (window.innerWidth < 768) return 10
   return Math.max(1, Math.min(8, Math.floor((window.innerHeight - 400) / 56)))
 }
 
