@@ -1,4 +1,5 @@
-import { listEligibleDepartmentAdvisers, type StudentFilterOption } from '../students/students.api'
+import type { StudentFilterOption } from '../students/students.api'
+import { listDepartmentAssignmentAdvisers } from '../adviser-assignments/adviser-assignments.api'
 import { listCurricula, type CurriculumVersion, type Program } from '../curricula/curricula.api'
 import { apiClient, unwrapApiResult, type ApiSchema } from '@/lib/api'
 
@@ -25,7 +26,7 @@ export async function listDepartmentInvitationOptions(
 
   const [curricula, studentOptions] = await Promise.all([
     listCurricula(departmentId, signal),
-    listEligibleDepartmentAdvisers(departmentId, signal),
+    listDepartmentAssignmentAdvisers(departmentId, signal),
   ])
   const programs = curricula.programs.filter(program =>
     program.department_id === departmentId && program.status === 'active',
@@ -37,3 +38,4 @@ export async function listDepartmentInvitationOptions(
 
   return { programs, curriculumVersions, advisers: studentOptions }
 }
+

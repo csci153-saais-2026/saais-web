@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState } from 'react'
 import { PlusIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -16,11 +16,13 @@ import {
   departmentInviteRoles,
   type DepartmentInviteFormValues,
   type DepartmentInviteRole,
-  type DepartmentInvitePreviewResult,
+
 } from './invitation-preview'
 
 const roleLabels: Record<DepartmentInviteRole, string> = {
   student: 'Student',
+  dean: 'Dean',
+  admin: 'Admin',
   adviser: 'Adviser',
   department_staff: 'Department Staff',
   department_head: 'Department Head',
@@ -41,7 +43,6 @@ const initialValues: DepartmentInviteFormValues = {
 export default function InviteAccountDialog() {
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState(initialValues)
-  const [review, setReview] = useState<Extract<DepartmentInvitePreviewResult, { ok: true }> | null>(null)
   const [errors, setErrors] = useState<string[]>([])
   const sendLock = useRef(false)
   const auth = useAuth()
@@ -59,12 +60,9 @@ export default function InviteAccountDialog() {
   const options = references.data ?? { programs: [], curriculumVersions: [], advisers: [] }
   const selectedProgram = options.programs.find(program => program.id === values.program_id)
   const availableVersions = options.curriculumVersions.filter(version => version.program_id === values.program_id)
-  const reviewResult = review?.payload
-  const resolvedAdviser = options.advisers.find(adviser => adviser.id === values.adviser_id)
 
   function update<K extends keyof DepartmentInviteFormValues>(key: K, value: DepartmentInviteFormValues[K]) {
     setValues(previous => ({ ...previous, [key]: value }))
-    setReview(null)
     setErrors([])
     invitation.reset()
   }
@@ -73,9 +71,8 @@ export default function InviteAccountDialog() {
     setValues(previous => ({
       ...previous,
       role,
-      additional_roles: previous.additional_roles.filter(item => item !== role),
+      additional_roles: role === 'student' ? [] : previous.additional_roles.filter(item => item !== role),
     }))
-    setReview(null)
     setErrors([])
     invitation.reset()
   }
@@ -87,31 +84,12 @@ export default function InviteAccountDialog() {
         ? [...new Set([...previous.additional_roles, role])]
         : previous.additional_roles.filter(item => item !== role),
     }))
-    setReview(null)
     setErrors([])
     invitation.reset()
-  }
-
-  function prepareReview(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const result = buildDepartmentInvitePreview(values, {
-      ownEmail: auth.user?.email ?? '',
-      departmentId,
-      facultyId,
-      ...options,
-    })
-    if (result.ok === false) {
-      setErrors(result.errors)
-      setReview(null)
-      return
-    }
-    invitation.reset()
-    setErrors([])
-    setReview(result)
   }
 
   function sendReviewedInvitation() {
-    if (!review || sendLock.current || invitation.isPending || invitation.isSuccess) return
+    if (sendLock.current || invitation.isPending || invitation.isSuccess) return
     const result = buildDepartmentInvitePreview(values, {
       ownEmail: auth.user?.email ?? '',
       departmentId,
@@ -120,11 +98,9 @@ export default function InviteAccountDialog() {
     })
     if (result.ok === false) {
       setErrors(result.errors)
-      setReview(null)
-      return
+        return
     }
     setErrors([])
-    setReview(result)
     sendLock.current = true
     invitation.mutate(result.payload, { onSettled: () => { sendLock.current = false } })
   }
@@ -135,8 +111,7 @@ export default function InviteAccountDialog() {
       invitation.reset()
       sendLock.current = false
       setValues(initialValues)
-      setReview(null)
-      setErrors([])
+        setErrors([])
     }
   }
 
@@ -153,7 +128,7 @@ export default function InviteAccountDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-5" onSubmit={prepareReview} noValidate>
+        <form className="min-w-0 space-y-5 [&_.grid>div]:min-w-0 [&_input]:h-11 [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:text-sm [&_input::placeholder]:text-sm" onSubmit={event => { event.preventDefault(); sendReviewedInvitation() }} noValidate>
           {references.isPending && values.role === 'student' && <p role="status" className="text-sm text-muted-foreground">Loading active programs, curricula, and eligible advisers...</p>}
           {references.isError && values.role === 'student' && (
             <div className="space-y-2">
@@ -173,17 +148,17 @@ export default function InviteAccountDialog() {
 
           <FormField label="Primary role" htmlFor="invite-role">
             <Select value={values.role} onValueChange={value => updateRole(value as DepartmentInviteRole)}>
-              <SelectTrigger id="invite-role" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="invite-role" className="h-11! w-full min-w-0 max-w-full overflow-hidden [&_[data-slot=select-value]]:block [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {departmentInviteRoles.map(role => <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>)}
               </SelectContent>
             </Select>
           </FormField>
 
-          <fieldset className="space-y-2">
+          {values.role !== 'student' && <fieldset className="space-y-2"> 
             <legend className="text-[13px] font-semibold text-muted-foreground">Additional roles</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {departmentInviteRoles.filter(role => role !== values.role).map(role => {
+              {departmentInviteRoles.filter(role => role !== values.role && role !== 'student').map(role => {
                 const studentMustBePrimary = role === 'student'
                 return (
                   <label key={role} className="flex items-center gap-2 text-sm">
@@ -198,10 +173,10 @@ export default function InviteAccountDialog() {
                 )
               })}
             </div>
-          </fieldset>
+          </fieldset>}
 
           {values.role === 'student' && (
-            <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-4 border-t border-border pt-4 sm:grid-cols-2">
               <FormField label="Canonical student number" htmlFor="invite-student-number" hint="Format: YY-N-NNNNN (example: 24-1-00124).">
                 <Input id="invite-student-number" value={values.student_number} maxLength={64} onChange={event => update('student_number', event.target.value)} />
               </FormField>
@@ -213,7 +188,7 @@ export default function InviteAccountDialog() {
                   update('program_id', value === 'none' ? '' : value)
                   setValues(previous => ({ ...previous, curriculum_version_id: '' }))
                 }}>
-                  <SelectTrigger id="invite-program" className="w-full"><SelectValue placeholder="Choose active program" /></SelectTrigger>
+                  <SelectTrigger id="invite-program" className="h-11! w-full min-w-0 max-w-full overflow-hidden [&_[data-slot=select-value]]:block [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"><SelectValue placeholder="Choose active program" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Choose active program</SelectItem>
                     {options.programs.map(program => <SelectItem key={program.id} value={program.id}>{program.code} - {program.name}</SelectItem>)}
@@ -222,7 +197,7 @@ export default function InviteAccountDialog() {
               </FormField>
               <FormField label="Active curriculum version" htmlFor="invite-curriculum">
                 <Select value={values.curriculum_version_id || 'none'} onValueChange={value => update('curriculum_version_id', value === 'none' ? '' : value)} disabled={!selectedProgram}>
-                  <SelectTrigger id="invite-curriculum" className="w-full"><SelectValue placeholder="Choose matching active curriculum" /></SelectTrigger>
+                  <SelectTrigger id="invite-curriculum" className="h-11! w-full min-w-0 max-w-full overflow-hidden [&_[data-slot=select-value]]:block [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"><SelectValue placeholder="Choose matching active curriculum" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Choose matching active curriculum</SelectItem>
                     {availableVersions.map(version => <SelectItem key={version.id} value={version.id}>{version.version_label}</SelectItem>)}
@@ -231,7 +206,7 @@ export default function InviteAccountDialog() {
               </FormField>
               <FormField label="Eligible initial adviser" htmlFor="invite-adviser" className="sm:col-span-2">
                 <Select value={values.adviser_id || 'none'} onValueChange={value => update('adviser_id', value === 'none' ? '' : value)}>
-                  <SelectTrigger id="invite-adviser" className="w-full"><SelectValue placeholder="Choose an active department adviser" /></SelectTrigger>
+                  <SelectTrigger id="invite-adviser" className="h-11! w-full min-w-0 max-w-full overflow-hidden [&_[data-slot=select-value]]:block [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"><SelectValue placeholder="Choose an active department adviser" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Choose an active department adviser</SelectItem>
                     {options.advisers.map(adviser => <SelectItem key={adviser.id} value={adviser.id}>{adviser.label}</SelectItem>)}
@@ -240,12 +215,6 @@ export default function InviteAccountDialog() {
               </FormField>
             </div>
           )}
-
-          <div className="rounded-md border border-border bg-muted/20 p-4 text-sm">
-            <p className="font-medium">Organization scope</p>
-            <p className="mt-1 text-muted-foreground">Department and faculty are fixed from your approved assignment; no organization selector is available.</p>
-            {!facultyId && <p role="alert" className="mt-2 text-destructive">Your Department Staff assignment has no approved faculty scope. Ask the scope owner to resolve it before preparing an invitation.</p>}
-          </div>
 
           {errors.length > 0 && (
             <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
@@ -271,27 +240,8 @@ export default function InviteAccountDialog() {
             </div>
           )}
 
-          {reviewResult && (
-            <section aria-label="Invitation review" className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-4">
-              <h3 className="font-semibold">Review summary</h3>
-              <p><span className="font-medium">Invitee:</span> {reviewResult.full_name} ({reviewResult.email})</p>
-              <p><span className="font-medium">Roles:</span> {review!.roles.map(role => roleLabels[role]).join(', ')}</p>
-              <p><span className="font-medium">Scope:</span> Department {departmentId} / Faculty {facultyId}</p>
-              {reviewResult.role === 'student' && (
-                <div>
-                  <p><span className="font-medium">Student number:</span> {reviewResult.student_number}</p>
-                  <p><span className="font-medium">Program:</span> {selectedProgram?.code} - {selectedProgram?.name}</p>
-                  <p><span className="font-medium">Curriculum:</span> {options.curriculumVersions.find(version => version.id === reviewResult.curriculum_version_id)?.version_label}</p>
-                  <p><span className="font-medium">Initial adviser:</span> {resolvedAdviser?.label}</p>
-                </div>
-              )}
-              {!invitation.isSuccess && <p className="text-sm text-muted-foreground">No account is created until you send this reviewed invitation.</p>}
-            </section>
-          )}
-
           <DialogFooter>
-            <Button type="submit" variant="outline" disabled={references.isPending && values.role === 'student'}>Review invitation</Button>
-            <Button type="button" onClick={sendReviewedInvitation} disabled={!review || invitation.isPending || invitation.isSuccess || !facultyId}>
+            <Button type="submit" disabled={!values.full_name.trim() || !values.email.trim() || (values.role === 'student' && (!values.student_number.trim() || !values.program_id || !values.curriculum_version_id || !values.adviser_id)) || invitation.isPending || invitation.isSuccess}>
               {invitation.isPending ? 'Sending invitation…' : invitation.isSuccess ? 'Invitation sent' : 'Send invitation'}
             </Button>
           </DialogFooter>
@@ -300,3 +250,7 @@ export default function InviteAccountDialog() {
     </Dialog>
   )
 }
+
+
+
+

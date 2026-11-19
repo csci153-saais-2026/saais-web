@@ -4,6 +4,8 @@ import type { DepartmentInvitationOptions } from './invitation.api'
 
 export const departmentInviteRoles = [
   'student',
+  'dean',
+  'admin',
   'adviser',
   'department_staff',
   'department_head',
@@ -62,7 +64,7 @@ export function buildDepartmentInvitePreview(
     errors.push('A department and faculty scope from your approved assignment are required.')
   }
 
-  const additionalRoles = values.additional_roles ?? []
+  const additionalRoles = values.role === 'student' ? [] : values.additional_roles ?? []
   if (additionalRoles.some(role => !allowedRoles.has(role) || role === 'student' || role === values.role)) {
     errors.push('Additional roles must be unique permitted non-student roles, with Student selected as the primary role when needed.')
   }
@@ -140,3 +142,4 @@ export function buildDepartmentInvitePreview(
 
   return { ok: true, payload, roles: [values.role, ...additionalRoles] }
 }
+
