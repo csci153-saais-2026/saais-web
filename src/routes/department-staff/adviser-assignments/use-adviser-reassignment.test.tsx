@@ -3,7 +3,7 @@ import { act, cleanup, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { ApiClientError, normalizeApiError } from '@/lib/api'
-import { useAdviserReassignment } from './use-adviser-assignments'
+import { useAdviserReassignment } from './use-adviser-reassignment'
 
 const mocks = vi.hoisted(() => ({
   bulkReassignAdvisers: vi.fn(),

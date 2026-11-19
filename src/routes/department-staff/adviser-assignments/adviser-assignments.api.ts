@@ -16,6 +16,35 @@ export type BulkAdviserReassignmentRequest = OperationRequestBody<'bulkReassignA
 export type BulkAdviserReassignmentResponse = OperationResponse<'bulkReassignAdvisers'>
 export type AdviserAssignment = ApiSchema<'AdviserAssignment'>
 
+/** Active adviser profiles in the staff member's authorized department. */
+export async function listDepartmentAssignmentAdvisers(
+  departmentId: string,
+  signal?: AbortSignal,
+): Promise<{ id: string; label: string }[]> {
+  const advisers: { id: string; label: string }[] = []
+  const pageSize = 100
+  for (let offset = 0; ; offset += pageSize) {
+    const result = await apiClient.GET('/rest/v1/profile', {
+      params: { query: {
+        department_id: postgrestFilter.eq(departmentId),
+        status: postgrestFilter.eq('active'),
+        select: 'id,full_name,status,roles,department_id',
+        order: 'id.asc',
+        limit: pageSize,
+        offset,
+      } },
+      signal,
+    })
+    const rows = unwrapApiResult<ApiSchema<'Profile'>[]>(result)
+    if (!Array.isArray(rows)) throw new Error('The adviser service returned invalid data.')
+    advisers.push(...rows.filter((profile) =>
+      profile.department_id === departmentId && profile.status === 'active' &&
+      profile.roles?.includes('adviser') && profile.full_name?.trim(),
+    ).map((profile) => ({ id: profile.id, label: profile.full_name })))
+    if (rows.length < pageSize) return advisers.sort((a, b) => a.label.localeCompare(b.label))
+  }
+}
+
 const ASSIGNMENT_HISTORY_LIMIT = 1000
 const adviserAssignmentHistorySchema = z.object({
   id: z.uuid(),
