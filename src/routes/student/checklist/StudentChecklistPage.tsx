@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   ChecklistTermGroup,
   type ChecklistRow,
@@ -33,9 +34,9 @@ import {
   type ChecklistFilterValue,
 } from "./ChecklistToolbar"
 import {
-  fetchStudentChecklist,
-  recordChecklistExportEvent,
-} from "./student-checklist.api"
+  useRecordChecklistExport,
+  useStudentChecklist,
+} from "./use-student-checklist"
 
 export interface ChecklistSlotDisplayItem
   extends ApiSchema<"ChecklistSlotResult"> {
@@ -425,9 +426,8 @@ export function StudentChecklistView({
   )
 }
 
-interface ChecklistPageData {
+interface ChecklistMetaData {
   readonly summary: ApiSchema<"AcademicSummary">
-  readonly terms: readonly ChecklistTermSection[]
   readonly studentName: string | null
   readonly studentNumber: string | null
   readonly programLabel: string | null
@@ -435,17 +435,21 @@ interface ChecklistPageData {
   readonly adviserName: string | null
   readonly department: Partial<ApiSchema<"Department">> | null
   readonly faculty: Partial<ApiSchema<"Faculty">> | null
+  readonly curriculumVersionId: string | null
+  readonly currTerms: readonly ApiSchema<"CurriculumTerm">[]
+  readonly currSlots: readonly ApiSchema<"CurriculumTermCourse">[]
+  readonly courses: readonly ApiSchema<"Course">[]
 }
 
-async function fetchStudentChecklistData(
+async function fetchChecklistMeta(
   studentId: string
-): Promise<ChecklistPageData> {
-  const [summaryRes, slotResults] = await Promise.all([
-    apiClient.GET("/functions/v1/students/{student_id}/academic-summary", {
+): Promise<ChecklistMetaData> {
+  const summaryRes = await apiClient.GET(
+    "/functions/v1/students/{student_id}/academic-summary",
+    {
       params: { path: { student_id: studentId } },
-    }),
-    fetchStudentChecklist(studentId),
-  ])
+    }
+  )
 
   const summary = unwrapApiResult(summaryRes)
 
@@ -505,14 +509,34 @@ async function fetchStudentChecklistData(
   const activeAssignment =
     assignments.find((a) => a.end_date == null) ?? assignments[0] ?? null
 
-  const courseMap = new Map(courses.map((c) => [c.id, c]))
-  const slotDefMap = new Map(currSlots.map((s) => [s.id, s]))
+  return {
+    summary,
+    studentName: profile?.full_name ?? null,
+    studentNumber: profile?.student_number ?? null,
+    programLabel: program?.name ?? null,
+    curriculumLabel: curriculum?.version_label ?? null,
+    adviserName: activeAssignment?.adviser_name ?? null,
+    department,
+    faculty,
+    curriculumVersionId: org?.curriculum_version_id ?? null,
+    currTerms,
+    currSlots,
+    courses,
+  }
+}
 
-  const scopedTerms = org?.curriculum_version_id
-    ? currTerms.filter(
-        (t) => t.curriculum_version_id === org.curriculum_version_id
+function buildChecklistTermSections(
+  slotResults: readonly ApiSchema<"ChecklistSlotResult">[],
+  meta: ChecklistMetaData
+): ChecklistTermSection[] {
+  const courseMap = new Map(meta.courses.map((c) => [c.id, c]))
+  const slotDefMap = new Map(meta.currSlots.map((s) => [s.id, s]))
+
+  const scopedTerms = meta.curriculumVersionId
+    ? meta.currTerms.filter(
+        (t) => t.curriculum_version_id === meta.curriculumVersionId
       )
-    : currTerms
+    : meta.currTerms
 
   const sortedTerms = [...scopedTerms].sort(
     (a, b) =>
@@ -582,17 +606,7 @@ async function fetchStudentChecklistData(
     })
   }
 
-  return {
-    summary,
-    terms: termSections,
-    studentName: profile?.full_name ?? null,
-    studentNumber: profile?.student_number ?? null,
-    programLabel: program?.name ?? null,
-    curriculumLabel: curriculum?.version_label ?? null,
-    adviserName: activeAssignment?.adviser_name ?? null,
-    department,
-    faculty,
-  }
+  return termSections
 }
 
 /**
@@ -603,49 +617,29 @@ export function StudentChecklistPage({
 }: {
   studentId: string
 }) {
-  const [state, setState] = React.useState<{
-    data: ChecklistPageData | null
-    isPending: boolean
-    isError: boolean
-  }>({
-    data: null,
-    isPending: true,
-    isError: false,
+  const checklistQuery = useStudentChecklist(studentId)
+  const exportMutation = useRecordChecklistExport(studentId)
+  const metaQuery = useQuery({
+    queryKey: ["student", studentId, "checklist-meta"],
+    queryFn: () => fetchChecklistMeta(studentId),
+    enabled: Boolean(studentId),
   })
 
-  const refetch = React.useCallback(async () => {
-    setState((prev) => ({ ...prev, isPending: true, isError: false }))
-    try {
-      const result = await fetchStudentChecklistData(studentId)
-      setState({ data: result, isPending: false, isError: false })
-    } catch {
-      setState({ data: null, isPending: false, isError: true })
-    }
-  }, [studentId])
+  const terms = React.useMemo(() => {
+    if (!checklistQuery.data || !metaQuery.data) return []
+    return buildChecklistTermSections(checklistQuery.data, metaQuery.data)
+  }, [checklistQuery.data, metaQuery.data])
 
-  React.useEffect(() => {
-    let cancelled = false
-    fetchStudentChecklistData(studentId)
-      .then((result) => {
-        if (!cancelled) {
-          setState({ data: result, isPending: false, isError: false })
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState({ data: null, isPending: false, isError: true })
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [studentId])
-
-  if (state.isPending) {
+  if (checklistQuery.isPending || metaQuery.isPending) {
     return <p role="status">Loading...</p>
   }
 
-  if (state.isError || !state.data) {
+  if (
+    checklistQuery.isError ||
+    metaQuery.isError ||
+    !checklistQuery.data ||
+    !metaQuery.data
+  ) {
     return (
       <Panel
         title="Unable to load checklist"
@@ -654,7 +648,9 @@ export function StudentChecklistPage({
         <Button
           type="button"
           variant="outline"
-          onClick={() => void refetch()}
+          onClick={() =>
+            void Promise.all([checklistQuery.refetch(), metaQuery.refetch()])
+          }
         >
           Try again
         </Button>
@@ -664,17 +660,17 @@ export function StudentChecklistPage({
 
   return (
     <StudentChecklistView
-      summary={state.data.summary}
-      terms={state.data.terms}
-      studentName={state.data.studentName}
-      studentNumber={state.data.studentNumber}
-      programLabel={state.data.programLabel}
-      curriculumLabel={state.data.curriculumLabel}
-      adviserName={state.data.adviserName}
-      department={state.data.department}
-      faculty={state.data.faculty}
+      summary={metaQuery.data.summary}
+      terms={terms}
+      studentName={metaQuery.data.studentName}
+      studentNumber={metaQuery.data.studentNumber}
+      programLabel={metaQuery.data.programLabel}
+      curriculumLabel={metaQuery.data.curriculumLabel}
+      adviserName={metaQuery.data.adviserName}
+      department={metaQuery.data.department}
+      faculty={metaQuery.data.faculty}
       onPrintReport={() => {
-        void recordChecklistExportEvent(studentId).catch(() => undefined)
+        void exportMutation.mutateAsync(undefined).catch(() => undefined)
       }}
     />
   )
