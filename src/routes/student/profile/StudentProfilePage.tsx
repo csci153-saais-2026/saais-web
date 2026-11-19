@@ -25,6 +25,10 @@ import {
 import { CurriculumHistoryDialog } from "./CurriculumHistoryDialog"
 import { ProfileDetailsPanel } from "./ProfileDetailsPanel"
 import { ProfilePhotoCard } from "./ProfilePhotoCard"
+import {
+  studentPhotoSchema,
+  type StudentPhotoValues,
+} from "./student-photo-schema"
 
 export interface StudentProfileViewProps {
   readonly profile: ApiSchema<"Profile">
@@ -437,14 +441,15 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
       const dataUrl = await readFileAsDataUrl(file)
       const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg"
       const ext = mimeType === "image/png" ? "png" : "jpg"
+      const payload: StudentPhotoValues = studentPhotoSchema.parse({
+        storage_object_path: `students/${studentId}/avatar.${ext}`,
+        avatar_url: dataUrl,
+        mime_type: mimeType,
+        file_size_bytes: file.size,
+      })
       const res = await apiClient.PUT("/functions/v1/students/{student_id}/photo", {
         params: { path: { student_id: studentId } },
-        body: {
-          storage_object_path: `students/${studentId}/avatar.${ext}`,
-          avatar_url: dataUrl,
-          mime_type: mimeType,
-          file_size_bytes: file.size,
-        },
+        body: payload,
       })
       const updated = unwrapApiResult(res)
       setState((prev) =>

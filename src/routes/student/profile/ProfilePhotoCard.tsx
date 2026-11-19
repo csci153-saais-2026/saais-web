@@ -3,9 +3,9 @@ import { Panel } from "@/components/features/panel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024
-const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png"])
+import {
+  studentPhotoFileSchema,
+} from "./student-photo-schema"
 
 export interface ProfilePhotoCardProps {
   readonly initials: string
@@ -39,15 +39,15 @@ export function ProfilePhotoCard({
     e.target.value = ""
     if (!file) return
 
-    if (!ALLOWED_MIME_TYPES.has(file.type)) {
-      setStatusMessage("")
-      setErrorMessage("Choose a JPG or PNG image.")
-      return
-    }
+    const validation = studentPhotoFileSchema.safeParse({
+      mime_type: file.type,
+      file_size_bytes: file.size,
+    })
 
-    if (file.size > MAX_PHOTO_BYTES) {
+    if (!validation.success) {
+      const firstIssue = validation.error.issues[0]
       setStatusMessage("")
-      setErrorMessage("That image is over 2 MB. Choose a smaller one.")
+      setErrorMessage(firstIssue?.message ?? "Invalid image file.")
       return
     }
 
