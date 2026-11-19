@@ -10,9 +10,7 @@ export async function getDeficiencySubjects(studentId: string) {
     terms.push(...page)
     if (page.length < 100) break
   }
-  const openFlags = unwrapApiResult(await apiClient.GET('/rest/v1/grade_flag', { params: { query: { student_id: postgrestFilter.eq(studentId), status: postgrestFilter.eq('open'), select: 'attempt_id', limit: 1000 } } }))
-  const flaggedAttemptIds = new Set(openFlags.map(flag => flag.attempt_id))
-  const offeringIds = [...new Set(terms.flatMap(term => term.attempts).filter(attempt => flaggedAttemptIds.has(attempt.id) || (!attempt.is_repeated && (attempt.effective_status === 'failed' || (attempt.recorded_status === 'inc' && attempt.completion_grade == null)))).map(attempt => attempt.course_offering_id))]
+  const offeringIds = [...new Set(terms.flatMap(term => term.attempts).filter(attempt => !attempt.is_repeated && (attempt.effective_status === 'failed' || attempt.effective_status === 'dr' || (attempt.recorded_status === 'inc' && attempt.completion_grade == null))).map(attempt => attempt.course_offering_id))]
   const offerings: ApiSchema<'CourseOffering'>[] = []
   for (let i = 0; i < offeringIds.length; i += 50) offerings.push(...unwrapApiResult(await apiClient.GET('/rest/v1/course_offering', { params: { query: { id: postgrestFilter.inList(offeringIds.slice(i, i + 50)), limit: 100 } } })))
   const courseIds = [...new Set(offerings.map(offering => offering.course_id))]

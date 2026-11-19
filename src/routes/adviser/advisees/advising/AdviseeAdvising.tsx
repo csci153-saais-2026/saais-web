@@ -21,8 +21,7 @@ function PlanEditor({ data, id, term, message, onSaved }: { data: PlanData; id: 
     const course = data.courses.find(c => c.id === offering?.course_id)
     return { ...item, code: course?.code ?? `Offering ${item.course_offering_id}`, title: course?.title ?? '', units: course?.units ?? '—', why: 'Saved to plan', badges: [] as string[] }
   })
-  // Temporarily hide this course from advising until the student work is ready.
-  const rows = [...recommendations, ...saved].filter(course => course.code.replace(/\s+/g, '').toUpperCase() !== 'CSCI153')
+  const rows = [...recommendations, ...saved]
   function toggle(offering: string, slot: string | null | undefined, checked: boolean) {
     setSelected(items => checked ? [...items, { course_offering_id: offering, curriculum_term_course_id: slot }] : items.filter(item => item.course_offering_id !== offering))
   }

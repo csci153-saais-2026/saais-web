@@ -15,6 +15,7 @@ import { DownloadIcon } from '@/components/icons'
 import { getRoster } from '../advisees/advisees.api'
 import { useScopedRequest } from '../advisees/use-scoped-request'
 import { getDeficiencySubjects } from '../advisees/deficiency-subjects.api'
+import { distributionBands } from './distribution'
 
 async function loadDeficientAdvisees() {
   const roster = await getRoster('current')
@@ -54,7 +55,7 @@ export default function AdviserDashboard() {
       </div>
       <div className="grid gap-0">
         <Panel title="Final grade distribution" description={`${terms.find(term => term.id === termId) ? `${terms.find(term => term.id === termId)?.school_year} · ${terms.find(term => term.id === termId)?.term_type} · ` : ''}Share of final grades across your advisees`} action={<label className="grid gap-1 text-sm">Term<select className="rounded-md border border-border bg-background px-3 py-2" value={termId} onChange={event => setTermId(event.target.value)}><option value="">All terms</option>{terms.map(term => <option key={term.id} value={term.id}>{term.school_year} · {term.term_type}</option>)}</select></label>}>
-          {report.grade_distribution ? <GradeDistribution inline bands={report.grade_distribution.buckets.map(bucket => ({ label: bucket.label, percent: bucket.percentage, detail: `${bucket.count} grades` }))} /> : <p className="text-sm text-muted-foreground">Grade distribution is not available in this report.</p>}
+          {report.grade_distribution ? <GradeDistribution inline bands={distributionBands(report.grade_distribution)} /> : <p className="text-sm text-muted-foreground">Grade distribution is not available in this report.</p>}
         </Panel>
         {user && <AdviserCohorts key={user.id} userId={user.id} rows={report.batch_curriculum_gwa ?? []} />}
       </div>

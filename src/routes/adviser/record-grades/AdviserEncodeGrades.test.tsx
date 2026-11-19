@@ -17,6 +17,20 @@ const choices = { students:[{student_id:'student-one',full_name:'Student One',st
 beforeEach(()=>{vi.mocked(getElectiveSlots).mockResolvedValue([])})
 afterEach(()=>{cleanup();vi.resetAllMocks();auth.user={id:'adviser-one'};auth.isMockMode=true})
 describe('encoding workspace identity',()=>{
+ it('does not offer deletion for a saved course',async()=>{
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue([])
+   render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
+   expect(await screen.findByRole('group',{name:'Edit CS 1 · Computing'})).toBeTruthy()
+   expect(screen.queryByRole('button',{name:'Remove CS 1'})).toBeNull()
+ })
+ it('shows a draft message when an unsaved course is removed',async()=>{
+   const offering={offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:'slot-two',has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue([offering])
+   render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
+   fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:/CS 2/}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}))
+   fireEvent.click(screen.getByRole('button',{name:'Remove CS 2'}))
+   expect(screen.getByText('CS 2 removed from the draft.')).toBeTruthy()
+ })
  it('preselects only a student in the current adviser roster',async()=>{
    vi.mocked(getEncodingChoices).mockResolvedValue(choices)
    const view=render(<MemoryRouter initialEntries={['/adviser/encode-grades?student=student-two']}><Encode/></MemoryRouter>)

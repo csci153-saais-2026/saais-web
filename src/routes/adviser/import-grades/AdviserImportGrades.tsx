@@ -6,6 +6,7 @@ import type { ApiSchema } from "@/lib/api";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { Button } from "@/components/ui/button";
+import { DownloadIcon } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FileUpload } from "@/components/features/file-upload";
@@ -156,7 +157,7 @@ function ImportForm() {
         subtitle="For many advisees or terms at once"
         actions={
           <Button variant="outline" onClick={downloadTemplate}>
-            Download template
+            <DownloadIcon /> Download template
           </Button>
         }
       />

@@ -3,7 +3,7 @@ import type { ApiSchema } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/features/panel";
 import { completeInc } from "../advisees/checklist/record.api";
-import { deleteTermAttempt, type getTermOfferings } from "./encode.api";
+import type { getTermOfferings } from "./encode.api";
 import { GradeSelect } from "../GradeSelect";
 import { outcomeStatus } from "./grade-encoding";
 import { emptyDraft, type ExistingDraft } from "./existing-draft";
@@ -147,27 +147,21 @@ function PendingInc({
   );
 }
 function ExistingAttempt({
-  studentId,
   attempt,
   title,
   instructorOptions,
   draft,
   disabled,
   onDraft,
-  onSaved,
 }: {
-  studentId: string;
   attempt: ApiSchema<"AttemptResult">;
   title: string;
   instructorOptions: string[];
   draft: ExistingDraft;
   disabled: boolean;
   onDraft: (draft: ExistingDraft) => void;
-  onSaved: () => void;
 }) {
   const { midterm, final, instructor } = draft;
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const allowMidterm =
     attempt.midterm_grade == null &&
     attempt.midterm_status !== "dr" &&
@@ -202,20 +196,6 @@ function ExistingAttempt({
             attempt.effective_status === "failed"
           ? attempt.effective_status
           : outcomeStatus(attempt.recorded_status);
-  async function remove() {
-    setError("");
-    setBusy(true);
-    try {
-      await deleteTermAttempt(studentId, attempt.id);
-      onSaved();
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Unable to remove this course.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <div
       role="group"
@@ -329,27 +309,8 @@ function ExistingAttempt({
           <span className="text-muted-foreground">—</span>
         )}
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="justify-self-end"
-        aria-label={`Remove ${code}`}
-        title="Remove this course"
-        disabled={busy || disabled}
-        onClick={() => void remove()}
-      >
-        ×
-      </Button>
-      <p className="sr-only">
-        Previously recorded grades are changed through the grade correction
-        workflow.
-      </p>
-      {error && (
-        <p role="alert" className="sm:col-span-2 lg:col-span-6">
-          {error}
-        </p>
-      )}
+      <span aria-hidden="true" />
+      <p className="sr-only">Saved courses cannot be removed. Previously recorded grades are changed through the grade correction workflow.</p>
     </div>
   );
 }
@@ -399,22 +360,17 @@ export function PendingIncs({
 export function ExistingCourseRows({
   data,
   offerings,
-  studentId,
   termId,
   drafts,
   disabled,
   onDraft,
-  onSaved,
 }: {
   data: GradeData;
   offerings: Awaited<ReturnType<typeof getTermOfferings>>;
-  studentId: string;
   termId: string;
   drafts: Record<string, ExistingDraft>;
   disabled: boolean;
   onDraft: (attemptId: string, draft: ExistingDraft) => void;
-  isMockMode: boolean;
-  onSaved: () => void;
 }) {
   const existing =
     data.terms.find((term) => term.school_term_id === termId)?.attempts ?? [];
@@ -423,7 +379,6 @@ export function ExistingCourseRows({
       {existing.map((a) => (
         <ExistingAttempt
           key={a.id}
-          studentId={studentId}
           attempt={a}
           title={labelFor(a, data)}
           instructorOptions={
@@ -433,7 +388,6 @@ export function ExistingCourseRows({
           draft={drafts[a.id] ?? emptyDraft(a)}
           disabled={disabled}
           onDraft={(draft) => onDraft(a.id, draft)}
-          onSaved={onSaved}
         />
       ))}
     </>

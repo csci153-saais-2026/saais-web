@@ -21,6 +21,27 @@ const report = {
 afterEach(() => { cleanup(); vi.resetAllMocks(); auth.user = { id: 'adviser-one' } })
 
 describe('AdviserDashboard', () => {
+  it('includes INC, DR, and NA in the distribution using the same total as numeric grades', async () => {
+    vi.mocked(getAdviserDashboard).mockResolvedValue({ ...report, grade_distribution: { total_graded: 3, inc_count: 1, dr_count: 1, na_count: 1, currently_enrolled_count: 2, buckets: [{ label: '1.00–1.50', count: 3, percentage: 100 }] } })
+    vi.mocked(getSchoolTerms).mockResolvedValue([])
+    vi.mocked(getRoster).mockResolvedValue([])
+    render(<MemoryRouter><AdviserDashboard /></MemoryRouter>)
+    expect((await screen.findByText('INC / DR / NA')).closest('li')?.textContent).toContain('50%')
+    expect(screen.getByText('1.00–1.50').closest('li')?.textContent).toContain('50%')
+  })
+
+  it('shows the failing grade and special statuses with their style guide colors', async () => {
+    vi.mocked(getAdviserDashboard).mockResolvedValue({ ...report, grade_distribution: { total_graded: 1, inc_count: 1, dr_count: 0, na_count: 0, currently_enrolled_count: 0, buckets: [{ label: '3.25–5.00', count: 1, percentage: 100 }] } })
+    vi.mocked(getSchoolTerms).mockResolvedValue([])
+    vi.mocked(getRoster).mockResolvedValue([])
+    render(<MemoryRouter><AdviserDashboard /></MemoryRouter>)
+    const fail = (await screen.findByText('5.00')).closest('li')!
+    const special = screen.getByText('INC / DR / NA').closest('li')!
+    expect(fail.querySelector('.text-status-fail')?.textContent).toBe('50%')
+    expect(special.querySelector('.text-status-inc')?.textContent).toBe('50%')
+    expect(screen.queryByText('3.25–5.00')).toBeNull()
+  })
+
   it('renders the shared report and labels unavailable optional fields', async () => {
     vi.mocked(getAdviserDashboard).mockResolvedValue(report)
     vi.mocked(getSchoolTerms).mockResolvedValue([])
