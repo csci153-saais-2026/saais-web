@@ -296,6 +296,76 @@ describe("MSW contract handlers & role-based authorization (Issue #43)", () => {
     expect(summary.counted_units).toBe(9);
   });
 
+  it("allows only in-scope Department Heads to clone curriculum terms and slots", async () => {
+    const db = getMockDatabase();
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: "mock",
+    });
+    const body = {
+      program_id: MOCK_IDS.programBscs,
+      version_label: "BSCS cloned",
+      effective_start: "2026-08-01",
+      clone_from_version_id: MOCK_IDS.curriculumBscs2024,
+    };
+    const before = db.curriculumVersions.length;
+    for (const role of ["department_staff", "admin"] as const) {
+      loginAsMockPersona(role);
+      const denied = await client.POST(
+        "/functions/v1/catalog/curriculum_version",
+        { body },
+      );
+      expect(denied.response.status).toBe(403);
+      expect(db.curriculumVersions).toHaveLength(before);
+    }
+    loginAsMockPersona("department_staff");
+    expect(
+      (
+        await client.POST("/functions/v1/catalog/curriculum_version", {
+          body: { ...body, clone_from_version_id: null },
+        })
+      ).response.status,
+    ).toBe(201);
+    loginAsMockPersona("department_head");
+    const result = await client.POST(
+      "/functions/v1/catalog/curriculum_version",
+      { body },
+    );
+    expect(result.response.status).toBe(201);
+    const created = unwrapApiResult(result);
+    const originals = db.curriculumTerms.filter(
+      (term) => term.curriculum_version_id === MOCK_IDS.curriculumBscs2024,
+    );
+    const copies = db.curriculumTerms.filter(
+      (term) => term.curriculum_version_id === created.id,
+    );
+    expect(copies).toHaveLength(originals.length);
+    for (const original of originals) {
+      const copy = copies.find(
+        (term) =>
+          term.year_level === original.year_level &&
+          term.term_sequence === original.term_sequence,
+      )!;
+      expect(copy.id).not.toBe(original.id);
+      const originalSlots = db.curriculumTermCourses.filter(
+        (slot) => slot.curriculum_term_id === original.id,
+      );
+      const copySlots = db.curriculumTermCourses.filter(
+        (slot) => slot.curriculum_term_id === copy.id,
+      );
+      expect(copySlots.map((slot) => slot.course_id)).toEqual(
+        originalSlots.map((slot) => slot.course_id),
+      );
+      expect(
+        copySlots.every(
+          (slot) =>
+            !originalSlots.some((originalSlot) => originalSlot.id === slot.id),
+        ),
+      ).toBe(true);
+    }
+  });
+
   it("uses the student current department closure for a cross-department course", async () => {
     const db = getMockDatabase();
     const profile = db.profiles.find((p) => p.id === MOCK_IDS.studentPrimary)!;

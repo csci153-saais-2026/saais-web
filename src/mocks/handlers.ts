@@ -1653,6 +1653,40 @@ export const saaisMswHandlers = [
         string,
         unknown
       >;
+      const db = getMockDatabase();
+      const cloneId = body.clone_from_version_id;
+      if (cloneId != null && !hasMockRole(auth.persona, ["department_head"])) {
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Only a Department Head may clone a curriculum.",
+        );
+      }
+      const source =
+        cloneId == null
+          ? undefined
+          : db.curriculumVersions.find((version) => version.id === cloneId);
+      if (cloneId != null && !source)
+        return errorJson(404, "NOT_FOUND", "Source curriculum not found.");
+      if (source) {
+        const sourceProgram = db.programs.find(
+          (program) => program.id === source.program_id,
+        );
+        const targetProgram = db.programs.find(
+          (program) => program.id === body.program_id,
+        );
+        if (
+          !auth.persona.departmentId ||
+          sourceProgram?.department_id !== auth.persona.departmentId ||
+          targetProgram?.department_id !== auth.persona.departmentId
+        ) {
+          return errorJson(
+            403,
+            "INSUFFICIENT_PRIVILEGE",
+            "Source and target must be within the Department Head scope.",
+          );
+        }
+      }
       const created: ApiSchema<"CurriculumVersion"> = {
         id: nextSyntheticUuid(),
         program_id: String(body.program_id ?? MOCK_IDS.programBscs),
@@ -1664,7 +1698,29 @@ export const saaisMswHandlers = [
         status: "draft",
         enrolled_student_count: 0,
       };
-      getMockDatabase().curriculumVersions.push(created);
+      db.curriculumVersions.push(created);
+      if (source) {
+        const sourceTerms = db.curriculumTerms.filter(
+          (term) => term.curriculum_version_id === source.id,
+        );
+        for (const term of sourceTerms) {
+          const newTermId = nextSyntheticUuid();
+          db.curriculumTerms.push({
+            ...term,
+            id: newTermId,
+            curriculum_version_id: created.id,
+          });
+          const slots = db.curriculumTermCourses.filter(
+            (slot) => slot.curriculum_term_id === term.id,
+          );
+          for (const slot of slots)
+            db.curriculumTermCourses.push({
+              ...slot,
+              id: nextSyntheticUuid(),
+              curriculum_term_id: newTermId,
+            });
+        }
+      }
       return HttpResponse.json(created, { status: 201 });
     },
   ),

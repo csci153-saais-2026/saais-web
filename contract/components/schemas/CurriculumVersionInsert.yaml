@@ -9,7 +9,7 @@ properties:
       - string
       - "null"
     format: uuid
-    description: Optional existing curriculum version UUID to clone terms and slots from.
+    description: Optional existing curriculum version UUID to clone terms and slots from; only a Department Head with scope over the source and target may use it.
   version_label:
     type: string
     minLength: 1
