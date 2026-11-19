@@ -94,8 +94,8 @@ function getInitials(name?: string | null): string {
 export function StudentDashboardView({
   summary,
   studentName,
-  programName = "BS Computer Science",
-  curriculumLabel = "2023–2024",
+  programName = "Unassigned program",
+  curriculumLabel = "—",
   delinquencyThresholdUnits = 12,
   adviserAssignments = [],
   recommendations = [],
@@ -218,8 +218,8 @@ export function StudentDashboardView({
           />
 
           <DegreeProgress
-            program={programName ?? "BS Computer Science"}
-            curriculum={curriculumLabel ?? "2023–2024"}
+            program={programName ?? "Unassigned program"}
+            curriculum={curriculumLabel ?? "—"}
             earned={summary.earned_units}
             required={summary.required_units}
             action={
@@ -319,8 +319,8 @@ async function fetchDashboardMeta(
 
   return {
     studentName: profile?.full_name ?? null,
-    programName: program?.name ?? "BS Computer Science",
-    curriculumLabel: curriculum?.version_label ?? "2024–2025",
+    programName: program?.name ?? "Unassigned program",
+    curriculumLabel: curriculum?.version_label ?? "—",
     offeringMap: new Map(offerings.map((o) => [o.id, o])),
     courseMap: new Map(courses.map((c) => [c.id, c])),
   }
@@ -384,8 +384,8 @@ export function StudentDashboardPage({
     <StudentDashboardView
       summary={dashboard.data.summary}
       studentName={metaQuery.data?.studentName ?? null}
-      programName={metaQuery.data?.programName ?? "BS Computer Science"}
-      curriculumLabel={metaQuery.data?.curriculumLabel ?? "2024–2025"}
+      programName={metaQuery.data?.programName ?? "Unassigned program"}
+      curriculumLabel={metaQuery.data?.curriculumLabel ?? "—"}
       adviserAssignments={dashboard.data.adviserAssignments}
       recommendations={recommendations}
       notes={dashboard.data.notes}
