@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import rawCollection from "../../contract/postman/saais-api.postman_collection.json";
 import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
 import { saaisMockServer } from "./node";
+import { MOCK_IDS } from "./personas";
 import { getMockDatabase, resetMockDatabase } from "./store";
 
 interface PostmanHeader {
@@ -115,6 +116,39 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
           `/catalog/course/${unusedId}`,
         );
       }
+      const isSavedAttemptDelete =
+        req.method === "DELETE" &&
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteOpenTermAttempt)");
+      let attemptsBefore: ReturnType<typeof structuredClone> | undefined;
+      let attemptResultsBefore: ReturnType<typeof structuredClone> | undefined;
+      if (isSavedAttemptDelete) {
+        const db = getMockDatabase();
+        const attempt = db.attempts.find(
+          (row) => row.id === MOCK_IDS.attemptCsci153Open,
+        );
+        expect(attempt?.student_id).toBe(MOCK_IDS.studentPrimary);
+        const offering = db.courseOfferings.find(
+          (row) => row.id === attempt?.course_offering_id,
+        );
+        const term = db.schoolTerms.find(
+          (row) => row.id === offering?.school_term_id,
+        );
+        expect(term?.is_locked).toBe(false);
+        expect(
+          db.departmentTermEncodings.find(
+            (row) =>
+              row.school_term_id === term?.id &&
+              row.department_id === MOCK_IDS.deptDcst,
+          )?.is_closed,
+        ).toBe(false);
+        rawUrl = rawUrl.replace(
+          /\/attempts\/[^/?]+/,
+          `/attempts/${MOCK_IDS.attemptCsci153Open}`,
+        );
+        attemptsBefore = structuredClone(db.attempts);
+        attemptResultsBefore = structuredClone(db.attemptResults);
+      }
       const headers: Record<string, string> = {};
       for (const h of req.header ?? []) {
         headers[h.key] = interpolate(h.value, env);
@@ -135,7 +169,12 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
 
       const response = await fetch(rawUrl, init);
 
-      if (item.name.startsWith("Authorized")) {
+      if (isSavedAttemptDelete) {
+        expect(response.status, `Expected 409 for ${fullName}`).toBe(409);
+        expect(await response.json()).toMatchObject({ code: "CONFLICT" });
+        expect(getMockDatabase().attempts).toEqual(attemptsBefore);
+        expect(getMockDatabase().attemptResults).toEqual(attemptResultsBefore);
+      } else if (item.name.startsWith("Authorized")) {
         expect(
           response.status,
           `Expected 2xx for ${fullName} (${req.method} ${rawUrl}), got ${response.status}`,

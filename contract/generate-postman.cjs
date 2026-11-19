@@ -728,8 +728,11 @@ function generatePostmanArtifacts() {
       const successStatuses = Object.keys(op.responses || {})
         .map((c) => Number.parseInt(c, 10))
         .filter((c) => c >= 200 && c < 300);
-      const expected2xx =
-        successStatuses.length > 0 ? successStatuses : [200, 201, 204];
+      const rejectsSavedAttempt = operationId === "deleteOpenTermAttempt";
+      const expectedStatuses = rejectsSavedAttempt ? [409] : successStatuses;
+      if (expectedStatuses.length === 0) {
+        throw new Error(`No expected response configured for ${operationId}`);
+      }
 
       const authHeaders = [
         {
@@ -763,15 +766,15 @@ function generatePostmanArtifacts() {
           : "";
 
       const authorizedItem = createPostmanRequestItem({
-        name: `Authorized (${isPublic ? "public apikey" : primaryRole}) — ${method.toUpperCase()} ${route}`,
+        name: `Authorized (${isPublic ? "public apikey" : primaryRole}${rejectsSavedAttempt ? ", 409 Conflict for saved attempt" : ""}) — ${method.toUpperCase()} ${route}`,
         method,
         openApiRoute: route,
         operationId,
-        description: `${opSummary}\n\n- **Operation ID**: \`${operationId}\`\n- **${roleSummary}**${scopeSummary}`,
+        description: `${opSummary}\n\n${rejectsSavedAttempt ? `${op.description}\n\n` : ""}- **Operation ID**: \`${operationId}\`\n- **${roleSummary}**${scopeSummary}`,
         headers: authHeaders,
         queryItems,
         bodyObj,
-        expectedStatuses: expected2xx,
+        expectedStatuses,
       });
 
       // Build Denied (401/403) counterpart
@@ -995,7 +998,7 @@ function generatePostmanArtifacts() {
       _postman_id: "00000000-0000-4000-8000-5aa15c011ec7",
       name: "SAAIS OpenAPI 3.1 Contract Collection (6 Roles)",
       description:
-        "Generated directly from `contract/openapi.yaml`. Covers operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with both authorized (`2xx`) and unauthorized/denied (`401`/`403`/`409`) verification requests. Uses placeholder variables and synthetic test IDs only.",
+        "Generated directly from `contract/openapi.yaml`. Covers operations across all 6 SAAIS roles (`student`, `adviser`, `department_head`, `department_staff`, `dean`, `admin`) with authorized and unauthorized/denied verification requests. The deprecated saved-attempt deletion operation expects `409` for an authorized adviser. Uses placeholder variables and synthetic test IDs only.",
       schema:
         "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     },

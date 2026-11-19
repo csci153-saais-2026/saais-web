@@ -3400,7 +3400,7 @@ export const saaisMswHandlers = [
 
   http.delete(
     "*/functions/v1/students/:student_id/attempts/:attempt_id",
-    ({ request, params }) => {
+    ({ request }) => {
       const auth = authenticateRequest(request, [
         "admin",
         "dean",
@@ -3408,14 +3408,11 @@ export const saaisMswHandlers = [
         "adviser",
       ]);
       if ("response" in auth) return auth.response;
-      if (
-        attemptEncodingClosed(
-          String(params.student_id),
-          String(params.attempt_id),
-        )
-      )
-        return encodingClosedResponse();
-      return new HttpResponse(null, { status: 204 });
+      return errorJson(
+        409,
+        "CONFLICT",
+        "Saved course attempts cannot be deleted.",
+      );
     },
   ),
 

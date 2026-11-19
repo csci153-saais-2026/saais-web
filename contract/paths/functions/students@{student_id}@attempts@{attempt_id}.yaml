@@ -1,26 +1,23 @@
 delete:
   tags:
     - Advising & Exceptions
-  summary: Remove unsubmitted or erroneous open-term enrollment row
+  summary: Reject deletion of saved course attempts
   operationId: deleteOpenTermAttempt
+  deprecated: true
   description: >-
-    Current adviser removes an ungraded or erroneously added enrollment row from an unlocked
-    school term on the Encode Grades screen. Rejects with 409 Conflict if the school term is
-    locked without override or if the attempt has INC completions, credit/equivalency decisions,
-    or grade flags referencing it.
+    Saved course attempts cannot be deleted (FR-ENR-06).
+    A request for a saved attempt returns 409 Conflict.
+    Unsaved rows are removed locally before submission;
+    drops are recorded as DR under FR-GRD-03.
   x-department-closure: >-
-    A closed encoding state for the affected student’s current department and term blocks grade-changing writes, even if the course is offered by another department
-    with 409 until reopened; the global lock and its override remain independently enforced.
+    Saved attempts cannot be deleted regardless of department or term encoding state.
   x-required-roles:
     - adviser
   x-access-scope: current-adviser-only
   x-atomic: true
   x-request-validation: >-
-    Verify JWT, current adviser assignment, unlocked term, and absence of dependent records;
-    commit audit log entry atomically.
+    Verify JWT and current adviser assignment; reject deletion of every saved attempt.
   responses:
-    "204":
-      description: Open-term enrollment row removed and audited.
     "400":
       $ref: "../../components/responses/400BadRequest.yaml"
     "401":
