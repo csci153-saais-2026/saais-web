@@ -66,22 +66,22 @@ export function CourseCatalogActions({ course, departmentLabel, showDiscontinue 
       <Dialog open={action !== null} onOpenChange={open => { if (!open) closeConfirmation() }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isDelete ? 'Delete catalog course?' : 'Discontinue catalog course?'}</DialogTitle>
+          <DialogTitle>{isDelete ? 'Delete record' : 'Discontinue catalog course?'}</DialogTitle>
             <DialogDescription>
-              Confirm the exact course before continuing. This action will not rewrite historical curriculum records.
+              {isDelete ? <>Delete <strong>{course.code} — {course.title}</strong> from the catalog? This can’t be undone.</> : 'Confirm the exact course before continuing. This action will not rewrite historical curriculum records.'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-md border border-border bg-muted/40 p-4">
+          {!isDelete && <div className="rounded-md border border-border bg-muted/40 p-4">
             <p className="font-semibold">{subject}</p>
             <p className="text-sm text-muted-foreground">{departmentLabel}</p>
-          </div>
+          </div>}
 
-          <p className="text-sm text-muted-foreground">
+          {!isDelete && <p className="text-sm text-muted-foreground">
             {isDelete
               ? 'Deletion is allowed only when no curriculum slots, offerings, prerequisites, or attempts reference this course. If history protects it, the server will block deletion and the course must be discontinued instead.'
               : 'The course will remain available to historical records and will no longer be active in the catalog.'}
-          </p>
+          </p>}
 
           {mutation.isError && (
             <p role="alert" className="text-sm text-destructive">{courseCatalogActionError(mutation.error, action!)}</p>

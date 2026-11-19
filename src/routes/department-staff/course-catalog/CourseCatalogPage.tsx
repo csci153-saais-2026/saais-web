@@ -113,11 +113,14 @@ export default function CourseCatalogPage() {
         const canEdit = staffScope.status === 'ready' && staffScope.departmentIds.includes(course.department_id)
         const department = departmentsById.get(course.department_id)
         const departmentName = department ? `${department.code} · ${department.name}` : course.department_id
+        const faculty = references.data?.faculties.find(item => item.id === department?.faculty_id)
+        const facultyName = faculty ? `${faculty.code} · ${faculty.name}` : undefined
         return <div className="flex flex-wrap items-center gap-2.5 sm:flex-nowrap">
           {canEdit ? <CourseDialog
             course={course}
             departmentId={course.department_id}
             departmentLabel={departmentName}
+            facultyLabel={facultyName}
             onCreated={() => undefined}
             onUpdated={() => undefined}
             triggerLabel="Edit"
@@ -235,6 +238,7 @@ export default function CourseCatalogPage() {
         course={prerequisiteCourse}
         open={prerequisiteDialogOpen}
         onReturnFocus={() => prerequisiteTrigger.current?.focus()}
+        onClose={() => setPrerequisiteDialogOpen(false)}
       />
     </div>
     </Dialog>

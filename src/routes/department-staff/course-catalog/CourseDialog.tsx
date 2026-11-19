@@ -9,9 +9,10 @@ import { useCreateCatalogCourse, useUpdateCatalogCourse, courseCreationError, co
 import type { CatalogCourse } from './course-catalog.api'
 import { courseSchema, editableCourseSchema, type CourseValues, type EditableCourseValues } from './course.schema'
 
-export function CourseDialog({ departmentId, departmentLabel, description, onCreated, onUpdated, course, disabled = false, initialCategory = 'major', triggerLabel }: {
+export function CourseDialog({ departmentId, departmentLabel, facultyLabel, description, onCreated, onUpdated, course, disabled = false, initialCategory = 'major', triggerLabel }: {
   departmentId: string
   departmentLabel?: string
+  facultyLabel?: string
   description?: string
   onCreated: (course: CatalogCourse) => void
   onUpdated?: (course: CatalogCourse) => void
@@ -74,7 +75,7 @@ export function CourseDialog({ departmentId, departmentLabel, description, onCre
     {open && <Dialog open onOpenChange={next => { if (!next && !pending) setOpen(false) }}>
       <DialogContent
         className={editing
-          ? 'flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-md p-0 sm:max-w-[600px]'
+          ? 'flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-md p-0 sm:max-w-[750px]'
           : 'max-h-[90dvh] overflow-y-auto'}
         showCloseButton={!pending}
         onEscapeKeyDown={event => { if (pending) event.preventDefault() }}
@@ -90,11 +91,11 @@ export function CourseDialog({ departmentId, departmentLabel, description, onCre
           aria-busy={pending}
           onSubmit={event => { void handleSubmit(submit)(event) }}
         >
-          <div className={editing ? 'min-h-0 flex-1 overflow-y-auto px-5 py-5' : undefined}>
-          <fieldset disabled={pending} className={editing ? 'grid min-w-0 grid-cols-2 gap-4' : 'grid min-w-0 gap-4'}>
-            <FormField label="Department" htmlFor="catalog-course-department" className={editing ? 'col-span-2' : undefined} hint={!editing ? 'Courses are created only in your authorized department.' : undefined}>
+          <div className={editing ? 'min-h-0 flex-1 overflow-y-auto px-7 py-8' : undefined}>
+          <fieldset disabled={pending} className={editing ? 'grid min-w-0 grid-cols-2 gap-x-6 gap-y-5' : 'grid min-w-0 gap-4'}>
+            {!editing && <FormField label="Department" htmlFor="catalog-course-department" hint="Courses are created only in your authorized department.">
               <Input id="catalog-course-department" value={departmentLabel || departmentId} readOnly />
-            </FormField>
+            </FormField>}
             <input type="hidden" {...register('category')} />
             <FormField label="Course code" htmlFor="catalog-course-code" error={errors.code?.message}>
               <Input id="catalog-course-code" autoComplete="off" maxLength={250} aria-invalid={!!errors.code} {...register('code')} />
@@ -105,18 +106,31 @@ export function CourseDialog({ departmentId, departmentLabel, description, onCre
             <FormField label="Units" htmlFor="catalog-course-units" error={errors.units?.message}>
               <Input id="catalog-course-units" type="number" min={0.25} step={0.25} aria-invalid={!!errors.units} {...register('units', { valueAsNumber: true })} />
             </FormField>
-            <FormField label="Status" htmlFor="catalog-course-status" error={errors.status?.message}>
+            {editing && <FormField label="Faculty" htmlFor="catalog-course-faculty">
+              <Input id="catalog-course-faculty" value={facultyLabel || 'Faculty unavailable'} readOnly />
+            </FormField>}
+            {editing && <FormField label="Department" htmlFor="catalog-course-department">
+              <Input id="catalog-course-department" value={departmentLabel || departmentId} readOnly />
+            </FormField>}
+            {editing && <FormField label="Status" htmlFor="catalog-course-status" error={errors.status?.message}>
               <select id="catalog-course-status" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.status} {...register('status')}>
                 <option value="active">Active</option>
                 {course?.status === 'inactive' && <option value="inactive">Inactive</option>}
                 <option value="discontinued">Discontinued</option>
               </select>
-            </FormField>
-            <FormField label="Course type" htmlFor="catalog-course-type" className={editing ? 'col-span-2' : undefined} error={errors.type?.message}>
-              <select id="catalog-course-type" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.type} {...register('type')}>
-                <option value="non_elective">Non-elective</option>
-                <option value="elective">Elective</option>
+            </FormField>}
+            {!editing && <FormField label="Status" htmlFor="catalog-course-status" error={errors.status?.message}>
+              <select id="catalog-course-status" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.status} {...register('status')}>
+                <option value="active">Active</option><option value="discontinued">Discontinued</option>
               </select>
+            </FormField>}
+            <FormField label="Course type" htmlFor="catalog-course-type" className={editing ? 'col-span-2' : undefined} error={errors.type?.message}>
+              {editing ? <div className="flex flex-wrap gap-6 pt-1">
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground"><input type="radio" value="non_elective" aria-invalid={!!errors.type} {...register('type')} />Non-Elective</label>
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground"><input type="radio" value="elective" aria-invalid={!!errors.type} {...register('type')} />Elective</label>
+              </div> : <select id="catalog-course-type" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.type} {...register('type')}>
+                <option value="non_elective">Non-elective</option><option value="elective">Elective</option>
+              </select>}
             </FormField>
           </fieldset>
           {mutation.isError && <p role="alert" className="text-sm text-destructive">{editing ? courseUpdateError(updateMutation.error) : courseCreationError(createMutation.error)}</p>}
