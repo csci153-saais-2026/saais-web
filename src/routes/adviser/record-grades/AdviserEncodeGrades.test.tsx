@@ -3,13 +3,13 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router'
 import type { ApiSchema } from '@/lib/api'
 import Encode from './AdviserEncodeGrades'
-import { deleteTermAttempt, getElectiveSlots, getEncodingChoices, getTermOfferings, saveTermGrades } from './encode.api'
+import { getElectiveSlots, getEncodingChoices, getTermOfferings, saveTermGrades } from './encode.api'
 import { completeInc, getGrades } from '../advisees/checklist/record.api'
 
 const auth = vi.hoisted(() => ({ user: { id: 'adviser-one' }, isMockMode: true }))
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => auth }))
 vi.mock('../Adviser', () => ({ AdviserPage: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
-vi.mock('./encode.api', () => ({ deleteTermAttempt: vi.fn(), getElectiveSlots: vi.fn(), getEncodingChoices: vi.fn(), getTermOfferings: vi.fn(), saveTermGrades: vi.fn() }))
+vi.mock('./encode.api', () => ({ getElectiveSlots: vi.fn(), getEncodingChoices: vi.fn(), getTermOfferings: vi.fn(), saveTermGrades: vi.fn() }))
 vi.mock('../advisees/checklist/record.api', () => ({ getGrades: vi.fn(), completeInc: vi.fn() }))
 const attempt = { id:'attempt-one',student_id:'student-one',course_offering_id:'offering-one',recorded_status:'inc',effective_status:'inc',inc_deadline:'2027-05-30',midterm_status:'graded',midterm_grade:2,final_grade:null,completion_grade:null,revision:1,units_attempted:3,is_lapsed_inc:false,is_repeated:false,counts_toward_cumulative_gwa:false,gwa_grade:null } as ApiSchema<'AttemptResult'>
 const data = { terms:[{school_term_id:'term-one',school_year:'2026',term_type:'1st Semester',chronological_key:1,gwa:null,attempts:[attempt]}],offerings:[{id:'offering-one',course_id:'course-one'}],courses:[{id:'course-one',code:'CS 1',title:'Computing'}],canEdit:true } as unknown as Awaited<ReturnType<typeof getGrades>>
@@ -17,13 +17,11 @@ const choices = { students:[{student_id:'student-one',full_name:'Student One',st
 beforeEach(()=>{vi.mocked(getElectiveSlots).mockResolvedValue([])})
 afterEach(()=>{cleanup();vi.resetAllMocks();auth.user={id:'adviser-one'};auth.isMockMode=true})
 describe('encoding workspace identity',()=>{
- it('shows a success message after a saved course is removed',async()=>{
-   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValueOnce(data).mockResolvedValue({...data,terms:data.terms.map(t=>({...t,attempts:[]}))});vi.mocked(getTermOfferings).mockResolvedValue([]);vi.mocked(deleteTermAttempt).mockResolvedValue(undefined as never)
+ it('does not offer deletion for a saved course',async()=>{
+   vi.mocked(getEncodingChoices).mockResolvedValue(choices);vi.mocked(getGrades).mockResolvedValue(data);vi.mocked(getTermOfferings).mockResolvedValue([])
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
-   fireEvent.click(await screen.findByRole('button',{name:'Remove CS 1'}))
-   expect(await screen.findByText('CS 1 removed.')).toBeTruthy()
-   expect(deleteTermAttempt).toHaveBeenCalledWith('student-one','attempt-one')
-   await waitFor(()=>expect(screen.queryByRole('button',{name:'Remove CS 1'})).toBeNull())
+   expect(await screen.findByRole('group',{name:'Edit CS 1 · Computing'})).toBeTruthy()
+   expect(screen.queryByRole('button',{name:'Remove CS 1'})).toBeNull()
  })
  it('shows a draft message when an unsaved course is removed',async()=>{
    const offering={offering:{id:'offering-two',course_id:'course-two'},code:'CS 2',title:'Next course',direct_curriculum_slot_id:'slot-two',has_unmet_strict_prerequisites:false} as Awaited<ReturnType<typeof getTermOfferings>>[number]
@@ -31,7 +29,7 @@ describe('encoding workspace identity',()=>{
    render(<MemoryRouter><Encode/></MemoryRouter>);fireEvent.change(await screen.findByLabelText('Advisee'),{target:{value:'student-one'}});fireEvent.change(screen.getByLabelText('Term'),{target:{value:'term-one'}})
    fireEvent.click(await screen.findByRole('button',{name:'Add course'}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio',{name:/CS 2/}));fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Add course'}))
    fireEvent.click(screen.getByRole('button',{name:'Remove CS 2'}))
-   expect(screen.getByText('CS 2 removed from the draft.')).toBeTruthy();expect(deleteTermAttempt).not.toHaveBeenCalled()
+   expect(screen.getByText('CS 2 removed from the draft.')).toBeTruthy()
  })
  it('preselects only a student in the current adviser roster',async()=>{
    vi.mocked(getEncodingChoices).mockResolvedValue(choices)
