@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { apiClient } from "@/lib/api"
 import type { EnrollmentHistoryRow } from "./EnrollmentHistoryTable"
@@ -138,7 +139,15 @@ describe("StudentEnrollmentHistoryPage", () => {
       }) as never
     })
 
-    render(<StudentEnrollmentHistoryPage studentId="stu-1" />)
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <StudentEnrollmentHistoryPage studentId="stu-1" />
+      </QueryClientProvider>
+    )
 
     expect(screen.getByRole("status").textContent).toBe("Loading...")
 
