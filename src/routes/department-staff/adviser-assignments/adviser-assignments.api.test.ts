@@ -187,8 +187,8 @@ describe('Adviser assignment preparation reads', () => {
         const query = new URL(request.url).searchParams
         expect(query.get('status')).toBe('eq.active')
         return HttpResponse.json([
-          { id: eligibleId, full_name: 'Active Adviser', status: 'active' },
-          { id: inactiveId, full_name: 'Inactive Adviser', status: 'inactive' },
+          { id: eligibleId, full_name: 'Active Adviser', status: 'active', department_id: departmentId, roles: ['adviser'] },
+          { id: inactiveId, full_name: 'Inactive Adviser', status: 'inactive', department_id: departmentId, roles: ['adviser'] },
         ])
       }),
     )

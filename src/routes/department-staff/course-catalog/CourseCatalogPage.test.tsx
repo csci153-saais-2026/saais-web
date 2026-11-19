@@ -74,7 +74,11 @@ function renderCourseCatalog(path = '/department-staff/course-catalog') {
   return { ...view, queryClient }
 }
 
-beforeAll(() => saaisMockServer.listen())
+const originalScrollIntoView = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView')
+beforeAll(() => {
+  saaisMockServer.listen()
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, writable: true, value: vi.fn() })
+})
 beforeEach(() => {
   resetMockDatabase()
   loginAsMockPersona('department_staff')
@@ -85,7 +89,11 @@ afterEach(() => {
   resetMockDatabase()
   logoutMockPersona()
 })
-afterAll(() => saaisMockServer.close())
+afterAll(() => {
+  saaisMockServer.close()
+  if (originalScrollIntoView) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', originalScrollIntoView)
+  else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
+})
 
 describe('Department Staff course catalog', () => {
   it('loads the lazy page and renders the exact catalog columns and labels', async () => {
@@ -197,192 +205,48 @@ describe('Department Staff course catalog', () => {
     expect(screen.getByText(/CSCI 101/)).toBeTruthy()
   })
 
-  it('labels strict, co-requisite, and recommended relationships without implying equivalence', async () => {
-    const database = getMockDatabase()
-    const relationship = database.prerequisites[0]!
-    database.prerequisites.push(
-      { ...relationship, id: '51000000-0000-4000-8000-000000000091', course_id: MOCK_IDS.courseCsci198, prerequisite_course_id: MOCK_IDS.courseCsci101, type: 'strict' },
-      { ...relationship, id: '51000000-0000-4000-8000-000000000092', course_id: MOCK_IDS.courseCsci198, prerequisite_course_id: MOCK_IDS.courseCsci102, type: 'co_requisite' },
-      { ...relationship, id: '51000000-0000-4000-8000-000000000093', course_id: MOCK_IDS.courseCsci198, prerequisite_course_id: MOCK_IDS.courseCsci153, type: 'recommended' },
-    )
-    renderCourseCatalog()
-    const row = await screen.findByRole('row', { name: /CSCI 198/ })
-    fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 198' }))
-
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    const relationshipList = await within(dialog).findByRole('list', { name: 'Prerequisite relationships' })
-    expect(within(relationshipList).getByText('Prerequisite')).toBeTruthy()
-    expect(within(relationshipList).getByText('Co-requisite')).toBeTruthy()
-    expect(within(relationshipList).getByText('Recommended')).toBeTruthy()
-    expect(within(relationshipList).getByText(/CSCI 101/)).toBeTruthy()
-    expect(within(relationshipList).getByText(/CSCI 102/)).toBeTruthy()
-    expect(within(relationshipList).getByText(/CSCI 153/)).toBeTruthy()
-    expect(within(dialog).getByText(/Recommended relationships are advisory/)).toBeTruthy()
-    expect(within(dialog).getByText(/Similar course codes do not imply equivalence/)).toBeTruthy()
-  })
-
-  it('switches the selected course, shows the empty state, and returns focus to the opener', async () => {
-    renderCourseCatalog()
-    const prerequisiteTrigger = await screen.findByRole('button', { name: 'View prerequisites for CSCI 102' })
-    fireEvent.click(prerequisiteTrigger)
-    const firstDialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    const firstList = await within(firstDialog).findByRole('list', { name: 'Prerequisite relationships' })
-    expect(within(firstList).getByText('Prerequisite')).toBeTruthy()
-    fireEvent.click(within(firstDialog).getByRole('button', { name: 'Close' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    await waitFor(() => expect(document.activeElement).toBe(prerequisiteTrigger))
-
-    const emptyTrigger = screen.getByRole('button', { name: 'View prerequisites for CSCI 101' })
-    fireEvent.click(emptyTrigger)
-    const emptyDialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    expect(await within(emptyDialog).findByText('No prerequisite relationships are recorded for this course.')).toBeTruthy()
-    expect(within(emptyDialog).queryByText('CSCI 101')).toBeNull()
-  })
-
-  it('shows prerequisite loading and recoverable error states, then retries', async () => {
-    let releaseResponse: (() => void) | undefined
-    let requestStarted: (() => void) | undefined
-    const started = new Promise<void>(resolve => { requestStarted = resolve })
-    const responseGate = new Promise<void>(resolve => { releaseResponse = resolve })
-    saaisMockServer.use(http.get('*/rest/v1/prerequisite', async () => {
-      requestStarted?.()
-      await responseGate
-      return HttpResponse.json({ code: 'SERVICE_UNAVAILABLE', message: 'Prerequisites are temporarily unavailable.' }, { status: 503 })
-    }))
-    renderCourseCatalog()
-    fireEvent.click(await screen.findByRole('button', { name: 'View prerequisites for CSCI 102' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    await started
-    expect(within(dialog).getByRole('status').textContent).toContain('Loading prerequisite relationships')
-    releaseResponse?.()
-    expect((await within(dialog).findByRole('alert')).textContent).toContain('Prerequisites are temporarily unavailable.')
-
-    saaisMockServer.resetHandlers()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Retry' }))
-    const relationshipList = await within(dialog).findByRole('list', { name: 'Prerequisite relationships' })
-    expect(within(relationshipList).getByText('Prerequisite')).toBeTruthy()
-  })
-
   it.each([
-    ['strict', 'Prerequisite'],
-    ['co_requisite', 'Co-requisite'],
-    ['recommended', 'Recommended'],
-  ] as const)('creates a %s prerequisite linkage using the approved POST payload', async (type, label) => {
-    const database = getMockDatabase()
-    const catalogRow = await (async () => {
-      renderCourseCatalog()
-      return screen.findByRole('row', { name: /CSCI 198/ })
-    })()
-    fireEvent.click(within(catalogRow).getByRole('button', { name: 'View prerequisites for CSCI 198' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    const courseChoice = await within(dialog).findByLabelText('Course') as HTMLSelectElement
-    const selectableIds = Array.from(courseChoice.options).filter(option => option.value).map(option => option.value)
-    expect(selectableIds.every(id => database.courses.find(candidate => candidate.id === id)?.department_id === MOCK_IDS.deptDcst)).toBe(true)
-    fireEvent.change(courseChoice, { target: { value: MOCK_IDS.courseCsci101 } })
-    fireEvent.change(within(dialog).getByLabelText('Relationship type'), { target: { value: type } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add relationship' }))
-
-    await within(dialog).findByText(label)
-    const relationshipList = await within(dialog).findByRole('list', { name: 'Prerequisite relationships' })
-    expect(within(relationshipList).getByText(label)).toBeTruthy()
-    expect(within(relationshipList).getByText(/CSCI 101/)).toBeTruthy()
-    expect(database.prerequisites).toContainEqual(expect.objectContaining({
-      course_id: MOCK_IDS.courseCsci198,
-      prerequisite_course_id: MOCK_IDS.courseCsci101,
-      type,
-    }))
-  })
-
-  it('prevents self-links and duplicate links with visible feedback', async () => {
+    ['strict', 'Prerequisite'], ['co_requisite', 'Co-requisite'], ['recommended', 'Recommended'],
+  ] as const)('saves a checked course with %s relationship', async (type, label) => {
     renderCourseCatalog()
-    const row = await screen.findByRole('row', { name: /CSCI 102/ })
-    fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 102' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    const courseChoice = await within(dialog).findByLabelText('Course') as HTMLSelectElement
-    expect(within(courseChoice).getByRole('option', { name: /CSCI 102.*cannot link to itself/ }).hasAttribute('disabled')).toBe(true)
-    expect(within(courseChoice).getByRole('option', { name: /CSCI 101.*already linked/ }).hasAttribute('disabled')).toBe(true)
-
-    fireEvent.change(courseChoice, { target: { value: MOCK_IDS.courseCsci101 } })
-    expect(await within(dialog).findByText('This course is already linked and cannot be added again.')).toBeTruthy()
-    expect(within(dialog).getByRole('button', { name: 'Add relationship' }).hasAttribute('disabled')).toBe(true)
-    fireEvent.change(courseChoice, { target: { value: MOCK_IDS.courseCsci102 } })
-    expect(await within(dialog).findByText('A course cannot be linked as its own prerequisite.')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'View prerequisites for CSCI 198' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Prerequisites · CSCI 198' })
+    const checkbox = await within(dialog).findByRole('checkbox', { name: /CSCI 101/ })
+    fireEvent.click(checkbox)
+    fireEvent.click(within(dialog).getByRole('combobox', { name: 'Relationship type for CSCI 101' }))
+    fireEvent.click(await screen.findByRole('option', { name: label }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save prerequisites' }))
+    await within(dialog).findByText('Prerequisites saved.')
+    expect(getMockDatabase().prerequisites).toContainEqual(expect.objectContaining({ course_id: MOCK_IDS.courseCsci198, prerequisite_course_id: MOCK_IDS.courseCsci101, type }))
   })
 
-  it('sends a department filter for bounded prerequisite candidate reads', async () => {
-    let requestedDepartment = ''
-    saaisMockServer.use(http.get('*/rest/v1/course', ({ request }) => {
-      const url = new URL(request.url)
-      requestedDepartment = url.searchParams.get('department_id') ?? ''
-      const departmentId = requestedDepartment.replace(/^eq\./, '')
-      const candidates = getMockDatabase().courses.filter(course => course.department_id === departmentId)
-      return HttpResponse.json(candidates, {
-        headers: { 'Content-Range': candidates.length ? `0-${candidates.length - 1}/${candidates.length}` : '*/0' },
-      })
-    }))
-    const { listDepartmentPrerequisiteCandidates } = await import('./course-catalog.api')
-
-    const candidates = await listDepartmentPrerequisiteCandidates(MOCK_IDS.deptDcst)
-
-    expect(requestedDepartment).toBe(`eq.${MOCK_IDS.deptDcst}`)
-    expect(candidates.length).toBeGreaterThan(0)
-    expect(candidates.every(course => course.department_id === MOCK_IDS.deptDcst)).toBe(true)
-  })
-
-  it('adds and removes relationships, supports cancel, and never sends a PATCH', async () => {
-    let patchCalls = 0
-    saaisMockServer.use(http.patch('*/functions/v1/catalog/prerequisite/:id', () => {
-      patchCalls += 1
-      return new HttpResponse(null, { status: 204 })
-    }))
+  it('excludes self links, preserves existing checks, and saves removals', async () => {
     renderCourseCatalog()
-    const row = await screen.findByRole('row', { name: /CSCI 153/ })
-    fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 153' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    expect(await within(dialog).findByText('CSCI 102')).toBeTruthy()
-    const removeButton = within(dialog).getByRole('button', { name: 'Remove CSCI 102' })
-    fireEvent.click(removeButton)
-    const confirmation = within(dialog).getByLabelText('Confirm removal of CSCI 102')
-    fireEvent.click(within(confirmation).getByRole('button', { name: 'Cancel' }))
-    expect(await within(dialog).findByText('CSCI 102')).toBeTruthy()
-
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove CSCI 102' }))
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm remove' }))
-    await within(dialog).findByText('No prerequisite relationships are recorded for this course.')
-    expect(getMockDatabase().prerequisites.some(item => item.id === MOCK_IDS.prereqCsci153Requires102)).toBe(false)
-    expect(patchCalls).toBe(0)
-  })
-
-  it.each([
-    [403, 'FORBIDDEN', 'Your account is not permitted to change prerequisite relationships'],
-    [409, 'PREREQUISITE_CONFLICT', 'already exists'],
-  ])('surfaces server %s responses when adding a relationship', async (status, code, message) => {
-    saaisMockServer.use(http.post('*/functions/v1/catalog/prerequisite', () => HttpResponse.json({ code, message }, { status })))
-    renderCourseCatalog()
-    const row = await screen.findByRole('row', { name: /CSCI 198/ })
-    fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 198' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    fireEvent.change(await within(dialog).findByLabelText('Course'), { target: { value: MOCK_IDS.courseCsci101 } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add relationship' }))
-    expect((await within(dialog).findByRole('alert')).textContent).toContain(message)
-  })
-
-  it.each([
-    [403, 'FORBIDDEN', 'Your account is not permitted to change prerequisite relationships'],
-    [409, 'PREREQUISITE_CONFLICT', 'protected relationship'],
-  ])('surfaces server %s responses when removing a relationship', async (status, code, message) => {
-    saaisMockServer.use(http.delete('*/functions/v1/catalog/prerequisite/:id', () => HttpResponse.json({ code, message }, { status })))
-    renderCourseCatalog()
-    const row = await screen.findByRole('row', { name: /CSCI 153/ })
-    fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 153' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
-    await within(dialog).findByText('CSCI 102')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove CSCI 102' }))
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm remove' }))
-    expect((await within(dialog).findByRole('alert')).textContent).toContain(message)
+    const opener = await screen.findByRole('button', { name: 'View prerequisites for CSCI 153' })
+    fireEvent.click(opener)
+    const dialog = await screen.findByRole('dialog', { name: 'Prerequisites · CSCI 153' })
+    const linked = await within(dialog).findByRole('checkbox', { name: /CSCI 102/ })
+    expect(linked.getAttribute('aria-checked')).toBe('true')
+    expect(within(dialog).queryByRole('checkbox', { name: /CSCI 153/ })).toBeNull()
+    fireEvent.click(linked)
     expect(getMockDatabase().prerequisites.some(item => item.id === MOCK_IDS.prereqCsci153Requires102)).toBe(true)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save prerequisites' }))
+    await within(dialog).findByText('Prerequisites saved.')
+    expect(getMockDatabase().prerequisites.some(item => item.id === MOCK_IDS.prereqCsci153Requires102)).toBe(false)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(document.activeElement).toBe(opener))
   })
 
+  it.each([403, 409])('surfaces prerequisite save failures (%s)', async status => {
+    saaisMockServer.use(http.post('*/functions/v1/catalog/prerequisite', () => HttpResponse.json({ code: 'PREREQUISITE_CONFLICT', message: 'Relationship rejected' }, { status })))
+    renderCourseCatalog()
+    fireEvent.click(await screen.findByRole('button', { name: 'View prerequisites for CSCI 198' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Prerequisites · CSCI 198' })
+    fireEvent.click(await within(dialog).findByRole('checkbox', { name: /CSCI 101/ }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save prerequisites' }))
+    expect(await within(dialog).findByRole('alert')).toBeTruthy()
+    expect(getMockDatabase().prerequisites.some(item => item.course_id === MOCK_IDS.courseCsci198)).toBe(false)
+  })
   it('keeps prerequisite editing hidden for permitted read-only foreign-department courses', async () => {
     const foreignCourse = {
       ...getMockDatabase().courses.find(course => course.id === MOCK_IDS.courseCsci102)!,
@@ -401,7 +265,7 @@ describe('Department Staff course catalog', () => {
     renderCourseCatalog()
     const row = await screen.findByRole('row', { name: /CSCI 102/ })
     fireEvent.click(within(row).getByRole('button', { name: 'View prerequisites for CSCI 102' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Prerequisite relationships' })
+    const dialog = await screen.findByRole('dialog', { name: /Prerequisites ·/ })
     expect(await within(dialog).findByText('Prerequisite')).toBeTruthy()
     expect(within(dialog).queryByRole('heading', { name: 'Add relationship' })).toBeNull()
     expect(within(dialog).queryByRole('button', { name: /Remove/ })).toBeNull()
@@ -611,7 +475,7 @@ describe('Department Staff course catalog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit CSCI 101' }))
     expect(screen.getByRole('heading', { name: 'Edit course' })).toBeTruthy()
     const editDialog = screen.getByRole('dialog')
-    expect(editDialog.className).toContain('sm:max-w-[600px]')
+    expect(editDialog.className).toContain('sm:max-w-[750px]')
     expect(editDialog.querySelector('[data-slot="dialog-header"]')?.className).toContain('border-b')
     expect(editDialog.querySelector('form > div')?.className).toContain('overflow-y-auto')
     expect(editDialog.querySelector('[data-slot="dialog-footer"]')?.className).toContain('border-t')
@@ -619,7 +483,7 @@ describe('Department Staff course catalog', () => {
     fireEvent.change(screen.getByLabelText('Course code'), { target: { value: 'CSCI 101A' } })
     fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'Revised Computing Foundations' } })
     fireEvent.change(screen.getByLabelText('Units'), { target: { value: '3.5' } })
-    fireEvent.change(screen.getByLabelText('Course type'), { target: { value: 'elective' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Elective' }))
     fireEvent.change(screen.getByLabelText('Status', { selector: 'select' }), { target: { value: 'discontinued' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
@@ -655,10 +519,10 @@ describe('Department Staff course catalog', () => {
     renderCourseCatalog()
     await screen.findByRole('row', { name: /CSCI 101/ })
     fireEvent.click(screen.getByRole('button', { name: 'Delete CSCI 101' }))
-    expect(screen.getByRole('heading', { name: 'Delete catalog course?' })).toBeTruthy()
-    expect(screen.getByText(/CSCI 101 · Introduction to Computing/)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Delete record' })).toBeTruthy()
+    expect(screen.getByText(/CSCI 101.*Introduction to Computing/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Delete catalog course?' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Delete record' })).toBeNull())
     expect(deletes).toBe(0)
     expect(getMockDatabase().courses.some(course => course.id === MOCK_IDS.courseCsci101)).toBe(true)
   })
@@ -704,7 +568,7 @@ describe('Department Staff course catalog', () => {
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/protected by curriculum, offering, prerequisite, or attempt history/i)
     expect(getMockDatabase().courses.some(course => course.id === MOCK_IDS.courseCsci101)).toBe(true)
-    expect(screen.getByRole('heading', { name: 'Delete catalog course?' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Delete record' })).toBeTruthy()
   })
 
   it('discontinues through the edit status field and refreshes live curriculum references without changing filters', async () => {

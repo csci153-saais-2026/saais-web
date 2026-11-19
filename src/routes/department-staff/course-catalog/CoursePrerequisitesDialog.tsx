@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -43,12 +43,9 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
   const submitting = useRef(false)
   const pending = saving || create.isPending || remove.isPending
 
-  useEffect(() => {
-    if (!prerequisites.isSuccess || !candidates.isSuccess) return
-    const existing = new Map(prerequisites.data.map(item => [item.prerequisiteCourseId, item.type]))
-    setSelected(Object.fromEntries(candidates.data.filter(item => item.id !== course?.id).map(item => [item.id, existing.has(item.id)])))
-    setTypes(Object.fromEntries(candidates.data.filter(item => item.id !== course?.id).map(item => [item.id, existing.get(item.id) ?? 'strict'])))
-  }, [prerequisites.isSuccess, prerequisites.data, candidates.isSuccess, candidates.data, course?.id])
+  const existingTypes = Object.fromEntries((prerequisites.data ?? []).map(item => [item.prerequisiteCourseId, item.type]))
+  const resolvedSelected = Object.fromEntries((candidates.data ?? []).filter(item => item.id !== course?.id).map(item => [item.id, selected[item.id] ?? (item.id in existingTypes)]))
+  const resolvedTypes = { ...existingTypes, ...types }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -61,11 +58,11 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
     try {
       const existing = new Map(prerequisites.data.map(item => [item.prerequisiteCourseId, item]))
       const candidateIds = new Set(candidates.data.map(item => item.id))
-      const desired = new Set(Object.entries(selected).filter(([, enabled]) => enabled).map(([id]) => id))
+      const desired = new Set(Object.entries(resolvedSelected).filter(([, enabled]) => enabled).map(([id]) => id))
       const removedIds = new Set<string>()
       for (const item of prerequisites.data) {
         if (!candidateIds.has(item.prerequisiteCourseId)) continue
-        if (!desired.has(item.prerequisiteCourseId) || types[item.prerequisiteCourseId] !== item.type) {
+        if (!desired.has(item.prerequisiteCourseId) || resolvedTypes[item.prerequisiteCourseId] !== item.type) {
           await remove.mutateAsync({ departmentId: course.department_id, id: item.id })
           removedIds.add(item.prerequisiteCourseId)
         }
@@ -75,7 +72,7 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
         if (!current || removedIds.has(id)) {
           await create.mutateAsync({
             departmentId: course.department_id,
-            body: { course_id: course.id, prerequisite_course_id: id, type: types[id] ?? 'strict' },
+            body: { course_id: course.id, prerequisite_course_id: id, type: resolvedTypes[id] ?? 'strict' },
           })
         }
       }
@@ -95,6 +92,7 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
   return (
     <DialogContent
       className="flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[750px]"
+      showCloseButton={!pending}
       onCloseAutoFocus={event => { event.preventDefault(); onReturnFocus() }}
       onEscapeKeyDown={event => { if (pending) event.preventDefault() }}
       onInteractOutside={event => { if (pending) event.preventDefault() }}
@@ -108,18 +106,19 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
 
       <form className="flex min-h-0 flex-1 flex-col" onSubmit={event => { void save(event) }}>
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
+          {!canManage && prerequisites.isSuccess && prerequisites.data.map(item => <div key={item.id} className="rounded-sm border border-border p-3"><p>{item.course?.code} {item.course?.title}</p><p>{item.type === 'strict' ? 'Prerequisite' : item.type === 'co_requisite' ? 'Co-requisite' : 'Recommended'}</p></div>)}
           {isLoading && <p role="status" className="py-4 text-sm text-muted-foreground">Loading department courses and prerequisites…</p>}
           {loadError && <div className="space-y-2 py-3"><p role="alert" className="text-sm text-destructive">{coursePrerequisiteError(loadError)}</p><Button type="button" variant="outline" onClick={() => { void prerequisites.refetch(); if (candidates.isError) void candidates.refetch() }}>Retry</Button></div>}
           {prerequisites.isSuccess && candidates.isSuccess && candidates.data.filter(item => item.id !== course?.id).length === 0 && <p className="py-4 text-sm text-muted-foreground">No other courses are available in this department.</p>}
           {prerequisites.isSuccess && candidates.isSuccess && candidates.data.filter(item => item.id !== course?.id).map(candidate => {
-            const checked = selected[candidate.id] ?? false
+            const checked = resolvedSelected[candidate.id] ?? false
             const id = `prerequisite-course-${candidate.id}`
             return <div key={candidate.id} className="flex min-w-0 items-center gap-3 rounded-sm border border-border p-2.5 sm:px-4 sm:py-2">
               <Checkbox id={id} checked={checked} disabled={!canManage || pending} onCheckedChange={value => { setSelected(previous => ({ ...previous, [candidate.id]: value === true })); setMessage('') }} />
               <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer truncate font-semibold text-muted-foreground" title={`${candidate.code} ${candidate.title}`}>
                 <span className="font-mono">{candidate.code}</span>{' '}{candidate.title}
               </label>
-              <Select value={types[candidate.id] ?? 'strict'} disabled={!canManage || pending} onValueChange={value => { setTypes(previous => ({ ...previous, [candidate.id]: value as CatalogPrerequisiteType })); setMessage('') }}>
+              <Select value={resolvedTypes[candidate.id] ?? 'strict'} disabled={!canManage || pending} onValueChange={value => { setTypes(previous => ({ ...previous, [candidate.id]: value as CatalogPrerequisiteType })); setMessage('') }}>
                 <SelectTrigger aria-label={`Relationship type for ${candidate.code}`} className="w-[175px] shrink-0"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="strict">Prerequisite</SelectItem><SelectItem value="co_requisite">Co-requisite</SelectItem><SelectItem value="recommended">Recommended</SelectItem></SelectContent>
               </Select>

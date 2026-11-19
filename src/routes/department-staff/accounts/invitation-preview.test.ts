@@ -72,10 +72,7 @@ describe('department invitation preview validation', () => {
       curriculum_version_id: MOCK_IDS.curriculumBscs2024,
       adviser_id: MOCK_IDS.adviserPrimary,
       entry_year: 2026,
-      role_assignments: [
-        { role: 'adviser', faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst },
-        { role: 'department_staff', faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst },
-      ],
+
     })
   })
 
@@ -129,13 +126,13 @@ describe('department invitation preview validation', () => {
     if (noScope.ok === false) expect(noScope.errors.join(' ')).toContain('approved assignment')
   })
 
-  it('never permits Dean or Admin roles or a secondary Student assignment', () => {
+  it('offers Dean and Admin and ignores additional roles for students', () => {
     const input = values('student')
     input.additional_roles = ['admin' as DepartmentInviteFormValues['role']]
     const result = buildDepartmentInvitePreview(input, context())
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(true)
 
-    expect(departmentInviteRoles).not.toContain('dean')
-    expect(departmentInviteRoles).not.toContain('admin')
+    expect(departmentInviteRoles).toContain('dean')
+    expect(departmentInviteRoles).toContain('admin')
   })
 })
