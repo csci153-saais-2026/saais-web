@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormField } from '@/components/features/form-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ApiClientError } from '@/lib/api'
 import { useCreateCurriculumSlot, useCurriculumCourses, useManageCurriculumSlot } from '@/hooks/use-curricula'
@@ -35,11 +36,12 @@ function courseLoadError(error: unknown): string {
 type CurriculumSlotDialogProps = {
   term: CurriculumTerm
   version: CurriculumVersion
+  courseLabel?: string
   onClose: () => void
 } & ({ slot?: undefined; onCreated: (versionId: string) => void; onUpdated?: never } |
   { slot: CurriculumSlot; onUpdated: (versionId: string) => void; onCreated?: never })
 
-export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, onUpdated }: CurriculumSlotDialogProps) {
+export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, onUpdated, courseLabel }: CurriculumSlotDialogProps) {
   const scope = useStaffScope()
   const creation = useCreateCurriculumSlot()
   const update = useManageCurriculumSlot()
@@ -52,15 +54,14 @@ export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, 
     resolver: zodResolver(curriculumSlotSchema),
     defaultValues: slot ? {
       slot_type: slot.slot_type ?? (slot.is_elective_slot ? 'elective' : 'required'),
-      course_id: slot.course_id ?? '', slot_label: slot.slot_label ?? '', nominal_units: slot.nominal_units,
-    } : { slot_type: 'required', course_id: '', slot_label: '', nominal_units: 0 },
+      course_id: slot.course_id ?? '', slot_label: slot.slot_label ?? courseLabel ?? '', nominal_units: slot.nominal_units,
+    } : { slot_type: 'required', course_id: '', slot_label: '', nominal_units: 3 },
   })
   const slotType = useWatch({ control, name: 'slot_type' })
   const selectedCourseId = useWatch({ control, name: 'course_id' })
   const fixedCourse = slotType === 'required' || slotType === 'pe' || slotType === 'nstp'
   const courseOptions = useCurriculumCourses(fixedCourse)
   const pending = isSubmitting || mutation.isPending
-  const canKeepExistingCourse = editing && fixedCourse && !!slot?.course_id
   const courseChoices = [...(courseOptions.data ?? []), ...(createdCourse?.status === 'active' && !(courseOptions.data ?? []).some(course => course.id === createdCourse.id) ? [createdCourse] : [])]
 
   async function submit(values: CurriculumSlotValues) {
@@ -84,22 +85,22 @@ export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, 
   return <Dialog open onOpenChange={open => { if (!open && !pending) onClose() }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto" showCloseButton={!pending} onEscapeKeyDown={event => { if (pending) event.preventDefault() }} onInteractOutside={event => { if (pending) event.preventDefault() }}>
       <DialogHeader>
-        <DialogTitle>{editing ? 'Edit curriculum requirement' : 'Add curriculum requirement'}</DialogTitle>
-        <DialogDescription>{editing ? `Update the requirement in Year ${term.year_level} - Term ${term.term_sequence} of ${version.version_label}. Referenced history may prevent the change.` : `Add a fixed course or a flexible requirement to Year ${term.year_level} - Term ${term.term_sequence} in ${version.version_label}. The service validates and records the curriculum change.`}</DialogDescription>
+        <DialogTitle>{editing ? 'Edit course / slot' : 'Add course / slot'}</DialogTitle>
+        <DialogDescription className="sr-only">{editing ? `Edit a course or slot in ${version.version_label}.` : `Add a course or slot to ${version.version_label}.`}</DialogDescription>
       </DialogHeader>
       <form noValidate className="grid gap-4" aria-busy={pending} onSubmit={event => { void handleSubmit(submit)(event) }}>
-        <fieldset disabled={pending} className="grid min-w-0 gap-4">
-          <FormField label="Requirement type" htmlFor="curriculum-slot-type" error={errors.slot_type?.message}>
-            <select id="curriculum-slot-type" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.slot_type} {...register('slot_type')}>
-              <option value="required">Required course</option>
-              <option value="elective">Elective requirement</option>
-              <option value="ge">General education requirement</option>
-              <option value="pe">Physical education course</option>
-              <option value="nstp">NSTP course</option>
-            </select>
+        <fieldset disabled={pending} className="grid min-w-0 gap-4 sm:grid-cols-2">
+          <FormField label="Course / slot" htmlFor="curriculum-slot-label" className="sm:col-span-2" error={errors.slot_label?.message}>
+            <Input id="curriculum-slot-label" maxLength={150} aria-invalid={!!errors.slot_label} {...register('slot_label')} />
+          </FormField>
+          <FormField label="Required units" htmlFor="curriculum-slot-units" error={errors.nominal_units?.message}>
+            <Input id="curriculum-slot-units" type="number" min={0} step={0.25} aria-invalid={!!errors.nominal_units} {...register('nominal_units', { valueAsNumber: true })} />
+          </FormField>
+          <FormField label="Type" htmlFor="curriculum-slot-type" error={errors.slot_type?.message}>
+            <Controller name="slot_type" control={control} render={({ field }) => <Select value={field.value} onValueChange={field.onChange} disabled={pending}><SelectTrigger id="curriculum-slot-type" className="w-full" aria-invalid={!!errors.slot_type}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="required">Required course</SelectItem><SelectItem value="elective">Elective slot</SelectItem><SelectItem value="ge">GE slot</SelectItem>{slot?.slot_type === 'pe' && <SelectItem value="pe">Physical education course</SelectItem>}{slot?.slot_type === 'nstp' && <SelectItem value="nstp">NSTP course</SelectItem>}</SelectContent></Select>} />
           </FormField>
           {fixedCourse && <>
-            <FormField label="Active course" htmlFor="curriculum-slot-course" error={errors.course_id?.message}>
+            <FormField label="Active course (optional)" htmlFor="curriculum-slot-course" className="sm:col-span-2" error={errors.course_id?.message}>
               <select id="curriculum-slot-course" className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm" aria-invalid={!!errors.course_id} value={selectedCourseId ?? ''} {...register('course_id')}>
                 <option value="">Select a course</option>
                 {slot?.course_id && !courseChoices.some(course => course.id === slot.course_id) && <option value={slot.course_id}>Current course reference unavailable or inactive</option>}
@@ -109,7 +110,7 @@ export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, 
               {courseOptions.isError && <div className="text-xs text-destructive"><p role="alert">{courseLoadError(courseOptions.error)}</p><Button type="button" variant="outline" size="sm" disabled={courseOptions.isFetching} onClick={() => void courseOptions.refetch()}>Retry courses</Button></div>}
               {courseOptions.isSuccess && courseOptions.data.length === 0 && <p className="text-xs text-muted-foreground">No active courses are available in this department catalog.</p>}
             </FormField>
-            {scope.status === 'ready' && <div className="grid gap-2">
+            {scope.status === 'ready' && <div className="grid gap-2 sm:col-span-2">
               <CourseDialog key={slotType} departmentId={scope.departmentId} disabled={pending} initialCategory={slotType === 'pe' || slotType === 'nstp' ? slotType : 'major'} onCreated={course => {
                 setCreatedCourse(course)
                 if (course.status !== 'active') {
@@ -122,17 +123,11 @@ export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, 
               {createdCourseMessage && <p role="status" className="text-xs text-muted-foreground">{createdCourseMessage}</p>}
             </div>}
           </>}
-          <FormField label="Requirement name" htmlFor="curriculum-slot-label" hint={fixedCourse ? 'Optional label; the selected course code is shown when blank.' : 'Name the elective or general education requirement.'} error={errors.slot_label?.message}>
-            <Input id="curriculum-slot-label" maxLength={150} aria-invalid={!!errors.slot_label} {...register('slot_label')} />
-          </FormField>
-          <FormField label="Nominal requirement units" htmlFor="curriculum-slot-units" hint="Use zero or more units in quarter-unit increments." error={errors.nominal_units?.message}>
-            <Input id="curriculum-slot-units" type="number" min={0} step={0.25} aria-invalid={!!errors.nominal_units} {...register('nominal_units', { valueAsNumber: true })} />
-          </FormField>
         </fieldset>
         {mutation.isError && <p role="alert" className="text-sm text-destructive">{slotError(mutation.error, editing)}</p>}
         <DialogFooter>
           <Button type="button" variant="outline" disabled={pending} onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={pending || (fixedCourse && (!courseOptions.isSuccess || courseOptions.data.length === 0) && !canKeepExistingCourse)}>{pending ? editing ? 'Saving requirement...' : 'Adding requirement...' : editing ? 'Save requirement' : 'Add requirement'}</Button>
+          <Button type="submit" disabled={pending}>{pending ? editing ? 'Saving requirement...' : 'Adding requirement...' : editing ? 'Save changes' : 'Add'}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

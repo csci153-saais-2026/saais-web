@@ -81,8 +81,8 @@ describe('Create catalog course from a curriculum requirement', () => {
     await screen.findByText('Course STEP26 CS 101 created. Save this requirement to attach it.')
 
     const createdCourse = getMockDatabase().courses.find(course => course.code === 'STEP26 CS 101')!
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '3.25' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '3.25' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(state.onCreated).toHaveBeenCalledWith(state.version.id))
 
     expect(getMockDatabase().curriculumTermCourses.some(slot => slot.course_id === createdCourse.id && slot.curriculum_term_id === state.term.id)).toBe(true)
@@ -137,15 +137,15 @@ describe('Create catalog course from a curriculum requirement', () => {
     await screen.findByText('Course STEP26 RETRY 101 created. Save this requirement to attach it.')
     const created = db.courses.find(course => course.code === 'STEP26 RETRY 101')!
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await screen.findByRole('alert')
     expect(screen.getByRole('alert').textContent).toContain('Temporary attachment failure')
     expect(screen.getByRole('option', { name: /STEP26 RETRY 101/ })).toBeTruthy()
-    expect((screen.getByLabelText('Active course') as HTMLSelectElement).value).toBe(created.id)
+    expect((screen.getByLabelText('Active course (optional)') as HTMLSelectElement).value).toBe(created.id)
     expect(courseCreates).toBe(1)
     expect(db.curriculumTermCourses.some(slot => slot.course_id === created.id)).toBe(false)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(state.onCreated).toHaveBeenCalledWith(state.version.id))
     expect(attachmentAttempts).toBe(2)
     expect(courseCreates).toBe(1)

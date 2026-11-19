@@ -44,12 +44,26 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); vi.resetAllMocks() })
 
+async function chooseOption(label: string, option: string) {
+  Element.prototype.scrollIntoView = () => {}
+  fireEvent.keyDown(screen.getByRole('combobox', { name: label }), { key: 'ArrowDown' })
+  fireEvent.click(await screen.findByRole('option', { name: option }))
+}
+
 describe('Add curriculum requirement', () => {
+  it('adds a named required slot without a course reference', async () => {
+    const { onCreated } = mount()
+    fireEvent.change(screen.getByLabelText('Course / slot'), { target: { value: 'Core requirement' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    await vi.waitFor(() => expect(createCurriculumSlot).toHaveBeenCalledOnce())
+    expect(createCurriculumSlot).toHaveBeenCalledWith({ curriculum_term_id: 'term', course_id: null, is_elective_slot: false, slot_type: 'required', slot_label: 'Core requirement', nominal_units: 3 })
+    expect(onCreated).toHaveBeenCalledWith('version')
+  })
   it('submits a fixed required course and preserves its nominal units in the cache', async () => {
     const { client, onCreated } = mount()
-    fireEvent.change(screen.getByLabelText('Active course'), { target: { value: course.id } })
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '3.25' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.change(screen.getByLabelText('Active course (optional)'), { target: { value: course.id } })
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '3.25' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await vi.waitFor(() => expect(createCurriculumSlot).toHaveBeenCalledOnce())
     expect(createCurriculumSlot).toHaveBeenCalledWith({
       curriculum_term_id: 'term', course_id: course.id, is_elective_slot: false,
@@ -62,10 +76,10 @@ describe('Add curriculum requirement', () => {
 
   it('submits a flexible elective without a course reference and retains its label and units', async () => {
     const { onCreated } = mount()
-    fireEvent.change(screen.getByLabelText('Requirement type'), { target: { value: 'elective' } })
-    fireEvent.change(screen.getByLabelText('Requirement name'), { target: { value: 'Technical elective' } })
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '0.75' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    await chooseOption('Type', 'Elective slot')
+    fireEvent.change(screen.getByLabelText('Course / slot'), { target: { value: 'Technical elective' } })
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '0.75' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await vi.waitFor(() => expect(createCurriculumSlot).toHaveBeenCalledOnce())
     expect(createCurriculumSlot).toHaveBeenCalledWith({
       curriculum_term_id: 'term', course_id: null, is_elective_slot: true,
@@ -76,13 +90,13 @@ describe('Add curriculum requirement', () => {
 
   it('blocks missing fixed-course references and invalid quarter-unit values before writing', async () => {
     mount()
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
-    await screen.findByText('Select a course for this requirement.')
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    await screen.findByText('Enter a course or slot name, or select a course.')
     expect(createCurriculumSlot).not.toHaveBeenCalled()
 
-    fireEvent.change(screen.getByLabelText('Active course'), { target: { value: course.id } })
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '1.1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.change(screen.getByLabelText('Active course (optional)'), { target: { value: course.id } })
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '1.1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await screen.findByText('Use quarter-unit increments (for example, 3.25).')
     expect(createCurriculumSlot).not.toHaveBeenCalled()
   })
@@ -90,8 +104,8 @@ describe('Add curriculum requirement', () => {
   it('blocks a stale course reference from another department', async () => {
     const foreignId = '22222222-2222-4222-8222-222222222222'
     mount([{ ...course, id: foreignId, department_id: 'foreign-department' }])
-    fireEvent.change(screen.getByLabelText('Active course'), { target: { value: foreignId } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.change(screen.getByLabelText('Active course (optional)'), { target: { value: foreignId } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await screen.findByText('Select an active course from your department catalog and retry.')
     expect(createCurriculumSlot).not.toHaveBeenCalled()
   })
@@ -99,8 +113,8 @@ describe('Add curriculum requirement', () => {
   it('blocks a version whose program is outside the active department scope', async () => {
     const { client } = mount()
     client.setQueryData(catalogKey, { programs: [{ ...program, department_id: 'foreign-department' }], versions: [version] })
-    fireEvent.change(screen.getByLabelText('Active course'), { target: { value: course.id } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.change(screen.getByLabelText('Active course (optional)'), { target: { value: course.id } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await screen.findByText('This version is no longer available in your authorized department. Refresh the list.')
     expect(createCurriculumSlot).not.toHaveBeenCalled()
   })
@@ -108,11 +122,11 @@ describe('Add curriculum requirement', () => {
   it('keeps values and does not retry after a server conflict', async () => {
     vi.mocked(createCurriculumSlot).mockRejectedValue(conflict('Referenced curriculum history prevents this change.'))
     const { onCreated } = mount()
-    fireEvent.change(screen.getByLabelText('Active course'), { target: { value: course.id } })
-    fireEvent.change(screen.getByLabelText('Nominal requirement units'), { target: { value: '2.5' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add requirement' }))
+    fireEvent.change(screen.getByLabelText('Active course (optional)'), { target: { value: course.id } })
+    fireEvent.change(screen.getByLabelText('Required units'), { target: { value: '2.5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
     await screen.findByText(/Referenced curriculum history prevents this change/)
-    expect((screen.getByLabelText('Nominal requirement units') as HTMLInputElement).value).toBe('2.5')
+    expect((screen.getByLabelText('Required units') as HTMLInputElement).value).toBe('2.5')
     expect(createCurriculumSlot).toHaveBeenCalledOnce()
     expect(onCreated).not.toHaveBeenCalled()
   })

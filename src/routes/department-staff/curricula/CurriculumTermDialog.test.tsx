@@ -23,7 +23,7 @@ function mount() {
 async function open() {
   await waitFor(() => expect((screen.getByRole('button', { name: 'Add term' }) as HTMLButtonElement).disabled).toBe(false))
   fireEvent.click(screen.getByRole('button', { name: 'Add term' }))
-  await screen.findByRole('dialog', { name: 'Add curriculum term' })
+  await screen.findByRole('dialog', { name: 'Add term' })
 }
 beforeEach(() => {
   vi.mocked(listCurricula).mockResolvedValue({ programs: [program], versions: [version] })
@@ -31,6 +31,12 @@ beforeEach(() => {
   vi.mocked(createCurriculumTerm).mockResolvedValue(added)
 })
 afterEach(() => { cleanup(); vi.resetAllMocks() })
+
+async function chooseOption(label: string, option: string) {
+  Element.prototype.scrollIntoView = () => {}
+  fireEvent.keyDown(screen.getByRole('combobox', { name: label }), { key: 'ArrowDown' })
+  fireEvent.click(await screen.findByRole('option', { name: option }))
+}
 
 describe('Positional term validation', () => {
   it.each([{ year_level: 0, term_sequence: 1 }, { year_level: 9, term_sequence: 1 }, { year_level: 1.5, term_sequence: 1 }, { year_level: NaN, term_sequence: 1 }, { year_level: 1, term_sequence: 0 }, { year_level: 1, term_sequence: 4 }, { year_level: 1, term_sequence: 1.5 }])('rejects invalid numeric positions %j', values => {
@@ -52,8 +58,8 @@ describe('Add curriculum term', () => {
     await screen.findByText('Curriculum term added.')
     expect(createCurriculumTerm).toHaveBeenCalledExactlyOnceWith({ curriculum_version_id: 'v1', year_level: 1, term_sequence: 1, slots: [] })
     expect((screen.getByLabelText('Curriculum version') as HTMLSelectElement).value).toBe('v1')
-    const headings = screen.getAllByText(/^Year \d - Term \d$/).map(node => node.textContent)
-    expect(headings).toEqual(['Year 1 - Term 1', 'Year 2 - Term 1'])
+    const headings = screen.getAllByText(/^Year \d · Semester \d$/).map(node => node.textContent)
+    expect(headings).toEqual(['Year 1 · Semester 1', 'Year 2 · Semester 1'])
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(client.getMutationCache().getAll()[0].options.retry).toBe(false)
     expect(listCurricula).toHaveBeenCalledTimes(2)
@@ -71,18 +77,15 @@ describe('Add curriculum term', () => {
   it('rejects a duplicate position and retains inputs', async () => {
     mount()
     await open()
-    fireEvent.change(screen.getByLabelText('Year level'), { target: { value: '2' } })
+    await chooseOption('Year level', '2')
     fireEvent.click(screen.getByRole('button', { name: 'Add term' }))
     await screen.findByText('This year and term position already exists in the selected curriculum.')
     expect(createCurriculumTerm).not.toHaveBeenCalled()
-    expect((screen.getByLabelText('Year level') as HTMLInputElement).value).toBe('2')
+    expect(screen.getByRole('combobox', { name: 'Year level' }).textContent).toContain('2')
   })
   it('does not write on cancellation or invalid position', async () => {
     mount()
     await open()
-    fireEvent.change(screen.getByLabelText('Year level'), { target: { value: '9' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add term' }))
-    await screen.findByText('Year level must be between 1 and 8.')
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(createCurriculumTerm).not.toHaveBeenCalled()
   })
@@ -90,10 +93,10 @@ describe('Add curriculum term', () => {
     vi.mocked(createCurriculumTerm).mockRejectedValue(new ApiClientError(normalizeApiError({ message: 'Term rejected' }, new Response(null, { status }))))
     mount()
     await open()
-    fireEvent.change(screen.getByLabelText('Term position'), { target: { value: '3' } })
+    await chooseOption('Term', 'Midyear')
     fireEvent.click(screen.getByRole('button', { name: 'Add term' }))
     await screen.findByRole('alert')
-    expect((screen.getByLabelText('Term position') as HTMLSelectElement).value).toBe('3')
+    expect(screen.getByRole('combobox', { name: 'Term' }).textContent).toContain('Midyear')
     expect(createCurriculumTerm).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('Curriculum term added.')).toBeNull()
   })

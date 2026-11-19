@@ -42,7 +42,7 @@ export default function CurriculaPage() {
   const versions = catalog.isError ? [] : catalog.data?.versions ?? []
   const version = versions.find(item => item.id === selection) ?? versions[0]
   const detail = useCurriculum(version?.id)
-  const statuses = { draft: 'Draft', active: 'Active', retired: 'Retired', teach_out: 'Teach out', closed: 'Closed' }
+  const statuses = { draft: 'draft', active: 'active', retired: 'retired', teach_out: 'teach out', closed: 'closed' }
   return <div className="-mt-6 space-y-6 md:-mt-(--content-pad-top)">
     <PageHeading title="Shape the path to graduation." subtitle="Versioned requirements keep past and present curricula distinct." actions={<Button type="button" disabled={!catalog.isSuccess || !catalog.data.programs.length} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setCreating(true) }}><PlusIcon className="size-4" />Add version</Button>} />
     {created && <p role="status">Curriculum version created.</p>}
@@ -51,8 +51,8 @@ export default function CurriculaPage() {
     {termMessage && <p role="status">{termMessage}</p>}
     {termAction?.action === 'edit' && <CurriculumTermDialog key={`edit:${termAction.term.id}`} term={termAction.term} version={termAction.version} onClose={() => setTermAction(null)} onUpdated={id => { setSelection(id); setTermAction(null); setTermMessage('Curriculum term updated.') }} />}
     {termAction?.action === 'delete' && <CurriculumTermDeleteDialog key={termAction.term.id} term={termAction.term} version={termAction.version} requirementCount={termAction.requirementCount} onClose={() => setTermAction(null)} onDeleted={id => { setSelection(id); setTermAction(null); setTermMessage('Curriculum term deleted.') }} />}
-    {slotAction?.action === 'edit' && <CurriculumSlotDialog key={`edit-slot:${slotAction.slot.id}`} slot={slotAction.slot} term={slotAction.term} version={slotAction.version} onClose={() => setSlotAction(null)} onUpdated={id => { setSelection(id); setSlotAction(null); setTermMessage('Curriculum requirement updated.') }} />}
-    {slotAction?.action === 'delete' && <CurriculumSlotDeleteDialog key={slotAction.slot.id} slot={slotAction.slot} term={slotAction.term} version={slotAction.version} onClose={() => setSlotAction(null)} onDeleted={id => { setSelection(id); setSlotAction(null); setTermMessage('Curriculum requirement deleted.') }} />}
+    {slotAction?.action === 'edit' && <CurriculumSlotDialog key={`edit-slot:${slotAction.slot.id}`} slot={slotAction.slot} term={slotAction.term} version={slotAction.version} courseLabel={(() => { const course = detail.data?.courses.find(item => item.id === slotAction.slot.course_id); return course ? `${course.code} — ${course.title}` : undefined })()} onClose={() => setSlotAction(null)} onUpdated={id => { setSelection(id); setSlotAction(null); setTermMessage('Curriculum requirement updated.') }} />}
+    {slotAction?.action === 'delete' && <CurriculumSlotDeleteDialog key={slotAction.slot.id} slot={slotAction.slot} term={slotAction.term} version={slotAction.version} displayName={(() => { const course = detail.data?.courses.find(item => item.id === slotAction.slot.course_id); return course ? `${course.code} — ${course.title}` : undefined })()} onClose={() => setSlotAction(null)} onDeleted={id => { setSelection(id); setSlotAction(null); setTermMessage('Curriculum requirement deleted.') }} />}
     {addingRequirement && <CurriculumSlotDialog key={addingRequirement.term.id} term={addingRequirement.term} version={addingRequirement.version} onClose={() => setAddingRequirement(null)} onCreated={id => { setSelection(id); setAddingRequirement(null); setTermMessage('Curriculum requirement added.') }} />}
     {addingTerm && <CurriculumTermDialog key={addingTerm.id} version={addingTerm} onClose={() => setAddingTerm(null)} onAdded={id => { setSelection(id); setAddingTerm(null); setTermMessage('Curriculum term added.'); setCreated(false); setUpdated(false); setLifecycleMessage('') }} />}
     {lifecycle && <CurriculumVersionLifecycleDialog key={`${lifecycle.action}:${lifecycle.version.id}`} action={lifecycle.action} version={lifecycle.version} programLabel={catalog.data?.programs.find(program => program.id === lifecycle.version.program_id)?.code ?? 'Program unavailable'} onClose={() => setLifecycle(null)} onRetireInstead={() => setLifecycle({ ...lifecycle, action: 'retire' })} onCompleted={(action, id) => {
@@ -71,11 +71,14 @@ export default function CurriculaPage() {
       <div className="department-filter-typography flex flex-wrap items-end gap-3 pb-1">
         <FormField label="Curriculum version" htmlFor="curriculum-version" className="min-w-[220px] flex-[0_1_280px]">
           <select id="curriculum-version" className="min-h-10 w-full rounded-sm border border-input bg-card px-3 text-sm" value={version.id} onChange={event => setSelection(event.target.value)}>
-            {versions.map(item => <option key={item.id} value={item.id}>{catalog.data?.programs.find(program => program.id === item.program_id)?.code ?? 'Program unavailable'} - {item.version_label}</option>)}
+            {versions.map(item => {
+              const code = catalog.data?.programs.find(program => program.id === item.program_id)?.code ?? 'Program unavailable'
+              const label = item.version_label.startsWith(`${code} `) ? item.version_label.slice(code.length + 1) : item.version_label
+              return <option key={item.id} value={item.id}>{code} · {label}</option>
+            })}
           </select>
         </FormField>
         <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setEditing(version) }}>Edit version</Button>
-        {version.status !== 'retired' && version.status !== 'closed' && <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'retire', version }) }}>Retire version</Button>}
         <Button type="button" variant="destructive" disabled={!catalog.isSuccess || catalog.isFetching} onClick={() => { setCreated(false); setUpdated(false); setLifecycleMessage(''); setLifecycle({ action: 'delete', version }) }}>Delete version</Button>
         <div className="min-w-4 flex-1" aria-hidden="true" />
         <Button type="button" variant="outline" disabled={!catalog.isSuccess || catalog.isFetching || !detail.isSuccess || detail.isFetching} onClick={() => { setTermMessage(''); setAddingTerm(version) }}>Add term</Button>
@@ -83,7 +86,7 @@ export default function CurriculaPage() {
       <StatGrid items={[
         { label: 'Required units', value: <span className="text-[30px]">{version.total_units ?? 'Unavailable'}</span>, note: 'Full degree requirement' },
         { label: 'Enrolled students', value: <span className="text-[30px]">{version.enrolled_student_count ?? 'Unavailable'}</span>, note: 'Students on this curriculum' },
-        { label: 'Effective from', value: <span className="text-[30px]">{version.effective_start}</span>, note: 'Version effectivity' },
+        { label: 'Effective from', value: <span className="text-[30px]">{new Intl.DateTimeFormat('en-PH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${version.effective_start}T00:00:00Z`))}</span>, note: 'Version effectivity' },
         { label: 'Status', value: <span className="text-[30px]">{statuses[version.status]}</span>, note: 'Curriculum lifecycle' },
       ]} />
       {detail.isPending && <p role="status">Loading curriculum requirements...</p>}

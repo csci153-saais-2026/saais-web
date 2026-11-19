@@ -12,8 +12,8 @@ export const curriculumSlotSchema = z.object({
   nominal_units: units,
 }).strict().superRefine((values, context) => {
   const fixedCourse = values.slot_type === 'required' || values.slot_type === 'pe' || values.slot_type === 'nstp'
-  if (fixedCourse && !values.course_id) {
-    context.addIssue({ code: 'custom', path: ['course_id'], message: 'Select a course for this requirement.' })
+  if (fixedCourse && !values.course_id && !values.slot_label) {
+    context.addIssue({ code: 'custom', path: ['slot_label'], message: 'Enter a course or slot name, or select a course.' })
   }
   if (!fixedCourse && !values.slot_label) {
     context.addIssue({ code: 'custom', path: ['slot_label'], message: 'Name this flexible requirement.' })
@@ -27,7 +27,7 @@ export function curriculumSlotRequest(termId: string, values: CurriculumSlotValu
   const fixedCourse = parsed.slot_type === 'required' || parsed.slot_type === 'pe' || parsed.slot_type === 'nstp'
   return {
     curriculum_term_id: termId,
-    course_id: fixedCourse ? parsed.course_id : null,
+    course_id: fixedCourse ? parsed.course_id || null : null,
     is_elective_slot: parsed.slot_type === 'elective',
     slot_type: parsed.slot_type,
     slot_label: parsed.slot_label || null,
@@ -39,7 +39,7 @@ export function curriculumSlotUpdateRequest(values: CurriculumSlotValues): ApiSc
   const parsed = curriculumSlotSchema.parse(values)
   const fixedCourse = parsed.slot_type === 'required' || parsed.slot_type === 'pe' || parsed.slot_type === 'nstp'
   return {
-    course_id: fixedCourse ? parsed.course_id : null,
+    course_id: fixedCourse ? parsed.course_id || null : null,
     is_elective_slot: parsed.slot_type === 'elective',
     slot_type: parsed.slot_type,
     slot_label: parsed.slot_label || null,
