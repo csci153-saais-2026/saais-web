@@ -4,6 +4,7 @@ import { AuthProvider } from '@/context/AuthProvider'
 import { DevRoleSwitcher } from '@/components/DevRoleSwitcher'
 import { AuthenticatedPortalLayout } from '@/components/features/AuthenticatedPortalLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
+import { DepartmentHeadLayout } from '@/routes/department-head/DepartmentHeadLayout'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const queryClient = new QueryClient()
@@ -20,9 +21,17 @@ const OpenApiDocsPage = lazy(() => import('@/routes/docs/OpenApiDocsPage'))
 
 const StudentPortal = lazy(() => import('@/routes/student/StudentPortal'))
 const AdviserPortal = lazy(() => import('@/routes/adviser/AdviserPortal'))
-const DepartmentHeadPortal = lazy(
-  () => import('@/routes/department-head/DepartmentHeadPortal'),
-)
+const CurriculumTransfersPage = lazy(() => import('@/routes/department-head/curriculum-transfers/CurriculumTransfersPage'))
+const CurriculaPage = lazy(() => import('@/routes/department-head/curricula/CurriculaPage'))
+const EquivalencePage = lazy(() => import('@/routes/department-head/equivalence/EquivalencePage'))
+const OutsideCreditsPage = lazy(() => import('@/routes/department-head/outside-credits/OutsideCreditsPage'))
+const AcademicTermsPage = lazy(() => import('@/routes/department-head/academic-terms/AcademicTermsPage'))
+
+const StudentsPage = lazy(() => import('@/routes/department-head/students/StudentsPage'))
+const AdviserAssignmentsPage = lazy(() => import('@/routes/department-head/adviser-assignments/AdviserAssignmentsPage'))
+const DepartmentReportsPage = lazy(() => import('@/routes/department-head/reports/DepartmentReportsPage'))
+const AuditLogPage = lazy(() => import('@/routes/department-head/audit-log/AuditLogPage'))
+const SettingsPage = lazy(() => import('@/routes/department-head/settings/SettingsPage'))
 const DepartmentStaffPortal = lazy(
   () => import('@/routes/department-staff/DepartmentStaffPortal'),
 )
@@ -88,11 +97,6 @@ function App() {
                   <Route path="/adviser/*" element={<AdviserPortal />} />
                 </Route>
 
-                <Route element={<ProtectedRoute allowedRoles={['department_head']} />}>
-                  <Route path="/department-head/*" element={<DepartmentHeadPortal />} />
-                  <Route path="/dept-head/*" element={<Navigate to="/department-head" replace />} />
-                </Route>
-
                 <Route element={<ProtectedRoute allowedRoles={['department_staff']} />}>
                   <Route path="/department-staff/*" element={<DepartmentStaffPortal />} />
                   <Route path="/staff/*" element={<Navigate to="/department-staff" replace />} />
@@ -104,6 +108,24 @@ function App() {
 
                 <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                   <Route path="/admin/*" element={<AdminPortal />} />
+                </Route>
+                <Route element={<ProtectedRoute allowedRoles={['department_head']} />}>
+                  <Route path="/department-head" element={<DepartmentHeadLayout />}>
+                    <Route index element={<Navigate to="curriculum-transfers" replace />} />
+                    <Route path="transfers" element={<Navigate to="../curriculum-transfers" replace />} />
+                    <Route path="curriculum-transfers" element={<CurriculumTransfersPage />} />
+                    <Route path="curricula" element={<CurriculaPage />} />
+                    <Route path="equivalence" element={<EquivalencePage />} />
+                    <Route path="outside-credits" element={<OutsideCreditsPage />} />
+                    <Route path="academic-terms" element={<AcademicTermsPage />} />
+                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="students" element={<StudentsPage />} />
+                    <Route path="adviser-assignments" element={<AdviserAssignmentsPage />} />
+                    <Route path="reports" element={<DepartmentReportsPage />} />
+                    <Route path="audit-log" element={<AuditLogPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                  </Route>
+                  <Route path="/dept-head/*" element={<Navigate to="/department-head" replace />} />
                 </Route>
               </Route>
             </Route>

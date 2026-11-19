@@ -323,6 +323,34 @@ function matchesPostgrestOperator(
   return true
 }
 
+/** Appends a "change" row to the shared audit log, as the real backend does for department-head writes. */
+function recordMockAudit(
+  persona: MockPersona,
+  entry: { action: string; entityType: string; entityId?: string | null; studentId?: string | null; label: string; details: string },
+) {
+  const db = getMockDatabase()
+  const student = entry.studentId ? db.profiles.find(profile => profile.id === entry.studentId) : undefined
+  db.auditLogEntries.push({
+    id: nextSyntheticUuid(),
+    actor_id: persona.profileId,
+    actor_name: persona.fullName,
+    actor_role: persona.primaryRole,
+    student_id: entry.studentId ?? null,
+    student_name: student?.full_name ?? null,
+    student_number: student?.student_number ?? null,
+    target_label: entry.label,
+    action: entry.action,
+    action_category: 'change',
+    entity_type: entry.entityType,
+    entity_id: entry.entityId ?? null,
+    details_summary: entry.details,
+    old_value: null,
+    new_value: null,
+    reason: null,
+    created_at: new Date().toISOString(),
+  })
+}
+
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
   url: URL,
@@ -1479,14 +1507,26 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumVersions.findIndex((c) => c.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum version not found.')
-    if ((db.curriculumVersions[idx]?.enrolled_student_count ?? 0) > 0) {
-      return errorJson(
-        409,
-        'DEPENDENT_RECORDS_EXIST',
-        'Cannot delete a curriculum version with enrolled students.',
-      )
-    }
+    const version = db.curriculumVersions[idx]!
+    const program = db.programs.find(row => row.id === version.program_id)
+    if (!program) return errorJson(404, 'NOT_FOUND', 'Curriculum program not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) return errorJson(403, 'FORBIDDEN', 'The curriculum is outside your authorized department.')
+    const referenced = (version.enrolled_student_count ?? 0) > 0 ||
+      db.studentCurriculumAssignments.some(row => row.curriculum_version_id === version.id) ||
+      db.studentOrganizations.some(row => row.curriculum_version_id === version.id) ||
+      db.curriculumTransferRequests.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id) ||
+      db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id)
+    const termIds = new Set(db.curriculumTerms.filter(row => row.curriculum_version_id === id).map(row => row.id))
+    const slotIds = new Set(db.curriculumTermCourses.filter(row => termIds.has(row.curriculum_term_id)).map(row => row.id))
+    const hasHistory = [...db.attempts, ...db.attemptResults, ...db.advisingPlanItems, ...db.electiveMappings].some(row => row.curriculum_term_course_id != null && slotIds.has(row.curriculum_term_course_id)) ||
+      db.outsideCredits.some(row => slotIds.has(row.destination_curriculum_term_course_id)) ||
+      db.equivalencyDecisions.some(row => slotIds.has(row.destination_curriculum_term_course_id))
+    if (referenced || hasHistory) return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'Retire this curriculum to preserve student assignments, transfers, equivalence rules, or academic history.')
+    // The existing catalog workflow deletes an unreferenced structure together; never leave orphan children.
+    db.curriculumTermCourses = db.curriculumTermCourses.filter(row => !slotIds.has(row.id))
+    db.curriculumTerms = db.curriculumTerms.filter(row => !termIds.has(row.id))
     db.curriculumVersions.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_version_deleted', entityType: 'curriculum_version', entityId: id, label: version.version_label, details: 'Deleted an unreferenced curriculum structure.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -1544,7 +1584,27 @@ export const saaisMswHandlers = [
     const db = getMockDatabase()
     const idx = db.curriculumTerms.findIndex((t) => t.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Curriculum term not found.')
+    const term = db.curriculumTerms[idx]!
+    const version = db.curriculumVersions.find(row => row.id === term.curriculum_version_id)
+    const program = db.programs.find(row => row.id === version?.program_id)
+    if (!version || !program) return errorJson(404, 'NOT_FOUND', 'Curriculum parent not found.')
+    if (!canAccessDepartment(auth.persona, program.department_id)) return errorJson(403, 'FORBIDDEN', 'The curriculum is outside your authorized department.')
+    const referenced = (version.enrolled_student_count ?? 0) > 0 ||
+      db.studentCurriculumAssignments.some(row => row.curriculum_version_id === version.id) ||
+      db.studentOrganizations.some(row => row.curriculum_version_id === version.id) ||
+      db.curriculumTransferRequests.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id) ||
+      db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id)
+    if (referenced && db.curriculumTerms.filter(row => row.curriculum_version_id === version.id).length <= 1) {
+      return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'A referenced curriculum must retain at least one term.')
+    }
+    const slotIds = new Set(db.curriculumTermCourses.filter(row => row.curriculum_term_id === id).map(row => row.id))
+    const hasHistory = [...db.attempts, ...db.attemptResults, ...db.advisingPlanItems, ...db.electiveMappings].some(row => row.curriculum_term_course_id != null && slotIds.has(row.curriculum_term_course_id)) ||
+      db.outsideCredits.some(row => slotIds.has(row.destination_curriculum_term_course_id)) ||
+      db.equivalencyDecisions.some(row => slotIds.has(row.destination_curriculum_term_course_id))
+    if (hasHistory) return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'This term contains slots used by academic history.')
+    db.curriculumTermCourses = db.curriculumTermCourses.filter(row => !slotIds.has(row.id))
     db.curriculumTerms.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_term_deleted', entityType: 'curriculum_term', entityId: id, label: version.version_label, details: 'Deleted an unreferenced curriculum term and its unreferenced slots.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -1633,7 +1693,22 @@ export const saaisMswHandlers = [
     if (!canAccessDepartment(auth.persona, program.department_id)) {
       return errorJson(403, 'FORBIDDEN', 'The target curriculum is outside the authorized department.')
     }
+    if (!version || !term) return errorJson(404, 'NOT_FOUND', 'Curriculum parent not found.')
+    const slotIds = new Set([id])
+    const hasHistory = [...db.attempts, ...db.attemptResults, ...db.advisingPlanItems, ...db.electiveMappings].some(row => row.curriculum_term_course_id != null && slotIds.has(row.curriculum_term_course_id)) ||
+      db.outsideCredits.some(row => slotIds.has(row.destination_curriculum_term_course_id)) ||
+      db.equivalencyDecisions.some(row => slotIds.has(row.destination_curriculum_term_course_id))
+    if (hasHistory) return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'This slot is used by academic history.')
+    const referenced = (version.enrolled_student_count ?? 0) > 0 ||
+      db.studentCurriculumAssignments.some(row => row.curriculum_version_id === version.id) ||
+      db.studentOrganizations.some(row => row.curriculum_version_id === version.id) ||
+      db.curriculumTransferRequests.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id) ||
+      db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === version.id || row.to_curriculum_version_id === version.id)
+    if (referenced && db.curriculumTermCourses.filter(row => row.curriculum_term_id === term.id).length <= 1) {
+      return errorJson(409, 'DEPENDENT_RECORDS_EXIST', 'Each term in a referenced curriculum must retain at least one slot.')
+    }
     db.curriculumTermCourses.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_slot_deleted', entityType: 'curriculum_term_course', entityId: id, label: version.version_label, details: 'Deleted an unreferenced curriculum slot.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -1775,14 +1850,30 @@ export const saaisMswHandlers = [
     const auth = authenticateRequest(request, [
       'admin',
       'department_head',
-      'department_staff',
     ])
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => null)) as
       | ApiSchema<'CurriculumPairEquivalenceInsert'>
       | null
-    if (!body?.from_curriculum_version_id || !body?.to_curriculum_version_id) {
-      return errorJson(400, 'INVALID_INPUT', 'Source and target curriculum versions are required.')
+    const fields = ['from_curriculum_version_id', 'to_curriculum_version_id', 'source_course_id', 'target_course_id', 'note']
+    const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    if (!body || Object.keys(body).some(key => !fields.includes(key)) ||
+      ![body.from_curriculum_version_id, body.to_curriculum_version_id, body.source_course_id, body.target_course_id].every(uuid) ||
+      (body.note != null && (typeof body.note !== 'string' || body.note.length > 1000))) {
+      return errorJson(400, 'INVALID_INPUT', 'Choose valid curriculum and course IDs and use at most 1,000 characters for the note.')
+    }
+    const db = getMockDatabase()
+    const versions = [body.from_curriculum_version_id, body.to_curriculum_version_id].map(id => db.curriculumVersions.find(row => row.id === id))
+    if (versions.some(row => !row) || !db.courses.some(row => row.id === body.source_course_id) || !db.courses.some(row => row.id === body.target_course_id)) {
+      return errorJson(400, 'INVALID_INPUT', 'The selected curriculum or course no longer exists.')
+    }
+    if (versions.some(version => !db.programs.some(program => program.id === version?.program_id && canAccessDepartment(auth.persona, program.department_id)))) {
+      return errorJson(403, 'FORBIDDEN', 'The curriculum pair is outside your authorized department.')
+    }
+    if (db.curriculumPairEquivalences.some(row => row.from_curriculum_version_id === body.from_curriculum_version_id &&
+      row.to_curriculum_version_id === body.to_curriculum_version_id &&
+      (row.source_course_id === body.source_course_id || row.target_course_id === body.target_course_id))) {
+      return errorJson(409, 'EQUIVALENCE_CONFLICT', 'A selected course is already mapped in this curriculum pair.')
     }
     const created: ApiSchema<'CurriculumPairEquivalence'> = {
       id: nextSyntheticUuid(),
@@ -1795,6 +1886,7 @@ export const saaisMswHandlers = [
       created_at: '2026-11-10T09:00:00Z',
     }
     getMockDatabase().curriculumPairEquivalences.push(created)
+    recordMockAudit(auth.persona, { action: 'curriculum_pair_equivalence_created', entityType: 'curriculum_pair_equivalence', entityId: created.id, label: 'Course equivalence', details: 'Created a curriculum-pair course equivalence.' })
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -1802,14 +1894,19 @@ export const saaisMswHandlers = [
     const auth = authenticateRequest(request, [
       'admin',
       'department_head',
-      'department_staff',
     ])
     if ('response' in auth) return auth.response
     const id = String(params.id)
     const db = getMockDatabase()
     const idx = db.curriculumPairEquivalences.findIndex((e) => e.id === id)
     if (idx === -1) return errorJson(404, 'NOT_FOUND', 'Equivalence rule not found.')
+    const rule = db.curriculumPairEquivalences[idx]!
+    const versionIds = [rule.from_curriculum_version_id, rule.to_curriculum_version_id]
+    if (versionIds.some(versionId => !db.curriculumVersions.some(version => version.id === versionId && db.programs.some(program => program.id === version.program_id && canAccessDepartment(auth.persona, program.department_id))))) {
+      return errorJson(403, 'FORBIDDEN', 'The curriculum pair is outside your authorized department.')
+    }
     db.curriculumPairEquivalences.splice(idx, 1)
+    recordMockAudit(auth.persona, { action: 'curriculum_pair_equivalence_deleted', entityType: 'curriculum_pair_equivalence', entityId: id, label: 'Course equivalence', details: 'Deleted a curriculum-pair course equivalence rule.' })
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -3258,6 +3355,11 @@ export const saaisMswHandlers = [
         const org = db.studentOrganizations.find(o => o.student_id === current.student_id)
         if (org) db.studentOrganizations[db.studentOrganizations.indexOf(org)] = { ...org, adviser_id: adviser.id }
       })
+      assignments.forEach(assignment => recordMockAudit(auth.persona, {
+        action: 'adviser_reassigned', entityType: 'adviser_assignment', entityId: assignment.id, studentId: assignment.student_id,
+        label: 'Adviser assignment',
+        details: `Reassigned to ${adviser.full_name} effective ${body.effective_since}. Reason: ${body.reason?.trim()}`,
+      }))
       const res: ApiSchema<'BulkAdviserReassignmentResponse'> = {
         reassigned_count: assignments.length,
         assignments,
@@ -3468,13 +3570,46 @@ export const saaisMswHandlers = [
     async ({ request, params }) => {
       const auth = authenticateRequest(request, [
         'admin',
-        'dean',
         'department_head',
-        'adviser',
       ])
       if ('response' in auth) return auth.response
       const studentId = String(params.student_id)
-      const body = (await request.json().catch(() => ({}))) as ApiSchema<'OutsideCreditCreateRequest'>
+      const body = (await request.json().catch(() => null)) as ApiSchema<'OutsideCreditCreateRequest'> | null
+      const fields = ['entry_type', 'origin_school', 'original_course_code', 'original_course_title', 'units', 'grade', 'destination_curriculum_term_course_id', 'reason']
+      const text = (value: unknown, max: number): value is string => typeof value === 'string' && !!value.trim() && value.length <= max
+      if (!body || Object.keys(body).some(key => !fields.includes(key)) ||
+        !['transferee', 'shiftee'].includes(body.entry_type) ||
+        !text(body.origin_school, 250) || !text(body.original_course_code, 100) ||
+        !text(body.original_course_title, 250) || !text(body.reason, 2000) ||
+        typeof body.units !== 'number' || !Number.isFinite(body.units) || body.units <= 0 || !Number.isInteger(body.units * 4) ||
+        typeof body.grade !== 'string' || !/^(?:[12]\.\d{2}|3\.00)$/.test(body.grade) ||
+        typeof body.destination_curriculum_term_course_id !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.destination_curriculum_term_course_id)) {
+        return errorJson(400, 'INVALID_INPUT', 'Provide valid outside-credit details and a reason.')
+      }
+      const db = getMockDatabase()
+      const org = db.studentOrganizations.find(row => row.student_id === studentId)
+      const slot = db.curriculumTermCourses.find(row => row.id === body.destination_curriculum_term_course_id)
+      if (!org || !slot) return errorJson(404, 'NOT_FOUND', 'Student or destination slot not found.')
+      if (!auth.persona.roles.includes('admin') && !canAccessDepartment(auth.persona, org.department_id)) {
+        return errorJson(403, 'INSUFFICIENT_PRIVILEGE', 'Student is outside your department.')
+      }
+      const term = db.curriculumTerms.find(row => row.id === slot.curriculum_term_id)
+      if (term?.curriculum_version_id !== org.curriculum_version_id) {
+        return errorJson(400, 'INVALID_INPUT', 'Choose a slot in the student curriculum.')
+      }
+      const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
+      const live = db.outsideCredits.filter(row => row.student_id === studentId && !row.revoked_at)
+      if (live.some(row => normalize(row.origin_school) === normalize(body.origin_school) && normalize(row.original_course_code) === normalize(body.original_course_code))) {
+        return errorJson(409, 'DUPLICATE_CREDIT', 'This student already has credit for this course from this origin.')
+      }
+      const passed = db.attemptResults.some(row => row.student_id === studentId && row.effective_status === 'passed' &&
+        (row.curriculum_term_course_id === slot.id || (!!slot.course_id && db.courseOfferings.some(offering => offering.id === row.course_offering_id && offering.course_id === slot.course_id))))
+      const mapped = db.electiveMappings.some(row => row.student_id === studentId && !row.revoked_at && row.curriculum_term_course_id === slot.id)
+      const equivalent = db.equivalencyDecisions.some(row => row.student_id === studentId && !row.revoked_at && row.destination_curriculum_term_course_id === slot.id)
+      if (passed || mapped || equivalent || live.some(row => row.destination_curriculum_term_course_id === slot.id)) {
+        return errorJson(409, 'SLOT_ALREADY_SATISFIED', 'This curriculum slot is already satisfied.')
+      }
       const credit: ApiSchema<'OutsideCredit'> = {
         id: nextSyntheticUuid(),
         student_id: studentId,
@@ -3487,12 +3622,13 @@ export const saaisMswHandlers = [
         grade: body.grade ?? '1.50',
         destination_curriculum_term_course_id:
           body.destination_curriculum_term_course_id ?? MOCK_IDS.slotCsci101,
-        units_credited: 3,
+        units_credited: body.units ?? 3,
         decided_by: auth.persona.profileId,
         decided_at: '2026-11-10T09:00:00Z',
         revoked_at: null,
         updated_at: '2026-11-10T09:00:00Z',
       }
+      getMockDatabase().outsideCredits.push(credit)
       return HttpResponse.json(credit, { status: 201 })
     },
   ),
@@ -3559,7 +3695,13 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ['admin', 'department_head'])
       if ('response' in auth) return auth.response
       const transferId = String(params.transfer_id)
-      const body = (await request.json().catch(() => ({ decision: 'approved' }))) as ApiSchema<'CurriculumTransferDecisionRequest'>
+      const body = (await request.json().catch(() => null)) as ApiSchema<'CurriculumTransferDecisionRequest'> | null
+      if (!body || Object.keys(body).some(key => !['decision', 'decision_note'].includes(key)) ||
+        !['approved', 'rejected'].includes(body.decision) ||
+        (body.decision_note != null && (typeof body.decision_note !== 'string' || body.decision_note.length > 2000)) ||
+        (body.decision === 'rejected' && (typeof body.decision_note !== 'string' || !body.decision_note.trim()))) {
+        return errorJson(400, 'INVALID_INPUT', 'Choose a valid decision and provide a rejection reason of at most 2,000 characters.')
+      }
       const db = getMockDatabase()
       const existing = db.curriculumTransferRequests.find(t => t.id === transferId)
       if (!existing) return errorJson(404, 'NOT_FOUND', 'Transfer request not found.')
@@ -4314,6 +4456,7 @@ export const saaisMswHandlers = [
       updated_at: '2026-11-10T09:00:00Z',
     }
     db.systemSettings[0] = updated
+    recordMockAudit(auth.persona, { action: 'settings_updated', entityType: 'system_settings', entityId: updated.id, label: 'Department settings', details: 'Updated department settings.' })
     return HttpResponse.json(updated, { status: 200 })
   }),
 
@@ -4334,6 +4477,7 @@ export const saaisMswHandlers = [
       updated_at: '2026-11-10T09:00:00Z',
     }
     db.systemSettings[0] = updated
+    recordMockAudit(auth.persona, { action: 'backup_recorded', entityType: 'system_settings', entityId: updated.id, label: 'Backup record', details: `Recorded backup ${updated.last_backup_reference ?? ''}.`.trim() })
     return HttpResponse.json(updated, { status: 200 })
   }),
 
