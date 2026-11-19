@@ -16,6 +16,20 @@ const second = student('22222222-2222-4222-8222-222222222222', 'Second Student')
 afterEach(() => { cleanup(); vi.resetAllMocks(); auth.user = { id: 'adviser-one' } })
 
 describe('advisee identity', () => {
+  it('paginates the matching roster and resets the page when the filter changes', async () => {
+    const students = Array.from({ length: 18 }, (_, i): ApiSchema<'StudentRosterItem'> => ({ ...student(`id-${i}`, `Student ${i}`), standing: i === 17 ? 'warning' : 'good_standing' }))
+    vi.mocked(getRoster).mockResolvedValue(students)
+    render(<MemoryRouter><AdviseesPage /></MemoryRouter>)
+    expect(await screen.findByText('18 matching records')).toBeTruthy()
+    expect(screen.getByText('Student 0')).toBeTruthy()
+    expect(screen.queryByText('Student 17')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.queryByText('Student 0')).toBeNull()
+    expect(screen.getByText(/Page 2 of/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Standing'), { target: { value: 'flagged' } })
+    expect(screen.getByText('Student 17')).toBeTruthy()
+    expect(screen.queryByRole('navigation', { name: 'Advisee pages' })).toBeNull()
+  })
   it('opens the selected row by mouse or keyboard', async () => {
     vi.mocked(getRoster).mockResolvedValue([first, second])
     function Location() { return <p data-testid="location">{useLocation().pathname}</p> }
