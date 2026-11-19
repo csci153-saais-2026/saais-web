@@ -59,17 +59,15 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
       const existing = new Map(prerequisites.data.map(item => [item.prerequisiteCourseId, item]))
       const candidateIds = new Set(candidates.data.map(item => item.id))
       const desired = new Set(Object.entries(resolvedSelected).filter(([, enabled]) => enabled).map(([id]) => id))
-      const removedIds = new Set<string>()
       for (const item of prerequisites.data) {
         if (!candidateIds.has(item.prerequisiteCourseId)) continue
-        if (!desired.has(item.prerequisiteCourseId) || resolvedTypes[item.prerequisiteCourseId] !== item.type) {
+        if (!desired.has(item.prerequisiteCourseId)) {
           await remove.mutateAsync({ departmentId: course.department_id, id: item.id })
-          removedIds.add(item.prerequisiteCourseId)
         }
       }
       for (const id of desired) {
         const current = existing.get(id)
-        if (!current || removedIds.has(id)) {
+        if (!current) {
           await create.mutateAsync({
             departmentId: course.department_id,
             body: { course_id: course.id, prerequisite_course_id: id, type: resolvedTypes[id] ?? 'strict' },
@@ -106,6 +104,7 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
 
       <form className="flex min-h-0 flex-1 flex-col" onSubmit={event => { void save(event) }}>
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
+          {canManage && Object.keys(existingTypes).length > 0 && <p className="text-xs text-muted-foreground">Existing relationship types cannot be changed here. Their current type will be preserved.</p>}
           {!canManage && prerequisites.isSuccess && prerequisites.data.map(item => <div key={item.id} className="rounded-sm border border-border p-3"><p>{item.course?.code} {item.course?.title}</p><p>{item.type === 'strict' ? 'Prerequisite' : item.type === 'co_requisite' ? 'Co-requisite' : 'Recommended'}</p></div>)}
           {isLoading && <p role="status" className="py-4 text-sm text-muted-foreground">Loading department courses and prerequisites…</p>}
           {loadError && <div className="space-y-2 py-3"><p role="alert" className="text-sm text-destructive">{coursePrerequisiteError(loadError)}</p><Button type="button" variant="outline" onClick={() => { void prerequisites.refetch(); if (candidates.isError) void candidates.refetch() }}>Retry</Button></div>}
@@ -118,7 +117,7 @@ export function CoursePrerequisitesDialog({ course, open, onReturnFocus, onClose
               <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer truncate font-semibold text-muted-foreground" title={`${candidate.code} ${candidate.title}`}>
                 <span className="font-mono">{candidate.code}</span>{' '}{candidate.title}
               </label>
-              <Select value={resolvedTypes[candidate.id] ?? 'strict'} disabled={!canManage || pending} onValueChange={value => { setTypes(previous => ({ ...previous, [candidate.id]: value as CatalogPrerequisiteType })); setMessage('') }}>
+              <Select value={resolvedTypes[candidate.id] ?? 'strict'} disabled={!canManage || pending || candidate.id in existingTypes} onValueChange={value => { setTypes(previous => ({ ...previous, [candidate.id]: value as CatalogPrerequisiteType })); setMessage('') }}>
                 <SelectTrigger aria-label={`Relationship type for ${candidate.code}`} className="w-[175px] shrink-0"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="strict">Prerequisite</SelectItem><SelectItem value="co_requisite">Co-requisite</SelectItem><SelectItem value="recommended">Recommended</SelectItem></SelectContent>
               </Select>

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { ApiClientError } from '@/lib/api'
 import { reassignmentSchema } from './reassignment.schema'
 
 type Props = {
@@ -29,7 +30,7 @@ export function ReassignAdviserDialog({ studentCount, advisers, advisersLoading,
   const future = effectiveDate > todayInManila()
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (busy) return
+    if (busy || studentCount > 500) return
     const result = reassignmentSchema.safeParse({ adviser_id: adviserId, effective_since: effectiveDate, reason })
     if (!result.success) { setError(result.error.issues[0]?.message ?? 'Check the reassignment details.'); return }
     setError('')
@@ -38,7 +39,7 @@ export function ReassignAdviserDialog({ studentCount, advisers, advisersLoading,
       await onConfirm({ adviserId: result.data.adviser_id, effectiveDate: result.data.effective_since, reason: result.data.reason })
       onClose()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'The reassignment could not be applied.')
+      setError(failure instanceof ApiClientError && failure.isAuthError ? failure.hint ?? 'Sign in again to continue.' : failure instanceof ApiClientError && failure.isNetworkError ? 'The reassignment result is unconfirmed. Review assignments before retrying.' : failure instanceof Error ? failure.message : 'The reassignment could not be applied.')
     } finally { setBusy(false) }
   }
   return <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose() }}>
@@ -53,7 +54,7 @@ export function ReassignAdviserDialog({ studentCount, advisers, advisersLoading,
         <FormField label="Reason for reassignment" htmlFor="staff-reassignment-reason"><Textarea id="staff-reassignment-reason" value={reason} disabled={busy} maxLength={2000} onChange={(event) => setReason(event.target.value)} placeholder="Explain the adviser change." rows={3} /></FormField>
         <p className="text-xs text-muted-foreground">The previous adviser and original assignment date remain in the student’s assignment history.</p>
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-        <DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy || advisersLoading || advisersError}>{busy ? 'Saving…' : future ? 'Schedule reassignment' : 'Apply reassignment'}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy || advisersLoading || advisersError || studentCount > 500}>{busy ? 'Saving…' : future ? 'Schedule reassignment' : 'Apply reassignment'}</Button></DialogFooter>
       </form>
     </DialogContent>
   </Dialog>

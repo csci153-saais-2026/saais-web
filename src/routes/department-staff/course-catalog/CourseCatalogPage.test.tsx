@@ -220,6 +220,22 @@ describe('Department Staff course catalog', () => {
     expect(getMockDatabase().prerequisites).toContainEqual(expect.objectContaining({ course_id: MOCK_IDS.courseCsci198, prerequisite_course_id: MOCK_IDS.courseCsci101, type }))
   })
 
+  it('discards canceled drafts and preserves existing relationship types', async () => {
+    renderCourseCatalog()
+    const opener = await screen.findByRole('button', { name: 'View prerequisites for CSCI 153' })
+    fireEvent.click(opener)
+    const dialog = await screen.findByRole('dialog')
+    const linked = await within(dialog).findByRole('checkbox', { name: /CSCI 102/ })
+    const original = { ...getMockDatabase().prerequisites.find(item => item.id === MOCK_IDS.prereqCsci153Requires102)! }
+    expect(within(dialog).getByRole('combobox', { name: 'Relationship type for CSCI 102' }).hasAttribute('disabled')).toBe(true)
+    fireEvent.click(linked)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(opener)
+    const reopened = await screen.findByRole('dialog')
+    expect((await within(reopened).findByRole('checkbox', { name: /CSCI 102/ })).getAttribute('aria-checked')).toBe('true')
+    expect(getMockDatabase().prerequisites.find(item => item.id === original.id)).toEqual(original)
+  })
+
   it('excludes self links, preserves existing checks, and saves removals', async () => {
     renderCourseCatalog()
     const opener = await screen.findByRole('button', { name: 'View prerequisites for CSCI 153' })

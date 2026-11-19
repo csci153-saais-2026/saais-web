@@ -598,6 +598,10 @@ function buildInitialMockDatabase(): MockDatabaseState {
       },
     ],
     roleAssignments: [
+      ...[MOCK_IDS.deptHeadDcst, MOCK_IDS.deanDeptHeadComputing].map((profile_id, index) => ({
+        id: '92000000-0000-4000-8000-0000000000' + (11 + index), profile_id, role: 'adviser' as const,
+        faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst, created_at: '2026-07-01T08:00:00Z',
+      })),
       {
         id: '92000000-0000-4000-8000-000000000001',
         profile_id: MOCK_IDS.studentPrimary,

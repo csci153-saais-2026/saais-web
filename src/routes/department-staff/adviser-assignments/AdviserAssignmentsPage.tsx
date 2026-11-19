@@ -1,5 +1,5 @@
 import '../shared/staff-filters.css'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeading } from '@/components/features/page-heading'
 import { Panel } from '@/components/features/panel'
@@ -31,6 +31,21 @@ const emptyFilters: Filters = { search: '', curriculum: 'all', adviser: 'all' }
 export default function AdviserAssignmentsPage() {
   const scope = useStaffScope()
   const active = scope.status === 'ready' ? scope : null
+  const [today, setToday] = useState(todayInManila)
+  useEffect(() => {
+    let timer: number
+    const refresh = () => {
+      setToday(todayInManila())
+      window.clearTimeout(timer)
+      const now = new Date()
+      const nextMidnight = new Date(todayInManila() + 'T00:00:00+08:00').getTime() + 86400000
+      timer = window.setTimeout(refresh, Math.max(1, nextMidnight - now.getTime()))
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { window.clearTimeout(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) }
+  }, [])
   const department = useStaffDepartmentName()
   const reassign = useAdviserReassignment()
   const [filters, setFilters] = useState<Filters>(emptyFilters)
@@ -54,14 +69,7 @@ export default function AdviserAssignmentsPage() {
       for (let start = 0; start < students.length; start += 50) {
         history.push(...await listStudentAdviserAssignments(students.slice(start, start + 50).map((student) => student.student_id), signal))
       }
-      const today = todayInManila()
-      return students.map((student) => {
-        const assignments = history.filter((entry) => entry.student_id === student.student_id).sort((a, b) => a.start_date.localeCompare(b.start_date))
-        const current = assignments.filter((entry) => entry.start_date <= today && (!entry.end_date || entry.end_date > today)).at(-1)
-        const previous = assignments.filter((entry) => entry.end_date && entry.end_date <= today).at(-1)
-        const scheduled = assignments.find((entry) => entry.start_date > today)
-        return { student, current, previous, scheduled, adviser: current?.adviser_name ?? 'Unassigned' }
-      })
+      return { students, history }
     },
   })
   const advisers = useQuery({
@@ -73,12 +81,18 @@ export default function AdviserAssignmentsPage() {
       return listDepartmentAssignmentAdvisers(active.departmentId, signal)
     },
   })
-  const students = directory.data ?? []
+  const students = (directory.data?.students ?? []).map((student) => {
+        const assignments = (directory.data?.history ?? []).filter((entry) => entry.student_id === student.student_id).sort((a, b) => a.start_date.localeCompare(b.start_date))
+        const current = assignments.filter((entry) => entry.start_date <= today && (!entry.end_date || entry.end_date > today)).at(-1)
+        const previous = assignments.filter((entry) => entry.end_date && entry.end_date <= today).at(-1)
+        const scheduled = assignments.find((entry) => entry.start_date > today)
+        return { student, current, previous, scheduled, adviser: current?.adviser_name ?? 'Unassigned' }
+      })
   const matches = (item: (typeof students)[number], value: Filters) => {
     const query = value.search.trim().toLowerCase()
     return (item.student.full_name.toLowerCase().includes(query) || item.student.student_number.toLowerCase().includes(query)) &&
       (value.curriculum === 'all' || item.student.curriculum_label === value.curriculum) &&
-      (value.adviser === 'all' || item.adviser === value.adviser)
+      (value.adviser === 'all' || (item.current?.adviser_id ?? 'unassigned') === value.adviser)
   }
   const visible = students.filter((item) => matches(item, filters))
   const visibleIds = new Set(visible.map((item) => item.student.student_id))
@@ -88,11 +102,9 @@ export default function AdviserAssignmentsPage() {
   const currentAdvisers = new Set(selectedItems.map((item) => item.current?.adviser_id))
   const assignableAdvisers = (advisers.data ?? []).filter((adviser) => !(currentAdvisers.size === 1 && currentAdvisers.has(adviser.id)))
   const curricula = [...new Set(students.map((item) => item.student.curriculum_label))].sort()
-  const adviserNames = [...new Set([
-    ...(advisers.data ?? []).map((adviser) => adviser.label),
-    ...students.map((item) => item.adviser),
-  ])].sort()
-
+  const adviserOptions = new Map((advisers.data ?? []).map(item => [item.id, item.label]))
+  for (const item of students) if (item.current) adviserOptions.set(item.current.adviser_id, item.adviser)
+  const adviserNames = [...adviserOptions].map(([id, label]) => ({ id, label: [...adviserOptions.values()].filter(value => value === label).length > 1 ? label + ' (' + id + ')' : label })).sort((a,b) => a.label.localeCompare(b.label))
   function changeFilters(next: Filters) {
     setFilters(next)
     const remaining = new Set(students.filter((item) => matches(item, next)).map((item) => item.student.student_id))
@@ -102,6 +114,8 @@ export default function AdviserAssignmentsPage() {
     setSelected((current) => checked ? [...new Set([...current, id])] : current.filter((value) => value !== id))
   }
   async function apply(input: { adviserId: string; effectiveDate: string; reason: string }) {
+    if (directory.isError || directory.isFetching) throw new Error('Refresh assignments before reassigning students.')
+    if (selectedVisible.length > 500) throw new Error('Select at most 500 students.')
     if (!selectedVisible.length) throw new Error('Select at least one student to reassign.')
     if (!assignableAdvisers.some((adviser) => adviser.id === input.adviserId)) throw new Error('Choose a different eligible adviser.')
     if (selectedItems.some((item) => item.scheduled)) throw new Error('A selected student already has a scheduled reassignment. Review it before making another change.')
@@ -116,15 +130,16 @@ export default function AdviserAssignmentsPage() {
   return <>
     {heading}
     <Alert variant="advisory"><AlertIcon /><AlertDescription>Reassignment takes effect on the selected date. The previous adviser and assignment history remain visible.</AlertDescription></Alert>
+    {directory.isError && <div role="alert">Cached assignments are stale. <Button variant="link" onClick={() => void directory.refetch()}>Retry assignments</Button></div>}
     {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
     <Panel title="Student–adviser assignments" description="Select one or more students to reassign together." flush>
       <div className="staff-filter-controls grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
         <FormField label="Search students" htmlFor="staff-assignment-search"><SearchInput id="staff-assignment-search" placeholder="Search by student name or ID" value={filters.search} onChange={(event) => changeFilters({ ...filters, search: event.target.value })} /></FormField>
         <FormField label="Curriculum" htmlFor="staff-assignment-curriculum"><Select value={filters.curriculum} onValueChange={(curriculum) => changeFilters({ ...filters, curriculum })}><SelectTrigger id="staff-assignment-curriculum" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All curricula</SelectItem>{curricula.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></FormField>
-        <FormField label="Adviser" htmlFor="staff-assignment-adviser"><Select value={filters.adviser} onValueChange={(adviser) => changeFilters({ ...filters, adviser })}><SelectTrigger id="staff-assignment-adviser" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All advisers</SelectItem>{adviserNames.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></FormField>
+        <FormField label="Adviser" htmlFor="staff-assignment-adviser"><Select value={filters.adviser} onValueChange={(adviser) => changeFilters({ ...filters, adviser })}><SelectTrigger id="staff-assignment-adviser" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All advisers</SelectItem><SelectItem value="unassigned">Unassigned</SelectItem>{adviserNames.map((value) => <SelectItem key={value.id} value={value.id}>{value.label}</SelectItem>)}</SelectContent></Select></FormField>
         <Button variant="outline" disabled={!filters.search && filters.curriculum === 'all' && filters.adviser === 'all'} onClick={() => changeFilters(emptyFilters)}>Reset filters</Button>
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-4 border-b border-border px-5 py-4"><span aria-live="polite" className="text-sm text-muted-foreground">{selectedVisible.length} student{selectedVisible.length === 1 ? '' : 's'} selected</span><Button type="button" disabled={!selectedVisible.length} onClick={() => setDialogOpen(true)}><SwapIcon aria-hidden="true" />Reassign selected</Button></div>
+      <div className="flex flex-wrap items-center justify-end gap-4 border-b border-border px-5 py-4"><span aria-live="polite" className="text-sm text-muted-foreground">{selectedVisible.length} student{selectedVisible.length === 1 ? '' : 's'} selected (maximum 500)</span><Button type="button" disabled={!selectedVisible.length || selectedVisible.length > 500 || directory.isError || directory.isFetching} onClick={() => setDialogOpen(true)}><SwapIcon aria-hidden="true" />Reassign selected</Button></div>
       <Table responsive aria-label="Student adviser assignments"><TableHeader><TableRow><TableHead className={`${TH} w-20`}><Checkbox className="data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden" aria-label="Select all visible students" disabled={!visible.length} checked={selectedVisible.length && !allSelected ? 'indeterminate' : allSelected} onCheckedChange={(checked) => setSelected(checked === true ? visible.map((item) => item.student.student_id) : [])} /></TableHead>{['Student', 'Current adviser', 'Since', 'Previous adviser'].map((label) => <TableHead key={label} className={TH}>{label}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{visible.map((item) => <TableRow key={item.student.student_id} className="cursor-pointer border-line-soft hover:bg-line-soft" onClick={() => toggleStudent(item.student.student_id, !selected.includes(item.student.student_id))} data-state={selected.includes(item.student.student_id) ? 'selected' : undefined}>
           <TableCell label="Select" className={`${TD} w-20`} onClick={(event) => event.stopPropagation()}><Checkbox aria-label={`Select ${item.student.full_name}`} checked={selected.includes(item.student.student_id)} onCheckedChange={(checked) => toggleStudent(item.student.student_id, checked === true)} /></TableCell>

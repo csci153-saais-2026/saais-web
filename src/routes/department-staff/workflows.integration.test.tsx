@@ -163,11 +163,13 @@ describe('Department Staff cross-page workflows', () => {
       name: `Select ${MOCK_PERSONAS.student.fullName}`,
     }))
     fireEvent.click(screen.getByRole('button', { name: 'Reassign selected' }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'New adviser' }).hasAttribute('disabled')).toBe(false))
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'New adviser' }), { key: 'ArrowDown' })
     fireEvent.click(await screen.findByRole('option', { name: MOCK_PERSONAS.adviser_secondary.fullName }))
     fireEvent.change(screen.getByLabelText('Reason for reassignment'), {
       target: { value: 'Step 41 integration handoff' },
     })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Apply reassignment' }).hasAttribute('disabled')).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: 'Apply reassignment' }))
     await screen.findByText('Reassigned 1 student.')
 

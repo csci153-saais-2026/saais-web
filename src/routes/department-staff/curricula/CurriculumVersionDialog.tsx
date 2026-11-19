@@ -88,6 +88,7 @@ export function CurriculumVersionDialog({ programs, onClose, onCreated, version,
             <FormField label="Effective from" htmlFor="new-version-start" error={errors.effective_start?.message}>
               <Input id="new-version-start" type="date" aria-invalid={!!errors.effective_start} {...register('effective_start')} />
             </FormField>
+          <FormField label="Effective until (optional)" htmlFor="version-end" error={errors.effective_end?.message}><Input id="version-end" type="date" aria-invalid={!!errors.effective_end} {...register('effective_end')} /></FormField>
           <FormField label="Status" htmlFor="new-version-status" error={errors.status?.message}>
             <Controller name="status" control={control} render={({ field }) => <Select value={field.value} onValueChange={field.onChange} disabled={pending}><SelectTrigger id="new-version-status" className="w-full" aria-invalid={!!errors.status}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">draft</SelectItem><SelectItem value="active">active</SelectItem><SelectItem value="teach_out">teach out</SelectItem><SelectItem value="retired">retired</SelectItem><SelectItem value="closed">closed</SelectItem></SelectContent></Select>} />
           </FormField>

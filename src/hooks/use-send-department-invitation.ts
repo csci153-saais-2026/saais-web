@@ -30,6 +30,10 @@ export function useSendDepartmentInvitation() {
       if (!departmentInviteRoles.includes(payload.role as typeof departmentInviteRoles[number])) {
         throw new Error('Only approved department invitation roles may be sent.')
       }
+      if (!auth.roles.includes('admin') && [payload.role, ...(payload.role_assignments ?? []).map(item => item.role)].some(role => role === 'admin' || role === 'dean')) {
+        throw new Error('Admin authority is required to invite Dean or Admin roles.')
+      }
+      if (payload.role === 'adviser' && payload.role_assignments?.some(item => item.role === 'admin' || item.role === 'dean')) throw new Error('Adviser invitations cannot include Dean or Admin roles.')
       if (payload.email.trim().toLocaleLowerCase() === auth.user.email.trim().toLocaleLowerCase()) {
         throw new Error('You cannot grant roles to your own account.')
       }

@@ -16,33 +16,28 @@ export type BulkAdviserReassignmentRequest = OperationRequestBody<'bulkReassignA
 export type BulkAdviserReassignmentResponse = OperationResponse<'bulkReassignAdvisers'>
 export type AdviserAssignment = ApiSchema<'AdviserAssignment'>
 
-/** Active adviser profiles in the staff member's authorized department. */
-export async function listDepartmentAssignmentAdvisers(
-  departmentId: string,
-  signal?: AbortSignal,
-): Promise<{ id: string; label: string }[]> {
-  const advisers: { id: string; label: string }[] = []
+/** Eligibility comes from department-scoped adviser role assignments, including secondary roles. */
+export async function listDepartmentAssignmentAdvisers(departmentId: string, signal?: AbortSignal): Promise<{ id: string; label: string }[]> {
+  const ids = new Set<string>()
   const pageSize = 100
   for (let offset = 0; ; offset += pageSize) {
-    const result = await apiClient.GET('/rest/v1/profile', {
-      params: { query: {
-        department_id: postgrestFilter.eq(departmentId),
-        status: postgrestFilter.eq('active'),
-        select: 'id,full_name,status,roles,department_id',
-        order: 'id.asc',
-        limit: pageSize,
-        offset,
-      } },
-      signal,
-    })
-    const rows = unwrapApiResult<ApiSchema<'Profile'>[]>(result)
-    if (!Array.isArray(rows)) throw new Error('The adviser service returned invalid data.')
-    advisers.push(...rows.filter((profile) =>
-      profile.department_id === departmentId && profile.status === 'active' &&
-      profile.roles?.includes('adviser') && profile.full_name?.trim(),
-    ).map((profile) => ({ id: profile.id, label: profile.full_name })))
-    if (rows.length < pageSize) return advisers.sort((a, b) => a.label.localeCompare(b.label))
+    const result = await apiClient.GET('/rest/v1/role_assignment', { params: { query: { role: postgrestFilter.eq('adviser'), department_id: postgrestFilter.eq(departmentId), select: 'id,profile_id,role,department_id', order: 'id.asc', limit: pageSize, offset } }, signal })
+    const rows = unwrapApiResult<ApiSchema<'RoleAssignment'>[]>(result)
+    for (const row of rows) if (row.role === 'adviser' && row.department_id === departmentId) ids.add(row.profile_id)
+    if (rows.length < pageSize) break
   }
+  const advisers: { id: string; label: string }[] = []
+  const allIds = [...ids]
+  for (let start = 0; start < allIds.length; start += 50) {
+    const batch = allIds.slice(start, start + 50)
+    for (let offset = 0; ; offset += pageSize) {
+      const result = await apiClient.GET('/rest/v1/profile', { params: { query: { id: postgrestFilter.inList(batch), status: postgrestFilter.eq('active'), select: 'id,full_name,status', order: 'id.asc', limit: pageSize, offset } }, signal })
+      const rows = unwrapApiResult<ApiSchema<'Profile'>[]>(result)
+      advisers.push(...rows.filter(row => batch.includes(row.id) && row.status === 'active' && row.full_name?.trim()).map(row => ({ id: row.id, label: row.full_name })))
+      if (rows.length < pageSize) break
+    }
+  }
+  return advisers.sort((a,b) => a.label.localeCompare(b.label))
 }
 
 const ASSIGNMENT_HISTORY_LIMIT = 1000
@@ -92,9 +87,8 @@ function completeRead(
 
   const range = parseContentRange(result.response.headers.get('Content-Range'))
   if (
-    rows.length >= ASSIGNMENT_HISTORY_LIMIT ||
-    result.response.status === 206 ||
-    (range?.total != null && range.total > rows.length)
+    rows.length > ASSIGNMENT_HISTORY_LIMIT ||
+    (result.response.status === 206 && range?.total == null)
   ) {
     throw new Error(
       'Adviser assignment history is incomplete; the full history could not be loaded.',
@@ -125,14 +119,18 @@ export async function listStudentAdviserAssignments(
     limit: ASSIGNMENT_HISTORY_LIMIT,
     offset: 0,
   }
-  const result = await apiClient.GET('/rest/v1/adviser_assignment', {
-    params: { query },
-    signal,
-  })
-  const requestedIds = new Set(ids)
-  return completeRead(result).filter((assignment) =>
-    requestedIds.has(assignment.student_id),
-  )
+  const history: AdviserAssignment[] = []
+  for (let offset = 0; ;) {
+    const result = await apiClient.GET('/rest/v1/adviser_assignment', { params: { query: { ...query, offset } }, signal })
+    const rows = completeRead(result)
+    const range = parseContentRange(result.response.headers.get('Content-Range'))
+    if (range?.start != null && (range.start !== offset || range.end! - range.start + 1 !== rows.length)) throw new Error('Adviser assignment history is incomplete.')
+    history.push(...rows.filter(row => ids.includes(row.student_id)))
+    if (range?.total != null ? offset + rows.length >= range.total : rows.length < ASSIGNMENT_HISTORY_LIMIT) break
+    if (!rows.length) throw new Error('Adviser assignment history is incomplete.')
+    offset += rows.length
+  }
+  return history
 }
 
 export async function bulkReassignAdvisers(

@@ -54,7 +54,7 @@ export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, 
     resolver: zodResolver(curriculumSlotSchema),
     defaultValues: slot ? {
       slot_type: slot.slot_type ?? (slot.is_elective_slot ? 'elective' : 'required'),
-      course_id: slot.course_id ?? '', slot_label: slot.slot_label ?? courseLabel ?? '', nominal_units: slot.nominal_units,
+      course_id: slot.course_id ?? '', slot_label: slot.slot_label ?? '', nominal_units: slot.nominal_units,
     } : { slot_type: 'required', course_id: '', slot_label: '', nominal_units: 3 },
   })
   const slotType = useWatch({ control, name: 'slot_type' })
@@ -91,13 +91,13 @@ export function CurriculumSlotDialog({ term, version, onClose, slot, onCreated, 
       <form noValidate className="grid gap-4" aria-busy={pending} onSubmit={event => { void handleSubmit(submit)(event) }}>
         <fieldset disabled={pending} className="grid min-w-0 gap-4 sm:grid-cols-2">
           <FormField label="Course / slot" htmlFor="curriculum-slot-label" className="sm:col-span-2" error={errors.slot_label?.message}>
-            <Input id="curriculum-slot-label" maxLength={150} aria-invalid={!!errors.slot_label} {...register('slot_label')} />
+            <Input id="curriculum-slot-label" maxLength={150} placeholder={courseLabel} aria-invalid={!!errors.slot_label} {...register('slot_label')} />
           </FormField>
           <FormField label="Required units" htmlFor="curriculum-slot-units" error={errors.nominal_units?.message}>
             <Input id="curriculum-slot-units" type="number" min={0} step={0.25} aria-invalid={!!errors.nominal_units} {...register('nominal_units', { valueAsNumber: true })} />
           </FormField>
           <FormField label="Type" htmlFor="curriculum-slot-type" error={errors.slot_type?.message}>
-            <Controller name="slot_type" control={control} render={({ field }) => <Select value={field.value} onValueChange={field.onChange} disabled={pending}><SelectTrigger id="curriculum-slot-type" className="w-full" aria-invalid={!!errors.slot_type}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="required">Required course</SelectItem><SelectItem value="elective">Elective slot</SelectItem><SelectItem value="ge">GE slot</SelectItem>{slot?.slot_type === 'pe' && <SelectItem value="pe">Physical education course</SelectItem>}{slot?.slot_type === 'nstp' && <SelectItem value="nstp">NSTP course</SelectItem>}</SelectContent></Select>} />
+            <Controller name="slot_type" control={control} render={({ field }) => <Select value={field.value} onValueChange={field.onChange} disabled={pending}><SelectTrigger id="curriculum-slot-type" className="w-full" aria-invalid={!!errors.slot_type}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="required">Required course</SelectItem><SelectItem value="elective">Elective slot</SelectItem><SelectItem value="ge">GE slot</SelectItem><SelectItem value="pe">Physical education course</SelectItem><SelectItem value="nstp">NSTP course</SelectItem></SelectContent></Select>} />
           </FormField>
           {fixedCourse && <>
             <FormField label="Active course (optional)" htmlFor="curriculum-slot-course" className="sm:col-span-2" error={errors.course_id?.message}>

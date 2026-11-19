@@ -71,7 +71,7 @@ function EncodingStatus({ isClosed }: { isClosed: boolean }) {
 export default function AcademicTermsPage() {
   const academicTerms = useAcademicTerms()
   const scope = useStaffScope()
-  const [termToView, setTermToView] = useState<SchoolTerm | null>(null)
+  const [termToViewId, setTermToViewId] = useState<string | null>(null)
   const [dialogTerm, setDialogTerm] = useState<SchoolTerm | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [closureDialog, setClosureDialog] = useState<{
@@ -84,6 +84,7 @@ export default function AcademicTermsPage() {
     closures.map((closure) => [closure.school_term_id, closure]),
   )
   const terms = academicTerms.data?.terms ?? []
+  const termToView = terms.find(term => term.id === termToViewId) ?? null
   const isTermClosed = (term: SchoolTerm) => term.is_locked || closureByTermId.get(term.id)?.is_closed === true
   const closedTerms = terms.filter(
     isTermClosed,
@@ -138,8 +139,9 @@ export default function AcademicTermsPage() {
                 Close encoding
               </Button>
           ) : (
-            <Button type="button" variant="link" size="sm" className="h-auto px-0 py-1 text-[13px] font-semibold no-underline hover:no-underline" onClick={() => setTermToView(term)}>View term</Button>
+            <Button type="button" variant="link" size="sm" className="h-auto px-0 py-1 text-[13px] font-semibold no-underline hover:no-underline" onClick={() => setTermToViewId(term.id)}>View term</Button>
           )}
+          {scope.status === 'ready' && !term.is_locked && <Button type="button" variant="outline" size="sm" onClick={() => { setDialogTerm(term); setDialogOpen(true) }}>Edit term</Button>}
           </div>
         )
       },
@@ -235,7 +237,7 @@ export default function AcademicTermsPage() {
         const closed = isTermClosed(termToView)
         const closedBy = closure?.is_closed ? closure.closed_by_name : termToView.closed_by_name
         const note = closure?.is_closed ? closure.closure_note : termToView.closure_note
-        return <Dialog open onOpenChange={(open) => { if (!open) setTermToView(null) }}>
+        return <Dialog open onOpenChange={(open) => { if (!open) setTermToViewId(null) }}>
           <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto p-0 sm:max-w-170">
             <DialogHeader className="border-b border-line-soft px-5 py-4 pr-14 sm:px-6 sm:py-5"><DialogTitle className="text-[22px] leading-[1.08] tracking-[-0.01em] sm:text-2xl">Academic term details</DialogTitle><DialogDescription className="sr-only">Academic term details</DialogDescription></DialogHeader>
             <div className="p-5 text-sm sm:p-6"><dl className="grid grid-cols-2 gap-5">
@@ -248,8 +250,8 @@ export default function AcademicTermsPage() {
               {note && <div className="col-span-2"><dt className="text-xs text-muted-2">Closure note</dt><dd className="mt-1 text-[13.5px] font-medium text-foreground">{note}</dd></div>}
             </dl></div>
             <DialogFooter className="border-t border-line-soft px-5 py-4 sm:px-6">
-              <Button variant="outline" onClick={() => setTermToView(null)}>Close</Button>
-              {closure?.is_closed && !termToView.is_locked && <Button variant="outline" onClick={() => { setClosureDialog({ mode: 'reopen', term: termToView }); setTermToView(null); setSaveMessage(null) }}>Reopen encoding</Button>}
+              <Button variant="outline" onClick={() => setTermToViewId(null)}>Close</Button>
+              {closure?.is_closed && !termToView.is_locked && <Button variant="outline" onClick={() => { setClosureDialog({ mode: 'reopen', term: termToView }); setTermToViewId(null); setSaveMessage(null) }}>Reopen encoding</Button>}
             </DialogFooter>
           </DialogContent>
         </Dialog>

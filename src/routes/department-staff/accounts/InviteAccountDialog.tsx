@@ -91,6 +91,7 @@ export default function InviteAccountDialog() {
   function sendReviewedInvitation() {
     if (sendLock.current || invitation.isPending || invitation.isSuccess) return
     const result = buildDepartmentInvitePreview(values, {
+      canInvitePrivilegedRoles: auth.roles.includes('admin'),
       ownEmail: auth.user?.email ?? '',
       departmentId,
       facultyId,
@@ -150,7 +151,7 @@ export default function InviteAccountDialog() {
             <Select value={values.role} onValueChange={value => updateRole(value as DepartmentInviteRole)}>
               <SelectTrigger id="invite-role" className="h-11! w-full min-w-0 max-w-full overflow-hidden [&_[data-slot=select-value]]:block [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {departmentInviteRoles.map(role => <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>)}
+                {departmentInviteRoles.filter(role => auth.roles.includes('admin') || (role !== 'admin' && role !== 'dean')).map(role => <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>)}
               </SelectContent>
             </Select>
           </FormField>
@@ -158,7 +159,7 @@ export default function InviteAccountDialog() {
           {values.role !== 'student' && <fieldset className="space-y-2">
             <legend className="text-[13px] font-semibold text-muted-foreground">Additional roles</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {departmentInviteRoles.filter(role => role !== values.role && role !== 'student').map(role => {
+              {departmentInviteRoles.filter(role => role !== values.role && role !== 'student' && (auth.roles.includes('admin') || (role !== 'dean' && role !== 'admin'))).map(role => {
                 return (
                   <label key={role} className="flex items-center gap-2 text-sm">
                     <Checkbox

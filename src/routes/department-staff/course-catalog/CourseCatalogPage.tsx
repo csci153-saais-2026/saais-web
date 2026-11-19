@@ -195,14 +195,14 @@ export default function CourseCatalogPage() {
         </div>
 
         {!searchError && (references.isPending || catalog.isPending) && (
-          <p role="status" className="border-t border-border px-5 py-6 text-sm text-muted-foreground">Loading courses and department referencesâ€¦</p>
+          <p role="status" className="border-t border-border px-5 py-6 text-sm text-muted-foreground">Loading courses and department references...</p>
         )}
 
         {(references.isError || catalog.isError) && (
           <div className="space-y-4 border-t border-border p-5">
             <p role="alert" className="text-sm text-destructive">{errorMessage(references.error ?? catalog.error)}</p>
             <Button type="button" variant="outline" onClick={() => { void references.refetch(); void catalog.refetch() }} disabled={references.isFetching || catalog.isFetching}>
-              {references.isFetching || catalog.isFetching ? 'Retryingâ€¦' : 'Retry'}
+              {references.isFetching || catalog.isFetching ? 'Retrying...' : 'Retry'}
             </Button>
           </div>
         )}
@@ -225,7 +225,7 @@ export default function CourseCatalogPage() {
             </Table>
             {data.courses.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted-foreground">No courses match these filters.</p>}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              <p className="text-sm" aria-live="polite">{data.total != null ? `${start}â€“${end} of ${data.total}` : `Page ${filters.page + 1}`}</p>
+              <p className="text-sm" aria-live="polite">{data.total != null ? `${start} - ${end} of ${data.total}` : `Page ${filters.page + 1}`}</p>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => updateFilters({ page: String(filters.page - 1) }, false)} disabled={filters.page === 0 || catalog.isFetching}>Previous</Button>
                 <Button type="button" variant="outline" onClick={() => updateFilters({ page: String(filters.page + 1) }, false)} disabled={!hasNext || catalog.isFetching}>Next</Button>
@@ -235,7 +235,7 @@ export default function CourseCatalogPage() {
         )}
       </Panel>
       <CoursePrerequisitesDialog
-        key={prerequisiteCourse?.id ?? 'no-course'}
+        key={(prerequisiteDialogOpen ? 'open-' : 'closed-') + (prerequisiteCourse?.id ?? 'no-course')}
         course={prerequisiteCourse}
         open={prerequisiteDialogOpen}
         onReturnFocus={() => prerequisiteTrigger.current?.focus()}

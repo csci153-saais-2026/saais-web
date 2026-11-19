@@ -103,6 +103,20 @@ describe('Adviser assignment preparation reads', () => {
     ])
   })
 
+  it('consumes every history page and accepts an exactly full final page', async () => {
+    const offsets: number[] = []
+    server.use(http.get('*/rest/v1/adviser_assignment', ({ request }) => {
+      const offset = Number(new URL(request.url).searchParams.get('offset'))
+      offsets.push(offset)
+      const count = offset === 0 ? 1000 : 1
+      return HttpResponse.json(Array.from({ length: count }, () => reassignedRecord(studentIds[0], 0)), { headers: { 'Content-Range': offset === 0 ? '0-999/1001' : '1000-1000/1001' } })
+    }))
+    expect(await listStudentAdviserAssignments([studentIds[0]])).toHaveLength(1001)
+    expect(offsets).toEqual([0, 1000])
+    server.use(http.get('*/rest/v1/adviser_assignment', () => HttpResponse.json(Array.from({ length: 1000 }, () => reassignedRecord(studentIds[0], 0)), { headers: { 'Content-Range': '0-999/1000' } })))
+    expect(await listStudentAdviserAssignments([studentIds[0]])).toHaveLength(1000)
+  })
+
   it('rejects partial adviser history instead of preparing from incomplete data', async () => {
     server.use(
       http.get('*/rest/v1/adviser_assignment', () =>
@@ -186,9 +200,12 @@ describe('Adviser assignment preparation reads', () => {
       http.get('*/rest/v1/profile', ({ request }) => {
         const query = new URL(request.url).searchParams
         expect(query.get('status')).toBe('eq.active')
+        expect(query.get('select')).toBe('id,full_name,status')
         return HttpResponse.json([
-          { id: eligibleId, full_name: 'Active Adviser', status: 'active', department_id: departmentId, roles: ['adviser'] },
-          { id: inactiveId, full_name: 'Inactive Adviser', status: 'inactive', department_id: departmentId, roles: ['adviser'] },
+          { id: eligibleId, full_name: 'Active Adviser', status: 'active', role: 'department_head', department_id: 'different-primary-department' },
+          { id: inactiveId, full_name: 'Inactive Adviser', status: 'inactive', department_id: departmentId },
+          { id: otherDepartmentId, full_name: 'Foreign Adviser', status: 'active' },
+          { id: '55555555-5555-4555-8555-555555555555', full_name: 'Not Adviser', status: 'active' },
         ])
       }),
     )

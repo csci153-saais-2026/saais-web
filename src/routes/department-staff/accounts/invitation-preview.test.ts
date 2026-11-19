@@ -10,6 +10,7 @@ import {
 function context(): DepartmentInviteContext {
   const db = getMockDatabase()
   return {
+    canInvitePrivilegedRoles: true,
     ownEmail: MOCK_PERSONAS.department_staff.email,
     departmentId: MOCK_IDS.deptDcst,
     facultyId: MOCK_IDS.facultyComputing,
@@ -49,7 +50,10 @@ describe('department invitation preview validation', () => {
       full_name: 'New Person',
       role,
     })
-    if (role !== 'student') {
+    if (role === 'admin') {
+      expect(result.payload).not.toHaveProperty('faculty_id')
+      expect(result.payload).not.toHaveProperty('department_id')
+    } else if (role !== 'student') {
       expect(result.payload).toMatchObject({
         faculty_id: MOCK_IDS.facultyComputing,
         department_id: MOCK_IDS.deptDcst,
@@ -74,6 +78,11 @@ describe('department invitation preview validation', () => {
       entry_year: 2026,
 
     })
+  })
+
+  it.each(['admin', 'dean'] as const)('rejects %s invitations and secondary roles without Admin authority', role => {
+    expect(buildDepartmentInvitePreview(values(role), { ...context(), canInvitePrivilegedRoles: false }).ok).toBe(false)
+    expect(buildDepartmentInvitePreview({ ...values('adviser'), additional_roles: [role] }, { ...context(), canInvitePrivilegedRoles: false }).ok).toBe(false)
   })
 
   it('rejects malformed, non-institutional, and self email identities', () => {

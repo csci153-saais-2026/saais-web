@@ -446,9 +446,13 @@ export async function loadImportReferences(departmentId: string): Promise<Import
   const programs = complete(unwrapApiResult<ApiSchema<'Program'>[]>(programResult), 'Program').filter((p) => p.department_id === departmentId)
   const programIds = programs.map((p) => p.id)
   const adviserIds = adviserOptions.map((a) => a.id)
-  const [versions, profiles] = await Promise.all([
-    programIds.length ? apiClient.GET('/rest/v1/curriculum_version', { params: { query: { program_id: postgrestFilter.inList(programIds), limit: LIMIT } } }).then((r) => complete(unwrapApiResult<ApiSchema<'CurriculumVersion'>[]>(r), 'Curriculum')) : Promise.resolve([]),
-    adviserIds.length ? apiClient.GET('/rest/v1/profile', { params: { query: { id: postgrestFilter.inList(adviserIds), limit: LIMIT } } }).then((r) => complete(unwrapApiResult<ApiSchema<'Profile'>[]>(r), 'Adviser')) : Promise.resolve([]),
+  const batchSize = 50
+  const batches = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / batchSize) }, (_, index) => ids.slice(index * batchSize, (index + 1) * batchSize))
+  const [versionBatches, profileBatches] = await Promise.all([
+    Promise.all(batches(programIds).map(ids => apiClient.GET('/rest/v1/curriculum_version', { params: { query: { program_id: postgrestFilter.inList(ids), limit: LIMIT } } }).then((r) => complete(unwrapApiResult<ApiSchema<'CurriculumVersion'>[]>(r), 'Curriculum')))),
+    Promise.all(batches(adviserIds).map(ids => apiClient.GET('/rest/v1/profile', { params: { query: { id: postgrestFilter.inList(ids), limit: LIMIT } } }).then((r) => complete(unwrapApiResult<ApiSchema<'Profile'>[]>(r), 'Adviser')))),
   ])
+  const versions = versionBatches.flat()
+  const profiles = profileBatches.flat()
   return { programs, curricula: versions.filter((v) => programIds.includes(v.program_id)), advisers: profiles.filter((p) => adviserIds.includes(p.id) && p.status === 'active') }
 }

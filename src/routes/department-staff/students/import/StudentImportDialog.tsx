@@ -117,6 +117,7 @@ export function StudentImportDialog({
     parseGeneration.current += 1
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setParsed(null)
+    setIsParsing(false)
     invalidateImport()
   }, [invalidateImport, isImporting, scopeKey])
 
@@ -242,7 +243,7 @@ export function StudentImportDialog({
     {localIssues.some((issue) => issue.rowNumber === null) && <p role="alert" className="text-sm text-destructive">{localIssues.filter((issue) => issue.rowNumber === null).map((issue) => issue.message).join(' ')}</p>}
     {localIssues.length > 0 && <p role="alert" className="text-sm text-destructive">Fix the rows with errors in the file, then choose it again. Nothing is imported until every row is valid.</p>}
     {preview && preview.error_count > 0 && <p role="alert" className="text-sm text-destructive">Fix the rows with errors in the file, then choose it again. Nothing is imported until every row is valid.</p>}
-    {importError && <p role="alert" className="text-sm text-destructive">{importError}</p>}
+    {importError && <div><p role="alert" className="text-sm text-destructive">{importError}</p><Button type="button" variant="outline" disabled={isParsing || isImporting} onClick={() => void selectFile(fileInputRef.current?.files?.[0])}>Validate file again</Button></div>}
     {isImporting && <p role="status" className="text-sm text-muted-foreground">Importing valid rows…</p>}
     {importResult && <ImportPreviewTable result={importResult} />}
     {scope === null && parsed && <p role="alert" className="text-sm text-destructive">Authorized department scope is unavailable. The file remains local and cannot be imported.</p>}

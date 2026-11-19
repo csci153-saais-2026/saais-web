@@ -94,6 +94,7 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close())
 
 async function chooseAdviser() {
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'New adviser' }).hasAttribute('disabled')).toBe(false))
   fireEvent.keyDown(screen.getByRole('combobox', { name: 'New adviser' }), { key: 'ArrowDown' })
   fireEvent.click(await screen.findByRole('option', { name: MOCK_PERSONAS.adviser_secondary.fullName }))
 }
@@ -115,6 +116,7 @@ describe('Department Staff adviser assignments', () => {
     renderPage()
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Select ' + MOCK_PERSONAS.student.fullName }))
     fireEvent.click(screen.getByRole('button', { name: 'Reassign selected' }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'New adviser' }).hasAttribute('disabled')).toBe(false))
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'New adviser' }), { key: 'ArrowDown' })
     for (const name of [MOCK_PERSONAS.adviser_secondary.fullName, MOCK_PERSONAS.department_head.fullName, MOCK_PERSONAS.dean_dept_head.fullName, MOCK_PERSONAS.admin.fullName]) {
       expect(await screen.findByRole('option', { name })).toBeTruthy()
@@ -126,10 +128,10 @@ describe('Department Staff adviser assignments', () => {
     renderPage()
     await screen.findByText('Showing 26 of 26 assignments')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select ' + MOCK_PERSONAS.student.fullName }))
-    expect(screen.getByText('1 student selected')).toBeTruthy()
+    expect(screen.getByText('1 student selected (maximum 500)')).toBeTruthy()
     expect(screen.getByRole('checkbox', { name: 'Select all visible students' }).getAttribute('aria-checked')).toBe('mixed')
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search students' }), { target: { value: 'No matching student' } })
-    expect(screen.getByText('0 students selected')).toBeTruthy()
+    expect(screen.getByText('0 students selected (maximum 500)')).toBeTruthy()
     expect(screen.getByText('No students match these filters.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
     expect(screen.getByText('Showing 26 of 26 assignments')).toBeTruthy()
@@ -138,10 +140,12 @@ describe('Department Staff adviser assignments', () => {
     renderPage()
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Select ' + MOCK_PERSONAS.student.fullName }))
     fireEvent.click(screen.getByRole('button', { name: 'Reassign selected' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Apply reassignment' }).hasAttribute('disabled')).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: 'Apply reassignment' }))
     expect(await screen.findByText('Select an active adviser in this department.')).toBeTruthy()
     await chooseAdviser()
     fireEvent.change(screen.getByLabelText('Reason for reassignment'), { target: { value: 'Department handover' } })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Apply reassignment' }).hasAttribute('disabled')).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: 'Apply reassignment' }))
     expect(await screen.findByText('Reassigned 1 student.')).toBeTruthy()
     const row = screen.getByRole('row', { name: new RegExp(MOCK_PERSONAS.student.fullName) })
