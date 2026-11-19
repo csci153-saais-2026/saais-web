@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button"
 import {
   apiClient,
   postgrestFilter,
-  unwrapApiResult,
   type ApiSchema,
 } from "@/lib/api"
 import { AdvisingNotesDialog } from "./AdvisingNotesDialog"
@@ -24,6 +23,12 @@ import {
   type CourseRecommendationRow,
 } from "./CourseRecommendationsPanel"
 import { IncRadarPanel, type IncRadarDeficiencyItem } from "./IncRadarPanel"
+import {
+  fetchStudentAcademicSummary,
+  fetchStudentAdviserAssignments,
+  fetchStudentAdvisingNotes,
+  fetchStudentPlanItems,
+} from "./student-dashboard.api"
 
 export interface StudentDashboardViewProps {
   readonly summary: ApiSchema<"AcademicSummary">
@@ -288,20 +293,14 @@ interface DashboardPageData {
 async function fetchStudentDashboardData(
   studentId: string
 ): Promise<DashboardPageData> {
-  const summaryRes = await apiClient.GET(
-    "/functions/v1/students/{student_id}/academic-summary",
-    {
-      params: { path: { student_id: studentId } },
-    }
-  )
-  const summary = unwrapApiResult(summaryRes)
+  const summary = await fetchStudentAcademicSummary(studentId)
 
   const [
     profilesRes,
     orgsRes,
-    assignmentsRes,
-    notesRes,
-    planItemsRes,
+    adviserAssignments,
+    notes,
+    rawPlanItems,
     offeringsRes,
     coursesRes,
     programsRes,
@@ -313,32 +312,9 @@ async function fetchStudentDashboardData(
     apiClient.GET("/rest/v1/student_organization", {
       params: { query: { student_id: postgrestFilter.eq(studentId) } },
     }),
-    apiClient.GET("/rest/v1/adviser_assignment", {
-      params: {
-        query: {
-          student_id: postgrestFilter.eq(studentId),
-          select:
-            "id,adviser_id,adviser_name,adviser_email,adviser_faculty_name,adviser_consultation_hours,student_id,start_date,end_date,handed_over_to_adviser_id,handed_over_to_name,handover_label,created_at",
-          order: "start_date.desc",
-        },
-      },
-    }),
-    apiClient.GET("/rest/v1/advising_note", {
-      params: {
-        query: {
-          student_id: postgrestFilter.eq(studentId),
-          order: "created_at.desc",
-        },
-      },
-    }),
-    apiClient.GET("/rest/v1/advising_plan_item", {
-      params: {
-        query: {
-          student_id: postgrestFilter.eq(studentId),
-          order: "display_order.asc",
-        },
-      },
-    }),
+    fetchStudentAdviserAssignments(studentId).catch(() => []),
+    fetchStudentAdvisingNotes(studentId).catch(() => []),
+    fetchStudentPlanItems(studentId).catch(() => []),
     apiClient.GET("/rest/v1/course_offering"),
     apiClient.GET("/rest/v1/course"),
     apiClient.GET("/rest/v1/program"),
@@ -347,9 +323,6 @@ async function fetchStudentDashboardData(
 
   const profile = profilesRes.data?.[0] ?? null
   const org = orgsRes.data?.[0] ?? null
-  const adviserAssignments = assignmentsRes.data ?? []
-  const notes = notesRes.data ?? []
-  const rawPlanItems = planItemsRes.data ?? []
   const offerings = offeringsRes.data ?? []
   const courses = coursesRes.data ?? []
   const programs = programsRes.data ?? []
