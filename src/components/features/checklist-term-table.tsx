@@ -17,12 +17,12 @@ export type ChecklistRow = {
 }
 
 const CHECKLIST_COLUMNS = [
-  { label: "Requirement", className: "w-[28%]" },
-  { label: "Units earned / required", className: "w-[14%]" },
-  { label: "Status", className: "w-[15%]" },
-  { label: "Satisfaction source", className: "w-[21%]" },
+  { label: "Requirement", className: "w-[25%]" },
+  { label: "Units earned / required", className: "w-[22%]" },
+  { label: "Status", className: "w-[13%]" },
+  { label: "Satisfaction source", className: "w-[19%]" },
   { label: "Attempts", className: "w-[10%]" },
-  { label: "Course info", className: "w-[12%]" },
+  { label: "Course info", className: "w-[11%]" },
 ] as const
 
 function Summary({ label, value }: { label: string; value: string }) {
@@ -74,7 +74,7 @@ function ChecklistTermGroup({
         <ChevronDownIcon className="size-4 text-muted-foreground" aria-hidden />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <Table className="min-w-[780px] table-fixed">
+        <Table className="min-w-[920px]">
           <TableHeader className="bg-secondary">
             <TableRow>
               {CHECKLIST_COLUMNS.map(({ label, className }) => (
