@@ -169,7 +169,7 @@ npm run contract:check    # fails if generated output is stale, or if PostgREST 
 npm run contract:docs     # build the static Redoc bundle
 ```
 
-`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [freeze candidate and workflow crosswalk](contract/FREEZE-0.3.0.md) record the version and outstanding approvals. Redoc is also served in-app at `/docs` while the dev server is running.
+`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [freeze record and workflow crosswalk](contract/FREEZE-0.3.0.md) document the approved contract version and change process. Redoc is also served in-app at `/docs` while the dev server is running.
 
 ### Seed Data Specification
 

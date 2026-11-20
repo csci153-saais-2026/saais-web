@@ -1,11 +1,11 @@
-# OpenAPI 0.3.0 freeze candidate
+# OpenAPI 0.3.0 freeze record
 
-Status: **candidate, not frozen**. Issue [#39](https://github.com/csci153-saais-2026/saais-web/issues/39) requires approval from both frontend and backend representatives. Neither approval is recorded here.
+Status: **frozen** on 2026-11-20 (Asia/Manila). The frontend and backend teams approved the contract outside GitHub, as reported by the project team. See issue [#39](https://github.com/csci153-saais-2026/saais-web/issues/39).
 
 - Contract: `contract/openapi.yaml`, `info.version: 0.3.0`.
-- Candidate bundled contract SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83` (run `node contract/candidate-hash.cjs` after installing dependencies). The script resolves external references and hashes canonical JSON with recursively sorted object keys.
+- Frozen bundled contract SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83` (run `node contract/candidate-hash.cjs` after installing dependencies). The script resolves external references and hashes canonical JSON with recursively sorted object keys.
 - Integrated source baseline: `964917c19a365c65bf5da3fded9f50b761375fe5` (merged SRS, contract, documentation, mocks, Postman and prototype changes).
-- The candidate is identified by the bundled contract hash, which covers referenced files, not this document's commit. If the contract changes, replace the hash, repeat the checks and obtain approvals for the revised candidate.
+- The frozen version is identified by the bundled contract hash, which covers referenced files, not this document's commit. Future changes follow the change process below and must not silently alter this frozen identifier.
 - This is an API specification, not evidence that the backend, authorization or deployment is implemented.
 
 ## Production workflow crosswalk
@@ -38,12 +38,10 @@ The table traces workflow families, not an assertion that implementation, role c
 
 ## Approval record
 
-| Representative | Decision | Evidence |
-| --- | --- | --- |
-| Frontend: [Htaruo](https://github.com/Htaruo) | Pending | Approval of the candidate hash and version must be recorded in the review. |
-| Backend: [Matt-cant-code](https://github.com/Matt-cant-code) | Pending | Approval of the same candidate hash and version must be recorded in the review. |
-
-After both decisions and any further discrepancies are resolved, record the names, dates, links to approvals, final contract hash, version and merged commit here. Until then do not mark issue #39 complete or call version 0.3.0 frozen.
+- QA approval: [con-cyse approved PR #62](https://github.com/csci153-saais-2026/saais-web/pull/62#pullrequestreview-5978805418) on 2026-11-20 (Asia/Manila), reviewing commit `654cf10142ebf14a5ee9e2901c66fc88d8e592db`.
+- The approved contract was merged in commit `8fc4ccc315873d43dfced170f1741764e6065574`. The contract files are unchanged between the approved commit and that merge.
+- Frontend and backend approval: confirmed outside GitHub by the project team; no GitHub review records are available for those approvals.
+- Frozen version: `0.3.0`; bundled SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83`.
 
 ## Change process after approval
 
