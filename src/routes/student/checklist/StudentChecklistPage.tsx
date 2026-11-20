@@ -15,7 +15,7 @@ import {
   type ReportAuditEventType,
 } from "@/components/features/report-pdf-preview-dialog"
 import { SampleFooter } from "@/components/features/sample-footer"
-import { StatTile } from "@/components/features/stat-tile"
+import { StatGrid } from "@/components/features/stat-tile"
 import { Button } from "@/components/ui/button"
 import type { Status } from "@/components/ui/status-badge"
 import {
@@ -311,51 +311,49 @@ export function StudentChecklistView({
       <PageHeading
         title="Your curriculum, at a glance."
         subtitle="Every requirement, with a clear record of how it is satisfied."
+        actions={
+          <Button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            disabled={terms.length === 0}
+            className="min-h-11 md:min-h-[38px]"
+          >
+            Download Checklist
+          </Button>
+        }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          label="Cumulative GWA"
-          value={
-            <span className="font-mono tabular-nums">{gwaDisplay}</span>
-          }
-          note="Unit-weighted counted attempts"
-        />
-        <StatTile
-          label="Counted units"
-          value={
-            <span className="font-mono tabular-nums">{countedUnits}</span>
-          }
-          note="Excludes unresolved, unexpired INC"
-        />
-        <StatTile
-          label="Year standing"
-          value={formatYearStanding(summary.year_level)}
-          note={
-            <span className="font-mono tabular-nums">
-              {summary.earned_units} of {summary.required_units} units earned
-            </span>
-          }
-        />
-        <StatTile
-          label="Deficiencies"
-          value={
-            <span className="font-mono tabular-nums">
-              {deficienciesCount}
-            </span>
-          }
-          note={deficiencyNote}
-        />
-      </div>
+      <StatGrid
+        items={[
+          {
+            label: "Cumulative GWA",
+            value: gwaDisplay,
+            note: "Unit-weighted counted attempts",
+          },
+          {
+            label: "Counted units",
+            value: countedUnits,
+            note: "Excludes unresolved, unexpired INC",
+          },
+          {
+            label: "Year standing",
+            value: formatYearStanding(summary.year_level),
+            note: `${summary.earned_units} of ${summary.required_units} units earned`,
+          },
+          {
+            label: "Deficiencies",
+            value: deficienciesCount,
+            note: deficiencyNote,
+          },
+        ]}
+      />
 
       <ChecklistToolbar
         filter={filter}
         onFilterChange={setFilter}
         allCollapsed={allCollapsed}
         onToggleAll={handleToggleAll}
-        onDownloadChecklist={() => setPreviewOpen(true)}
         disableToggleAll={filteredTerms.length === 0}
-        disableDownload={terms.length === 0}
       />
 
       {filteredTerms.length > 0 ? (

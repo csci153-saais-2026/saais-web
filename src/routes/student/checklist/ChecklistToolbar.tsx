@@ -1,4 +1,3 @@
-import { DownloadIcon } from "@/components/icons"
 import { FormField } from "@/components/features/form-field"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,24 +34,20 @@ export interface ChecklistToolbarProps {
   readonly onFilterChange: (value: ChecklistFilterValue) => void
   readonly allCollapsed: boolean
   readonly onToggleAll: () => void
-  readonly onDownloadChecklist?: () => void
   readonly disableToggleAll?: boolean
-  readonly disableDownload?: boolean
   readonly className?: string
 }
 
 /**
  * Toolbar for the Student Curriculum Checklist:
- * status filter `<Select>`, `"Collapse all"` / `"Expand all"` toggle, and `"Download Checklist"`.
+ * status filter `<Select>` and `"Collapse all"` / `"Expand all"` toggle.
  */
 export function ChecklistToolbar({
   filter,
   onFilterChange,
   allCollapsed,
   onToggleAll,
-  onDownloadChecklist,
   disableToggleAll = false,
-  disableDownload = false,
   className,
 }: ChecklistToolbarProps) {
   return (
@@ -100,18 +95,6 @@ export function ChecklistToolbar({
         >
           {allCollapsed ? "Expand all" : "Collapse all"}
         </Button>
-
-        {onDownloadChecklist && (
-          <Button
-            type="button"
-            onClick={onDownloadChecklist}
-            disabled={disableDownload}
-            className="min-h-11 md:min-h-[38px]"
-          >
-            <DownloadIcon className="size-4" />
-            Download Checklist
-          </Button>
-        )}
       </div>
     </div>
   )
