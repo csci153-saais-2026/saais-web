@@ -157,9 +157,18 @@ describe("CourseInfoDialog", () => {
 })
 
 describe("ReportPdfPreviewDialog", () => {
-  it("renders formatted report and triggers onPrint + window.print()", () => {
+  it("generates the actual PDF preview in an iframe and triggers onPrint on Download PDF", async () => {
     const onPrint = vi.fn()
-    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("Asset unavailable"))
+    )
+    const createObjectUrlSpy = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:mock-pdf")
+    const revokeObjectUrlSpy = vi
+      .spyOn(URL, "revokeObjectURL")
+      .mockImplementation(() => undefined)
     const report = formatChecklistReport({
       studentName: "Maria Isabel Bautista",
       studentNumber: "23-1-04412",
@@ -191,11 +200,20 @@ describe("ReportPdfPreviewDialog", () => {
     )
 
     expect(screen.getByText("Preview: Program checklist")).toBeTruthy()
-    expect(screen.getByText(/Not an official record/)).toBeTruthy()
-    expect(screen.getByText("CSIT 100")).toBeTruthy()
+    const iframe = await screen.findByTitle("Preview: Program checklist")
+    expect(iframe.getAttribute("src")).toBe("blob:mock-pdf")
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole("button", { name: /Print \/ Save as PDF/i }))
+    const downloadLink = screen.getByRole("link", { name: "Download PDF" })
+    expect(downloadLink.getAttribute("download")).toBe(
+      "SAAIS-program-checklist.pdf"
+    )
+    downloadLink.addEventListener("click", (e) => e.preventDefault())
+    fireEvent.click(downloadLink)
     expect(onPrint).toHaveBeenCalledWith("pdf_exported")
-    expect(printSpy).toHaveBeenCalledTimes(1)
+
+    createObjectUrlSpy.mockRestore()
+    revokeObjectUrlSpy.mockRestore()
+    vi.unstubAllGlobals()
   })
 })
