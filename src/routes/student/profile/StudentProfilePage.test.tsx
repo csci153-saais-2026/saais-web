@@ -98,6 +98,9 @@ describe("StudentProfileView", () => {
       </MemoryRouter>
     )
 
+    const removeBtn = screen.getByRole("button", { name: "Remove photo" })
+    expect((removeBtn as HTMLButtonElement).disabled).toBe(true)
+
     const fileInput = screen.getByLabelText(
       "Upload profile photo"
     ) as HTMLInputElement

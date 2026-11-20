@@ -1,5 +1,4 @@
 import * as React from "react"
-import { Link } from "react-router"
 import {
   AssignmentHistoryDialog,
   type AdviserAssignmentRecord,
@@ -135,15 +134,6 @@ export function StudentProfileView({
       <PageHeading
         title="Your student profile."
         subtitle="Your identity and academic assignments are maintained by an administrator."
-        actions={
-          <Button
-            asChild
-            variant="outline"
-            className="min-h-11 md:min-h-[38px]"
-          >
-            <Link to="/settings">Change password</Link>
-          </Button>
-        }
       />
 
       <div className="grid items-start gap-grid lg:grid-cols-[minmax(0,1.75fr)_minmax(270px,1fr)]">

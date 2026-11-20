@@ -64,6 +64,7 @@ export function ProfilePhotoCard({
   }
 
   async function handleRemove() {
+    if (!avatarUrl) return
     setErrorMessage("")
     try {
       await onRemove?.()
@@ -94,7 +95,7 @@ export function ProfilePhotoCard({
               className="object-cover"
             />
           ) : null}
-          <AvatarFallback className="bg-primary font-heading text-display-m font-bold text-primary-foreground">
+          <AvatarFallback className="bg-primary text-display-l font-bold text-primary-foreground">
             {initials}
           </AvatarFallback>
         </Avatar>
@@ -110,17 +111,15 @@ export function ProfilePhotoCard({
               Upload photo
             </Button>
 
-            {avatarUrl && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isBusy}
-                onClick={() => void handleRemove()}
-                className="min-h-11 md:min-h-[38px]"
-              >
-                Remove photo
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!avatarUrl || isBusy}
+              onClick={() => void handleRemove()}
+              className="min-h-11 md:min-h-[38px]"
+            >
+              Remove photo
+            </Button>
           </div>
 
           <input
