@@ -219,18 +219,6 @@ export function StudentGradesView({
         }
       />
 
-      <Alert variant="advisory" className="mb-5">
-        <AlertIcon />
-        <AlertDescription>
-          Retaking a failed course replaces the earlier failure in cumulative
-          GWA once a numeric final or INC completion grade is recorded, while
-          keeping the original attempt on record as Repeated. An expired INC
-          retains its <strong className="font-semibold">INC lapsed</strong>{" "}
-          status and is evaluated as <span className="font-mono">5.00</span> in
-          GWA.
-        </AlertDescription>
-      </Alert>
-
       {sortedTerms.length > 0 && (
         <div className="mb-4 flex justify-end">
           <Button
@@ -276,6 +264,16 @@ export function StudentGradesView({
           </p>
         </Panel>
       )}
+
+      <Alert variant="advisory" className="mt-5">
+        <AlertIcon />
+        <AlertDescription>
+          Once passed, the most recent passing attempt counts for non-repeatable
+          and grade-replacement courses. Additional-credit passes count
+          independently. Lapsed INC remains INC and counts as{" "}
+          <span className="font-mono">5.00</span> for GWA and failed units.
+        </AlertDescription>
+      </Alert>
 
       <SampleFooter>
         Sample records for presentation · Reference date: 19 September 2026
