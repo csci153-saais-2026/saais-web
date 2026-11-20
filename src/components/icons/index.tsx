@@ -77,6 +77,15 @@ export function ChevronDownIcon(props: IconProps) {
   )
 }
 
+export function ChatIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z" />
+      <path d="M8 9h8M8 12h5" />
+    </svg>
+  )
+}
+
 export function ClockIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
@@ -93,10 +102,12 @@ export function DownloadIcon(props: IconProps) {
   )
 }
 
-export function EyeIcon(props: IconProps) {
+export function EyeIcon({ slashed = false, ...props }: IconProps & { slashed?: boolean }) {
   return (
     <svg {...base} {...props}>
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>
+      <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+      {slashed && <path d="M4 4l16 16" />}
     </svg>
   )
 }

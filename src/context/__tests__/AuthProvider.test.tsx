@@ -170,6 +170,7 @@ describe('AuthProvider, useAuth & Environment Config', () => {
       result.current.switchMockPersona('dean_dept_head')
     })
     expect(result.current.roles).toEqual(['dean', 'department_head', 'adviser'])
+    expect(result.current.activeRole).toBe('dean')
     expect(result.current.roleAssignments).toHaveLength(3)
 
     act(() => {
@@ -290,5 +291,56 @@ describe('AuthProvider, useAuth & Environment Config', () => {
     })
     expect(sessionStorage.getItem('saais_active_mock_persona')).toBe('adviser')
     expect(localStorage.getItem('saais_active_mock_persona')).toBeNull()
+  })
+
+  it('validates credentials and exercises Supabase password, Google, and sign-out errors', async () => {
+    vi.stubEnv('VITE_API_MODE', 'supabase')
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co')
+    vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-key')
+    const sdk = getSupabaseClient('supabase')
+    vi.spyOn(sdk.auth, 'getSession').mockResolvedValue({
+      data: { session: null },
+      error: null,
+    })
+    vi.spyOn(sdk.auth, 'onAuthStateChange').mockImplementation((handler) => ({
+      data: {
+        subscription: { id: 'sub-auth-actions', callback: handler, unsubscribe: vi.fn() },
+      },
+    } as never))
+
+    const passwordSignIn = vi.spyOn(sdk.auth, 'signInWithPassword')
+      .mockResolvedValueOnce({ data: { user: null, session: null }, error: new Error('password rejected') as never })
+      .mockResolvedValueOnce({ data: { user: null, session: null }, error: null })
+    const googleSignIn = vi.spyOn(sdk.auth, 'signInWithOAuth')
+      .mockResolvedValueOnce({ data: { provider: 'google', url: null }, error: new Error('oauth rejected') as never })
+      .mockResolvedValueOnce({ data: { provider: 'google', url: null }, error: null })
+    const signOut = vi.spyOn(sdk.auth, 'signOut').mockResolvedValue({ error: new Error('sign-out failed') as never })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AuthProvider>{children}</AuthProvider>
+    )
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await expect(result.current.signInWithPassword('bad-email', 'Password12345!')).rejects.toThrow(/valid institutional email/i)
+    await expect(result.current.signInWithPassword(' student@vsu.edu.ph ', 'Password12345!', false)).rejects.toThrow('password rejected')
+    expect(passwordSignIn).toHaveBeenCalledWith({ email: 'student@vsu.edu.ph', password: 'Password12345!' })
+    expect(sessionStorage.getItem('saais_keep_signed_in')).toBe('false')
+    await expect(result.current.signInWithPassword('student@vsu.edu.ph', 'Password12345!')).resolves.toBeUndefined()
+
+    await expect(result.current.signInWithGoogle()).rejects.toThrow('oauth rejected')
+    await expect(result.current.signInWithGoogle(false)).resolves.toBeUndefined()
+    expect(googleSignIn).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { hd: 'vsu.edu.ph' },
+      },
+    })
+
+    await act(async () => { await result.current.signOut() })
+    expect(signOut).toHaveBeenCalledOnce()
+    expect(consoleError).toHaveBeenCalledWith('Supabase sign out error:', expect.any(Error))
+    expect(result.current.user).toBeNull()
   })
 })

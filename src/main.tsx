@@ -2,10 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { QueryProvider } from '@/context/QueryProvider'
 import { resolveSaaisEnvConfig } from '@/lib/supabase/client'
 
 async function enableMockingIfConfigured(): Promise<void> {
-  if (!import.meta.env.DEV) {
+  if (!import.meta.env.DEV && import.meta.env.VITE_API_MODE?.trim().toLowerCase() !== 'mock') {
     return
   }
   const envConfig = resolveSaaisEnvConfig()
@@ -21,7 +22,9 @@ async function enableMockingIfConfigured(): Promise<void> {
 void enableMockingIfConfigured().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App />
+      <QueryProvider>
+        <App />
+      </QueryProvider>
     </StrictMode>,
   )
 })

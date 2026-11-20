@@ -37,7 +37,7 @@ export interface MockDatabaseState {
 }
 
 function buildInitialMockDatabase(): MockDatabaseState {
-  return {
+  const db: MockDatabaseState = {
     faculties: [
       {
         id: MOCK_IDS.facultyComputing,
@@ -136,6 +136,17 @@ function buildInitialMockDatabase(): MockDatabaseState {
         delinquency_threshold: 24,
         total_units: 162,
         status: 'teach_out',
+        enrolled_student_count: 0,
+      },
+      {
+        id: MOCK_IDS.curriculumBscsDraft,
+        program_id: MOCK_IDS.programBscs,
+        version_label: 'BSCS 2027-2028 v1',
+        effective_start: '2027-08-01',
+        effective_end: null,
+        delinquency_threshold: 24,
+        total_units: 162,
+        status: 'draft',
         enrolled_student_count: 0,
       },
     ],
@@ -667,6 +678,10 @@ function buildInitialMockDatabase(): MockDatabaseState {
         department_id: MOCK_IDS.deptDcst,
         created_at: '2026-07-01T08:00:00Z',
       },
+      ...[MOCK_IDS.deptHeadDcst, MOCK_IDS.deanDeptHeadComputing].map((profile_id, index) => ({
+        id: '92000000-0000-4000-8000-0000000000' + (11 + index), profile_id, role: 'adviser' as const,
+        faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst, created_at: '2026-07-01T08:00:00Z',
+      })),
     ],
     studentOrganizations: [
       {
@@ -1108,6 +1123,97 @@ function buildInitialMockDatabase(): MockDatabaseState {
       },
     ],
   }
+  db.courseOfferings.push({ id: MOCK_IDS.offeringCsci101, school_term_id: MOCK_IDS.term2026Sem1Open,
+    course_id: MOCK_IDS.courseCsci101, section: 'S1', schedule: 'MWF 08:00-09:00',
+    instructor: MOCK_PERSONAS.adviser.fullName, is_by_request: false })
+  for (let index = 0; index < 24; index += 1) {
+    const serial = index + 1
+    const suffix = String(serial).padStart(12, '0')
+    const persona = MOCK_PERSONAS[`student_sample_${serial}`]!
+    const adviser = index % 2 === 0 ? MOCK_PERSONAS.adviser : MOCK_PERSONAS.adviser_secondary
+    // Sample 23 can request a transfer to the active 2024 curriculum.
+    const curriculumVersionId = serial === 23 ? MOCK_IDS.curriculumBscs2020 : MOCK_IDS.curriculumBscs2024
+    const curriculumAssignmentId = `71000000-0000-4000-8001-${suffix}`
+    const studentNumber = `26-1-${String(10001 + index)}`
+    db.profiles.push({ id: persona.profileId, role: 'student', roles: ['student'], email: persona.email,
+      full_name: persona.fullName, student_number: studentNumber, status: 'active', invitation_status: 'accepted',
+      faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst,
+      created_at: '2026-08-01T08:00:00Z', updated_at: '2026-08-01T08:00:00Z' })
+    db.roleAssignments.push({ id: `92000000-0000-4000-8001-${suffix}`, profile_id: persona.profileId,
+      role: 'student', faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst,
+      created_at: '2026-08-01T08:00:00Z' })
+    db.studentCurriculumAssignments.push({ id: curriculumAssignmentId, student_id: persona.profileId,
+      curriculum_version_id: curriculumVersionId, start_date: '2026-08-01', end_date: null,
+      change_note: 'Initial curriculum assignment', created_at: '2026-08-01T08:00:00Z' })
+    db.studentOrganizations.push({ student_id: persona.profileId, student_curriculum_assignment_id: curriculumAssignmentId,
+      curriculum_version_id: curriculumVersionId, program_id: MOCK_IDS.programBscs,
+      department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing, adviser_id: adviser.profileId, entry_year: 2026 })
+    db.adviserAssignments.push({ id: `70000000-0000-4000-8001-${suffix}`, student_id: persona.profileId,
+      adviser_id: adviser.profileId, adviser_name: adviser.fullName, adviser_email: adviser.email,
+      start_date: '2026-08-01', end_date: null, created_at: '2026-08-01T08:00:00Z' })
+    const noteId = `87000000-0000-4000-8001-${suffix}`
+    const archived = index % 3 === 0
+    db.advisingNotes.push({ id: noteId, student_id: persona.profileId, authored_by: adviser.profileId,
+      author_name: adviser.fullName, author_role_label: 'Adviser',
+      body_text: 'Discuss your first-semester progress with your adviser.', is_archived: archived,
+      archived_at: archived ? '2026-10-01T08:00:00Z' : null, archived_by: archived ? adviser.profileId : null,
+      created_at: '2026-09-01T08:00:00Z' })
+    db.notifications.push({ id: `90000000-0000-4000-8001-${suffix}`, recipient_id: persona.profileId,
+      kind: 'note', event_type: 'advising_note_added', title: 'New advising note',
+      body: 'Your adviser added a note to your record.', target_route: '/student/notes',
+      target_student_id: persona.profileId, actor_id: adviser.profileId, entity_type: 'advising_note',
+      entity_id: noteId, dedupe_key: null, email_delivery_status: 'sent', is_read: false,
+      read_at: null, created_at: '2026-09-01T08:00:00Z' })
+    for (const [courseIndex, offeringId] of [MOCK_IDS.offeringCsci101, MOCK_IDS.offeringPhEd11].entries()) {
+      const offering = db.courseOfferings.find(item => item.id === offeringId)!
+      const attemptId = `80000000-0000-4000-800${courseIndex + 2}-${suffix}`
+      const common = { id: attemptId, student_id: persona.profileId, course_offering_id: offeringId,
+        curriculum_term_course_id: courseIndex === 0 ? MOCK_IDS.slotCsci101 : MOCK_IDS.slotPe1,
+        midterm_status: null, midterm_grade: null, final_grade: null, inc_deadline: null,
+        instructor: offering.instructor ?? null, prerequisite_override: false, prerequisite_grade_override: false,
+        units_attempted: courseIndex === 0 ? 3 : 2, revision: 1, created_at: '2026-08-15T08:00:00Z', updated_at: '2026-08-15T08:00:00Z' }
+      db.attempts.push({ ...common, status: 'currently_enrolled', created_by: adviser.profileId, updated_by: adviser.profileId })
+      db.attemptResults.push({ ...common, recorded_status: 'currently_enrolled', effective_status: 'currently_enrolled',
+        grade_fix_history: [], completion_grade: null, resolved_at: null, gwa_grade: null,
+        is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: false })
+    }
+  }
+  // Sample student 4 has 26 failed units in one term, above this curriculum's 24-unit threshold.
+  const delinquentStudent = MOCK_PERSONAS.student_sample_4!
+  const initialAttempts = db.attempts.filter(a => a.student_id === delinquentStudent.profileId)
+  for (const attempt of initialAttempts) {
+    attempt.status = 'failed'
+    attempt.final_grade = 5
+    const result = db.attemptResults.find(a => a.id === attempt.id)!
+    Object.assign(result, { recorded_status: 'failed', effective_status: 'failed', final_grade: 5, gwa_grade: 5, counts_toward_cumulative_gwa: true })
+  }
+  const extraCourseIds: string[] = [MOCK_IDS.courseCsci102, MOCK_IDS.courseCsci153, MOCK_IDS.courseCsci198, MOCK_IDS.courseNstp11]
+  for (let index = 1; index <= 3; index += 1) {
+    const id = `44000000-0000-4000-8004-${String(index).padStart(12, '0')}`
+    db.courses.push({ id, department_id: MOCK_IDS.deptDcst, code: `MATH ${120 + index}`, title: `Mathematics ${index}`, category: 'major', units: 3, is_elective: false, status: 'active', repeatable_type: 'none' })
+    extraCourseIds.push(id)
+  }
+  for (const [index, courseId] of extraCourseIds.entries()) {
+    const suffix = String(index + 1).padStart(12, '0')
+    const offeringId = `66000000-0000-4000-8004-${suffix}`
+    const course = db.courses.find(c => c.id === courseId)!
+    db.courseOfferings.push({ id: offeringId, course_id: courseId, school_term_id: MOCK_IDS.term2026Sem1Open, section: 'D', instructor: MOCK_PERSONAS.adviser_secondary.fullName, is_by_request: false })
+    const common = { id: `80000000-0000-4000-8004-${suffix}`, student_id: delinquentStudent.profileId, course_offering_id: offeringId,
+      curriculum_term_course_id: db.curriculumTermCourses.find(s => s.course_id === courseId)?.id ?? null,
+      midterm_status: null, midterm_grade: null, final_grade: 5, inc_deadline: null, instructor: MOCK_PERSONAS.adviser_secondary.fullName,
+      prerequisite_override: courseId === MOCK_IDS.courseCsci102 || courseId === MOCK_IDS.courseCsci153, prerequisite_grade_override: false, units_attempted: course.units, revision: 1,
+      created_at: '2026-08-15T08:00:00Z', updated_at: '2026-11-01T08:00:00Z' }
+    db.attempts.push({ ...common, status: 'failed', created_by: MOCK_IDS.adviserSecondary, updated_by: MOCK_IDS.adviserSecondary })
+    db.attemptResults.push({ ...common, recorded_status: 'failed', effective_status: 'failed', completion_grade: null, resolved_at: null,
+      gwa_grade: 5, is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: true })
+  }
+  db.curriculumVersions = db.curriculumVersions.map(curriculum => ({
+    ...curriculum,
+    enrolled_student_count: db.studentCurriculumAssignments.filter(
+      assignment => assignment.curriculum_version_id === curriculum.id && assignment.end_date === null,
+    ).length,
+  }))
+  return db
 }
 
 let mockDb: MockDatabaseState = buildInitialMockDatabase()

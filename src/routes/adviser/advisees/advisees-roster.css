@@ -1,0 +1,21 @@
+@media (min-width: 768px) {
+  .advisees-roster table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .advisees-roster th:nth-child(1) { width: 19%; }
+  .advisees-roster th:nth-child(2) { width: 25%; }
+  .advisees-roster th:nth-child(3) { width: 12%; }
+  .advisees-roster th:nth-child(4) { width: 6%; }
+  .advisees-roster th:nth-child(5) { width: 8%; }
+  .advisees-roster th:nth-child(6) { width: 14%; }
+  .advisees-roster th:nth-child(7) { width: 16%; }
+
+  .advisees-roster th,
+  .advisees-roster td,
+  .advisees-roster [data-slot="status-badge"] {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
