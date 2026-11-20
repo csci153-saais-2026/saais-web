@@ -85,6 +85,8 @@ describe("StudentDashboardView", () => {
 
     expect(screen.getByText("A clearer path forward, Maria.")).toBeTruthy()
     expect(screen.getByText("1.58")).toBeTruthy()
+    expect(screen.getByText("56")).toBeTruthy()
+    expect(screen.queryByText("/ 147")).toBeNull()
     expect(screen.getByText("Good")).toBeTruthy()
     expect(screen.getByText("CSci 102")).toBeTruthy()
     expect(screen.getByText(/Due 26 Oct 2026/)).toBeTruthy()

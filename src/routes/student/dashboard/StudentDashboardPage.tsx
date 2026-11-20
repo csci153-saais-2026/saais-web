@@ -11,7 +11,7 @@ import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
 import { QuickAccess } from "@/components/features/quick-access"
 import { SampleFooter } from "@/components/features/sample-footer"
-import { StatTile } from "@/components/features/stat-tile"
+import { StatGrid } from "@/components/features/stat-tile"
 import { Button } from "@/components/ui/button"
 import {
   apiClient,
@@ -162,44 +162,30 @@ export function StudentDashboardView({
         }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          label="Cumulative GWA"
-          value={
-            <span className="font-mono tabular-nums">{gwaDisplay}</span>
-          }
-          note={
-            <span className="font-mono tabular-nums">
-              {countedUnits} counted units
-            </span>
-          }
-        />
-        <StatTile
-          label="Units earned"
-          value={
-            <span className="font-mono tabular-nums">
-              {summary.earned_units}
-            </span>
-          }
-          note={
-            <span className="font-mono tabular-nums">
-              of {summary.required_units} required units
-            </span>
-          }
-        />
-        <StatTile
-          label="Academic standing"
-          value={standingDisplay}
-          note={`${delinquencyThresholdUnits} failed units per term triggers a flag`}
-        />
-        <StatTile
-          label="Open INC"
-          value={
-            <span className="font-mono tabular-nums">{openIncCount}</span>
-          }
-          note={openIncNote}
-        />
-      </div>
+      <StatGrid
+        items={[
+          {
+            label: "Cumulative GWA",
+            value: gwaDisplay,
+            note: `${countedUnits} counted units`,
+          },
+          {
+            label: "Units earned",
+            value: summary.earned_units,
+            note: `of ${summary.required_units} required units`,
+          },
+          {
+            label: "Academic standing",
+            value: standingDisplay,
+            note: `${delinquencyThresholdUnits} failed units per term triggers a flag`,
+          },
+          {
+            label: "Open INC",
+            value: openIncCount,
+            note: openIncNote,
+          },
+        ]}
+      />
 
       <QuickAccess
         links={[
