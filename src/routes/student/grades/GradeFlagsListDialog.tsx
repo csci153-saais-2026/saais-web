@@ -5,7 +5,6 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -110,12 +109,22 @@ export function GradeFlagsListDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("sm:max-w-[680px]", className)}>
-        <DialogHeader>
-          <DialogTitle>Grade flags</DialogTitle>
-          <DialogDescription className="text-body text-muted-foreground">
-            Track grade concerns you submitted and your adviser&apos;s responses.
-          </DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className={cn("sm:max-w-[680px]", className)}
+      >
+        <DialogHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="min-w-0">
+            <DialogTitle>Grade flags</DialogTitle>
+            <DialogDescription className="text-body text-muted-foreground">
+              Track grade concerns you submitted and your adviser&apos;s responses.
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" size="sm" className="shrink-0">
+              Close
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         {sortedFlags.length > 0 ? (
@@ -235,18 +244,6 @@ export function GradeFlagsListDialog({
             No grade flags submitted yet.
           </div>
         )}
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11 md:min-h-[38px]"
-            >
-              Close
-            </Button>
-          </DialogClose>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
