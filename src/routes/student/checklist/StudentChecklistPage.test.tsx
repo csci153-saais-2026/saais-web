@@ -151,7 +151,7 @@ describe("StudentChecklistView", () => {
       screen.getByRole("button", { name: /Download Checklist/i })
     )
     expect(screen.getByText("Preview: Program checklist")).toBeTruthy()
-    expect(screen.getByText(/Not an official record/)).toBeTruthy()
+    expect(screen.getByText("SAAIS-curriculum-checklist.pdf")).toBeTruthy()
   })
 
   it("filters checklist rows by status", () => {
