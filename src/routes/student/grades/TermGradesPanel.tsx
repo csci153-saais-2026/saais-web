@@ -176,7 +176,7 @@ export function TermGradesPanel({
           <span className="block font-semibold text-foreground">
             {term.school_year} · {term.term_type}
           </span>
-          <span className="mt-0.5 block font-mono text-caption tabular-nums text-muted-foreground">
+          <span className="mt-0.5 block text-caption text-muted-foreground">
             Term GWA {gwaText} · {failedUnits}{" "}
             {failedUnits === 1 ? "failed unit" : "failed units"} ·{" "}
             {locked ? "Locked term" : "Open term"}
@@ -199,7 +199,7 @@ export function TermGradesPanel({
                     scope="col"
                     className={cn(
                       colClass,
-                      "px-3.5 py-2.5 text-kicker font-semibold text-muted-2 uppercase"
+                      "text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
                     )}
                   >
                     {label}
@@ -237,7 +237,7 @@ export function TermGradesPanel({
                       label="Course"
                       className="px-3.5 py-row text-cell whitespace-normal max-md:flex-col max-md:items-start max-md:gap-0.5 max-md:text-left"
                     >
-                      <strong className="block font-mono font-semibold tabular-nums text-foreground">
+                      <strong className="block font-semibold text-foreground">
                         {code}
                       </strong>
                       {title && (
@@ -248,7 +248,7 @@ export function TermGradesPanel({
                     </TableCell>
                     <TableCell
                       label="Units"
-                      className="px-3.5 py-row font-mono text-cell tabular-nums text-foreground"
+                      className="px-3.5 py-row text-cell tabular-nums text-foreground"
                     >
                       {attempt.units_attempted}
                     </TableCell>
@@ -268,7 +268,7 @@ export function TermGradesPanel({
                       <div className="flex flex-col items-end gap-1 md:items-start">
                         <StatusBadge status={badgeStatus} />
                         {showIncDue && (
-                          <span className="font-mono text-caption tabular-nums text-muted-foreground">
+                          <span className="text-caption text-muted-foreground">
                             Due {formatDeadlineDate(attempt.inc_deadline)}
                           </span>
                         )}

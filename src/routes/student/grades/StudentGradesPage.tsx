@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
-import { AlertIcon, DownloadIcon } from "@/components/icons"
+import { AlertIcon } from "@/components/icons"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
 import {
@@ -201,19 +201,18 @@ export function StudentGradesView({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setFlagsListOpen(true)}
-              className="min-h-11 md:min-h-[38px]"
-            >
-              View Grade Flags
-            </Button>
-            <Button
-              type="button"
               onClick={() => setPreviewOpen(true)}
               disabled={sortedTerms.length === 0}
               className="min-h-11 md:min-h-[38px]"
             >
-              <DownloadIcon className="size-4" />
               Download Grade Summary
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setFlagsListOpen(true)}
+              className="min-h-11 md:min-h-[38px]"
+            >
+              View Grade Flags
             </Button>
           </>
         }
