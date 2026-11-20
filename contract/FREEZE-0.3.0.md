@@ -1,6 +1,6 @@
 # OpenAPI 0.3.0 freeze record
 
-Status: **frozen** on 2026-11-20 (Asia/Manila). The project owner accepted QA approval as sufficient for this freeze, replacing the previously proposed frontend and backend sign-off requirement for issue [#39](https://github.com/csci153-saais-2026/saais-web/issues/39).
+Status: **frozen** on 2026-11-20 (Asia/Manila). The frontend and backend teams approved the contract outside GitHub, as reported by the project team. See issue [#39](https://github.com/csci153-saais-2026/saais-web/issues/39).
 
 - Contract: `contract/openapi.yaml`, `info.version: 0.3.0`.
 - Frozen bundled contract SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83` (run `node contract/candidate-hash.cjs` after installing dependencies). The script resolves external references and hashes canonical JSON with recursively sorted object keys.
@@ -40,7 +40,7 @@ The table traces workflow families, not an assertion that implementation, role c
 
 - QA approval: [con-cyse approved PR #62](https://github.com/csci153-saais-2026/saais-web/pull/62#pullrequestreview-5978805418) on 2026-11-20 (Asia/Manila), reviewing commit `654cf10142ebf14a5ee9e2901c66fc88d8e592db`.
 - The approved contract was merged in commit `8fc4ccc315873d43dfced170f1741764e6065574`. The contract files are unchanged between the approved commit and that merge.
-- Project owner decision: QA approval is sufficient for the 0.3.0 freeze; separate frontend and backend approvals are not required for this freeze.
+- Frontend and backend approval: confirmed outside GitHub by the project team; no GitHub review records are available for those approvals.
 - Frozen version: `0.3.0`; bundled SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83`.
 
 ## Change process after approval
