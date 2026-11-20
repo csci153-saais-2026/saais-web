@@ -1,6 +1,6 @@
 # System Administrator test cases
 
-All cases are **Not run**. The current System Administration route presents its portal entry shell and System Operations summary. The scenarios below provide acceptance coverage for the documented administration workflows in the requirements, API contract and screen definitions. Use authorized admin accounts and synthetic records; mark unavailable workflows Blocked until they can be executed.
+All cases are **Not run**. The scenarios below provide acceptance coverage for the documented administration workflows in the requirements, API contract and screen definitions. Use authorized admin accounts and synthetic records; mark unavailable workflows Blocked until they can be executed. ADM-01 and ADM-02 are blocked on the contract branch until an admin portal route is available.
 
 ## Portal entry and student directory
 
@@ -78,4 +78,4 @@ Record each case as **Not run**, **Pass**, **Fail**, **Blocked**, or **Not appli
 
 ## Source basis
 
-System Administration acceptance scenarios follow `Software Requirements Specification (SRS).md`, `contract/openapi.yaml`, and the administration screen definitions. The current route exposes the System Administration portal entry shell and System Operations summary; the feature scenarios define expected acceptance behavior for the documented administration workflows.
+System Administration acceptance scenarios follow `Software Requirements Specification(SRS).md`, `contract/openapi.yaml`, and the administration screen definitions. The feature scenarios define expected acceptance behavior for the documented administration workflows.

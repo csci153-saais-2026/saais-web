@@ -1,11 +1,11 @@
 # Dean Department Head test cases (revised)
 
-Revised against the implemented Dean portal (`src/routes/dean/`) and the shared shell, navigation and routing that combine the Dean role with other roles. It replaces the mockup-based [dean-department-head.md](dean-department-head.md). Every case below is traceable to a real screen, control, label or route in the application.
+These acceptance scenarios cover Dean and Department Head role combinations using the supplied QA draft and mockup as sources. Neither portal is registered on the contract branch; mark UI cases Blocked until the relevant pages exist in the revision under test. Historical observations below lack an identified revision and must be reproduced.
 
 - **"Dean Department Head"** means one signed-in account that holds the **Dean** role (faculty scope) and a confirmed **Department Head** role (department scope). In the mock data this is "Tan, Ron Nicolas" (`dean_dept_head` persona).
 - **Scope of this file:** Department Head pages and behaviour are **not** tested here. The only Department Head case is the role check ROL-01: a Dean can open Department Head routes only when the Department Head role is confirmed. Department Head behaviour belongs to [department-head-revised.md](department-head-revised.md). Dean pages belong to [dean-adviser-revised.md](dean-adviser-revised.md).
 - **Status of all cases:** Not run.
-- **Verification:** a first pass was run against the live app in mock mode (section 8). Cases and expected results that were seen working are marked **verified**.
+- **Verification:** section 8 retains the author's reported mock-mode observations. The tested revision is not identified; inline "verified" labels are historical claims, not verification of this branch.
 - **Execution rule:** perform workflows through the UI, then verify saved results through the UI (reload, other pages, other roles) unless a case says "API".
 
 ## Contents
@@ -118,9 +118,9 @@ The Department Head suite and the Adviser suite are **not** repeated in this fil
 
 | Done | ID | Pri | Preconditions / data | Steps | Expected result |
 | --- | --- | --- | --- | --- | --- |
-| ☐ | NAV-01 | P1 | Dean + Head account | Sign in and read the sidebar. | Three groups in this order: **ADVISER**, **DEPARTMENT HEAD**, **DEAN**, followed by "Help & documentation" (verified for the three-role mock account). The DEAN group lists Faculty reports, Students and Audit log. |
+| ☐ | NAV-01 | P1 | One account explicitly assigned Dean, Department Head and Adviser; a second assigned only Dean and Department Head | Sign in with each account and read the sidebar. | The three-role account sees the three assigned groups. The two-role account sees Dean and Department Head groups only. Neither sees an unassigned role group. |
 | ☐ | NAV-02 | P2 | Same account | Visit a Dean page and a Department Head page. | The top-left label and breadcrumb follow the page: "Office of the Dean › ‹page›" on Dean pages and "Department Head › ‹page›" on Head pages (both verified). The current page is highlighted. |
-| ☐ | NAV-03 | P3 | Browser height about 900 px | Open a Department Head page and look at the sidebar. | The Dean group is below the visible area and the sidebar scrolls inside itself (verified in a screenshot). The Dean group is reachable by scrolling and by keyboard. |
+| ☐ | NAV-03 | P3 | Three-role account; browser height about 900 px | Open a Department Head page and look at the sidebar. | All assigned groups, including Dean, remain reachable by scrolling and keyboard. |
 | ☐ | NAV-04 | P3 | Same account | Collapse and expand each sidebar group by mouse and by keyboard. | Groups toggle without losing the active page. |
 | ☐ | NAV-05 | P2 | Same account | Visit one Dean page and one Department Head page, then use Back and Forward several times. | The correct saved page returns each time. The group and label match the page. |
 | ☐ | NAV-06 | P2 | Same account | Reload each page and open each URL in a new tab. | Every page reloads at the same URL with no 404. |
@@ -152,7 +152,7 @@ The Department Head suite and the Adviser suite are **not** repeated in this fil
 | --- | --- | --- | --- | --- | --- |
 | ☐ | SEC-01 | P1 | **[API]** a Head-only token | Call Dean read endpoints (faculty roster, faculty report, audit). | Refused. Head scope never becomes faculty scope. |
 | ☐ | SEC-02 | P2 | Production build | Reload every page URL in all three groups. | No 404 on refresh. |
-| ☐ | SEC-03 | P2 | Keyboard and screen reader | Walk the sidebar across the three groups. | Group toggles and links are reachable and named. |
+| ☐ | SEC-03 | P2 | Three-role account; keyboard and screen reader | Walk the sidebar across the three assigned groups. | Group toggles and links are reachable and named. |
 | ☐ | SEC-04 | P2 | Narrow screen (375 px) | View a Dean page and open the sidebar. | No horizontal scroll. The long sidebar remains usable. |
 
 ---
@@ -181,9 +181,11 @@ Every Dean and combined-session behaviour in scope has at least one case. Every 
 
 ## 8. Verification run in the running app
 
+**Author-reported historical observations:** the tested revision is unknown and is not this contract branch. Treat results and inline "verified" labels as unverified until rerun with a recorded revision and evidence. Use `loginAsMockPersona` with an existing `MockPersonaKey` in a supported harness; obtain missing shared personas from the mock-data owner.
+
 ### How the app was run
 
-Dev server in mock mode, signed in as the `dean_dept_head` persona (and comparison personas `dean`, `department_head_only`, `department_staff`, `dean_only`, `student`, `adviser`, `admin`), driven with headless Chromium.
+The author reported a mock-mode run with comparison personas in an unidentified build. Some reported persona keys are unavailable on this branch; rerun only after the required shared personas and routes exist.
 
 ### Seen working as written (verified)
 

@@ -1,6 +1,6 @@
 # Adviser test cases
 
-All cases are **Not run**. These cases cover the implemented Adviser pages and workflows. Use authorized test accounts and synthetic student records. For every write action, verify the service response, resulting UI state, and persistence after refresh; confirm errors leave data unchanged.
+All cases are **Not run**. These cases describe expected Adviser pages and workflows. The contract branch does not register Adviser routes; mark UI-dependent cases, including ADV-33, Blocked until the relevant page is available in the revision under test. Use authorized test accounts and synthetic student records. For writes, verify the response, UI state, and persistence after refresh. Confirmed rejections must leave data unchanged; after a timeout, reconcile the saved record before retrying because the outcome is indeterminate.
 
 ## Dashboard
 

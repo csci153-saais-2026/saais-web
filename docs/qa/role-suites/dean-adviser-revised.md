@@ -1,10 +1,10 @@
 # Dean Adviser test cases (revised)
 
-Revised against the implemented Dean portal in `src/routes/dean/` and the shared shell, navigation, notifications and routing it depends on. It replaces the mockup-based [dean-adviser.md](dean-adviser.md). Every case below is traceable to a real screen, control, label or API call in the application.
+These acceptance scenarios describe Dean portal behavior, using the supplied QA draft and Dean mockups as sources. The contract branch does not register Dean routes; UI cases are Blocked until the relevant pages are available in the revision under test. Claimed observations below come from an unidentified revision and must be independently reproduced before being treated as verified.
 
 - **"Dean Adviser"** means one signed-in account that holds the **Dean** role (faculty scope) and a confirmed **Adviser** role (department scope). In the mock data this is "Montera, Mhac Alester" (`dean` persona).
 - **Status of all cases:** Not run.
-- **Verification:** a first pass was run against the live app in mock mode (section 8). Cases and expected results that were seen working are marked **verified**.
+- **Verification:** section 8 retains the author's reported mock-mode observations. The tested revision is not identified; the inline "verified" labels are historical claims, not verification of this branch.
 - **Execution rule:** perform workflows through the UI, then verify saved results through the UI (reload, other pages, other roles) unless a case says "API".
 
 ## Contents
@@ -192,7 +192,7 @@ Names used as examples (for instance "Sta. Agata, Jerome Daniel S.", "Faculty of
 | ☐ | RPT-03 | P1 | Departments DCST and DIS | Open the Department selector and choose each option. | Options are "All departments" plus each faculty department code (verified: All departments, DCST, DIS). Choosing a department changes every tile, the distribution and the cohort table. The Students note becomes "Enrolled in ‹code›". |
 | ☐ | RPT-04 | P1 | A department with students | Choose it and compare with the Students directory (Department column). | Student count and deficiencies match the directory for that department. |
 | ☐ | RPT-05 | P1 | Independently calculated expected values | Compare Mean GWA for All departments and for one department. | All departments uses the faculty figure from the server. A department uses the server's department summary, or the average of its students' GWAs when no summary exists. Both match the independent calculation. |
-| ☐ | RPT-06 | P1 | Cohorts of unequal size (for example 2, 23 and 1 students) | Compare the report Mean GWA with a plain average of cohort means. | The report is not a simple average of cohort means: it reflects the correct student weighting. A cohort's own Mean GWA is the plain mean of its members that have a GWA. |
+| ☐ | RPT-06 | P1 | Cohorts with unequal counts of students with a GWA and distinct cohort means (for example 2 students at 1.00 and 1 at 2.50) | Independently calculate the mean from individual GWAs and compare it with the report and cohort means. | The report is the student-weighted mean (1.50 in the example), not the unweighted cohort mean (1.75). Each cohort's Mean GWA is the mean of its members with a GWA. |
 | ☐ | RPT-07 | P2 | A cohort where no student has a GWA | Read its Mean GWA. | Shows "—". |
 | ☐ | RPT-08 | P2 | Students with a 5.00, INC, DR or NA | Read "With deficiencies". | Counts students (not grades) that have such a result and matches the underlying records. |
 | ☐ | RPT-09 | P1 | Report values known | Compare with the Department Head's Department reports for the same department **[Cross-portal]**. | Student count, Mean GWA and deficiencies agree (verified: 26, 3.50, 2). |
@@ -213,7 +213,7 @@ Names used as examples (for instance "Sta. Agata, Jerome Daniel S.", "Faculty of
 | ☐ | RPT-24 | P1 | Preview open | Inspect the PDF for All departments and for each department. | Letterhead always reads "Office of the Dean" with the faculty name (verified for DCST). Title "FACULTY REPORTS". Subtitle is the department or "All departments". Three stat boxes (Students, Mean GWA, With deficiencies). Section "Final grade distribution" (Grade range, Share of final grades) and "GWA by batch and curriculum version" (Batch, Curriculum, Students, Mean GWA). Figures equal the screen. |
 | ☐ | RPT-25 | P1 | Preview open | Read the signature area and footer. | The signed-in Dean's name over "Noted by: Dean" (verified). No "Prepared by", no Department Head or Adviser name. Footer "Generated ‹date› through SAAIS" and "Page X of Y". |
 | ☐ | RPT-26 | P1 | Preview open | Click Close (no download), then reopen and click **Download PDF**. Check the Audit log. | Close downloads nothing and logs nothing. Download saves `SAAIS-faculty-reports.pdf` for all departments or `SAAIS-faculty-reports-‹department-slug›.pdf` (for example `...-dcst.pdf`, verified). The file equals the preview. An entry "Exported faculty report (‹scope›) as PDF" is logged for the Dean. |
-| ☐ | RPT-27 | P1 | Downloaded PDF | Share the file or the preview address with another account **[Multi-session]**. | The PDF is built in the browser. No server link exists. The preview address stops working after the dialog closes, and no other account can fetch it. |
+| ☐ | RPT-27 | P1 | PDF preview and downloaded PDF **[Multi-session]** | Intentionally share the downloaded file; separately try the preview address in another account, including after closing the dialog. | The recipient can read an intentionally shared file. The preview address must not expose the record to another account and must stop working after the dialog closes. |
 | ☐ | RPT-28 | P3 | **[Fault injection]** PDF cannot be built | Open the preview. | "Unable to create the PDF. Close the preview and try again." Download stays disabled. |
 | ☐ | RPT-29 | P3 | Many cohorts | Export. | Tables continue on a new page with "(continued)" headings. Nothing is cut off. |
 
@@ -294,16 +294,18 @@ Names used as examples (for instance "Sta. Agata, Jerome Daniel S.", "Faculty of
 | SEC | 10 | 6 | 4 | 0 |
 | **Total** | **102** | **51** | **40** | **11** |
 
-Every Dean page, dialog, filter, tab, PDF and redirect in `src/routes/dean/` has at least one case. Every original case DA-01 to DA-23 maps to at least one revised case (section 4). Behaviour that depends on the real back end (other faculties, role changes, concurrency, notification targets) is covered by cases but could not be proven in mock mode (section 8).
+The draft includes cases for Dean pages, dialogs, filters, tabs, PDFs and redirects described by its author. Dean routes are absent from this branch, so implementation coverage is not established here. Original cases DA-01 to DA-23 map to revised cases in section 4. Backend-dependent behavior requires separate execution.
 
 ---
 
 ## 8. Verification run in the running app
 
+**Author-reported historical observations:** the tested revision is unknown and is not this contract branch. Treat every result and inline "verified" label below as unverified until rerun with a recorded revision and evidence. Unsupported persona keys mentioned below are not available in this branch; use only keys from `MockPersonaKey` through `loginAsMockPersona` where the test harness supports it. Obtain missing shared personas from the mock-data owner.
+
 ### How the app was run
 
 - Dev server in mock mode (`VITE_API_MODE=mock npx vite`), plus a production build previewed in mock mode for NAV-05 and REC-08. First start needed `--force` to clear a stale dependency cache.
-- Signed in through the mock personas `dean` (Dean + Adviser), `dean_only`, `dean_dept_head`, `student`, `adviser`, `department_head`, `department_head_only`, `department_staff` and `admin`, driven with headless Chromium.
+- The author reported using multiple personas in an unidentified build. For a reproducible run use `loginAsMockPersona` with keys defined by `MockPersonaKey` in a supported harness; request missing shared personas from the mock-data owner.
 
 ### Seen working as written (verified)
 

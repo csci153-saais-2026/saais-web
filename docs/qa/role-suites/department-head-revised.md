@@ -1,10 +1,10 @@
 # Department Head test cases (revised)
 
-Revised against the implemented pages in `src/routes/department-head/` (plus the shared shell, navigation, notifications and routing they depend on). This file replaces the mockup-based [department-head.md](department-head.md): every case below is traceable to a real screen, control, validation message or API call in the application.
+These acceptance scenarios describe Department Head behavior using the supplied QA draft and mockup. The contract branch does not register Department Head routes; UI cases are Blocked until the relevant pages are available in the revision under test. The observations below do not identify the tested revision and must be independently reproduced.
 
 - **Status of all cases:** Not run
 - **Assumption:** the complete system is operational and seeded with realistic Department of Computer Science and Technology (DCST) data.
-- **Verification:** a first pass was run against the live app in mock mode (section 8). Cases or expected results that were seen working are marked **verified**. Everything else is still Not run.
+- **Verification:** section 8 retains the author's reported mock-mode observations. The tested revision is not identified; inline "verified" labels are historical claims, not verification of this branch. Cases remain Not run here.
 - **Execution rule:** perform workflows through the UI, then verify saved results through the UI (refresh, other pages, other roles) unless a case says "API".
 
 ## Contents
@@ -110,7 +110,7 @@ The original cases were written against HTML mockups. The built pages differ. Th
 | 1 | A "Guide" page with expandable Adviser and Department Head groups. | There is no guide page. The Department Head sidebar section lists 10 pages. A second group appears only for multi-role users. | NAV-01, NAV-09 |
 | 2 | Transfer review dialog is reachable from any row; approval needs a reason. | A decision reason is **optional for Approve** and **required for Reject** (max 2,000 characters). | TRF-07 to TRF-14 |
 | 3 | Student detail has a breadcrumb and a detail URL (DH-13, DH-27). | The student record is a **read-only modal** with Checklist, Grades and Audit log tabs. There is no detail URL. | STU-09 to STU-19, INT-07 |
-| 4 | Import has "Import valid rows" and partial acceptance (DH-14). | Import is **all or nothing**. If any row has an error, the Import button stays disabled. A legacy `.xls` shows "Choose a .xlsx or .csv file." and no conversion guidance. | IMP-02, IMP-16 |
+| 4 | Import has "Import valid rows" and partial acceptance (DH-14). | FR-ADM-14 requires valid rows to be committed atomically while invalid rows are rejected. The author reported an all-or-nothing UI in an unidentified build; treat it as an observed mismatch to verify, not the expected contract behavior. | IMP-02, IMP-16 |
 | 5 | Pressing Reassign with nothing selected shows a validation message (DH-15). | The **Reassign selected button is disabled** until a student is selected. | ASG-06 |
 | 6 | Reports work for both listed terms (DH-20, DH-39). | The roster describes **only the current term**. Any other term shows "No report available" and disables Export PDF. | RPT-08, RPT-09 |
 | 7 | PDF footer shows generated date **and actor** (DH-19, DH-21). | The PDF footer shows "Generated d MMM yyyy through SAAIS" and "Page X of Y". It has **no actor**. Signature blocks read "Prepared by: Department Head" and "Noted by: Dean". | TRM-26, RPT-27 |
@@ -390,7 +390,7 @@ Template columns: `student_number, full_name, email, program, curriculum, advise
 | Done | ID | Pri | Preconditions / data | Steps | Expected result |
 | --- | --- | --- | --- | --- | --- |
 | ☐ | IMP-01 | P1 | Students page | Click "Import spreadsheet". | Dialog "Import students from spreadsheet" with notice "Required columns: student name, student ID, school email, program, curriculum, and adviser.", file field "Spreadsheet file" with hint "XLSX or CSV · IDs must follow YY-N-NNNNN (example: 24-1-00124).", file picker limited to `.csv` and `.xlsx`, a "Validation preview" table (Row, Student ID, Result) saying "Choose a spreadsheet to validate its rows.", buttons Cancel and "Import students" (disabled). |
-| ☐ | IMP-02 | P2 | Dialog open | Choose `.txt`, `.xls`, `.pdf` (use "All files" in the picker or drag in). Then try `students.CSV`. | The file picker only offers `.csv` and `.xlsx`. Unsupported types show "Choose a .xlsx or .csv file." and no preview (verified for `.txt` and `.xls`; `.xls` gets no conversion guidance). The uppercase `.CSV` extension is accepted. |
+| ☐ | IMP-02 | P2 | Dialog open | Choose `.txt`, `.xls`, `.pdf` (use "All files" in the picker or drag in). Then try `students.CSV`. | Unsupported types are rejected without a preview; legacy `.xls` receives conversion guidance as required by FR-ADM-14. The uppercase `.CSV` extension is accepted. The author reported missing `.xls` guidance in an unidentified build; verify and report any mismatch. |
 | ☐ | IMP-03 | P2 | Empty `.csv` | Choose it. | "The file is empty." No preview. |
 | ☐ | IMP-04 | P2 | CSV with header only | Choose it. | "The file has no student rows." |
 | ☐ | IMP-05 | P1 | CSV missing some required columns | Choose it. | "Missing columns: email, program, curriculum, adviser_email." lists every missing column (verified). |
@@ -404,8 +404,8 @@ Template columns: `student_number, full_name, email, program, curriculum, advise
 | ☐ | IMP-13 | P1 | CSV rows with a blank student ID, blank name or blank email | Choose it. | Those rows show "Student ID, name and email are required." (red). |
 | ☐ | IMP-14 | P1 | Rows with an unknown program, an unknown curriculum for the program, an unknown adviser email, an adviser from another department or inactive | Choose it. | Row messages: `Unknown program "NOPE".` (verified), `Unknown curriculum "<x>" for <program>.`, `No active department adviser has the email "<x>".` |
 | ☐ | IMP-15 | P2 | Row with `entry_year` of `20x6` or `2026.5` | Choose it. | "Entry year must be a whole number." |
-| ☐ | IMP-16 | P1 | CSV with mixed valid and invalid rows | Choose it and look at the button and messages. | Summary "1 valid · 4 with errors" style. Red note "Fix the rows with errors in the file, then choose it again. Nothing is imported until every row is valid." The "Import students" button stays disabled. Nothing is imported (verified). |
-| ☐ | IMP-17 | P1 | Row with a malformed student ID (not `YY-N-NNNNN`), a duplicate ID inside the file, and an ID that already exists | Choose it. | Verified messages: "Student number must follow YY-N-NNNNN." and "Student number already exists." (existing student). Record the message for a duplicate inside the same file. The file cannot be imported until fixed. Existing students are not changed. |
+| ☐ | IMP-16 | P1 | CSV with mixed valid and invalid rows | Preview it, inspect row messages, then confirm valid rows. | Preview writes nothing. On confirmation the valid rows are imported atomically and invalid rows are rejected with row-specific reasons. If the UI disables import for mixed rows, record the mismatch with FR-ADM-14. |
+| ☐ | IMP-17 | P1 | Row with a malformed student ID (not `YY-N-NNNNN`), a duplicate ID inside the file, and an ID that already exists | Choose it. | Invalid rows receive reasons and are rejected; existing students are not changed. Preview writes nothing. Independently valid rows may be confirmed and imported atomically. |
 | ☐ | IMP-18 | P3 | Rows that the API marks as warnings | Choose a file that triggers a warning. | The row message is shown in green style with the warning text. It does not block import. |
 | ☐ | IMP-19 | P1 | Valid file previewed | Click "Import N students". | While saving: "Importing valid rows…", Cancel and button disabled, dialog cannot be closed. After success: row result "Imported", summary "N imported", button "Import complete" (disabled), toast "Imported N student(s)." (singular for 1). Directory count rises (26 → 27 verified). |
 | ☐ | IMP-20 | P1 | After IMP-19 | Close the dialog and look at the directory, Adviser assignments and Reports. | New students appear once each with the right curriculum, adviser and email. Counts increase by N. Importing the same file again flags the existing IDs. |
@@ -664,16 +664,18 @@ These were found while reading the code. They are not necessarily defects. Each 
 | INT | 19 | 10 | 7 | 2 |
 | **Total** | **363** | **141** | **160** | **62** |
 
-Every page, dialog, form field, validation message, filter, tab, PDF and redirect in `src/routes/department-head/` has at least one case. Every original case DH-01 to DH-42 maps to at least one revised case (section 4). Behaviour that depends on the real back end (persistence, other portals, error handling, concurrency) is covered by cases but could not be proven in mock mode (section 8).
+The draft includes cases for pages, dialogs, fields, filters, tabs, PDFs and redirects described by its author. Department Head routes are absent from this branch, so implementation coverage is not established here. Original cases DH-01 to DH-42 map to revised cases in section 4. Backend-dependent behavior requires separate execution.
 
 ---
 
 ## 8. Verification run in the running app
 
+**Author-reported historical observations:** the tested revision is unknown and is not this contract branch. Treat every result and inline "verified" label below as unverified until rerun with a recorded revision and evidence. The sessionStorage setup and unsupported persona keys reported below cannot be reproduced on this branch. In a supported mock test harness use `loginAsMockPersona` with an existing `MockPersonaKey`; obtain missing Head-only and disabled shared personas from the mock-data owner.
+
 ### How the app was run
 
 - Dev server in mock mode: `VITE_API_MODE=mock npx vite --force --port 5199` (the in-browser mock API supplies the data). On the first start without `--force` every page crashed with "Cannot read properties of null (reading 'useState')" because of a stale dependency cache; restarting with `--force` fixed it.
-- Signed in with the mock account "Department Head of DCST (Dept-Head-Only)" by setting `sessionStorage` key `saais_active_mock_persona` to `department_head_only`. Other mock personas used: `student`, `adviser`, `department_staff`, `dean`, `admin`, `department_head` (Adviser + Head), `dean_dept_head`, `disabled_account`, and no persona (signed out).
+- The author reported using Head-only and disabled personas in an unidentified build. Those keys are unavailable on this branch; use `loginAsMockPersona` with a documented `MockPersonaKey` in a supported harness, and obtain missing shared personas from the mock-data owner before rerunning those cases.
 - Driven with headless Chromium at 1280 px width (375 px for the mobile check).
 
 ### Seen working as written (verified)

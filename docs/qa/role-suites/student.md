@@ -1,6 +1,6 @@
 # Student test cases
 
-All cases are **Not run**. The current Student portal route presents the portal entry shell with an Academic Progress & Checklist summary. The scenarios below provide acceptance coverage for the Student workflows defined in the requirements, API contract and screen design. Use authorized test accounts and synthetic records; where a workflow is not yet available in the app, record it as Blocked rather than treating a design-only result as a pass.
+All cases are **Not run**. The Student portal route is not registered in the contract branch; its portal entry shell and Academic Progress & Checklist summary are unavailable there. The scenarios below provide acceptance coverage for the Student workflows defined in the requirements, API contract and screen design. Use authorized test accounts and synthetic records; where a workflow is not yet available in the app, record it as Blocked rather than treating a design-only result as a pass.
 
 ## Portal entry and dashboard
 
@@ -81,4 +81,4 @@ Record each case as **Not run**, **Pass**, **Fail**, **Blocked**, or **Not appli
 
 ## Source basis
 
-The Student acceptance scenarios follow `Software Requirements Specification (SRS).md`, `contract/openapi.yaml`, and the Student screen definitions. The current route exposes the Student portal entry shell and Academic Progress & Checklist summary; the feature scenarios define expected acceptance behavior for the documented Student workflows.
+The Student acceptance scenarios follow `Software Requirements Specification(SRS).md`, `contract/openapi.yaml`, and the Student screen definitions. The portal entry shell and Academic Progress & Checklist summary are not available on the contract branch; the scenarios define expected acceptance behavior for the documented Student workflows.

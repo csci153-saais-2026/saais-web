@@ -1,6 +1,6 @@
 # Department Staff test cases
 
-All cases are **Not run**. These cases cover the implemented Department Staff pages and workflows. Use authorized accounts and synthetic records. Verify confirmed writes through service response, resulting UI state and persistence after refresh; verify failures leave records unchanged.
+All cases are **Not run**. These cases describe expected Department Staff pages and workflows. Use authorized accounts and synthetic records. Verify confirmed writes through the service response, resulting UI state and persistence after refresh. Confirmed rejections must leave records unchanged; after a timeout, reconcile the saved record before retrying because the outcome is indeterminate. Mark cases Blocked when their required page or action is unavailable in the revision under test.
 
 ## Students
 

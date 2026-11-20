@@ -1,6 +1,6 @@
 # Authentication test cases
 
-All cases are **Not run**. Execute using authorized test accounts and disposable invitation/recovery tokens. Authentication, invitation, recovery, password change and protected-route behavior are covered by the application routes and API contract. Do not use real user credentials in test evidence.
+All cases are **Not run**. Execute using authorized test accounts and disposable invitation/recovery tokens. These are acceptance scenarios for authentication, invitation, recovery, password change and protected-route behavior; availability varies by revision. FR-AUTH-14 in the SRS specifies that session persistence respects the keep-signed-in option. AUTH-06 is Blocked on the contract branch until that behavior is implemented. Do not use real user credentials in test evidence.
 
 ## Sign in and session
 
