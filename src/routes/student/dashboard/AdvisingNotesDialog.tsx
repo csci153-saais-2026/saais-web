@@ -6,7 +6,6 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -92,12 +91,22 @@ export function AdvisingNotesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("sm:max-w-[640px]", className)}>
-        <DialogHeader>
-          <DialogTitle>Advising notes</DialogTitle>
-          <DialogDescription className="text-body text-muted-foreground">
-            Guidance recorded by your academic adviser across your advising sessions.
-          </DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className={cn("sm:max-w-[640px]", className)}
+      >
+        <DialogHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="min-w-0">
+            <DialogTitle>Advising notes</DialogTitle>
+            <DialogDescription className="text-body text-muted-foreground">
+              Guidance recorded by your academic adviser across your advising sessions.
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" size="sm" className="shrink-0">
+              Close
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         {sortedNotes.length > 0 ? (
@@ -149,14 +158,6 @@ export function AdvisingNotesDialog({
             No advising notes right now.
           </div>
         )}
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Close
-            </Button>
-          </DialogClose>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
