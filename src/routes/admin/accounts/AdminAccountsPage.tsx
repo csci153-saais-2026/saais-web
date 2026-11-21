@@ -5,6 +5,7 @@ import { Panel } from '@/components/features/panel'
 import { SearchInput } from '@/components/features/search-input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { EllipsisIcon, PlusIcon } from '@/components/icons'
 import { useAuth } from '@/hooks/use-auth'
 import { apiClient, unwrapApiResult, type ApiSchema } from '@/lib/api'
 import {
@@ -80,7 +88,7 @@ function getOrganization(
   account: Account,
   departmentsById: ReadonlyMap<string, Department>,
   facultiesById: ReadonlyMap<string, Faculty>,
-): string {
+): { faculty: string; department: string } {
   const profile = account.profile
   const assignment = account.role_assignments?.find(
     (roleAssignment) => roleAssignment.role === profile.role,
@@ -99,7 +107,22 @@ function getOrganization(
     department?.faculty_id
   const faculty = facultyId ? facultiesById.get(facultyId) : undefined
 
-  return [faculty?.name, department?.name].filter(Boolean).join(' / ') || '—'
+  return {
+    faculty: faculty?.name ?? '—',
+    department: department?.name ?? '—',
+  }
+}
+
+function getInitials(fullName: string): string {
+  const parts = fullName
+    .replace(/\b(Dr|Prof)\.?\s+/gi, '')
+    .replace(/,/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length === 0) return 'U'
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase()
 }
 
 function getInvitationStatusLabel(
@@ -287,13 +310,14 @@ export default function AdminAccountsPage() {
         actions={
           <Button
             type="button"
-          disabled={inviteSubmitting}
-          onClick={() => {
-            setInviteError(null)
-            setInviteSuccess(null)
+            disabled={inviteSubmitting}
+            onClick={() => {
+              setInviteError(null)
+              setInviteSuccess(null)
               setInviteOpen(true)
             }}
           >
+            <PlusIcon />
             Add account
           </Button>
         }
@@ -438,16 +462,16 @@ export default function AdminAccountsPage() {
               <TableHead>VSU email</TableHead>
               <TableHead>Faculty / department</TableHead>
               <TableHead>Roles</TableHead>
-              <TableHead>Account status</TableHead>
-              <TableHead>Invitation</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {accountsLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={5}
                   className="px-5 py-8 text-center text-muted-foreground"
                 >
                   Loading accounts…
@@ -456,7 +480,7 @@ export default function AdminAccountsPage() {
             ) : accountsError ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={5}
                   className="px-5 py-8 text-center text-muted-foreground"
                 >
                   Account records are unavailable until the request succeeds.
@@ -465,7 +489,7 @@ export default function AdminAccountsPage() {
             ) : visibleAccounts.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={5}
                   className="px-5 py-8 text-center text-muted-foreground"
                 >
                   No accounts match these search and filter values.
@@ -476,42 +500,59 @@ export default function AdminAccountsPage() {
                 const profile = account.profile
                 const roles = getAccountRoles(account)
                 const invitationStatus = profile.invitation_status
-                const canResendInvitation =
-                  profile.status === 'invited' &&
-                  [
-                    'pending',
-                    'expired',
-                    'revoked',
-                    'declined',
-                  ].includes(invitationStatus ?? '')
-                const canRevokeInvitation =
+                const hasPendingInvitation =
                   invitationStatus === 'pending' && profile.status === 'invited'
                 const isCurrentAccount =
                   profile.id === user?.id ||
                   profile.email.trim().toLowerCase() ===
                     user?.email?.trim().toLowerCase()
+                const organization = getOrganization(
+                  account,
+                  departmentsById,
+                  facultiesById,
+                )
                 return (
                   <TableRow key={profile.id}>
                     <TableCell label="Name" className="whitespace-normal">
-                      <span className="font-medium">{profile.full_name}</span>
+                      <div className="flex min-w-48 items-center gap-3">
+                        <Avatar aria-hidden="true">
+                          <AvatarFallback className="bg-[#F2EDDC] text-xs font-semibold text-[#2F4A12]">
+                            {getInitials(profile.full_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <span className="block font-medium">
+                            {profile.full_name}
+                          </span>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <StatusBadge status={profile.status} />
+                            {invitationStatus && (
+                              <Badge variant="outline">
+                                Invitation: {getInvitationStatusLabel(invitationStatus)}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell label="VSU email" className="whitespace-normal">
+                      <span>{profile.email}</span>
                       {profile.student_number && (
                         <span className="block font-mono text-xs text-muted-foreground">
                           {profile.student_number}
                         </span>
                       )}
                     </TableCell>
-                    <TableCell label="VSU email" className="whitespace-normal">
-                      {profile.email}
-                    </TableCell>
                     <TableCell
                       label="Faculty / department"
                       className="whitespace-normal"
                     >
-                      {getOrganization(
-                        account,
-                        departmentsById,
-                        facultiesById,
-                      )}
+                      <span className="block font-medium">
+                        {organization.faculty}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {organization.department}
+                      </span>
                     </TableCell>
                     <TableCell label="Roles" className="whitespace-normal">
                       <div className="flex flex-wrap gap-1">
@@ -526,56 +567,48 @@ export default function AdminAccountsPage() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell label="Account status">
-                      <StatusBadge status={profile.status} />
-                    </TableCell>
-                    <TableCell label="Invitation">
-                      <span className="text-sm">
-                        {getInvitationStatusLabel(profile.invitation_status)}
-                      </span>
-                    </TableCell>
                     <TableCell label="Actions">
-                      <div className="flex flex-wrap gap-2">
-                        {!isCurrentAccount && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Actions for ${profile.full_name}`}
                             disabled={accountActionId === profile.id}
-                            onClick={() => {
+                          >
+                            <EllipsisIcon />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            disabled={isCurrentAccount || accountActionId === profile.id}
+                            onSelect={() => {
                               setAccountActionError(null)
                               setEditingAccount(account)
                             }}
                           >
                             Edit
-                          </Button>
-                        )}
-                        {canResendInvitation && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={accountActionId === profile.id}
-                            onClick={() => void runInvitationAction(account, 'resend')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={!hasPendingInvitation || accountActionId === profile.id}
+                            onSelect={() =>
+                              void runInvitationAction(account, 'resend')
+                            }
                           >
                             Resend
-                          </Button>
-                        )}
-                        {canRevokeInvitation && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={accountActionId === profile.id}
-                            onClick={() => {
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={!hasPendingInvitation || accountActionId === profile.id}
+                            onSelect={() => {
                               setAccountActionError(null)
                               setRevokeTarget(account)
                             }}
                           >
                             Revoke
-                          </Button>
-                        )}
-                      </div>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 )
