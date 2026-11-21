@@ -2,6 +2,8 @@
 
 Status: **frozen** on 2026-11-20 (Asia/Manila). The frontend and backend teams approved the contract outside GitHub, as reported by the project team. See issue [#39](https://github.com/csci153-saais-2026/saais-web/issues/39).
 
+This is the historical 0.3.0 record. The proposed 0.3.1 change allowing scoped Department Staff to clone curricula is documented in [CANDIDATE-0.3.1.md](CANDIDATE-0.3.1.md); it requires new frontend and backend approval before being frozen.
+
 - Contract: `contract/openapi.yaml`, `info.version: 0.3.0`.
 - Frozen bundled contract SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83` (run `node contract/candidate-hash.cjs` after installing dependencies). The script resolves external references and hashes canonical JSON with recursively sorted object keys.
 - Integrated source baseline: `964917c19a365c65bf5da3fded9f50b761375fe5` (merged SRS, contract, documentation, mocks, Postman and prototype changes).

@@ -296,7 +296,7 @@ describe("MSW contract handlers & role-based authorization (Issue #43)", () => {
     expect(summary.counted_units).toBe(9);
   });
 
-  it("allows only in-scope Department Heads to clone curriculum terms and slots", async () => {
+  it("allows in-scope Heads and Staff to clone curriculum terms and slots", async () => {
     const db = getMockDatabase();
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
@@ -310,16 +310,41 @@ describe("MSW contract handlers & role-based authorization (Issue #43)", () => {
       clone_from_version_id: MOCK_IDS.curriculumBscs2024,
     };
     const before = db.curriculumVersions.length;
-    for (const role of ["department_staff", "admin"] as const) {
-      loginAsMockPersona(role);
-      const denied = await client.POST(
-        "/functions/v1/catalog/curriculum_version",
-        { body },
-      );
-      expect(denied.response.status).toBe(403);
-      expect(db.curriculumVersions).toHaveLength(before);
-    }
+    loginAsMockPersona("admin");
+    const denied = await client.POST(
+      "/functions/v1/catalog/curriculum_version",
+      { body },
+    );
+    expect(denied.response.status).toBe(403);
+    expect(db.curriculumVersions).toHaveLength(before);
     loginAsMockPersona("department_staff");
+    const crossDepartment = await client.POST(
+      "/functions/v1/catalog/curriculum_version",
+      { body: { ...body, program_id: MOCK_IDS.programBsabe } },
+    );
+    expect(crossDepartment.response.status).toBe(403);
+    expect(db.curriculumVersions).toHaveLength(before);
+    const crossSource = await client.POST(
+      "/functions/v1/catalog/curriculum_version",
+      { body: { ...body, clone_from_version_id: MOCK_IDS.curriculumBsabe } },
+    );
+    expect(crossSource.response.status).toBe(403);
+    expect(db.curriculumVersions).toHaveLength(before);
+    const staffClone = await client.POST(
+      "/functions/v1/catalog/curriculum_version",
+      { body },
+    );
+    expect(staffClone.response.status).toBe(201);
+    const staffVersion = unwrapApiResult(staffClone);
+    expect(
+      db.curriculumTerms.filter(
+        (term) => term.curriculum_version_id === staffVersion.id,
+      ),
+    ).toHaveLength(
+      db.curriculumTerms.filter(
+        (term) => term.curriculum_version_id === MOCK_IDS.curriculumBscs2024,
+      ).length,
+    );
     expect(
       (
         await client.POST("/functions/v1/catalog/curriculum_version", {
