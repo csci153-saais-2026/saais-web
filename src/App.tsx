@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const queryClient = new QueryClient()
 
+const LandingPage = lazy(() => import('@/routes/landing/LandingPage'))
 const StyleguidePage = lazy(() => import('@/routes/styleguide/StyleguidePage'))
 const LoginPage = lazy(() => import('@/routes/auth/LoginPage'))
 const OAuthCallback = lazy(() => import('@/routes/auth/OAuthCallback'))
@@ -39,31 +40,6 @@ const DeanPortal = lazy(() => import('@/routes/dean/DeanPortal'))
 const AdminPortal = lazy(() => import('@/routes/admin/AdminPortal'))
 const NotificationsPage = lazy(() => import('@/routes/notifications/NotificationsPage'))
 
-function Home() {
-  return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-3xl font-bold">SAAIS</h1>
-      <p className="text-muted-foreground mt-2">
-        Student Academic Advising Information System.
-      </p>
-      <div className="flex gap-4 mt-6">
-        <a
-          href="/login"
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium"
-        >
-          Sign In
-        </a>
-        <a href="/docs" className="px-4 py-2 border rounded-md text-sm font-medium">
-          API Documentation
-        </a>
-        <a href="/styleguide" className="px-4 py-2 border rounded-md text-sm font-medium">
-          Styleguide
-        </a>
-      </div>
-    </main>
-  )
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -72,7 +48,7 @@ function App() {
         <Suspense fallback={<div className="p-8 text-muted-foreground">Loading…</div>}>
           <Routes>
             {/* Public routes */}
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
             <Route path="/invite" element={<InvitePage />} />
