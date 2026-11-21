@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "strict": true },
+  "tasks": { "check": "deno check functions/*/index.ts" }
+}
