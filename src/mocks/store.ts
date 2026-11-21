@@ -1160,6 +1160,75 @@ function buildInitialMockDatabase(): MockDatabaseState {
         is_lapsed_inc: false, is_repeated: false, counts_toward_cumulative_gwa: false })
     }
   }
+  // John Doe: an achiever (all passed, top marks), advised by Polo, Marco Antonio.
+  const achiever = MOCK_PERSONAS.student_achiever
+  const achieverAdviser = MOCK_PERSONAS.adviser
+  const achieverCurrId = '71000000-0000-4000-8000-000000000104'
+  db.profiles.push({ id: achiever.profileId, role: 'student', roles: ['student'], email: achiever.email,
+    full_name: achiever.fullName, student_number: '30-1-00001', status: 'active', invitation_status: 'accepted',
+    invitation_sent_at: '2026-08-01T08:00:00Z', invitation_expires_at: '2026-08-08T08:00:00Z',
+    faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst, avatar_url: null, consultation_hours: null,
+    created_at: '2026-08-01T08:00:00Z', updated_at: '2026-08-01T08:00:00Z' })
+  db.roleAssignments.push({ id: '92000000-0000-4000-8000-000000000104', profile_id: achiever.profileId,
+    role: 'student', faculty_id: MOCK_IDS.facultyComputing, department_id: MOCK_IDS.deptDcst,
+    created_at: '2026-08-01T08:00:00Z' })
+  db.studentCurriculumAssignments.push({ id: achieverCurrId, student_id: achiever.profileId,
+    curriculum_version_id: MOCK_IDS.curriculumBscs2024, start_date: '2024-08-01', end_date: null,
+    change_note: 'Initial BSCS curriculum assignment', created_at: '2024-08-01T08:00:00Z' })
+  db.studentOrganizations.push({ student_id: achiever.profileId, student_curriculum_assignment_id: achieverCurrId,
+    curriculum_version_id: MOCK_IDS.curriculumBscs2024, program_id: MOCK_IDS.programBscs,
+    department_id: MOCK_IDS.deptDcst, faculty_id: MOCK_IDS.facultyComputing,
+    adviser_id: achieverAdviser.profileId, entry_year: 2024 })
+  db.adviserAssignments.push({ id: '70000000-0000-4000-8000-000000000104', student_id: achiever.profileId,
+    adviser_id: achieverAdviser.profileId, adviser_name: achieverAdviser.fullName, adviser_email: achieverAdviser.email,
+    adviser_faculty_name: 'Faculty of Computing', adviser_consultation_hours: 'Tue & Thu, 13:00–16:00',
+    start_date: '2024-08-01', end_date: null, handed_over_to_adviser_id: null, handed_over_to_name: null,
+    handover_label: null, created_at: '2024-08-01T08:00:00Z' })
+  // Additional DCST catalog courses (with curriculum slots and offerings) used by John Doe's record.
+  const closedTermId = MOCK_IDS.term2025Sem2Closed
+  const openTermId = MOCK_IDS.term2026Sem1Open
+  const achieverCatalog = [
+    { code: 'MATH 101', title: 'Calculus 1', category: 'major', units: 3, term: MOCK_IDS.curriculumTerm1Y1S, schoolTerm: closedTermId, grade: 1.0, schedule: 'MWF 10:00-11:00' },
+    { code: 'ENGL 101', title: 'Communication Skills 1', category: 'ge', units: 3, term: MOCK_IDS.curriculumTerm1Y1S, schoolTerm: closedTermId, grade: 1.25, schedule: 'TTh 08:00-09:30' },
+    { code: 'CSCI 103', title: 'Discrete Structures', category: 'major', units: 3, term: MOCK_IDS.curriculumTerm1Y2S, schoolTerm: closedTermId, grade: 1.0, schedule: 'MWF 13:00-14:00' },
+    { code: 'MATH 102', title: 'Calculus 2', category: 'major', units: 3, term: MOCK_IDS.curriculumTerm1Y2S, schoolTerm: closedTermId, grade: 1.25, schedule: 'TTh 10:00-11:30' },
+    { code: 'CSCI 110', title: 'Data Structures and Algorithms', category: 'major', units: 3, term: MOCK_IDS.curriculumTerm3Y1S, schoolTerm: closedTermId, grade: 1.0, schedule: 'MWF 15:00-16:00' },
+    { code: 'CSCI 120', title: 'Database Systems', category: 'major', units: 3, term: MOCK_IDS.curriculumTerm3Y1S, schoolTerm: openTermId, grade: null, midterm: 1.0, schedule: 'TTh 13:00-14:30' },
+    { code: 'CSCI 130', title: 'Operating Systems', category: 'major', units: 3, term: MOCK_IDS.curriculumTerm3Y1S, schoolTerm: openTermId, grade: null, midterm: 1.25, schedule: 'MWF 08:00-09:00' },
+  ] as const
+  const achieverAttempts: { offeringId: string; slotId: string; units: number; grade: number | null; midterm: number | null }[] = [
+    { offeringId: MOCK_IDS.offeringCsci101, slotId: MOCK_IDS.slotCsci101, units: 3, grade: 1.0, midterm: 1.0 },
+    { offeringId: MOCK_IDS.offeringCsci102, slotId: MOCK_IDS.slotCsci102, units: 3, grade: 1.0, midterm: 1.0 },
+    { offeringId: MOCK_IDS.offeringPhEd11, slotId: MOCK_IDS.slotPe1, units: 2, grade: 1.25, midterm: 1.25 },
+  ]
+  for (const [index, item] of achieverCatalog.entries()) {
+    const suffix = String(index + 1).padStart(12, '0')
+    const courseId = `50000000-0000-4000-8104-${suffix}`
+    const slotId = `42000000-0000-4000-8104-${suffix}`
+    const offeringId = `62000000-0000-4000-8104-${suffix}`
+    db.courses.push({ id: courseId, department_id: MOCK_IDS.deptDcst, code: item.code, title: item.title,
+      category: item.category, units: item.units, is_elective: false, status: 'active', repeatable_type: 'none' })
+    db.curriculumTermCourses.push({ id: slotId, curriculum_term_id: item.term, course_id: courseId,
+      is_elective_slot: false, slot_type: 'required', slot_label: null, nominal_units: item.units })
+    db.courseOfferings.push({ id: offeringId, school_term_id: item.schoolTerm, course_id: courseId, section: 'A',
+      schedule: item.schedule, instructor: MOCK_PERSONAS.adviser.fullName, is_by_request: false })
+    achieverAttempts.push({ offeringId, slotId, units: item.units, grade: item.grade,
+      midterm: 'midterm' in item ? item.midterm : item.grade })
+  }
+  for (const [index, item] of achieverAttempts.entries()) {
+    const enrolled = item.grade === null
+    const common = { id: `80000000-0000-4000-8104-${String(index + 1).padStart(12, '0')}`,
+      student_id: achiever.profileId, course_offering_id: item.offeringId, curriculum_term_course_id: item.slotId,
+      midterm_status: 'graded' as const, midterm_grade: item.midterm, final_grade: item.grade, inc_deadline: null,
+      instructor: db.courseOfferings.find(o => o.id === item.offeringId)?.instructor ?? null,
+      prerequisite_override: false, prerequisite_grade_override: false, units_attempted: item.units, revision: 1,
+      created_at: '2025-01-20T08:00:00Z', updated_at: '2025-06-01T08:00:00Z' }
+    const status = enrolled ? 'currently_enrolled' : 'passed'
+    db.attempts.push({ ...common, status, created_by: achieverAdviser.profileId, updated_by: achieverAdviser.profileId })
+    db.attemptResults.push({ ...common, recorded_status: status, effective_status: status, grade_fix_history: [],
+      completion_grade: null, resolved_at: null, gwa_grade: item.grade, is_lapsed_inc: false, is_repeated: false,
+      counts_toward_cumulative_gwa: !enrolled })
+  }
   // Sample student 4 has 26 failed units in one term, above this curriculum's 24-unit threshold.
   const delinquentStudent = MOCK_PERSONAS.student_sample_4!
   const initialAttempts = db.attempts.filter(a => a.student_id === delinquentStudent.profileId)

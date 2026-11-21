@@ -930,7 +930,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
         params: { query: { assignment_scope: 'current' } },
       }),
     )
-    expect(roster.total_count).toBe(13)
+    expect(roster.total_count).toBe(14)
     expect(roster.items.some((item) => item.student_number === '24-1-01798')).toBe(true)
 
     const recsResponse = await client.GET(
@@ -942,7 +942,7 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
         },
       },
     )
-    expect(recsResponse.response.headers.get('X-Excluded-Count')).toBe('4')
+    expect(recsResponse.response.headers.get('X-Excluded-Count')).toBe('9')
     const recs = unwrapApiResult(recsResponse)
     expect(recs.some(item => item.code === 'CSCI 101')).toBe(false)
 

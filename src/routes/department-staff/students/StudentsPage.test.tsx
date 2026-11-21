@@ -144,7 +144,7 @@ describe('Department Staff student directory', () => {
     expect(screen.getByText('Unassigned')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Import spreadsheet' })).toBeTruthy()
     expect(screen.queryByText(/Staff requests are scoped to department/)).toBeNull()
-    expect(screen.getByText('Showing 1–20 of 26 students')).toBeTruthy()
+    expect(screen.getByText('Showing 1–20 of 27 students')).toBeTruthy()
     const directoryPanel = screen
       .getByText('Department directory')
       .closest('[data-slot="card"]') as HTMLElement
@@ -160,7 +160,7 @@ describe('Department Staff student directory', () => {
       within(directoryPanel).getByRole('combobox', { name: 'Adviser' }),
     ).toBeTruthy()
     const directorySummary = within(directoryPanel).getByText(
-      /26 enrolled students.*BSCS/,
+      /27 enrolled students.*BSCS/,
     )
     expect(directorySummary.textContent).toMatch(
       /(?:AY \d{4} - \d{4}, (?:1st Semester|2nd Semester|Summer)|Academic year and term unavailable)/,
@@ -216,7 +216,7 @@ describe('Department Staff student directory', () => {
     renderPortal('/department-staff/students?offset=20')
 
     expect(
-      await screen.findByText('Showing 21–26 of 26 students'),
+      await screen.findByText('Showing 21–27 of 27 students'),
     ).toBeTruthy()
     expect(
       (screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement)
