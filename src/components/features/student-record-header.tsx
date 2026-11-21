@@ -11,6 +11,7 @@ function StudentRecordHeader({
   yearLabel,
   email,
   standing,
+  standingLabel,
 }: {
   name: string;
   initials: string;
@@ -19,6 +20,7 @@ function StudentRecordHeader({
   yearLabel: string;
   email: string;
   standing: Status;
+  standingLabel?: string;
 }) {
   return (
     <div className="mb-5 flex items-center gap-4">
@@ -34,7 +36,7 @@ function StudentRecordHeader({
           <span>· {program}</span>
           <span>· {yearLabel}</span>
           <span>· {email}</span>
-          <StatusBadge status={standing} />
+          <StatusBadge status={standing}>{standingLabel}</StatusBadge>
         </p>
       </div>
     </div>

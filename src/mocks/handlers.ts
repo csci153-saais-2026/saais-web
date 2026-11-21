@@ -14,6 +14,14 @@ import { getMockDatabase } from "./store";
 
 let syntheticUuidCounter = 100;
 
+// The contract allows object-valued audit snapshots; the generator infers an
+// empty record for an object schema with unspecified properties.
+function auditSnapshot(
+  value: Record<string, unknown>,
+): ApiSchema<"AuditLogEntry">["old_value"] {
+  return value as ApiSchema<"AuditLogEntry">["old_value"];
+}
+
 function alreadyPassedCourse(
   studentId: string,
   offeringId: string,
@@ -34,6 +42,45 @@ function alreadyPassedCourse(
           (o) => o.id === a.course_offering_id && o.course_id === courseId,
         ),
     ),
+  );
+}
+
+function isRequiredCourseInDepartment(
+  courseId: string,
+  departmentId: string,
+): boolean {
+  const db = getMockDatabase();
+  const departmentTermIds = new Set(
+    db.curriculumTerms
+      .filter((term) => {
+        const version = db.curriculumVersions.find(
+          (item) => item.id === term.curriculum_version_id,
+        );
+        const program = db.programs.find(
+          (item) => item.id === version?.program_id,
+        );
+        return program?.department_id === departmentId;
+      })
+      .map((term) => term.id),
+  );
+
+  return db.curriculumTermCourses.some(
+    (slot) =>
+      slot.course_id === courseId &&
+      departmentTermIds.has(slot.curriculum_term_id) &&
+      !slot.is_elective_slot &&
+      slot.slot_type !== "elective",
+  );
+}
+
+function courseOfferingHasHistory(offeringId: string): boolean {
+  const db = getMockDatabase();
+  return (
+    db.attempts.some((attempt) => attempt.course_offering_id === offeringId) ||
+    db.attemptResults.some(
+      (result) => result.course_offering_id === offeringId,
+    ) ||
+    db.advisingPlanItems.some((item) => item.course_offering_id === offeringId)
   );
 }
 
@@ -123,19 +170,18 @@ function studentMetrics(studentId: string, departmentId: string) {
         ).toFixed(2),
       )
     : null;
+  const outsideCreditUnits = db.outsideCredits
+    .filter(
+      (credit) => credit.student_id === studentId && credit.revoked_at == null,
+    )
+    .reduce((sum, credit) => sum + credit.units_credited, 0);
   const earnedUnits =
     results
       .filter(
         (a) =>
           a.effective_status === "passed" && a.counts_toward_cumulative_gwa,
       )
-      .reduce((sum, row) => sum + row.units_attempted, 0) +
-    db.outsideCredits
-      .filter(
-        (credit) =>
-          credit.student_id === studentId && credit.revoked_at == null,
-      )
-      .reduce((sum, credit) => sum + credit.units_credited, 0);
+      .reduce((sum, row) => sum + row.units_attempted, 0) + outsideCreditUnits;
   const openInc = results.filter(
     (a) =>
       a.recorded_status === "inc" &&
@@ -145,6 +191,13 @@ function studentMetrics(studentId: string, departmentId: string) {
   const lapsed = results.filter((a) => a.is_lapsed_inc);
   const flags = db.gradeFlags.filter(
     (flag) => flag.student_id === studentId && flag.status === "open",
+  );
+  const deficiencies = results.filter(
+    (a) =>
+      !a.is_repeated &&
+      (a.effective_status === "failed" ||
+        a.effective_status === "dr" ||
+        (a.recorded_status === "inc" && a.completion_grade == null)),
   );
   const failed = counted.filter((row) => row.grade! > 3);
   const failedUnits = failed.reduce((sum, row) => sum + row.units, 0);
@@ -160,19 +213,61 @@ function studentMetrics(studentId: string, departmentId: string) {
         : settings && failurePct >= settings.warning_pct
           ? "warning"
           : "good_standing";
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const isDelinquent = db.schoolTerms.some((term) => {
+    const assignment = db.studentCurriculumAssignments
+      .filter(
+        (a) =>
+          a.student_id === studentId &&
+          a.start_date <= term.ends_on &&
+          (!a.end_date || a.end_date >= term.ends_on),
+      )
+      .sort((a, b) => b.start_date.localeCompare(a.start_date))[0];
+    const curriculum = db.curriculumVersions.find(
+      (c) => c.id === assignment?.curriculum_version_id,
+    );
+    if (!curriculum) return false;
+    const failedInTerm = results
+      .filter((a) =>
+        db.courseOfferings.some(
+          (o) => o.id === a.course_offering_id && o.school_term_id === term.id,
+        ),
+      )
+      .filter(
+        (a) =>
+          (a.completion_grade ??
+            a.final_grade ??
+            (a.recorded_status === "inc" &&
+            a.inc_deadline &&
+            a.inc_deadline < today
+              ? 5
+              : null) ??
+            0) > 3,
+      )
+      .reduce((sum, a) => sum + a.units_attempted, 0);
+    return failedInTerm >= curriculum.delinquency_threshold;
+  });
   return {
     results,
     counted,
     countedUnits,
+    outsideCreditUnits,
     gwa,
     earnedUnits,
     openInc,
     lapsed,
     flags,
+    deficiencies,
     failed,
     failedUnits,
     failurePct,
     standing,
+    isDelinquent,
   };
 }
 
@@ -304,6 +399,56 @@ const departmentInviteRoles = new Set([
   "department_staff",
   "department_head",
 ]);
+const resendableInvitationStates = new Set([
+  "pending",
+  "expired",
+  "revoked",
+  "declined",
+]);
+
+const roleTypes = new Set([
+  "student",
+  "adviser",
+  "department_head",
+  "department_staff",
+  "dean",
+  "admin",
+]);
+
+function isRoleAssignmentInput(
+  value: unknown,
+): value is ApiSchema<"RoleAssignmentInput"> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const assignment = value as Record<string, unknown>;
+  if (
+    Object.keys(assignment).some(
+      (key) => !["role", "faculty_id", "department_id"].includes(key),
+    ) ||
+    typeof assignment.role !== "string" ||
+    !roleTypes.has(assignment.role)
+  ) {
+    return false;
+  }
+  const validId = (id: unknown) =>
+    id === undefined ||
+    id === null ||
+    (typeof id === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      ));
+  return validId(assignment.faculty_id) && validId(assignment.department_id);
+}
+
+function isRoleAssignmentList(
+  value: unknown,
+): value is ApiSchema<"RoleAssignmentInput">[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= 6 &&
+    value.every(isRoleAssignmentInput)
+  );
+}
 
 function canManageDepartmentInvite(
   persona: MockPersona,
@@ -358,6 +503,40 @@ function nextSyntheticUuid(): string {
   syntheticUuidCounter += 1;
   const hex = syntheticUuidCounter.toString(16).padStart(12, "0");
   return `99999999-0000-4000-8000-${hex}`;
+}
+
+function isIncCompletionCorrectionRequest(
+  value: unknown,
+): value is ApiSchema<"INCCompletionCorrectionRequest"> {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return false;
+  const body = value as Record<string, unknown>;
+  const allowedKeys = new Set([
+    "completion_grade",
+    "reason",
+    "expected_updated_at",
+  ]);
+  if (Object.keys(body).some((key) => !allowedKeys.has(key))) return false;
+
+  const grade = body.completion_grade;
+  const reason = body.reason;
+  const expectedUpdatedAt = body.expected_updated_at;
+  return (
+    typeof grade === "number" &&
+    Number.isFinite(grade) &&
+    grade >= 1 &&
+    grade <= 5 &&
+    (grade * 4) % 1 === 0 &&
+    typeof reason === "string" &&
+    reason.trim().length > 0 &&
+    reason.length <= 4000 &&
+    Array.from(reason).length <= 2000 &&
+    typeof expectedUpdatedAt === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(
+      expectedUpdatedAt,
+    ) &&
+    Number.isFinite(Date.parse(expectedUpdatedAt))
+  );
 }
 
 function isAdvisingAIRequest(
@@ -516,6 +695,60 @@ function matchesPostgrestOperator(
   return true;
 }
 
+function matchesPostgrestDisjunction<T extends object>(
+  row: T,
+  filterExpr: string,
+): boolean {
+  if (!filterExpr.startsWith("(") || !filterExpr.endsWith(")")) return false;
+  const clauses = filterExpr.slice(1, -1).split(",");
+  if (clauses.length === 0 || clauses.length > 10) return false;
+
+  const record = row as Record<string, unknown>;
+  return clauses.some((clause) => {
+    const match = /^([a-z_]+)\.(ilike|like)\.(.*)$/.exec(clause);
+    if (!match) return false;
+    const [, field, operator, pattern] = match;
+    return matchesPostgrestOperator(record[field!], `${operator}.${pattern}`);
+  });
+}
+
+/** Appends a "change" row to the shared audit log, as the real backend does for department-head writes. */
+function recordMockAudit(
+  persona: MockPersona,
+  entry: {
+    action: string;
+    entityType: string;
+    entityId?: string | null;
+    studentId?: string | null;
+    label: string;
+    details: string;
+  },
+) {
+  const db = getMockDatabase();
+  const student = entry.studentId
+    ? db.profiles.find((profile) => profile.id === entry.studentId)
+    : undefined;
+  db.auditLogEntries.push({
+    id: nextSyntheticUuid(),
+    actor_id: persona.profileId,
+    actor_name: persona.fullName,
+    actor_role: persona.primaryRole,
+    student_id: entry.studentId ?? null,
+    student_name: student?.full_name ?? null,
+    student_number: student?.student_number ?? null,
+    target_label: entry.label,
+    action: entry.action,
+    action_category: "change",
+    entity_type: entry.entityType,
+    entity_id: entry.entityId ?? null,
+    details_summary: entry.details,
+    old_value: null,
+    new_value: null,
+    reason: null,
+    created_at: new Date().toISOString(),
+  });
+}
+
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
   url: URL,
@@ -537,6 +770,13 @@ function applyPostgrestQuery<T extends object>(
       return matchesPostgrestOperator(record[key], value);
     });
   });
+
+  const orParam = url.searchParams.get("or");
+  if (orParam) {
+    filtered = filtered.filter((row) =>
+      matchesPostgrestDisjunction(row, orParam),
+    );
+  }
 
   const andParam = url.searchParams.get("and");
   if (andParam) {
@@ -634,20 +874,54 @@ export const saaisMswHandlers = [
     if (!body?.token || body.token.trim().length < 8) {
       return errorJson(400, "INVALID_TOKEN", "Invitation token is invalid.");
     }
-    if (body.token === "expired-invite-token") {
+    const token = body.token.trim();
+    if (token === "expired-invite-token") {
       return errorJson(409, "INVITE_EXPIRED", "Invitation token has expired.");
     }
+    const db = getMockDatabase();
+    const invitedProfiles = db.profiles.filter((p) => p.status === "invited");
+    const matchedProfile =
+      (token.startsWith("invite:")
+        ? db.profiles.find((p) => p.id === token.slice("invite:".length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find(
+        (p) => p.id === MOCK_PERSONAS.student_secondary.profileId,
+      ) ??
+      invitedProfiles[0];
+
+    if (!matchedProfile) {
+      return errorJson(404, "INVITE_NOT_FOUND", "Invitation not found.");
+    }
+    if (matchedProfile.status !== "invited") {
+      return errorJson(
+        409,
+        "INVITE_ALREADY_USED",
+        "Invitation has already been activated.",
+      );
+    }
+    if (matchedProfile.invitation_status === "revoked") {
+      return errorJson(409, "INVITE_REVOKED", "Invitation has been revoked.");
+    }
+    const dept = db.departments.find(
+      (d) => d.id === matchedProfile.department_id,
+    );
+    const faculty = db.faculties.find(
+      (f) => f.id === matchedProfile.faculty_id,
+    );
     const response: ApiSchema<"PreviewInviteResponse"> = {
       valid: true,
-      status: "pending",
-      email: MOCK_PERSONAS.student_secondary.email,
-      full_name: MOCK_PERSONAS.student_secondary.fullName,
-      role: "student",
-      roles: ["student"],
-      faculty_name: "Faculty of Computing",
-      department_name: "Department of Computer Science and Technology",
-      program_code: "BSCS",
-      expires_at: "2026-12-31T23:59:59Z",
+      status: matchedProfile.invitation_status ?? "pending",
+      email: matchedProfile.email,
+      full_name: matchedProfile.full_name,
+      role: matchedProfile.role,
+      roles: matchedProfile.roles,
+      faculty_name: faculty?.name ?? "Faculty of Computing",
+      department_name:
+        dept?.name ?? "Department of Computer Science and Technology",
+      program_code: matchedProfile.role === "student" ? "BSCS" : null,
+      expires_at:
+        matchedProfile.invitation_expires_at ?? "2026-12-31T23:59:59Z",
     };
     return HttpResponse.json(response, { status: 200 });
   }),
@@ -672,6 +946,38 @@ export const saaisMswHandlers = [
         "Password must be between 12 and 128 characters.",
       );
     }
+    const token = body.token.trim();
+    const db = getMockDatabase();
+    const invitedProfiles = db.profiles.filter((p) => p.status === "invited");
+    const matchedProfile =
+      (token.startsWith("invite:")
+        ? db.profiles.find((p) => p.id === token.slice("invite:".length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find(
+        (p) => p.id === MOCK_PERSONAS.student_secondary.profileId,
+      ) ??
+      invitedProfiles[0];
+
+    if (!matchedProfile) {
+      return errorJson(404, "INVITE_NOT_FOUND", "Invitation not found.");
+    }
+    if (matchedProfile.invitation_status === "revoked") {
+      return errorJson(409, "INVITE_REVOKED", "Invitation has been revoked.");
+    }
+    if (matchedProfile.status !== "invited") {
+      return errorJson(
+        409,
+        "INVITE_ALREADY_USED",
+        "Invitation has already been activated.",
+      );
+    }
+    db.profiles = db.profiles.map((p) =>
+      p.id === matchedProfile.id
+        ? { ...p, status: "active", invitation_status: "accepted" }
+        : p,
+    );
+
     const response: ApiSchema<"VerifyInviteResponse"> = {
       success: true,
       message: "Account successfully activated.",
@@ -688,6 +994,27 @@ export const saaisMswHandlers = [
     if (!body?.token) {
       return errorJson(400, "INVALID_TOKEN", "Invitation token is required.");
     }
+    const token = body.token.trim();
+    const db = getMockDatabase();
+    const invitedProfiles = db.profiles.filter((p) => p.status === "invited");
+    const matchedProfile =
+      (token.startsWith("invite:")
+        ? db.profiles.find((p) => p.id === token.slice("invite:".length))
+        : undefined) ??
+      invitedProfiles.find((p) => token.includes(p.id)) ??
+      db.profiles.find(
+        (p) => p.id === MOCK_PERSONAS.student_secondary.profileId,
+      ) ??
+      invitedProfiles[0];
+
+    if (matchedProfile) {
+      db.profiles = db.profiles.map((p) =>
+        p.id === matchedProfile.id
+          ? { ...p, invitation_status: "declined" }
+          : p,
+      );
+    }
+
     const response: ApiSchema<"DeclineInviteResponse"> = {
       success: true,
       message: "Invitation declined.",
@@ -740,6 +1067,17 @@ export const saaisMswHandlers = [
           403,
           "INSUFFICIENT_PRIVILEGE",
           "Cannot provision accounts outside your assigned department.",
+        );
+      }
+      if (
+        "department_id" in body &&
+        body.department_id === null &&
+        !persona.departmentId
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "A department invitation requires an assigned department.",
         );
       }
       const program =
@@ -819,6 +1157,18 @@ export const saaisMswHandlers = [
     }
 
     const newProfileId = nextSyntheticUuid();
+    const assignedFacultyId =
+      "faculty_id" in body
+        ? (body.faculty_id ?? null)
+        : (persona.facultyId ?? MOCK_IDS.facultyComputing);
+    const assignedDepartmentId =
+      !persona.roles.includes("admin") &&
+      "department_id" in body &&
+      body.department_id === null
+        ? (persona.departmentId ?? null)
+        : "department_id" in body
+          ? (body.department_id ?? null)
+          : (persona.departmentId ?? MOCK_IDS.deptDcst);
     db.profiles.push({
       id: newProfileId,
       role: body.role,
@@ -840,11 +1190,22 @@ export const saaisMswHandlers = [
       invitation_expires_at: "2026-11-17T08:00:00Z",
       created_at: "2026-11-10T08:00:00Z",
       updated_at: "2026-11-10T08:00:00Z",
-      faculty_id: persona.facultyId ?? MOCK_IDS.facultyComputing,
-      department_id: persona.departmentId ?? MOCK_IDS.deptDcst,
+      faculty_id: assignedFacultyId,
+      department_id: assignedDepartmentId,
       avatar_url: null,
       consultation_hours: null,
     });
+
+    db.roleAssignments.push(
+      ...(body.role_assignments ?? []).map((assignment) => ({
+        id: nextSyntheticUuid(),
+        profile_id: newProfileId,
+        role: assignment.role,
+        faculty_id: assignment.faculty_id ?? null,
+        department_id: assignment.department_id ?? null,
+        created_at: "2026-11-10T08:00:00Z",
+      })),
+    );
 
     if (body.role === "student") {
       const adviser = db.profiles.find((p) => p.id === body.adviser_id)!;
@@ -1285,10 +1646,14 @@ export const saaisMswHandlers = [
       "adviser",
     ]);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().systemSettings,
-      new URL(request.url),
-    );
+    const visibleSettings = auth.persona.roles.includes("admin")
+      ? getMockDatabase().systemSettings.filter(
+          (setting) => setting.department_id === null,
+        )
+      : getMockDatabase().systemSettings.filter(
+          (setting) => setting.department_id === auth.persona.departmentId,
+        );
+    return applyPostgrestQuery(visibleSettings, new URL(request.url));
   }),
 
   http.get("*/rest/v1/audit_log", ({ request }) => {
@@ -1318,10 +1683,18 @@ export const saaisMswHandlers = [
       ? db.auditLogEntries
       : db.auditLogEntries.filter(
           (entry) =>
-            entry.student_id &&
-            canAccessStudentRecord(auth.persona, entry.student_id, true),
+            entry.actor_id === auth.persona.profileId ||
+            (entry.student_id &&
+              canAccessStudentRecord(auth.persona, entry.student_id, true)),
         );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(
+      [...rows].sort(
+        (left, right) =>
+          right.created_at.localeCompare(left.created_at) ||
+          right.id.localeCompare(left.id),
+      ),
+      new URL(request.url),
+    );
   }),
 
   // ===========================================================================
@@ -1333,10 +1706,85 @@ export const saaisMswHandlers = [
       "dean",
       "department_head",
       "department_staff",
-      "adviser",
     ]);
     if ("response" in auth) return auth.response;
     const db = getMockDatabase();
+    const params = new URL(request.url).searchParams;
+    const requestedDepartmentId = params.get("department_id");
+    const requestedFacultyId = params.get("faculty_id");
+    if (
+      requestedDepartmentId &&
+      !canAccessDepartment(auth.persona, requestedDepartmentId)
+    ) {
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "Cannot view accounts outside your authorized organization scope.",
+      );
+    }
+    if (
+      requestedFacultyId &&
+      !canAccessFaculty(auth.persona, requestedFacultyId)
+    ) {
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "Cannot view accounts outside your authorized organization scope.",
+      );
+    }
+    const requiresDepartmentScope =
+      auth.persona.roles.includes("department_staff") ||
+      auth.persona.roles.includes("department_head");
+    const departmentId =
+      requestedDepartmentId ??
+      (requiresDepartmentScope ? auth.persona.departmentId : null);
+    const requiresFacultyScope =
+      auth.persona.roles.includes("dean") &&
+      !auth.persona.roles.includes("admin") &&
+      !requiresDepartmentScope;
+    const facultyId =
+      requestedFacultyId ??
+      (requiresFacultyScope ? auth.persona.facultyId : null);
+    if (requiresDepartmentScope && !departmentId) {
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "An assigned department scope is required to view accounts.",
+      );
+    }
+    if (requiresFacultyScope && !facultyId) {
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "An assigned faculty scope is required to view accounts.",
+      );
+    }
+
+    const rawLimit = params.get("limit");
+    const rawOffset = params.get("offset");
+    const limit =
+      rawLimit === null ? 20 : /^\d+$/.test(rawLimit) ? Number(rawLimit) : NaN;
+    const offset =
+      rawOffset === null
+        ? 0
+        : /^\d+$/.test(rawOffset)
+          ? Number(rawOffset)
+          : NaN;
+    if (
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 1000 ||
+      !Number.isSafeInteger(offset) ||
+      offset < 0 ||
+      offset > 100_000
+    ) {
+      return errorJson(
+        400,
+        "INVALID_INPUT",
+        "Account pagination parameters are outside the supported range.",
+      );
+    }
+
     const summaries: ApiSchema<"AccountSummary">[] = db.profiles.map(
       (profile) => ({
         profile,
@@ -1348,7 +1796,70 @@ export const saaisMswHandlers = [
           null,
       }),
     );
-    return HttpResponse.json(summaries, { status: 200 });
+    const search = params.get("search")?.trim().toLowerCase() ?? "";
+    const requestedRole = params.get("role");
+    const filtered = summaries.filter((summary) => {
+      const {
+        profile,
+        role_assignments: assignments,
+        student_organization,
+      } = summary;
+      const roles = new Set([
+        profile.role,
+        ...(profile.roles ?? []),
+        ...assignments.map((assignment) => assignment.role),
+      ]);
+      if (
+        requestedRole &&
+        !Array.from(roles).some(
+          (assignedRole) => assignedRole === requestedRole,
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        search &&
+        ![profile.full_name, profile.email, profile.student_number ?? ""].some(
+          (value) => value.toLowerCase().includes(search),
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        departmentId &&
+        student_organization?.department_id !== departmentId &&
+        profile.department_id !== departmentId &&
+        !assignments.some(
+          (assignment) => assignment.department_id === departmentId,
+        )
+      ) {
+        return false;
+      }
+      if (facultyId) {
+        const assignedDepartmentIds = [
+          profile.department_id,
+          ...assignments.map((assignment) => assignment.department_id),
+          student_organization?.department_id,
+        ].filter((id): id is string => Boolean(id));
+        const assignedFacultyIds = [
+          profile.faculty_id,
+          ...assignments.map((assignment) => assignment.faculty_id),
+          student_organization?.faculty_id,
+          ...db.departments
+            .filter((department) =>
+              assignedDepartmentIds.includes(department.id),
+            )
+            .map((department) => department.faculty_id),
+        ].filter((id): id is string => Boolean(id));
+        if (!assignedFacultyIds.includes(facultyId)) return false;
+      }
+      return true;
+    });
+    return HttpResponse.json(filtered.slice(offset, offset + limit), {
+      status: 200,
+    });
   }),
 
   http.patch(
@@ -1362,19 +1873,103 @@ export const saaisMswHandlers = [
       if (!profile) {
         return errorJson(404, "NOT_FOUND", "Profile not found.");
       }
-      const body = (await request
-        .json()
-        .catch(() => ({}))) as ApiSchema<"AdminProfileUpdate">;
+      let parsedBody: unknown;
+      try {
+        parsedBody = await request.json();
+      } catch {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Expected a JSON account update.",
+        );
+      }
+      if (
+        !parsedBody ||
+        typeof parsedBody !== "object" ||
+        Array.isArray(parsedBody)
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Expected a JSON account update.",
+        );
+      }
+      const body = parsedBody as ApiSchema<"AdminProfileUpdate">;
+      if (
+        Object.prototype.hasOwnProperty.call(parsedBody, "role_assignments") &&
+        !isRoleAssignmentList(
+          (parsedBody as Record<string, unknown>).role_assignments,
+        )
+      ) {
+        return errorJson(400, "INVALID_INPUT", "Role assignments are invalid.");
+      }
+      const requestedAssignments = body.role_assignments;
+      if (
+        profile.role !== "student" &&
+        ((body.role ?? profile.role) === "student" ||
+          requestedAssignments?.some(
+            (assignment) => assignment.role === "student",
+          ))
+      ) {
+        return errorJson(
+          409,
+          "CONFLICT",
+          "An existing account cannot be converted to a student account.",
+        );
+      }
+      const existingRoleAssignments = db.roleAssignments.filter(
+        (assignment) => assignment.profile_id === profileId,
+      );
+      const replacementAssignments = requestedAssignments?.map(
+        (assignment) => ({
+          id: nextSyntheticUuid(),
+          profile_id: profileId,
+          role: assignment.role,
+          faculty_id: assignment.faculty_id ?? null,
+          department_id: assignment.department_id ?? null,
+          created_at: "2026-11-10T09:00:00Z",
+        }),
+      );
       const updated: ApiSchema<"Profile"> = {
         ...profile,
         ...(body.full_name !== undefined ? { full_name: body.full_name } : {}),
         ...(body.role !== undefined ? { role: body.role } : {}),
+        ...(body.role !== undefined || body.role_assignments !== undefined
+          ? {
+              roles: [
+                ...new Set([
+                  body.role ?? profile.role,
+                  ...(requestedAssignments ?? existingRoleAssignments).map(
+                    (assignment) => assignment.role,
+                  ),
+                ]),
+              ],
+            }
+          : {}),
         ...(body.status !== undefined ? { status: body.status } : {}),
+        ...(body.faculty_id !== undefined
+          ? { faculty_id: body.faculty_id }
+          : {}),
+        ...(body.department_id !== undefined
+          ? { department_id: body.department_id }
+          : {}),
+        ...(body.student_number !== undefined
+          ? { student_number: body.student_number }
+          : {}),
+        ...(body.avatar_url !== undefined
+          ? { avatar_url: body.avatar_url }
+          : {}),
         ...(body.consultation_hours !== undefined
           ? { consultation_hours: body.consultation_hours }
           : {}),
         updated_at: "2026-11-10T09:00:00Z",
       };
+      if (replacementAssignments) {
+        db.roleAssignments = db.roleAssignments.filter(
+          (assignment) => assignment.profile_id !== profileId,
+        );
+        db.roleAssignments.push(...replacementAssignments);
+      }
       const idx = db.profiles.findIndex((p) => p.id === profileId);
       db.profiles[idx] = updated;
       return HttpResponse.json(updated, { status: 200 });
@@ -1403,13 +1998,33 @@ export const saaisMswHandlers = [
           "Cannot manage this invitation.",
         );
       }
+      if (
+        profile.status !== "invited" ||
+        !resendableInvitationStates.has(profile.invitation_status ?? "")
+      ) {
+        return errorJson(
+          409,
+          "INVITATION_NOT_RESENDABLE",
+          "This invitation is no longer eligible to resend. Refresh account status.",
+        );
+      }
+      const resentAt = "2026-11-17T09:00:00Z";
+      const expiresAt = "2026-11-24T09:00:00Z";
+      const index = db.profiles.findIndex((item) => item.id === profileId);
+      db.profiles[index] = {
+        ...profile,
+        invitation_status: "pending",
+        invitation_sent_at: resentAt,
+        invitation_expires_at: expiresAt,
+        updated_at: resentAt,
+      };
       const res: ApiSchema<"ResendInviteResponse"> = {
         success: true,
         message: "Invitation regenerated and dispatched.",
         profile_id: profileId,
         invitation_status: "pending",
-        invitation_sent_at: "2026-11-10T09:00:00Z",
-        invitation_expires_at: "2026-11-17T09:00:00Z",
+        invitation_sent_at: resentAt,
+        invitation_expires_at: expiresAt,
       };
       return HttpResponse.json(res, { status: 200 });
     },
@@ -1437,10 +2052,20 @@ export const saaisMswHandlers = [
           "Cannot manage this invitation.",
         );
       }
+      if (
+        profile.status !== "invited" ||
+        profile.invitation_status !== "pending"
+      ) {
+        return errorJson(
+          409,
+          "INVITATION_NOT_REVOCABLE",
+          "This invitation is no longer pending. Refresh account status.",
+        );
+      }
       const updated: ApiSchema<"Profile"> = {
         ...profile,
-        status: "disabled",
         invitation_status: "revoked",
+        updated_at: "2026-11-17T09:30:00Z",
       };
       const idx = db.profiles.findIndex((p) => p.id === profileId);
       db.profiles[idx] = updated;
@@ -1774,14 +2399,82 @@ export const saaisMswHandlers = [
       const idx = db.curriculumVersions.findIndex((c) => c.id === id);
       if (idx === -1)
         return errorJson(404, "NOT_FOUND", "Curriculum version not found.");
-      if ((db.curriculumVersions[idx]?.enrolled_student_count ?? 0) > 0) {
+      const version = db.curriculumVersions[idx]!;
+      const program = db.programs.find((row) => row.id === version.program_id);
+      if (!program)
+        return errorJson(404, "NOT_FOUND", "Curriculum program not found.");
+      if (!canAccessDepartment(auth.persona, program.department_id))
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "The curriculum is outside your authorized department.",
+        );
+      const referenced =
+        (version.enrolled_student_count ?? 0) > 0 ||
+        db.studentCurriculumAssignments.some(
+          (row) => row.curriculum_version_id === version.id,
+        ) ||
+        db.studentOrganizations.some(
+          (row) => row.curriculum_version_id === version.id,
+        ) ||
+        db.curriculumTransferRequests.some(
+          (row) =>
+            row.from_curriculum_version_id === version.id ||
+            row.to_curriculum_version_id === version.id,
+        ) ||
+        db.curriculumPairEquivalences.some(
+          (row) =>
+            row.from_curriculum_version_id === version.id ||
+            row.to_curriculum_version_id === version.id,
+        );
+      const termIds = new Set(
+        db.curriculumTerms
+          .filter((row) => row.curriculum_version_id === id)
+          .map((row) => row.id),
+      );
+      const slotIds = new Set(
+        db.curriculumTermCourses
+          .filter((row) => termIds.has(row.curriculum_term_id))
+          .map((row) => row.id),
+      );
+      const hasHistory =
+        [
+          ...db.attempts,
+          ...db.attemptResults,
+          ...db.advisingPlanItems,
+          ...db.electiveMappings,
+        ].some(
+          (row) =>
+            row.curriculum_term_course_id != null &&
+            slotIds.has(row.curriculum_term_course_id),
+        ) ||
+        db.outsideCredits.some((row) =>
+          slotIds.has(row.destination_curriculum_term_course_id),
+        ) ||
+        db.equivalencyDecisions.some((row) =>
+          slotIds.has(row.destination_curriculum_term_course_id),
+        );
+      if (referenced || hasHistory)
         return errorJson(
           409,
           "DEPENDENT_RECORDS_EXIST",
-          "Cannot delete a curriculum version with enrolled students.",
+          "Retire this curriculum to preserve student assignments, transfers, equivalence rules, or academic history.",
         );
-      }
+      // The existing catalog workflow deletes an unreferenced structure together; never leave orphan children.
+      db.curriculumTermCourses = db.curriculumTermCourses.filter(
+        (row) => !slotIds.has(row.id),
+      );
+      db.curriculumTerms = db.curriculumTerms.filter(
+        (row) => !termIds.has(row.id),
+      );
       db.curriculumVersions.splice(idx, 1);
+      recordMockAudit(auth.persona, {
+        action: "curriculum_version_deleted",
+        entityType: "curriculum_version",
+        entityId: id,
+        label: version.version_label,
+        details: "Deleted an unreferenced curriculum structure.",
+      });
       return new HttpResponse(null, { status: 204 });
     },
   ),
@@ -1853,7 +2546,89 @@ export const saaisMswHandlers = [
       const idx = db.curriculumTerms.findIndex((t) => t.id === id);
       if (idx === -1)
         return errorJson(404, "NOT_FOUND", "Curriculum term not found.");
+      const term = db.curriculumTerms[idx]!;
+      const version = db.curriculumVersions.find(
+        (row) => row.id === term.curriculum_version_id,
+      );
+      const program = db.programs.find((row) => row.id === version?.program_id);
+      if (!version || !program)
+        return errorJson(404, "NOT_FOUND", "Curriculum parent not found.");
+      if (!canAccessDepartment(auth.persona, program.department_id))
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "The curriculum is outside your authorized department.",
+        );
+      const referenced =
+        (version.enrolled_student_count ?? 0) > 0 ||
+        db.studentCurriculumAssignments.some(
+          (row) => row.curriculum_version_id === version.id,
+        ) ||
+        db.studentOrganizations.some(
+          (row) => row.curriculum_version_id === version.id,
+        ) ||
+        db.curriculumTransferRequests.some(
+          (row) =>
+            row.from_curriculum_version_id === version.id ||
+            row.to_curriculum_version_id === version.id,
+        ) ||
+        db.curriculumPairEquivalences.some(
+          (row) =>
+            row.from_curriculum_version_id === version.id ||
+            row.to_curriculum_version_id === version.id,
+        );
+      if (
+        referenced &&
+        db.curriculumTerms.filter(
+          (row) => row.curriculum_version_id === version.id,
+        ).length <= 1
+      ) {
+        return errorJson(
+          409,
+          "DEPENDENT_RECORDS_EXIST",
+          "A referenced curriculum must retain at least one term.",
+        );
+      }
+      const slotIds = new Set(
+        db.curriculumTermCourses
+          .filter((row) => row.curriculum_term_id === id)
+          .map((row) => row.id),
+      );
+      const hasHistory =
+        [
+          ...db.attempts,
+          ...db.attemptResults,
+          ...db.advisingPlanItems,
+          ...db.electiveMappings,
+        ].some(
+          (row) =>
+            row.curriculum_term_course_id != null &&
+            slotIds.has(row.curriculum_term_course_id),
+        ) ||
+        db.outsideCredits.some((row) =>
+          slotIds.has(row.destination_curriculum_term_course_id),
+        ) ||
+        db.equivalencyDecisions.some((row) =>
+          slotIds.has(row.destination_curriculum_term_course_id),
+        );
+      if (hasHistory)
+        return errorJson(
+          409,
+          "DEPENDENT_RECORDS_EXIST",
+          "This term contains slots used by academic history.",
+        );
+      db.curriculumTermCourses = db.curriculumTermCourses.filter(
+        (row) => !slotIds.has(row.id),
+      );
       db.curriculumTerms.splice(idx, 1);
+      recordMockAudit(auth.persona, {
+        action: "curriculum_term_deleted",
+        entityType: "curriculum_term",
+        entityId: id,
+        label: version.version_label,
+        details:
+          "Deleted an unreferenced curriculum term and its unreferenced slots.",
+      });
       return new HttpResponse(null, { status: 204 });
     },
   ),
@@ -1877,6 +2652,40 @@ export const saaisMswHandlers = [
           "curriculum_term_id is required.",
         );
       }
+      const db = getMockDatabase();
+      const term = db.curriculumTerms.find(
+        (item) => item.id === body.curriculum_term_id,
+      );
+      const version = db.curriculumVersions.find(
+        (item) => item.id === term?.curriculum_version_id,
+      );
+      const program = db.programs.find(
+        (item) => item.id === version?.program_id,
+      );
+      if (!term || !version || !program) {
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "The target curriculum term was not found.",
+        );
+      }
+      if (!canAccessDepartment(auth.persona, program.department_id)) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "The target curriculum is outside the authorized department.",
+        );
+      }
+      if (
+        body.course_id &&
+        !db.courses.some((course) => course.id === body.course_id)
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "The selected catalog course was not found.",
+        );
+      }
       const created: ApiSchema<"CurriculumTermCourse"> = {
         id: nextSyntheticUuid(),
         curriculum_term_id: body.curriculum_term_id,
@@ -1886,7 +2695,7 @@ export const saaisMswHandlers = [
         slot_label: body.slot_label ?? null,
         nominal_units: body.nominal_units,
       };
-      getMockDatabase().curriculumTermCourses.push(created);
+      db.curriculumTermCourses.push(created);
       return HttpResponse.json(created, { status: 201 });
     },
   ),
@@ -1905,6 +2714,29 @@ export const saaisMswHandlers = [
       const idx = db.curriculumTermCourses.findIndex((c) => c.id === id);
       if (idx === -1)
         return errorJson(404, "NOT_FOUND", "Curriculum slot not found.");
+      const existing = db.curriculumTermCourses[idx]!;
+      const term = db.curriculumTerms.find(
+        (item) => item.id === existing.curriculum_term_id,
+      );
+      const version = db.curriculumVersions.find(
+        (item) => item.id === term?.curriculum_version_id,
+      );
+      const program = db.programs.find(
+        (item) => item.id === version?.program_id,
+      );
+      if (!program)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "The target curriculum was not found.",
+        );
+      if (!canAccessDepartment(auth.persona, program.department_id)) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "The target curriculum is outside the authorized department.",
+        );
+      }
       const body = (await request
         .json()
         .catch(() => ({}))) as ApiSchema<"CurriculumTermCourseUpdate">;
@@ -1931,7 +2763,92 @@ export const saaisMswHandlers = [
       const idx = db.curriculumTermCourses.findIndex((c) => c.id === id);
       if (idx === -1)
         return errorJson(404, "NOT_FOUND", "Curriculum slot not found.");
+      const term = db.curriculumTerms.find(
+        (item) => item.id === db.curriculumTermCourses[idx]?.curriculum_term_id,
+      );
+      const version = db.curriculumVersions.find(
+        (item) => item.id === term?.curriculum_version_id,
+      );
+      const program = db.programs.find(
+        (item) => item.id === version?.program_id,
+      );
+      if (!program)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "The target curriculum was not found.",
+        );
+      if (!canAccessDepartment(auth.persona, program.department_id)) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "The target curriculum is outside the authorized department.",
+        );
+      }
+      if (!version || !term)
+        return errorJson(404, "NOT_FOUND", "Curriculum parent not found.");
+      const slotIds = new Set([id]);
+      const hasHistory =
+        [
+          ...db.attempts,
+          ...db.attemptResults,
+          ...db.advisingPlanItems,
+          ...db.electiveMappings,
+        ].some(
+          (row) =>
+            row.curriculum_term_course_id != null &&
+            slotIds.has(row.curriculum_term_course_id),
+        ) ||
+        db.outsideCredits.some((row) =>
+          slotIds.has(row.destination_curriculum_term_course_id),
+        ) ||
+        db.equivalencyDecisions.some((row) =>
+          slotIds.has(row.destination_curriculum_term_course_id),
+        );
+      if (hasHistory)
+        return errorJson(
+          409,
+          "DEPENDENT_RECORDS_EXIST",
+          "This slot is used by academic history.",
+        );
+      const referenced =
+        (version.enrolled_student_count ?? 0) > 0 ||
+        db.studentCurriculumAssignments.some(
+          (row) => row.curriculum_version_id === version.id,
+        ) ||
+        db.studentOrganizations.some(
+          (row) => row.curriculum_version_id === version.id,
+        ) ||
+        db.curriculumTransferRequests.some(
+          (row) =>
+            row.from_curriculum_version_id === version.id ||
+            row.to_curriculum_version_id === version.id,
+        ) ||
+        db.curriculumPairEquivalences.some(
+          (row) =>
+            row.from_curriculum_version_id === version.id ||
+            row.to_curriculum_version_id === version.id,
+        );
+      if (
+        referenced &&
+        db.curriculumTermCourses.filter(
+          (row) => row.curriculum_term_id === term.id,
+        ).length <= 1
+      ) {
+        return errorJson(
+          409,
+          "DEPENDENT_RECORDS_EXIST",
+          "Each term in a referenced curriculum must retain at least one slot.",
+        );
+      }
       db.curriculumTermCourses.splice(idx, 1);
+      recordMockAudit(auth.persona, {
+        action: "curriculum_slot_deleted",
+        entityType: "curriculum_term_course",
+        entityId: id,
+        label: version.version_label,
+        details: "Deleted an unreferenced curriculum slot.",
+      });
       return new HttpResponse(null, { status: 204 });
     },
   ),
@@ -1953,6 +2870,36 @@ export const saaisMswHandlers = [
         "code, title, and department_id are required.",
       );
     }
+    const db = getMockDatabase();
+    if (
+      !db.departments.some((department) => department.id === body.department_id)
+    ) {
+      return errorJson(
+        400,
+        "INVALID_INPUT",
+        "The requested department was not found.",
+      );
+    }
+    if (!canAccessDepartment(auth.persona, body.department_id)) {
+      return errorJson(
+        403,
+        "FORBIDDEN",
+        "Cannot create a course outside the authorized department.",
+      );
+    }
+    if (
+      db.courses.some(
+        (course) =>
+          course.department_id === body.department_id &&
+          course.code.trim().toLowerCase() === body.code.trim().toLowerCase(),
+      )
+    ) {
+      return errorJson(
+        409,
+        "DUPLICATE_COURSE_CODE",
+        "A course with this code already exists in the department.",
+      );
+    }
     const created: ApiSchema<"Course"> = {
       id: nextSyntheticUuid(),
       department_id: body.department_id,
@@ -1964,7 +2911,7 @@ export const saaisMswHandlers = [
       status: body.status ?? "active",
       repeatable_type: body.repeatable_type ?? "none",
     };
-    getMockDatabase().courses.push(created);
+    db.courses.push(created);
     return HttpResponse.json(created, { status: 201 });
   }),
 
@@ -1981,9 +2928,26 @@ export const saaisMswHandlers = [
       const db = getMockDatabase();
       const idx = db.courses.findIndex((c) => c.id === id);
       if (idx === -1) return errorJson(404, "NOT_FOUND", "Course not found.");
+      if (!canAccessDepartment(auth.persona, db.courses[idx]!.department_id)) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "Course is outside the authorized department.",
+        );
+      }
       const body = (await request
         .json()
         .catch(() => ({}))) as ApiSchema<"CourseUpdate">;
+      if (
+        body.status === "discontinued" &&
+        db.courses[idx]!.status !== "active"
+      ) {
+        return errorJson(
+          409,
+          "STALE_RECORD",
+          "Only an active course can be discontinued.",
+        );
+      }
       const updated: ApiSchema<"Course"> = { ...db.courses[idx]!, ...body };
       db.courses[idx] = updated;
       return HttpResponse.json(updated, { status: 200 });
@@ -2001,11 +2965,38 @@ export const saaisMswHandlers = [
     const db = getMockDatabase();
     const idx = db.courses.findIndex((c) => c.id === id);
     if (idx === -1) return errorJson(404, "NOT_FOUND", "Course not found.");
-    if (db.curriculumTermCourses.some((s) => s.course_id === id)) {
+    const course = db.courses[idx]!;
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(
+        403,
+        "FORBIDDEN",
+        "Course is outside the authorized department.",
+      );
+    }
+    const offeringIds = new Set(
+      db.courseOfferings
+        .filter((offering) => offering.course_id === id)
+        .map((offering) => offering.id),
+    );
+    const hasProtectedReferences =
+      db.curriculumTermCourses.some((slot) => slot.course_id === id) ||
+      db.courseOfferings.some((offering) => offering.course_id === id) ||
+      db.prerequisites.some(
+        (prerequisite) =>
+          prerequisite.course_id === id ||
+          prerequisite.prerequisite_course_id === id,
+      ) ||
+      db.attempts.some((attempt) =>
+        offeringIds.has(attempt.course_offering_id),
+      ) ||
+      db.attemptResults.some((attempt) =>
+        offeringIds.has(attempt.course_offering_id),
+      );
+    if (hasProtectedReferences) {
       return errorJson(
         409,
         "DEPENDENT_RECORDS_EXIST",
-        "Cannot delete a course referenced by a curriculum slot.",
+        "Cannot delete a course referenced by curriculum, offerings, prerequisites, or attempts. Discontinue it instead.",
       );
     }
     db.courses.splice(idx, 1);
@@ -2061,25 +3052,89 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/catalog/curriculum-pair-equivalences",
     async ({ request }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "department_head",
-        "department_staff",
-      ]);
+      const auth = authenticateRequest(request, ["admin", "department_head"]);
       if ("response" in auth) return auth.response;
       const body = (await request
         .json()
         .catch(
           () => null,
         )) as ApiSchema<"CurriculumPairEquivalenceInsert"> | null;
+      const fields = [
+        "from_curriculum_version_id",
+        "to_curriculum_version_id",
+        "source_course_id",
+        "target_course_id",
+        "note",
+      ];
+      const uuid = (value: unknown) =>
+        typeof value === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          value,
+        );
       if (
-        !body?.from_curriculum_version_id ||
-        !body?.to_curriculum_version_id
+        !body ||
+        Object.keys(body).some((key) => !fields.includes(key)) ||
+        ![
+          body.from_curriculum_version_id,
+          body.to_curriculum_version_id,
+          body.source_course_id,
+          body.target_course_id,
+        ].every(uuid) ||
+        (body.note != null &&
+          (typeof body.note !== "string" || body.note.length > 1000))
       ) {
         return errorJson(
           400,
           "INVALID_INPUT",
-          "Source and target curriculum versions are required.",
+          "Choose valid curriculum and course IDs and use at most 1,000 characters for the note.",
+        );
+      }
+      const db = getMockDatabase();
+      const versions = [
+        body.from_curriculum_version_id,
+        body.to_curriculum_version_id,
+      ].map((id) => db.curriculumVersions.find((row) => row.id === id));
+      if (
+        versions.some((row) => !row) ||
+        !db.courses.some((row) => row.id === body.source_course_id) ||
+        !db.courses.some((row) => row.id === body.target_course_id)
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "The selected curriculum or course no longer exists.",
+        );
+      }
+      if (
+        versions.some(
+          (version) =>
+            !db.programs.some(
+              (program) =>
+                program.id === version?.program_id &&
+                canAccessDepartment(auth.persona, program.department_id),
+            ),
+        )
+      ) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "The curriculum pair is outside your authorized department.",
+        );
+      }
+      if (
+        db.curriculumPairEquivalences.some(
+          (row) =>
+            row.from_curriculum_version_id ===
+              body.from_curriculum_version_id &&
+            row.to_curriculum_version_id === body.to_curriculum_version_id &&
+            (row.source_course_id === body.source_course_id ||
+              row.target_course_id === body.target_course_id),
+        )
+      ) {
+        return errorJson(
+          409,
+          "EQUIVALENCE_CONFLICT",
+          "A selected course is already mapped in this curriculum pair.",
         );
       }
       const created: ApiSchema<"CurriculumPairEquivalence"> = {
@@ -2093,6 +3148,13 @@ export const saaisMswHandlers = [
         created_at: "2026-11-10T09:00:00Z",
       };
       getMockDatabase().curriculumPairEquivalences.push(created);
+      recordMockAudit(auth.persona, {
+        action: "curriculum_pair_equivalence_created",
+        entityType: "curriculum_pair_equivalence",
+        entityId: created.id,
+        label: "Course equivalence",
+        details: "Created a curriculum-pair course equivalence.",
+      });
       return HttpResponse.json(created, { status: 201 });
     },
   ),
@@ -2100,18 +3162,46 @@ export const saaisMswHandlers = [
   http.delete(
     "*/functions/v1/catalog/curriculum-pair-equivalences/:id",
     ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "department_head",
-        "department_staff",
-      ]);
+      const auth = authenticateRequest(request, ["admin", "department_head"]);
       if ("response" in auth) return auth.response;
       const id = String(params.id);
       const db = getMockDatabase();
       const idx = db.curriculumPairEquivalences.findIndex((e) => e.id === id);
       if (idx === -1)
         return errorJson(404, "NOT_FOUND", "Equivalence rule not found.");
+      const rule = db.curriculumPairEquivalences[idx]!;
+      const versionIds = [
+        rule.from_curriculum_version_id,
+        rule.to_curriculum_version_id,
+      ];
+      if (
+        versionIds.some(
+          (versionId) =>
+            !db.curriculumVersions.some(
+              (version) =>
+                version.id === versionId &&
+                db.programs.some(
+                  (program) =>
+                    program.id === version.program_id &&
+                    canAccessDepartment(auth.persona, program.department_id),
+                ),
+            ),
+        )
+      ) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "The curriculum pair is outside your authorized department.",
+        );
+      }
       db.curriculumPairEquivalences.splice(idx, 1);
+      recordMockAudit(auth.persona, {
+        action: "curriculum_pair_equivalence_deleted",
+        entityType: "curriculum_pair_equivalence",
+        entityId: id,
+        label: "Course equivalence",
+        details: "Deleted a curriculum-pair course equivalence rule.",
+      });
       return new HttpResponse(null, { status: 204 });
     },
   ),
@@ -2204,16 +3294,40 @@ export const saaisMswHandlers = [
         "school_term_id and course_id are required.",
       );
     }
+    const db = getMockDatabase();
+    const course = db.courses.find((item) => item.id === body.course_id);
+    if (!course) return errorJson(404, "NOT_FOUND", "Course not found.");
+    if (!canAccessDepartment(auth.persona, course.department_id)) {
+      return errorJson(
+        403,
+        "FORBIDDEN",
+        "Course offering is outside the authorized department.",
+      );
+    }
+    if (!db.schoolTerms.some((term) => term.id === body.school_term_id)) {
+      return errorJson(404, "NOT_FOUND", "School term not found.");
+    }
+    if (
+      course.status === "discontinued" &&
+      (!body.is_by_request ||
+        !isRequiredCourseInDepartment(course.id, course.department_id))
+    ) {
+      return errorJson(
+        400,
+        "INVALID_INPUT",
+        "Discontinued courses may only be offered by request when required by a department curriculum.",
+      );
+    }
     const created: ApiSchema<"CourseOffering"> = {
       id: nextSyntheticUuid(),
       school_term_id: body.school_term_id,
       course_id: body.course_id,
-      section: body.section ?? "A",
-      schedule: body.schedule ?? "MWF 08:00-09:00",
+      section: body.section ?? null,
+      schedule: body.schedule ?? null,
       instructor: body.instructor ?? null,
       is_by_request: body.is_by_request ?? false,
     };
-    getMockDatabase().courseOfferings.push(created);
+    db.courseOfferings.push(created);
     return HttpResponse.json(created, { status: 201 });
   }),
 
@@ -2231,13 +3345,34 @@ export const saaisMswHandlers = [
       const idx = db.courseOfferings.findIndex((o) => o.id === id);
       if (idx === -1)
         return errorJson(404, "NOT_FOUND", "Course offering not found.");
+      const current = db.courseOfferings[idx]!;
+      const course = db.courses.find((item) => item.id === current.course_id);
+      if (!course) return errorJson(404, "NOT_FOUND", "Course not found.");
+      if (!canAccessDepartment(auth.persona, course.department_id)) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "Course offering is outside the authorized department.",
+        );
+      }
       const body = (await request
         .json()
         .catch(() => ({}))) as ApiSchema<"CourseOfferingUpdate">;
       const updated: ApiSchema<"CourseOffering"> = {
-        ...db.courseOfferings[idx]!,
+        ...current,
         ...body,
       };
+      if (
+        course.status === "discontinued" &&
+        (!updated.is_by_request ||
+          !isRequiredCourseInDepartment(course.id, course.department_id))
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Discontinued courses may only be offered by request when required by a department curriculum.",
+        );
+      }
       db.courseOfferings[idx] = updated;
       return HttpResponse.json(updated, { status: 200 });
     },
@@ -2257,6 +3392,24 @@ export const saaisMswHandlers = [
       const idx = db.courseOfferings.findIndex((o) => o.id === id);
       if (idx === -1)
         return errorJson(404, "NOT_FOUND", "Course offering not found.");
+      const course = db.courses.find(
+        (item) => item.id === db.courseOfferings[idx]?.course_id,
+      );
+      if (!course) return errorJson(404, "NOT_FOUND", "Course not found.");
+      if (!canAccessDepartment(auth.persona, course.department_id)) {
+        return errorJson(
+          403,
+          "FORBIDDEN",
+          "Course offering is outside the authorized department.",
+        );
+      }
+      if (courseOfferingHasHistory(id)) {
+        return errorJson(
+          409,
+          "CONFLICT",
+          "Academic history or dependent advising records protect this course offering.",
+        );
+      }
       db.courseOfferings.splice(idx, 1);
       return new HttpResponse(null, { status: 204 });
     },
@@ -2344,9 +3497,9 @@ export const saaisMswHandlers = [
               is_locked: true,
               closed_by: persona.profileId,
               closed_at: "2026-11-10T09:00:00Z",
+              closure_note: body.closure_note ?? null,
             }
           : {}),
-        closure_note: body.closure_note ?? null,
         department_closures: [closure],
       };
       db.schoolTerms[idx] = updated;
@@ -2437,6 +3590,22 @@ export const saaisMswHandlers = [
     if ("response" in auth) return auth.response;
     const url = new URL(request.url);
     const scope = url.searchParams.get("assignment_scope") ?? "all";
+    const departmentId = url.searchParams.get("department_id");
+    const facultyId = url.searchParams.get("faculty_id");
+    if (departmentId && !canAccessDepartment(auth.persona, departmentId)) {
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "Not authorized to view this department student roster.",
+      );
+    }
+    if (facultyId && !canAccessFaculty(auth.persona, facultyId)) {
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "Not authorized to view this faculty student roster.",
+      );
+    }
 
     const db = getMockDatabase();
     const items: ApiSchema<"StudentRosterItem">[] = [];
@@ -2468,8 +3637,16 @@ export const saaisMswHandlers = [
           canAccessDepartment(auth.persona, org.department_id)) ||
         (auth.persona.roles.includes("adviser") && !!ownAssignment);
       if (!visible) continue;
-      const { gwa, earnedUnits, openInc, lapsed, flags, failed, standing } =
-        studentMetrics(org.student_id, org.department_id);
+      const {
+        gwa,
+        earnedUnits,
+        openInc,
+        lapsed,
+        flags,
+        deficiencies,
+        standing,
+        isDelinquent,
+      } = studentMetrics(org.student_id, org.department_id);
       const adviser =
         activeAssignment &&
         db.profiles.find((p) => p.id === activeAssignment.adviser_id);
@@ -2502,9 +3679,8 @@ export const saaisMswHandlers = [
         earned_units: earnedUnits,
         required_units: curriculum.total_units,
         standing,
-        is_delinquent: false,
-        deficiencies_count:
-          failed.length + openInc.length + lapsed.length + flags.length,
+        is_delinquent: isDelinquent,
+        deficiencies_count: deficiencies.length,
         open_inc_count: openInc.length,
         lapsed_inc_count: lapsed.length,
         open_flags_count: flags.length,
@@ -2526,59 +3702,142 @@ export const saaisMswHandlers = [
       });
     }
     const search = url.searchParams.get("search")?.trim().toLowerCase();
-    const filtered = items.filter((item) => {
+    const programId = url.searchParams.get("program_id");
+    const curriculumVersionId = url.searchParams.get("curriculum_version_id");
+    const entryYear = url.searchParams.get("entry_year");
+    const yearLevel = url.searchParams.get("year_level");
+    const adviserId = url.searchParams.get("adviser_id");
+    const standing = url.searchParams.get("standing");
+    const hasDeficiencies = url.searchParams.get("has_deficiencies");
+    const hasOpenInc = url.searchParams.get("has_open_inc");
+    const hasOpenFlags = url.searchParams.get("has_open_flags");
+    const matchingItems = items.filter((item) => {
       const ownAssignments = db.adviserAssignments.filter(
         (a) =>
           a.student_id === item.student_id &&
           a.adviser_id === auth.persona.profileId,
       );
+      const isAdviser = auth.persona.roles.includes("adviser");
       if (
         (scope === "current" || scope === "my_active_advisees") &&
-        !ownAssignments.some((a) => a.end_date === null)
+        !(isAdviser
+          ? ownAssignments.some((a) => a.end_date === null)
+          : item.assignment_status === "active")
       )
         return false;
       if (
         (scope === "past" || scope === "my_handed_over_advisees") &&
-        (!ownAssignments.some((a) => a.end_date !== null) ||
-          ownAssignments.some((a) => a.end_date === null))
+        !(isAdviser
+          ? ownAssignments.some((a) => a.end_date !== null) &&
+            !ownAssignments.some((a) => a.end_date === null)
+          : item.assignment_status === "past")
       )
         return false;
       if (scope === "unassigned" && item.assignment_status !== "unassigned")
         return false;
       if (
+        url.searchParams.get("unassigned_only") === "true" &&
+        item.assignment_status !== "unassigned"
+      )
+        return false;
+      if (departmentId && item.department_id !== departmentId) return false;
+      if (facultyId && item.faculty_id !== facultyId) return false;
+      if (programId && item.program_id !== programId) return false;
+      if (
+        curriculumVersionId &&
+        item.curriculum_version_id !== curriculumVersionId
+      )
+        return false;
+      if (entryYear !== null && item.entry_year !== Number(entryYear))
+        return false;
+      if (yearLevel !== null && item.year_level !== Number(yearLevel))
+        return false;
+      if (adviserId && item.adviser_id !== adviserId) return false;
+      if (
         search &&
-        !`${item.full_name} ${item.student_number}`
+        !`${item.full_name} ${item.student_number} ${item.email ?? ""}`
           .toLowerCase()
           .includes(search)
       )
         return false;
-      const standing = url.searchParams.get("standing");
       if (standing && item.standing !== standing) return false;
+      if (
+        hasDeficiencies !== null &&
+        item.deficiencies_count > 0 !== (hasDeficiencies === "true")
+      )
+        return false;
+      if (
+        hasOpenInc !== null &&
+        item.open_inc_count > 0 !== (hasOpenInc === "true")
+      )
+        return false;
+      if (
+        hasOpenFlags !== null &&
+        item.open_flags_count > 0 !== (hasOpenFlags === "true")
+      )
+        return false;
       return true;
     });
+    const offsetValue = Number(url.searchParams.get("offset") ?? 0);
+    const limitValue = Number(url.searchParams.get("limit") ?? 20);
+    const offset =
+      Number.isSafeInteger(offsetValue) && offsetValue >= 0 ? offsetValue : 0;
+    const limit =
+      Number.isSafeInteger(limitValue) && limitValue > 0
+        ? Math.min(limitValue, 1000)
+        : 20;
+    const countStanding = (
+      standing: ApiSchema<"StudentRosterItem">["standing"],
+    ) => matchingItems.filter((item) => item.standing === standing).length;
 
+    const sortBy = url.searchParams.get("sort_by") ?? "full_name";
+    const sortDirection = url.searchParams.get("sort_dir") === "desc" ? -1 : 1;
+    const sorted = [...matchingItems].sort((left, right) => {
+      const comparison = (() => {
+        switch (sortBy) {
+          case "student_number":
+            return left.student_number.localeCompare(right.student_number);
+          case "year_level":
+            return left.year_level - right.year_level;
+          case "gwa":
+            return (
+              (left.gwa ?? Number.POSITIVE_INFINITY) -
+              (right.gwa ?? Number.POSITIVE_INFINITY)
+            );
+          case "units_earned":
+            return left.earned_units - right.earned_units;
+          case "standing":
+            return left.standing.localeCompare(right.standing);
+          case "last_activity_at":
+            return (left.last_activity_at ?? "").localeCompare(
+              right.last_activity_at ?? "",
+            );
+          default:
+            return left.full_name.localeCompare(right.full_name);
+        }
+      })();
+      return comparison * sortDirection;
+    });
     const response: ApiSchema<"StudentRosterResponse"> = {
-      total_count: filtered.length,
-      unassigned_count: filtered.filter(
+      total_count: matchingItems.length,
+      unassigned_count: matchingItems.filter(
         (i) => i.assignment_status === "unassigned",
       ).length,
-      with_deficiencies_count: filtered.filter((i) => i.deficiencies_count > 0)
-        .length,
-      flagged_count: filtered.filter((i) => i.open_flags_count > 0).length,
-      open_inc_students_count: filtered.filter((i) => i.open_inc_count > 0)
+      with_deficiencies_count: matchingItems.filter(
+        (i) => i.deficiencies_count > 0,
+      ).length,
+      flagged_count: matchingItems.filter(
+        (i) => i.open_flags_count > 0 || i.is_delinquent,
+      ).length,
+      open_inc_students_count: matchingItems.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
-        good_standing: filtered.filter((i) => i.standing === "good_standing")
-          .length,
-        warning: filtered.filter((i) => i.standing === "warning").length,
-        probation: filtered.filter((i) => i.standing === "probation").length,
-        dismissed: filtered.filter((i) => i.standing === "dismissed").length,
+        good_standing: countStanding("good_standing"),
+        warning: countStanding("warning"),
+        probation: countStanding("probation"),
+        dismissed: countStanding("dismissed"),
       },
-      items: filtered.slice(
-        Number(url.searchParams.get("offset") ?? 0),
-        Number(url.searchParams.get("offset") ?? 0) +
-          Math.min(100, Number(url.searchParams.get("limit") ?? 100)),
-      ),
+      items: sorted.slice(offset, offset + limit),
     };
     return HttpResponse.json(response, { status: 200 });
   }),
@@ -2597,17 +3856,15 @@ export const saaisMswHandlers = [
         );
       }
       const db = getMockDatabase();
-      if (
-        !db.studentOrganizations.some((item) => item.student_id === studentId)
-      )
+      const organization = db.studentOrganizations.find(
+        (item) => item.student_id === studentId,
+      );
+      if (!organization)
         return errorJson(
           404,
           "NOT_FOUND",
           "Student academic record not found.",
         );
-      const organization = db.studentOrganizations.find(
-        (item) => item.student_id === studentId,
-      )!;
       const curriculum = db.curriculumVersions.find(
         (item) => item.id === organization.curriculum_version_id,
       )!;
@@ -2622,13 +3879,21 @@ export const saaisMswHandlers = [
         termIds.includes(slot.curriculum_term_id),
       );
       const passedSlots = new Set(
-        metrics.results
-          .filter(
-            (item) =>
-              item.effective_status === "passed" &&
-              item.curriculum_term_course_id,
+        slots
+          .filter((slot) =>
+            metrics.results.some(
+              (item) =>
+                item.effective_status === "passed" &&
+                (item.curriculum_term_course_id === slot.id ||
+                  (slot.course_id != null &&
+                    db.courseOfferings.some(
+                      (offering) =>
+                        offering.id === item.course_offering_id &&
+                        offering.course_id === slot.course_id,
+                    ))),
+            ),
           )
-          .map((item) => item.curriculum_term_course_id),
+          .map((slot) => slot.id),
       );
       for (const credit of db.outsideCredits.filter(
         (item) => item.student_id === studentId && item.revoked_at == null,
@@ -2639,7 +3904,7 @@ export const saaisMswHandlers = [
         gwa: metrics.gwa,
         earned_units: metrics.earnedUnits,
         required_units: curriculum.total_units,
-        counted_units: metrics.countedUnits,
+        counted_units: metrics.countedUnits + metrics.outsideCreditUnits,
         failed_units: metrics.failedUnits,
         in_progress_units: inProgress.reduce(
           (sum, item) => sum + item.units_attempted,
@@ -2665,13 +3930,8 @@ export const saaisMswHandlers = [
         open_inc_count: metrics.openInc.length,
         lapsed_inc_count: metrics.lapsed.length,
         open_flags_count: metrics.flags.length,
-        deficiencies_count:
-          metrics.failed.length +
-          metrics.openInc.length +
-          metrics.lapsed.length +
-          metrics.flags.length,
-        deficiencies: studentDeficiencies(metrics),
-        is_delinquent: false,
+        deficiencies_count: metrics.deficiencies.length,
+        is_delinquent: metrics.isDelinquent,
         computed_at: "2026-11-10T08:00:00Z",
       };
       return HttpResponse.json(summary);
@@ -2709,7 +3969,13 @@ export const saaisMswHandlers = [
             .filter(
               (item) =>
                 item.student_id === studentId &&
-                item.curriculum_term_course_id === slot.id,
+                (item.curriculum_term_course_id === slot.id ||
+                  (slot.course_id != null &&
+                    db.courseOfferings.some(
+                      (offering) =>
+                        offering.id === item.course_offering_id &&
+                        offering.course_id === slot.course_id,
+                    ))),
             )
             .sort((a, b) => {
               const order = (item: ApiSchema<"AttemptResult">) =>
@@ -2935,7 +4201,23 @@ export const saaisMswHandlers = [
                 )
                   return [];
                 const latest = requiredAttempts
-                  .sort(compareAttemptChronology)
+                  .sort((left, right) => {
+                    const termOrder = (attempt: ApiSchema<"AttemptResult">) => {
+                      const offering = db.courseOfferings.find(
+                        (row) => row.id === attempt.course_offering_id,
+                      );
+                      return (
+                        db.schoolTerms.find(
+                          (term) => term.id === offering?.school_term_id,
+                        )?.chronological_key ?? 0
+                      );
+                    };
+                    return (
+                      termOrder(left) - termOrder(right) ||
+                      left.created_at.localeCompare(right.created_at) ||
+                      left.id.localeCompare(right.id)
+                    );
+                  })
                   .at(-1);
                 const state = latest?.is_lapsed_inc
                   ? "lapsed_inc"
@@ -3029,7 +4311,14 @@ export const saaisMswHandlers = [
         );
         const previousTermIndices = results.flatMap((result) => {
           const slot = slots.find(
-            (item) => item.id === result.curriculum_term_course_id,
+            (item) =>
+              item.id === result.curriculum_term_course_id ||
+              (item.course_id != null &&
+                db.courseOfferings.some(
+                  (offering) =>
+                    offering.id === result.course_offering_id &&
+                    offering.course_id === item.course_id,
+                )),
           );
           const index = orderedTerms.findIndex(
             (term) => term.id === slot?.curriculum_term_id,
@@ -3058,12 +4347,11 @@ export const saaisMswHandlers = [
           const prior = results.filter(
             (item) =>
               item.curriculum_term_course_id === slot.id ||
-              (item.curriculum_term_course_id === null &&
-                db.courseOfferings.some(
-                  (offering) =>
-                    offering.id === item.course_offering_id &&
-                    offering.course_id === course.id,
-                )),
+              db.courseOfferings.some(
+                (offering) =>
+                  offering.id === item.course_offering_id &&
+                  offering.course_id === course.id,
+              ),
           );
           const credited = db.outsideCredits.some(
             (item) =>
@@ -3097,13 +4385,12 @@ export const saaisMswHandlers = [
                   (item) =>
                     item.effective_status === "passed" &&
                     (item.curriculum_term_course_id === requiredSlot?.id ||
-                      (item.curriculum_term_course_id === null &&
-                        db.courseOfferings.some(
-                          (offering) =>
-                            offering.id === item.course_offering_id &&
-                            offering.course_id ===
-                              prerequisite.prerequisite_course_id,
-                        ))),
+                      db.courseOfferings.some(
+                        (offering) =>
+                          offering.id === item.course_offering_id &&
+                          offering.course_id ===
+                            prerequisite.prerequisite_course_id,
+                      )),
                 ) ||
                 db.outsideCredits.some(
                   (item) =>
@@ -3410,69 +4697,376 @@ export const saaisMswHandlers = [
   http.patch(
     "*/functions/v1/students/:student_id/attempts/:attempt_id/grades",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
       const attemptId = String(params.attempt_id);
+      const db = getMockDatabase();
+      if (
+        !db.adviserAssignments.some(
+          (a) =>
+            a.student_id === studentId &&
+            a.adviser_id === auth.persona.profileId &&
+            a.end_date == null,
+        )
+      ) {
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Only the current adviser may correct grades.",
+        );
+      }
+      const attempt = db.attemptResults.find(
+        (a) => a.id === attemptId && a.student_id === studentId,
+      );
+      if (!attempt)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Attempt not found for this student.",
+        );
+      const offering = db.courseOfferings.find(
+        (o) => o.id === attempt.course_offering_id,
+      );
+      const term = db.schoolTerms.find(
+        (t) => t.id === offering?.school_term_id,
+      );
+      if (!term) return errorJson(404, "NOT_FOUND", "School term not found.");
       if (attemptEncodingClosed(studentId, attemptId))
         return encodingClosedResponse();
-      const body = (await request.json().catch(() => ({}))) as Record<
+      if (term.is_locked && !term.override_flag)
+        return errorJson(
+          409,
+          "TERM_LOCKED",
+          "Corrections require an editable term.",
+        );
+      const body = (await request.json().catch(() => null)) as Record<
         string,
         unknown
-      >;
-      const result: ApiSchema<"AttemptResult"> = {
-        id: attemptId,
-        student_id: studentId,
-        course_offering_id: MOCK_IDS.offeringCsci153,
-        curriculum_term_course_id: MOCK_IDS.slotCsci153,
-        recorded_status: "passed",
-        midterm_status: "graded",
-        midterm_grade: Number(body.midterm_grade ?? 1.75),
-        final_grade: Number(body.final_grade ?? 1.5),
-        inc_deadline: null,
-        instructor: "Dr. Jose Rizalino Gomez",
-        prerequisite_override: false,
-        prerequisite_grade_override: false,
-        grade_fix_history: [
-          {
-            changed_at: "2026-11-10T09:00:00Z",
-            old_grade: 1.75,
-            new_grade: Number(body.final_grade ?? 1.5),
-            actor_name: auth.persona.fullName,
-            summary: String(body.reason ?? "Grade correction"),
-          },
-        ],
-        units_attempted: 3,
-        revision: Number(body.expected_revision ?? 1) + 1,
-        created_at: "2026-08-15T08:00:00Z",
-        updated_at: "2026-11-10T09:00:00Z",
-        completion_grade: null,
-        resolved_at: null,
-        effective_status: "passed",
-        gwa_grade: Number(body.final_grade ?? 1.5),
-        is_lapsed_inc: false,
-        is_repeated: false,
-        counts_toward_cumulative_gwa: false,
+      > | null;
+      const allowed = [
+        "expected_revision",
+        "status",
+        "midterm_status",
+        "midterm_grade",
+        "final_grade",
+        "instructor",
+        "reason",
+      ];
+      const changed = [
+        "status",
+        "midterm_status",
+        "midterm_grade",
+        "final_grade",
+        "instructor",
+      ];
+      const validGrade = (value: unknown) =>
+        value === null ||
+        (typeof value === "number" &&
+          Number.isFinite(value) &&
+          value >= 1 &&
+          value <= 5 &&
+          (value * 4) % 1 === 0);
+      if (
+        !body ||
+        Object.keys(body).some((key) => !allowed.includes(key)) ||
+        !changed.some((key) => key in body) ||
+        !Number.isInteger(body.expected_revision) ||
+        (body.expected_revision as number) < 0 ||
+        typeof body.reason !== "string" ||
+        !body.reason.trim() ||
+        body.reason.length > 2000 ||
+        ("final_grade" in body && !validGrade(body.final_grade)) ||
+        ("midterm_grade" in body && !validGrade(body.midterm_grade)) ||
+        ("status" in body &&
+          ![
+            "passed",
+            "failed",
+            "currently_enrolled",
+            "inc",
+            "dr",
+            "na",
+          ].includes(String(body.status))) ||
+        ("midterm_status" in body &&
+          body.midterm_status !== null &&
+          !["graded", "dr"].includes(String(body.midterm_status))) ||
+        ("instructor" in body &&
+          body.instructor !== null &&
+          (typeof body.instructor !== "string" || body.instructor.length > 150))
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Provide valid correction fields, revision and reason.",
+        );
+      }
+      const currentAttempt = db.attemptResults.find(
+        (a) => a.id === attemptId && a.student_id === studentId,
+      );
+      if (!currentAttempt)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Attempt not found for this student.",
+        );
+      if (body.expected_revision !== currentAttempt.revision)
+        return errorJson(
+          409,
+          "STALE_ATTEMPT",
+          "The attempt changed since it was loaded.",
+        );
+      if (currentAttempt.completion_grade != null)
+        return errorJson(
+          409,
+          "INC_COMPLETION_EXISTS",
+          "Use the INC completion correction operation.",
+        );
+      if (currentAttempt.recorded_status === "inc" && body.final_grade != null)
+        return errorJson(
+          409,
+          "INC_COMPLETION_REQUIRED",
+          "Use the INC completion operation for an incomplete grade.",
+        );
+      if (
+        !currentAttempt.prerequisite_override &&
+        ("final_grade" in body || "status" in body)
+      ) {
+        const required = db.prerequisites.filter(
+          (p) => p.course_id === offering?.course_id && p.type === "strict",
+        );
+        const unmet = required.some((prerequisite) => {
+          const slots = db.curriculumTermCourses
+            .filter((s) => s.course_id === prerequisite.prerequisite_course_id)
+            .map((s) => s.id);
+          const passed = (candidate: ApiSchema<"AttemptResult">) => {
+            const priorOffering = db.courseOfferings.find(
+              (o) => o.id === candidate.course_offering_id,
+            );
+            const priorTerm = db.schoolTerms.find(
+              (t) => t.id === priorOffering?.school_term_id,
+            );
+            return (
+              candidate.student_id === studentId &&
+              candidate.effective_status === "passed" &&
+              !!priorTerm &&
+              priorTerm.chronological_key < term.chronological_key
+            );
+          };
+          const direct = db.attemptResults.some(
+            (a) =>
+              passed(a) &&
+              db.courseOfferings.some(
+                (o) =>
+                  o.id === a.course_offering_id &&
+                  o.course_id === prerequisite.prerequisite_course_id,
+              ),
+          );
+          const credit = db.outsideCredits.some(
+            (c) =>
+              c.student_id === studentId &&
+              c.revoked_at == null &&
+              slots.includes(c.destination_curriculum_term_course_id) &&
+              c.decided_at.slice(0, 10) <= term.ends_on,
+          );
+          const equivalent = db.equivalencyDecisions.some(
+            (d) =>
+              d.student_id === studentId &&
+              d.revoked_at == null &&
+              slots.includes(d.destination_curriculum_term_course_id) &&
+              d.decided_at.slice(0, 10) <= term.ends_on &&
+              db.attemptResults.some((a) => a.id === d.attempt_id && passed(a)),
+          );
+          return !direct && !credit && !equivalent;
+        });
+        if (unmet)
+          return errorJson(
+            409,
+            "PREREQUISITE_NOT_MET",
+            "A strict prerequisite is not satisfied and this attempt has no override.",
+          );
+      }
+      let finalGrade = (
+        "final_grade" in body ? body.final_grade : currentAttempt.final_grade
+      ) as number | null;
+      const midtermGrade = (
+        "midterm_grade" in body
+          ? body.midterm_grade
+          : currentAttempt.midterm_grade
+      ) as number | null;
+      const midtermStatus = (
+        "midterm_status" in body
+          ? body.midterm_status
+          : currentAttempt.midterm_status
+      ) as ApiSchema<"MidtermStatus"> | null | undefined;
+      let status = (
+        "status" in body ? body.status : currentAttempt.recorded_status
+      ) as ApiSchema<"AttemptStatus">;
+      if (
+        currentAttempt.midterm_status === "dr" &&
+        midtermStatus !== "dr" &&
+        !("status" in body)
+      )
+        status = "currently_enrolled";
+      if (midtermStatus === "dr") {
+        if (
+          body.final_grade != null ||
+          (body.status != null && body.status !== "dr")
+        )
+          return errorJson(
+            400,
+            "INVALID_INPUT",
+            "A dropped midterm requires a dropped final.",
+          );
+        status = "dr";
+        finalGrade = null;
+      } else if (status === "dr") {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "A dropped final requires a dropped midterm.",
+        );
+      } else if (finalGrade != null) {
+        const derived = finalGrade <= 3 ? "passed" : "failed";
+        if ("status" in body && status !== derived)
+          return errorJson(
+            400,
+            "INVALID_INPUT",
+            "Status must match the final grade.",
+          );
+        status = derived;
+      } else if (status === "passed" || status === "failed") {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Passed or failed status requires a numeric final grade.",
+        );
+      }
+      if (midtermStatus === "dr" && midtermGrade != null)
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "A dropped midterm cannot have a numeric grade.",
+        );
+      const updatedAt = new Date().toISOString();
+      const instructor = (
+        "instructor" in body ? body.instructor : currentAttempt.instructor
+      ) as string | null | undefined;
+      const oldValue = {
+        status: currentAttempt.recorded_status,
+        midterm_status: currentAttempt.midterm_status,
+        midterm_grade: currentAttempt.midterm_grade,
+        final_grade: currentAttempt.final_grade,
+        instructor: currentAttempt.instructor,
       };
+      const newValue = {
+        status,
+        midterm_status: midtermStatus,
+        midterm_grade: midtermGrade,
+        final_grade: finalGrade,
+        instructor,
+      };
+      const history = [...(currentAttempt.grade_fix_history ?? [])];
+      if (currentAttempt.midterm_grade !== midtermGrade)
+        history.push({
+          changed_at: updatedAt,
+          old_grade: currentAttempt.midterm_grade,
+          new_grade: midtermGrade,
+          actor_name: auth.persona.fullName,
+          summary: "Midterm grade corrected",
+        });
+      if (currentAttempt.final_grade !== finalGrade)
+        history.push({
+          changed_at: updatedAt,
+          old_grade: currentAttempt.final_grade,
+          new_grade: finalGrade,
+          actor_name: auth.persona.fullName,
+          summary: "Final grade corrected",
+        });
+      const incDeadline =
+        status === "inc"
+          ? (currentAttempt.inc_deadline ?? term.default_inc_deadline)
+          : null;
+      const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+      const lapsed = status === "inc" && !!incDeadline && incDeadline < today;
+      const result: ApiSchema<"AttemptResult"> = {
+        ...currentAttempt,
+        recorded_status: status,
+        effective_status: status,
+        midterm_status: midtermStatus,
+        midterm_grade: midtermGrade,
+        final_grade: finalGrade,
+        instructor,
+        inc_deadline: incDeadline,
+        gwa_grade: finalGrade ?? (lapsed ? 5 : null),
+        is_lapsed_inc: lapsed,
+        revision: currentAttempt.revision + 1,
+        updated_at: updatedAt,
+        grade_fix_history: history,
+      };
+      db.attemptResults[db.attemptResults.indexOf(currentAttempt)] = result;
+      const base = db.attempts.find(
+        (a) => a.id === attemptId && a.student_id === studentId,
+      );
+      if (base)
+        Object.assign(base, {
+          ...newValue,
+          inc_deadline: result.inc_deadline,
+          revision: result.revision,
+          updated_at: updatedAt,
+          updated_by: auth.persona.profileId,
+        });
+      const student = db.profiles.find((p) => p.id === studentId);
+      db.auditLogEntries.push({
+        id: nextSyntheticUuid(),
+        actor_id: auth.persona.profileId,
+        actor_name: auth.persona.fullName,
+        actor_role: auth.persona.primaryRole,
+        student_id: studentId,
+        student_name: student?.full_name ?? null,
+        student_number: student?.student_number ?? null,
+        target_label: student?.full_name ?? "Student grade",
+        action: "grade_corrected",
+        action_category: "grade_update",
+        entity_type: "attempt",
+        entity_id: attemptId,
+        details_summary: "Corrected course grade or status.",
+        old_value: auditSnapshot(oldValue),
+        new_value: auditSnapshot(newValue),
+        reason: body.reason.trim(),
+        created_at: updatedAt,
+      });
       return HttpResponse.json(markRetakeResults([result])[0], { status: 200 });
     },
   ),
 
   http.delete(
     "*/functions/v1/students/:student_id/attempts/:attempt_id",
-    ({ request }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+    ({ request, params }) => {
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
+      const studentId = String(params.student_id);
+      const attemptId = String(params.attempt_id);
+      if (
+        !getMockDatabase().adviserAssignments.some(
+          (assignment) =>
+            assignment.student_id === studentId &&
+            assignment.adviser_id === auth.persona.profileId &&
+            assignment.end_date === null,
+        )
+      )
+        return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
+      if (
+        !getMockDatabase().attemptResults.some(
+          (attempt) =>
+            attempt.student_id === studentId && attempt.id === attemptId,
+        )
+      )
+        return errorJson(404, "NOT_FOUND", "Course attempt not found.");
       return errorJson(
         409,
         "CONFLICT",
@@ -3617,14 +5211,16 @@ export const saaisMswHandlers = [
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
       const attemptId = String(params.attempt_id);
-      // Parse the body first: everything below reads and writes state with no further await.
       const rawBody: unknown = await request.json().catch(() => null);
-      const body =
-        rawBody !== null &&
-        typeof rawBody === "object" &&
-        !Array.isArray(rawBody)
-          ? (rawBody as Partial<ApiSchema<"INCCompletionCorrectionRequest">>)
-          : null;
+      if (!isIncCompletionCorrectionRequest(rawBody)) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Enter a valid completion grade, reason, and expected_updated_at.",
+        );
+      }
+      const body = rawBody;
+
       const db = getMockDatabase();
       const attempt = db.attemptResults.find(
         (a) => a.id === attemptId && a.student_id === studentId,
@@ -3663,34 +5259,24 @@ export const saaisMswHandlers = [
           "TERM_LOCKED",
           "Corrections require an editable term.",
         );
-      const grade = body?.completion_grade;
-      if (
-        typeof body?.reason !== "string" ||
-        !body.reason.trim() ||
-        typeof grade !== "number" ||
-        !Number.isFinite(grade) ||
-        grade < 1 ||
-        grade > 5 ||
-        (grade * 4) % 1 !== 0
-      )
-        return errorJson(
-          400,
-          "INVALID_INPUT",
-          "Enter a valid completion grade and reason.",
-        );
       if (body.expected_updated_at !== resolution.updated_at)
         return errorJson(
           409,
           "STALE_COMPLETION",
           "The INC completion changed since it was loaded.",
         );
+
+      const oldValue = {
+        completion_grade: resolution.completion_grade,
+        effective_status: resolution.effective_status,
+      };
       const updatedAt = new Date().toISOString();
       const corrected: ApiSchema<"INCResolution"> = {
         ...resolution,
-        completion_grade: grade,
+        completion_grade: body.completion_grade,
         updated_by: auth.persona.profileId,
         updated_at: updatedAt,
-        effective_status: grade <= 3.0 ? "passed" : "failed",
+        effective_status: body.completion_grade <= 3.0 ? "passed" : "failed",
       };
       db.incResolutions[db.incResolutions.indexOf(resolution)] = corrected;
       db.attemptResults[db.attemptResults.indexOf(attempt)] = {
@@ -3700,6 +5286,32 @@ export const saaisMswHandlers = [
         effective_status: corrected.effective_status,
         updated_at: updatedAt,
       };
+      const student = db.profiles.find((profile) => profile.id === studentId);
+      const auditEntry: ApiSchema<"AuditLogEntry"> = {
+        id: nextSyntheticUuid(),
+        actor_id: auth.persona.profileId,
+        actor_name: auth.persona.fullName,
+        actor_role: auth.persona.primaryRole,
+        student_id: studentId,
+        student_name: student?.full_name ?? null,
+        student_number: student?.student_number ?? null,
+        target_label: student?.student_number
+          ? `${student.student_number} · ${student.full_name}`
+          : (student?.full_name ?? "Student INC completion"),
+        action: "inc_completion_corrected",
+        action_category: "grade_update",
+        entity_type: "inc_resolution",
+        entity_id: resolution.id,
+        details_summary: `Corrected INC completion grade from ${oldValue.completion_grade} to ${corrected.completion_grade}.`,
+        old_value: auditSnapshot(oldValue),
+        new_value: auditSnapshot({
+          completion_grade: corrected.completion_grade,
+          effective_status: corrected.effective_status,
+        }),
+        reason: body.reason,
+        created_at: updatedAt,
+      };
+      db.auditLogEntries.push(auditEntry);
       return HttpResponse.json(corrected, { status: 200 });
     },
   ),
@@ -3753,114 +5365,477 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/grade-flags/:flag_id/resolve",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
-      const flagId = String(params.flag_id);
+      const db = getMockDatabase();
+      const flag = db.gradeFlags.find(
+        (item) => item.id === String(params.flag_id),
+      );
+      if (!flag) return errorJson(404, "NOT_FOUND", "Grade flag not found.");
+      const attempt = db.attemptResults.find(
+        (item) =>
+          item.id === flag.attempt_id && item.student_id === flag.student_id,
+      );
+      if (!attempt)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "The flagged attempt was not found.",
+        );
+      if (
+        !db.adviserAssignments.some(
+          (item) =>
+            item.student_id === flag.student_id &&
+            item.adviser_id === auth.persona.profileId &&
+            item.end_date === null,
+        )
+      )
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Only the current adviser may resolve this flag.",
+        );
+      if (attemptEncodingClosed(flag.student_id, attempt.id))
+        return encodingClosedResponse();
+      const term = db.schoolTerms.find(
+        (t) =>
+          t.id ===
+          db.courseOfferings.find((o) => o.id === attempt.course_offering_id)
+            ?.school_term_id,
+      );
+      if (term?.is_locked && !term.override_flag)
+        return errorJson(
+          409,
+          "TERM_LOCKED",
+          "Corrections require an editable term.",
+        );
       const body = (await request
         .json()
-        .catch(() => ({}))) as ApiSchema<"GradeFlagResolveRequest">;
-      const flag = getMockDatabase().gradeFlags.find((f) => f.id === flagId);
+        .catch(() => null)) as ApiSchema<"GradeFlagResolveRequest"> | null;
       if (
-        body.resolution_action !== "reject" &&
-        flag?.attempt_id &&
-        attemptEncodingClosed(flag.student_id, flag.attempt_id)
+        !body ||
+        !["correct", "reject"].includes(String(body.resolution_action)) ||
+        !body.resolution_note?.trim() ||
+        (body.resolution_action === "correct" &&
+          body.corrected_grade == null &&
+          body.corrected_status == null &&
+          body.corrected_midterm_status == null)
       )
-        return encodingClosedResponse();
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Choose a resolution and provide a reason and correction.",
+        );
+      const currentAttempt = db.attemptResults.find(
+        (item) =>
+          item.id === flag.attempt_id && item.student_id === flag.student_id,
+      );
+      if (!currentAttempt)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "The flagged attempt was not found.",
+        );
+      if (
+        body.expected_revision != null &&
+        body.expected_revision !== currentAttempt.revision
+      )
+        return errorJson(
+          409,
+          "STALE_ATTEMPT",
+          "The attempt changed since the flag was raised.",
+        );
+      if (body.resolution_action === "correct") {
+        const result = { ...currentAttempt };
+        if (flag.reported_stage === "midterm") {
+          if (currentAttempt.completion_grade != null)
+            return errorJson(
+              409,
+              "INC_COMPLETION_EXISTS",
+              "Use the INC completion correction operation.",
+            );
+          if (
+            body.corrected_midterm_status != null &&
+            !["graded", "dr"].includes(body.corrected_midterm_status)
+          )
+            return errorJson(
+              400,
+              "INVALID_INPUT",
+              "Provide a valid midterm status.",
+            );
+          if (
+            body.corrected_grade != null &&
+            (!Number.isFinite(body.corrected_grade) ||
+              body.corrected_grade < 1 ||
+              body.corrected_grade > 5 ||
+              (body.corrected_grade * 4) % 1 !== 0)
+          )
+            return errorJson(
+              400,
+              "INVALID_INPUT",
+              "Provide a valid midterm grade.",
+            );
+          if (body.corrected_midterm_status === "dr") {
+            if (
+              body.corrected_grade != null ||
+              (body.corrected_status != null && body.corrected_status !== "dr")
+            )
+              return errorJson(
+                400,
+                "INVALID_INPUT",
+                "A dropped midterm requires a dropped final and no numeric grade.",
+              );
+            result.midterm_status = "dr";
+            result.midterm_grade = null;
+            result.recorded_status = "dr";
+            result.effective_status = "dr";
+            result.final_grade = null;
+            result.gwa_grade = null;
+            result.inc_deadline = null;
+            result.is_lapsed_inc = false;
+          } else {
+            if (body.corrected_grade != null) {
+              result.midterm_grade = body.corrected_grade;
+              result.midterm_status = "graded";
+            } else if (body.corrected_midterm_status)
+              result.midterm_status = body.corrected_midterm_status;
+            if (
+              currentAttempt.midterm_status === "dr" &&
+              result.midterm_status !== "dr"
+            ) {
+              result.recorded_status = "currently_enrolled";
+              result.effective_status = "currently_enrolled";
+            }
+            if (
+              body.corrected_status === "dr" ||
+              result.recorded_status === "dr"
+            )
+              return errorJson(
+                400,
+                "INVALID_INPUT",
+                "A dropped final requires a dropped midterm.",
+              );
+            if (result.final_grade != null) {
+              result.recorded_status =
+                result.final_grade <= 3 ? "passed" : "failed";
+              result.effective_status = result.recorded_status;
+            }
+          }
+        } else {
+          if (body.corrected_grade != null) {
+            if (
+              !Number.isFinite(body.corrected_grade) ||
+              body.corrected_grade < 1 ||
+              body.corrected_grade > 5 ||
+              (body.corrected_grade * 4) % 1 !== 0
+            )
+              return errorJson(
+                400,
+                "INVALID_INPUT",
+                "Provide a valid final grade.",
+              );
+            const gradeStatus = body.corrected_grade <= 3 ? "passed" : "failed";
+            if (
+              body.corrected_status != null &&
+              body.corrected_status !== gradeStatus
+            )
+              return errorJson(
+                400,
+                "INVALID_INPUT",
+                "The corrected status must match the corrected final grade.",
+              );
+            result.final_grade = body.corrected_grade;
+            result.gwa_grade = body.corrected_grade;
+            result.effective_status = gradeStatus;
+            result.recorded_status = result.effective_status;
+            result.inc_deadline = null;
+          }
+          if (body.corrected_status) {
+            if (
+              body.corrected_status === "inc" &&
+              body.corrected_grade == null
+            ) {
+              if (
+                currentAttempt.completion_grade != null ||
+                currentAttempt.resolved_at != null ||
+                db.incResolutions.some(
+                  (resolution) =>
+                    resolution.attempt_id === currentAttempt.id &&
+                    resolution.student_id === currentAttempt.student_id,
+                )
+              ) {
+                return errorJson(
+                  409,
+                  "INC_COMPLETION_EXISTS",
+                  "Use the INC completion correction operation.",
+                );
+              }
+              const deadline = term?.default_inc_deadline;
+              if (!deadline)
+                return errorJson(
+                  409,
+                  "INC_DEADLINE_UNAVAILABLE",
+                  "The term has no default INC deadline.",
+                );
+              result.final_grade = null;
+              result.gwa_grade = null;
+              result.completion_grade = null;
+              result.resolved_at = null;
+              result.inc_deadline = deadline;
+              result.is_lapsed_inc = false;
+            }
+            result.effective_status = body.corrected_status;
+            result.recorded_status = body.corrected_status;
+          }
+          if (body.corrected_midterm_status)
+            result.midterm_status = body.corrected_midterm_status;
+        }
+        db.attemptResults[db.attemptResults.indexOf(currentAttempt)] = {
+          ...result,
+          revision: currentAttempt.revision + 1,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      const now = new Date().toISOString();
       const resolved: ApiSchema<"GradeFlag"> = {
-        id: flagId,
-        student_id: MOCK_IDS.studentPrimary,
-        attempt_id: MOCK_IDS.attemptCsci153Open,
-        reported_stage: "midterm",
-        reported_grade_text: "1.50",
-        issue_type: "wrong_grade",
-        details: "Class card shows 1.50 for midterm exam computation.",
+        ...flag,
         status: body.resolution_action === "reject" ? "rejected" : "corrected",
-        resolution_action: body.resolution_action ?? "correct",
-        corrected_grade: body.corrected_grade ?? 1.5,
+        resolution_action: body.resolution_action,
+        corrected_grade: body.corrected_grade ?? null,
         corrected_status: body.corrected_status ?? null,
-        resolution_note: body.resolution_note ?? "Verified against class card.",
+        resolution_note: body.resolution_note,
         resolved_by: auth.persona.profileId,
-        resolved_at: "2026-11-10T09:00:00Z",
-        created_at: "2026-10-10T08:00:00Z",
-        updated_at: "2026-11-10T09:00:00Z",
+        resolved_at: now,
+        updated_at: now,
       };
+      db.gradeFlags[db.gradeFlags.indexOf(flag)] = resolved;
       return HttpResponse.json(resolved, { status: 200 });
     },
   ),
 
   http.post("*/functions/v1/grades/import", async ({ request }) => {
-    const auth = authenticateRequest(request, [
-      "admin",
-      "dean",
-      "department_head",
-      "adviser",
-    ]);
+    const auth = authenticateRequest(request, ["adviser"]);
     if ("response" in auth) return auth.response;
     const body = (await request
       .json()
       .catch(() => null)) as ApiSchema<"GradeBatchImportRequest"> | null;
-    if (!body?.mode || !body?.school_term_id || !Array.isArray(body.rows)) {
+    if (
+      !body ||
+      !body.school_term_id ||
+      !Array.isArray(body.rows) ||
+      !body.rows.length ||
+      body.rows.length > 500
+    )
       return errorJson(
         400,
         "INVALID_INPUT",
-        "mode, school_term_id, and rows are required.",
+        "Provide a term and 1 to 500 grade rows.",
       );
-    }
     const db = getMockDatabase();
-    if (
-      body.rows.some((row) => {
-        const student = db.profiles.find(
-          (p) => p.student_number === row.student_number,
-        );
-        return (
-          student && departmentEncodingClosed(student.id, body.school_term_id)
-        );
-      })
-    )
-      return encodingClosedResponse();
-    const passed = (
+    const getRow = (
       row: ApiSchema<"GradeBatchImportRequest">["rows"][number],
     ) => {
       const student = db.profiles.find(
-        (p) => p.student_number === row.student_number,
+        (profile) => profile.student_number === row.student_number,
       );
-      const course = db.courses.find((c) => c.code === row.course_code);
+      const course = db.courses.find(
+        (item) => item.code.toLowerCase() === row.course_code.toLowerCase(),
+      );
       const offering = db.courseOfferings.find(
-        (o) =>
-          o.course_id === course?.id &&
-          o.school_term_id === body.school_term_id,
+        (item) =>
+          item.course_id === course?.id &&
+          item.school_term_id === body.school_term_id,
       );
-      return Boolean(
-        student && offering && alreadyPassedCourse(student.id, offering.id),
+      const assigned = Boolean(
+        student &&
+        db.adviserAssignments.some(
+          (item) =>
+            item.student_id === student.id &&
+            item.adviser_id === auth.persona.profileId &&
+            item.end_date === null,
+        ),
       );
+      const term = db.schoolTerms.find(
+        (item) => item.id === body.school_term_id,
+      );
+      const old = db.attemptResults.find(
+        (attempt) =>
+          attempt.student_id === student?.id &&
+          attempt.course_offering_id === offering?.id,
+      );
+      const final = row.final_grade ?? old?.final_grade ?? null;
+      const midterm = row.midterm_grade ?? old?.midterm_grade ?? null;
+      const midtermStatus =
+        row.midterm_status ?? old?.midterm_status ?? "graded";
+      const status =
+        row.status ??
+        (final == null
+          ? "currently_enrolled"
+          : final <= 3
+            ? "passed"
+            : "failed");
+      const validGrade = (grade: unknown) =>
+        grade == null ||
+        (typeof grade === "number" &&
+          Number.isFinite(grade) &&
+          grade >= 1 &&
+          grade <= 5 &&
+          (grade * 4) % 1 === 0);
+      const invalid =
+        !validGrade(row.midterm_grade) ||
+        !validGrade(row.final_grade) ||
+        !["passed", "failed", "currently_enrolled", "inc", "dr", "na"].includes(
+          status,
+        ) ||
+        !["graded", "dr"].includes(midtermStatus) ||
+        (midtermStatus === "dr" && (midterm != null || status !== "dr")) ||
+        (status === "dr" && midtermStatus !== "dr") ||
+        (final != null && status !== (final <= 3 ? "passed" : "failed")) ||
+        (final == null && (status === "passed" || status === "failed"));
+      const reason =
+        !student || !course || !offering
+          ? "Student, course, or term offering not found."
+          : !assigned
+            ? "Student is not currently assigned to this adviser."
+            : term?.is_locked && !term.override_flag
+              ? "The school term is locked."
+              : status === "inc" &&
+                  old &&
+                  (old.completion_grade != null ||
+                    old.resolved_at != null ||
+                    db.incResolutions.some(
+                      (resolution) =>
+                        resolution.attempt_id === old.id &&
+                        resolution.student_id === student?.id,
+                    ))
+                ? "Use the INC completion correction operation for a resolved attempt."
+                : invalid
+                  ? "Invalid grade or inconsistent status."
+                  : old?.final_grade != null &&
+                      row.final_grade != null &&
+                      old.final_grade !== row.final_grade
+                    ? "Use grade correction to change an existing final grade."
+                    : alreadyPassedCourse(student.id, offering.id)
+                      ? "A passed course cannot be retaken."
+                      : departmentEncodingClosed(
+                            student.id,
+                            body.school_term_id,
+                          )
+                        ? "The student department encoding is closed."
+                        : "";
+      return { student, course, offering, reason };
     };
-    const validCount = body.rows.filter((row) => !passed(row)).length;
-    const response: ApiSchema<"GradeBatchImportResponse"> = {
-      mode: body.mode,
-      valid_count: validCount,
-      warning_count: 0,
-      error_count: body.rows.length - validCount,
-      imported_count: body.mode === "commit" ? validCount : 0,
-      results: body.rows.map((r) => ({
-        row_number: r.row_number,
-        student_number: r.student_number,
-        course_code: r.course_code,
-        outcome: passed(r)
+    const checks = body.rows.map((row, index) => {
+      const check = getRow(row);
+      if (
+        body.rows
+          .slice(0, index)
+          .some(
+            (previous) =>
+              previous.student_number === row.student_number &&
+              previous.course_code.toLowerCase() ===
+                row.course_code.toLowerCase(),
+          )
+      )
+        check.reason = "Duplicate student and course in import.";
+      return check;
+    });
+    const results: ApiSchema<"GradeBatchImportResponse">["results"] =
+      body.rows.map((row, index) => ({
+        row_number: row.row_number,
+        student_number: row.student_number,
+        course_code: row.course_code,
+        outcome: checks[index].reason
           ? "error"
           : body.mode === "commit"
             ? "imported"
             : "valid",
-        message: passed(r)
-          ? "A passed course cannot be retaken."
-          : "Validated successfully.",
-      })),
-    };
-    return HttpResponse.json(response, { status: 200 });
+        message: checks[index].reason || "Validated successfully.",
+      }));
+    const valid = body.rows
+      .map((row, index) => ({ row, check: checks[index] }))
+      .filter(({ check }) => !check.reason);
+    if (body.mode === "commit")
+      for (const { row, check } of valid) {
+        const { student, course, offering } = check;
+        if (!student || !course || !offering) continue;
+        const old = db.attemptResults.find(
+          (attempt) =>
+            attempt.student_id === student.id &&
+            attempt.course_offering_id === offering.id,
+        );
+        const final = row.final_grade ?? old?.final_grade ?? null;
+        const status =
+          row.status ??
+          (final == null
+            ? "currently_enrolled"
+            : final <= 3
+              ? "passed"
+              : "failed");
+        const slotId =
+          row.curriculum_term_course_id ??
+          db.curriculumTermCourses.find((slot) => slot.course_id === course.id)
+            ?.id ??
+          null;
+        const now = new Date().toISOString();
+        const result: ApiSchema<"AttemptResult"> = {
+          id: old?.id ?? nextSyntheticUuid(),
+          student_id: student.id,
+          course_offering_id: offering.id,
+          curriculum_term_course_id: slotId,
+          recorded_status: status,
+          effective_status: status,
+          midterm_status: row.midterm_status ?? old?.midterm_status ?? "graded",
+          midterm_grade: row.midterm_grade ?? old?.midterm_grade ?? null,
+          final_grade: final,
+          instructor: row.instructor ?? old?.instructor ?? offering.instructor,
+          inc_deadline:
+            status === "inc"
+              ? (old?.inc_deadline ??
+                db.schoolTerms.find((term) => term.id === body.school_term_id)
+                  ?.default_inc_deadline ??
+                null)
+              : null,
+          prerequisite_override: old?.prerequisite_override ?? false,
+          prerequisite_grade_override:
+            old?.prerequisite_grade_override ?? false,
+          grade_fix_history: old?.grade_fix_history ?? [],
+          units_attempted: old?.units_attempted ?? course.units,
+          revision: (old?.revision ?? 0) + 1,
+          created_at: old?.created_at ?? now,
+          updated_at: now,
+          completion_grade:
+            status === "inc" ? null : (old?.completion_grade ?? null),
+          resolved_at: status === "inc" ? null : (old?.resolved_at ?? null),
+          gwa_grade: final,
+          is_lapsed_inc: false,
+          is_repeated: false,
+          counts_toward_cumulative_gwa: false,
+        };
+        if (old) db.attemptResults[db.attemptResults.indexOf(old)] = result;
+        else db.attemptResults.push(result);
+        if (row.remark?.trim())
+          db.attemptRemarks.push({
+            id: nextSyntheticUuid(),
+            student_id: student.id,
+            authored_by: auth.persona.profileId,
+            body_text: row.remark,
+            created_at: now,
+            attempt_id: result.id,
+            curriculum_term_course_id: slotId,
+          });
+      }
+    return HttpResponse.json(
+      {
+        mode: body.mode,
+        valid_count: valid.length,
+        warning_count: 0,
+        error_count: results.length - valid.length,
+        imported_count: body.mode === "commit" ? valid.length : 0,
+        results,
+      },
+      { status: 200 },
+    );
   }),
 
   // ===========================================================================
@@ -3926,7 +5901,7 @@ export const saaisMswHandlers = [
         adviser_name: adviser.full_name,
         adviser_email: adviser.email,
         adviser_faculty_name: "Faculty of Computing",
-        adviser_consultation_hours: "Tue & Thu, 13:00–16:00",
+        adviser_consultation_hours: "Tue & Thu, 13:00â€“16:00",
         student_id: studentId,
         start_date: body.start_date ?? "2026-11-10",
         end_date: null,
@@ -4039,6 +6014,16 @@ export const saaisMswHandlers = [
             adviser_id: adviser.id,
           };
       });
+      assignments.forEach((assignment) =>
+        recordMockAudit(auth.persona, {
+          action: "adviser_reassigned",
+          entityType: "adviser_assignment",
+          entityId: assignment.id,
+          studentId: assignment.student_id,
+          label: "Adviser assignment",
+          details: `Reassigned to ${adviser.full_name} effective ${body.effective_since}. Reason: ${body.reason?.trim()}`,
+        }),
+      );
       const res: ApiSchema<"BulkAdviserReassignmentResponse"> = {
         reassigned_count: assignments.length,
         assignments,
@@ -4257,17 +6242,139 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/students/:student_id/outside-credits",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["admin", "department_head"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
       const body = (await request
         .json()
-        .catch(() => ({}))) as ApiSchema<"OutsideCreditCreateRequest">;
+        .catch(() => null)) as ApiSchema<"OutsideCreditCreateRequest"> | null;
+      const fields = [
+        "entry_type",
+        "origin_school",
+        "original_course_code",
+        "original_course_title",
+        "units",
+        "grade",
+        "destination_curriculum_term_course_id",
+        "reason",
+      ];
+      const text = (value: unknown, max: number): value is string =>
+        typeof value === "string" && !!value.trim() && value.length <= max;
+      if (
+        !body ||
+        Object.keys(body).some((key) => !fields.includes(key)) ||
+        !["transferee", "shiftee"].includes(body.entry_type) ||
+        !text(body.origin_school, 250) ||
+        !text(body.original_course_code, 100) ||
+        !text(body.original_course_title, 250) ||
+        !text(body.reason, 2000) ||
+        typeof body.units !== "number" ||
+        !Number.isFinite(body.units) ||
+        body.units <= 0 ||
+        !Number.isInteger(body.units * 4) ||
+        typeof body.grade !== "string" ||
+        !/^(?:[12]\.\d{2}|3\.00)$/.test(body.grade) ||
+        typeof body.destination_curriculum_term_course_id !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          body.destination_curriculum_term_course_id,
+        )
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Provide valid outside-credit details and a reason.",
+        );
+      }
+      const db = getMockDatabase();
+      const org = db.studentOrganizations.find(
+        (row) => row.student_id === studentId,
+      );
+      const slot = db.curriculumTermCourses.find(
+        (row) => row.id === body.destination_curriculum_term_course_id,
+      );
+      if (!org || !slot)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Student or destination slot not found.",
+        );
+      if (
+        !auth.persona.roles.includes("admin") &&
+        !canAccessDepartment(auth.persona, org.department_id)
+      ) {
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Student is outside your department.",
+        );
+      }
+      const term = db.curriculumTerms.find(
+        (row) => row.id === slot.curriculum_term_id,
+      );
+      if (term?.curriculum_version_id !== org.curriculum_version_id) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Choose a slot in the student curriculum.",
+        );
+      }
+      const normalize = (value: string) =>
+        value.trim().replace(/\s+/g, " ").toLowerCase();
+      const live = db.outsideCredits.filter(
+        (row) => row.student_id === studentId && !row.revoked_at,
+      );
+      if (
+        live.some(
+          (row) =>
+            normalize(row.origin_school) === normalize(body.origin_school) &&
+            normalize(row.original_course_code) ===
+              normalize(body.original_course_code),
+        )
+      ) {
+        return errorJson(
+          409,
+          "DUPLICATE_CREDIT",
+          "This student already has credit for this course from this origin.",
+        );
+      }
+      const passed = db.attemptResults.some(
+        (row) =>
+          row.student_id === studentId &&
+          row.effective_status === "passed" &&
+          (row.curriculum_term_course_id === slot.id ||
+            (!!slot.course_id &&
+              db.courseOfferings.some(
+                (offering) =>
+                  offering.id === row.course_offering_id &&
+                  offering.course_id === slot.course_id,
+              ))),
+      );
+      const mapped = db.electiveMappings.some(
+        (row) =>
+          row.student_id === studentId &&
+          !row.revoked_at &&
+          row.curriculum_term_course_id === slot.id,
+      );
+      const equivalent = db.equivalencyDecisions.some(
+        (row) =>
+          row.student_id === studentId &&
+          !row.revoked_at &&
+          row.destination_curriculum_term_course_id === slot.id,
+      );
+      if (
+        passed ||
+        mapped ||
+        equivalent ||
+        live.some(
+          (row) => row.destination_curriculum_term_course_id === slot.id,
+        )
+      ) {
+        return errorJson(
+          409,
+          "SLOT_ALREADY_SATISFIED",
+          "This curriculum slot is already satisfied.",
+        );
+      }
       const credit: ApiSchema<"OutsideCredit"> = {
         id: nextSyntheticUuid(),
         student_id: studentId,
@@ -4280,12 +6387,13 @@ export const saaisMswHandlers = [
         grade: body.grade ?? "1.50",
         destination_curriculum_term_course_id:
           body.destination_curriculum_term_course_id ?? MOCK_IDS.slotCsci101,
-        units_credited: 3,
+        units_credited: body.units ?? 3,
         decided_by: auth.persona.profileId,
         decided_at: "2026-11-10T09:00:00Z",
         revoked_at: null,
         updated_at: "2026-11-10T09:00:00Z",
       };
+      getMockDatabase().outsideCredits.push(credit);
       return HttpResponse.json(credit, { status: 201 });
     },
   ),
@@ -4325,33 +6433,104 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/students/:student_id/curriculum-transfers",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
+      const db = getMockDatabase();
+      if (
+        !db.adviserAssignments.some(
+          (item) =>
+            item.student_id === studentId &&
+            item.adviser_id === auth.persona.profileId &&
+            item.end_date === null,
+        )
+      )
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Only the current adviser may endorse a transfer.",
+        );
       const body = (await request
         .json()
-        .catch(() => ({}))) as ApiSchema<"CurriculumTransferEndorseRequest">;
+        .catch(
+          () => null,
+        )) as ApiSchema<"CurriculumTransferEndorseRequest"> | null;
+      const org = db.studentOrganizations.find(
+        (item) => item.student_id === studentId,
+      );
+      const target = db.curriculumVersions.find(
+        (item) =>
+          item.id === body?.to_curriculum_version_id &&
+          item.status === "active",
+      );
+      if (!org || !target)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Student or active target curriculum not found.",
+        );
+      if (
+        !body?.endorsement_note?.trim() ||
+        body.endorsement_note.length > 2000 ||
+        target.id === org.curriculum_version_id
+      )
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Choose a different active curriculum and provide a reason.",
+        );
+      if (
+        db.curriculumTransferRequests.some(
+          (item) => item.student_id === studentId && item.status === "pending",
+        )
+      )
+        return errorJson(
+          409,
+          "TRANSFER_ALREADY_PENDING",
+          "A transfer request is already pending.",
+        );
+      const targetSlots = db.curriculumTermCourses.filter((slot) =>
+        db.curriculumTerms.some(
+          (term) =>
+            term.id === slot.curriculum_term_id &&
+            term.curriculum_version_id === target.id,
+        ),
+      );
+      const passedCourseIds = new Set(
+        db.attemptResults
+          .filter(
+            (attempt) =>
+              attempt.student_id === studentId &&
+              attempt.effective_status === "passed",
+          )
+          .map(
+            (attempt) =>
+              db.courseOfferings.find(
+                (offering) => offering.id === attempt.course_offering_id,
+              )?.course_id,
+          )
+          .filter(Boolean),
+      );
+      const carried = targetSlots
+        .filter((slot) => slot.course_id && passedCourseIds.has(slot.course_id))
+        .reduce((sum, slot) => sum + slot.nominal_units, 0);
+      const now = new Date().toISOString();
       const req: ApiSchema<"CurriculumTransferRequest"> = {
         id: nextSyntheticUuid(),
         student_id: studentId,
-        from_curriculum_version_id: MOCK_IDS.curriculumBscs2020,
-        to_curriculum_version_id:
-          body.to_curriculum_version_id ?? MOCK_IDS.curriculumBscs2024,
+        from_curriculum_version_id: org.curriculum_version_id,
+        to_curriculum_version_id: target.id,
         endorsed_by: auth.persona.profileId,
-        endorsement_note: body.endorsement_note ?? "Endorsed by adviser.",
+        endorsement_note: body.endorsement_note.trim(),
         status: "pending",
         decided_by: null,
         decided_at: null,
         decision_note: null,
-        carried_units: 36,
-        created_at: "2026-11-10T09:00:00Z",
-        updated_at: "2026-11-10T09:00:00Z",
+        carried_units: carried,
+        created_at: now,
+        updated_at: now,
       };
+      db.curriculumTransferRequests.push(req);
       return HttpResponse.json(req, { status: 201 });
     },
   ),
@@ -4362,9 +6541,30 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ["admin", "department_head"]);
       if ("response" in auth) return auth.response;
       const transferId = String(params.transfer_id);
-      const body = (await request.json().catch(() => ({
-        decision: "approved",
-      }))) as ApiSchema<"CurriculumTransferDecisionRequest">;
+      const body = (await request
+        .json()
+        .catch(
+          () => null,
+        )) as ApiSchema<"CurriculumTransferDecisionRequest"> | null;
+      if (
+        !body ||
+        Object.keys(body).some(
+          (key) => !["decision", "decision_note"].includes(key),
+        ) ||
+        !["approved", "rejected"].includes(body.decision) ||
+        (body.decision_note != null &&
+          (typeof body.decision_note !== "string" ||
+            body.decision_note.length > 2000)) ||
+        (body.decision === "rejected" &&
+          (typeof body.decision_note !== "string" ||
+            !body.decision_note.trim()))
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Choose a valid decision and provide a rejection reason of at most 2,000 characters.",
+        );
+      }
       const db = getMockDatabase();
       const existing = db.curriculumTransferRequests.find(
         (t) => t.id === transferId,
@@ -4468,45 +6668,176 @@ export const saaisMswHandlers = [
       return errorJson(400, "INVALID_INPUT", "mode and rows are required.");
     }
     const db = getMockDatabase();
-    const valid = (r: ApiSchema<"StudentBatchImportRowInput">) => {
-      const adviser = db.profiles.find(
-        (p) =>
-          p.id === r.adviser_id &&
-          p.status === "active" &&
-          p.roles?.includes("adviser"),
+    const seenNumbers = new Set<string>();
+    const seenEmails = new Set<string>();
+    const checks = body.rows.map((row) => {
+      const program = db.programs.find((item) => item.id === row.program_id);
+      const department = db.departments.find(
+        (item) => item.id === program?.department_id,
       );
-      const program = db.programs.find((p) => p.id === r.program_id);
-      return Boolean(
-        adviser &&
+      if (
         program &&
-        adviser.department_id === program.department_id &&
-        db.curriculumVersions.some(
-          (c) =>
-            c.id === r.curriculum_version_id &&
-            c.program_id === r.program_id &&
-            c.status === "active",
-        ),
+        !auth.persona.roles.includes("admin") &&
+        !canAccessDepartment(auth.persona, program.department_id)
+      ) {
+        return {
+          row,
+          error: "The program is outside your authorized department." as const,
+          program: null,
+          department: null,
+          adviser: null,
+        };
+      }
+
+      const adviser = db.profiles.find(
+        (item) =>
+          item.id === row.adviser_id &&
+          item.status === "active" &&
+          (item.roles ?? [item.role]).includes("adviser"),
       );
-    };
-    const validCount = body.rows.filter(valid).length;
+      const curriculum = db.curriculumVersions.find(
+        (item) =>
+          item.id === row.curriculum_version_id &&
+          item.program_id === row.program_id &&
+          item.status === "active",
+      );
+      const normalizedEmail = row.email.trim().toLowerCase();
+      const duplicateNumber =
+        seenNumbers.has(row.student_number) ||
+        db.profiles.some(
+          (profile) => profile.student_number === row.student_number,
+        );
+      const duplicateEmail =
+        seenEmails.has(normalizedEmail) ||
+        db.profiles.some(
+          (profile) => profile.email.toLowerCase() === normalizedEmail,
+        );
+      seenNumbers.add(row.student_number);
+      seenEmails.add(normalizedEmail);
+
+      let error: string | null = null;
+      if (!/^\d{2}-\d-\d{5}$/.test(row.student_number)) {
+        error = "Student number must follow YY-N-NNNNN.";
+      } else if (duplicateNumber) {
+        error = "Student number already exists.";
+      } else if (duplicateEmail) {
+        error = "Institutional email already exists.";
+      } else if (!program || !department || !curriculum) {
+        error = "A matching active program and curriculum are required.";
+      } else if (
+        !adviser ||
+        adviser.department_id !== program.department_id ||
+        !canAccessDepartment(auth.persona, program.department_id)
+      ) {
+        error =
+          "An eligible active adviser in the authorized department is required.";
+      }
+
+      return { row, error, program, department, adviser };
+    });
+    const unauthorized = checks.find(
+      (check) =>
+        check.error === "The program is outside your authorized department.",
+    );
+    if (unauthorized) {
+      return errorJson(403, "INSUFFICIENT_PRIVILEGE", unauthorized.error);
+    }
+
+    const validChecks = checks.filter((check) => check.error === null);
+    const validCount = validChecks.length;
+    if (body.mode === "commit") {
+      const createdAt = "2026-11-10T09:00:00Z";
+      const importedByCurriculum = new Map<string, number>();
+      for (const { row, program, department, adviser } of validChecks) {
+        if (!program || !department || !adviser) continue;
+        const studentId = nextSyntheticUuid();
+        const assignmentId = nextSyntheticUuid();
+        db.profiles.push({
+          id: studentId,
+          role: "student",
+          roles: ["student"],
+          email: row.email.trim(),
+          full_name: row.full_name.trim(),
+          student_number: row.student_number,
+          status: "active",
+          created_at: createdAt,
+          updated_at: createdAt,
+          faculty_id: department.faculty_id,
+          department_id: department.id,
+          avatar_url: null,
+          consultation_hours: null,
+        });
+        db.roleAssignments.push({
+          id: nextSyntheticUuid(),
+          profile_id: studentId,
+          role: "student",
+          faculty_id: department.faculty_id,
+          department_id: department.id,
+          created_at: createdAt,
+        });
+        db.studentCurriculumAssignments.push({
+          id: assignmentId,
+          student_id: studentId,
+          curriculum_version_id: row.curriculum_version_id,
+          start_date: "2026-11-10",
+          end_date: null,
+          change_note: "Initial curriculum assignment",
+          created_at: createdAt,
+        });
+        importedByCurriculum.set(
+          row.curriculum_version_id,
+          (importedByCurriculum.get(row.curriculum_version_id) ?? 0) + 1,
+        );
+        db.studentOrganizations.push({
+          student_id: studentId,
+          student_curriculum_assignment_id: assignmentId,
+          curriculum_version_id: row.curriculum_version_id,
+          program_id: program.id,
+          department_id: department.id,
+          faculty_id: department.faculty_id,
+          adviser_id: adviser.id,
+          entry_year: row.entry_year ?? null,
+        });
+        db.adviserAssignments.push({
+          id: nextSyntheticUuid(),
+          student_id: studentId,
+          adviser_id: adviser.id,
+          adviser_name: adviser.full_name,
+          adviser_email: adviser.email,
+          adviser_faculty_name: null,
+          adviser_consultation_hours: adviser.consultation_hours ?? null,
+          start_date: "2026-11-10",
+          end_date: null,
+          handed_over_to_adviser_id: null,
+          handed_over_to_name: null,
+          handover_label: null,
+          created_at: createdAt,
+        });
+      }
+      db.curriculumVersions = db.curriculumVersions.map((version) => ({
+        ...version,
+        enrolled_student_count:
+          version.enrolled_student_count +
+          (importedByCurriculum.get(version.id) ?? 0),
+      }));
+    }
+
     const res: ApiSchema<"StudentBatchImportResponse"> = {
       mode: body.mode,
       valid_count: validCount,
       warning_count: 0,
       error_count: body.rows.length - validCount,
       imported_count: body.mode === "commit" ? validCount : 0,
-      results: body.rows.map((r) => ({
-        row_number: r.row_number,
-        student_number: r.student_number,
-        email: r.email,
-        outcome: valid(r)
-          ? body.mode === "commit"
+      results: checks.map(({ row, error }) => ({
+        row_number: row.row_number,
+        student_number: row.student_number,
+        email: row.email,
+        outcome: error
+          ? "error"
+          : body.mode === "commit"
             ? "imported"
-            : "valid"
-          : "error",
-        message: valid(r)
-          ? "Validated successfully."
-          : "An eligible active adviser and matching active curriculum are required.",
+            : "valid",
+        message: error ?? "Validated successfully.",
       })),
     };
     return HttpResponse.json(res, { status: 200 });
@@ -4518,46 +6849,96 @@ export const saaisMswHandlers = [
   http.put(
     "*/functions/v1/students/:student_id/plans/:school_term_id",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["admin", "adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
       const schoolTermId = String(params.school_term_id);
+      const db = getMockDatabase();
+      const isAdmin = auth.persona.roles.includes("admin");
+      if (
+        !isAdmin &&
+        !db.adviserAssignments.some(
+          (item) =>
+            item.student_id === studentId &&
+            item.adviser_id === auth.persona.profileId &&
+            item.end_date === null,
+        )
+      )
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Only the current adviser may save this plan.",
+        );
       const body = (await request
         .json()
-        .catch(() => ({}))) as ApiSchema<"AdvisingPlanSaveRequest">;
-      const planId = MOCK_IDS.advisingPlan1;
+        .catch(() => null)) as ApiSchema<"AdvisingPlanSaveRequest"> | null;
+      if (
+        !body ||
+        !Array.isArray(body.items) ||
+        body.items.length > 200 ||
+        !body.expected_curriculum_assignment_id ||
+        !db.studentCurriculumAssignments.some(
+          (item) =>
+            item.id === body.expected_curriculum_assignment_id &&
+            item.student_id === studentId &&
+            item.end_date === null,
+        ) ||
+        body.items.some(
+          (item) =>
+            !db.courseOfferings.some(
+              (offering) =>
+                offering.id === item.course_offering_id &&
+                offering.school_term_id === schoolTermId,
+            ),
+        )
+      )
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "The advising plan does not match the student, active curriculum assignment, or selected term.",
+        );
+      const oldPlan = db.advisingPlans.find(
+        (item) =>
+          item.student_id === studentId && item.school_term_id === schoolTermId,
+      );
+      if ((oldPlan?.revision ?? null) !== (body.expected_revision ?? null))
+        return errorJson(
+          409,
+          "STALE_PLAN",
+          "The advising plan changed since it was loaded.",
+        );
+      const now = new Date().toISOString();
       const plan: ApiSchema<"AdvisingPlan"> = {
-        id: planId,
+        id: oldPlan?.id ?? nextSyntheticUuid(),
         student_id: studentId,
         school_term_id: schoolTermId,
         student_curriculum_assignment_id:
-          body.expected_curriculum_assignment_id ??
-          MOCK_IDS.studentCurrAssignment1,
-        created_by: auth.persona.profileId,
+          body.expected_curriculum_assignment_id,
+        created_by: oldPlan?.created_by ?? auth.persona.profileId,
         updated_by: auth.persona.profileId,
-        created_at: "2026-08-12T08:00:00Z",
-        updated_at: "2026-11-10T09:00:00Z",
-        revision: (body.expected_revision ?? 0) + 1,
+        created_at: oldPlan?.created_at ?? now,
+        updated_at: now,
+        revision: (oldPlan?.revision ?? 0) + 1,
       };
-      const items: ApiSchema<"AdvisingPlanItem">[] = (body.items ?? []).map(
-        (item, idx) => ({
+      if (oldPlan) db.advisingPlans[db.advisingPlans.indexOf(oldPlan)] = plan;
+      else db.advisingPlans.push(plan);
+      db.advisingPlanItems = db.advisingPlanItems.filter(
+        (item) => item.advising_plan_id !== plan.id,
+      );
+      const items = body.items.map(
+        (item, index): ApiSchema<"AdvisingPlanItem"> => ({
           id: nextSyntheticUuid(),
-          advising_plan_id: planId,
+          advising_plan_id: plan.id,
           student_id: studentId,
           school_term_id: schoolTermId,
           course_offering_id: item.course_offering_id,
           curriculum_term_course_id: item.curriculum_term_course_id ?? null,
-          display_order: idx + 1,
-          created_at: "2026-11-10T09:00:00Z",
+          display_order: index + 1,
+          created_at: now,
         }),
       );
-      const res: ApiSchema<"AdvisingPlanResponse"> = { plan, items };
-      return HttpResponse.json(res, { status: 200 });
+      db.advisingPlanItems.push(...items);
+      return HttpResponse.json({ plan, items }, { status: 200 });
     },
   ),
 
@@ -4696,6 +7077,28 @@ export const saaisMswHandlers = [
         archived_by: archived ? auth.persona.profileId : null,
       };
       db.advisingNotes[db.advisingNotes.indexOf(note)] = updated;
+      const student = db.profiles.find((item) => item.id === studentId);
+      db.auditLogEntries.push({
+        id: nextSyntheticUuid(),
+        actor_id: auth.persona.profileId,
+        actor_name: auth.persona.fullName,
+        actor_role: auth.persona.primaryRole,
+        student_id: studentId,
+        student_name: student?.full_name ?? null,
+        student_number: student?.student_number ?? null,
+        target_label: student?.full_name ?? "Student note",
+        action: archived ? "note_archived" : "note_restored",
+        action_category: "note_change",
+        entity_type: "advising_note",
+        entity_id: noteId,
+        details_summary: archived
+          ? "Archived advising note."
+          : "Restored advising note.",
+        old_value: auditSnapshot({ is_archived: note.is_archived }),
+        new_value: auditSnapshot({ is_archived: archived }),
+        reason: null,
+        created_at: new Date().toISOString(),
+      });
       return HttpResponse.json(updated, { status: 200 });
     },
   ),
@@ -4733,21 +7136,83 @@ export const saaisMswHandlers = [
 
   http.post(
     "*/functions/v1/students/:student_id/shift-preview",
-    ({ request }) => {
+    async ({ request, params }) => {
       const auth = authenticateRequest(request, [
         "admin",
-        "dean",
         "department_head",
         "adviser",
       ]);
       if ("response" in auth) return auth.response;
-      const preview: ApiSchema<"ShiftPreviewResponse"> = {
-        carried_units: 33,
-        lost_units: 3,
-        projected_gwa: 1.72,
-        mutates_records: false,
-      };
-      return HttpResponse.json(preview, { status: 200 });
+      const studentId = String(params.student_id);
+      if (!canAccessStudentRecord(auth.persona, studentId, true))
+        return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
+      const body = (await request
+        .json()
+        .catch(() => null)) as ApiSchema<"ShiftPreviewRequest"> | null;
+      const db = getMockDatabase();
+      const org = db.studentOrganizations.find(
+        (item) => item.student_id === studentId,
+      );
+      const target = db.curriculumVersions.find(
+        (item) =>
+          item.id === body?.curriculum_version_id && item.status === "active",
+      );
+      if (!org || !target)
+        return errorJson(
+          404,
+          "NOT_FOUND",
+          "Student or active target curriculum not found.",
+        );
+      const targetSlots = db.curriculumTermCourses.filter((slot) =>
+        db.curriculumTerms.some(
+          (term) =>
+            term.id === slot.curriculum_term_id &&
+            term.curriculum_version_id === target.id,
+        ),
+      );
+      const passed = db.attemptResults.filter(
+        (attempt) =>
+          attempt.student_id === studentId &&
+          attempt.effective_status === "passed",
+      );
+      const passedCourses = new Set(
+        passed
+          .map(
+            (attempt) =>
+              db.courseOfferings.find(
+                (offering) => offering.id === attempt.course_offering_id,
+              )?.course_id,
+          )
+          .filter(Boolean),
+      );
+      const carried = targetSlots
+        .filter((slot) => slot.course_id && passedCourses.has(slot.course_id))
+        .reduce((sum, slot) => sum + slot.nominal_units, 0);
+      const totalEarned = passed.reduce(
+        (sum, attempt) => sum + attempt.units_attempted,
+        0,
+      );
+      const grades = passed.filter((attempt) => attempt.final_grade != null);
+      const gradeUnits = grades.reduce(
+        (sum, attempt) => sum + attempt.units_attempted,
+        0,
+      );
+      const projected = gradeUnits
+        ? grades.reduce(
+            (sum, attempt) =>
+              sum + (attempt.final_grade ?? 0) * attempt.units_attempted,
+            0,
+          ) / gradeUnits
+        : null;
+      return HttpResponse.json(
+        {
+          carried_units: carried,
+          lost_units: Math.max(0, totalEarned - carried),
+          projected_gwa: projected,
+          mutates_records: false,
+        },
+        { status: 200 },
+      );
     },
   ),
 
@@ -5086,7 +7551,7 @@ export const saaisMswHandlers = [
       { label: "1.00–1.50", min_grade: 1, max_grade: 1.5 },
       { label: "1.75–2.25", min_grade: 1.75, max_grade: 2.25 },
       { label: "2.50–3.00", min_grade: 2.5, max_grade: 3 },
-      { label: "3.25–5.00", min_grade: 3.25, max_grade: 5 },
+      { label: "5.00", min_grade: 5, max_grade: 5 },
     ];
     const pendingInc = attempts.filter(
       (attempt) =>
@@ -5306,9 +7771,9 @@ export const saaisMswHandlers = [
     const auth = authenticateRequest(request, ["admin", "dean"]);
     if ("response" in auth) return auth.response;
     const db = getMockDatabase();
-    const query = new URL(request.url).searchParams;
+    const url = new URL(request.url);
     const facultyId =
-      query.get("faculty_id") ??
+      url.searchParams.get("faculty_id") ??
       auth.persona.facultyId ??
       MOCK_IDS.facultyComputing;
     if (
@@ -5320,89 +7785,84 @@ export const saaisMswHandlers = [
         "INSUFFICIENT_PRIVILEGE",
         "Faculty is out of scope.",
       );
-    const departmentId = query.get("department_id");
+    const departmentFilter = url.searchParams.get("department_id");
+    const facultyDepts = db.departments.filter(
+      (d) => d.faculty_id === facultyId,
+    );
     const orgs = db.studentOrganizations.filter(
-      (item) =>
-        item.faculty_id === facultyId &&
-        (!departmentId || item.department_id === departmentId),
+      (org) =>
+        org.faculty_id === facultyId &&
+        (!departmentFilter || org.department_id === departmentFilter),
     );
-    const metrics = orgs.map((item) =>
-      studentMetrics(item.student_id, item.department_id),
-    );
-    const grades = metrics
-      .map((item) => item.gwa)
+    const metrics = orgs.map((org) => ({
+      org,
+      ...studentMetrics(org.student_id, org.department_id),
+    }));
+    const gwas = metrics
+      .map((m) => m.gwa)
       .filter((value): value is number => value !== null);
+    const averageGwa = gwas.length
+      ? Number((gwas.reduce((sum, g) => sum + g, 0) / gwas.length).toFixed(2))
+      : 0;
+
+    const departmentSummaries: ApiSchema<"FacultyReport">["department_summaries"] =
+      facultyDepts
+        .filter((dept) => !departmentFilter || dept.id === departmentFilter)
+        .map((dept) => {
+          const deptMetrics = metrics.filter(
+            (m) => m.org.department_id === dept.id,
+          );
+          const deptGwas = deptMetrics
+            .map((m) => m.gwa)
+            .filter((value): value is number => value !== null);
+          return {
+            department_id: dept.id,
+            department_name: dept.name,
+            student_count: deptMetrics.length,
+            average_gwa: deptGwas.length
+              ? Number(
+                  (
+                    deptGwas.reduce((sum, g) => sum + g, 0) / deptGwas.length
+                  ).toFixed(2),
+                )
+              : 0,
+            at_risk_count: deptMetrics.filter(
+              (m) => m.isDelinquent || m.flags.length > 0,
+            ).length,
+          };
+        });
+
     const report: ApiSchema<"FacultyReport"> = {
       faculty_id: facultyId,
-      total_students: orgs.length,
+      total_students: metrics.length,
       with_deficiencies_count: metrics.filter(
-        (item) =>
-          item.failed.length +
-            item.openInc.length +
-            item.lapsed.length +
-            item.flags.length >
+        (m) =>
+          m.failed.length +
+            m.openInc.length +
+            m.lapsed.length +
+            m.flags.length >
           0,
       ).length,
-      average_gwa: grades.length
-        ? Number(
-            (
-              grades.reduce((sum, value) => sum + value, 0) / grades.length
-            ).toFixed(2),
-          )
-        : null,
+      average_gwa: averageGwa,
       standing_counts: {
-        good_standing: metrics.filter(
-          (item) => item.standing === "good_standing",
-        ).length,
-        warning: metrics.filter((item) => item.standing === "warning").length,
-        probation: metrics.filter((item) => item.standing === "probation")
+        good_standing: metrics.filter((m) => m.standing === "good_standing")
           .length,
-        dismissed: metrics.filter((item) => item.standing === "dismissed")
-          .length,
+        warning: metrics.filter((m) => m.standing === "warning").length,
+        probation: metrics.filter((m) => m.standing === "probation").length,
+        dismissed: metrics.filter((m) => m.standing === "dismissed").length,
       },
-      open_inc_count: metrics.reduce(
-        (sum, item) => sum + item.openInc.length,
-        0,
-      ),
+      open_inc_count: metrics.reduce((sum, m) => sum + m.openInc.length, 0),
       at_risk_total_count: metrics.filter(
-        (item) => item.standing !== "good_standing",
+        (m) => m.isDelinquent || m.flags.length > 0,
       ).length,
+      encoding_progress_pct: 85,
       at_risk_roster: orgs
         .map((item) => deficiencySummary(item.student_id))
         .filter(
           (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
             item !== null,
         ),
-      department_summaries: db.departments
-        .filter(
-          (dept) =>
-            dept.faculty_id === facultyId &&
-            (!departmentId || dept.id === departmentId),
-        )
-        .map((dept) => {
-          const departmentMetrics = orgs
-            .filter((org) => org.department_id === dept.id)
-            .map((org) => studentMetrics(org.student_id, org.department_id));
-          const departmentGrades = departmentMetrics
-            .map((item) => item.gwa)
-            .filter((value): value is number => value !== null);
-          return {
-            department_id: dept.id,
-            department_name: dept.name,
-            student_count: departmentMetrics.length,
-            average_gwa: departmentGrades.length
-              ? Number(
-                  (
-                    departmentGrades.reduce((sum, value) => sum + value, 0) /
-                    departmentGrades.length
-                  ).toFixed(2),
-                )
-              : null,
-            at_risk_count: departmentMetrics.filter(
-              (item) => item.standing !== "good_standing",
-            ).length,
-          };
-        }),
+      department_summaries: departmentSummaries,
       computed_at: "2026-11-10T09:00:00Z",
     };
     return HttpResponse.json(report);
@@ -5415,7 +7875,16 @@ export const saaisMswHandlers = [
       .json()
       .catch(() => ({}))) as ApiSchema<"SystemSettingsUpdateRequest">;
     const db = getMockDatabase();
-    const current = db.systemSettings[0]!;
+    const departmentId = auth.persona.roles.includes("admin")
+      ? null
+      : (body.department_id ?? auth.persona.departmentId);
+    const settingsIndex = db.systemSettings.findIndex(
+      (setting) => setting.department_id === departmentId,
+    );
+    if (settingsIndex === -1) {
+      return errorJson(404, "NOT_FOUND", "System settings were not found.");
+    }
+    const current = db.systemSettings[settingsIndex]!;
     const warning = body.warning_pct ?? current.warning_pct;
     const probation = body.probation_pct ?? current.probation_pct;
     const dismissal = body.dismissal_pct ?? current.dismissal_pct;
@@ -5439,7 +7908,14 @@ export const saaisMswHandlers = [
       sender_email: body.sender_email ?? current.sender_email,
       updated_at: "2026-11-10T09:00:00Z",
     };
-    db.systemSettings[0] = updated;
+    db.systemSettings[settingsIndex] = updated;
+    recordMockAudit(auth.persona, {
+      action: "settings_updated",
+      entityType: "system_settings",
+      entityId: updated.id,
+      label: "Department settings",
+      details: "Updated department settings.",
+    });
     return HttpResponse.json(updated, { status: 200 });
   }),
 
@@ -5450,7 +7926,16 @@ export const saaisMswHandlers = [
       .json()
       .catch(() => ({}))) as ApiSchema<"RecordBackupRequest">;
     const db = getMockDatabase();
-    const current = db.systemSettings[0]!;
+    const departmentId = auth.persona.roles.includes("admin")
+      ? null
+      : (body.department_id ?? auth.persona.departmentId);
+    const settingsIndex = db.systemSettings.findIndex(
+      (setting) => setting.department_id === departmentId,
+    );
+    if (settingsIndex === -1) {
+      return errorJson(404, "NOT_FOUND", "System settings were not found.");
+    }
+    const current = db.systemSettings[settingsIndex]!;
     const updated: ApiSchema<"SystemSettings"> = {
       ...current,
       last_backup_at: body.completed_at ?? "2026-11-10T09:00:00Z",
@@ -5458,10 +7943,21 @@ export const saaisMswHandlers = [
       last_backup_reference: body.backup_reference ?? "BKP-2026-11-10-001",
       last_backup_location:
         body.storage_location ?? "vsu-saais-backups/2026-11-10.dump",
-      last_backup_scope: body.scope ?? "institution_wide",
+      last_backup_scope:
+        body.scope ??
+        (auth.persona.roles.includes("admin")
+          ? "institution_wide"
+          : "department_records"),
       updated_at: "2026-11-10T09:00:00Z",
     };
-    db.systemSettings[0] = updated;
+    db.systemSettings[settingsIndex] = updated;
+    recordMockAudit(auth.persona, {
+      action: "backup_recorded",
+      entityType: "system_settings",
+      entityId: updated.id,
+      label: "Backup record",
+      details: `Recorded backup ${updated.last_backup_reference ?? ""}.`.trim(),
+    });
     return HttpResponse.json(updated, { status: 200 });
   }),
 

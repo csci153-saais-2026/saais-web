@@ -203,6 +203,59 @@ describe("shared adviser dashboard mock", () => {
       ).response.status,
     ).toBe(403);
   });
+
+  it("exposes a consistent delinquency scenario for the assigned adviser", async () => {
+    const student = getMockDatabase().profiles.find(
+      (profile) => profile.email === "sample.student04@vsu.edu.ph",
+    )!;
+    loginAsMockPersona("adviser_secondary");
+    const roster = await client().GET("/functions/v1/students", {
+      params: { query: { assignment_scope: "current" } },
+    });
+    const row = roster.data?.items.find(
+      (item) => item.student_id === student.id,
+    );
+    expect(row?.is_delinquent).toBe(true);
+    expect(roster.data?.flagged_count).toBe(
+      roster.data?.items.filter(
+        (item) => item.open_flags_count > 0 || item.is_delinquent,
+      ).length,
+    );
+    const summary = await client().GET(
+      "/functions/v1/students/{student_id}/academic-summary",
+      { params: { path: { student_id: student.id } } },
+    );
+    expect(summary.data?.is_delinquent).toBe(true);
+    expect(summary.data?.failed_units).toBe(26);
+    const grades = await client().GET(
+      "/functions/v1/students/{student_id}/grades",
+      { params: { path: { student_id: student.id } } },
+    );
+    expect(
+      grades.data
+        ?.flatMap((term) => term.attempts)
+        .filter((attempt) => attempt.final_grade === 5),
+    ).toHaveLength(9);
+    const result = getMockDatabase().attemptResults.find(
+      (attempt) =>
+        attempt.student_id === student.id && attempt.units_attempted === 3,
+    )!;
+    result.final_grade = 2;
+    result.effective_status = "passed";
+    const afterCorrection = await client().GET("/functions/v1/students", {
+      params: {
+        query: { assignment_scope: "current", search: student.student_number! },
+      },
+    });
+    expect(afterCorrection.data?.items[0]?.is_delinquent).toBe(false);
+    loginAsMockPersona("adviser");
+    const otherRoster = await client().GET("/functions/v1/students", {
+      params: { query: { assignment_scope: "current" } },
+    });
+    expect(
+      otherRoster.data?.items.some((item) => item.student_id === student.id),
+    ).toBe(false);
+  });
   it("shares connected records across the student, assigned adviser, head and admin", async () => {
     const student = getMockDatabase().profiles.find(
       (profile) => profile.email === "sample.student01@vsu.edu.ph",

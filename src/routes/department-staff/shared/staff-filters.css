@@ -1,0 +1,30 @@
+/* Keep staff filter controls stable when their text changes. */
+.staff-filter-controls > *,
+.staff-filter-controls .relative {
+  min-width: 0;
+}
+.staff-filter-controls :is(input, select, [role="combobox"]) {
+  height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 14px;
+}
+.staff-filter-controls [role="combobox"] {
+  width: 100%;
+  overflow: hidden;
+}
+.staff-filter-controls [data-slot="select-value"] {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.staff-filter-controls input::placeholder {
+  font-size: 14px;
+}
+
+.staff-filter-controls :is(label, input, select, [role="combobox"], [data-slot="select-value"]),
+.staff-filter-controls input::placeholder {
+  font-weight: 600;
+}

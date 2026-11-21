@@ -73,18 +73,18 @@ Sample 10 is a transferee with student number `26-2-10010`: the middle digit rec
 
 ### Persona Tokens Reference
 
-| Persona Key          | Name                          | VSU Email               | Roles                                | Scope                           | Bearer Token                                                       |
+| Persona Key | Name | VSU Email | Roles | Scope | Bearer Token |
 | -------------------- | ----------------------------- | ----------------------- | ------------------------------------ | ------------------------------- | ------------------------------------------------------------------ |
-| `student`            | Sta. Agata, Jerome Daniel S.  | `24-1-01798@vsu.edu.ph` | `student`                            | Own record (`DCST`)             | `mock-jwt:student:00000000-0000-4000-8000-000000000101`            |
-| `student_secondary`  | Concoles, Cyril Jade M.       | `23-1-02121@vsu.edu.ph` | `student`                            | Own record (`DCST`, invited)    | `mock-jwt:student_secondary:00000000-0000-4000-8000-000000000102`  |
-| `student_other_dept` | Flores, Raniel John B.        | `24-1-01926@vsu.edu.ph` | `student`                            | Own record (`DABE`)             | `mock-jwt:student_other_dept:00000000-0000-4000-8000-000000000103` |
-| `adviser`            | Polo, Marco Antonio P.        | `23-1-02224@vsu.edu.ph` | `adviser`                            | `DCST` (`Faculty of Computing`) | `mock-jwt:adviser:00000000-0000-4000-8000-000000000201`            |
-| `adviser_secondary`  | Coting, Eulo Rod M.           | `22-1-00856@vsu.edu.ph` | `adviser`                            | `DCST` (`Faculty of Computing`) | `mock-jwt:adviser_secondary:00000000-0000-4000-8000-000000000202`  |
-| `department_head`    | Bucol, Matthew Gerald A.      | `23-1-02044@vsu.edu.ph` | `department_head`, `adviser`         | `DCST`                          | `mock-jwt:department_head:00000000-0000-4000-8000-000000000301`    |
-| `department_staff`   | Dumilon, John Earl Patrick G. | `23-1-01072@vsu.edu.ph` | `department_staff`                   | `DCST`                          | `mock-jwt:department_staff:00000000-0000-4000-8000-000000000401`   |
-| `dean`               | Montera, Mhac Alester         | `23-1-02106@vsu.edu.ph` | `dean`, `adviser`                    | `Faculty of Computing` + `DCST` | `mock-jwt:dean:00000000-0000-4000-8000-000000000501`               |
-| `dean_dept_head`     | Tan, Ron Nicolas              | `23-1-00972@vsu.edu.ph` | `dean`, `department_head`, `adviser` | `Faculty of Computing` + `DCST` | `mock-jwt:dean_dept_head:00000000-0000-4000-8000-000000000502`     |
-| `admin`              | Lelis, Nietzchan Jake         | `23-1-01457@vsu.edu.ph` | `admin`, `adviser`                   | Institution-wide + `DCST`       | `mock-jwt:admin:00000000-0000-4000-8000-000000000601`              |
+| `student` | Sta. Agata, Jerome Daniel S. | `24-1-01798@vsu.edu.ph` | `student` | Own record (`DCST`) | `mock-jwt:student:00000000-0000-4000-8000-000000000101` |
+| `student_secondary` | Concoles, Cyril Jade M. | `23-1-02121@vsu.edu.ph` | `student` | Own record (`DCST`, invited) | `mock-jwt:student_secondary:00000000-0000-4000-8000-000000000102` |
+| `student_other_dept` | Flores, Raniel John B. | `24-1-01926@vsu.edu.ph` | `student` | Own record (`DABE`) | `mock-jwt:student_other_dept:00000000-0000-4000-8000-000000000103` |
+| `adviser` | Polo, Marco Antonio P. | `23-1-02224@vsu.edu.ph` | `adviser` | `DCST` (`Faculty of Computing`) | `mock-jwt:adviser:00000000-0000-4000-8000-000000000201` |
+| `adviser_secondary` | Coting, Eulo Rod M. | `22-1-00856@vsu.edu.ph` | `adviser` | `DCST` (`Faculty of Computing`) | `mock-jwt:adviser_secondary:00000000-0000-4000-8000-000000000202` |
+| `department_head` | Bucol, Matthew Gerald A. | `23-1-02044@vsu.edu.ph` | `department_head`, `adviser` | `DCST` | `mock-jwt:department_head:00000000-0000-4000-8000-000000000301` |
+| `department_staff` | Dumilon, John Earl Patrick G. | `23-1-01072@vsu.edu.ph` | `department_staff` | `DCST` | `mock-jwt:department_staff:00000000-0000-4000-8000-000000000401` |
+| `dean` | Montera, Mhac Alester | `23-1-02106@vsu.edu.ph` | `dean`, `adviser` | `Faculty of Computing` + `DCST` | `mock-jwt:dean:00000000-0000-4000-8000-000000000501` |
+| `dean_dept_head` | Tan, Ron Nicolas | `23-1-00972@vsu.edu.ph` | `dean`, `department_head`, `adviser` | `Faculty of Computing` + `DCST` | `mock-jwt:dean_dept_head:00000000-0000-4000-8000-000000000502` |
+| `admin` | Lelis, Nietzchan Jake | `23-1-01457@vsu.edu.ph` | `admin`, `adviser` | Institution-wide + `DCST` | `mock-jwt:admin:00000000-0000-4000-8000-000000000601` |
 
 ---
 
