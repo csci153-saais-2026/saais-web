@@ -1,0 +1,100 @@
+patch:
+  tags:
+    - Program & Curriculum
+  summary: Update course or elective slot in curriculum term
+  operationId: updateCurriculumTermCourse
+  description: >-
+    Department Head, Department Staff, or Admin validated transactional catalog operation to
+    edit an unreferenced curriculum slot (course, slot_type, slot_label, or nominal_units) and
+    recompute parent CurriculumVersion.total_units.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/CurriculumTermCourse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/CurriculumTermCourseUpdate.yaml"
+delete:
+  tags:
+    - Program & Curriculum
+  summary: Remove course or elective slot from curriculum term
+  operationId: deleteCurriculumTermCourse
+  description: >-
+    Department Head, Department Staff, or Admin validated transactional catalog operation.
+    Protect referenced history and required last children; lock parents and commit audit with
+    the mutation. Raw table writes are not exposed by the frontend contract.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "204":
+      description: Removed unreferenced record. Referenced/history/last-child conflicts are rejected.
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

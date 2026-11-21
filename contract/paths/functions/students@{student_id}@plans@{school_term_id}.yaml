@@ -1,0 +1,57 @@
+put:
+  tags:
+    - Advising & Exceptions
+  summary: Save selected course plan
+  operationId: saveAdvisingPlan
+  description: >-
+    Verify expected revision and current curriculum assignment, actual term offerings and
+    recommendation eligibility; atomically replace/reorder unique selections and audit. Plan
+    persists and is student-visible, separate from enrollment. Historical advisers cannot change
+    it; never create attempts.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-adviser-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AdvisingPlanResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: school_term_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/AdvisingPlanSaveRequest.yaml"

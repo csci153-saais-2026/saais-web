@@ -1,0 +1,6 @@
+type: string
+enum:
+  - invited
+  - active
+  - disabled
+description: Account status

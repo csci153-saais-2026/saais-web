@@ -262,18 +262,18 @@ def href(key):
 
 # Sample advisees (current roster + past)
 ROSTER = [
-    ("s1", "Maria Isabel Bautista", "2023-04412", "1.58", "56", "good"),
-    ("s2", "Angelo Cruz", "2022-01188", "4.50", "3", "flagged"),
-    ("s3", "Joshua Lim", "2023-02940", "1.50", "3", "good"),
-    ("s5", "Carlo Dominguez", "2026-00142", "—", "0", "good"),
+    ("s1", "Maria Isabel Bautista", "23-1-04412", "1.58", "56", "good"),
+    ("s2", "Angelo Cruz", "22-1-01188", "4.50", "3", "flagged"),
+    ("s3", "Joshua Lim", "23-1-02940", "1.50", "3", "good"),
+    ("s5", "Carlo Dominguez", "26-1-00142", "—", "0", "good"),
 ]
-PAST = [("s4", "Andrea Villanueva", "2024-00871", "1.75", "3", "good")]
+PAST = [("s4", "Andrea Villanueva", "24-1-00871", "1.75", "3", "good")]
 
 def dashboard():
-    follow = [("Maria Isabel Bautista", "2023-04412", badge("1 open INC", "amber")),
-              ("Angelo Cruz", "2022-01188", badge("Delinquency flag", "red")),
-              ("Joshua Lim", "2023-02940", badge("1 open INC", "amber")),
-              ("Carlo Dominguez", "2026-00142", badge("Good standing", "green"))]
+    follow = [("Maria Isabel Bautista", "23-1-04412", badge("1 open INC", "amber")),
+              ("Angelo Cruz", "22-1-01188", badge("Delinquency flag", "red")),
+              ("Joshua Lim", "23-1-02940", badge("1 open INC", "amber")),
+              ("Carlo Dominguez", "26-1-00142", badge("Good standing", "green"))]
     rows = [f'<tr class="row">' + td(course_cell(n, num)) + td(b) + td(btn_secondary("Review", small=True, href=href("overview")), "right") + '</tr>'
             for n, num, b in follow]
     follow_panel = panel("Students to follow up", table(["Student", "Reason", ""], rows),
@@ -355,7 +355,7 @@ def student_head(active):
     return (f'<div style="display: flex; align-items: center; gap: 15px; margin-bottom: 16px">{avatar("MI", 52)}'
             f'<div><h1 class="dsp" style="font-size: 30px">{STUDENT}</h1>'
             f'<p style="color: #6E6C58; font-size: 14px; margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap">'
-            f'<span class="mono" style="font-size: 13px">2023-04412</span> · {email}BS Computer Science · {badge("Good standing", "green")}</p></div></div>'
+            f'<span class="mono" style="font-size: 13px">23-1-04412</span> · {email}BS Computer Science · {badge("Good standing", "green")}</p></div></div>'
             f'<nav aria-label="Student record" style="display: flex; gap: 26px; border-bottom: 1px solid #E1DBC6; margin-bottom: 24px; overflow-x: auto; white-space: nowrap">{tabs}</nav>')
 
 ENROLLED = [  # current term, attempt id, code, title, units
@@ -699,8 +699,8 @@ def reassign():
             + f'<div style="grid-column: 1 / -1">{textarea("Reason for reassignment", "ra-reason", "placeholder=\"Required. Visible in the transfer history.\"", 3)}</div>'
             + '</div>' + msg("ra-msg", "16px")
             + f'<div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px">{btn_ghost("Cancel", attrs="data-reset")}{btn_primary("Review reassignment", typ="submit")}</div></form>')
-    hist = [("1 Aug 2026", "Andrea Villanueva", "2024-00871", "Prof. Ramon Reyes (you)", "Prof. Lourdes Mendez", "Load rebalancing"),
-            ("12 Jun 2024", "Maria Isabel Bautista", "2023-04412", "Prof. Lourdes Mendez", "Prof. Ramon Reyes (you)", "Load rebalancing")]
+    hist = [("1 Aug 2026", "Andrea Villanueva", "24-1-00871", "Prof. Ramon Reyes (you)", "Prof. Lourdes Mendez", "Load rebalancing"),
+            ("12 Jun 2024", "Maria Isabel Bautista", "23-1-04412", "Prof. Lourdes Mendez", "Prof. Ramon Reyes (you)", "Load rebalancing")]
     rows = [f'<tr class="row">' + td(d) + td(course_cell(n, f'<span class="mono">{num}</span>')) + td(fr) + td(to) + td(r) + '</tr>' for d, n, num, fr, to, r in hist]
     confirm = dialog("dlg-ra", "Confirm reassignment", "", '<div id="ra-summary" style="font-size: 14px"></div>'
                      + f'<div style="margin-top: 16px">{callout("advisory", P_FLAG, "The current assignment ends and the new one starts on the same date, so there is never a gap in adviser continuity.")}</div>',

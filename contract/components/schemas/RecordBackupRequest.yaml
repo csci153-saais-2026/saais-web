@@ -1,0 +1,37 @@
+type: object
+additionalProperties: false
+properties:
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  backup_label:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+  backup_reference:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+  storage_location:
+    type:
+      - string
+      - "null"
+    maxLength: 500
+  scope:
+    type:
+      - string
+      - "null"
+    enum:
+      - department_records
+      - department_records_and_audit_log
+      - institution_wide
+      - null
+  completed_at:
+    type:
+      - string
+      - "null"
+    format: date-time

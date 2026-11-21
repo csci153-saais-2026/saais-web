@@ -1,0 +1,62 @@
+put:
+  tags:
+    - Advising & Exceptions
+  summary: Reassign current adviser
+  operationId: reassignAdviser
+  description: >-
+    Department Heads and Department Staff reassign a student to an eligible active adviser
+    within their authorized department. Adviser and System Administrator roles alone do not
+    authorize reassignment. Following a cross-department transfer, the destination department's
+    Head or Staff may reassign its student to an eligible active adviser in that department even
+    when the current adviser belongs to the former department. The outgoing assignment remains
+    valid until this transaction; do not grant the outgoing adviser broader department access.
+    Lock student and close/open assignment on identical dates in one transaction; history
+    remains immutable and past advisers immediately lose write access.
+  x-required-roles:
+    - department_head
+    - department_staff
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items:
+              $ref: "../../components/schemas/AdviserAssignment.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/AdviserReassignmentRequest.yaml"

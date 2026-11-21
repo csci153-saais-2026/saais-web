@@ -1,0 +1,47 @@
+post:
+  tags:
+    - Notifications & Settings
+  summary: Evaluate idempotent deadline and standing notifications
+  operationId: evaluateScheduledNotifications
+  description: >-
+    Evaluates deadline-driven and threshold-driven notifications (approaching INC deadlines,
+    lapsed INCs, academic standing / delinquency changes, approaching grade-encoding closure,
+    unassigned students, expiring account invitations, and overdue backup reminders) as of
+    reference_date (defaults to current Asia/Manila date). Uses deterministic dedupe_key values
+    so repeated evaluations never emit duplicate notifications. In production, pg_cron invokes
+    the same server evaluation routine daily; in mock/MSW testing, handlers run it lazily on
+    session bootstrap and allow Department Heads / Admins (or test harnesses) to pass any
+    reference_date to simulate time-based alerts deterministically.
+  x-required-roles:
+    - department_head
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and department/institution scope at runtime; enforce
+    idempotency via dedupe_key.
+  responses:
+    "200":
+      description: Scheduled alert evaluation completed idempotently.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/EvaluateAlertsResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/EvaluateAlertsRequest.yaml"

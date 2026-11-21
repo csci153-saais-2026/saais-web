@@ -1,0 +1,23 @@
+type: object
+properties:
+  version_label:
+    type: string
+    minLength: 1
+    maxLength: 250
+    pattern: \S
+  effective_start:
+    type: string
+    format: date
+  effective_end:
+    type:
+      - string
+      - "null"
+    format: date
+  delinquency_threshold:
+    type: number
+  total_units:
+    type: number
+  status:
+    $ref: "./CurriculumVersionStatus.yaml"
+additionalProperties: false
+minProperties: 1

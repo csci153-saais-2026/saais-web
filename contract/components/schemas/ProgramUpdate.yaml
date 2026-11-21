@@ -1,0 +1,22 @@
+type: object
+properties:
+  code:
+    type: string
+    minLength: 2
+    maxLength: 250
+    pattern: \S
+  name:
+    type: string
+    minLength: 3
+    maxLength: 250
+    pattern: \S
+  nominal_duration:
+    type: number
+    minimum: 1
+  status:
+    $ref: "./ProgramStatus.yaml"
+  department_id:
+    type: string
+    format: uuid
+additionalProperties: false
+minProperties: 1

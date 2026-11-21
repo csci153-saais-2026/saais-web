@@ -1,0 +1,11 @@
+description: Server/gateway request budget exceeded. Retry according to Retry-After; no partial writes.
+headers:
+  Retry-After:
+    description: Delay in seconds before retry.
+    schema:
+      type: integer
+      minimum: 1
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/Error.yaml"

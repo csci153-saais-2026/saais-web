@@ -1,0 +1,34 @@
+type: object
+additionalProperties: false
+properties:
+  start_year:
+    type: integer
+    minimum: 1900
+    maximum: 3000
+  end_year:
+    type: integer
+    minimum: 1900
+    maximum: 3000
+  term_type:
+    $ref: "./SchoolTermType.yaml"
+  starts_on:
+    type:
+      - string
+      - "null"
+    format: date
+  ends_on:
+    type: string
+    format: date
+  encoding_deadline:
+    type:
+      - string
+      - "null"
+    format: date
+  is_locked:
+    type: boolean
+    default: false
+required:
+  - start_year
+  - end_year
+  - term_type
+  - ends_on

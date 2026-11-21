@@ -1,0 +1,33 @@
+oneOf:
+  - type: object
+    additionalProperties: false
+    required:
+      - decision
+    properties:
+      decision:
+        type: string
+        const: approved
+      decision_note:
+        type:
+          - string
+          - "null"
+        maxLength: 2000
+        description: Optional approval note when approving a curriculum transfer request.
+  - type: object
+    additionalProperties: false
+    required:
+      - decision
+      - decision_note
+    properties:
+      decision:
+        type: string
+        const: rejected
+      decision_note:
+        type: string
+        minLength: 1
+        maxLength: 2000
+        pattern: \S
+        description: Required non-blank rejection reason when rejecting a curriculum transfer request.
+description: >-
+  Department Head or Admin decision on a pending curriculum transfer request. Approval allows
+  an optional `decision_note`; rejection requires a non-blank `decision_note`.

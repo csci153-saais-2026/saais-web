@@ -1,0 +1,25 @@
+type: object
+additionalProperties: false
+properties:
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  warning_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  probation_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  dismissal_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  sender_email:
+    type: string
+    format: email
+    maxLength: 254
+minProperties: 1

@@ -2,21 +2,23 @@ name: Semgrep SAST Scan
 
 on:
   push:
-    branches: [main, staging, dev]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
   pull_request:
-    branches: [main, staging, dev]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
 
 permissions:
   contents: read

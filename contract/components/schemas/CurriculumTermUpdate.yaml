@@ -1,0 +1,12 @@
+type: object
+additionalProperties: false
+properties:
+  year_level:
+    type: integer
+    minimum: 1
+    maximum: 8
+  term_sequence:
+    type: integer
+    minimum: 1
+    maximum: 3
+minProperties: 1

@@ -1,0 +1,12 @@
+name: limit
+in: query
+description: >-
+  Bounded page size; gateway/PostgREST max-rows must enforce this cap even when clients omit
+  or bypass contract validation.
+required: false
+schema:
+  type: integer
+  minimum: 1
+  maximum: 1000
+  default: 20
+  example: 20

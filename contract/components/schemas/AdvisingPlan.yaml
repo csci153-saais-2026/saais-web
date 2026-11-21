@@ -1,0 +1,46 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  school_term_id:
+    type: string
+    format: uuid
+  student_curriculum_assignment_id:
+    type: string
+    format: uuid
+  created_by:
+    type: string
+    format: uuid
+    readOnly: true
+  updated_by:
+    type: string
+    format: uuid
+    readOnly: true
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+  revision:
+    type: integer
+    minimum: 0
+    readOnly: true
+required:
+  - id
+  - student_id
+  - school_term_id
+  - student_curriculum_assignment_id
+  - created_by
+  - updated_by
+  - created_at
+  - updated_at
+  - revision

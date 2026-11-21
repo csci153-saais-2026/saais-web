@@ -1,0 +1,9 @@
+type: string
+enum:
+  - passed
+  - failed
+  - currently_enrolled
+  - inc
+  - dr
+  - na
+description: Student enrollment attempt outcome

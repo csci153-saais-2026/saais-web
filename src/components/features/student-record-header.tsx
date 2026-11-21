@@ -1,6 +1,6 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { StatusBadge, type Status } from "@/components/ui/status-badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { StatusBadge, type Status } from "@/components/ui/status-badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /** Avatar, name, meta line and standing badge for a single student record. */
 function StudentRecordHeader({
@@ -12,13 +12,13 @@ function StudentRecordHeader({
   email,
   standing,
 }: {
-  name: string
-  initials: string
-  studentNumber: string
-  program: string
-  yearLabel: string
-  email: string
-  standing: Status
+  name: string;
+  initials: string;
+  studentNumber: string;
+  program: string;
+  yearLabel: string;
+  email: string;
+  standing: Status;
 }) {
   return (
     <div className="mb-5 flex items-center gap-4">
@@ -38,7 +38,7 @@ function StudentRecordHeader({
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 /** Underlined tab strip with a gold active indicator (Checklist / Grades / Curriculum / ...). */
@@ -47,13 +47,16 @@ function RecordTabs({
   value,
   onValueChange,
 }: {
-  tabs: { value: string; label: string }[]
-  value: string
-  onValueChange: (value: string) => void
+  tabs: { value: string; label: string }[];
+  value: string;
+  onValueChange: (value: string) => void;
 }) {
   return (
     <Tabs value={value} onValueChange={onValueChange} className="mb-6">
-      <TabsList variant="line" className="h-auto group-data-horizontal/tabs:h-auto w-full justify-start gap-6 overflow-x-auto border-b border-border p-0">
+      <TabsList
+        variant="line"
+        className="h-auto group-data-horizontal/tabs:h-auto w-full justify-start gap-6 overflow-x-auto border-b border-border p-0"
+      >
         {tabs.map((t) => (
           <TabsTrigger
             key={t.value}
@@ -65,7 +68,7 @@ function RecordTabs({
         ))}
       </TabsList>
     </Tabs>
-  )
+  );
 }
 
-export { StudentRecordHeader, RecordTabs }
+export { StudentRecordHeader, RecordTabs };
