@@ -2,7 +2,7 @@
 
 This implementation targets approved OpenAPI **0.3.1 at `8df551183962d19ab724c9f33c9a5f6d884d3ba5`**, with bundled SHA-256 `4be525583cfa343782e00e3c1daee087da92a213734e7ba75ff00006f5418d6f`. PR #111 records the frontend and backend representative approvals. The feature includes the latest backend parent and that approved contract change. The generator bundles the pinned Git tree and verifies its version and hash before producing the HTTP and SQL runtime schemas.
 
-## Route ownership
+## Route groups
 
 | Deployed function | Implementation |
 | --- | --- |
@@ -25,18 +25,18 @@ node supabase/tools/check-pinned-contract.cjs
 node supabase/tools/test-database.cjs
 ```
 
-The database runner uses PostgreSQL binaries from `C:/Program Files/PostgreSQL/18/bin` by default. Set `PG_BINARY_DIR` for a different installation. It starts an isolated cluster under ignored `supabase/.temp/jerome-pg` on `127.0.0.1:55432`, creates a uniquely named temporary database, applies every migration, runs SQL tests plus a two-connection concurrency test, drops only that temporary database, and stops its server. Keep that port free. Its `bootstrap.sql` supplies a minimal **test-only** Auth schema; do not apply it to a Supabase project.
+The database runner runs the domain suite, then rebuilds its disposable database for application fixtures and rolls back each application test. This keeps sample identities, transfer decisions and term locks isolated between the suites. It uses PostgreSQL binaries from `C:/Program Files/PostgreSQL/18/bin` by default. Set `PG_BINARY_DIR` for a different installation. It starts an isolated cluster under ignored `supabase/.temp/jerome-pg` on `127.0.0.1:55432`, creates a uniquely named temporary database, applies every migration, runs SQL tests plus a two-connection concurrency test, drops only that temporary database, and stops its server. Keep that port free. Its `bootstrap.sql` supplies a minimal **test-only** Auth schema; do not apply it to a Supabase project.
 
 The SQL suite checks successful execution of all 47 operations, curriculum-cloning Head/Staff permissions, Admin-only and cross-department denials with no partial writes, response validation, body/path validation, unauthenticated and forbidden requests, scope isolation, multi-role authorization, owned notifications, RLS/grants, stale updates, history, conflicts, late transaction rollback, Unicode duplicate normalization, zero-unit snapshots, INC/direct-credit collisions and concurrent writes. It uses synthetic accounts and data.
 
-These checks do not emulate Supabase's gateway, cryptographic JWT verification, GoTrue, PostgREST, Deno isolates, cron extension or email delivery. Run `deno task --config supabase/deno.json check` and deployed authenticated integration tests when those services are available. The November 21 review also passed Deno checks for all five entry points and ran migrations and the SQL/concurrency suite in a disposable PostgreSQL 17.11 container with the test Auth stand-in.
+These checks do not emulate Supabase's gateway, cryptographic JWT verification, GoTrue, PostgREST, Deno isolates, cron extension or email delivery. Run `deno task --config supabase/deno.json check` and deployed authenticated integration tests when those services are available. The November 21 review also passed Deno checks for the original five entry points and ran migrations and the SQL/concurrency suite in a disposable PostgreSQL 17.11 container with the test Auth stand-in.
 
 ## Runtime configuration
 
 - `SUPABASE_URL`: project API URL.
 - `SUPABASE_PUBLISHABLE_KEYS`: hosted named publishable-key JSON dictionary. The singular `SUPABASE_PUBLISHABLE_KEY` and legacy `SUPABASE_ANON_KEY` are also supported. The incoming key must match one of these public keys and is forwarded upstream. Secret/service-role keys are excluded.
 - `CORS_ALLOWED_ORIGINS`: comma-separated exact SPA origins. Requests carrying an unlisted Origin are denied. Requests without Origin still require both project key and user JWT.
-- The supplied `config.toml` keeps `verify_jwt=true` for all five deployed functions. Header/key handling follows [Supabase's auth-header documentation](https://supabase.com/docs/guides/functions/auth-headers) and [documented environment variables](https://supabase.com/docs/guides/functions/secrets).
+- The supplied `config.toml` keeps `verify_jwt=true` for all 13 deployed functions. Header/key handling follows [Supabase's auth-header documentation](https://supabase.com/docs/guides/functions/auth-headers) and [documented environment variables](https://supabase.com/docs/guides/functions/secrets).
 - The database requires a non-expired session in `auth.sessions`, an active provisioned profile, and trusted `role_assignment` rows. Client metadata never grants roles.
 - Successful calls consume a database-enforced allowance of 120 calls per identity per minute. Rejected transactions roll back their counter update. Configure gateway IP/failed-request rate limits separately; no IP-limit configuration was deployed here.
 - HTTP and RPC bodies are capped at 1 MiB; RPC path parameters are capped at 8 KiB. Per-field/array bounds come from the pinned contract. There are no query parameters on these assigned writes.
@@ -47,18 +47,18 @@ The six `20261009...` migrations are copied unchanged from the existing team bra
 
 Review existing provisioning before enabling the new roles. The old three-role schema did not contain the required Head/Staff/Dean assignments. Provision their actual department/faculty scopes through the team's authorized account workflow, not through client payloads. Do not reapply copied base SQL manually to a project that already records those migration versions.
 
-Only `public.jerome_operation` is an authenticated write RPC. Private domain functions, schema snapshots and history tables cannot be called or changed by browser roles. Raw academic writes are revoked; RLS remains enabled. Added SELECT policies expose only a caller's own notifications and role assignments. The other Data API reads, their safe projections, and their complete role/scope policies remain the team's separate integration work. Their absence is fail-closed.
+The shared Edge layer calls `public.jerome_operation` or `public.matt_operation` for authenticated operations. The assistant retrieves its authorized context through `public.matt_assistant_context`. Private domain functions, schema snapshots and history tables cannot be called or changed by browser roles. Raw academic writes are revoked; RLS remains enabled. Added SELECT policies expose only a caller's own notifications and role assignments. The other Data API reads, their safe projections, and their complete role/scope policies remain the team's separate integration work. Their absence is fail-closed.
 
 Audit and credit history reject update/delete/truncate. Credit edits retain the previous row in `saais_private.credit_history` with effective dates. Revocation preserves source attempts and current/historical decision values. Writes bump `saais_private.cache_invalidation` for the affected student. Report/cache consumers must read fresh data or use that revision; no existing cache implementation was present to modify.
 
-## Matt's routes
+## Student, advising and account operations
 
-The shared `students/index.ts` serves both sets of student routes. The Matt route
+The shared `students/index.ts` serves both sets of student routes. The additional route
 registry in `functions/_shared/matt-routes.ts` lists the active operations.
 `matt_operation` verifies the active profile and role, validates requests and
 responses against the pinned contract, and calls private SQL handlers.
 
-- The assistant uses `SAAIS_ASSISTANT_ENDPOINT`, `SAAIS_ASSISTANT_API_KEY`, and
+- The assistant requires the current adviser assignment and uses `SAAIS_ASSISTANT_ENDPOINT`, `SAAIS_ASSISTANT_API_KEY`, and
   `SAAIS_ASSISTANT_MODEL` for a compatible chat completions provider. Configure
   the team's approved provider before enabling the feature. The provider test
   uses a stub. The context query omits account details, names, and private notes.
@@ -92,3 +92,5 @@ Notification rows with `email_delivery_status='pending'` form the delivery queue
 - School-term catalog writes cannot be used by Head/Staff to bypass the explicit Admin-only institution-lock rule. Reopening a department leaves the institution lock intact.
 
 See `docs/backend/jerome-implementation-report.md` for the operation-by-operation status, actual verification results and Git contribution inventory.
+
+The current integration registers 81 operations across both contributions, including the saved-attempt rejection endpoint. Both runtime snapshots now use the approved OpenAPI 0.3.1 version and hash. See [integration follow-up](../docs/backend/integration-follow-up.md) for the deferred operations, affected application workflows and remaining provider/deployment work.
