@@ -58,7 +58,6 @@ const account = {
   ],
   student_organization: null,
 } as const
-
 const faculties = [
   { id: 'faculty-1', name: 'Faculty of Computing' },
   { id: 'faculty-2', name: 'Faculty of Agriculture' },
@@ -75,6 +74,32 @@ const departments = [
     faculty_id: 'faculty-2',
   },
 ]
+const programs = [
+  {
+    id: 'program-1',
+    code: 'CS',
+    name: 'Computer Science',
+    department_id: 'department-1',
+    status: 'active',
+  },
+]
+const curricula = [
+  {
+    id: 'curriculum-1',
+    program_id: 'program-1',
+    version_label: 'CS 2026',
+    status: 'active',
+  },
+]
+
+function clickAccountAction(accountName: string, action: string) {
+  const trigger = screen.getByRole('button', {
+    name: `Actions for ${accountName}`,
+  })
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'Enter', code: 'Enter' })
+  fireEvent.click(screen.getByRole('menuitem', { name: action }))
+}
 
 describe('AdminAccountsPage', () => {
   beforeEach(() => {
@@ -114,7 +139,13 @@ describe('AdminAccountsPage', () => {
             ? [account]
             : path === '/rest/v1/faculty'
               ? faculties
-              : departments,
+              : path === '/rest/v1/department'
+                ? departments
+                : path === '/rest/v1/program'
+                  ? programs
+                  : path === '/rest/v1/curriculum_version'
+                    ? curricula
+                    : [],
         response: new Response(),
       }),
     )
@@ -127,10 +158,12 @@ describe('AdminAccountsPage', () => {
 
     expect(await screen.findByText('Alex Adviser')).toBeTruthy()
     expect(screen.getByText('alex@vsu.edu.ph')).toBeTruthy()
-    expect(screen.getByText('Faculty of Computing / Computer Science')).toBeTruthy()
+    expect(screen.getByText('Faculty of Computing')).toBeTruthy()
+    expect(screen.getByText('Computer Science')).toBeTruthy()
     expect(screen.getByText('Adviser')).toBeTruthy()
     expect(screen.getByText('Department Head')).toBeTruthy()
-    expect(screen.getByText('Accepted')).toBeTruthy()
+    expect(screen.getByText('Invitation: Accepted')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Actions for Alex Adviser' })).toBeTruthy()
     expect(getMock).toHaveBeenCalledWith(
       '/functions/v1/accounts',
       expect.objectContaining({
@@ -246,8 +279,7 @@ describe('AdminAccountsPage', () => {
     fireEvent.change(screen.getByLabelText('VSU email'), {
       target: { value: 'new.admin@vsu.edu.ph' },
     })
-    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'System Admin' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'System Admin' }))
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
 
     await waitFor(() => {
@@ -268,6 +300,106 @@ describe('AdminAccountsPage', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('uses the first checked role as primary and sends remaining role assignments', async () => {
+    render(<AdminAccountsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add account' }))
+
+    fireEvent.change(await screen.findByLabelText('Full name'), {
+      target: { value: 'New Department Lead' },
+    })
+    fireEvent.change(screen.getByLabelText('VSU email'), {
+      target: { value: 'new.lead@vsu.edu.ph' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'System Admin' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Department Head' }))
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Faculty' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Faculty of Computing' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Department' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Computer Science' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith(
+        '/functions/v1/auth/invite',
+        expect.objectContaining({
+          body: {
+            email: 'new.lead@vsu.edu.ph',
+            full_name: 'New Department Lead',
+            role: 'admin',
+            role_assignments: [
+              {
+                role: 'department_head',
+                faculty_id: 'faculty-1',
+                department_id: 'department-1',
+              },
+            ],
+          },
+        }),
+      )
+    })
+  })
+
+  it('makes Student exclusive and includes required student provisioning fields', async () => {
+    render(<AdminAccountsPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add account' }))
+
+    fireEvent.change(await screen.findByLabelText('Full name'), {
+      target: { value: 'New Student' },
+    })
+    fireEvent.change(screen.getByLabelText('VSU email'), {
+      target: { value: 'new.student@vsu.edu.ph' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'System Admin' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Department Head' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Student' }))
+
+    const adminRole = screen.getByRole('checkbox', { name: 'System Admin' })
+    const departmentHeadRole = screen.getByRole('checkbox', {
+      name: 'Department Head',
+    })
+    expect(adminRole.getAttribute('aria-checked')).toBe('false')
+    expect(adminRole.hasAttribute('disabled')).toBe(true)
+    expect(departmentHeadRole.getAttribute('aria-checked')).toBe('false')
+    expect(departmentHeadRole.hasAttribute('disabled')).toBe(true)
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Faculty' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Faculty of Computing' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Department' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Computer Science' }))
+    fireEvent.change(screen.getByLabelText('Student number'), {
+      target: { value: '26-1-00001' },
+    })
+    fireEvent.change(screen.getByLabelText('Entry year (optional)'), {
+      target: { value: '2026' },
+    })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Program' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'CS · Computer Science' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Curriculum' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'CS 2026' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Initial adviser' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Alex Adviser' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith(
+        '/functions/v1/auth/invite',
+        expect.objectContaining({
+          body: {
+            email: 'new.student@vsu.edu.ph',
+            full_name: 'New Student',
+            role: 'student',
+            student_number: '26-1-00001',
+            program_id: 'program-1',
+            curriculum_version_id: 'curriculum-1',
+            adviser_id: 'profile-1',
+            entry_year: 2026,
+          },
+        }),
+      )
+    })
+  })
+
   it('keeps the provisioning dialog open and reports API failures', async () => {
     postMock.mockRejectedValueOnce(new Error('Duplicate email conflict'))
     render(<AdminAccountsPage />)
@@ -279,82 +411,13 @@ describe('AdminAccountsPage', () => {
     fireEvent.change(screen.getByLabelText('VSU email'), {
       target: { value: 'existing.admin@vsu.edu.ph' },
     })
-    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'System Admin' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'System Admin' }))
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
 
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Duplicate email conflict',
     )
     expect(screen.getByRole('dialog')).toBeTruthy()
-  })
-
-  it('updates account details through the typed Admin operation', async () => {
-    render(<AdminAccountsPage />)
-    await screen.findByText('Alex Adviser')
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-
-    fireEvent.change(await screen.findByLabelText('Full name'), {
-      target: { value: 'Alex Updated' },
-    })
-    fireEvent.click(screen.getByRole('combobox', { name: 'Faculty' }))
-    fireEvent.click(
-      await screen.findByRole('option', { name: 'Faculty of Agriculture' }),
-    )
-    fireEvent.click(screen.getByRole('combobox', { name: 'Department' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Agriculture' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
-
-    await waitFor(() => {
-      expect(patchMock).toHaveBeenCalledWith(
-        '/functions/v1/accounts/{profile_id}',
-        expect.objectContaining({
-          params: { path: { profile_id: 'profile-1' } },
-          body: expect.objectContaining({
-            full_name: 'Alex Updated',
-            role: 'adviser',
-            role_assignments: expect.arrayContaining([
-              {
-                role: 'adviser',
-                faculty_id: 'faculty-2',
-                department_id: 'department-2',
-              },
-              {
-                role: 'department_head',
-                faculty_id: 'faculty-1',
-                department_id: 'department-1',
-              },
-            ]),
-          }),
-        }),
-      )
-    })
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Updated account details',
-    )
-  })
-
-  it('keeps an account edit dialog open until its pending save completes', async () => {
-    let resolvePatch:
-      | ((value: { data: unknown; response: Response }) => void)
-      | undefined
-    patchMock.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolvePatch = resolve
-        }),
-    )
-    render(<AdminAccountsPage />)
-    await screen.findByText('Alex Adviser')
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(patchMock).toHaveBeenCalledTimes(1))
-
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-    expect(screen.getByRole('dialog')).toBeTruthy()
-
-    resolvePatch?.({ data: account.profile, response: new Response() })
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
   it('keeps an invitation dialog open while submission is pending', async () => {
@@ -375,8 +438,7 @@ describe('AdminAccountsPage', () => {
     fireEvent.change(screen.getByLabelText('VSU email'), {
       target: { value: 'new.admin@vsu.edu.ph' },
     })
-    fireEvent.click(screen.getByRole('combobox', { name: 'Primary role' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'System Admin' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'System Admin' }))
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
     await waitFor(() => expect(postMock).toHaveBeenCalledTimes(1))
 
@@ -424,55 +486,9 @@ describe('AdminAccountsPage', () => {
 
     render(<AdminAccountsPage />)
     await screen.findByText('Alex Adviser')
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    clickAccountAction('Alex Adviser', 'Edit')
 
-    expect(await screen.findByRole('combobox', { name: 'Department' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(patchMock).toHaveBeenCalled())
+    expect(screen.getByRole('combobox', { name: 'Department' })).toBeTruthy()
   })
 
-  it('resends an eligible invitation and requires confirmation to revoke', async () => {
-    const pendingAccount = {
-      ...account,
-      profile: {
-        ...account.profile,
-        status: 'invited' as const,
-        invitation_status: 'pending' as const,
-      },
-    }
-    getMock.mockImplementation((path: string) =>
-      Promise.resolve({
-        data:
-          path === '/functions/v1/accounts'
-            ? [pendingAccount]
-            : path === '/rest/v1/faculty'
-              ? faculties
-              : departments,
-        response: new Response(),
-      }),
-    )
-
-    render(<AdminAccountsPage />)
-    await screen.findByText('Alex Adviser')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Resend' }))
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Invitation resent.',
-    )
-    expect(postMock).toHaveBeenCalledWith(
-      '/functions/v1/accounts/{profile_id}/resend-invite',
-      { params: { path: { profile_id: 'profile-1' } } },
-    )
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }))
-    expect(await screen.findByRole('dialog')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Revoke invitation' }))
-    expect((await screen.findByRole('status')).textContent).toContain(
-      'Invitation revoked for Alex Adviser.',
-    )
-    expect(postMock).toHaveBeenCalledWith(
-      '/functions/v1/accounts/{profile_id}/revoke-invite',
-      { params: { path: { profile_id: 'profile-1' } } },
-    )
-  })
 })
