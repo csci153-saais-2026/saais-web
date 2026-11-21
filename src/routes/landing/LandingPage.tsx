@@ -1,6 +1,7 @@
 import { HeroChecklistPreview } from '@/routes/landing/components/HeroChecklistPreview'
 import { LandingHeader } from '@/routes/landing/components/LandingHeader'
 import { LandingHero } from '@/routes/landing/components/LandingHero'
+import { PortalsOverviewSection } from '@/routes/landing/components/PortalsOverviewSection'
 
 export default function LandingPage() {
   return (
@@ -10,6 +11,7 @@ export default function LandingPage() {
         <LandingHero>
           <HeroChecklistPreview />
         </LandingHero>
+        <PortalsOverviewSection />
       </main>
     </div>
   )
