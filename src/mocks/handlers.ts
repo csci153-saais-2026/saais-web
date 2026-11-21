@@ -16,7 +16,9 @@ let syntheticUuidCounter = 100;
 
 // The contract allows object-valued audit snapshots; the generator infers an
 // empty record for an object schema with unspecified properties.
-function auditSnapshot(value: Record<string, unknown>): ApiSchema<"AuditLogEntry">["old_value"] {
+function auditSnapshot(
+  value: Record<string, unknown>,
+): ApiSchema<"AuditLogEntry">["old_value"] {
   return value as ApiSchema<"AuditLogEntry">["old_value"];
 }
 
@@ -1686,8 +1688,10 @@ export const saaisMswHandlers = [
               canAccessStudentRecord(auth.persona, entry.student_id, true)),
         );
     return applyPostgrestQuery(
-      [...rows].sort((left, right) =>
-        right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id),
+      [...rows].sort(
+        (left, right) =>
+          right.created_at.localeCompare(left.created_at) ||
+          right.id.localeCompare(left.id),
       ),
       new URL(request.url),
     );
@@ -7768,9 +7772,19 @@ export const saaisMswHandlers = [
     if ("response" in auth) return auth.response;
     const db = getMockDatabase();
     const url = new URL(request.url);
-    const facultyId = url.searchParams.get("faculty_id") ?? auth.persona.facultyId ?? MOCK_IDS.facultyComputing;
-    if (!auth.persona.roles.includes("admin") && !canAccessFaculty(auth.persona, facultyId))
-      return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Faculty is out of scope.");
+    const facultyId =
+      url.searchParams.get("faculty_id") ??
+      auth.persona.facultyId ??
+      MOCK_IDS.facultyComputing;
+    if (
+      !auth.persona.roles.includes("admin") &&
+      !canAccessFaculty(auth.persona, facultyId)
+    )
+      return errorJson(
+        403,
+        "INSUFFICIENT_PRIVILEGE",
+        "Faculty is out of scope.",
+      );
     const departmentFilter = url.searchParams.get("department_id");
     const facultyDepts = db.departments.filter(
       (d) => d.faculty_id === facultyId,
@@ -7844,7 +7858,10 @@ export const saaisMswHandlers = [
       encoding_progress_pct: 85,
       at_risk_roster: orgs
         .map((item) => deficiencySummary(item.student_id))
-        .filter((item): item is ApiSchema<"DeficiencyStudentSummary"> => item !== null),
+        .filter(
+          (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
+            item !== null,
+        ),
       department_summaries: departmentSummaries,
       computed_at: "2026-11-10T09:00:00Z",
     };

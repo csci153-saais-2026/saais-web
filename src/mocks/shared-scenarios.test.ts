@@ -30,7 +30,9 @@ describe("shared role scenarios", () => {
       const ids = rows.flatMap((row: object) =>
         "id" in row && typeof row.id === "string" ? [row.id] : [],
       );
-      expect(new Set(ids).size, `${name} contains duplicate IDs`).toBe(ids.length);
+      expect(new Set(ids).size, `${name} contains duplicate IDs`).toBe(
+        ids.length,
+      );
     }
   });
   it("gives every mock persona student realistic names and coherent academic relationships", () => {
