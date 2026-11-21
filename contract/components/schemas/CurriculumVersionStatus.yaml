@@ -1,0 +1,8 @@
+type: string
+enum:
+  - draft
+  - active
+  - retired
+  - teach_out
+  - closed
+description: Curriculum version lifecycle status

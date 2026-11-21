@@ -1,0 +1,31 @@
+type: object
+additionalProperties: false
+required:
+  - id
+  - profile_id
+  - role
+  - created_at
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  profile_id:
+    type: string
+    format: uuid
+  role:
+    $ref: "./RoleType.yaml"
+  faculty_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true

@@ -1,0 +1,7 @@
+type: string
+enum:
+  - good_standing
+  - warning
+  - probation
+  - dismissed
+description: Computed academic standing classification against department failure-percentage thresholds

@@ -1,0 +1,112 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Complete an unresolved INC
+  operationId: completeINC
+  description: >-
+    One first completion, server time, before/on existing deadline using Asia/Manila date.
+    Explicitly permitted even when the original term is institution-locked or its department
+    has closed encoding. Retain stored INC; project Passed <=3/Failed >3. After deadline reject; never backdate or rewrite lapsed INC to Failed.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-adviser-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "201":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/INCResolution.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: attempt_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/INCCompletionRequest.yaml"
+patch:
+  tags:
+    - Advising & Exceptions
+  summary: Correct an existing INC completion
+  operationId: correctINCCompletion
+  description: >-
+    Lock owned attempt/completion, require current adviser, reason, expected_updated_at and
+    editable original term. Correction is not the first-completion lock exception and is
+    blocked by a department encoding closure; an institution lock blocks it unless its override applies.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-adviser-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/INCResolution.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: attempt_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/INCCompletionCorrectionRequest.yaml"

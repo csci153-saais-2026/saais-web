@@ -1,0 +1,200 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import rawCollection from "../../contract/postman/saais-api.postman_collection.json";
+import rawMockEnv from "../../contract/postman/saais-mock.postman_environment.json";
+import { saaisMockServer } from "./node";
+import { MOCK_IDS } from "./personas";
+import { getMockDatabase, resetMockDatabase } from "./store";
+
+interface PostmanHeader {
+  key: string;
+  value: string;
+}
+
+interface PostmanRequest {
+  method: string;
+  header?: PostmanHeader[];
+  body?: {
+    mode: string;
+    raw?: string;
+  };
+  url: {
+    raw: string;
+  };
+}
+
+interface PostmanItem {
+  name: string;
+  description?: string;
+  item?: PostmanItem[];
+  request?: PostmanRequest;
+}
+
+interface PostmanCollection {
+  item: PostmanItem[];
+}
+
+interface PostmanEnvironment {
+  values: Array<{
+    key: string;
+    value: string;
+  }>;
+}
+
+function loadEnvironmentMap(): Record<string, string> {
+  const raw = rawMockEnv as PostmanEnvironment;
+  const map: Record<string, string> = {};
+  for (const entry of raw.values) {
+    map[entry.key] = entry.value;
+  }
+  return map;
+}
+
+function interpolate(text: string, env: Record<string, string>): string {
+  return text.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
+    const trimmed = key.trim();
+    return env[trimmed] ?? "";
+  });
+}
+
+function flattenRequests(
+  items: PostmanItem[],
+  prefix = "",
+): Array<{ fullName: string; item: PostmanItem }> {
+  const results: Array<{ fullName: string; item: PostmanItem }> = [];
+  for (const item of items) {
+    const fullName = prefix ? `${prefix} > ${item.name}` : item.name;
+    if (item.request) {
+      results.push({ fullName, item });
+    }
+    if (item.item) {
+      results.push(...flattenRequests(item.item, fullName));
+    }
+  }
+  return results;
+}
+
+describe("SAAIS Postman Collection against MSW Mock Server", () => {
+  beforeAll(() => {
+    saaisMockServer.listen();
+  });
+
+  afterEach(() => {
+    resetMockDatabase();
+    saaisMockServer.resetHandlers();
+  });
+
+  afterAll(() => {
+    saaisMockServer.close();
+  });
+
+  it("executes OpenAPI operations (Authorized 2xx and Denied 401/403) and role/scope scenarios", async () => {
+    const collection = rawCollection as unknown as PostmanCollection;
+    const env = loadEnvironmentMap();
+    const requests = flattenRequests(collection.item);
+
+    expect(requests.length).toBeGreaterThanOrEqual(240);
+
+    for (const { fullName, item } of requests) {
+      resetMockDatabase();
+      const req = item.request!;
+      let rawUrl = interpolate(req.url.raw, env);
+      if (
+        req.method === "DELETE" &&
+        fullName.includes("(deleteCourse)") &&
+        item.name.startsWith("Authorized")
+      ) {
+        const db = getMockDatabase();
+        const unusedId = "50000000-0000-4000-8009-000000000001";
+        db.courses.push({
+          ...db.courses[0]!,
+          id: unusedId,
+          code: "TEST 999",
+          title: "Unused test course",
+        });
+        rawUrl = rawUrl.replace(
+          /\/catalog\/course\/[^/?]+/,
+          `/catalog/course/${unusedId}`,
+        );
+      }
+      const isSavedAttemptDelete =
+        req.method === "DELETE" &&
+        item.name.startsWith("Authorized") &&
+        fullName.includes("(deleteOpenTermAttempt)");
+      let attemptsBefore: ReturnType<typeof structuredClone> | undefined;
+      let attemptResultsBefore: ReturnType<typeof structuredClone> | undefined;
+      if (isSavedAttemptDelete) {
+        const db = getMockDatabase();
+        const attempt = db.attempts.find(
+          (row) => row.id === MOCK_IDS.attemptCsci153Open,
+        );
+        expect(attempt?.student_id).toBe(MOCK_IDS.studentPrimary);
+        const offering = db.courseOfferings.find(
+          (row) => row.id === attempt?.course_offering_id,
+        );
+        const term = db.schoolTerms.find(
+          (row) => row.id === offering?.school_term_id,
+        );
+        expect(term?.is_locked).toBe(false);
+        expect(
+          db.departmentTermEncodings.find(
+            (row) =>
+              row.school_term_id === term?.id &&
+              row.department_id === MOCK_IDS.deptDcst,
+          )?.is_closed,
+        ).toBe(false);
+        rawUrl = rawUrl.replace(
+          /\/attempts\/[^/?]+/,
+          `/attempts/${MOCK_IDS.attemptCsci153Open}`,
+        );
+        attemptsBefore = structuredClone(db.attempts);
+        attemptResultsBefore = structuredClone(db.attemptResults);
+      }
+      const headers: Record<string, string> = {};
+      for (const h of req.header ?? []) {
+        headers[h.key] = interpolate(h.value, env);
+      }
+
+      const init: RequestInit = {
+        method: req.method,
+        headers,
+      };
+      if (
+        req.body?.raw &&
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        req.method !== "DELETE"
+      ) {
+        init.body = interpolate(req.body.raw, env);
+      }
+
+      const response = await fetch(rawUrl, init);
+
+      if (isSavedAttemptDelete) {
+        expect(response.status, `Expected 409 for ${fullName}`).toBe(409);
+        expect(await response.json()).toMatchObject({ code: "CONFLICT" });
+        expect(getMockDatabase().attempts).toEqual(attemptsBefore);
+        expect(getMockDatabase().attemptResults).toEqual(attemptResultsBefore);
+      } else if (item.name.startsWith("Authorized")) {
+        expect(
+          response.status,
+          `Expected 2xx for ${fullName} (${req.method} ${rawUrl}), got ${response.status}`,
+        ).toBeGreaterThanOrEqual(200);
+        expect(
+          response.status,
+          `Expected 2xx for ${fullName} (${req.method} ${rawUrl}), got ${response.status}`,
+        ).toBeLessThan(300);
+      } else if (item.name.startsWith("Denied")) {
+        expect(
+          [401, 403],
+          `Expected 401 or 403 for ${fullName} (${req.method} ${rawUrl}), got ${response.status}`,
+        ).toContain(response.status);
+      } else if (fullName.includes("409 Conflict")) {
+        expect(response.status, `Expected 409 for ${fullName}`).toBe(409);
+      } else if (fullName.includes("403 Forbidden")) {
+        expect(response.status, `Expected 403 for ${fullName}`).toBe(403);
+      } else if (fullName.includes("200 OK")) {
+        expect(response.status, `Expected 200 for ${fullName}`).toBe(200);
+      }
+    }
+  }, 30000);
+});

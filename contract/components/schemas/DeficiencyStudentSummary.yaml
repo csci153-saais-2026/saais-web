@@ -1,0 +1,70 @@
+type: object
+additionalProperties: false
+properties:
+  student_id:
+    type: string
+    format: uuid
+  student_number:
+    type: string
+    maxLength: 64
+  full_name:
+    type: string
+    maxLength: 150
+  program_code:
+    type: string
+    maxLength: 100
+  curriculum_label:
+    type: string
+    maxLength: 100
+  year_level:
+    type: integer
+    minimum: 1
+    maximum: 8
+  adviser_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  adviser_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  gwa:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+  standing:
+    $ref: "./AcademicStanding.yaml"
+  failed_units:
+    type: number
+    minimum: 0
+  open_inc_count:
+    type: integer
+    minimum: 0
+  lapsed_inc_count:
+    type: integer
+    minimum: 0
+  open_flags_count:
+    type: integer
+    minimum: 0
+  deficiencies:
+    type: array
+    maxItems: 100
+    items:
+      $ref: "./StudentDeficiencyItem.yaml"
+required:
+  - student_id
+  - student_number
+  - full_name
+  - program_code
+  - curriculum_label
+  - year_level
+  - standing
+  - failed_units
+  - open_inc_count
+  - lapsed_inc_count
+  - open_flags_count
+  - deficiencies

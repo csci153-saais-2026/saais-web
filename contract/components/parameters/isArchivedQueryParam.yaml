@@ -1,0 +1,8 @@
+name: is_archived
+in: query
+description: Filter by archive state (e.g. `eq.false`)
+required: false
+schema:
+  type: string
+  pattern: ^eq\.(true|false)$
+  maxLength: 250

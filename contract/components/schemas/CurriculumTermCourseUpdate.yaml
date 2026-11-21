@@ -1,0 +1,22 @@
+type: object
+additionalProperties: false
+properties:
+  course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  is_elective_slot:
+    type: boolean
+  slot_type:
+    $ref: "./CurriculumSlotType.yaml"
+  slot_label:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  nominal_units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+minProperties: 1

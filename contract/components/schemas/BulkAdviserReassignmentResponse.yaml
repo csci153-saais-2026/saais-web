@@ -1,0 +1,14 @@
+type: object
+additionalProperties: false
+properties:
+  reassigned_count:
+    type: integer
+    minimum: 0
+  assignments:
+    type: array
+    maxItems: 500
+    items:
+      $ref: "./AdviserAssignment.yaml"
+required:
+  - reassigned_count
+  - assignments

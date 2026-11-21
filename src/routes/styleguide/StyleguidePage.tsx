@@ -1,11 +1,11 @@
-import * as React from "react"
-import { BrandMark } from "@/components/ui/brand-mark"
-import { Kicker } from "@/components/ui/kicker"
-import { cn } from "@/lib/utils"
-import { HowToUse } from "@/routes/styleguide/how-to-use"
-import { ComponentSections } from "@/routes/styleguide/component-sections"
-import { Part } from "@/routes/styleguide/parts"
-import { TokenSections } from "@/routes/styleguide/token-sections"
+import * as React from "react";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { Kicker } from "@/components/ui/kicker";
+import { cn } from "@/lib/utils";
+import { HowToUse } from "@/routes/styleguide/how-to-use";
+import { ComponentSections } from "@/routes/styleguide/component-sections";
+import { Part } from "@/routes/styleguide/parts";
+import { TokenSections } from "@/routes/styleguide/token-sections";
 
 const nav = [
   {
@@ -48,23 +48,23 @@ const nav = [
       ["how-features", "Feature components"],
     ],
   },
-] as const
+] as const;
 
 /** Live style guide: every token and shared component rendered from the real source. */
 export default function StyleguidePage() {
-  const [active, setActive] = React.useState<string>("colors")
+  const [active, setActive] = React.useState<string>("colors");
 
   React.useEffect(() => {
-    const sections = document.querySelectorAll<HTMLElement>("section[id]")
+    const sections = document.querySelectorAll<HTMLElement>("section[id]");
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (e.isIntersecting) setActive(e.target.id)
+        for (const e of entries) if (e.isIntersecting) setActive(e.target.id);
       },
-      { rootMargin: "-20% 0px -70% 0px" }
-    )
-    sections.forEach((s) => io.observe(s))
-    return () => io.disconnect()
-  }, [])
+      { rootMargin: "-20% 0px -70% 0px" },
+    );
+    sections.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, []);
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -75,7 +75,9 @@ export default function StyleguidePage() {
         <nav aria-label="Style guide">
           {nav.map((g) => (
             <div key={g.group}>
-              <Kicker className="block px-4 pt-4.5 pb-2 text-sidebar-foreground/55">{g.group}</Kicker>
+              <Kicker className="block px-4 pt-4.5 pb-2 text-sidebar-foreground/55">
+                {g.group}
+              </Kicker>
               <ul className="grid gap-0.5">
                 {g.items.map(([id, label]) => (
                   <li key={id}>
@@ -84,7 +86,8 @@ export default function StyleguidePage() {
                       aria-current={active === id ? "true" : undefined}
                       className={cn(
                         "block rounded-[5px] border-l-[3px] border-transparent py-1.5 pr-3 pl-3.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-white",
-                        active === id && "border-sidebar-primary bg-sidebar-accent font-semibold text-white"
+                        active === id &&
+                          "border-sidebar-primary bg-sidebar-accent font-semibold text-white",
                       )}
                     >
                       {label}
@@ -102,8 +105,8 @@ export default function StyleguidePage() {
           <Kicker className="text-gold-deep">SAAIS · Design system</Kicker>
           <h1 className="mt-2 text-display-l">Style guide</h1>
           <p className="mt-2.5 max-w-[64ch] text-muted-foreground">
-            Tokens and the shared components built from them, rendered live from <code>src/components</code>. Click a
-            swatch to copy its value.
+            Tokens and the shared components built from them, rendered live from{" "}
+            <code>src/components</code>. Click a swatch to copy its value.
           </p>
         </header>
 
@@ -117,5 +120,5 @@ export default function StyleguidePage() {
         <HowToUse />
       </main>
     </div>
-  )
+  );
 }

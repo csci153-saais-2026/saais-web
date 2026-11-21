@@ -1,0 +1,55 @@
+post:
+  tags:
+    - Terms & Offerings
+  summary: Reopen department grade encoding for a school term
+  operationId: reopenDepartmentTermEncoding
+  description: >-
+    Department Head or Department Staff reopens their own department's encoding closure; Admin
+    may reopen a specified department. Reject institution scope and cross-department requests.
+    Atomically set is_closed=false and write an audit entry. This does not lift a global lock.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/department scope at runtime; restrict
+    scope to department; require department_id for Admin; derive audit actor/time server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/DepartmentTermEncodingClosure.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: school_term_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/SchoolTermCloseEncodingRequest.yaml"

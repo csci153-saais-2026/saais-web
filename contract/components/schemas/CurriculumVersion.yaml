@@ -1,0 +1,45 @@
+type: object
+required:
+  - id
+  - program_id
+  - version_label
+  - effective_start
+  - delinquency_threshold
+  - total_units
+  - status
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  program_id:
+    type: string
+    format: uuid
+  version_label:
+    type: string
+    example: 2023-2024
+  effective_start:
+    type: string
+    format: date
+    example: "2023-08-01"
+  effective_end:
+    type:
+      - string
+      - "null"
+    format: date
+  delinquency_threshold:
+    type: number
+    example: 24
+  total_units:
+    type: number
+    example: 162
+  status:
+    $ref: "./CurriculumVersionStatus.yaml"
+  enrolled_student_count:
+    type: integer
+    minimum: 0
+    readOnly: true
+    example: 142
+    description: >-
+      Server-derived count of students assigned to this curriculum version, enabling
+      retirement/deletion eligibility checks without privileged student-assignment queries.

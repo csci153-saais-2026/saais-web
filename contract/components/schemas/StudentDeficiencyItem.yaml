@@ -1,0 +1,45 @@
+type: object
+additionalProperties: false
+properties:
+  kind:
+    type: string
+    enum:
+      - failed
+      - open_inc
+      - lapsed_inc
+      - open_flag
+      - unmet_prerequisite
+  attempt_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  course_code:
+    type: string
+    maxLength: 100
+  course_title:
+    type: string
+    maxLength: 250
+  term_label:
+    type:
+      - string
+      - "null"
+    maxLength: 100
+  inc_deadline:
+    type:
+      - string
+      - "null"
+    format: date
+  days_remaining:
+    type:
+      - integer
+      - "null"
+  detail:
+    type:
+      - string
+      - "null"
+    maxLength: 500
+required:
+  - kind
+  - course_code
+  - course_title

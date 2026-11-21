@@ -1,0 +1,179 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: List and filter student academic roster
+  operationId: listStudentRoster
+  description: >-
+    Paginated, server-filtered student roster and advisee list for Adviser (`My Advisees`), Department Head (`Student Records`, `Advisee Assignments`), Department
+    Staff (`Student Records`), Dean (`Student Records`), and
+    System Administrator (`Student Records`). Combines profile identity, active curriculum/program
+    and entry batch, derived year level, cumulative/curriculum GWA, units earned vs. total
+    curriculum units, academic standing, deficiency count, active adviser assignment (and
+    handover metadata), and last advising/activity timestamp without N+1 client waterfalls.
+    Row visibility is strictly enforced server-side per caller role and assignment scope.
+  x-required-roles:
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope:
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    department_staff: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  x-atomic: false
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/department/faculty/adviser scope at runtime;
+    clamp pagination and validate filter combinations server-side.
+  parameters:
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+    - $ref: "../../components/parameters/searchQuery.yaml"
+    - name: assignment_scope
+      in: query
+      required: false
+      description: >-
+        Filter by caller advisee relationship (`all` visible students in caller scope,
+        `current` / `my_active_advisees`, `past` / `my_handed_over_advisees`, `unassigned`).
+      schema:
+        type: string
+        enum:
+          - all
+          - current
+          - past
+          - my_active_advisees
+          - my_handed_over_advisees
+          - unassigned
+        default: all
+    - name: adviser_id
+      in: query
+      required: false
+      description: Filter by active assigned adviser UUID.
+      schema:
+        type: string
+        format: uuid
+    - name: unassigned_only
+      in: query
+      required: false
+      description: When true, return only students without an active adviser assignment.
+      schema:
+        type: boolean
+    - name: faculty_id
+      in: query
+      required: false
+      description: Filter by student's derived faculty/college UUID.
+      schema:
+        type: string
+        format: uuid
+    - name: department_id
+      in: query
+      required: false
+      description: Filter by student's derived department UUID.
+      schema:
+        type: string
+        format: uuid
+    - name: program_id
+      in: query
+      required: false
+      description: Filter by student's active degree program UUID.
+      schema:
+        type: string
+        format: uuid
+    - name: curriculum_version_id
+      in: query
+      required: false
+      description: Filter by student's active curriculum version UUID.
+      schema:
+        type: string
+        format: uuid
+    - name: entry_year
+      in: query
+      required: false
+      description: Filter by student cohort/entry academic year (e.g. `2023`).
+      schema:
+        type: integer
+        minimum: 1900
+        maximum: 2100
+    - name: year_level
+      in: query
+      required: false
+      description: Filter by derived student year level (`1` to `6`).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 6
+    - name: standing
+      in: query
+      required: false
+      description: Filter by derived academic standing (`good_standing`, `warning`, `probation`, `dismissed`).
+      schema:
+        $ref: "../../components/schemas/AcademicStanding.yaml"
+    - name: has_deficiencies
+      in: query
+      required: false
+      description: Filter students who currently have (`true`) or do not have (`false`) active failed/INC/dropped deficiencies.
+      schema:
+        type: boolean
+    - name: has_open_inc
+      in: query
+      required: false
+      description: Filter students who currently have (`true`) or do not have (`false`) open incomplete (`INC`) attempts.
+      schema:
+        type: boolean
+    - name: has_open_flags
+      in: query
+      required: false
+      description: Filter students who currently have (`true`) or do not have (`false`) open student-submitted grade flags.
+      schema:
+        type: boolean
+    - name: school_term_id
+      in: query
+      required: false
+      description: Optional school term context for term-specific advising/encoding status.
+      schema:
+        type: string
+        format: uuid
+    - name: sort_by
+      in: query
+      required: false
+      description: Sort column for the student roster.
+      schema:
+        type: string
+        enum:
+          - full_name
+          - student_number
+          - year_level
+          - gwa
+          - units_earned
+          - standing
+          - last_activity_at
+        default: full_name
+    - name: sort_dir
+      in: query
+      required: false
+      description: Sort direction (`asc` or `desc`).
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+        default: asc
+  responses:
+    "200":
+      description: Paginated student roster and summary counts for the caller's scope.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/StudentRosterResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"

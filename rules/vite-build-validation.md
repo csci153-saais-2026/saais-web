@@ -3,9 +3,11 @@
 The development server (`vite`) uses `esbuild` and serves unbundled files. The production build (`vite build`) uses Rollup and bundles files. This slight difference can hide bugs until deployment.
 
 ## Why it matters
+
 Issues like case-sensitive file imports, missing public assets, or aggressive tree-shaking might not appear in Dev mode but will crash the Production build or runtime.
 
 ## Anti-Pattern
+
 Pushing code to CI/CD immediately after verifying it works in `npm run dev`.
 
 ```bash
@@ -16,6 +18,7 @@ git push
 ```
 
 ## Correct Workflow
+
 Always run a full build and preview cycle locally before pushing major changes.
 
 ```package.json

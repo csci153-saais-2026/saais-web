@@ -1,0 +1,53 @@
+get:
+  tags:
+    - Reports & Analytics
+  summary: Read adviser dashboard summary and advisee roster metrics
+  operationId: getAdviserDashboardReport
+  description: >-
+    Retrieve advisee counts, at-risk/expiring-INC/open-flag counts, year-level distribution,
+    and advisee roster summaries for the authenticated adviser (FR-ADV-01).
+  x-required-roles:
+    - adviser
+    - department_head
+    - dean
+    - admin
+  x-access-scope:
+    adviser: current-assigned-students-read-only
+    department_head: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  x-atomic: false
+  x-request-validation: >-
+    Verify JWT and role/scope at runtime.
+  responses:
+    "200":
+      description: Adviser dashboard report.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AdviserDashboardReport.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: adviser_id
+      in: query
+      required: false
+      description: Optional adviser UUID filter when queried by Department Head, Dean, or Admin.
+      schema:
+        type: string
+        format: uuid
+    - name: school_term_id
+      in: query
+      required: false
+      description: Optional school term UUID filter for term-scoped grade distribution.
+      schema:
+        type: string
+        format: uuid

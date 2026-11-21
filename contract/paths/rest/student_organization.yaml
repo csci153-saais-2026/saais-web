@@ -1,0 +1,115 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Read derived student organization
+  operationId: listStudentOrganizations
+  description: >-
+    Read-only, row-scoped PostgREST collection. RLS hides unauthorized records; a missing/hidden
+    row is 200 [] rather than a promised 404. Bound page size at runtime. Select only published
+    safe columns. Flat columns are allowlisted per x-projection-fields; role metadata documents
+    checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200
+    [], while invalid role/column requests may return 403.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    department_staff: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/studentIdQueryParam.yaml"
+    - $ref: "../../components/parameters/programIdQueryParam.yaml"
+    - $ref: "../../components/parameters/departmentIdQueryParam.yaml"
+    - $ref: "../../components/parameters/facultyIdQueryParam.yaml"
+    - $ref: "../../components/parameters/adviserIdQueryParam.yaml"
+    - name: entry_year
+      in: query
+      required: false
+      description: Filter derived student cohort entry year (e.g. `eq.2023`).
+      schema:
+        type: string
+        maxLength: 16
+        pattern: ^eq\.[0-9]{4}$
+    - name: select
+      in: query
+      required: false
+      description: >-
+        Only these flat safe columns. On private-column tables the client must explicitly send
+        this projection; PostgREST does not apply OpenAPI defaults.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)(?:,(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year))*$
+        default: >-
+          student_id,student_curriculum_assignment_id,curriculum_version_id,program_id,department_id,faculty_id,adviser_id,entry_year
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only; whitelist and enforce at runtime.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: student_id.asc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Visible rows; empty array if no visible matches.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/StudentOrganization.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection if the gateway reports a partial range.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/StudentOrganization.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-projection-fields:
+    - student_id
+    - student_curriculum_assignment_id
+    - curriculum_version_id
+    - program_id
+    - department_id
+    - faculty_id
+    - adviser_id
+    - entry_year

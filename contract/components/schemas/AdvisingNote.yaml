@@ -1,0 +1,57 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  authored_by:
+    type: string
+    format: uuid
+  author_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Display name of the staff author, safe for Student Notes and staff advising views.
+  author_role_label:
+    type:
+      - string
+      - "null"
+    maxLength: 100
+    readOnly: true
+    description: Role label of the staff author (e.g. `Adviser`, `Department Head`).
+  body_text:
+    type: string
+    minLength: 1
+    maxLength: 8000
+    pattern: \S
+  is_archived:
+    type: boolean
+    default: false
+  archived_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  archived_by:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - student_id
+  - authored_by
+  - body_text
+  - created_at

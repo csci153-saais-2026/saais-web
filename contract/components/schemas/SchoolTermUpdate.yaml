@@ -1,0 +1,33 @@
+type: object
+additionalProperties: false
+properties:
+  start_year:
+    type: integer
+    minimum: 1900
+    maximum: 3000
+  end_year:
+    type: integer
+    minimum: 1900
+    maximum: 3000
+  term_type:
+    $ref: "./SchoolTermType.yaml"
+  starts_on:
+    type:
+      - string
+      - "null"
+    format: date
+  ends_on:
+    type: string
+    format: date
+  encoding_deadline:
+    type:
+      - string
+      - "null"
+    format: date
+  is_locked:
+    type: boolean
+minProperties: 1
+description: >-
+  Admin or Department Staff/Head term settings. Generated year/chronology/default INC date and
+  override actor/time are not request fields. Changing ends_on does not rewrite existing INC
+  deadlines. Referenced calendar identity is protected server-side.

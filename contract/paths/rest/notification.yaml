@@ -1,0 +1,137 @@
+get:
+  tags:
+    - Notifications & Settings
+  summary: Query user notifications
+  operationId: listNotifications
+  description: >-
+    Read-only PostgREST collection of in-app notifications scoped to the authenticated user's
+    recipient_id (FR-NOT-01).
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope:
+    student: own-records
+    adviser: own-records
+    department_head: own-records
+    department_staff: own-records
+    dean: own-records
+    admin: own-records
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - name: is_read
+      in: query
+      required: false
+      description: Filter by read state (`eq.true` or `eq.false`).
+      schema:
+        type: string
+        maxLength: 20
+        pattern: ^eq\.(true|false)$
+    - name: kind
+      in: query
+      required: false
+      description: Filter by notification icon/category kind (`eq.<kind>`).
+      schema:
+        type: string
+        maxLength: 32
+        pattern: ^eq\.(note|grade|alert|flag|import|person|transfer|report)$
+    - name: event_type
+      in: query
+      required: false
+      description: Filter by notification trigger event type (`eq.<event_type>`).
+      schema:
+        type: string
+        maxLength: 80
+        pattern: ^eq\.[a-z0-9_]{3,64}$
+    - name: target_student_id
+      in: query
+      required: false
+      description: Filter by associated student UUID (`eq.UUID`).
+      schema:
+        type: string
+        maxLength: 100
+        pattern: ^eq\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+    - name: select
+      in: query
+      required: false
+      description: Only these flat safe columns.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)(?:,(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at))*$
+        default: >-
+          id,recipient_id,kind,event_type,title,body,target_route,target_student_id,actor_id,entity_type,entity_id,dedupe_key,email_delivery_status,is_read,read_at,created_at
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: created_at.desc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Visible rows; empty array if no visible matches.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/Notification.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/Notification.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-projection-fields:
+    - id
+    - recipient_id
+    - kind
+    - event_type
+    - title
+    - body
+    - target_route
+    - target_student_id
+    - actor_id
+    - entity_type
+    - entity_id
+    - dedupe_key
+    - email_delivery_status
+    - is_read
+    - read_at
+    - created_at

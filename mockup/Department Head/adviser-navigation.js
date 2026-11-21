@@ -47,6 +47,7 @@
    main.prepend(notice);
   }
  }
+ if (document.querySelector('script[src$="portal-ui.js"]')) return;
  const header = workspace.querySelector('header');
  const trigger = document.createElement('button');
  trigger.type = 'button';

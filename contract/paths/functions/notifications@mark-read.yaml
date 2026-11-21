@@ -1,0 +1,42 @@
+post:
+  tags:
+    - Notifications & Settings
+  summary: Mark one, selected, or all notifications as read or unread
+  operationId: markNotificationsRead
+  description: >-
+    Authenticated user marks a single notification, a bounded list of notifications, or all of
+    their notifications as read (or unread when is_read=false) (FR-NOT-01).
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope: own-records
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and recipient ownership at runtime.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/MarkNotificationsReadResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/MarkNotificationsReadRequest.yaml"

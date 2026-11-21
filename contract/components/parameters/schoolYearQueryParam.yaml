@@ -1,0 +1,8 @@
+name: school_year
+in: query
+description: Filter by school year (e.g. `eq.2025 - 2026`)
+required: false
+schema:
+  type: string
+  maxLength: 16
+  pattern: ^eq\.[0-9]{4} - [0-9]{4}$

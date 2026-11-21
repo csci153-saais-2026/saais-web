@@ -1,0 +1,58 @@
+patch:
+  tags:
+    - Advising & Exceptions
+  summary: Edit elective mapping
+  operationId: updateElectiveMapping
+  description: >-
+    Owned enrolled attempt to a current elective slot only. Current adviser only, reason
+    required, lock student/decisions; protect live cross-table source/destination exclusivity
+    and satisfied direct destinations. Actual units/actor/time are server-derived. No global
+    code equivalence or approval queue. Edits/revocation preserve source and audit history.
+    Verify expected_updated_at at commit.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-adviser-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ElectiveMapping.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: decision_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/ElectiveMappingUpdate.yaml"

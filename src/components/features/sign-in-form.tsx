@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { FormField } from "@/components/features/form-field";
-import { signInSchema, type SignInValues } from "@/components/features/sign-in-schema";
+import {
+  signInSchema,
+  type SignInValues,
+} from "@/components/features/sign-in-schema";
 
 /** Email/password form with Google option, "keep me signed in", and a rejection banner. */
 function SignInForm({
@@ -36,11 +39,7 @@ function SignInForm({
   });
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      noValidate
-      className="grid gap-4"
-    >
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-4">
       <div className="mb-2">
         <h2 className="text-3xl">Sign in</h2>
         <p className="mt-2 text-muted-foreground">

@@ -1,0 +1,22 @@
+type: object
+additionalProperties: false
+properties:
+  program_id:
+    type: string
+    format: uuid
+  curriculum_version_id:
+    type: string
+    format: uuid
+  start_date:
+    type: string
+    format: date
+  reason:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+required:
+  - program_id
+  - curriculum_version_id
+  - start_date
+  - reason

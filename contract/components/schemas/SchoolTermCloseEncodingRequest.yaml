@@ -1,0 +1,27 @@
+type: object
+additionalProperties: false
+properties:
+  scope:
+    type: string
+    enum:
+      - department
+      - institution
+    default: department
+    description: >-
+      Closure scope: `department` closes grade encoding for a single department (`department_head`
+      and `department_staff` are restricted to their own department); `institution` sets global
+      `SchoolTerm.is_locked=true` and is Admin-only.
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    description: >-
+      Target department UUID when `scope: department`. For Department Head and Department Staff
+      callers, defaults to and must match the caller's assigned department. Required when an
+      Admin closes encoding for a specific department.
+  closure_note:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
