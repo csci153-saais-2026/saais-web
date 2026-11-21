@@ -111,7 +111,7 @@ describe('AdminAuditLogPage', () => {
             offset: 0,
             actor_name: 'ilike.%Morgan%',
             or: '(student_name.ilike.%24-1-%,student_number.ilike.%24-1-%,target_label.ilike.%24-1-%)',
-            and: '(created_at.gte.2026-08-01T00:00:00.000Z,created_at.lte.2026-08-31T23:59:59.999Z)',
+            and: '(created_at.gte.2026-08-01T00:00:00.000Z,created_at.lt.2026-09-01T00:00:00.000Z)',
           },
         },
       },

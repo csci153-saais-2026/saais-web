@@ -55,7 +55,7 @@ describe('buildAuditListQuery', () => {
       action: 'ilike.%plan%',
       action_category: 'eq.plan_save',
       entity_type: 'eq.advising_plan',
-      and: '(created_at.gte.2026-08-12T00:00:00.000Z,created_at.lte.2026-08-12T23:59:59.999Z)',
+      and: '(created_at.gte.2026-08-12T00:00:00.000Z,created_at.lt.2026-08-13T00:00:00.000Z)',
     })
   })
 

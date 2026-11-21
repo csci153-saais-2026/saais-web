@@ -287,7 +287,9 @@ export default function AdminAccountsPage() {
         setAccountActionSuccess(
           `Invitation revoked for ${account.profile.full_name}.`,
         )
-        setRevokeTarget(null)
+        setRevokeTarget((current) =>
+          current?.profile.id === account.profile.id ? null : current,
+        )
       }
       reloadAccounts()
     } catch (requestError: unknown) {
@@ -682,7 +684,9 @@ export default function AdminAccountsPage() {
         <Dialog
           open
           onOpenChange={(open) => {
-            if (!open) setRevokeTarget(null)
+            if (!open && accountActionId !== revokeTarget.profile.id) {
+              setRevokeTarget(null)
+            }
           }}
         >
           <DialogContent>

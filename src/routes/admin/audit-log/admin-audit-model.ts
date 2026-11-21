@@ -114,16 +114,27 @@ export function buildAuditListQuery(
   if (filters.from && filters.to) {
     const from = toUtcDateBoundary(filters.from, false)
     const to = toUtcDateBoundary(filters.to, true)
-    if (!from || !to) {
+    const toExclusive = nextUtcDay(filters.to)
+    if (!from || !to || !toExclusive) {
       return { query: null, error: 'Enter valid start and end dates.' }
     }
     if (from > to) {
       return { query: null, error: 'The start date must not be after the end date.' }
     }
-    query.and = postgrestFilter.createdAtBetween(from, to)
+    // Validates ordering; the upper bound is exclusive so sub-millisecond
+    // timestamps late on the selected day are still included.
+    postgrestFilter.createdAtBetween(from, to)
+    query.and = `(created_at.gte.${from},created_at.lt.${toExclusive})`
   }
 
   return { query, error: null }
+}
+
+function nextUtcDay(value: string): string | null {
+  const date = new Date(`${value}T00:00:00.000Z`)
+  if (!Number.isFinite(date.getTime())) return null
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString()
 }
 
 function toUtcDateBoundary(value: string, endOfDay: boolean): string | null {

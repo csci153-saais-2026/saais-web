@@ -1369,6 +1369,17 @@ export const saaisMswHandlers = [
       return errorJson(400, 'INVALID_INPUT', 'Role assignments are invalid.')
     }
     const requestedAssignments = body.role_assignments
+    if (
+      profile.role !== 'student' &&
+      ((body.role ?? profile.role) === 'student' ||
+        requestedAssignments?.some((assignment) => assignment.role === 'student'))
+    ) {
+      return errorJson(
+        409,
+        'CONFLICT',
+        'An existing account cannot be converted to a student account.',
+      )
+    }
     const existingRoleAssignments = db.roleAssignments.filter(
       (assignment) => assignment.profile_id === profileId,
     )
