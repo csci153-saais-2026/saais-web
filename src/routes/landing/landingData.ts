@@ -739,7 +739,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'Student', href: '/login' },
       { label: 'Adviser', href: '/login' },
       { label: 'Administrator', href: '/login' },
-      { label: 'API documentation', href: '/docs' },
+      { label: 'API documentation', href: '/docs/openapi' },
     ],
   },
   {
@@ -756,8 +756,9 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'About the team', href: '#roadmap' },
       { label: 'Release notes', href: '#release-notes' },
-      { label: 'Open questions', href: '/docs' },
-      { label: 'Contact', href: '#contact' },
+      { label: 'Documentation', href: '/docs' },
+      { label: 'Styleguide', href: '/styleguide' },
+      { label: 'Contact', href: '#walkthrough' },
     ],
   },
 ]

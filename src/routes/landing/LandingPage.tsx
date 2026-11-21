@@ -1,5 +1,7 @@
 import { FeatureTabsSection } from '@/routes/landing/components/FeatureTabsSection'
 import { HeroChecklistPreview } from '@/routes/landing/components/HeroChecklistPreview'
+import { LandingCtaSection } from '@/routes/landing/components/LandingCtaSection'
+import { LandingFooter } from '@/routes/landing/components/LandingFooter'
 import { LandingHeader } from '@/routes/landing/components/LandingHeader'
 import { LandingHero } from '@/routes/landing/components/LandingHero'
 import { MissionBand } from '@/routes/landing/components/MissionBand'
@@ -26,7 +28,9 @@ export default function LandingPage() {
         <WorkflowStepsSection />
         <RulesEngineGrid />
         <RoadmapSection />
+        <LandingCtaSection />
       </main>
+      <LandingFooter />
     </div>
   )
 }
