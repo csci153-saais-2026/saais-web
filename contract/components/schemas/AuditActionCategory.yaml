@@ -1,0 +1,14 @@
+type: string
+enum:
+  - view
+  - change
+  - sign_in
+  - record_view
+  - grade_update
+  - plan_save
+  - note_change
+  - override
+  - export
+  - auth_account
+  - catalog_term
+description: High-level (`view`, `change`, `sign_in`) and granular audit action filter category for Audit Log views

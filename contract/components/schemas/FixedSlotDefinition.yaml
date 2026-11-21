@@ -1,0 +1,26 @@
+type: object
+additionalProperties: false
+properties:
+  course_id:
+    type: string
+    format: uuid
+  is_elective_slot:
+    const: false
+  slot_type:
+    type: string
+    enum:
+      - required
+      - ge
+      - pe
+      - nstp
+    default: required
+  slot_label:
+    type: "null"
+  nominal_units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+required:
+  - is_elective_slot
+  - nominal_units
+  - course_id

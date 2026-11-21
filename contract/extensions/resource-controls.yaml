@@ -1,0 +1,8 @@
+required_at_runtime:
+  - Server-enforced PostgREST max-rows cap matching the published limit maximum
+  - Rate limits for verified identity and IP; auth token endpoints also limited by token/IP
+  - Request-body and query size caps; bounded arrays and strings
+  - Whitelisted flat projections and ordering; no arbitrary nested resource embeddings
+  - Atomic, bounded writes with consistent lock order; no service-role key in SPA
+default_page_size: 20
+max_page_size: 1000

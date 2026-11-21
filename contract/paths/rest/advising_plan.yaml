@@ -1,0 +1,105 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Read saved term plans
+  operationId: listAdvisingPlans
+  description: >-
+    Read-only, row-scoped PostgREST collection. RLS hides unauthorized records; a missing/hidden
+    row is 200 [] rather than a promised 404. Bound page size at runtime. Select only published
+    safe columns. Flat columns are allowlisted per x-projection-fields; role metadata documents
+    checks, not automatic runtime authorization. Inaccessible/missing collection rows return 200
+    [], while invalid role/column requests may return 403.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    department_staff: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/studentIdQueryParam.yaml"
+    - $ref: "../../components/parameters/schoolTermIdQueryParam.yaml"
+    - name: select
+      in: query
+      required: false
+      description: >-
+        Only these flat safe columns. On private-column tables the client must explicitly send
+        this projection; PostgREST does not apply OpenAPI defaults.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)(?:,(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision))*$
+        default: >-
+          id,student_id,school_term_id,student_curriculum_assignment_id,created_by,updated_by,created_at,updated_at,revision
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only; whitelist and enforce at runtime.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: id.asc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Visible rows; empty array if no visible matches.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/AdvisingPlan.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection if the gateway reports a partial range.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/AdvisingPlan.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-projection-fields:
+    - id
+    - student_id
+    - school_term_id
+    - student_curriculum_assignment_id
+    - created_by
+    - updated_by
+    - created_at
+    - updated_at
+    - revision

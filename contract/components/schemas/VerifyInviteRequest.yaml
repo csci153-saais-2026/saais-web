@@ -1,0 +1,25 @@
+type: object
+additionalProperties: false
+properties:
+  token:
+    type: string
+    minLength: 1
+    maxLength: 2048
+    writeOnly: true
+    pattern: \S
+    description: >-
+      Opaque application invitation token, not a user JWT, OAuth authorization code, refresh
+      token or Supabase token_hash. Validate expiry and single-use redemption server-side;
+      never log the token or password.
+  password:
+    type: string
+    format: password
+    minLength: 12
+    maxLength: 128
+    writeOnly: true
+    description: >-
+      Initial account password: 12 to 128 characters, requiring at least one uppercase letter,
+      one lowercase letter, and one digit. Validated server-side before activating the account.
+required:
+  - token
+  - password

@@ -1,0 +1,15 @@
+type: object
+additionalProperties: false
+required:
+  - success
+  - message
+  - invitation_status
+properties:
+  success:
+    type: boolean
+    example: true
+  message:
+    type: string
+    example: Invitation declined.
+  invitation_status:
+    $ref: "./InvitationStatus.yaml"

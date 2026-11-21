@@ -1,0 +1,23 @@
+type: object
+additionalProperties: false
+properties:
+  school_term_id:
+    type: string
+    format: uuid
+  rows:
+    type: array
+    minItems: 0
+    maxItems: 50
+    items:
+      $ref: "./EncodeTermGradeRowInput.yaml"
+  remove_attempt_ids:
+    type: array
+    maxItems: 50
+    uniqueItems: true
+    items:
+      type: string
+      format: uuid
+    description: Open-term attempt UUIDs removed during encoding workspace save.
+required:
+  - school_term_id
+  - rows

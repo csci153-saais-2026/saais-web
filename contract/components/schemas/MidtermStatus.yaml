@@ -1,0 +1,5 @@
+type: string
+enum:
+  - graded
+  - dr
+description: Midterm outcome status (graded numeric midterm vs VSU DR midterm drop)

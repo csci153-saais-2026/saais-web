@@ -1,0 +1,30 @@
+type: object
+additionalProperties: false
+properties:
+  changed_at:
+    type: string
+    format: date-time
+  old_grade:
+    type:
+      - number
+      - string
+      - "null"
+  new_grade:
+    type:
+      - number
+      - string
+      - "null"
+  actor_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  summary:
+    type:
+      - string
+      - "null"
+    maxLength: 1000
+required:
+  - changed_at
+  - old_grade
+  - new_grade

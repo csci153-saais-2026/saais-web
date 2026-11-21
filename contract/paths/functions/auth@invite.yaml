@@ -1,0 +1,61 @@
+post:
+  tags:
+    - Auth
+  summary: Send account invitation
+  operationId: inviteUser
+  description: >-
+    Unified account provisioning and invitation flow: atomically creates a pre-registered
+    Profile (status='invited'), multi-role RoleAssignment rows, and initial student curriculum /
+    adviser assignments (when student is included), and dispatches a single-use expiring
+    password-setup invitation email (/invite#token=...). The fragment is read by the page and
+    sent only in the JSON body to an invitation function. Pre-registered accounts may also sign in
+    immediately with Google OAuth on the exact provisioned @vsu.edu.ph email; the first verified
+    Google sign-in activates the profile (status='active') and invalidates any unused password
+    invite token. Admins may provision any role and grant multi-role assignments across the
+    institution; no caller may assign roles to themselves. Department Heads and Department Staff may
+    provision student, adviser, department_staff, and department_head accounts (including multi-role combinations restricted to those roles)
+    strictly within their own department scope. Any attempt by Department Head or Department
+    Staff to grant admin or dean roles, grant roles to themselves, or assign another department/faculty is
+    explicitly rejected with 403 Forbidden. Enforces @vsu.edu.ph institutional email and rejects
+    duplicate email or student_number with 409 Conflict. A Dean may hold only the Dean role or
+    have additional separately authorized role assignments. Privileged server code provisions the
+    Supabase Auth identity and application profile/assignments and writes an immutable audit log
+    entry with server-derived actor and timestamp; the SPA never calls Auth admin APIs or
+    receives server credentials. An application invitation does not constitute a signed-in
+    session.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  security:
+    - supabaseProjectKey: []
+      bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/InviteRequest.yaml"
+  responses:
+    "200":
+      description: Invitation email dispatched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/InviteResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-access-scope:
+    department_head: department-scoped-student-adviser-staff-and-head-invites-only
+    department_staff: department-scoped-student-adviser-staff-and-head-invites-only
+    admin: institution-wide-all-roles

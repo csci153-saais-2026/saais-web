@@ -1,0 +1,14 @@
+type: object
+additionalProperties: false
+properties:
+  to_curriculum_version_id:
+    type: string
+    format: uuid
+  endorsement_note:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+required:
+  - to_curriculum_version_id
+  - endorsement_note

@@ -1,0 +1,8 @@
+name: is_by_request
+in: query
+description: Filter by by_request flag (e.g. `eq.true`)
+required: false
+schema:
+  type: string
+  pattern: ^eq\.(true|false)$
+  maxLength: 250

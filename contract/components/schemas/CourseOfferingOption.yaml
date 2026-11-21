@@ -1,0 +1,58 @@
+type: object
+additionalProperties: false
+properties:
+  offering:
+    $ref: "./CourseOffering.yaml"
+  code:
+    type: string
+    minLength: 1
+    maxLength: 100
+    pattern: \S
+  title:
+    type: string
+    minLength: 1
+    maxLength: 250
+    pattern: \S
+  units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  group:
+    type: string
+    enum:
+      - program
+      - cross_program
+  direct_curriculum_slot_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  instructor_options:
+    type: array
+    maxItems: 20
+    uniqueItems: true
+    items:
+      type: string
+      maxLength: 150
+    description: >-
+      Available instructor suggestions for this course offering in the selected term, allowing
+      the UI to populate instructor dropdowns while still accepting custom instructor text.
+  has_unmet_strict_prerequisites:
+    type: boolean
+    default: false
+    description: >-
+      True when the student has at least one unmet strict prerequisite for this course in the
+      selected school term, enabling immediate prerequisite warning/override prompts upon
+      course selection before form submission.
+  unmet_prerequisites:
+    type: array
+    maxItems: 20
+    items:
+      $ref: "./UnmetPrerequisitePreview.yaml"
+required:
+  - offering
+  - code
+  - title
+  - units
+  - group
+  - direct_curriculum_slot_id
