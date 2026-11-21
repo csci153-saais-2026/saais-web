@@ -6,6 +6,7 @@ import { MissionBand } from '@/routes/landing/components/MissionBand'
 import { PortalsOverviewSection } from '@/routes/landing/components/PortalsOverviewSection'
 import { PrerequisiteShowcaseSection } from '@/routes/landing/components/PrerequisiteShowcaseSection'
 import { TrustAndMetricsSection } from '@/routes/landing/components/TrustAndMetricsSection'
+import { WorkflowStepsSection } from '@/routes/landing/components/WorkflowStepsSection'
 
 export default function LandingPage() {
   return (
@@ -20,6 +21,7 @@ export default function LandingPage() {
         <FeatureTabsSection />
         <PrerequisiteShowcaseSection />
         <TrustAndMetricsSection />
+        <WorkflowStepsSection />
       </main>
     </div>
   )
