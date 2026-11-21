@@ -30,3 +30,15 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
     }),
   })
 }
+
+// Floating UI (used by Radix menus, popovers and selects) probes
+// `element.matches(':popover-open')` / `':modal'`. jsdom's selector engine
+// (nwsapi) recurses through `:modal` -> `:fullscreen` and stalls the event
+// loop for ~15s each time a menu opens, so answer those probes directly.
+if (typeof Element !== "undefined") {
+  const nativeMatches = Element.prototype.matches
+  Element.prototype.matches = function matches(selector: string) {
+    if (selector === ":popover-open" || selector === ":modal") return false
+    return nativeMatches.call(this, selector)
+  }
+}

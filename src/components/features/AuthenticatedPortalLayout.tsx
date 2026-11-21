@@ -22,7 +22,7 @@ const ADMIN_ROUTE_LABELS: Readonly<Record<string, string>> = {
   '/admin/accounts': 'Accounts and roles',
   '/admin/programs': 'Programs',
   '/admin/faculties': 'Faculties and departments',
-  '/admin/settings': 'System settings',
+  '/admin/settings': 'Settings',
   '/admin/audit-log': 'Audit log',
 }
 

@@ -94,7 +94,7 @@ describe('ProtectedRoute & AuthenticatedPortalLayout', () => {
     ['/admin/accounts', 'Accounts and roles'],
     ['/admin/programs', 'Programs'],
     ['/admin/faculties', 'Faculties and departments'],
-    ['/admin/settings', 'System settings'],
+    ['/admin/settings', 'Settings'],
     ['/admin/audit-log', 'Audit log'],
   ])('allows an Admin to open %s and shows its screen heading', async (path, title) => {
     renderPortalRoutes(
