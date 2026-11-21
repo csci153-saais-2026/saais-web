@@ -1,15 +1,13 @@
 {
-  "revision": "cfa620c97c2a506537825edc1323f37ee5f843b3",
+  "revision": "8df551183962d19ab724c9f33c9a5f6d884d3ba5",
+  "version": "0.3.1",
+  "candidateHash": "4be525583cfa343782e00e3c1daee087da92a213734e7ba75ff00006f5418d6f",
   "operations": [
     {
       "id": "inviteUser",
       "path": "/functions/v1/auth/invite",
       "method": "POST",
-      "roles": [
-        "department_head",
-        "department_staff",
-        "admin"
-      ],
+      "roles": ["department_head", "department_staff", "admin"],
       "parameters": [],
       "bodyRequired": true,
       "input": {
@@ -19,14 +17,7 @@
       "output": {
         "$ref": "#/components/schemas/InviteResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 409, 429, 500],
       "public": false
     },
     {
@@ -43,14 +34,7 @@
       "output": {
         "$ref": "#/components/schemas/VerifyInviteResponse"
       },
-      "errors": [
-        400,
-        401,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 404, 409, 429, 500],
       "public": true
     },
     {
@@ -67,14 +51,7 @@
       "output": {
         "$ref": "#/components/schemas/PreviewInviteResponse"
       },
-      "errors": [
-        400,
-        401,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 404, 409, 429, 500],
       "public": true
     },
     {
@@ -91,14 +68,7 @@
       "output": {
         "$ref": "#/components/schemas/DeclineInviteResponse"
       },
-      "errors": [
-        400,
-        401,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 404, 409, 429, 500],
       "public": true
     },
     {
@@ -123,32 +93,19 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "ok"
-            ]
+            "enum": ["ok"]
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
-      "errors": [
-        400,
-        401,
-        403,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 409, 429, 500],
       "public": false
     },
     {
       "id": "updateProfile",
       "path": "/functions/v1/accounts/{profile_id}",
       "method": "PATCH",
-      "roles": [
-        "admin"
-      ],
+      "roles": ["admin"],
       "parameters": [
         {
           "name": "profile_id",
@@ -168,26 +125,14 @@
       "output": {
         "$ref": "#/components/schemas/Profile"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "resendAccountInvite",
       "path": "/functions/v1/accounts/{profile_id}/resend-invite",
       "method": "POST",
-      "roles": [
-        "department_head",
-        "department_staff",
-        "admin"
-      ],
+      "roles": ["department_head", "department_staff", "admin"],
       "parameters": [
         {
           "name": "profile_id",
@@ -205,26 +150,14 @@
       "output": {
         "$ref": "#/components/schemas/ResendInviteResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "revokeAccountInvite",
       "path": "/functions/v1/accounts/{profile_id}/revoke-invite",
       "method": "POST",
-      "roles": [
-        "department_head",
-        "department_staff",
-        "admin"
-      ],
+      "roles": ["department_head", "department_staff", "admin"],
       "parameters": [
         {
           "name": "profile_id",
@@ -244,25 +177,14 @@
       "output": {
         "$ref": "#/components/schemas/Profile"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "reassignAdviser",
       "path": "/functions/v1/students/{student_id}/adviser",
       "method": "PUT",
-      "roles": [
-        "department_head",
-        "department_staff"
-      ],
+      "roles": ["department_head", "department_staff"],
       "parameters": [
         {
           "name": "student_id",
@@ -287,25 +209,14 @@
           "$ref": "#/components/schemas/AdviserAssignment"
         }
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "bulkReassignAdvisers",
       "path": "/functions/v1/adviser-assignments/bulk-reassign",
       "method": "POST",
-      "roles": [
-        "department_head",
-        "department_staff"
-      ],
+      "roles": ["department_head", "department_staff"],
       "parameters": [],
       "bodyRequired": true,
       "input": {
@@ -315,24 +226,14 @@
       "output": {
         "$ref": "#/components/schemas/BulkAdviserReassignmentResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "recordGrades",
       "path": "/functions/v1/students/{student_id}/record-grades",
       "method": "POST",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -352,24 +253,14 @@
       "output": {
         "$ref": "#/components/schemas/AttemptResult"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "encodeTermGrades",
       "path": "/functions/v1/students/{student_id}/encode-grades",
       "method": "POST",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -393,24 +284,14 @@
           "$ref": "#/components/schemas/AttemptResult"
         }
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "correctGrades",
       "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/grades",
       "method": "PATCH",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -439,24 +320,14 @@
       "output": {
         "$ref": "#/components/schemas/AttemptResult"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "deleteOpenTermAttempt",
       "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}",
       "method": "DELETE",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -479,26 +350,16 @@
       ],
       "bodyRequired": false,
       "input": null,
-      "status": 204,
+      "status": null,
       "output": null,
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "correctPrerequisiteGrade",
       "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/prerequisite-grade",
       "method": "POST",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -527,24 +388,14 @@
       "output": {
         "$ref": "#/components/schemas/AttemptResult"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "completeINC",
       "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion",
       "method": "POST",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -573,24 +424,14 @@
       "output": {
         "$ref": "#/components/schemas/INCResolution"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "correctINCCompletion",
       "path": "/functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion",
       "method": "PATCH",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -619,24 +460,14 @@
       "output": {
         "$ref": "#/components/schemas/INCResolution"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "saveAdvisingPlan",
       "path": "/functions/v1/students/{student_id}/plans/{school_term_id}",
       "method": "PUT",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -665,25 +496,14 @@
       "output": {
         "$ref": "#/components/schemas/AdvisingPlanResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "addAdvisingNote",
       "path": "/functions/v1/students/{student_id}/notes",
       "method": "POST",
-      "roles": [
-        "adviser",
-        "admin"
-      ],
+      "roles": ["adviser", "admin"],
       "parameters": [
         {
           "name": "student_id",
@@ -703,25 +523,14 @@
       "output": {
         "$ref": "#/components/schemas/AdvisingNote"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "updateAdvisingNoteArchiveState",
       "path": "/functions/v1/students/{student_id}/notes/{note_id}",
       "method": "PATCH",
-      "roles": [
-        "adviser",
-        "admin"
-      ],
+      "roles": ["adviser", "admin"],
       "parameters": [
         {
           "name": "student_id",
@@ -750,25 +559,14 @@
       "output": {
         "$ref": "#/components/schemas/AdvisingNote"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "addAttemptRemark",
       "path": "/functions/v1/students/{student_id}/remarks",
       "method": "POST",
-      "roles": [
-        "adviser",
-        "admin"
-      ],
+      "roles": ["adviser", "admin"],
       "parameters": [
         {
           "name": "student_id",
@@ -788,24 +586,14 @@
       "output": {
         "$ref": "#/components/schemas/AttemptRemark"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "askAdvisingAssistant",
       "path": "/functions/v1/students/{student_id}/assistant",
       "method": "POST",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -825,15 +613,7 @@
       "output": {
         "$ref": "#/components/schemas/AdvisingAIResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
@@ -865,27 +645,14 @@
       "output": {
         "$ref": "#/components/schemas/AcademicSummary"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "listAccounts",
       "path": "/functions/v1/accounts",
       "method": "GET",
-      "roles": [
-        "department_head",
-        "department_staff",
-        "dean",
-        "admin"
-      ],
+      "roles": ["department_head", "department_staff", "dean", "admin"],
       "parameters": [
         {
           "name": "limit",
@@ -963,14 +730,7 @@
           "$ref": "#/components/schemas/AccountSummary"
         }
       },
-      "errors": [
-        400,
-        401,
-        403,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 409, 429, 500],
       "public": false
     },
     {
@@ -1192,10 +952,7 @@
           "description": "Sort direction (`asc` or `desc`).",
           "schema": {
             "type": "string",
-            "enum": [
-              "asc",
-              "desc"
-            ],
+            "enum": ["asc", "desc"],
             "default": "asc"
           }
         }
@@ -1206,22 +963,14 @@
       "output": {
         "$ref": "#/components/schemas/StudentRosterResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 429, 500],
       "public": false
     },
     {
       "id": "searchStudentCourseOfferings",
       "path": "/functions/v1/students/{student_id}/course-offerings",
       "method": "GET",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [
         {
           "name": "student_id",
@@ -1289,27 +1038,14 @@
           "$ref": "#/components/schemas/CourseOfferingOption"
         }
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "listRecommendations",
       "path": "/functions/v1/students/{student_id}/recommendations",
       "method": "GET",
-      "roles": [
-        "adviser",
-        "department_head",
-        "dean",
-        "admin"
-      ],
+      "roles": ["adviser", "department_head", "dean", "admin"],
       "parameters": [
         {
           "name": "student_id",
@@ -1367,15 +1103,7 @@
           "$ref": "#/components/schemas/Recommendation"
         }
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
@@ -1437,15 +1165,7 @@
           "$ref": "#/components/schemas/ChecklistSlotResult"
         }
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
@@ -1507,24 +1227,14 @@
           "$ref": "#/components/schemas/TermGrades"
         }
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "createGradeFlag",
       "path": "/functions/v1/students/{student_id}/grade-flags",
       "method": "POST",
-      "roles": [
-        "student"
-      ],
+      "roles": ["student"],
       "parameters": [
         {
           "name": "student_id",
@@ -1544,26 +1254,14 @@
       "output": {
         "$ref": "#/components/schemas/GradeFlag"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "resolveGradeFlag",
       "path": "/functions/v1/grade-flags/{flag_id}/resolve",
       "method": "POST",
-      "roles": [
-        "adviser",
-        "department_head",
-        "admin"
-      ],
+      "roles": ["adviser", "department_head", "admin"],
       "parameters": [
         {
           "name": "flag_id",
@@ -1583,24 +1281,14 @@
       "output": {
         "$ref": "#/components/schemas/GradeFlag"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 409, 429, 500],
       "public": false
     },
     {
       "id": "importGradesBatch",
       "path": "/functions/v1/grades/import",
       "method": "POST",
-      "roles": [
-        "adviser"
-      ],
+      "roles": ["adviser"],
       "parameters": [],
       "bodyRequired": true,
       "input": {
@@ -1610,25 +1298,14 @@
       "output": {
         "$ref": "#/components/schemas/GradeBatchImportResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 409, 429, 500],
       "public": false
     },
     {
       "id": "importStudentsBatch",
       "path": "/functions/v1/students/import",
       "method": "POST",
-      "roles": [
-        "department_head",
-        "department_staff",
-        "admin"
-      ],
+      "roles": ["department_head", "department_staff", "admin"],
       "parameters": [],
       "bodyRequired": true,
       "input": {
@@ -1638,26 +1315,14 @@
       "output": {
         "$ref": "#/components/schemas/StudentBatchImportResponse"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 409, 429, 500],
       "public": false
     },
     {
       "id": "getAdviserDashboardReport",
       "path": "/functions/v1/reports/adviser-dashboard",
       "method": "GET",
-      "roles": [
-        "adviser",
-        "department_head",
-        "dean",
-        "admin"
-      ],
+      "roles": ["adviser", "department_head", "dean", "admin"],
       "parameters": [
         {
           "name": "adviser_id",
@@ -1686,23 +1351,14 @@
       "output": {
         "$ref": "#/components/schemas/AdviserDashboardReport"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 429, 500],
       "public": false
     },
     {
       "id": "getDepartmentReport",
       "path": "/functions/v1/reports/department",
       "method": "GET",
-      "roles": [
-        "department_head",
-        "admin"
-      ],
+      "roles": ["department_head", "admin"],
       "parameters": [
         {
           "name": "department_id",
@@ -1738,23 +1394,14 @@
       "output": {
         "$ref": "#/components/schemas/DepartmentReport"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 429, 500],
       "public": false
     },
     {
       "id": "getFacultyReport",
       "path": "/functions/v1/reports/faculty",
       "method": "GET",
-      "roles": [
-        "dean",
-        "admin"
-      ],
+      "roles": ["dean", "admin"],
       "parameters": [
         {
           "name": "faculty_id",
@@ -1790,23 +1437,14 @@
       "output": {
         "$ref": "#/components/schemas/FacultyReport"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 429, 500],
       "public": false
     },
     {
       "id": "updateSystemSettings",
       "path": "/functions/v1/settings",
       "method": "PUT",
-      "roles": [
-        "department_head",
-        "admin"
-      ],
+      "roles": ["department_head", "admin"],
       "parameters": [],
       "bodyRequired": true,
       "input": {
@@ -1816,24 +1454,14 @@
       "output": {
         "$ref": "#/components/schemas/SystemSettings"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        409,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 409, 429, 500],
       "public": false
     },
     {
       "id": "recordCompletedBackup",
       "path": "/functions/v1/settings/record-backup",
       "method": "POST",
-      "roles": [
-        "department_head",
-        "admin"
-      ],
+      "roles": ["department_head", "admin"],
       "parameters": [],
       "bodyRequired": true,
       "input": {
@@ -1843,13 +1471,7 @@
       "output": {
         "$ref": "#/components/schemas/SystemSettings"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 429, 500],
       "public": false
     },
     {
@@ -1873,23 +1495,14 @@
       "output": {
         "$ref": "#/components/schemas/AuditLogEntry"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 429, 500],
       "public": false
     },
     {
       "id": "uploadStudentPhoto",
       "path": "/functions/v1/students/{student_id}/photo",
       "method": "PUT",
-      "roles": [
-        "student",
-        "admin"
-      ],
+      "roles": ["student", "admin"],
       "parameters": [
         {
           "name": "student_id",
@@ -1909,24 +1522,14 @@
       "output": {
         "$ref": "#/components/schemas/Profile"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 429, 500],
       "public": false
     },
     {
       "id": "deleteStudentPhoto",
       "path": "/functions/v1/students/{student_id}/photo",
       "method": "DELETE",
-      "roles": [
-        "student",
-        "admin"
-      ],
+      "roles": ["student", "admin"],
       "parameters": [
         {
           "name": "student_id",
@@ -1944,14 +1547,7 @@
       "output": {
         "$ref": "#/components/schemas/Profile"
       },
-      "errors": [
-        400,
-        401,
-        403,
-        404,
-        429,
-        500
-      ],
+      "errors": [400, 401, 403, 404, 429, 500],
       "public": false
     }
   ],
@@ -2012,10 +1608,7 @@
           "description": "Eligible active adviser assigned atomically during student provisioning."
         },
         "entry_year": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 1900,
           "maximum": 3000
         },
@@ -2042,25 +1635,17 @@
     "RoleAssignmentInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "role"
-      ],
+      "required": ["role"],
       "properties": {
         "role": {
           "$ref": "#/components/schemas/RoleType"
         },
         "faculty_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         }
       }
@@ -2081,15 +1666,11 @@
       "type": "object",
       "additionalProperties": false,
       "not": {
-        "required": [
-          "role_assignments"
-        ],
+        "required": ["role_assignments"],
         "properties": {
           "role_assignments": {
             "contains": {
-              "required": [
-                "role"
-              ],
+              "required": ["role"],
               "properties": {
                 "role": {
                   "const": "student"
@@ -2120,10 +1701,7 @@
           "format": "uuid"
         },
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "role_assignments": {
@@ -2135,26 +1713,17 @@
           }
         }
       },
-      "required": [
-        "email",
-        "full_name",
-        "role",
-        "faculty_id"
-      ]
+      "required": ["email", "full_name", "role", "faculty_id"]
     },
     "AdminInviteRequest": {
       "type": "object",
       "additionalProperties": false,
       "not": {
-        "required": [
-          "role_assignments"
-        ],
+        "required": ["role_assignments"],
         "properties": {
           "role_assignments": {
             "contains": {
-              "required": [
-                "role"
-              ],
+              "required": ["role"],
               "properties": {
                 "role": {
                   "const": "student"
@@ -2189,25 +1758,17 @@
           }
         }
       },
-      "required": [
-        "email",
-        "full_name",
-        "role"
-      ]
+      "required": ["email", "full_name", "role"]
     },
     "StaffRoleInviteRequest": {
       "type": "object",
       "additionalProperties": false,
       "not": {
-        "required": [
-          "role_assignments"
-        ],
+        "required": ["role_assignments"],
         "properties": {
           "role_assignments": {
             "contains": {
-              "required": [
-                "role"
-              ],
+              "required": ["role"],
               "properties": {
                 "role": {
                   "const": "student"
@@ -2231,24 +1792,14 @@
         },
         "role": {
           "type": "string",
-          "enum": [
-            "department_head",
-            "department_staff",
-            "dean"
-          ]
+          "enum": ["department_head", "department_staff", "dean"]
         },
         "faculty_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "role_assignments": {
@@ -2260,19 +1811,11 @@
           }
         }
       },
-      "required": [
-        "email",
-        "full_name",
-        "role"
-      ]
+      "required": ["email", "full_name", "role"]
     },
     "InviteResponse": {
       "type": "object",
-      "required": [
-        "success",
-        "message",
-        "profile_id"
-      ],
+      "required": ["success", "message", "profile_id"],
       "properties": {
         "success": {
           "type": "boolean",
@@ -2301,13 +1844,7 @@
     },
     "InvitationStatus": {
       "type": "string",
-      "enum": [
-        "pending",
-        "accepted",
-        "expired",
-        "declined",
-        "revoked"
-      ],
+      "enum": ["pending", "accepted", "expired", "declined", "revoked"],
       "description": "Lifecycle status of an account invitation without exposing raw invitation tokens"
     },
     "VerifyInviteRequest": {
@@ -2331,17 +1868,11 @@
           "description": "Initial account password: 12 to 128 characters, requiring at least one uppercase letter, one lowercase letter, and one digit. Validated server-side before activating the account."
         }
       },
-      "required": [
-        "token",
-        "password"
-      ]
+      "required": ["token", "password"]
     },
     "VerifyInviteResponse": {
       "type": "object",
-      "required": [
-        "success",
-        "message"
-      ],
+      "required": ["success", "message"],
       "properties": {
         "success": {
           "type": "boolean",
@@ -2357,9 +1888,7 @@
     "PreviewInviteRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "token"
-      ],
+      "required": ["token"],
       "properties": {
         "token": {
           "type": "string",
@@ -2413,26 +1942,17 @@
           }
         },
         "faculty_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250,
           "description": "Display name of the invited account's assigned or derived College/Faculty."
         },
         "department_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250,
           "description": "Display name of the invited account's assigned or derived Department."
         },
         "program_code": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 100,
           "description": "Student degree program code when the invitation is for a student."
         },
@@ -2446,9 +1966,7 @@
     "DeclineInviteRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "token"
-      ],
+      "required": ["token"],
       "properties": {
         "token": {
           "type": "string",
@@ -2459,10 +1977,7 @@
           "description": "Opaque application invitation token passed in the JSON request body to decline a pending invitation without creating a session."
         },
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 500
         }
       }
@@ -2470,11 +1985,7 @@
     "DeclineInviteResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "success",
-        "message",
-        "invitation_status"
-      ],
+      "required": ["success", "message", "invitation_status"],
       "properties": {
         "success": {
           "type": "boolean",
@@ -2514,38 +2025,23 @@
           "$ref": "#/components/schemas/ProfileStatus"
         },
         "faculty_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "avatar_url": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2048
         },
         "consultation_hours": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250
         },
         "student_number": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 64
         }
@@ -2555,11 +2051,7 @@
     },
     "ProfileStatus": {
       "type": "string",
-      "enum": [
-        "invited",
-        "active",
-        "disabled"
-      ],
+      "enum": ["invited", "active", "disabled"],
       "description": "Account status"
     },
     "Profile": {
@@ -2598,10 +2090,7 @@
           "type": "string"
         },
         "student_number": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 64
         },
         "status": {
@@ -2620,18 +2109,12 @@
           "description": "Token-free invitation lifecycle state for account directory views."
         },
         "invitation_sent_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time",
           "readOnly": true
         },
         "invitation_expires_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time",
           "readOnly": true
         },
@@ -2646,31 +2129,19 @@
           "readOnly": true
         },
         "faculty_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "avatar_url": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2048
         },
         "consultation_hours": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250,
           "description": "Adviser or faculty consultation schedule displayed on Student Dashboard / Mobile Student Home."
         }
@@ -2718,10 +2189,7 @@
       "additionalProperties": false,
       "properties": {
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 500
         }
       }
@@ -2745,11 +2213,7 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "adviser_id",
-        "start_date",
-        "reason"
-      ]
+      "required": ["adviser_id", "start_date", "reason"]
     },
     "AdviserAssignment": {
       "type": "object",
@@ -2771,37 +2235,25 @@
           "format": "uuid"
         },
         "adviser_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150,
           "readOnly": true,
           "description": "Adviser display name safe for Student Profile and advisee history views."
         },
         "adviser_email": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "email",
           "readOnly": true,
           "description": "Adviser institutional email safe for Student Dashboard and Mobile Student Home contact cards."
         },
         "adviser_faculty_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250,
           "readOnly": true,
           "description": "Adviser faculty/college display name safe for Student Dashboard contact cards."
         },
         "adviser_consultation_hours": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250,
           "readOnly": true,
           "example": "Tue & Thu, 13:00–16:00",
@@ -2817,36 +2269,24 @@
           "example": "2025-08-01"
         },
         "end_date": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date",
           "example": null
         },
         "handed_over_to_adviser_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid",
           "readOnly": true,
           "description": "Succeeding adviser UUID when this assignment was closed by a handover."
         },
         "handed_over_to_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150,
           "readOnly": true,
           "description": "Succeeding adviser display name when this assignment was closed by a handover."
         },
         "handover_label": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 200,
           "readOnly": true,
           "example": "Handed over to Prof. Reyes (Jan 2026)"
@@ -2887,12 +2327,7 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "student_ids",
-        "adviser_id",
-        "effective_since",
-        "reason"
-      ]
+      "required": ["student_ids", "adviser_id", "effective_since", "reason"]
     },
     "BulkAdviserReassignmentResponse": {
       "type": "object",
@@ -2910,10 +2345,7 @@
           }
         }
       },
-      "required": [
-        "reassigned_count",
-        "assignments"
-      ]
+      "required": ["reassigned_count", "assignments"]
     },
     "RecordGradesRequest": {
       "type": "object",
@@ -2928,18 +2360,12 @@
           "format": "uuid"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid",
           "description": "Optional target curriculum slot UUID. When an elective course is recorded directly into an elective slot (`is_elective_slot=true`), the server atomically creates the corresponding `ElectiveMapping` row in the same transaction."
         },
         "elective_mapping_justification": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000,
           "description": "Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during grade recording."
         },
@@ -2954,47 +2380,27 @@
           ]
         },
         "midterm_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "final_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "status": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "inc",
-            "dr",
-            "na",
-            null
-          ]
+          "type": ["string", "null"],
+          "enum": ["inc", "dr", "na", null]
         },
         "instructor": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "remark": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000,
           "description": "Optional staff remark appended as an `AttemptRemark` row when non-empty and not duplicating the latest remark on the attempt."
         },
@@ -3007,25 +2413,16 @@
           "default": false
         },
         "prerequisite_override_reason": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000
         }
       },
-      "required": [
-        "school_term_id",
-        "course_offering_id"
-      ],
+      "required": ["school_term_id", "course_offering_id"],
       "description": "Omitted/null grades mean blank. Server derives student from path, actor from verified session, actual units and direct slot from records (or maps to `curriculum_term_course_id` when an elective slot is selected). Under the VSU DR midterm rule, midterm_status=dr automatically sets status=dr and final_grade=null. For a new offering with midterm supplied, first return 409 ENROLLMENT_CONFIRMATION_REQUIRED until confirmed_enrollment=true. Existing populated submitted grade always rejects the whole request and directs to Grades; blank/blank on existing offering rejects duplicate. Unmet strict prerequisites require explicit audited override or prerequisite grade correction."
     },
     "MidtermStatus": {
       "type": "string",
-      "enum": [
-        "graded",
-        "dr"
-      ],
+      "enum": ["graded", "dr"],
       "description": "Midterm outcome status (graded numeric midterm vs VSU DR midterm drop)"
     },
     "AttemptResult": {
@@ -3046,10 +2443,7 @@
           "format": "uuid"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "recorded_status": {
@@ -3066,35 +2460,23 @@
           ]
         },
         "midterm_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "final_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "inc_deadline": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date"
         },
         "instructor": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "prerequisite_override": {
@@ -3132,19 +2514,13 @@
           "readOnly": true
         },
         "completion_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "resolved_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time",
           "readOnly": true
         },
@@ -3152,10 +2528,7 @@
           "$ref": "#/components/schemas/AttemptStatus"
         },
         "gwa_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
@@ -3193,14 +2566,7 @@
     },
     "AttemptStatus": {
       "type": "string",
-      "enum": [
-        "passed",
-        "failed",
-        "currently_enrolled",
-        "inc",
-        "dr",
-        "na"
-      ],
+      "enum": ["passed", "failed", "currently_enrolled", "inc", "dr", "na"],
       "description": "Student enrollment attempt outcome"
     },
     "GradeFixHistoryEntry": {
@@ -3212,39 +2578,21 @@
           "format": "date-time"
         },
         "old_grade": {
-          "type": [
-            "number",
-            "string",
-            "null"
-          ]
+          "type": ["number", "string", "null"]
         },
         "new_grade": {
-          "type": [
-            "number",
-            "string",
-            "null"
-          ]
+          "type": ["number", "string", "null"]
         },
         "actor_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "summary": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 1000
         }
       },
-      "required": [
-        "changed_at",
-        "old_grade",
-        "new_grade"
-      ]
+      "required": ["changed_at", "old_grade", "new_grade"]
     },
     "EncodeTermGradesRequest": {
       "type": "object",
@@ -3273,20 +2621,14 @@
           "description": "Open-term attempt UUIDs removed during encoding workspace save."
         }
       },
-      "required": [
-        "school_term_id",
-        "rows"
-      ]
+      "required": ["school_term_id", "rows"]
     },
     "EncodeTermGradeRowInput": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "attempt_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "course_offering_id": {
@@ -3294,18 +2636,12 @@
           "format": "uuid"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid",
           "description": "Target curriculum slot UUID (required or elective slot). When pointing to an elective slot (`is_elective_slot=true`), the server atomically creates or updates the corresponding `ElectiveMapping` row in the same transaction."
         },
         "elective_mapping_justification": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000,
           "description": "Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during term encoding."
         },
@@ -3320,19 +2656,13 @@
           ]
         },
         "midterm_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "final_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
@@ -3341,17 +2671,11 @@
           "$ref": "#/components/schemas/AttemptStatus"
         },
         "instructor": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "remark": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000,
           "description": "Optional staff remark. Because `AttemptRemark` is an append-only log, the server appends a new `AttemptRemark` row only when `remark` is non-empty and differs from the most recent remark on that attempt."
         },
@@ -3360,16 +2684,11 @@
           "default": false
         },
         "prerequisite_override_reason": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000
         }
       },
-      "required": [
-        "course_offering_id"
-      ]
+      "required": ["course_offering_id"]
     },
     "GradeCorrectionRequest": {
       "type": "object",
@@ -3393,28 +2712,19 @@
           ]
         },
         "midterm_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "final_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "instructor": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "reason": {
@@ -3424,35 +2734,22 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "expected_revision",
-        "reason"
-      ],
+      "required": ["expected_revision", "reason"],
       "anyOf": [
         {
-          "required": [
-            "status"
-          ]
+          "required": ["status"]
         },
         {
-          "required": [
-            "midterm_status"
-          ]
+          "required": ["midterm_status"]
         },
         {
-          "required": [
-            "midterm_grade"
-          ]
+          "required": ["midterm_grade"]
         },
         {
-          "required": [
-            "final_grade"
-          ]
+          "required": ["final_grade"]
         },
         {
-          "required": [
-            "instructor"
-          ]
+          "required": ["instructor"]
         }
       ],
       "description": "Current-adviser correction under term lock/revision guards. Omitted values preserve existing data; explicit null clears an optional grade. The complete resulting record must satisfy final-derived Passed/Failed and INC/DR/NA rules. INC defaults use actual term ends_on; completed INC uses its completion-correction operation. Never bypass strict prerequisites."
@@ -3478,11 +2775,7 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "expected_revision",
-        "final_grade",
-        "reason"
-      ]
+      "required": ["expected_revision", "final_grade", "reason"]
     },
     "INCCompletionRequest": {
       "type": "object",
@@ -3501,10 +2794,7 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "completion_grade",
-        "reason"
-      ]
+      "required": ["completion_grade", "reason"]
     },
     "INCResolution": {
       "type": "object",
@@ -3551,10 +2841,7 @@
         },
         "effective_status": {
           "type": "string",
-          "enum": [
-            "passed",
-            "failed"
-          ]
+          "enum": ["passed", "failed"]
         }
       },
       "required": [
@@ -3590,21 +2877,14 @@
           "format": "date-time"
         }
       },
-      "required": [
-        "completion_grade",
-        "reason",
-        "expected_updated_at"
-      ]
+      "required": ["completion_grade", "reason", "expected_updated_at"]
     },
     "AdvisingPlanSaveRequest": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "expected_revision": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 0,
           "description": "Null means expect no existing plan; integer matches the existing revision."
         },
@@ -3635,16 +2915,11 @@
           "format": "uuid"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         }
       },
-      "required": [
-        "course_offering_id"
-      ]
+      "required": ["course_offering_id"]
     },
     "AdvisingPlanResponse": {
       "type": "object",
@@ -3661,10 +2936,7 @@
           }
         }
       },
-      "required": [
-        "plan",
-        "items"
-      ]
+      "required": ["plan", "items"]
     },
     "AdvisingPlan": {
       "type": "object",
@@ -3751,10 +3023,7 @@
           "format": "uuid"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "display_order": {
@@ -3788,9 +3057,7 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "body_text"
-      ]
+      "required": ["body_text"]
     },
     "AdvisingNote": {
       "type": "object",
@@ -3810,19 +3077,13 @@
           "format": "uuid"
         },
         "author_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150,
           "readOnly": true,
           "description": "Display name of the staff author, safe for Student Notes and staff advising views."
         },
         "author_role_label": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 100,
           "readOnly": true,
           "description": "Role label of the staff author (e.g. `Adviser`, `Department Head`)."
@@ -3838,18 +3099,12 @@
           "default": false
         },
         "archived_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time",
           "readOnly": true
         },
         "archived_by": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid",
           "readOnly": true
         },
@@ -3859,13 +3114,7 @@
           "readOnly": true
         }
       },
-      "required": [
-        "id",
-        "student_id",
-        "authored_by",
-        "body_text",
-        "created_at"
-      ]
+      "required": ["id", "student_id", "authored_by", "body_text", "created_at"]
     },
     "NoteArchiveUpdateRequest": {
       "type": "object",
@@ -3875,9 +3124,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "is_archived"
-      ]
+      "required": ["is_archived"]
     },
     "RemarkRequest": {
       "type": "object",
@@ -3898,31 +3145,21 @@
           "format": "uuid"
         }
       },
-      "required": [
-        "body_text"
-      ],
+      "required": ["body_text"],
       "oneOf": [
         {
-          "required": [
-            "attempt_id"
-          ],
+          "required": ["attempt_id"],
           "not": {
-            "required": [
-              "curriculum_term_course_id"
-            ],
+            "required": ["curriculum_term_course_id"],
             "properties": {
               "curriculum_term_course_id": {}
             }
           }
         },
         {
-          "required": [
-            "curriculum_term_course_id"
-          ],
+          "required": ["curriculum_term_course_id"],
           "not": {
-            "required": [
-              "attempt_id"
-            ],
+            "required": ["attempt_id"],
             "properties": {
               "attempt_id": {}
             }
@@ -3959,17 +3196,11 @@
           "readOnly": true
         },
         "attempt_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         }
       },
@@ -4002,24 +3233,16 @@
           "description": "Optional bounded prior chat turns in the active AI advising drawer session for multi-turn follow-up questions."
         }
       },
-      "required": [
-        "message"
-      ]
+      "required": ["message"]
     },
     "AdvisingAIMessage": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "role",
-        "content"
-      ],
+      "required": ["role", "content"],
       "properties": {
         "role": {
           "type": "string",
-          "enum": [
-            "user",
-            "assistant"
-          ]
+          "enum": ["user", "assistant"]
         },
         "content": {
           "type": "string",
@@ -4070,10 +3293,7 @@
           "format": "uuid"
         },
         "gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -4164,12 +3384,7 @@
     },
     "AcademicStanding": {
       "type": "string",
-      "enum": [
-        "good_standing",
-        "warning",
-        "probation",
-        "dismissed"
-      ],
+      "enum": ["good_standing", "warning", "probation", "dismissed"],
       "description": "Computed academic standing classification against department failure-percentage thresholds"
     },
     "StudentDeficiencyItem": {
@@ -4187,10 +3402,7 @@
           ]
         },
         "attempt_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "course_code": {
@@ -4202,38 +3414,22 @@
           "maxLength": 250
         },
         "term_label": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 100
         },
         "inc_deadline": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date"
         },
         "days_remaining": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "detail": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 500
         }
       },
-      "required": [
-        "kind",
-        "course_code",
-        "course_title"
-      ]
+      "required": ["kind", "course_code", "course_title"]
     },
     "AccountSummary": {
       "type": "object",
@@ -4260,20 +3456,12 @@
           ]
         }
       },
-      "required": [
-        "profile",
-        "student_organization"
-      ]
+      "required": ["profile", "student_organization"]
     },
     "RoleAssignment": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "profile_id",
-        "role",
-        "created_at"
-      ],
+      "required": ["id", "profile_id", "role", "created_at"],
       "properties": {
         "id": {
           "type": "string",
@@ -4288,17 +3476,11 @@
           "$ref": "#/components/schemas/RoleType"
         },
         "faculty_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "created_at": {
@@ -4337,17 +3519,11 @@
           "format": "uuid"
         },
         "adviser_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "entry_year": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 1900,
           "maximum": 3000
         }
@@ -4426,12 +3602,7 @@
           "minimum": 0
         }
       },
-      "required": [
-        "good_standing",
-        "warning",
-        "probation",
-        "dismissed"
-      ]
+      "required": ["good_standing", "warning", "probation", "dismissed"]
     },
     "StudentRosterItem": {
       "type": "object",
@@ -4477,10 +3648,7 @@
           "format": "email"
         },
         "avatar_url": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2048
         },
         "status": {
@@ -4523,10 +3691,7 @@
           "maxLength": 100
         },
         "entry_year": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 1900,
           "maximum": 3000
         },
@@ -4536,10 +3701,7 @@
           "maximum": 8
         },
         "gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -4570,17 +3732,11 @@
           "minimum": 0
         },
         "nearest_inc_deadline": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date"
         },
         "nearest_inc_days_remaining": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "open_flags_count": {
           "type": "integer",
@@ -4588,45 +3744,26 @@
         },
         "assignment_status": {
           "type": "string",
-          "enum": [
-            "active",
-            "past",
-            "unassigned"
-          ]
+          "enum": ["active", "past", "unassigned"]
         },
         "adviser_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "adviser_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "adviser_assigned_since": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date"
         },
         "handover_label": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 200
         },
         "last_activity_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time"
         }
       }
@@ -4657,16 +3794,10 @@
         },
         "group": {
           "type": "string",
-          "enum": [
-            "program",
-            "cross_program"
-          ]
+          "enum": ["program", "cross_program"]
         },
         "direct_curriculum_slot_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "instructor_options": {
@@ -4703,12 +3834,7 @@
     },
     "CourseOffering": {
       "type": "object",
-      "required": [
-        "id",
-        "school_term_id",
-        "course_id",
-        "is_by_request"
-      ],
+      "required": ["id", "school_term_id", "course_id", "is_by_request"],
       "properties": {
         "id": {
           "type": "string",
@@ -4724,24 +3850,15 @@
           "format": "uuid"
         },
         "section": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 64
         },
         "schedule": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "instructor": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150,
           "description": "Default instructor name for this course offering/section."
         },
@@ -4789,27 +3906,17 @@
           ]
         },
         "latest_attempt_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "latest_final_grade": {
-          "type": [
-            "number",
-            "null"
-          ]
+          "type": ["number", "null"]
         }
       }
     },
     "PrerequisiteType": {
       "type": "string",
-      "enum": [
-        "strict",
-        "co_requisite",
-        "recommended"
-      ],
+      "enum": ["strict", "co_requisite", "recommended"],
       "description": "Prerequisite linkage enforcement type"
     },
     "Recommendation": {
@@ -4821,10 +3928,7 @@
           "format": "uuid"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "code": {
@@ -4856,11 +3960,7 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "enum": [
-              "Elective",
-              "By request",
-              "Retake"
-            ]
+            "enum": ["Elective", "By request", "Retake"]
           }
         },
         "excluded_summary": {
@@ -4879,9 +3979,7 @@
     "RecommendationExclusionSummary": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "total_excluded"
-      ],
+      "required": ["total_excluded"],
       "properties": {
         "total_excluded": {
           "type": "integer",
@@ -4931,17 +4029,11 @@
           "minimum": 0
         },
         "source_attempt_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "satisfaction_source": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "enum": [
             "Direct",
             "Elective mapping",
@@ -4952,17 +4044,11 @@
           ]
         },
         "credited_course_code": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 100
         },
         "credited_course_title": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250
         },
         "attempts": {
@@ -5016,19 +4102,13 @@
           ]
         },
         "midterm_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "final_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
@@ -5037,10 +4117,7 @@
           "$ref": "#/components/schemas/AttemptStatus"
         },
         "completion_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
@@ -5049,17 +4126,11 @@
           "$ref": "#/components/schemas/AttemptStatus"
         },
         "inc_deadline": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date"
         },
         "instructor": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         }
       },
@@ -5093,10 +4164,7 @@
           "readOnly": true
         },
         "gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -5119,11 +4187,7 @@
     },
     "SchoolTermType": {
       "type": "string",
-      "enum": [
-        "1st Semester",
-        "2nd Semester",
-        "Summer"
-      ],
+      "enum": ["1st Semester", "2nd Semester", "Summer"],
       "description": "Semester or summer academic session"
     },
     "GradeFlagCreateRequest": {
@@ -5135,21 +4199,11 @@
           "format": "uuid"
         },
         "reported_stage": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "midterm",
-            "final",
-            null
-          ]
+          "type": ["string", "null"],
+          "enum": ["midterm", "final", null]
         },
         "reported_grade_text": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 64
         },
         "issue_type": {
@@ -5171,11 +4225,7 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "attempt_id",
-        "issue_type",
-        "details"
-      ]
+      "required": ["attempt_id", "issue_type", "details"]
     },
     "GradeFlag": {
       "type": "object",
@@ -5195,21 +4245,11 @@
           "format": "uuid"
         },
         "reported_stage": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "midterm",
-            "final",
-            null
-          ]
+          "type": ["string", "null"],
+          "enum": ["midterm", "final", null]
         },
         "reported_grade_text": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 64
         },
         "issue_type": {
@@ -5231,28 +4271,14 @@
         },
         "status": {
           "type": "string",
-          "enum": [
-            "open",
-            "corrected",
-            "rejected"
-          ]
+          "enum": ["open", "corrected", "rejected"]
         },
         "resolution_action": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "correct",
-            "reject",
-            null
-          ]
+          "type": ["string", "null"],
+          "enum": ["correct", "reject", null]
         },
         "corrected_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
@@ -5268,25 +4294,16 @@
           ]
         },
         "resolution_note": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000
         },
         "resolved_by": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid",
           "readOnly": true
         },
         "resolved_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time",
           "readOnly": true
         },
@@ -5318,16 +4335,10 @@
       "properties": {
         "resolution_action": {
           "type": "string",
-          "enum": [
-            "correct",
-            "reject"
-          ]
+          "enum": ["correct", "reject"]
         },
         "corrected_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
@@ -5359,17 +4370,11 @@
           "pattern": "\\S"
         },
         "expected_revision": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 0
         }
       },
-      "required": [
-        "resolution_action",
-        "resolution_note"
-      ]
+      "required": ["resolution_action", "resolution_note"]
     },
     "GradeBatchImportRequest": {
       "type": "object",
@@ -5377,10 +4382,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": [
-            "preview",
-            "commit"
-          ]
+          "enum": ["preview", "commit"]
         },
         "school_term_id": {
           "type": "string",
@@ -5395,11 +4397,7 @@
           }
         }
       },
-      "required": [
-        "mode",
-        "school_term_id",
-        "rows"
-      ]
+      "required": ["mode", "school_term_id", "rows"]
     },
     "GradeBatchImportRowInput": {
       "type": "object",
@@ -5422,18 +4420,12 @@
           "pattern": "\\S"
         },
         "curriculum_term_course_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid",
           "description": "Optional target curriculum slot UUID when importing an elective course directly into an elective curriculum slot (`is_elective_slot=true`)."
         },
         "elective_mapping_justification": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000,
           "description": "Optional justification recorded when `curriculum_term_course_id` maps an imported elective attempt to an elective curriculum slot."
         },
@@ -5448,19 +4440,13 @@
           ]
         },
         "midterm_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "final_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5,
           "multipleOf": 0.25
@@ -5469,25 +4455,15 @@
           "$ref": "#/components/schemas/AttemptStatus"
         },
         "instructor": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "remark": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 2000
         }
       },
-      "required": [
-        "row_number",
-        "student_number",
-        "course_code"
-      ]
+      "required": ["row_number", "student_number", "course_code"]
     },
     "GradeBatchImportResponse": {
       "type": "object",
@@ -5495,10 +4471,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": [
-            "preview",
-            "commit"
-          ]
+          "enum": ["preview", "commit"]
         },
         "valid_count": {
           "type": "integer",
@@ -5549,26 +4522,13 @@
         },
         "outcome": {
           "type": "string",
-          "enum": [
-            "valid",
-            "warning",
-            "error",
-            "imported"
-          ]
+          "enum": ["valid", "warning", "error", "imported"]
         },
         "message": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "row_number",
-        "student_number",
-        "course_code",
-        "outcome"
-      ]
+      "required": ["row_number", "student_number", "course_code", "outcome"]
     },
     "StudentBatchImportRequest": {
       "type": "object",
@@ -5576,10 +4536,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": [
-            "preview",
-            "commit"
-          ]
+          "enum": ["preview", "commit"]
         },
         "rows": {
           "type": "array",
@@ -5590,10 +4547,7 @@
           }
         }
       },
-      "required": [
-        "mode",
-        "rows"
-      ]
+      "required": ["mode", "rows"]
     },
     "StudentBatchImportRowInput": {
       "type": "object",
@@ -5634,10 +4588,7 @@
           "description": "Eligible active initial adviser for the imported student."
         },
         "entry_year": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 1900,
           "maximum": 3000
         }
@@ -5658,10 +4609,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": [
-            "preview",
-            "commit"
-          ]
+          "enum": ["preview", "commit"]
         },
         "valid_count": {
           "type": "integer",
@@ -5712,26 +4660,13 @@
         },
         "outcome": {
           "type": "string",
-          "enum": [
-            "valid",
-            "warning",
-            "error",
-            "imported"
-          ]
+          "enum": ["valid", "warning", "error", "imported"]
         },
         "message": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "row_number",
-        "student_number",
-        "email",
-        "outcome"
-      ]
+      "required": ["row_number", "student_number", "email", "outcome"]
     },
     "AdviserDashboardReport": {
       "type": "object",
@@ -5765,10 +4700,7 @@
           "minimum": 0
         },
         "mean_gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -5789,10 +4721,7 @@
                 "minimum": 0
               }
             },
-            "required": [
-              "year_level",
-              "student_count"
-            ]
+            "required": ["year_level", "student_count"]
           }
         },
         "grade_distribution": {
@@ -5877,26 +4806,17 @@
           "maxLength": 64
         },
         "min_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
         "max_grade": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
         "status_key": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 32
         },
         "count": {
@@ -5909,11 +4829,7 @@
           "maximum": 100
         }
       },
-      "required": [
-        "label",
-        "count",
-        "percentage"
-      ]
+      "required": ["label", "count", "percentage"]
     },
     "BatchCurriculumGwaRow": {
       "type": "object",
@@ -5945,10 +4861,7 @@
           "minimum": 0
         },
         "mean_gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -6003,24 +4916,15 @@
           "maximum": 8
         },
         "adviser_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "adviser_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150
         },
         "gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -6101,10 +5005,7 @@
           "maximum": 100
         },
         "average_gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -6128,10 +5029,7 @@
                 "minimum": 0
               }
             },
-            "required": [
-              "year_level",
-              "student_count"
-            ]
+            "required": ["year_level", "student_count"]
           }
         },
         "adviser_caseloads": {
@@ -6190,10 +5088,7 @@
                 "minimum": 0
               },
               "average_gwa": {
-                "type": [
-                  "number",
-                  "null"
-                ],
+                "type": ["number", "null"],
                 "minimum": 1,
                 "maximum": 5
               },
@@ -6282,13 +5177,7 @@
     },
     "CurriculumVersionStatus": {
       "type": "string",
-      "enum": [
-        "draft",
-        "active",
-        "retired",
-        "teach_out",
-        "closed"
-      ],
+      "enum": ["draft", "active", "retired", "teach_out", "closed"],
       "description": "Curriculum version lifecycle status"
     },
     "FacultyReport": {
@@ -6309,10 +5198,7 @@
           "description": "Total number of students in the faculty/college who have at least one active academic deficiency, unclipped by the bounded `at_risk_roster` array."
         },
         "average_gwa": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 1,
           "maximum": 5
         },
@@ -6351,10 +5237,7 @@
                 "minimum": 0
               },
               "average_gwa": {
-                "type": [
-                  "number",
-                  "null"
-                ],
+                "type": ["number", "null"],
                 "minimum": 1,
                 "maximum": 5
               },
@@ -6407,10 +5290,7 @@
       "additionalProperties": false,
       "properties": {
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "warning_pct": {
@@ -6446,10 +5326,7 @@
           "readOnly": true
         },
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "warning_pct": {
@@ -6473,40 +5350,25 @@
           "maxLength": 254
         },
         "last_backup_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time",
           "readOnly": true
         },
         "last_backup_by": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid",
           "readOnly": true
         },
         "last_backup_reference": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250
         },
         "last_backup_location": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 500
         },
         "last_backup_scope": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "enum": [
             "department_records",
             "department_records_and_audit_log",
@@ -6534,38 +5396,23 @@
       "additionalProperties": false,
       "properties": {
         "department_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "backup_label": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250
         },
         "backup_reference": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250
         },
         "storage_location": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 500
         },
         "scope": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "enum": [
             "department_records",
             "department_records_and_audit_log",
@@ -6574,10 +5421,7 @@
           ]
         },
         "completed_at": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date-time"
         }
       }
@@ -6598,17 +5442,11 @@
           "description": "Authenticated client view/export audit event type. Auth-lifecycle events (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase Auth hooks and Edge Functions."
         },
         "student_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "report_type": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "enum": [
             "adviser_dashboard",
             "department",
@@ -6618,53 +5456,33 @@
           ]
         },
         "report_filters": {
-          "type": [
-            "object",
-            "null"
-          ],
+          "type": ["object", "null"],
           "additionalProperties": false,
           "properties": {
             "school_term_id": {
-              "type": [
-                "string",
-                "null"
-              ],
+              "type": ["string", "null"],
               "format": "uuid"
             },
             "faculty_id": {
-              "type": [
-                "string",
-                "null"
-              ],
+              "type": ["string", "null"],
               "format": "uuid"
             },
             "department_id": {
-              "type": [
-                "string",
-                "null"
-              ],
+              "type": ["string", "null"],
               "format": "uuid"
             },
             "program_id": {
-              "type": [
-                "string",
-                "null"
-              ],
+              "type": ["string", "null"],
               "format": "uuid"
             }
           }
         },
         "details": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 1000
         }
       },
-      "required": [
-        "event_type"
-      ]
+      "required": ["event_type"]
     },
     "AuditLogEntry": {
       "type": "object",
@@ -6676,17 +5494,11 @@
           "readOnly": true
         },
         "actor_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "actor_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150,
           "readOnly": true,
           "description": "Display name of the actor at the time of the audited action."
@@ -6704,35 +5516,23 @@
           "description": "Role of the actor for the audited action."
         },
         "student_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "student_name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 150,
           "readOnly": true,
           "description": "Target student display name when the audit entry pertains to a student record."
         },
         "student_number": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 64,
           "readOnly": true,
           "description": "Target student number when the audit entry pertains to a student record."
         },
         "target_label": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 250,
           "readOnly": true,
           "description": "Human-readable target/record label displayed in the Audit Log `Student / record` column (e.g. `24-1-00124 · Own record`, `BSCS · Batch 2024`, or `DCST · Adviser assignments`)."
@@ -6762,38 +5562,23 @@
           "pattern": "\\S"
         },
         "entity_id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uuid"
         },
         "details_summary": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 1000,
           "readOnly": true,
           "description": "Human-readable summary line rendered in the Audit Log table and CSV export."
         },
         "old_value": {
-          "type": [
-            "object",
-            "null"
-          ]
+          "type": ["object", "null"]
         },
         "new_value": {
-          "type": [
-            "object",
-            "null"
-          ]
+          "type": ["object", "null"]
         },
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 8000
         },
         "created_at": {
@@ -6834,10 +5619,7 @@
       "additionalProperties": false,
       "properties": {
         "storage_object_path": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 512,
           "pattern": "\\S",
@@ -6851,10 +5633,7 @@
         },
         "mime_type": {
           "type": "string",
-          "enum": [
-            "image/jpeg",
-            "image/png"
-          ],
+          "enum": ["image/jpeg", "image/png"],
           "description": "Supported student profile photo MIME types (PNG or JPG only, matching the UI control)."
         },
         "file_size_bytes": {
@@ -6864,11 +5643,7 @@
           "description": "File size in bytes; maximum 2 MB (`2,097,152` bytes)."
         }
       },
-      "required": [
-        "avatar_url",
-        "mime_type",
-        "file_size_bytes"
-      ]
+      "required": ["avatar_url", "mime_type", "file_size_bytes"]
     }
   }
 }

@@ -1,55 +1,105 @@
-const fs = require('node:fs');
-const { execFileSync } = require('node:child_process');
-const YAML = require('yaml');
+// Regenerate the student/account runtime from the approved bundled Git contract.
+const fs = require("node:fs");
+const path = require("node:path");
+const { execFileSync } = require("node:child_process");
+const {
+  revision,
+  version,
+  candidateHash,
+  withPinnedContract,
+  buildSnapshot: buildCatalogSnapshot,
+} = require("./snapshot-contract.cjs");
 
-const revision = 'cfa620c97c2a506537825edc1323f37ee5f843b3';
-const source = YAML.parse(execFileSync('git', ['show', revision + ':contract/openapi.yaml'], { encoding: 'utf8' }));
-const jerome = JSON.parse(fs.readFileSync('supabase/functions/_shared/contract.json', 'utf8'));
-const taken = new Set(jerome.operations.map(operation => operation.id));
-const operations = [];
-const schemas = {};
+const migration = "supabase/migrations/20261121000300_matt_contract_031.sql";
 
-function collect(value) {
-  if (!value || typeof value !== 'object') return;
-  if (value.$ref?.startsWith('#/components/schemas/')) {
-    const name = value.$ref.split('/').pop();
-    if (!schemas[name]) {
-      schemas[name] = source.components.schemas[name];
-      collect(schemas[name]);
+function buildSnapshot(source) {
+  const taken = new Set(
+    buildCatalogSnapshot(source).operations.map((operation) => operation.id),
+  );
+  const operations = [];
+  const schemas = {};
+
+  function collect(value) {
+    if (!value || typeof value !== "object") return;
+    if (value.$ref?.startsWith("#/components/schemas/")) {
+      const name = value.$ref.split("/").pop();
+      if (!schemas[name]) {
+        schemas[name] = source.components.schemas[name];
+        collect(schemas[name]);
+      }
+    }
+    for (const nested of Object.values(value)) collect(nested);
+  }
+
+  for (const [route, item] of Object.entries(source.paths)) {
+    if (!route.startsWith("/functions/v1/")) continue;
+    for (const [method, operation] of Object.entries(item)) {
+      if (!operation.operationId || taken.has(operation.operationId)) continue;
+      const success = Object.keys(operation.responses).find((status) =>
+        /^2/.test(status),
+      );
+      const parameters = [
+        ...(item.parameters || []),
+        ...(operation.parameters || []),
+      ].map((parameter) => {
+        if (!parameter.$ref) return parameter;
+        return source.components.parameters[parameter.$ref.split("/").pop()];
+      });
+      operations.push({
+        id: operation.operationId,
+        path: route,
+        method: method.toUpperCase(),
+        roles: operation["x-required-roles"],
+        parameters,
+        bodyRequired: operation.requestBody?.required ?? false,
+        input:
+          operation.requestBody?.content["application/json"].schema ?? null,
+        status: success ? Number(success) : null,
+        output:
+          (success &&
+            operation.responses[success].content?.["application/json"]
+              .schema) ||
+          null,
+        errors: Object.keys(operation.responses)
+          .filter((status) => /^[45][0-9]{2}$/.test(status))
+          .map(Number),
+        public:
+          operation.security?.some(
+            (requirement) => !Object.hasOwn(requirement, "supabaseBearerAuth"),
+          ) === true && operation["x-required-roles"].length === 0,
+      });
     }
   }
-  for (const nested of Object.values(value)) collect(nested);
+  if (operations.length !== 41)
+    throw new Error(
+      `Expected 41 remaining Edge operations, found ${operations.length}.`,
+    );
+  operations.forEach(collect);
+  return { revision, version, candidateHash, operations, schemas };
 }
 
-for (const [path, item] of Object.entries(source.paths)) {
-  if (!path.startsWith('/functions/v1/')) continue;
-  for (const [method, operation] of Object.entries(item)) {
-    if (!operation.operationId || taken.has(operation.operationId)) continue;
-    const success = Object.keys(operation.responses).find(status => /^2/.test(status));
-    const response = operation.responses[success];
-    const parameters = [...(item.parameters || []), ...(operation.parameters || [])].map(parameter => {
-      if (!parameter.$ref) return parameter;
-      return source.components.parameters[parameter.$ref.split('/').pop()];
-    });
-    operations.push({
-      id: operation.operationId, path, method: method.toUpperCase(), roles: operation['x-required-roles'],
-      parameters, bodyRequired: operation.requestBody?.required ?? false,
-      input: operation.requestBody?.content['application/json'].schema ?? null,
-      status: Number(success), output: response.content?.['application/json'].schema ?? null,
-      errors: Object.keys(operation.responses).filter(status => /^[45][0-9]{2}$/.test(status)).map(Number),
-      public: operation.security?.some(requirement => !Object.hasOwn(requirement, 'supabaseBearerAuth')) === true
-        && operation['x-required-roles'].length === 0,
-    });
-  }
+if (require.main === module) {
+  const snapshot = withPinnedContract(buildSnapshot);
+  const runtimePath = "supabase/functions/_shared/matt-contract.json";
+  const formatted = execFileSync(
+    process.execPath,
+    [
+      path.resolve("node_modules/prettier/bin/prettier.cjs"),
+      "--stdin-filepath",
+      runtimePath,
+    ],
+    { input: JSON.stringify(snapshot, null, 2) + "\n", encoding: "utf8" },
+  );
+  fs.writeFileSync(runtimePath, formatted);
+  fs.writeFileSync(
+    migration,
+    "-- Generated by supabase/tools/snapshot-matt-contract.cjs; do not edit.\n" +
+      "insert into saais_private.matt_contract (id, document) values (true, $contract$" +
+      JSON.stringify(snapshot) +
+      "$contract$::jsonb) on conflict (id) do update set document=excluded.document;\n" +
+      "update saais_private.contract set document = jsonb_set(document, '{schemas}', document->'schemas' || " +
+      "(select document->'schemas' from saais_private.matt_contract));\n",
+  );
 }
-if (operations.length !== 41) throw new Error('Expected 41 Matt operations.');
-operations.forEach(collect);
-const snapshot = { revision, operations, schemas };
-fs.writeFileSync('supabase/functions/_shared/matt-contract.json', JSON.stringify(snapshot, null, 2) + '\n');
-fs.writeFileSync('supabase/migrations/20261113000010_matt_contract.sql',
-  '-- Generated by supabase/tools/snapshot-matt-contract.cjs.\n' +
-  'create table saais_private.matt_contract (id boolean primary key check (id), document jsonb not null);\n' +
-  'revoke all on saais_private.matt_contract from public, anon, authenticated;\n' +
-  'insert into saais_private.matt_contract values (true, $contract$' + JSON.stringify(snapshot) + '$contract$::jsonb);\n' +
-  "update saais_private.contract set document = jsonb_set(document, '{schemas}', document->'schemas' || " +
-  "(select document->'schemas' from saais_private.matt_contract));\n");
+
+module.exports = { buildSnapshot, migration };
