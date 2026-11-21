@@ -47,7 +47,7 @@ try {
     .filter((name) => name.endsWith(".sql"))
     .sort()
     .map((name) => "supabase/migrations/" + name);
-  const tests = fs
+  const testFiles = fs
     .readdirSync("supabase/tests")
     .filter(
       (name) =>
@@ -55,34 +55,67 @@ try {
         name !== "bootstrap.sql" &&
         name !== "fixtures.sql",
     )
-    .sort()
-    .map((name) => "supabase/tests/" + name);
-  for (const file of [
-    "supabase/tests/bootstrap.sql",
-    ...migrations,
-    ...(fs.existsSync("supabase/tests/fixtures.sql")
-      ? ["supabase/tests/fixtures.sql"]
-      : []),
-    ...tests,
-  ]) {
-    console.log("Checking " + file);
-    try {
-      run(
-        "psql",
-        [...args, "-d", database, "-v", "ON_ERROR_STOP=1", "-1", "-f", file],
-        true,
+    .sort();
+  const suites = [
+    {
+      name: "domain",
+      tests: testFiles.filter((name) => !name.startsWith("matt-")),
+    },
+    {
+      name: "application",
+      tests: testFiles.filter((name) => name.startsWith("matt-")),
+    },
+  ];
+  for (const suite of suites) {
+    if (suite.name === "application") {
+      run("dropdb", [...args, database]);
+      created = false;
+      run("createdb", [...args, database]);
+      created = true;
+    }
+    const setup = [
+      "supabase/tests/bootstrap.sql",
+      ...migrations,
+      "supabase/tests/fixtures.sql",
+      ...(suite.name === "application"
+        ? [
+            "supabase/tests/10_catalog.sql",
+            "supabase/tests/15_people.sql",
+            "supabase/tests/25_student_setup.sql",
+          ]
+        : []),
+    ];
+    for (const file of [
+      ...setup,
+      ...suite.tests.map((name) => "supabase/tests/" + name),
+    ]) {
+      console.log("Checking " + file + " (" + suite.name + ")");
+      const isolated =
+        suite.name === "application" &&
+        suite.tests.includes(path.basename(file));
+      const transaction = isolated
+        ? ["-c", "BEGIN", "-f", file, "-c", "ROLLBACK"]
+        : ["-1", "-f", file];
+      try {
+        run(
+          "psql",
+          [...args, "-d", database, "-v", "ON_ERROR_STOP=1", ...transaction],
+          true,
+        );
+      } catch (error) {
+        process.stderr.write(error.stdout || "");
+        process.stderr.write(error.stderr || "");
+        throw Error("Failed: " + file);
+      }
+    }
+    if (suite.name === "domain") {
+      cp.execFileSync(
+        process.execPath,
+        ["supabase/tests/concurrency.mjs", bin, database],
+        { stdio: "inherit" },
       );
-    } catch (error) {
-      process.stderr.write(error.stdout || "");
-      process.stderr.write(error.stderr || "");
-      throw Error("Failed: " + file);
     }
   }
-  cp.execFileSync(
-    process.execPath,
-    ["supabase/tests/concurrency.mjs", bin, database],
-    { stdio: "inherit" },
-  );
   console.log("All migrations and SQL test files passed.");
 } catch (error) {
   console.error(error.message);

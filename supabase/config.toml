@@ -18,3 +18,27 @@ verify_jwt = true
 
 [functions.notifications]
 verify_jwt = true
+
+[functions.health]
+verify_jwt = true
+
+[functions.accounts]
+verify_jwt = true
+
+[functions.settings]
+verify_jwt = true
+
+[functions.audit]
+verify_jwt = true
+
+[functions.adviser-assignments]
+verify_jwt = true
+
+[functions.grade-flags]
+verify_jwt = true
+
+[functions.reports]
+verify_jwt = true
+
+[functions.grades]
+verify_jwt = true

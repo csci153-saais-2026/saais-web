@@ -1,4 +1,5 @@
 import { createHandler, type Environment, type RouteGroup } from "./http.ts";
+import { readAssistantConfig } from "./matt-assistant.ts";
 
 export function environment(
   get: (name: string) => string | undefined,
@@ -25,6 +26,7 @@ export function environment(
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
+    assistant: readAssistantConfig(get),
   };
 }
 
