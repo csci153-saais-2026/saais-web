@@ -177,6 +177,8 @@ describe('admin accounts model', () => {
       ),
     ).toEqual({
       email: 'You cannot assign roles to your own account.',
+      facultyId: 'Select the faculty for the assigned role.',
+      departmentId: 'Select the department for the assigned role.',
       programId: 'Select an active program.',
       curriculumVersionId:
         'Select a curriculum version for the chosen program.',
