@@ -80,6 +80,12 @@ jobs:
       - name: Run Typecheck
         run: npm run typecheck
 
+      - name: Check Edge Function types
+        run: node node_modules/typescript/bin/tsc -p supabase/tsconfig.json
+
+      - name: Run Edge Function HTTP and contract tests
+        run: node --test supabase/tests/*.test.mjs
+
       - name: Run ESLint
         run: npm run lint
 
