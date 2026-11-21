@@ -5,6 +5,7 @@ import { LandingHero } from '@/routes/landing/components/LandingHero'
 import { MissionBand } from '@/routes/landing/components/MissionBand'
 import { PortalsOverviewSection } from '@/routes/landing/components/PortalsOverviewSection'
 import { PrerequisiteShowcaseSection } from '@/routes/landing/components/PrerequisiteShowcaseSection'
+import { TrustAndMetricsSection } from '@/routes/landing/components/TrustAndMetricsSection'
 
 export default function LandingPage() {
   return (
@@ -18,6 +19,7 @@ export default function LandingPage() {
         <MissionBand />
         <FeatureTabsSection />
         <PrerequisiteShowcaseSection />
+        <TrustAndMetricsSection />
       </main>
     </div>
   )
