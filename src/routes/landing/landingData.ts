@@ -126,7 +126,7 @@ export const PORTAL_CARDS: readonly PortalCard[] = [
     icon: 'cog',
     title: 'System Admin',
     description:
-      'Own the institution-wide setup: accounts, role assignments, faculties, departments, and degree programs — and read the system-wide audit log the registrar will ask you for.',
+      'Own the institution-wide setup: accounts, role assignments, faculties, departments, and degree programs — and read the system-wide audit log.',
     bullets: [
       'Provision accounts; no public sign-up',
       'Role assignments, including Dean and admin grants',
@@ -321,7 +321,7 @@ export const FEATURE_TABS: readonly FeatureTabItem[] = [
           'Prerequisite overrides, grade flags, and reassignments commit alongside their audit entry.',
       },
       {
-        title: 'Registrar-ready viewer',
+        title: 'Audit-ready viewer',
         description:
           'Role-scoped, read-only viewers with actor, student, action and date filters, plus CSV export.',
       },
@@ -569,7 +569,7 @@ export interface RulesEngineCard {
 
 export const RULES_ENGINE_SECTION = {
   kicker: 'The rules engine',
-  title: 'Every exception the registrar argues about, written down once.',
+  title: 'Every exception advisers argue about, written down once.',
   subhead:
     'These are not settings buried in a form. Each rule is a documented operation in the OpenAPI contract and a constraint in the database.',
 } as const
@@ -620,7 +620,7 @@ export interface FaqItem {
 
 export const FAQ_SECTION = {
   kicker: 'Questions',
-  title: 'What registrars and advisers ask first.',
+  title: 'What advisers ask first.',
   subhead:
     'Short answers about accounts, enrollment, privacy, and the academic rules — each one a documented requirement, not a promise.',
 } as const
@@ -632,7 +632,7 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
       'No. There is no public sign-up. An administrator — or a department Head or Staff member, within their own department — provisions the account, and the person sets a password through an expiring invitation link. Google sign-in works only when the Google email exactly matches a provisioned profile.',
   },
   {
-    question: 'Does SAAIS replace the registrar’s enrollment system?',
+    question: 'Does SAAIS replace the enrollment system?',
     answer:
       'No. Enrollment approval stays outside SAAIS. After approving it, the adviser records the approved courses here. SAAIS does not model section capacity, timetables, or classroom scheduling.',
   },
@@ -659,9 +659,9 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
 ] as const
 
 export const CLOSING_CTA = {
-  title: 'A record your registrar can read starts here.',
+  title: 'A record your department can read starts here.',
   subhead:
-    'Bring a curriculum version and a de-identified student history to a 45-minute session with your registrar and one adviser. You will see the checklist it produces and the audit entries it writes.',
+    'Bring a curriculum version and a de-identified student history to a 45-minute session with one of your advisers. You will see the checklist it produces and the audit entries it writes.',
   buttonLabel: 'Request a walkthrough',
   contactEmail: '[advising@your-institution.edu.ph]',
 } as const
@@ -718,7 +718,6 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     title: 'Project',
     links: [
       { label: 'FAQ', href: '#faq' },
-      { label: 'Release notes', href: '#release-notes' },
       { label: 'Documentation', href: '/docs' },
       { label: 'Styleguide', href: '/styleguide' },
       { label: 'Contact', href: '#walkthrough' },
@@ -726,15 +725,8 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   },
 ]
 
-export const FOOTER_NEWSLETTER = {
-  kicker: 'Release notes',
-  description:
-    'Get the phase notes when they are published. Specification changes only — no marketing.',
-  placeholder: 'you@[institution].edu.ph',
-  buttonLabel: 'View release notes',
-  signInNote:
-    "Looking for your institution's sign-in? Accounts are provisioned by an administrator or your department — there is no public sign-up.",
-} as const
+export const FOOTER_SIGN_IN_NOTE =
+  "Looking for your institution's sign-in? Accounts are provisioned by an administrator or your department — there is no public sign-up."
 
 export const FOOTER_LEGAL = {
   copyright: '© 2026 SAAIS Project Team · [Institution]. All rights reserved.',

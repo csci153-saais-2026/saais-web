@@ -87,7 +87,7 @@ export function WalkthroughDialog({ open, onOpenChange }: WalkthroughDialogProps
           <DialogTitle>Request a walkthrough</DialogTitle>
           <DialogDescription>
             Bring a curriculum version and a de-identified student history to a
-            45-minute session with your registrar and one adviser.
+            45-minute session with one of your advisers.
           </DialogDescription>
         </DialogHeader>
 
@@ -128,7 +128,7 @@ export function WalkthroughDialog({ open, onOpenChange }: WalkthroughDialogProps
                   setName(e.target.value)
                   if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }))
                 }}
-                placeholder="[Adviser or registrar name]"
+                placeholder="[Adviser or department head name]"
                 aria-invalid={Boolean(errors.name)}
                 className="rounded-sm"
               />
@@ -162,7 +162,7 @@ export function WalkthroughDialog({ open, onOpenChange }: WalkthroughDialogProps
                 id="walkthrough-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                placeholder="Registrar, Department Head, or Adviser"
+                placeholder="Department Head or Adviser"
                 className="rounded-sm"
               />
             </FormField>

@@ -124,7 +124,7 @@ describe('LandingPage', () => {
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'What registrars and advisers ask first.',
+        name: 'What advisers ask first.',
       }),
     ).toBeTruthy()
     expect(screen.getByText('Who can read advising notes?')).toBeTruthy()

@@ -1,14 +1,12 @@
 import { Link } from 'react-router'
 import { NoteIcon } from '@/components/icons'
 import { BrandMark } from '@/components/ui/brand-mark'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Kicker } from '@/components/ui/kicker'
 import {
   FOOTER_BRAND,
   FOOTER_COLUMNS,
   FOOTER_LEGAL,
-  FOOTER_NEWSLETTER,
+  FOOTER_SIGN_IN_NOTE,
 } from '@/routes/landing/landingData'
 
 export function LandingFooter() {
@@ -100,36 +98,9 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div
-          id="release-notes"
-          className="mt-[52px] grid scroll-mt-20 grid-cols-1 gap-8 border-t border-[#F6F2E4]/[0.12] pt-[34px] lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-11"
-        >
-          <div className="hidden lg:block" />
-          <div className="max-w-[460px]">
-            <Kicker className="text-gold">{FOOTER_NEWSLETTER.kicker}</Kicker>
-            <p className="mt-3.5 text-[13px] leading-[1.6] text-[#F6F2E4]/[0.62]">
-              {FOOTER_NEWSLETTER.description}
-            </p>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <Input
-                type="email"
-                placeholder={FOOTER_NEWSLETTER.placeholder}
-                aria-label="Institutional email for release notes"
-                className="h-auto flex-1 rounded-sm border-[#F6F2E4]/[0.16] bg-[#F6F2E4]/[0.06] px-4 py-[9px] text-[13.5px] text-background placeholder:text-[#F6F2E4]/[0.45]"
-              />
-              <Button
-                asChild
-                size="sm"
-                className="rounded-lg border border-background bg-background px-[18px] py-[9px] text-[13.5px] font-semibold text-forest-deep hover:bg-background/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
-              >
-                <Link to="/docs">{FOOTER_NEWSLETTER.buttonLabel}</Link>
-              </Button>
-            </div>
-            <p className="mt-4 text-xs leading-[1.55] text-[#F6F2E4]/[0.45]">
-              {FOOTER_NEWSLETTER.signInNote}
-            </p>
-          </div>
-        </div>
+        <p className="mt-[52px] max-w-[460px] border-t border-[#F6F2E4]/[0.12] pt-[34px] text-xs leading-[1.55] text-[#F6F2E4]/[0.45]">
+          {FOOTER_SIGN_IN_NOTE}
+        </p>
 
         <div className="mt-11 flex flex-wrap items-center justify-between gap-5 border-t border-[#F6F2E4]/[0.12] pt-6 text-[12.5px] text-[#F6F2E4]/[0.45]">
           <div>{FOOTER_LEGAL.copyright}</div>
