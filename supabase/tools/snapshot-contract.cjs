@@ -1,40 +1,156 @@
 // Regenerate with: node supabase/tools/snapshot-contract.cjs
-// This reads the assigned Git object, never the older working-tree contract.
-const fs = require('node:fs');
-const cp = require('node:child_process');
-const YAML = require('yaml');
-const revision = 'cfa620c97c2a506537825edc1323f37ee5f843b3';
-const contract = YAML.parse(cp.execFileSync('git', ['show', `${revision}:contract/openapi.yaml`], { encoding: 'utf8' }));
-const studentSuffix = /\/(shift-preview|curriculum|curriculum-transfers|outside-credits(?:\/\{credit_id\}\/revoke)?|elective-mappings(?:\/\{decision_id\}(?:\/revoke)?)?|equivalencies(?:\/\{decision_id\}(?:\/revoke)?)?)$/;
-const operations = [];
-for (const [path, item] of Object.entries(contract.paths)) {
-  if (!path.startsWith('/functions/v1/')) continue;
-  if (!/^\/functions\/v1\/(catalog|school-terms|curriculum-transfers|notifications)(\/|$)/.test(path) && !(path.startsWith('/functions/v1/students/{student_id}/') && studentSuffix.test(path))) continue;
-  for (const [method, operation] of Object.entries(item)) {
-    if (!operation.operationId) continue;
-    const success = Object.keys(operation.responses).find(status => /^2/.test(status));
-    operations.push({ id: operation.operationId, method: method.toUpperCase(), path,
-      roles: operation['x-required-roles'], scope: operation['x-access-scope'],
-      parameters: operation.parameters || [], bodyRequired: operation.requestBody?.required || false,
-      input: operation.requestBody?.content['application/json'].schema || null,
-      status: Number(success), output: operation.responses[success].content?.['application/json'].schema || null,
-      errors: Object.keys(operation.responses).filter(status => !/^2/.test(status)).map(Number) });
+// Bundle the approved Git tree so working-tree edits cannot alter the runtime contract.
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const cp = require("node:child_process");
+const { createHash } = require("node:crypto");
+
+const revision = "8df551183962d19ab724c9f33c9a5f6d884d3ba5";
+const version = "0.3.1";
+const candidateHash =
+  "4be525583cfa343782e00e3c1daee087da92a213734e7ba75ff00006f5418d6f";
+const migration = "supabase/migrations/20261121000200_jerome_contract_031.sql";
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonicalize(value[key])]),
+  );
+}
+
+function withPinnedContract(callback) {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "saais-jerome-contract-"),
+  );
+  try {
+    const archive = cp.execFileSync("git", ["archive", revision, "contract"], {
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    cp.execFileSync("tar", ["-xf", "-", "-C", directory], { input: archive });
+    fs.symlinkSync(
+      path.resolve("node_modules"),
+      path.join(directory, "node_modules"),
+      "junction",
+    );
+    const output = path.join(directory, "openapi.json");
+    cp.execFileSync(
+      process.execPath,
+      [
+        path.resolve("node_modules/@redocly/cli/bin/cli.js"),
+        "bundle",
+        "contract/openapi.yaml",
+        "--config",
+        "contract/redocly.yaml",
+        "--output",
+        output,
+      ],
+      { cwd: directory, stdio: "pipe" },
+    );
+    const contract = JSON.parse(fs.readFileSync(output, "utf8"));
+    const hash = createHash("sha256")
+      .update(JSON.stringify(canonicalize(contract)), "utf8")
+      .digest("hex");
+    if (contract.info.version !== version || hash !== candidateHash) {
+      throw Error(
+        "The pinned contract does not match the approved OpenAPI version and hash.",
+      );
+    }
+    return callback(contract, directory);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
   }
 }
-if (operations.length !== 47) throw Error(`Expected 47 operations, found ${operations.length}`);
-const schemas = {};
-function collect(value) {
-  if (!value || typeof value !== 'object') return;
-  if (value.$ref) {
-    const name = value.$ref.split('/').pop();
-    if (!schemas[name]) { schemas[name] = contract.components.schemas[name]; collect(schemas[name]); }
+
+function buildSnapshot(contract) {
+  const studentSuffix =
+    /\/(shift-preview|curriculum|curriculum-transfers|outside-credits(?:\/\{credit_id\}\/revoke)?|elective-mappings(?:\/\{decision_id\}(?:\/revoke)?)?|equivalencies(?:\/\{decision_id\}(?:\/revoke)?)?)$/;
+  const operations = [];
+  for (const [route, item] of Object.entries(contract.paths)) {
+    if (!route.startsWith("/functions/v1/")) continue;
+    if (
+      !/^\/functions\/v1\/(catalog|school-terms|curriculum-transfers|notifications)(\/|$)/.test(
+        route,
+      ) &&
+      !(
+        route.startsWith("/functions/v1/students/{student_id}/") &&
+        studentSuffix.test(route)
+      )
+    )
+      continue;
+    for (const [method, operation] of Object.entries(item)) {
+      if (!operation.operationId) continue;
+      const success = Object.keys(operation.responses).find((status) =>
+        /^2/.test(status),
+      );
+      operations.push({
+        id: operation.operationId,
+        method: method.toUpperCase(),
+        path: route,
+        roles: operation["x-required-roles"],
+        scope: operation["x-access-scope"],
+        parameters: operation.parameters || [],
+        bodyRequired: operation.requestBody?.required || false,
+        input:
+          operation.requestBody?.content["application/json"].schema || null,
+        status: Number(success),
+        output:
+          operation.responses[success].content?.["application/json"].schema ||
+          null,
+        errors: Object.keys(operation.responses)
+          .filter((status) => !/^2/.test(status))
+          .map(Number),
+      });
+    }
   }
-  for (const nested of Object.values(value)) collect(nested);
+  if (operations.length !== 47)
+    throw Error(`Expected 47 operations, found ${operations.length}`);
+  const schemas = {};
+  function collect(value) {
+    if (!value || typeof value !== "object") return;
+    if (value.$ref) {
+      const name = value.$ref.split("/").pop();
+      if (!schemas[name]) {
+        schemas[name] = contract.components.schemas[name];
+        collect(schemas[name]);
+      }
+    }
+    for (const nested of Object.values(value)) collect(nested);
+  }
+  operations.forEach(collect);
+  return { revision, version, candidateHash, operations, schemas };
 }
-operations.forEach(collect);
-const snapshot = { revision, operations, schemas };
-fs.mkdirSync('supabase/functions/_shared', { recursive: true });
-fs.writeFileSync('supabase/functions/_shared/contract.json', JSON.stringify(snapshot, null, 2) + '\n');
-fs.writeFileSync('supabase/migrations/20261112000400_jerome_contract.sql',
-  '-- Generated by supabase/tools/snapshot-contract.cjs; do not edit.\n' +
-  'insert into saais_private.contract (id, document) values (true, $contract$' + JSON.stringify(snapshot) + '$contract$::jsonb);\n');
+
+if (require.main === module) {
+  const snapshot = withPinnedContract(buildSnapshot);
+  const runtimePath = "supabase/functions/_shared/contract.json";
+  const formattedSnapshot = cp.execFileSync(
+    process.execPath,
+    [
+      path.resolve("node_modules/prettier/bin/prettier.cjs"),
+      "--stdin-filepath",
+      runtimePath,
+    ],
+    { input: JSON.stringify(snapshot, null, 2) + "\n", encoding: "utf8" },
+  );
+  fs.writeFileSync(runtimePath, formattedSnapshot);
+  fs.writeFileSync(
+    migration,
+    "-- Generated by supabase/tools/snapshot-contract.cjs; do not edit.\n" +
+      "insert into saais_private.contract (id, document) values (true, $contract$" +
+      JSON.stringify(snapshot) +
+      "$contract$::jsonb) on conflict (id) do update set document=excluded.document;\n",
+  );
+}
+
+module.exports = {
+  revision,
+  version,
+  candidateHash,
+  migration,
+  withPinnedContract,
+  buildSnapshot,
+};
