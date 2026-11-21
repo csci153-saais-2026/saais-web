@@ -1,3 +1,4 @@
+import { fetchAllPages } from "../fetch-all-pages"
 import {
   apiClient,
   postgrestFilter,
@@ -8,13 +9,13 @@ import {
 export async function fetchStudentGrades(
   studentId: string
 ): Promise<ApiSchema<"TermGrades">[]> {
-  const res = await apiClient.GET(
-    "/functions/v1/students/{student_id}/grades",
-    {
-      params: { path: { student_id: studentId } },
-    }
+  return fetchAllPages(
+    (limit, offset) =>
+      apiClient.GET("/functions/v1/students/{student_id}/grades", {
+        params: { path: { student_id: studentId }, query: { limit, offset } },
+      }),
+    (term) => term.school_term_id
   )
-  return unwrapApiResult(res)
 }
 
 export async function fetchStudentGradeFlags(

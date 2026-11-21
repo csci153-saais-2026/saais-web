@@ -9,7 +9,12 @@ import {
 } from "@/components/features/report-pdf-preview-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { apiClient, postgrestFilter, type ApiSchema } from "@/lib/api"
+import {
+  apiClient,
+  postgrestFilter,
+  unwrapApiResult,
+  type ApiSchema,
+} from "@/lib/api"
 import {
   formatGradeSummaryReport,
   type PdfReportPayload,
@@ -250,6 +255,7 @@ export function StudentGradesView({
                   code: meta.code,
                   title: meta.title,
                   recordedGrade: meta.recordedGrade,
+                  reportedStage: meta.reportedStage,
                 })
               }}
             />
@@ -337,52 +343,58 @@ async function fetchStudentGradesMetadata(
   studentId: string
 ): Promise<GradesMetadata> {
   const [
-    schoolTermsRes,
-    offeringsRes,
-    coursesRes,
-    profilesRes,
-    orgsRes,
-    programsRes,
-    curriculaRes,
-    assignmentsRes,
-    departmentsRes,
-    facultiesRes,
+    schoolTerms,
+    offerings,
+    courses,
+    profiles,
+    orgs,
+    programs,
+    curricula,
+    assignments,
+    departments,
+    faculties,
   ] = await Promise.all([
-    apiClient.GET("/rest/v1/school_term"),
-    apiClient.GET("/rest/v1/course_offering"),
-    apiClient.GET("/rest/v1/course"),
-    apiClient.GET("/rest/v1/profile", {
-      params: { query: { id: postgrestFilter.eq(studentId) } },
-    }),
-    apiClient.GET("/rest/v1/student_organization", {
-      params: { query: { student_id: postgrestFilter.eq(studentId) } },
-    }),
-    apiClient.GET("/rest/v1/program"),
-    apiClient.GET("/rest/v1/curriculum_version"),
-    apiClient.GET("/rest/v1/adviser_assignment", {
-      params: {
-        query: {
-          student_id: postgrestFilter.eq(studentId),
-          select: "id,adviser_id,adviser_name,start_date,end_date",
-          order: "start_date.desc",
+    apiClient.GET("/rest/v1/school_term").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/course_offering").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/course").then(unwrapApiResult),
+    apiClient
+      .GET("/rest/v1/profile", {
+        params: { query: { id: postgrestFilter.eq(studentId) } },
+      })
+      .then(unwrapApiResult),
+    apiClient
+      .GET("/rest/v1/student_organization", {
+        params: { query: { student_id: postgrestFilter.eq(studentId) } },
+      })
+      .then(unwrapApiResult),
+    apiClient.GET("/rest/v1/program").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
+    apiClient
+      .GET("/rest/v1/adviser_assignment", {
+        params: {
+          query: {
+            student_id: postgrestFilter.eq(studentId),
+            select: "id,adviser_id,adviser_name,start_date,end_date",
+            order: "start_date.desc",
+          },
         },
-      },
-    }),
-    apiClient.GET("/rest/v1/department"),
-    apiClient.GET("/rest/v1/faculty"),
+      })
+      .then(unwrapApiResult),
+    apiClient.GET("/rest/v1/department").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
   ])
 
   return {
-    schoolTerms: schoolTermsRes.data ?? [],
-    offerings: offeringsRes.data ?? [],
-    courses: coursesRes.data ?? [],
-    profile: profilesRes.data?.[0] ?? null,
-    org: orgsRes.data?.[0] ?? null,
-    programs: programsRes.data ?? [],
-    curricula: curriculaRes.data ?? [],
-    assignments: assignmentsRes.data ?? [],
-    departments: departmentsRes.data ?? [],
-    faculties: facultiesRes.data ?? [],
+    schoolTerms,
+    offerings,
+    courses,
+    profile: profiles[0] ?? null,
+    org: orgs[0] ?? null,
+    programs,
+    curricula,
+    assignments,
+    departments,
+    faculties,
   }
 }
 
@@ -481,7 +493,8 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
 
   const isPending =
     gradesQuery.isPending || flagsQuery.isPending || metaQuery.isPending
-  const isError = gradesQuery.isError || flagsQuery.isError
+  const isError =
+    gradesQuery.isError || flagsQuery.isError || metaQuery.isError
 
   const refetch = React.useCallback(async () => {
     await Promise.all([

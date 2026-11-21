@@ -1,4 +1,5 @@
-import { apiClient, postgrestFilter, unwrapApiResult } from "@/lib/api"
+import { apiClient, postgrestFilter } from "@/lib/api"
+import { fetchAllPages } from "../fetch-all-pages"
 import type { EnrollmentHistoryRow } from "./EnrollmentHistoryTable"
 
 export interface EnrollmentHistoryOfferingDetail {
@@ -22,27 +23,50 @@ export interface StudentEnrollmentHistoryData {
 export async function fetchStudentEnrollmentHistory(
   studentId: string
 ): Promise<StudentEnrollmentHistoryData> {
-  const [attemptsRes, offeringsRes, coursesRes, termsRes, slotsRes] =
-    await Promise.all([
-      apiClient.GET("/rest/v1/attempt_result", {
-        params: {
-          query: {
-            student_id: postgrestFilter.eq(studentId),
-            order: "created_at.desc",
+  const [rawAttempts, offerings, courses, terms, slots] = await Promise.all([
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/attempt_result", {
+          params: {
+            query: {
+              student_id: postgrestFilter.eq(studentId),
+              order: "created_at.desc,id.desc",
+              limit,
+              offset,
+            },
           },
-        },
-      }),
-      apiClient.GET("/rest/v1/course_offering"),
-      apiClient.GET("/rest/v1/course"),
-      apiClient.GET("/rest/v1/school_term"),
-      apiClient.GET("/rest/v1/curriculum_term_course"),
-    ])
-
-  const rawAttempts = unwrapApiResult(attemptsRes)
-  const offerings = unwrapApiResult(offeringsRes)
-  const courses = unwrapApiResult(coursesRes)
-  const terms = unwrapApiResult(termsRes)
-  const slots = slotsRes.data ?? []
+        }),
+      (row) => row.id
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/course_offering", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/course", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/school_term", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/curriculum_term_course", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id
+    ),
+  ])
 
   const courseMap = new Map(courses.map((c) => [c.id, c]))
   const termMap = new Map(terms.map((t) => [t.id, t]))

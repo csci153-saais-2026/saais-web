@@ -17,6 +17,7 @@ import {
 import { StatGrid } from "@/components/features/stat-tile"
 import { Button } from "@/components/ui/button"
 import type { Status } from "@/components/ui/status-badge"
+import { fetchAllPages } from "../fetch-all-pages"
 import {
   apiClient,
   postgrestFilter,
@@ -106,14 +107,21 @@ function mapSlotStatusToBadge(
   }
 }
 
-function getEffectiveGradeFromSlot(
-  slot: ChecklistSlotDisplayItem
-): number | string | null {
+function pickSourceAttempt(
+  slot: Pick<ApiSchema<"ChecklistSlotResult">, "attempts" | "source_attempt_id">
+) {
   const attempts = slot.attempts ?? []
-  const sourceAttempt =
+  return (
     (slot.source_attempt_id
       ? attempts.find((a) => a.attempt_id === slot.source_attempt_id)
       : undefined) ?? attempts[attempts.length - 1]
+  )
+}
+
+function getEffectiveGradeFromSlot(
+  slot: ChecklistSlotDisplayItem
+): number | string | null {
+  const sourceAttempt = pickSourceAttempt(slot)
   if (!sourceAttempt) return null
   if (sourceAttempt.completion_grade != null) {
     return sourceAttempt.completion_grade
@@ -122,7 +130,7 @@ function getEffectiveGradeFromSlot(
     return sourceAttempt.final_grade
   }
   if (sourceAttempt.recorded_status === "inc") {
-    return slot.isLapsedInc ? "5.00" : "INC"
+    return slot.isLapsedInc ? 5 : "INC"
   }
   if (sourceAttempt.recorded_status === "dr") return "DR"
   if (sourceAttempt.recorded_status === "na") return "NA"
@@ -447,51 +455,61 @@ async function fetchChecklistMeta(
   const summary = unwrapApiResult(summaryRes)
 
   const [
-    profilesRes,
-    orgsRes,
-    programsRes,
-    curriculaRes,
-    currTermsRes,
-    currSlotsRes,
-    coursesRes,
-    assignmentsRes,
-    departmentsRes,
-    facultiesRes,
+    profiles,
+    orgs,
+    programs,
+    curricula,
+    currTerms,
+    currSlots,
+    courses,
+    assignments,
+    departments,
+    faculties,
   ] = await Promise.all([
-    apiClient.GET("/rest/v1/profile", {
-      params: { query: { id: postgrestFilter.eq(studentId) } },
-    }),
-    apiClient.GET("/rest/v1/student_organization", {
-      params: { query: { student_id: postgrestFilter.eq(studentId) } },
-    }),
-    apiClient.GET("/rest/v1/program"),
-    apiClient.GET("/rest/v1/curriculum_version"),
-    apiClient.GET("/rest/v1/curriculum_term"),
-    apiClient.GET("/rest/v1/curriculum_term_course"),
-    apiClient.GET("/rest/v1/course"),
-    apiClient.GET("/rest/v1/adviser_assignment", {
-      params: {
-        query: {
-          student_id: postgrestFilter.eq(studentId),
-          select: "id,adviser_id,adviser_name,start_date,end_date",
-          order: "start_date.desc",
+    apiClient
+      .GET("/rest/v1/profile", {
+        params: { query: { id: postgrestFilter.eq(studentId) } },
+      })
+      .then(unwrapApiResult),
+    apiClient
+      .GET("/rest/v1/student_organization", {
+        params: { query: { student_id: postgrestFilter.eq(studentId) } },
+      })
+      .then(unwrapApiResult),
+    apiClient.GET("/rest/v1/program").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/curriculum_term", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/curriculum_term_course", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id
+    ),
+    apiClient.GET("/rest/v1/course").then(unwrapApiResult),
+    apiClient
+      .GET("/rest/v1/adviser_assignment", {
+        params: {
+          query: {
+            student_id: postgrestFilter.eq(studentId),
+            select: "id,adviser_id,adviser_name,start_date,end_date",
+            order: "start_date.desc",
+          },
         },
-      },
-    }),
-    apiClient.GET("/rest/v1/department"),
-    apiClient.GET("/rest/v1/faculty"),
+      })
+      .then(unwrapApiResult),
+    apiClient.GET("/rest/v1/department").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
   ])
 
-  const profile = profilesRes.data?.[0] ?? null
-  const org = orgsRes.data?.[0] ?? null
-  const programs = programsRes.data ?? []
-  const curricula = curriculaRes.data ?? []
-  const currTerms = currTermsRes.data ?? []
-  const currSlots = currSlotsRes.data ?? []
-  const courses = coursesRes.data ?? []
-  const assignments = assignmentsRes.data ?? []
-  const departments = departmentsRes.data ?? []
-  const faculties = facultiesRes.data ?? []
+  const profile = profiles[0] ?? null
+  const org = orgs[0] ?? null
 
   const program = programs.find((p) => p.id === org?.program_id) ?? null
   const curriculum =
@@ -516,6 +534,16 @@ async function fetchChecklistMeta(
     currSlots,
     courses,
   }
+}
+
+function isLapsedIncAttempt(
+  attempt: ReturnType<typeof pickSourceAttempt>
+): boolean {
+  return (
+    attempt?.recorded_status === "inc" &&
+    attempt.effective_status === "failed" &&
+    attempt.completion_grade == null
+  )
 }
 
 function buildChecklistTermSections(
@@ -560,12 +588,7 @@ function buildChecklistTermSections(
       code,
       title,
       slotType: slotDef?.slot_type,
-      isLapsedInc: (result.attempts ?? []).some(
-        (a) =>
-          a.recorded_status === "inc" &&
-          a.effective_status === "failed" &&
-          a.completion_grade == null
-      ),
+      isLapsedInc: isLapsedIncAttempt(pickSourceAttempt(result)),
     }
 
     if (slotDef?.curriculum_term_id) {

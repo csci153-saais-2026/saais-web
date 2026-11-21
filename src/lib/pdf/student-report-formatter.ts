@@ -133,7 +133,7 @@ export function formatReportStatusLabel(
   status: ApiSchema<"ChecklistSlotResult">["status"] | ApiSchema<"AttemptStatus">,
   isLapsedInc = false
 ): string {
-  if (isLapsedInc) {
+  if (isLapsedInc && (status === "inc" || status === "failed")) {
     return "INC lapsed"
   }
   switch (status) {
@@ -298,11 +298,20 @@ function formatMidtermColumn(attempt: GradeSummaryAttemptInput): string {
   return "—"
 }
 
+function isAttemptLapsedInc(attempt: GradeSummaryAttemptInput): boolean {
+  if (attempt.completion_grade != null) return false
+  return Boolean(
+    attempt.is_lapsed_inc ||
+      (attempt.recorded_status === "inc" &&
+        attempt.effective_status === "failed")
+  )
+}
+
 function formatFinalOrCompletionColumn(attempt: GradeSummaryAttemptInput): string {
   if (attempt.completion_grade != null) {
     return `${formatTwoDecimalGrade(attempt.completion_grade)} (INC)`
   }
-  if (attempt.is_lapsed_inc) {
+  if (isAttemptLapsedInc(attempt)) {
     return "INC (5.00)"
   }
   if (attempt.recorded_status === "inc") return "INC"
@@ -315,12 +324,10 @@ function formatFinalOrCompletionColumn(attempt: GradeSummaryAttemptInput): strin
 }
 
 function resolveAttemptStatusLabel(attempt: GradeSummaryAttemptInput): string {
-  const isLapsed =
-    attempt.is_lapsed_inc ||
-    (attempt.recorded_status === "inc" &&
-      attempt.effective_status === "failed" &&
-      attempt.completion_grade == null)
-  return formatReportStatusLabel(attempt.effective_status, isLapsed)
+  return formatReportStatusLabel(
+    attempt.effective_status,
+    isAttemptLapsedInc(attempt)
+  )
 }
 
 function buildTermSectionTitle(term: GradeSummaryTermInput): string {

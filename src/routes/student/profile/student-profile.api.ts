@@ -1,3 +1,7 @@
+import {
+  getSupabaseClient,
+  resolveSaaisEnvConfig,
+} from "@/lib/supabase/client"
 import type { AdviserAssignmentRecord } from "@/components/features/assignment-history-dialog"
 import {
   apiClient,
@@ -25,25 +29,25 @@ export async function fetchStudentProfileData(
   studentId: string
 ): Promise<StudentProfileData> {
   const [
-    profilesRes,
-    orgsRes,
-    programsRes,
-    departmentsRes,
-    facultiesRes,
-    adviserAssignmentsRes,
-    currAssignmentsRes,
-    currVersionsRes,
-    currTransfersRes,
+    profiles,
+    orgs,
+    programs,
+    departments,
+    faculties,
+    adviserAssignments,
+    curriculumAssignments,
+    currVersions,
+    curriculumTransfers,
   ] = await Promise.all([
     apiClient.GET("/rest/v1/profile", {
       params: { query: { id: postgrestFilter.eq(studentId) } },
-    }),
+    }).then(unwrapApiResult),
     apiClient.GET("/rest/v1/student_organization", {
       params: { query: { student_id: postgrestFilter.eq(studentId) } },
-    }),
-    apiClient.GET("/rest/v1/program"),
-    apiClient.GET("/rest/v1/department"),
-    apiClient.GET("/rest/v1/faculty"),
+    }).then(unwrapApiResult),
+    apiClient.GET("/rest/v1/program").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/department").then(unwrapApiResult),
+    apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
     apiClient.GET("/rest/v1/adviser_assignment", {
       params: {
         query: {
@@ -53,7 +57,7 @@ export async function fetchStudentProfileData(
           order: "start_date.desc",
         },
       },
-    }),
+    }).then(unwrapApiResult),
     apiClient.GET("/rest/v1/student_curriculum_assignment", {
       params: {
         query: {
@@ -63,8 +67,8 @@ export async function fetchStudentProfileData(
           order: "start_date.desc",
         },
       },
-    }),
-    apiClient.GET("/rest/v1/curriculum_version"),
+    }).then(unwrapApiResult),
+    apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
     apiClient.GET("/rest/v1/curriculum_transfer_request", {
       params: {
         query: {
@@ -72,20 +76,15 @@ export async function fetchStudentProfileData(
           order: "created_at.desc",
         },
       },
-    }),
+    }).then(unwrapApiResult),
   ])
 
-  const profiles = unwrapApiResult(profilesRes)
   const profile = profiles[0]
   if (!profile) {
     throw new Error("Student profile not found.")
   }
 
-  const org = orgsRes.data?.[0] ?? null
-  const programs = programsRes.data ?? []
-  const departments = departmentsRes.data ?? []
-  const faculties = facultiesRes.data ?? []
-  const currVersions = currVersionsRes.data ?? []
+  const org = orgs[0] ?? null
 
   const program = programs.find((p) => p.id === org?.program_id) ?? null
   const department =
@@ -106,11 +105,47 @@ export async function fetchStudentProfileData(
     programName: program?.name ?? null,
     departmentName: department?.name ?? null,
     collegeName: faculty?.name ?? null,
-    adviserAssignments: adviserAssignmentsRes.data ?? [],
-    curriculumAssignments: currAssignmentsRes.data ?? [],
-    curriculumTransfers: currTransfersRes.data ?? [],
+    adviserAssignments,
+    curriculumAssignments,
+    curriculumTransfers,
     curriculumLabels,
   }
+}
+
+const STUDENT_PHOTO_BUCKET = "student-photos"
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365
+
+/**
+ * Uploads the photo to the private `student-photos` bucket and resolves the
+ * object key plus a URL for `avatar_url`. In mock mode there is no storage
+ * backend, so a local object URL stands in for the stored image.
+ */
+export async function uploadStudentPhotoObject(
+  studentId: string,
+  file: File,
+  mimeType: "image/jpeg" | "image/png"
+): Promise<{ storagePath: string; avatarUrl: string }> {
+  const ext = mimeType === "image/png" ? "png" : "jpg"
+  const storagePath = `students/${studentId}/avatar.${ext}`
+
+  if (resolveSaaisEnvConfig().mode === "mock") {
+    return { storagePath, avatarUrl: URL.createObjectURL(file) }
+  }
+
+  const bucket = getSupabaseClient().storage.from(STUDENT_PHOTO_BUCKET)
+  const upload = await bucket.upload(storagePath, file, {
+    upsert: true,
+    contentType: mimeType,
+  })
+  if (upload.error) throw new Error("Could not upload the photo.")
+  const signed = await bucket.createSignedUrl(
+    storagePath,
+    SIGNED_URL_TTL_SECONDS
+  )
+  if (signed.error || !signed.data.signedUrl) {
+    throw new Error("Could not resolve the uploaded photo URL.")
+  }
+  return { storagePath, avatarUrl: signed.data.signedUrl }
 }
 
 /**

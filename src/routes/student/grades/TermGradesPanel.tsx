@@ -49,6 +49,7 @@ export interface TermGradesPanelProps {
       readonly code: string
       readonly title: string
       readonly recordedGrade: string
+      readonly reportedStage: "midterm" | "final"
     }
   ) => void
   readonly className?: string
@@ -224,6 +225,8 @@ export function TermGradesPanel({
                     : midtermText !== "—"
                       ? `mid ${midtermText}`
                       : "No grade yet"
+                const reportedStage: "midterm" | "final" =
+                  finalText === "—" && midtermText !== "—" ? "midterm" : "final"
                 const badgeStatus = mapAttemptStatusToBadge(attempt)
                 const isFlagged = openFlagAttemptIds?.has(attempt.id) ?? false
                 const showIncDue =
@@ -295,6 +298,7 @@ export function TermGradesPanel({
                             code,
                             title,
                             recordedGrade: recordedGradeForFlag,
+                            reportedStage,
                           })
                         }
                       >

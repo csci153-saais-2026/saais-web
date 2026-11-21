@@ -18,6 +18,7 @@ import type { ApiSchema } from "@/lib/api"
 import { CurriculumHistoryDialog } from "./CurriculumHistoryDialog"
 import { ProfileDetailsPanel } from "./ProfileDetailsPanel"
 import { ProfilePhotoCard } from "./ProfilePhotoCard"
+import { uploadStudentPhotoObject } from "./student-profile.api"
 import {
   useDeleteStudentPhoto,
   useUpdateStudentPhoto,
@@ -81,21 +82,6 @@ function getInitials(fullName?: string | null): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result)
-      } else {
-        reject(new Error("Could not read image file."))
-      }
-    }
-    reader.onerror = () => reject(new Error("Could not read image file."))
-    reader.readAsDataURL(file)
-  })
-}
-
 /**
  * Pure Student Profile view accepting typed `ApiSchema` payloads.
  */
@@ -118,9 +104,7 @@ export function StudentProfileView({
   const initials = getInitials(profile.full_name)
 
   const activeCurriculum = React.useMemo(() => {
-    const current =
-      curriculumAssignments.find((a) => a.end_date == null) ??
-      curriculumAssignments[0]
+    const current = curriculumAssignments.find((a) => a.end_date == null)
     if (!current) return null
     return (
       curriculumLabels?.[current.curriculum_version_id]?.trim() ||
@@ -286,21 +270,38 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
   const isPhotoBusy =
     updatePhotoMutation.isPending || deletePhotoMutation.isPending
 
+  const photoLockRef = React.useRef(false)
+
   async function handleUploadPhoto(file: File) {
-    const dataUrl = await readFileAsDataUrl(file)
-    const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg"
-    const ext = mimeType === "image/png" ? "png" : "jpg"
-    const payload: StudentPhotoValues = studentPhotoSchema.parse({
-      storage_object_path: `students/${studentId}/avatar.${ext}`,
-      avatar_url: dataUrl,
-      mime_type: mimeType,
-      file_size_bytes: file.size,
-    })
-    await updatePhotoMutation.mutateAsync(payload)
+    if (photoLockRef.current) return
+    photoLockRef.current = true
+    try {
+      const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg"
+      const { storagePath, avatarUrl } = await uploadStudentPhotoObject(
+        studentId,
+        file,
+        mimeType
+      )
+      const payload: StudentPhotoValues = studentPhotoSchema.parse({
+        storage_object_path: storagePath,
+        avatar_url: avatarUrl,
+        mime_type: mimeType,
+        file_size_bytes: file.size,
+      })
+      await updatePhotoMutation.mutateAsync(payload)
+    } finally {
+      photoLockRef.current = false
+    }
   }
 
   async function handleRemovePhoto() {
-    await deletePhotoMutation.mutateAsync()
+    if (photoLockRef.current) return
+    photoLockRef.current = true
+    try {
+      await deletePhotoMutation.mutateAsync()
+    } finally {
+      photoLockRef.current = false
+    }
   }
 
   if (isPending) {

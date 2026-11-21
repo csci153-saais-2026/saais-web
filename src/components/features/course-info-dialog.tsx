@@ -235,7 +235,7 @@ export function CourseInfoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className={cn("sm:max-w-[800px]", className)}
+        className={cn("max-h-[90dvh] overflow-y-auto sm:max-w-[800px]", className)}
       >
         <DialogHeader className="flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">

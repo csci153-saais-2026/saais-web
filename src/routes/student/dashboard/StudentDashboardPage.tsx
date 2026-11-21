@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import {
   apiClient,
   postgrestFilter,
+  unwrapApiResult,
   type ApiSchema,
 } from "@/lib/api"
 import { AdvisingNotesDialog } from "./AdvisingNotesDialog"
@@ -247,9 +248,6 @@ export function StudentDashboardView({
         open={notesOpen}
         onOpenChange={setNotesOpen}
         notes={notes}
-        defaultAuthorName={
-          currentAdviserAssignment?.adviser_name?.trim() || undefined
-        }
       />
 
       <AssignmentHistoryDialog
@@ -273,32 +271,26 @@ interface DashboardMetaData {
 async function fetchDashboardMeta(
   studentId: string
 ): Promise<DashboardMetaData> {
-  const [
-    profilesRes,
-    orgsRes,
-    offeringsRes,
-    coursesRes,
-    programsRes,
-    curriculaRes,
-  ] = await Promise.all([
-    apiClient.GET("/rest/v1/profile", {
-      params: { query: { id: postgrestFilter.eq(studentId) } },
-    }),
-    apiClient.GET("/rest/v1/student_organization", {
-      params: { query: { student_id: postgrestFilter.eq(studentId) } },
-    }),
-    apiClient.GET("/rest/v1/course_offering"),
-    apiClient.GET("/rest/v1/course"),
-    apiClient.GET("/rest/v1/program"),
-    apiClient.GET("/rest/v1/curriculum_version"),
-  ])
+  const [profiles, orgs, offerings, courses, programs, curricula] =
+    await Promise.all([
+      apiClient
+        .GET("/rest/v1/profile", {
+          params: { query: { id: postgrestFilter.eq(studentId) } },
+        })
+        .then(unwrapApiResult),
+      apiClient
+        .GET("/rest/v1/student_organization", {
+          params: { query: { student_id: postgrestFilter.eq(studentId) } },
+        })
+        .then(unwrapApiResult),
+      apiClient.GET("/rest/v1/course_offering").then(unwrapApiResult),
+      apiClient.GET("/rest/v1/course").then(unwrapApiResult),
+      apiClient.GET("/rest/v1/program").then(unwrapApiResult),
+      apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
+    ])
 
-  const profile = profilesRes.data?.[0] ?? null
-  const org = orgsRes.data?.[0] ?? null
-  const offerings = offeringsRes.data ?? []
-  const courses = coursesRes.data ?? []
-  const programs = programsRes.data ?? []
-  const curricula = curriculaRes.data ?? []
+  const profile = profiles[0] ?? null
+  const org = orgs[0] ?? null
 
   const program = programs.find((p) => p.id === org?.program_id)
   const curriculum = curricula.find((c) => c.id === org?.curriculum_version_id)
