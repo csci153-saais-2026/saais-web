@@ -1,0 +1,11 @@
+name: profile_id
+in: query
+description: >-
+  Allowlisted PostgREST UUID filter: eq.UUID, neq.UUID or in.(UUID,...), at most 50 IDs.
+  URL-encode the complete value; format:uuid would be wrong for the operator-prefixed string.
+required: false
+schema:
+  type: string
+  maxLength: 1900
+  pattern: >-
+    ^(?:(?:eq|neq)\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\.\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\))$

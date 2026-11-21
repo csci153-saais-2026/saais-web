@@ -1,0 +1,49 @@
+type: object
+additionalProperties: false
+properties:
+  course_offering_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  code:
+    type: string
+    minLength: 1
+    maxLength: 100
+    pattern: \S
+  title:
+    type: string
+    minLength: 1
+    maxLength: 250
+    pattern: \S
+  units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  why:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+  badges:
+    type: array
+    maxItems: 3
+    uniqueItems: true
+    items:
+      type: string
+      enum:
+        - Elective
+        - By request
+        - Retake
+  excluded_summary:
+    $ref: "./RecommendationExclusionSummary.yaml"
+required:
+  - course_offering_id
+  - code
+  - title
+  - units
+  - why
+  - badges

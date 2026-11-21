@@ -2,21 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
   pull_request:
-    branches: [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
 
 permissions:
   contents: read
@@ -29,6 +31,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -79,8 +83,17 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Check Prettier Formatting for Changed Files
+        run: npm run format:check
+
       - name: Build Production Bundle
         run: npm run build
+
+      - name: Install Chromium for prototype browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mockup prototype browser tests
+        run: npm run test:prototype:e2e
 
       - name: Check production documentation assets
         run: node --test scripts/docs-build.test.js

@@ -1,0 +1,6 @@
+type: string
+enum:
+  - active
+  - inactive
+  - archived
+description: Program status

@@ -1,0 +1,95 @@
+type: object
+required:
+  - id
+  - start_year
+  - end_year
+  - term_type
+  - school_year
+  - is_locked
+  - override_flag
+  - ends_on
+  - default_inc_deadline
+  - chronological_key
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  start_year:
+    type: integer
+    example: 2025
+  end_year:
+    type: integer
+    example: 2026
+  term_type:
+    $ref: "./SchoolTermType.yaml"
+  school_year:
+    type: string
+    example: 2025 - 2026
+  is_locked:
+    type: boolean
+    example: false
+  override_flag:
+    type: boolean
+    example: false
+  override_actor_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+  override_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  starts_on:
+    type:
+      - string
+      - "null"
+    format: date
+  ends_on:
+    type: string
+    format: date
+  encoding_deadline:
+    type:
+      - string
+      - "null"
+    format: date
+  closed_by:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+  closed_by_name:
+    type: [string, "null"]
+    readOnly: true
+  closed_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  closure_note:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+  department_closures:
+    type: array
+    maxItems: 200
+    readOnly: true
+    items:
+      $ref: "./DepartmentTermEncodingClosure.yaml"
+    description: >-
+      Department-scoped grade encoding closure entries visible to the caller when returned by
+      term closure or override Edge Functions.
+  default_inc_deadline:
+    type: string
+    format: date
+    readOnly: true
+  chronological_key:
+    type: integer
+    readOnly: true

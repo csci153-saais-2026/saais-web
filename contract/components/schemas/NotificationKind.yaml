@@ -1,0 +1,11 @@
+type: string
+enum:
+  - note
+  - grade
+  - alert
+  - flag
+  - import
+  - person
+  - transfer
+  - report
+description: Visual icon/category classification matching the SAAIS notification center across all 6 roles

@@ -1,0 +1,112 @@
+get:
+  tags:
+    - Program & Curriculum
+  summary: Query curriculum versions
+  operationId: listCurriculumVersions
+  description: >-
+    Retrieve versioned curriculum structures with total units, delinquency thresholds, and
+    enrolled student count. Flat columns are allowlisted per x-projection-fields; role metadata
+    documents checks, not automatic runtime authorization. Inaccessible/missing collection rows
+    return 200 [], while invalid role/column requests may return 403.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/programIdQueryParam.yaml"
+    - $ref: "../../components/parameters/versionLabelQueryParam.yaml"
+    - name: status
+      in: query
+      required: false
+      description: Filter this entity’s valid status.
+      schema:
+        type: string
+        maxLength: 40
+        pattern: ^eq\.(draft|active|retired|teach_out|closed)$
+    - name: select
+      in: query
+      required: false
+      description: >-
+        Only these flat safe columns. On private-column tables the client must explicitly send
+        this projection; PostgREST does not apply OpenAPI defaults.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count))*$
+        default: >-
+          id,program_id,version_label,effective_start,effective_end,delinquency_threshold,total_units,status,enrolled_student_count
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only; whitelist and enforce at runtime.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: id.asc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Array of curriculum versions.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../../components/schemas/CurriculumVersion.yaml"
+            maxItems: 1000
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection if the gateway reports a partial range.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../../components/schemas/CurriculumVersion.yaml"
+            maxItems: 1000
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    department_staff: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  x-projection-fields:
+    - id
+    - program_id
+    - version_label
+    - effective_start
+    - effective_end
+    - delinquency_threshold
+    - total_units
+    - status
+    - enrolled_student_count

@@ -1,0 +1,67 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Read academic summary
+  operationId: getAcademicSummary
+  description: >-
+    Scope own/assigned/department/faculty/admin records. Use academically ordered effective
+    attempts, unit snapshots and current/as-of curriculum thresholds; midterms never enter GWA.
+    Each graded attempt remains in its original historical term GWA. Until a later retake has a
+    numeric final or completion grade, the earlier failure counts in cumulative GWA. Once the
+    later grade is recorded, it replaces the failure in cumulative GWA; the original remains on
+    the transcript, marked Repeated and excluded from cumulative GWA. Recompute cumulative GWA
+    after recording the result. Non-numeric retake outcomes, including INC and DR, do not replace
+    or duplicate the earlier failure in cumulative GWA until a numeric final or INC completion
+    grade is recorded. A lapsed INC retake may count as 5.00 in its historical term GWA but does
+    not add a second cumulative contribution while the earlier failure remains selected. Cumulative
+    GWA is the sum of each included attempt's grade times its units divided by total included units;
+    it is not an equal-weight average of semester GWAs. Course completion and earned units count
+    the passing attempt once.
+    Historical records remain intact if legacy data contains later attempts after a pass.
+    Scheduled lapse refresh is service-only; uncached reads already apply Asia/Manila dates.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    department_staff: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  x-atomic: false
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AcademicSummary.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

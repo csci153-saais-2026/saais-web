@@ -1,0 +1,8 @@
+type: string
+enum:
+  - pending
+  - accepted
+  - expired
+  - declined
+  - revoked
+description: Lifecycle status of an account invitation without exposing raw invitation tokens

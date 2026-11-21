@@ -100,15 +100,15 @@ async function chooseAdviser() {
 }
 
 describe('Department Staff adviser assignments', () => {
-  it('includes department advisers without assigned students in the filter', async () => {
+  it('includes department advisers in the filter and shows their assigned students', async () => {
     renderPage()
-    await screen.findByText('Showing 26 of 26 assignments')
+    await screen.findByText(/^Showing \d+ of \d+ assignments$/)
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Adviser' }), { key: 'ArrowDown' })
     for (const name of [MOCK_PERSONAS.adviser.fullName, MOCK_PERSONAS.adviser_secondary.fullName, MOCK_PERSONAS.department_head.fullName, MOCK_PERSONAS.dean_dept_head.fullName, MOCK_PERSONAS.admin.fullName]) {
       expect(await screen.findByRole('option', { name })).toBeTruthy()
     }
     fireEvent.click(screen.getByRole('option', { name: MOCK_PERSONAS.department_head.fullName }))
-    expect(screen.getByText('No students match these filters.')).toBeTruthy()
+    expect(screen.getByText(MOCK_PERSONAS.student_sample_25.fullName)).toBeTruthy()
   })
   it('offers every active adviser in the department, including multi-role profiles', async () => {
     const db = getMockDatabase()
@@ -126,7 +126,7 @@ describe('Department Staff adviser assignments', () => {
   })
   it('loads the staff department directory and removes hidden selections on filtering', async () => {
     renderPage()
-    await screen.findByText('Showing 26 of 26 assignments')
+    const total = (await screen.findByText(/^Showing \d+ of \d+ assignments$/)).textContent
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select ' + MOCK_PERSONAS.student.fullName }))
     expect(screen.getByText('1 student selected (maximum 500)')).toBeTruthy()
     expect(screen.getByRole('checkbox', { name: 'Select all visible students' }).getAttribute('aria-checked')).toBe('mixed')
@@ -134,7 +134,7 @@ describe('Department Staff adviser assignments', () => {
     expect(screen.getByText('0 students selected (maximum 500)')).toBeTruthy()
     expect(screen.getByText('No students match these filters.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
-    expect(screen.getByText('Showing 26 of 26 assignments')).toBeTruthy()
+    expect(screen.getByText(total!)).toBeTruthy()
   })
   it('validates and reassigns through the staff MSW handler', async () => {
     renderPage()

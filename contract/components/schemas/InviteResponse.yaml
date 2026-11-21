@@ -1,0 +1,23 @@
+type: object
+required:
+  - success
+  - message
+  - profile_id
+properties:
+  success:
+    type: boolean
+    example: true
+  message:
+    type: string
+    example: Invitation email dispatched successfully.
+  profile_id:
+    type: string
+    format: uuid
+  invitation_status:
+    $ref: "./InvitationStatus.yaml"
+  invitation_sent_at:
+    type: string
+    format: date-time
+  invitation_expires_at:
+    type: string
+    format: date-time

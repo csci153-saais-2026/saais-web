@@ -58,7 +58,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
   var KEY_UI = 'saais-adviser-ui-v1', UI = {};
   try { UI = JSON.parse(localStorage.getItem(KEY_UI)) || {}; } catch (e) { UI = window.__saaisUI || {}; }
   var saveUI = function () { window.__saaisUI = UI; try { localStorage.setItem(KEY_UI, JSON.stringify(UI)); } catch (e) {} };
-  var SIDS = { ana: '23-1-01234', ben: '23-1-01301', dino: '24-1-02011', maria: '2023-04412' };
+  var SIDS = { ana: '23-1-01234', ben: '23-1-01301', dino: '24-1-02011', maria: '23-1-04412' };
   var ME = (function () { var b = document.getElementById('me-btn') || document.querySelector('.dean-profile-trigger, [aria-haspopup=menu]'); if (!b) return 'Prof. Ramon Reyes'; var m = (b.innerText || b.textContent || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return m.filter(function (x) { return /^(Dr\.|Prof\.)/.test(x); })[0] || 'Prof. Ramon Reyes'; })();
   var audit = function (action, student, details, sid, label) { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add(ME, action, student, details, sid, label); };
   var keep = function (id, after) {
@@ -162,7 +162,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       if (!picked.length) return say($('plan-msg'), 'no', 'Select at least one course to add to the plan.');
       (UI.plan = UI.plan || {})[$('plan-term').value] = ((UI.plan || {})[$('plan-term').value] || []).concat(picked); saveUI();
       (UI.planItems = UI.planItems || []).push.apply(UI.planItems, $$('.plan-pick:checked').map(function (c) { var lab = (c.closest('label') || c.parentNode).textContent.replace('In plan', '').trim(); return { code: c.value, title: lab.replace(c.value, '').trim(), term: $('plan-term').options[$('plan-term').selectedIndex].text }; })); saveUI();
-      audit('Change', 'Maria Isabel Bautista', 'Added to the ' + $('plan-term').options[$('plan-term').selectedIndex].text + ' plan: ' + picked.join(', '), '2023-04412', 'Updated term plan');
+      audit('Change', 'Maria Isabel Bautista', 'Added to the ' + $('plan-term').options[$('plan-term').selectedIndex].text + ' plan: ' + picked.join(', '), '23-1-04412', 'Updated term plan');
       say($('plan-msg'), 'ok', 'Added to Maria\'s plan: <b>' + esc(picked.join(', ')) + '</b>.');
       $$('.plan-pick:checked').forEach(function (c) { c.checked = false; }); applyPlan();
     });
@@ -176,7 +176,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     a.innerHTML = '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12.5px;color:#8C8A76"><strong style="color:#16200C">Dr. Andrea Dela Cruz</strong><span>' + today() + '</span></div>' +
       '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
     $('note-list').insertBefore(a, $('note-list').firstChild);
-    audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '2023-04412', 'Added note');
+    audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '23-1-04412', 'Added note');
     this.reset(); say($('note-msg'), 'ok', 'Note saved. The student can read it.');
   });
   if ($('chat-form')) $('chat-form').addEventListener('submit', function (e) {
@@ -282,7 +282,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       if (!$('gr-reason').value.trim()) return say($('gr-msg'), 'no', 'Give a reason. Every grade change is audited.');
       if (f !== '') setResult(row, f, m); else row.querySelector('[data-mid]').textContent = (+m).toFixed(2);
       (UI.grades = UI.grades || {})[gkey(row)] = { mid: m, fin: f }; saveUI();
-      audit('Change', 'Maria Isabel Bautista', 'Corrected ' + gkey(row) + (f !== '' ? ' final to ' + (+f).toFixed(2) : ' midterm to ' + (+m).toFixed(2)) + ' (' + $('gr-reason').value.trim() + ')', '2023-04412', 'Corrected grade');
+      audit('Change', 'Maria Isabel Bautista', 'Corrected ' + gkey(row) + (f !== '' ? ' final to ' + (+f).toFixed(2) : ' midterm to ' + (+m).toFixed(2)) + ' (' + $('gr-reason').value.trim() + ')', '23-1-04412', 'Corrected grade');
       this.closest('dialog').close();
       say($('gr-done'), 'ok', 'Grade recorded for <b>' + esc(row.querySelector('div').textContent) + '</b>. GWA is recomputed on save.');
     });
@@ -291,7 +291,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       if (!grade(g)) return say($('inc-msg'), 'no', 'Completion grades run from 1.00 to 5.00 in 0.25 steps.');
       if (!$('inc-reason').value.trim()) return say($('inc-msg'), 'no', 'Give a reason for the completion.');
       (UI.grades = UI.grades || {})[gkey(row)] = { fin: g, inc: true }; saveUI();
-      audit('Change', 'Maria Isabel Bautista', 'Resolved the INC in ' + gkey(row) + ' with a completion grade of ' + (+g).toFixed(2) + ' (' + $('inc-reason').value.trim() + ')', '2023-04412', 'Resolved INC');
+      audit('Change', 'Maria Isabel Bautista', 'Resolved the INC in ' + gkey(row) + ' with a completion grade of ' + (+g).toFixed(2) + ' (' + $('inc-reason').value.trim() + ')', '23-1-04412', 'Resolved INC');
       setResult(row, g); var b = row.querySelector('[data-resolve]'); b.disabled = true; b.style.opacity = '0.55'; b.style.cursor = 'default'; b.textContent = 'Resolved';
       this.closest('dialog').close();
       say($('gr-done'), 'ok', 'INC resolved for <b>' + esc(row.querySelector('div').textContent) + '</b> with a completion grade of ' + (+g).toFixed(2) + '. The original attempt is preserved.');
@@ -378,7 +378,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
 
   /* Import grades */
   if ($('imp-file')) {
-    var STUDENTS = { '23-1-01234': 'Ana Reyes', '23-1-01301': 'Ben Lopez', '24-1-02011': 'Dino Castillo', '2023-04412': 'Maria Isabel Bautista' };
+    var STUDENTS = { '23-1-01234': 'Ana Reyes', '23-1-01301': 'Ben Lopez', '24-1-02011': 'Dino Castillo', '23-1-04412': 'Maria Isabel Bautista' };
     var COURSES = ['CSci 21', 'CSci 22', 'CSci 31', 'CSci 32', 'CSci 33', 'CSci 34', 'CSci 51', 'Math 12', 'CS Elective 1', 'CS Elective 2', 'CS Elective 3'];
     var GRADES = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '5.00', 'INC', 'DR'];
     var parsed = null;
@@ -437,7 +437,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     $('imp-cancel').addEventListener('click', function () { parsed = null; $('imp-panel').hidden = true; $('imp-msg').hidden = true; });
     $('imp-save').addEventListener('click', function () {
       if (!parsed || !parsed.good.length) return;
-      var n = parsed.good.length, KEYS = { '23-1-01234': 'ana', '23-1-01301': 'ben', '24-1-02011': 'dino', '2023-04412': 'maria' };
+      var n = parsed.good.length, KEYS = { '23-1-01234': 'ana', '23-1-01301': 'ben', '24-1-02011': 'dino', '23-1-04412': 'maria' };
       UI.imports = (UI.imports || []).concat(parsed.good.map(function (r) { return { adv: KEYS[r.student_number], course: r.course, instructor: r.instructor || '', midterm: r.midterm == null ? '' : String(r.midterm), final: r.final == null ? '' : String(r.final) }; })); saveUI();
       audit('Change', '', 'Imported ' + n + ' grade row' + (n === 1 ? '' : 's') + ' from a JSON file', '', 'Imported grades');
       parsed = null; $('imp-panel').hidden = true;
@@ -473,7 +473,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       var b = e.target.closest('[data-note-act]'); if (!b) return;
       var n = b.closest('[data-note]'), to = b.dataset.noteAct === 'archive' ? 'archived' : 'active';
       n.dataset.state = to; n.querySelector('[data-note-actions]').innerHTML = actionBtn(to === 'active' ? 'archive' : 'restore');
-      audit('Change', 'Maria Isabel Bautista', (to === 'archived' ? 'Archived' : 'Restored') + ' an adviser note', '2023-04412', to === 'archived' ? 'Archived note' : 'Restored note');
+      audit('Change', 'Maria Isabel Bautista', (to === 'archived' ? 'Archived' : 'Restored') + ' an adviser note', '23-1-04412', to === 'archived' ? 'Archived note' : 'Restored note');
       refresh(); say($('nt-done'), 'ok', to === 'archived' ? 'Note archived. Find it under Archived.' : 'Note restored to Active.');
     });
     keep('notes-list', refresh);
@@ -483,7 +483,7 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
       a.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:12.5px;color:#8C8A76"><div><strong style="color:#16200C;font-size:13.5px">Dr. Andrea Dela Cruz</strong> · <span data-date>' + today() + '</span></div><div data-note-actions>' + actionBtn('archive') + '</div></div>' +
         '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-wrap">' + esc(v) + '</p>';
       $('notes-list').insertBefore(a, $('notes-list').firstChild);
-      audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '2023-04412', 'Added note');
+      audit('Change', 'Maria Isabel Bautista', 'Saved an advising note', '23-1-04412', 'Added note');
       $('nt-body').value = ''; this.closest('dialog').close();
       view = 'active'; refresh(); say($('nt-done'), 'ok', 'Note saved. The student can read it.');
     });
@@ -516,8 +516,8 @@ dialog::backdrop { background: rgba(22,32,12,0.45); }
     tr.innerHTML = '<td style="' + c + '">' + esc(to) + '</td><td style="' + c + '">Pending</td><td style="' + c + '">—</td><td style="' + c + '">' + badge('Pending approval', 'amber') +
       ' <span style="margin-left:6px">Endorsed by Dr. Andrea Dela Cruz, ' + today() + '. ' + esc(reason) + '</span></td>';
     $('cur-body').appendChild(tr);
-    (UI.endorsed = UI.endorsed || []).push({ id: eid, student: 'Maria Isabel Bautista', sid: '2023-04412', from: 'BSCS 2025–present', to: to, reason: reason, adviser: 'Prof. Ramon Reyes', date: today() }); saveUI();
-    audit('Change', 'Maria Isabel Bautista', 'Endorsed a curriculum transfer to ' + to + ' (' + reason + ')', '2023-04412', 'Endorsed transfer');
+    (UI.endorsed = UI.endorsed || []).push({ id: eid, student: 'Maria Isabel Bautista', sid: '23-1-04412', from: 'BSCS 2025–present', to: to, reason: reason, adviser: 'Prof. Ramon Reyes', date: today() }); saveUI();
+    audit('Change', 'Maria Isabel Bautista', 'Endorsed a curriculum transfer to ' + to + ' (' + reason + ')', '23-1-04412', 'Endorsed transfer');
     this.reset(); say($('cur-msg'), 'ok', 'Transfer to <b>' + esc(to) + '</b> endorsed. It is with the Department Head for approval.');
   });
 

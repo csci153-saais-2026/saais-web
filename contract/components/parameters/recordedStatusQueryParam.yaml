@@ -1,0 +1,8 @@
+name: recorded_status
+in: query
+required: false
+description: Filter original recorded attempt status; completed INC effective result is separate.
+schema:
+  type: string
+  maxLength: 32
+  pattern: ^eq\.(passed|failed|currently_enrolled|inc|dr|na)$

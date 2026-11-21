@@ -1,0 +1,8 @@
+type: object
+additionalProperties: false
+properties:
+  reason:
+    type:
+      - string
+      - "null"
+    maxLength: 500

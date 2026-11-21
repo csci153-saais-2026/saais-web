@@ -1,0 +1,72 @@
+type: object
+additionalProperties: false
+properties:
+  attempt_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  course_offering_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    description: >-
+      Target curriculum slot UUID (required or elective slot). When pointing to an elective
+      slot (`is_elective_slot=true`), the server atomically creates or updates the
+      corresponding `ElectiveMapping` row in the same transaction.
+  elective_mapping_justification:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+    description: >-
+      Optional justification recorded when `curriculum_term_course_id` maps an elective
+      attempt to an elective curriculum slot during term encoding.
+  midterm_status:
+    anyOf:
+      - $ref: "./MidtermStatus.yaml"
+      - type: "null"
+  midterm_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  final_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  status:
+    $ref: "./AttemptStatus.yaml"
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  remark:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+    description: >-
+      Optional staff remark. Because `AttemptRemark` is an append-only log, the server
+      appends a new `AttemptRemark` row only when `remark` is non-empty and differs from the
+      most recent remark on that attempt.
+  continue_with_prerequisite_override:
+    type: boolean
+    default: false
+  prerequisite_override_reason:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+required:
+  - course_offering_id

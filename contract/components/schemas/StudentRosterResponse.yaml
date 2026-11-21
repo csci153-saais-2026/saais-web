@@ -1,0 +1,32 @@
+type: object
+additionalProperties: false
+required:
+  - total_count
+  - unassigned_count
+  - with_deficiencies_count
+  - items
+properties:
+  total_count:
+    type: integer
+    minimum: 0
+  unassigned_count:
+    type: integer
+    minimum: 0
+  with_deficiencies_count:
+    type: integer
+    minimum: 0
+  flagged_count:
+    type: integer
+    minimum: 0
+    description: Total number of students in the roster matching scope who have open grade flags or delinquent standing flags.
+  open_inc_students_count:
+    type: integer
+    minimum: 0
+    description: Total number of students in the roster matching scope who have at least one open INC attempt.
+  standing_counts:
+    $ref: "./StandingCounts.yaml"
+  items:
+    type: array
+    maxItems: 1000
+    items:
+      $ref: "./StudentRosterItem.yaml"

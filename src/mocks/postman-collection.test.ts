@@ -129,6 +129,13 @@ describe("SAAIS Postman Collection against MSW Mock Server", () => {
       const [collectionUrl, init] = buildRequest(req, env);
       let rawUrl = collectionUrl;
 
+      if (item.name.startsWith("Authorized") && fullName.includes("(deleteCurriculumVersion)")) {
+        rawUrl = `${new URL(rawUrl).origin}/functions/v1/catalog/curriculum_version/${MOCK_IDS.curriculumBscsDraft}`;
+      }
+      if (item.name.startsWith("Authorized") && fullName.includes("(createCourse)")) {
+        init.body = JSON.stringify({ ...JSON.parse(init.body as string), code: "CSCI 998" });
+      }
+
       // The collection example duplicates a live seeded credit and targets a
       // satisfied requirement. Use the supported unsatisfied slot exercised by
       // the Outside Credits API suite, preserving duplicate/history checks.

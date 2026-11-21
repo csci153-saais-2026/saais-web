@@ -1,0 +1,30 @@
+type: object
+required:
+  - curriculum_term_id
+  - is_elective_slot
+  - nominal_units
+properties:
+  curriculum_term_id:
+    type: string
+    format: uuid
+  course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  is_elective_slot:
+    type: boolean
+    default: false
+  slot_type:
+    $ref: "./CurriculumSlotType.yaml"
+    default: required
+  slot_label:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  nominal_units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+additionalProperties: false

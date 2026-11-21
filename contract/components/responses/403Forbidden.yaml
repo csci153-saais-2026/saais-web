@@ -1,0 +1,10 @@
+description: Access forbidden by Row Level Security (RLS) policies or insufficient role privilege.
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/Error.yaml"
+    example:
+      code: "42501"
+      message: insufficient_privilege
+      details: Operation not permitted under active role permissions.
+      hint: Check role privileges or assigned student relationships.

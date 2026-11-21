@@ -1,0 +1,110 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Query curriculum transfer requests
+  operationId: listCurriculumTransferRequests
+  description: >-
+    Read-only PostgREST collection of adviser-endorsed curriculum transfer requests (FR-TRN-01).
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - dean
+    - admin
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/studentIdQueryParam.yaml"
+    - name: status
+      in: query
+      required: false
+      description: Filter transfer request status.
+      schema:
+        type: string
+        maxLength: 40
+        pattern: ^eq\.(pending|approved|rejected)$
+    - name: select
+      in: query
+      required: false
+      description: Only these flat safe columns.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at))*$
+        default: >-
+          id,student_id,from_curriculum_version_id,to_curriculum_version_id,endorsed_by,endorsed_by_name,endorsement_note,status,decision_note,decided_by,decided_by_name,decided_at,carried_units,created_at,updated_at
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: created_at.desc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Visible rows; empty array if no visible matches.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/CurriculumTransferRequest.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/CurriculumTransferRequest.yaml"
+      headers:
+        Content-Range:
+          description: PostgREST visible item range.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-projection-fields:
+    - id
+    - student_id
+    - from_curriculum_version_id
+    - to_curriculum_version_id
+    - endorsed_by
+    - endorsed_by_name
+    - endorsement_note
+    - status
+    - decision_note
+    - decided_by
+    - decided_by_name
+    - decided_at
+    - carried_units
+    - created_at
+    - updated_at

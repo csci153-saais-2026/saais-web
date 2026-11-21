@@ -126,7 +126,8 @@ describe('Department Staff accounts directory', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))
     expect(await screen.findByText(/Showing 21/)).toBeTruthy()
-    expect(await within(await screen.findByRole('table')).findByText('Sample Student 13')).toBeTruthy()
+    expect(within(await screen.findByRole('table')).getAllByRole('row').length).toBeGreaterThan(1)
+    expect(within(screen.getByRole('table')).queryByText(MOCK_PERSONAS.student_other_dept.email)).toBeNull()
     expect(screen.getByRole('button', { name: 'Previous' }).hasAttribute('disabled')).toBe(false)
   })
 

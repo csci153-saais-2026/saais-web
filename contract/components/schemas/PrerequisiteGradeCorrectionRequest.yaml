@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+properties:
+  expected_revision:
+    type: integer
+    minimum: 0
+  final_grade:
+    type: number
+    minimum: 1
+    maximum: 3
+    multipleOf: 0.25
+  reason:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+required:
+  - expected_revision
+  - final_grade
+  - reason

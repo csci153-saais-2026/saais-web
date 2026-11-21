@@ -11,7 +11,7 @@ if (!("ResizeObserver" in globalThis)) {
     observe() {}
     unobserve() {}
     disconnect() {}
-  }
+  };
 }
 
 // jsdom defines matchMedia as undefined; SidebarProvider / useIsMobile read the 768px breakpoint with it.
@@ -28,7 +28,7 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
       removeEventListener: () => {},
       dispatchEvent: () => false,
     }),
-  })
+  });
 }
 
 // Floating UI (used by Radix menus, popovers and selects) probes

@@ -53,7 +53,9 @@ function DataTablePanel<T>({
 }) {
   return (
     <Panel title={title} description={description} action={action} flush>
-      {toolbar && <div className="border-b border-line-soft p-5">{toolbar}</div>}
+      {toolbar && (
+        <div className="border-b border-line-soft p-5">{toolbar}</div>
+      )}
       <Table responsive>
         <TableHeader className="bg-secondary">
           <TableRow>

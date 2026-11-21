@@ -1,0 +1,42 @@
+post:
+  tags:
+    - Auth
+  summary: Preview invitation metadata without consuming token
+  operationId: previewInviteToken
+  description: >-
+    Pre-session, non-consuming invitation preview for the Invite landing card (Invite.dc.html).
+    Accepts the opaque invitation token in the POST body (avoiding token exposure in server URL
+    access logs or Referer headers) and returns only the bounded invitation summary needed to
+    render the card (provisioned email, full_name, role, roles, faculty_name, department_name,
+    program_code, expires_at, and invitation_status). Requires the public project apikey without
+    a user session JWT and is rate-limited by IP and token hash. Never consumes or extends the
+    token and never returns internal profile IDs or tokens.
+  x-required-roles: []
+  security:
+    - supabaseProjectKey: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/PreviewInviteRequest.yaml"
+  responses:
+    "200":
+      description: Non-consuming invitation summary returned.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/PreviewInviteResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-access-scope: single-use-expiring-invitation-token
