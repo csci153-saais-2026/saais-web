@@ -145,7 +145,7 @@ function SettingsEditor({
     <>
       <Panel
         title="Scholastic standing thresholds"
-        description="Percentage of term units failed. Thresholds must satisfy 0 < warning < probation < dismissal ≤ 100."
+        description="Percentage of the term's units failed. Thresholds must satisfy 0 < warning < probation < dismissal ≤ 100."
       >
         <form className="grid gap-5" onSubmit={saveThresholds} noValidate>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -214,8 +214,12 @@ function SettingsEditor({
             </p>
           )}
           <div>
-            <Button type="submit" disabled={savingThresholds}>
-              {savingThresholds ? 'Saving…' : 'Save thresholds'}
+            <Button
+              type="submit"
+              aria-label="Save thresholds"
+              disabled={savingThresholds}
+            >
+              {savingThresholds ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </form>
@@ -223,12 +227,12 @@ function SettingsEditor({
 
       <div className="grid gap-0 lg:grid-cols-2 lg:gap-4">
         <Panel
-          title="Notification email"
+          title="Email"
           description="Notifications to students and advisers are sent from this address."
         >
           <form className="grid gap-5" onSubmit={saveEmail} noValidate>
             <FormField
-              label="Sender email"
+              label="Sender address"
               htmlFor="settings-email"
               error={emailErrors.senderEmail}
             >
@@ -257,8 +261,12 @@ function SettingsEditor({
               </p>
             )}
             <div>
-              <Button type="submit" disabled={savingEmail}>
-                {savingEmail ? 'Saving…' : 'Save sender email'}
+              <Button
+                type="submit"
+                aria-label="Save sender email"
+                disabled={savingEmail}
+              >
+                {savingEmail ? 'Saving…' : 'Save'}
               </Button>
             </div>
           </form>
@@ -306,7 +314,6 @@ function BackupMetadataPanel({
   return (
     <Panel
       title="Backups"
-      description="Backup execution and storage are handled outside this settings screen."
     >
       <dl className="grid gap-3 text-sm sm:grid-cols-[minmax(8rem,auto)_1fr]">
         <dt className="font-medium text-muted-foreground">Last recorded</dt>
@@ -323,8 +330,8 @@ function BackupMetadataPanel({
         </dd>
       </dl>
       <p className="mt-4 text-sm text-muted-foreground">
-        Run and verify an encrypted backup in institutional storage before
-        recording that it completed.
+        Keep a completed, encrypted backup in institutional storage, then
+        record it here. Recording does not create or run a backup.
       </p>
       {feedback && (
         <p
@@ -343,7 +350,7 @@ function BackupMetadataPanel({
         disabled={recording}
         onClick={() => void recordBackup()}
       >
-        {recording ? 'Recording…' : 'Record completed backup'}
+        {recording ? 'Recording…' : 'Record a backup made today'}
       </Button>
     </Panel>
   )
@@ -457,9 +464,9 @@ export default function AdminSettingsPage() {
   return (
     <div className="grid gap-2">
       <PageHeading
-        title="System settings"
-        subtitle="Configure institution-wide academic standing thresholds, sender email, and backup metadata."
-        className="mb-4"
+        title="Settings"
+        subtitle="System-wide values used by every portal."
+        className="mb-6"
       />
 
       {error && (
@@ -491,13 +498,12 @@ export default function AdminSettingsPage() {
           {settings
             ? ageDays === null
               ? 'A completed backup has not been recorded in system settings.'
-              : `Last backup recorded ${backupDate(settings.last_backup_at)} (${ageDays} day${ageDays === 1 ? '' : 's'} ago).`
+              : `Last backup: ${backupDate(settings.last_backup_at)} (${ageDays} day${ageDays === 1 ? '' : 's'} ago).`
             : loading
               ? 'Loading backup status…'
               : 'Backup status is unavailable.'}{' '}
-          The age indicator uses a 30-day informational threshold; follow
-          institutional backup policy. Recording metadata here does not create,
-          download, or run a backup.
+          Backups are made in institutional storage; follow institutional
+          backup policy.
         </AlertDescription>
       </Alert>
 
@@ -524,14 +530,14 @@ export default function AdminSettingsPage() {
           </Panel>
           <div className="grid gap-0 lg:grid-cols-2 lg:gap-4">
             <Panel
-              title="Notification email"
+              title="Email"
               description="Notifications to students and advisers are sent from this address."
             >
               <p className="text-sm text-muted-foreground">
                 {loading ? 'Loading sender email…' : 'Sender email is unavailable.'}
               </p>
             </Panel>
-            <Panel title="Backups" description="Backup execution and storage are handled outside this settings screen.">
+            <Panel title="Backups">
               <p className="text-sm text-muted-foreground">
                 {loading
                   ? 'Loading backup metadata…'

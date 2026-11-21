@@ -46,9 +46,9 @@ export function AdminProgramDeleteDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete {program.code}?</DialogTitle>
+          <DialogTitle>Delete record</DialogTitle>
           <DialogDescription>
-            This permanently removes {program.name} if no curriculum, student,
+            This permanently removes {program.code} · {program.name} if no curriculum, student,
             or historical records depend on it. Related records will never be
             deleted automatically.
           </DialogDescription>
@@ -76,7 +76,7 @@ export function AdminProgramDeleteDialog({
             disabled={deleting}
             onClick={() => void confirmDelete()}
           >
-            {deleting ? 'Deleting…' : 'Delete program'}
+            {deleting ? 'Deleting…' : 'Delete'}
           </Button>
         </DialogFooter>
       </DialogContent>

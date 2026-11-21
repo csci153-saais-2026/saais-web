@@ -118,11 +118,10 @@ export function AdminProgramDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {program ? 'Edit program' : 'Add program'}
+            {program ? 'Edit program' : 'New program'}
           </DialogTitle>
           <DialogDescription>
-            Program organization is assigned to a department and shown by its
-            parent faculty.
+            Codes and names must be unique.
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-5" onSubmit={submit} noValidate>
@@ -301,9 +300,7 @@ export function AdminProgramDialog({
             >
               {submitting
                 ? 'Saving…'
-                : program
-                  ? 'Save changes'
-                  : 'Add program'}
+                : 'Save record'}
             </Button>
           </DialogFooter>
         </form>

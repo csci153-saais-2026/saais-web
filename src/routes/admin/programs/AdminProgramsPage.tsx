@@ -4,6 +4,7 @@ import { FilterBar } from '@/components/features/filter-bar'
 import { PageHeading } from '@/components/features/page-heading'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
+import { RowActionsMenu } from '../shared/RowActionsMenu'
 import { AdminProgramDialog } from './AdminProgramDialog'
 import { AdminProgramDeleteDialog } from './AdminProgramDeleteDialog'
 import {
@@ -36,7 +37,7 @@ async function loadAllPages<T>(
 }
 
 const STATUS_FILTERS = [
-  { value: 'all', label: 'All statuses' },
+  { value: 'all', label: 'All records' },
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
   { value: 'archived', label: 'Archived' },
@@ -260,22 +261,31 @@ export default function AdminProgramsPage() {
       cell: (program: Program) => program.code,
     },
     {
-      header: 'Program name',
-      cell: (program: Program) => program.name,
+      header: 'Program',
+      cell: (program: Program) => (
+        <div>
+          <p className="font-medium">{program.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {program.nominal_duration} years
+          </p>
+        </div>
+      ),
     },
     {
-      header: 'Faculty',
+      header: 'Department',
       cell: (program: Program) => {
         const department = departmentsById.get(program.department_id)
-        return department
-          ? facultiesById.get(department.faculty_id)?.name ?? 'Unknown faculty'
-          : 'Unknown faculty'
+        if (!department) return 'Unknown department'
+        return (
+          <div>
+            <p>{department.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {facultiesById.get(department.faculty_id)?.name ??
+                'Unknown faculty'}
+            </p>
+          </div>
+        )
       },
-    },
-    {
-      header: 'Duration',
-      numeric: true,
-      cell: (program: Program) => `${program.nominal_duration} years`,
     },
     {
       header: 'Status',
@@ -289,27 +299,15 @@ export default function AdminProgramsPage() {
     },
     {
       header: 'Actions',
-      className: 'whitespace-nowrap',
+      headerContent: <span className="sr-only">Actions</span>,
+      className: 'w-10 text-right',
       cell: (program: Program) => (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!catalogsLoaded || Boolean(catalogError)}
-            onClick={() => setDialogProgram(program)}
-            aria-label={`Edit ${program.name}`}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteProgram(program)}
-            aria-label={`Delete ${program.name}`}
-          >
-            Delete
-          </Button>
-        </div>
+        <RowActionsMenu
+          label={program.name}
+          editDisabled={!catalogsLoaded || Boolean(catalogError)}
+          onEdit={() => setDialogProgram(program)}
+          onDelete={() => setDeleteProgram(program)}
+        />
       ),
     },
   ]
@@ -318,14 +316,14 @@ export default function AdminProgramsPage() {
     <div className="grid gap-2">
       <PageHeading
         title="Programs"
-        subtitle="Maintain degree program catalog records and their organization and status."
-        className="mb-4"
+        subtitle="Each degree program owns its curriculum versions."
+        className="mb-6"
         actions={
           <Button
             disabled={!catalogsLoaded || Boolean(catalogError)}
             onClick={() => setDialogProgram(null)}
           >
-            Add program
+            New program
           </Button>
         }
       />
@@ -348,11 +346,11 @@ export default function AdminProgramsPage() {
       )}
 
       <FilterBar
-        searchLabel="Search programs"
-        searchPlaceholder="Search by code or program name"
+        searchLabel="Search records"
+        searchPlaceholder="Search name, code, or details"
         search={search}
         onSearchChange={updateSearch}
-        filterLabel="Status"
+        filterLabel="Filter"
         filterOptions={STATUS_FILTERS}
         filter={status}
         onFilterChange={updateStatus}
@@ -381,8 +379,9 @@ export default function AdminProgramsPage() {
       )}
 
       <DataTablePanel
-        title="Program catalog"
-        description="Degree programs with their faculty, nominal duration, and lifecycle status."
+        spacious
+        title="Degree programs"
+        description="Codes and names must be unique."
         columns={columns}
         rows={loading || error || searchError ? [] : programs}
         rowKey={(program) => program.id}
@@ -394,7 +393,7 @@ export default function AdminProgramsPage() {
               : error
                 ? 'Programs are unavailable.'
                 : search.trim() || status !== 'all'
-                  ? 'No programs match this search and status.'
+                  ? 'No programs match your search.'
                   : 'No programs have been added to the catalog.'
         }
         footer={

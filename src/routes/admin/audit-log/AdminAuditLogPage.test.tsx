@@ -82,27 +82,22 @@ describe('AdminAuditLogPage', () => {
     ).toBe(true)
   })
 
-  it('submits person, student, action, and bounded date filters', async () => {
+  it('applies person, student, action, and bounded date filters live', async () => {
     render(<AdminAuditLogPage />)
     await screen.findByText('Morgan Lee')
 
     fireEvent.change(screen.getByLabelText('Person'), {
       target: { value: 'Morgan' },
     })
-    fireEvent.change(screen.getByLabelText('Student name or number'), {
+    fireEvent.change(screen.getByLabelText('Student'), {
       target: { value: '24-1-' },
     })
-    fireEvent.change(screen.getByLabelText('Action'), {
-      target: { value: 'plan' },
-    })
-    fireEvent.change(screen.getByLabelText('From'), {
+    fireEvent.change(screen.getByLabelText('From date'), {
       target: { value: '2026-08-01' },
     })
-    fireEvent.change(screen.getByLabelText('To'), {
+    fireEvent.change(screen.getByLabelText('To date'), {
       target: { value: '2026-08-31' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
-
     await waitFor(() => expect(getMock).toHaveBeenCalledTimes(2))
     expect(getMock.mock.calls[1]).toEqual([
       '/rest/v1/audit_log_entry',
@@ -116,7 +111,6 @@ describe('AdminAuditLogPage', () => {
             offset: 0,
             actor_name: 'ilike.%Morgan%',
             or: '(student_name.ilike.%24-1-%,student_number.ilike.%24-1-%,target_label.ilike.%24-1-%)',
-            action: 'ilike.%plan%',
             and: '(created_at.gte.2026-08-01T00:00:00.000Z,created_at.lte.2026-08-31T23:59:59.999Z)',
           },
         },
@@ -124,17 +118,14 @@ describe('AdminAuditLogPage', () => {
     ])
   })
 
-  it('requires both dates and does not request an invalid range', async () => {
+  it('waits for both dates before filtering by range', async () => {
     render(<AdminAuditLogPage />)
     await screen.findByText('Morgan Lee')
-    fireEvent.change(screen.getByLabelText('From'), {
+    fireEvent.change(screen.getByLabelText('From date'), {
       target: { value: '2026-08-01' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await new Promise((resolve) => setTimeout(resolve, 600))
 
-    expect(
-      await screen.findByText('Choose both a start date and an end date.'),
-    ).toBeTruthy()
     expect(getMock).toHaveBeenCalledTimes(1)
   })
 
@@ -177,7 +168,7 @@ describe('AdminAuditLogPage', () => {
     getMock.mockResolvedValueOnce(result([], '*/0'))
     render(<AdminAuditLogPage />)
     expect(
-      await screen.findByText('No audit entries match the selected filters.'),
+      await screen.findByText('No entries match these filters.'),
     ).toBeTruthy()
   })
 })

@@ -12,6 +12,7 @@ import { AdminDepartmentDialog } from './AdminDepartmentDialog'
 import { AdminDepartmentDeleteDialog } from './AdminDepartmentDeleteDialog'
 import { AdminFacultyDeleteDialog } from './AdminFacultyDeleteDialog'
 import { AdminFacultyDialog } from './AdminFacultyDialog'
+import { RowActionsMenu } from '../shared/RowActionsMenu'
 import { FACULTY_CATALOG_LIMIT } from './admin-faculties-model'
 
 type Faculty = ApiSchema<'Faculty'>
@@ -145,26 +146,14 @@ export default function AdminFacultiesPage() {
     },
     {
       header: 'Actions',
-      className: 'whitespace-nowrap',
+      headerContent: <span className="sr-only">Actions</span>,
+      className: 'w-10 text-right',
       cell: (faculty: Faculty) => (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Edit ${faculty.name}`}
-            onClick={() => setFacultyDialog(faculty)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            aria-label={`Delete ${faculty.name}`}
-            onClick={() => setDeleteFaculty(faculty)}
-          >
-            Delete
-          </Button>
-        </div>
+        <RowActionsMenu
+          label={faculty.name}
+          onEdit={() => setFacultyDialog(faculty)}
+          onDelete={() => setDeleteFaculty(faculty)}
+        />
       ),
     },
   ]
@@ -185,26 +174,14 @@ export default function AdminFacultiesPage() {
     },
     {
       header: 'Actions',
-      className: 'whitespace-nowrap',
+      headerContent: <span className="sr-only">Actions</span>,
+      className: 'w-10 text-right',
       cell: (department: Department) => (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Edit ${department.name}`}
-            onClick={() => setDepartmentDialog(department)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            aria-label={`Delete ${department.name}`}
-            onClick={() => setDeleteDepartment(department)}
-          >
-            Delete
-          </Button>
-        </div>
+        <RowActionsMenu
+          label={department.name}
+          onEdit={() => setDepartmentDialog(department)}
+          onDelete={() => setDeleteDepartment(department)}
+        />
       ),
     },
   ]
@@ -251,6 +228,7 @@ export default function AdminFacultiesPage() {
       )}
 
       <DataTablePanel
+        spacious
         title="Faculties"
         description="Institutional colleges and divisions, with department totals."
         columns={facultyColumns}
@@ -266,6 +244,7 @@ export default function AdminFacultiesPage() {
       />
 
       <DataTablePanel
+        spacious
         title="Departments"
         description="Academic departments and their parent faculties."
         columns={departmentColumns}

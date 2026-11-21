@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DataTablePanel } from '@/components/features/data-table-panel'
 import { FormField } from '@/components/features/form-field'
 import { PageHeading } from '@/components/features/page-heading'
 import { SearchInput } from '@/components/features/search-input'
-import { Panel } from '@/components/features/panel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -27,6 +26,13 @@ import {
   type AuditLogRow,
 } from './admin-audit-model'
 import type { Column } from '@/components/features/data-table-panel'
+
+const FILTER_DEBOUNCE_MS = 300
+
+/** The mockup's Action dropdown offers only the three headline categories. */
+const AUDIT_ACTION_FILTER_OPTIONS = AUDIT_ACTION_CATEGORIES.filter((category) =>
+  ['view', 'change', 'sign_in'].includes(category.value),
+)
 
 const EMPTY_FILTERS: AuditFilters = {
   person: '',
@@ -128,17 +134,28 @@ export default function AdminAuditLogPage() {
     setFilters((current) => ({ ...current, [key]: value }))
   }
 
-  function applyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setOffset(0)
-    setAppliedFilters({ ...filters })
-  }
-
-  function clearFilters() {
-    setFilters(EMPTY_FILTERS)
-    setAppliedFilters(EMPTY_FILTERS)
-    setOffset(0)
-  }
+  const filtersTouched = useRef(false)
+  useEffect(() => {
+    if (!filtersTouched.current) {
+      filtersTouched.current = true
+      return
+    }
+    const timer = window.setTimeout(() => {
+      // A date range needs both ends; wait until the second date is chosen.
+      const complete = Boolean(filters.from) === Boolean(filters.to)
+      const next = {
+        ...filters,
+        from: complete ? filters.from : '',
+        to: complete ? filters.to : '',
+      }
+      setAppliedFilters((current) => {
+        if (JSON.stringify(current) === JSON.stringify(next)) return current
+        setOffset(0)
+        return next
+      })
+    }, FILTER_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [filters])
 
   const columns: Column<AuditLogRow>[] = [
     {
@@ -213,101 +230,9 @@ export default function AdminAuditLogPage() {
     <div className="grid gap-2">
       <PageHeading
         title="Audit log"
-        subtitle="Review institution-wide, immutable system activity."
-        className="mb-4"
+        subtitle="Review record views, changes, and sign-ins across all departments."
+        className="mb-6"
       />
-
-      <Panel
-        title="Activity filters"
-        description="Narrow the audit history by person, student, action, record type, or date."
-      >
-        <form onSubmit={applyFilters} className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <FormField label="Person" htmlFor="audit-person">
-              <SearchInput
-                id="audit-person"
-                value={filters.person}
-                maxLength={100}
-                placeholder="Search by person"
-                onChange={(event) => updateFilter('person', event.target.value)}
-              />
-            </FormField>
-            <FormField label="Student name or number" htmlFor="audit-student">
-              <SearchInput
-                id="audit-student"
-                value={filters.student}
-                maxLength={100}
-                placeholder="Search by student"
-                onChange={(event) => updateFilter('student', event.target.value)}
-              />
-            </FormField>
-            <FormField label="Action" htmlFor="audit-action">
-              <SearchInput
-                id="audit-action"
-                value={filters.action}
-                maxLength={100}
-                placeholder="Search action"
-                onChange={(event) => updateFilter('action', event.target.value)}
-              />
-            </FormField>
-            <FormField label="Action category" htmlFor="audit-category">
-              <Select
-                value={filters.category || 'all'}
-                onValueChange={(value) =>
-                  updateFilter('category', value === 'all' ? '' : value)
-                }
-              >
-                <SelectTrigger id="audit-category" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All action categories</SelectItem>
-                  {AUDIT_ACTION_CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label="Record type" htmlFor="audit-entity-type">
-              <Input
-                id="audit-entity-type"
-                value={filters.entityType}
-                maxLength={100}
-                placeholder="e.g. advising_plan"
-                onChange={(event) =>
-                  updateFilter('entityType', event.target.value)
-                }
-              />
-            </FormField>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="From" htmlFor="audit-date-from">
-                <Input
-                  id="audit-date-from"
-                  type="date"
-                  value={filters.from}
-                  onChange={(event) => updateFilter('from', event.target.value)}
-                />
-              </FormField>
-              <FormField label="To" htmlFor="audit-date-to">
-                <Input
-                  id="audit-date-to"
-                  type="date"
-                  value={filters.to}
-                  onChange={(event) => updateFilter('to', event.target.value)}
-                />
-              </FormField>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit">Apply filters</Button>
-            <Button type="button" variant="outline" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          </div>
-        </form>
-      </Panel>
 
       {filterError && (
         <p role="alert" className="text-sm text-destructive">
@@ -332,8 +257,67 @@ export default function AdminAuditLogPage() {
       )}
 
       <DataTablePanel
+        spacious
         title="System activity"
-        description="Immutable account, catalog, record, and sign-in history."
+        description="Record views are logged alongside changes and sign-ins."
+        toolbar={
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <FormField label="Person" htmlFor="audit-person">
+              <SearchInput
+                id="audit-person"
+                value={filters.person}
+                maxLength={100}
+                placeholder="Search person name"
+                onChange={(event) => updateFilter('person', event.target.value)}
+              />
+            </FormField>
+            <FormField label="Student" htmlFor="audit-student">
+              <SearchInput
+                id="audit-student"
+                value={filters.student}
+                maxLength={100}
+                placeholder="Search student name or ID"
+                onChange={(event) => updateFilter('student', event.target.value)}
+              />
+            </FormField>
+            <FormField label="Action" htmlFor="audit-category">
+              <Select
+                value={filters.category || 'all'}
+                onValueChange={(value) =>
+                  updateFilter('category', value === 'all' ? '' : value)
+                }
+              >
+                <SelectTrigger id="audit-category" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All actions</SelectItem>
+                  {AUDIT_ACTION_FILTER_OPTIONS.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="From date" htmlFor="audit-date-from">
+              <Input
+                id="audit-date-from"
+                type="date"
+                value={filters.from}
+                onChange={(event) => updateFilter('from', event.target.value)}
+              />
+            </FormField>
+            <FormField label="To date" htmlFor="audit-date-to">
+              <Input
+                id="audit-date-to"
+                type="date"
+                value={filters.to}
+                onChange={(event) => updateFilter('to', event.target.value)}
+              />
+            </FormField>
+          </div>
+        }
         columns={columns}
         rows={visibleEntries}
         rowKey={(entry) => entry.id}
@@ -345,7 +329,7 @@ export default function AdminAuditLogPage() {
               : error
                 ? 'Audit history is unavailable.'
                 : entries.length === 0
-                  ? 'No audit entries match the selected filters.'
+                  ? 'No entries match these filters.'
                   : 'No audit entries are available on this page.'
         }
         footer={

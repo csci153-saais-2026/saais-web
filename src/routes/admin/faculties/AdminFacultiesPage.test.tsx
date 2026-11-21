@@ -46,6 +46,13 @@ function result(data: unknown) {
   return { data, error: undefined, response: new Response(null) }
 }
 
+function clickRowAction(name: string, action: string) {
+  const trigger = screen.getByRole('button', { name: `Actions for ${name}` })
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'Enter', code: 'Enter' })
+  fireEvent.click(screen.getByRole('menuitem', { name: action }))
+}
+
 describe('AdminFacultiesPage', () => {
   beforeEach(() => {
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -212,7 +219,7 @@ describe('AdminFacultiesPage', () => {
   it('updates a faculty through its transactional catalog operation', async () => {
     render(<AdminFacultiesPage />)
     await screen.findByText('Computer Science')
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Faculty of Computing' }))
+    clickRowAction('Faculty of Computing', 'Edit')
     fireEvent.change(await screen.findByLabelText('Faculty name'), {
       target: { value: 'Faculty of Computing and Design' },
     })
@@ -272,7 +279,7 @@ describe('AdminFacultiesPage', () => {
   it('updates the department parent through the catalog operation', async () => {
     render(<AdminFacultiesPage />)
     await screen.findByText('Computer Science')
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Computer Science' }))
+    clickRowAction('Computer Science', 'Edit')
     const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText('Department name'), {
       target: { value: 'Computing' },
@@ -313,9 +320,7 @@ describe('AdminFacultiesPage', () => {
     )
     render(<AdminFacultiesPage />)
     await screen.findByText('Computer Science')
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Delete Faculty of Computing' }),
-    )
+    clickRowAction('Faculty of Computing', 'Delete')
     expect(await screen.findByText(/currently has 1 department/)).toBeTruthy()
     fireEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
@@ -337,9 +342,7 @@ describe('AdminFacultiesPage', () => {
   it('deletes an unreferenced faculty through the catalog operation', async () => {
     render(<AdminFacultiesPage />)
     await screen.findByText('Computer Science')
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Delete Faculty of Computing' }),
-    )
+    clickRowAction('Faculty of Computing', 'Delete')
     fireEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
         name: 'Delete faculty',
@@ -374,9 +377,7 @@ describe('AdminFacultiesPage', () => {
     )
     render(<AdminFacultiesPage />)
     await screen.findByText('Computer Science')
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Delete Computer Science' }),
-    )
+    clickRowAction('Computer Science', 'Delete')
     expect(await screen.findByText(/currently under Faculty of Computing/)).toBeTruthy()
     fireEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
@@ -398,9 +399,7 @@ describe('AdminFacultiesPage', () => {
   it('deletes an unreferenced department through the catalog operation', async () => {
     render(<AdminFacultiesPage />)
     await screen.findByText('Computer Science')
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Delete Computer Science' }),
-    )
+    clickRowAction('Computer Science', 'Delete')
     fireEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
         name: 'Delete department',

@@ -129,7 +129,7 @@ describe('AdminSettingsPage', () => {
 
   it('validates and saves sender email independently', async () => {
     render(<AdminSettingsPage />)
-    const email = await screen.findByLabelText('Sender email')
+    const email = await screen.findByLabelText('Sender address')
     fireEvent.change(email, { target: { value: 'invalid' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save sender email' }))
 
@@ -163,7 +163,7 @@ describe('AdminSettingsPage', () => {
     render(<AdminSettingsPage />)
     await screen.findByText('BKP-2026-11-10-001')
     fireEvent.click(
-      screen.getByRole('button', { name: 'Record completed backup' }),
+      screen.getByRole('button', { name: 'Record a backup made today' }),
     )
 
     await waitFor(() => {
@@ -202,7 +202,7 @@ describe('AdminSettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save thresholds' }))
     await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1))
     fireEvent.click(
-      screen.getByRole('button', { name: 'Record completed backup' }),
+      screen.getByRole('button', { name: 'Record a backup made today' }),
     )
     expect(await screen.findByText('BKP-newer')).toBeTruthy()
 
@@ -224,7 +224,7 @@ describe('AdminSettingsPage', () => {
     render(<AdminSettingsPage />)
     await screen.findByText('BKP-2026-11-10-001')
     fireEvent.click(
-      screen.getByRole('button', { name: 'Record completed backup' }),
+      screen.getByRole('button', { name: 'Record a backup made today' }),
     )
 
     expect(await screen.findByText('Backup record rejected.')).toBeTruthy()

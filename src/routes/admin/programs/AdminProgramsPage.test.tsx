@@ -60,6 +60,13 @@ function programCalls() {
   )
 }
 
+function clickRowAction(name: string, action: string) {
+  const trigger = screen.getByRole('button', { name: `Actions for ${name}` })
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'Enter', code: 'Enter' })
+  fireEvent.click(screen.getByRole('menuitem', { name: action }))
+}
+
 describe('AdminProgramsPage', () => {
   beforeEach(() => {
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -97,7 +104,7 @@ describe('AdminProgramsPage', () => {
   it('loads a bounded projection and displays the faculty from the program department', async () => {
     render(<AdminProgramsPage />)
 
-    expect(await screen.findByText('Computer Science')).toBeTruthy()
+    expect(await screen.findAllByText('Computer Science')).toHaveLength(2)
     expect(screen.getByText('Faculty of Computing')).toBeTruthy()
     expect(screen.getByText('Active')).toBeTruthy()
     expect(programCalls()[0]?.[1]).toEqual(
@@ -145,8 +152,8 @@ describe('AdminProgramsPage', () => {
     )
     const { unmount } = render(<AdminProgramsPage />)
 
-    await screen.findByText('Computer Science')
-    const addButton = screen.getByRole('button', { name: 'Add program' })
+    await screen.findAllByText('Computer Science')
+    const addButton = screen.getByRole('button', { name: 'New program' })
     expect(addButton.hasAttribute('disabled')).toBe(true)
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith(
@@ -193,7 +200,7 @@ describe('AdminProgramsPage', () => {
       (await screen.findByRole('alert')).textContent,
     ).toContain('Program catalog unavailable')
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByText('Computer Science')).toBeTruthy()
+    expect(await screen.findAllByText('Computer Science')).toHaveLength(2)
   })
 
   it('submits search and lifecycle filters and uses server pagination', async () => {
@@ -216,7 +223,7 @@ describe('AdminProgramsPage', () => {
     render(<AdminProgramsPage />)
     await screen.findAllByText('Faculty of Computing')
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search programs' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search records' }), {
       target: { value: 'computer' },
     })
     await waitFor(() => {
@@ -232,7 +239,7 @@ describe('AdminProgramsPage', () => {
       )
     })
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Status' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Filter' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Inactive' }))
     await waitFor(() => {
       expect(programCalls().at(-1)?.[1]).toEqual(
@@ -261,10 +268,10 @@ describe('AdminProgramsPage', () => {
 
   it('validates the form and creates programs through the catalog operation', async () => {
     render(<AdminProgramsPage />)
-    await screen.findByText('Computer Science')
-    fireEvent.click(screen.getByRole('button', { name: 'Add program' }))
+    await screen.findAllByText('Computer Science')
+    fireEvent.click(screen.getByRole('button', { name: 'New program' }))
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add program' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save record' }))
     expect(await screen.findByText('Enter a program code between 2 and 250 characters.')).toBeTruthy()
     expect(postMock).not.toHaveBeenCalled()
 
@@ -285,7 +292,7 @@ describe('AdminProgramsPage', () => {
     fireEvent.click(
       await screen.findByRole('option', { name: 'Computer Science' }),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Add program' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save record' }))
 
     await waitFor(() => {
       expect(postMock).toHaveBeenCalledWith(
@@ -305,12 +312,12 @@ describe('AdminProgramsPage', () => {
 
   it('updates programs through the catalog operation', async () => {
     render(<AdminProgramsPage />)
-    await screen.findByText('Computer Science')
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Computer Science' }))
+    await screen.findAllByText('Computer Science')
+    clickRowAction('Computer Science', 'Edit')
     fireEvent.change(screen.getByLabelText('Program name'), {
       target: { value: 'Computer Science and Technology' },
     })
-    fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save record' }))
 
     await waitFor(() => {
       expect(patchMock).toHaveBeenCalledWith(
@@ -344,9 +351,9 @@ describe('AdminProgramsPage', () => {
       }),
     )
     render(<AdminProgramsPage />)
-    await screen.findByText('Computer Science')
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Computer Science' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete program' }))
+    await screen.findAllByText('Computer Science')
+    clickRowAction('Computer Science', 'Delete')
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     expect(
       await screen.findByText(
@@ -361,9 +368,9 @@ describe('AdminProgramsPage', () => {
 
   it('deletes an unreferenced program and refreshes the catalog', async () => {
     render(<AdminProgramsPage />)
-    await screen.findByText('Computer Science')
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Computer Science' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete program' }))
+    await screen.findAllByText('Computer Science')
+    clickRowAction('Computer Science', 'Delete')
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     await waitFor(() => {
       expect(deleteMock).toHaveBeenCalledWith(
