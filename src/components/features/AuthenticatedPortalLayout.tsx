@@ -17,6 +17,15 @@ const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
   admin: 'System Admin',
 }
 
+const ADMIN_ROUTE_LABELS: Readonly<Record<string, string>> = {
+  '/admin/students': 'Student directory',
+  '/admin/accounts': 'Accounts and roles',
+  '/admin/programs': 'Programs',
+  '/admin/faculties': 'Faculties and departments',
+  '/admin/settings': 'System settings',
+  '/admin/audit-log': 'Audit log',
+}
+
 function getInitials(fullName: string): string {
   const parts = fullName
     .replace(/,/g, ' ')
@@ -96,7 +105,13 @@ export function AuthenticatedPortalLayout() {
 
   const portalLabel = ROLE_PORTAL_LABELS[currentRole] ?? 'SAAIS workspace'
   const homeHref = ROLE_DEFAULT_ROUTE[currentRole] ?? '/settings'
-  const crumbs = getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)
+  const adminPageLabel =
+    currentRole === 'admin'
+      ? ADMIN_ROUTE_LABELS[location.pathname.replace(/\/+$/, '')]
+      : undefined
+  const crumbs = adminPageLabel
+    ? [{ label: portalLabel, to: homeHref }, { label: adminPageLabel }]
+    : getPortalBreadcrumbs(location.pathname, currentRole, portalLabel, homeHref, studentLabel)
 
   const handleSignOut = async () => {
     await signOut()

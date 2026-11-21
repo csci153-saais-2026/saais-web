@@ -87,7 +87,7 @@ describe('shared adviser dashboard mock', () => {
     const row = roster.data?.items.find(item => item.student_id === student.id)
     expect(row?.is_delinquent).toBe(true)
     expect(roster.data?.flagged_count).toBe(
-      roster.data?.items.filter(item => item.open_flags_count > 0).length,
+      roster.data?.items.filter(item => item.open_flags_count > 0 || item.is_delinquent).length,
     )
     const summary = await client().GET('/functions/v1/students/{student_id}/academic-summary', { params: { path: { student_id: student.id } } })
     expect(summary.data?.is_delinquent).toBe(true)

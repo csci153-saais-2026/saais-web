@@ -227,7 +227,7 @@ describe('Student roster mock filters and summaries', () => {
     const api = client()
     const email = db.profiles.find((profile) => profile.id === MOCK_IDS.studentPrimary)!.email!
     const roster = unwrapApiResult(await api.GET('/functions/v1/students', {
-      params: { query: { department_id: MOCK_IDS.deptDcst } },
+      params: { query: { department_id: MOCK_IDS.deptDcst, limit: 1000 } },
     }))
     const primary = roster.items.find((item) => item.student_id === MOCK_IDS.studentPrimary)!
     expect(primary).toBeDefined()
@@ -273,7 +273,9 @@ describe('Student roster mock filters and summaries', () => {
     expect(paginated.flagged_count).toBe(roster.flagged_count)
     expect(paginated.open_inc_students_count).toBe(roster.open_inc_students_count)
     expect(paginated.standing_counts).toEqual(roster.standing_counts)
-    expect(roster.flagged_count).toBe(roster.items.filter((item) => item.open_flags_count > 0).length)
+    expect(roster.flagged_count).toBe(roster.items.filter((item) =>
+      item.open_flags_count > 0 || item.is_delinquent,
+    ).length)
 
     const unauthorized = await api.GET('/functions/v1/students', {
       params: { query: { department_id: MOCK_IDS.deptDabe } },
@@ -283,6 +285,209 @@ describe('Student roster mock filters and summaries', () => {
 })
 
 describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
+  it('filters and bounds account directory results', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+    const target = getMockDatabase().profiles.find(
+      (profile) => profile.id === MOCK_IDS.studentPrimary,
+    )
+    if (!target) throw new Error('Expected seeded student account.')
+
+    const searched = unwrapApiResult(
+      await client.GET('/functions/v1/accounts', {
+        params: {
+          query: {
+            limit: 20,
+            offset: 0,
+            search: target.student_number ?? target.full_name,
+            role: 'student',
+            faculty_id: MOCK_IDS.facultyComputing,
+            department_id: MOCK_IDS.deptDcst,
+          },
+        },
+      }),
+    )
+    expect(searched.some((account) => account.profile.id === target.id)).toBe(
+      true,
+    )
+
+    const firstPage = unwrapApiResult(
+      await client.GET('/functions/v1/accounts', {
+        params: { query: { limit: 1, offset: 0 } },
+      }),
+    )
+    const secondPage = unwrapApiResult(
+      await client.GET('/functions/v1/accounts', {
+        params: { query: { limit: 1, offset: 1 } },
+      }),
+    )
+    expect(firstPage).toHaveLength(1)
+    expect(secondPage).toHaveLength(1)
+    expect(firstPage[0]?.profile.id).not.toBe(secondPage[0]?.profile.id)
+  })
+
+  it('filters audit history across student identifiers and returns newest entries first', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+    const allEntries = unwrapApiResult(
+      await client.GET('/rest/v1/audit_log_entry', {
+        params: {
+          query: {
+            select:
+              'id,actor_name,actor_role,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at',
+            order: 'created_at.desc,id.desc',
+            limit: 25,
+            offset: 0,
+          },
+        },
+      }),
+    )
+    expect(allEntries[0]?.id).toBe(MOCK_IDS.auditLog2)
+
+    const studentEntries = unwrapApiResult(
+      await client.GET('/rest/v1/audit_log_entry', {
+        params: {
+          query: {
+            select:
+              'id,actor_name,actor_role,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at',
+            order: 'created_at.desc,id.desc',
+            limit: 25,
+            offset: 0,
+            or: '(student_name.ilike.%Juan%,student_number.ilike.%Juan%,target_label.ilike.%Juan%)',
+            and: '(created_at.gte.2026-08-12T00:00:00.000Z,created_at.lte.2026-08-12T23:59:59.999Z)',
+          },
+        },
+      }),
+    )
+    expect(studentEntries.map((entry) => entry.id)).toEqual([
+      MOCK_IDS.auditLog1,
+    ])
+  })
+
+  it('updates account profile and role assignments atomically in the mock', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.adviserPrimary
+    const updated = unwrapApiResult(
+      await client.PATCH('/functions/v1/accounts/{profile_id}', {
+        params: { path: { profile_id: profileId } },
+        body: {
+          full_name: 'Updated Adviser',
+          role: 'adviser',
+          role_assignments: [
+            {
+              role: 'adviser',
+              faculty_id: MOCK_IDS.facultyComputing,
+              department_id: MOCK_IDS.deptDcst,
+            },
+            {
+              role: 'department_head',
+              faculty_id: MOCK_IDS.facultyComputing,
+              department_id: MOCK_IDS.deptDcst,
+            },
+          ],
+          status: 'disabled',
+        },
+      }),
+    )
+
+    expect(updated.full_name).toBe('Updated Adviser')
+    expect(updated.roles).toEqual(['adviser', 'department_head'])
+    expect(updated.status).toBe('disabled')
+    expect(
+      getMockDatabase().roleAssignments.filter(
+        (assignment) => assignment.profile_id === profileId,
+      ),
+    ).toHaveLength(2)
+  })
+
+  it('retains existing role assignments when an account PATCH omits them', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.adviserPrimary
+    const initialProfile = getMockDatabase().profiles.find(
+      (profile) => profile.id === profileId,
+    )
+    if (!initialProfile) throw new Error('Expected seeded adviser account.')
+    const initialAssignments = getMockDatabase().roleAssignments.filter(
+      (assignment) => assignment.profile_id === profileId,
+    )
+
+    const updated = unwrapApiResult(
+      await client.PATCH('/functions/v1/accounts/{profile_id}', {
+        params: { path: { profile_id: profileId } },
+        body: {
+          full_name: 'Updated Adviser Name',
+          role: 'department_head',
+        },
+      }),
+    )
+
+    expect(updated.roles).toEqual([
+      ...new Set([
+        'department_head',
+        ...initialAssignments.map((assignment) => assignment.role),
+      ]),
+    ])
+    expect(
+      getMockDatabase().roleAssignments.filter(
+        (assignment) => assignment.profile_id === profileId,
+      ),
+    ).toEqual(initialAssignments)
+  })
+
+  it('rejects invalid role assignments without partially updating the account', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.adviserPrimary
+    const initialProfile = getMockDatabase().profiles.find(
+      (profile) => profile.id === profileId,
+    )
+    if (!initialProfile) throw new Error('Expected seeded adviser account.')
+    const initialAssignments = getMockDatabase().roleAssignments.filter(
+      (assignment) => assignment.profile_id === profileId,
+    )
+    const response = await client.PATCH('/functions/v1/accounts/{profile_id}', {
+      params: { path: { profile_id: profileId } },
+      body: {
+        full_name: 'Must Not Be Applied',
+        role_assignments: [{ role: 'not-a-role' }],
+      } as never,
+    })
+
+    expect(response.response.status).toBe(400)
+    expect(
+      getMockDatabase().profiles.find((profile) => profile.id === profileId),
+    ).toEqual(initialProfile)
+    expect(
+      getMockDatabase().roleAssignments.filter(
+        (assignment) => assignment.profile_id === profileId,
+      ),
+    ).toEqual(initialAssignments)
+  })
+
   it('keeps an earlier failure selected until a retake has a numeric result', async () => {
     const db = getMockDatabase()
     const earlier = db.attemptResults.find(a => a.id === MOCK_IDS.attemptCsci102Inc)!
@@ -812,6 +1017,39 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(decline.invitation_status).toBe('declined')
   })
 
+  it('rejects preview and activation for a revoked invitation', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+    const profileId = MOCK_IDS.studentSecondary
+    const revoked = await client.POST(
+      '/functions/v1/accounts/{profile_id}/revoke-invite',
+      { params: { path: { profile_id: profileId } } },
+    )
+    expect(revoked.response.status).toBe(200)
+
+    const preview = await client.POST('/functions/v1/auth/preview-invite', {
+      body: { token: `invite:${profileId}` },
+    })
+    const verify = await client.POST('/functions/v1/auth/verify-invite', {
+      body: {
+        token: `invite:${profileId}`,
+        password: 'ValidStrongPassword2026!',
+      },
+    })
+
+    expect(preview.response.status).toBe(409)
+    expect(verify.response.status).toBe(409)
+    const profile = getMockDatabase().profiles.find(
+      (item) => item.id === profileId,
+    )
+    expect(profile?.status).toBe('invited')
+    expect(profile?.invitation_status).toBe('revoked')
+  })
+
   it('enforces Student self-only access on PostgREST projections and student Edge Functions', async () => {
     loginAsMockPersona('student')
     const client = createSaaisApiClient({
@@ -877,18 +1115,61 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
           full_name: 'Prof. New Adviser',
           faculty_id: MOCK_IDS.facultyComputing,
           department_id: MOCK_IDS.deptDcst,
+          role_assignments: [
+            {
+              role: 'department_staff',
+              faculty_id: MOCK_IDS.facultyComputing,
+              department_id: MOCK_IDS.deptDcst,
+            },
+          ],
         },
       }),
     )
     expect(allowedInvite.success).toBe(true)
     expect(allowedInvite.invitation_status).toBe('pending')
+    expect(
+      getMockDatabase().roleAssignments.some(
+        (assignment) =>
+          assignment.profile_id === allowedInvite.profile_id &&
+          assignment.role === 'department_staff',
+      ),
+    ).toBe(true)
+
+    const nullDepartmentInvite = unwrapApiResult(
+      await client.POST('/functions/v1/auth/invite', {
+        body: {
+          role: 'department_head',
+          email: 'null.department.mock@vsu.edu.ph',
+          full_name: 'Department Head',
+          faculty_id: MOCK_IDS.facultyComputing,
+          department_id: null,
+        },
+      }),
+    )
+    expect(
+      getMockDatabase().profiles.find(
+        (profile) => profile.id === nullDepartmentInvite.profile_id,
+      )?.department_id,
+    ).toBe(MOCK_IDS.deptDcst)
 
     for (const operation of ['resend-invite', 'revoke-invite'] as const) {
       const response = await fetch(`${BASE_URL}/functions/v1/accounts/${allowedInvite.profile_id}/${operation}`, {
         method: 'POST', headers: { apikey: TEST_API_KEY, Authorization: `Bearer ${MOCK_PERSONAS.department_staff.token}` },
       })
       expect(response.status).toBe(200)
+      if (operation === 'resend-invite') {
+        const resentProfile = getMockDatabase().profiles.find(
+          (profile) => profile.id === allowedInvite.profile_id,
+        )
+        expect(resentProfile?.invitation_status).toBe('pending')
+        expect(resentProfile?.invitation_sent_at).toBe('2026-11-17T09:00:00Z')
+      }
     }
+    const revokedProfile = getMockDatabase().profiles.find(
+      (profile) => profile.id === allowedInvite.profile_id,
+    )
+    expect(revokedProfile?.status).toBe('invited')
+    expect(revokedProfile?.invitation_status).toBe('revoked')
 
     // Denied: Department Staff attempting to provision an Admin or Dean
     const deniedAdminInvite = await client.POST('/functions/v1/auth/invite', {
@@ -989,6 +1270,50 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     expect(confirmed.curriculum_term_course_id).toBe(MOCK_IDS.slotFreeElective1)
   })
 
+  it('filters and paginates the student roster server-side', async () => {
+    loginAsMockPersona('admin')
+    const client = createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+    const filtered = unwrapApiResult(
+      await client.GET('/functions/v1/students', {
+        params: {
+          query: {
+            search: '24-1-01798',
+            faculty_id: MOCK_IDS.facultyComputing,
+            program_id: MOCK_IDS.programBscs,
+            has_deficiencies: true,
+            has_open_flags: true,
+            limit: 1,
+            offset: 0,
+          },
+        },
+      }),
+    )
+    expect(filtered.total_count).toBe(1)
+    expect(filtered.items).toHaveLength(1)
+    expect(filtered.items[0]?.student_id).toBe(MOCK_IDS.studentPrimary)
+
+    const secondPage = unwrapApiResult(
+      await client.GET('/functions/v1/students', {
+        params: {
+          query: {
+            sort_by: 'student_number',
+            sort_dir: 'asc',
+            limit: 1,
+            offset: 1,
+          },
+        },
+      }),
+    )
+    expect(secondPage.total_count).toBeGreaterThan(2)
+    expect(secondPage.items).toHaveLength(1)
+    expect(secondPage.items[0]?.student_number).toBe('24-1-01798')
+  })
+
   it('supports Department Head, Dean, and Admin catalog/reporting/audit flows and resets state cleanly', async () => {
     loginAsMockPersona('department_head')
     const client = createSaaisApiClient({
@@ -1065,5 +1390,74 @@ describe('MSW contract handlers & role-based authorization (Issue #43)', () => {
     // Resetting restores initial database state
     resetMockDatabase()
     expect(getMockDatabase().faculties).toHaveLength(3)
+  })
+})
+
+describe('system settings mock scope', () => {
+  const client = () =>
+    createSaaisApiClient({
+      baseUrl: BASE_URL,
+      apiKey: TEST_API_KEY,
+      mode: 'mock',
+    })
+
+  it('reads and updates institution settings without changing department settings', async () => {
+    loginAsMockPersona('admin')
+    const api = client()
+    const query = {
+      select:
+        'id,department_id,warning_pct,probation_pct,dismissal_pct,sender_email,last_backup_at,last_backup_reference,last_backup_location,last_backup_scope,updated_at',
+      order: 'department_id.asc.nullsfirst,id.asc',
+      limit: 1000,
+    }
+
+    const rows = unwrapApiResult(
+      await api.GET('/rest/v1/system_settings', { params: { query } }),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.department_id).toBeNull()
+
+    const update = unwrapApiResult(
+      await api.PUT('/functions/v1/settings', {
+        body: {
+          warning_pct: 20,
+          probation_pct: 40,
+          dismissal_pct: 80,
+        },
+      }),
+    )
+    expect(update.department_id).toBeNull()
+    expect(update.warning_pct).toBe(20)
+    expect(
+      getMockDatabase().systemSettings.find(
+        (setting) => setting.department_id === MOCK_IDS.deptDcst,
+      )?.warning_pct,
+    ).toBe(25)
+
+    const backup = unwrapApiResult(
+      await api.POST('/functions/v1/settings/record-backup', {
+        body: { scope: 'institution_wide' },
+      }),
+    )
+    expect(backup.department_id).toBeNull()
+    expect(backup.last_backup_by).toBe(MOCK_IDS.systemAdmin)
+    expect(backup.last_backup_at).toBeTruthy()
+  })
+
+  it('keeps Department Head updates within its department scope', async () => {
+    loginAsMockPersona('department_head')
+    const update = unwrapApiResult(
+      await client().PUT('/functions/v1/settings', {
+        body: { warning_pct: 10 },
+      }),
+    )
+
+    expect(update.department_id).toBe(MOCK_IDS.deptDcst)
+    expect(update.warning_pct).toBe(10)
+    expect(
+      getMockDatabase().systemSettings.find(
+        (setting) => setting.department_id === null,
+      )?.warning_pct,
+    ).toBe(25)
   })
 })

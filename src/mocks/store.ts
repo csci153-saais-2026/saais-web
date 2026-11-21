@@ -1066,6 +1066,20 @@ function buildInitialMockDatabase(): MockDatabaseState {
         last_backup_scope: 'institution_wide',
         updated_at: '2026-10-15T06:00:00Z',
       },
+      {
+        id: '93000000-0000-4000-8000-000000000002',
+        department_id: null,
+        warning_pct: 25,
+        probation_pct: 50,
+        dismissal_pct: 75,
+        sender_email: 'saais-noreply@vsu.edu.ph',
+        last_backup_at: '2026-11-10T09:00:00Z',
+        last_backup_by: MOCK_IDS.systemAdmin,
+        last_backup_reference: 'BKP-2026-11-10-001',
+        last_backup_location: 'vsu-saais-backups/2026-11-10.dump',
+        last_backup_scope: 'institution_wide',
+        updated_at: '2026-11-10T09:00:00Z',
+      },
     ],
     auditLogEntries: [
       {

@@ -35,6 +35,7 @@ function DataTablePanel<T>({
   empty = "No records match. Try another search or filter.",
   toolbar,
   footer,
+  spacious = false,
 }: {
   title: string;
   description?: string;
@@ -47,6 +48,8 @@ function DataTablePanel<T>({
   /** Filters rendered inside the panel, between its heading and the table. */
   toolbar?: React.ReactNode;
   footer?: React.ReactNode;
+  /** Mockup cell spacing: 10px 14px header cells, 11px 14px body cells. */
+  spacious?: boolean;
 }) {
   return (
     <Panel title={title} description={description} action={action} flush>
@@ -59,6 +62,7 @@ function DataTablePanel<T>({
                 key={c.header}
                 className={cn(
                   "text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase",
+                  spacious && "h-auto px-3.5 py-2.5",
                   c.numeric && "text-right",
                 )}
               >
@@ -76,6 +80,7 @@ function DataTablePanel<T>({
                   label={c.header}
                   className={cn(
                     "py-2.5 text-[13.5px]",
+                    spacious && "px-3.5 py-[11px]",
                     c.numeric && "text-right font-mono",
                     c.className,
                   )}
