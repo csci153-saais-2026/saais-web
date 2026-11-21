@@ -1681,8 +1681,9 @@ export const saaisMswHandlers = [
       ? db.auditLogEntries
       : db.auditLogEntries.filter(
           (entry) =>
-            entry.student_id &&
-            canAccessStudentRecord(auth.persona, entry.student_id, true),
+            entry.actor_id === auth.persona.profileId ||
+            (entry.student_id &&
+              canAccessStudentRecord(auth.persona, entry.student_id, true)),
         );
     return applyPostgrestQuery(
       [...rows].sort((left, right) =>
