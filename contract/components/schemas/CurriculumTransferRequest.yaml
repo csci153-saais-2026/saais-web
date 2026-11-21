@@ -1,0 +1,75 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  from_curriculum_version_id:
+    type: string
+    format: uuid
+  to_curriculum_version_id:
+    type: string
+    format: uuid
+  endorsed_by:
+    type: string
+    format: uuid
+    readOnly: true
+  endorsed_by_name:
+    type: [string, "null"]
+    readOnly: true
+  endorsement_note:
+    type: string
+    minLength: 1
+    maxLength: 2000
+  status:
+    type: string
+    enum:
+      - pending
+      - approved
+      - rejected
+  decided_by:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+  decided_by_name:
+    type: [string, "null"]
+    readOnly: true
+  decided_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  decision_note:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+  carried_units:
+    type: number
+    minimum: 0
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - student_id
+  - from_curriculum_version_id
+  - to_curriculum_version_id
+  - endorsed_by
+  - endorsement_note
+  - status
+  - carried_units
+  - created_at
+  - updated_at

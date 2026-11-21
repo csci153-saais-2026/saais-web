@@ -93,21 +93,20 @@
   }
 
   /* ---------- advising notes ---------- */
-  /* The student reads the notes the adviser actually wrote: active notes on the adviser's Notes tab and Advising tab. Archived notes are hidden. */
+  /* The student reads the notes the adviser actually wrote, including notes later archived from the adviser view. */
   function adviserNotes() {
     var UI = {}; try { UI = JSON.parse(localStorage.getItem('saais-adviser-ui-v1')) || {}; } catch (e) { UI = window.__saaisUI || {}; }
     if (UI['notes-list'] == null && UI['note-list'] == null) return NOTES;
     var out = [];
-    function read(html, active) {
+    function read(html) {
       var doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
       [].slice.call(doc.querySelectorAll('article')).forEach(function (a) {
-        if (active && a.dataset.state && a.dataset.state !== 'active') return;
         var p = a.querySelector('p'), strong = a.querySelector('strong'), date = a.querySelector('[data-date]') || a.querySelector('span');
         if (p) out.push({ author: strong ? strong.textContent.trim() : ADVISER, date: date ? date.textContent.trim() : '', text: p.textContent.trim() });
       });
     }
-    if (UI['notes-list'] != null) read(UI['notes-list'], true); else out = out.concat(NOTES);
-    if (UI['note-list'] != null) read(UI['note-list'], false);
+    if (UI['notes-list'] != null) read(UI['notes-list']); else out = out.concat(NOTES);
+    if (UI['note-list'] != null) read(UI['note-list']);
     return out;
   }
   function openNotes() {
@@ -246,7 +245,7 @@
       stats: [{ label: 'Units earned', value: earned + ' of ' + req }],
       sections: sections
     }, ctx.pdf);
-    savePdf(report, 'SAAIS-curriculum-checklist.pdf', function () { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '2023-04412', 'Downloaded checklist'); });
+    savePdf(report, 'SAAIS-curriculum-checklist.pdf', function () { if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the curriculum checklist as PDF', '23-1-04412', 'Downloaded checklist'); });
   }
 
   function downloadGrades(main) {
@@ -264,7 +263,7 @@
       info: studentInfo(nm, id, ctx),
       stats: [], sections: sections
     }, ctx.pdf), 'SAAIS-grade-summary.pdf', function () {
-      if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '2023-04412', 'Downloaded grade summary');
+      if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'View', 'Maria Isabel Bautista', 'Downloaded the grade summary as PDF', '23-1-04412', 'Downloaded grade summary');
     });
   }
 
@@ -486,7 +485,7 @@
     FLAGS = loadFlags();
     FLAGS.unshift({ id: 'sf' + Date.now(), status: 'open', studentName: nm ? nm.textContent.trim() : 'Student', studentId: id ? id.textContent.trim() : '', code: current.code, title: current.title, grade: current.grade, reason: f.reason.value, details: f.details.value.trim(), filed: today() });
     saveFlags();
-    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'Change', 'Maria Isabel Bautista', 'Filed a grade flag on ' + current.code + ' (' + f.reason.value + ')', '2023-04412');
+    if (window.SAAIS_AUDIT) window.SAAIS_AUDIT.add('Maria Isabel Bautista', 'Change', 'Maria Isabel Bautista', 'Filed a grade flag on ' + current.code + ' (' + f.reason.value + ')', '23-1-04412');
     markFlagged();
     dlg.close();
   });
@@ -514,7 +513,7 @@
     });
     function rules() {
       var c = $('pw-cur').value, n = $('pw-new').value, a = $('pw-again').value;
-      var r = { len: n.length >= 12, mix: /[A-Za-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
+      var r = { len: n.length >= 12 && n.length <= 128, mix: /[A-Z]/.test(n) && /[a-z]/.test(n) && /\d/.test(n), diff: !!n && n !== c, match: !!n && n === a };
       Object.keys(r).forEach(function (k) {
         var li = document.querySelector('[data-rule="' + k + '"]'), m = li.querySelector('[data-mark]');
         m.style.background = r[k] ? '#2C6430' : 'transparent'; m.style.borderColor = r[k] ? '#2C6430' : '#E1DBC6';

@@ -1,0 +1,47 @@
+get:
+  tags:
+    - System
+  summary: Check gateway health
+  operationId: getHealthStatus
+  description: >-
+    Planned Edge Function health operation; /rest/v1/health is not a built-in PostgREST
+    endpoint.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope: active-provisioned-account
+  x-atomic: false
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              status:
+                type: string
+                enum:
+                  - ok
+            required:
+              - status
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"

@@ -1,0 +1,10 @@
+description: Invalid request parameters or payload violates integrity constraints.
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/Error.yaml"
+    example:
+      code: "23514"
+      message: "check constraint violation: units must be positive quarter steps"
+      details: Failing row contains (units=-3).
+      hint: Ensure credit units are positive quarter steps (e.g. 1.00, 3.00).

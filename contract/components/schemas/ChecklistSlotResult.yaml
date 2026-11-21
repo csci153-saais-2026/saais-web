@@ -1,0 +1,65 @@
+type: object
+additionalProperties: false
+properties:
+  curriculum_term_course_id:
+    type: string
+    format: uuid
+  status:
+    type: string
+    enum:
+      - not_taken
+      - currently_enrolled
+      - passed
+      - failed
+      - inc
+      - dr
+      - na
+  required_units:
+    type: number
+    minimum: 0
+  earned_units:
+    type: number
+    minimum: 0
+  source_attempt_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  satisfaction_source:
+    type:
+      - string
+      - "null"
+    enum:
+      - Direct
+      - Elective mapping
+      - Transfer equivalency
+      - Discontinued equivalency
+      - Outside credit
+      - null
+  credited_course_code:
+    type:
+      - string
+      - "null"
+    maxLength: 100
+  credited_course_title:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+  attempts:
+    type: array
+    maxItems: 50
+    items:
+      $ref: "./ChecklistSlotAttemptSummary.yaml"
+  grade_fix_history:
+    type: array
+    maxItems: 50
+    items:
+      $ref: "./GradeFixHistoryEntry.yaml"
+required:
+  - curriculum_term_course_id
+  - status
+  - required_units
+  - earned_units
+  - source_attempt_id
+  - satisfaction_source

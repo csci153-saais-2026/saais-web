@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+properties:
+  expected_revision:
+    type:
+      - integer
+      - "null"
+    minimum: 0
+    description: Null means expect no existing plan; integer matches the existing revision.
+  expected_curriculum_assignment_id:
+    type: string
+    format: uuid
+  items:
+    type: array
+    maxItems: 200
+    items:
+      $ref: "./AdvisingPlanItemRequest.yaml"
+required:
+  - expected_revision
+  - expected_curriculum_assignment_id
+  - items

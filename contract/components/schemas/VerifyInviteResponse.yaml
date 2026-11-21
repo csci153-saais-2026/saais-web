@@ -1,0 +1,14 @@
+type: object
+required:
+  - success
+  - message
+properties:
+  success:
+    type: boolean
+    example: true
+  message:
+    type: string
+    example: Account successfully activated.
+description: >-
+  Application activation acknowledgement only. Does not create a browser Supabase session or
+  contain Auth access/refresh tokens.

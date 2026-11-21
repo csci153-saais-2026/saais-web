@@ -1,0 +1,45 @@
+post:
+  tags:
+    - Auth
+  summary: Verify invitation token and set initial password
+  operationId: verifyInviteToken
+  description: >-
+    Application invitation redemption: accepts the single-use expiring application token from
+    the invitation email, enforces the SAAIS password policy (12–128 characters with at least
+    one uppercase letter, one lowercase letter, and one digit), sets the initial password in
+    Supabase Auth through privileged server code, marks the invitation accepted, and activates
+    the provisioned profile. Requires the public project apikey but no Authorization/user
+    session. This is not Supabase /auth/v1/verify, a Google callback or a login endpoint. The
+    handler must validate the token before any privileged work and must be deployable without a
+    gateway user-JWT requirement. Future gateway/handler configuration is required; this
+    contract does not apply it. Success returns activation acknowledgement, not an
+    access/refresh token; use the Supabase SDK to sign in afterward.
+  x-required-roles: []
+  security:
+    - supabaseProjectKey: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/VerifyInviteRequest.yaml"
+  responses:
+    "200":
+      description: Password set and profile activated successfully.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VerifyInviteResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-access-scope: single-use-expiring-invitation-token

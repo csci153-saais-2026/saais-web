@@ -86,10 +86,10 @@
   const ctForIndex = i => i<=9?'ct1':i<=19?'ct2':i<=27?'ct3':i<=35?'ct4':i<=42?'ct5':i<=47?'ct6':i<=48?'ct7':i<=51?'ct8':'ct9';
   const seed = {
     profiles: [
-      {id:'s1',full_name:'Maria Isabel Bautista',student_number:'2023-04412',email:'maria.bautista@example.edu.ph',role:'student',status:'active',department_id:'d1'},
-      {id:'s2',full_name:'Angelo Cruz',student_number:'2022-01188',email:'angelo.cruz@example.edu.ph',role:'student',status:'active',department_id:'d1'},
-      {id:'s3',full_name:'Joshua Lim',student_number:'2023-02940',email:'joshua.lim@example.edu.ph',role:'student',status:'active',department_id:'d1'},
-      {id:'s4',full_name:'Andrea Villanueva',student_number:'2024-00871',email:'andrea.villanueva@example.edu.ph',role:'student',status:'active',department_id:'d1'},
+      {id:'s1',full_name:'Maria Isabel Bautista',student_number:'23-1-04412',email:'maria.bautista@example.edu.ph',role:'student',status:'active',department_id:'d1'},
+      {id:'s2',full_name:'Angelo Cruz',student_number:'22-1-01188',email:'angelo.cruz@example.edu.ph',role:'student',status:'active',department_id:'d1'},
+      {id:'s3',full_name:'Joshua Lim',student_number:'23-1-02940',email:'joshua.lim@example.edu.ph',role:'student',status:'active',department_id:'d1'},
+      {id:'s4',full_name:'Andrea Villanueva',student_number:'24-1-00871',email:'andrea.villanueva@example.edu.ph',role:'student',status:'active',department_id:'d1'},
       {id:'a1',full_name:'Prof. Ramon Reyes',email:'ramon.reyes@example.edu.ph',role:'adviser',status:'active',department_id:'d1'},
       {id:'a2',full_name:'Prof. Lourdes Mendez',email:'lourdes.mendez@example.edu.ph',role:'adviser',status:'active',department_id:'d1'},
       {id:'u1',full_name:'Teresa Alvarez',email:'teresa.alvarez@example.edu.ph',role:'admin',status:'active',department_id:'d6'}

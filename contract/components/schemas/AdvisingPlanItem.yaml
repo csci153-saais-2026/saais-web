@@ -1,0 +1,39 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  advising_plan_id:
+    type: string
+    format: uuid
+  student_id:
+    type: string
+    format: uuid
+  school_term_id:
+    type: string
+    format: uuid
+  course_offering_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  display_order:
+    type: integer
+    minimum: 0
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - advising_plan_id
+  - student_id
+  - school_term_id
+  - course_offering_id
+  - display_order
+  - created_at

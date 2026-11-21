@@ -1,0 +1,53 @@
+type: object
+additionalProperties: false
+properties:
+  email:
+    type: string
+    format: email
+    maxLength: 254
+  full_name:
+    type: string
+    minLength: 1
+    maxLength: 150
+    pattern: \S
+  role:
+    type: string
+    const: student
+  student_number:
+    type: string
+    minLength: 1
+    maxLength: 64
+    pattern: \S
+  program_id:
+    type: string
+    format: uuid
+  curriculum_version_id:
+    type: string
+    format: uuid
+  adviser_id:
+    type: string
+    format: uuid
+    description: Eligible active adviser assigned atomically during student provisioning.
+  entry_year:
+    type:
+      - integer
+      - "null"
+    minimum: 1900
+    maximum: 3000
+  role_assignments:
+    type: array
+    minItems: 1
+    maxItems: 6
+    items:
+      $ref: "./RoleAssignmentInput.yaml"
+    description: >-
+      Optional multi-role assignments when a provisioned student account also holds an
+      explicitly authorized secondary role assignment.
+required:
+  - email
+  - full_name
+  - role
+  - student_number
+  - program_id
+  - curriculum_version_id
+  - adviser_id

@@ -1,0 +1,162 @@
+type: object
+additionalProperties: false
+properties:
+  department_id:
+    type: string
+    format: uuid
+  total_students:
+    type: integer
+    minimum: 0
+  with_deficiencies_count:
+    type: integer
+    minimum: 0
+    description: >-
+      Total number of students in the department who have at least one active academic
+      deficiency (failed units, open INC, lapsed INC, or open grade flag), unclipped by the
+      bounded `at_risk_roster` array.
+  unassigned_students_count:
+    type: integer
+    minimum: 0
+  open_grade_flags_count:
+    type: integer
+    minimum: 0
+  pending_transfers_count:
+    type: integer
+    minimum: 0
+  encoding_progress_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  average_gwa:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+  standing_counts:
+    $ref: "./StandingCounts.yaml"
+  year_level_counts:
+    type: array
+    maxItems: 8
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        year_level:
+          type: integer
+          minimum: 1
+          maximum: 8
+        student_count:
+          type: integer
+          minimum: 0
+      required:
+        - year_level
+        - student_count
+  adviser_caseloads:
+    type: array
+    maxItems: 500
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        adviser_id:
+          type: string
+          format: uuid
+        adviser_name:
+          type: string
+        student_count:
+          type: integer
+          minimum: 0
+        at_risk_count:
+          type: integer
+          minimum: 0
+      required:
+        - adviser_id
+        - adviser_name
+        - student_count
+        - at_risk_count
+  curriculum_summaries:
+    type: array
+    maxItems: 200
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        curriculum_version_id:
+          type: string
+          format: uuid
+        program_code:
+          type: string
+        version_label:
+          type: string
+        status:
+          $ref: "./CurriculumVersionStatus.yaml"
+        student_count:
+          type: integer
+          minimum: 0
+        average_gwa:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 5
+        at_risk_count:
+          type: integer
+          minimum: 0
+      required:
+        - curriculum_version_id
+        - program_code
+        - version_label
+        - status
+        - student_count
+        - average_gwa
+        - at_risk_count
+  batch_curriculum_gwa:
+    type: array
+    maxItems: 500
+    items:
+      $ref: "./BatchCurriculumGwaRow.yaml"
+  grade_distribution:
+    $ref: "./GradeDistributionBreakdown.yaml"
+  bottleneck_courses:
+    type: array
+    maxItems: 200
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        course_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        title:
+          type: string
+        fail_or_inc_rate:
+          type: number
+          minimum: 0
+          maximum: 100
+        affected_count:
+          type: integer
+          minimum: 0
+      required:
+        - course_id
+        - code
+        - title
+        - fail_or_inc_rate
+        - affected_count
+  at_risk_roster:
+    type: array
+    maxItems: 500
+    items:
+      $ref: "./DeficiencyStudentSummary.yaml"
+  computed_at:
+    type: string
+    format: date-time
+required:
+  - department_id
+  - total_students
+  - standing_counts
+  - adviser_caseloads
+  - bottleneck_courses
+  - computed_at

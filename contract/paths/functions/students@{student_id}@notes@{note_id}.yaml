@@ -1,0 +1,56 @@
+patch:
+  tags:
+    - Advising & Exceptions
+  summary: Archive or restore an advising note
+  operationId: updateAdvisingNoteArchiveState
+  description: >-
+    Current adviser or admin toggles the archive state (is_archived) of an advising note
+    without deleting its text or audit trail. Archived notes remain visible to the student they concern.
+  x-required-roles:
+    - adviser
+    - admin
+  x-access-scope: current-adviser-or-admin
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AdvisingNote.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: note_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/NoteArchiveUpdateRequest.yaml"

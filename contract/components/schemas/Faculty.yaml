@@ -1,0 +1,37 @@
+type: object
+required:
+  - id
+  - name
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  code:
+    type:
+      - string
+      - "null"
+    maxLength: 50
+    example: FECS
+  name:
+    type: string
+    example: Faculty of Engineering & Computer Studies
+  letterhead_prefix:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    example: Office of the Dean
+  letterhead_name:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+    example: Faculty of Engineering and Computer Studies
+  dean_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Derived active Dean display name for organization management tables.

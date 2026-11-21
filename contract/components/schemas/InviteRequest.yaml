@@ -1,0 +1,16 @@
+oneOf:
+  - $ref: "./StudentInviteRequest.yaml"
+  - $ref: "./AdviserInviteRequest.yaml"
+  - $ref: "./AdminInviteRequest.yaml"
+  - $ref: "./StaffRoleInviteRequest.yaml"
+description: >-
+  Admin or Department Staff/Head provisions identity and role-specific academic assignments
+  atomically before invitation completion. Students require matching program/curriculum and an
+  required eligible active adviser; advisers and staff roles require
+  organizational scope. When any requested role is student, use StudentInviteRequest with the
+  required student details and adviser; other invite variants cannot add a student role.
+  Department Head and Department Staff may provision Students, Advisers,
+  Department Staff, and Department Heads within their own department (`admin` and `dean`
+  grants remain Admin-only). Unified provisioning creates the pre-registered `Profile`
+  (`status: invited`) and `RoleAssignment` rows (allowing immediate Google OAuth sign-in on
+  that `@vsu.edu.ph` email) and dispatches an expiring password-setup invitation link.
