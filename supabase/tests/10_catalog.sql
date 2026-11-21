@@ -26,10 +26,12 @@ begin
   perform test.call('updateCurriculumTerm',jsonb_build_object('id',t->>'id'),'{"year_level":2}');
   perform test.assert((select total_units=4 from public.curriculum_version where id=(v->>'id')::uuid),'computed units');
   perform test.call('updateCurriculumVersion',jsonb_build_object('id',v->>'id'),'{"status":"active"}');
+  insert into public.role_assignment(profile_id,role,department_id) values(auth.uid(),'department_head',(d->>'id')::uuid);
   clone:=test.call('createCurriculumVersion','{}',jsonb_build_object('program_id',p->>'id','version_label','clone','effective_start','2026-01-01','clone_from_version_id',v->>'id'));
   perform test.assert((clone->>'total_units')::numeric=4,'cloned units');
   empty_version:=test.call('createCurriculumVersion','{}',jsonb_build_object('program_id',p->>'id','clone_from_version_id',v->>'id','curriculum',jsonb_build_object('version_label','nested clone','effective_start','2026-01-01','delinquency_threshold',12,'total_units',4,'terms','[]'::jsonb)));
   perform test.assert((empty_version->>'total_units')::numeric=4,'nested-definition clone units');
+  delete from public.role_assignment where profile_id=auth.uid() and role='department_head';
   perform test.call('deleteCurriculumVersion',jsonb_build_object('id',empty_version->>'id'));
   rule:=test.call('createCurriculumPairEquivalence','{}',jsonb_build_object('from_curriculum_version_id',v->>'id','to_curriculum_version_id',clone->>'id','source_course_id',c->>'id','target_course_id',c->>'id'));
   perform test.call('deleteCurriculumPairEquivalence',jsonb_build_object('id',rule->>'id'));

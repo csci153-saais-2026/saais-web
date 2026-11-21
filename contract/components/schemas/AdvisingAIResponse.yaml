@@ -1,0 +1,24 @@
+type: object
+additionalProperties: false
+properties:
+  answer:
+    type: string
+    minLength: 1
+    maxLength: 8000
+    pattern: \S
+  verification_notice:
+    type: string
+    minLength: 1
+    maxLength: 500
+    pattern: \S
+  grounded_at:
+    type: string
+    format: date-time
+  mutates_records:
+    type: boolean
+    const: false
+required:
+  - answer
+  - verification_notice
+  - grounded_at
+  - mutates_records

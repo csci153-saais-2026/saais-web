@@ -1,0 +1,54 @@
+get:
+  tags:
+    - Reports & Analytics
+  summary: Read department cohort analytics and at-risk roster
+  operationId: getDepartmentReport
+  description: >-
+    Retrieve department-level cohort analytics (total students, encoding progress, standing
+    distribution, year-level breakdown, course failure rates, and at-risk roster) filtered by
+    school_term_id and program_id (FR-RPT-01).
+  x-required-roles:
+    - department_head
+    - admin
+  x-access-scope:
+    department_head: department-scoped-read-only
+    admin: institution-wide
+  x-atomic: false
+  x-request-validation: >-
+    Verify JWT and department scope at runtime.
+  responses:
+    "200":
+      description: Department cohort analytics report.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/DepartmentReport.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: department_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+    - name: program_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+    - name: school_term_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid

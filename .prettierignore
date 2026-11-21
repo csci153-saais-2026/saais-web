@@ -1,0 +1,11 @@
+# Generated, exported, and archival artifacts are not source-formatting targets.
+node_modules/
+dist/
+coverage/
+output/
+docs/
+mockup/
+*.md
+contract/generated/
+contract/postman/
+contract/openapi.yaml

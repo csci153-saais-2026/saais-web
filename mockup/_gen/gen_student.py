@@ -4,7 +4,7 @@ import base
 base.SUBDIR = "Student"
 from base import *
 
-USER = ("Maria Isabel Bautista", "Student · 2023-04412")
+USER = ("Maria Isabel Bautista", "Student · 23-1-04412")
 INI = "MB"
 
 
@@ -328,7 +328,7 @@ PROFILE = shell("student", "My profile", ["Student portal", "My profile"], USER,
                         f'<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); '
                         f'gap: 18px; padding: 20px">'
                         f'{field("Full name", "Bautista, Maria Isabel L.", disabled=True)}'
-                        f'{field("Student number", "2023-04412", disabled=True)}'
+                        f'{field("Student number", "23-1-04412", disabled=True)}'
                         f'{field("Institutional email", "maria.bautista@[university].edu.ph", disabled=True)}'
                         f'{field("Mobile number", "+63 9XX XXX XXXX")}'
                         f'{field("Present address", "[Street], [City], [Province]")}'
@@ -359,7 +359,7 @@ PROFILE = shell("student", "My profile", ["Student portal", "My profile"], USER,
                        f'text-align: center; padding: 6px 0 2px">'
                        f'{avatar("MB", 76, FOREST, CREAM, 26)}'
                        f'<div class="dsp" style="font-size: 21px; margin-top: 14px">Maria Isabel Bautista</div>'
-                       f'<div style="font-size: 13px; color: {MUTED}; margin-top: 2px">2023-04412 · BS Computer Science</div>'
+                       f'<div style="font-size: 13px; color: {MUTED}; margin-top: 2px">23-1-04412 · BS Computer Science</div>'
                        f'<div style="margin-top: 12px">{badge("Good standing", PASS_FG, PASS_BG)}</div></div>')
                 + adviser_card()
                 + card(f'<div class="kick" style="color: {MUTED_2}">Privacy</div>'

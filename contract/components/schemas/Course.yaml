@@ -1,0 +1,35 @@
+type: object
+required:
+  - id
+  - department_id
+  - code
+  - title
+  - units
+  - status
+  - repeatable_type
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  department_id:
+    type: string
+    format: uuid
+  code:
+    type: string
+    example: CS 101
+  title:
+    type: string
+    example: Introduction to Computer Science
+  category:
+    $ref: "./CourseCategory.yaml"
+  units:
+    type: number
+    example: 3
+  is_elective:
+    type: boolean
+    example: false
+  status:
+    $ref: "./CourseStatus.yaml"
+  repeatable_type:
+    $ref: "./RepeatableType.yaml"

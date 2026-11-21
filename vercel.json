@@ -1,8 +1,13 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/docs.js": {
+      "includeFiles": "{contract/openapi.yaml,docs/api-documentation.md}"
+    }
+  }
 }

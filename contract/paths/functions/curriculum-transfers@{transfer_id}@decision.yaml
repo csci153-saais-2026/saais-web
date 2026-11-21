@@ -1,0 +1,59 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Approve or reject a curriculum transfer request
+  operationId: decideCurriculumTransfer
+  description: >-
+    Department Head or Admin approves or rejects a pending CurriculumTransferRequest. When
+    approved, atomically closes the prior StudentCurriculumAssignment, opens the new one,
+    applies matching CurriculumPairEquivalence rules, notifies the adviser and student, and
+    commits the audit log entry. Approval does not itself change the student's adviser assignment;
+    after a cross-department transfer, the existing adviser remains current for that student,
+    including current-adviser access limited to the assignment, until the destination department's
+    Head or Staff separately reassigns the student to an eligible active adviser there. This does
+    not grant broader access to the destination department. Reassignment preserves zero-gap
+    continuity. Rejection never changes assignments.
+  x-required-roles:
+    - department_head
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/CurriculumTransferRequest.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: transfer_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/CurriculumTransferDecisionRequest.yaml"

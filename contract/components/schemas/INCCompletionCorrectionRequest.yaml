@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+properties:
+  completion_grade:
+    type: number
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  reason:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+  expected_updated_at:
+    type: string
+    format: date-time
+required:
+  - completion_grade
+  - reason
+  - expected_updated_at

@@ -1,6 +1,14 @@
 # Jerome implementation and contribution report
 
-Date: 12 November 2026 (Asia/Manila). Branch: `feat/jerome-edge-functions`. Initial checkout: `03ce7ac1764334deeee564601de8a68e6a4bdf00`, clean and matching `feat/backend`. No branch switch, push, PR creation, reset, stash, amend or history rewrite was performed.
+Original implementation date: 12 November 2026 (Asia/Manila). Branch: `feat/jerome-edge-functions`. Initial checkout: `03ce7ac1764334deeee564601de8a68e6a4bdf00`, clean and matching `feat/backend`. No branch switch, push, PR creation, reset, stash, amend or history rewrite was performed.
+
+## November 21 review update
+
+The branch includes backend parent `bdb54fc` and the approved OpenAPI 0.3.1 contract from PR #111 at `8df5511`. Its canonical bundled SHA-256 is `4be525583cfa343782e00e3c1daee087da92a213734e7ba75ff00006f5418d6f`. The runtime generator verifies both the version and hash. The original implementation notes below record the November 12 baseline.
+
+Curriculum cloning now requires a Head or Staff assignment for the department shared by both source and target programs. Admin-only accounts retain blank-version creation. The additive migrations update existing databases and fresh installs. Tests cover Head/Staff success, source/target scope failures, eligible and ineligible multi-role accounts, correct audit attribution, and zero rows written by denied requests.
+
+Verification passed on Node 24 and Deno 2.6.9, including TypeScript, ESLint, production build, 141 frontend/mock tests, seven backend HTTP/contract tests, 18 contract security checks, migration and SQL tests on disposable PostgreSQL 17.11, and the existing concurrent-write test. Hosted Supabase Auth/PostgREST/gateway behavior, the remaining Data API read policies, cron installation, and email delivery remain separate integration work. The clone test uses a test Auth schema.
 
 ## Outcome and verification boundary
 

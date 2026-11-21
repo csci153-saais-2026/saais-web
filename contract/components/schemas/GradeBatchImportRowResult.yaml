@@ -1,0 +1,26 @@
+type: object
+additionalProperties: false
+properties:
+  row_number:
+    type: integer
+    minimum: 1
+  student_number:
+    type: string
+  course_code:
+    type: string
+  outcome:
+    type: string
+    enum:
+      - valid
+      - warning
+      - error
+      - imported
+  message:
+    type:
+      - string
+      - "null"
+required:
+  - row_number
+  - student_number
+  - course_code
+  - outcome

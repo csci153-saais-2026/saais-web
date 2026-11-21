@@ -155,8 +155,12 @@ function ButtonSection() {
         <div>
           <Caption>Variants</Caption>
           <div className="flex flex-wrap items-center gap-3">
-            <Button><PlusIcon /> Record attempt</Button>
-            <Button variant="outline"><DownloadIcon /> Export PDF</Button>
+            <Button>
+              <PlusIcon /> Record attempt
+            </Button>
+            <Button variant="outline">
+              <DownloadIcon /> Export PDF
+            </Button>
             <Button variant="secondary">Secondary</Button>
             <Button variant="ghost">Cancel</Button>
             <Button variant="destructive">Delete</Button>
@@ -505,7 +509,9 @@ function TableSection() {
                   </span>
                 </TableCell>
                 <TableCell label="Program">{a.program}</TableCell>
-                <TableCell label="GWA" className="font-mono">{a.gwa}</TableCell>
+                <TableCell label="GWA" className="font-mono">
+                  {a.gwa}
+                </TableCell>
                 <TableCell label="Standing">
                   <StatusBadge status={a.standing} />
                 </TableCell>

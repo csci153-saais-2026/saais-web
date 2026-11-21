@@ -1,0 +1,99 @@
+# SAAIS Contract Mocks — Prism & MSW (`src/mocks`)
+
+## Shared mock ownership
+
+The contract/mock owners maintain the shared synthetic data, personas, and MSW handlers in this directory. Feature screens should consume the shared contract endpoints rather than add separate academic-record datasets. When a screen needs a new scenario, coordinate the fixture or handler change with those owners so roles and pages use consistent records. Component tests may use small local test-only inputs; these are not a second application dataset.
+
+Contract-faithful mock infrastructure generated from [`contract/openapi.yaml`](../../contract/openapi.yaml) so frontend development and automated tests can run against all **119 OpenAPI operations** and **6 roles** using 100% synthetic VSU data.
+
+---
+
+## 1. Two Ways to Run Mock Mode
+
+### Option A: In-App / Vitest MSW Interception (Default `VITE_API_MODE=mock`)
+
+When `VITE_API_MODE=mock` (or when no Supabase environment variables are set) and `VITE_API_BASE_URL` is left blank:
+
+- **Browser (`npm run dev`)**: [`src/main.tsx`](../main.tsx) starts the MSW Service Worker ([`src/mocks/browser.ts`](./browser.ts) + [`public/mockServiceWorker.js`](../../public/mockServiceWorker.js)).
+- **Vitest (`npm test`)**: Node tests use [`saaisMockServer`](./node.ts) (`setupServer(...saaisMswHandlers)`).
+
+### Option B: Standalone Stoplight Prism Mock Server (`http://127.0.0.1:4010`)
+
+To run a standalone OpenAPI 3.1 HTTP mock server directly from [`contract/openapi.yaml`](../../contract/openapi.yaml):
+
+```bash
+npm run contract:prism
+# or:
+npm run mock:prism
+```
+
+This starts Prism on `http://127.0.0.1:4010` with CORS enabled. Point the Vite app or Postman/Bruno at Prism by setting:
+
+```env
+VITE_API_MODE=mock
+VITE_API_BASE_URL=http://127.0.0.1:4010
+```
+
+---
+
+## 2. Synthetic Role Personas & Switching Roles
+
+Zero real student or faculty PII is stored in this repository. Use [`loginAsMockPersona`](./personas.ts) and [`logoutMockPersona`](./personas.ts) to switch the active session token in `VITE_API_MODE=mock`:
+
+```ts
+import {
+  loginAsMockPersona,
+  logoutMockPersona,
+  MOCK_PERSONAS,
+  resetMockDatabase,
+} from "@/mocks";
+
+// Switch active persona (updates setMockSessionToken automatically):
+loginAsMockPersona("student"); // Sta. Agata, Jerome Daniel S. (24-1-01798@vsu.edu.ph, BSCS DCST)
+loginAsMockPersona("student_secondary"); // Concoles, Cyril Jade M. (23-1-02121@vsu.edu.ph, BSCS DCST)
+loginAsMockPersona("student_other_dept"); // Flores, Raniel John B. (24-1-01926@vsu.edu.ph, DABE)
+loginAsMockPersona("adviser"); // Polo, Marco Antonio P. (23-1-02224@vsu.edu.ph, DCST Adviser)
+loginAsMockPersona("adviser_secondary"); // Coting, Eulo Rod M. (22-1-00856@vsu.edu.ph, DCST Adviser)
+loginAsMockPersona("department_head"); // Bucol, Matthew Gerald A. (23-1-02044@vsu.edu.ph, DCST Head + Adviser)
+loginAsMockPersona("department_staff"); // Dumilon, John Earl Patrick G. (23-1-01072@vsu.edu.ph, DCST Staff)
+loginAsMockPersona("dean"); // Montera, Mhac Alester (23-1-02106@vsu.edu.ph, Dean + Adviser)
+loginAsMockPersona("dean_dept_head"); // Tan, Ron Nicolas (23-1-00972@vsu.edu.ph, Dean + DCST Head + Adviser)
+loginAsMockPersona("admin"); // Lelis, Nietzchan Jake (23-1-01457@vsu.edu.ph, System Admin + Adviser)
+
+// Sign out:
+logoutMockPersona();
+```
+
+### Additional sample students
+
+`student_sample_1` through `student_sample_29` are fictional active student accounts with distinct names. The stable persona keys, UUIDs, and `sample.studentNN@vsu.edu.ph` development-only email addresses are kept for compatibility with existing integrations. Samples 1–24 alternate between the two primary advisers; samples 25–28 are assigned to the Department Head, Dean, Dean/Department Head, and System Administrator personas in their Adviser capacity. Sample 29 is assigned to the primary Adviser and uses the separate 52-slot reference curriculum modeled on the routed student checklist, including linked prior grades, an INC and current enrollments. Each sample has an initial adviser, curriculum assignment, course attempts, a plan, a note, and an account notification. Grades include currently enrolled, passed, failed, and INC scenarios. Some notes are archived and remain visible to the student. Use `loginAsMockPersona("student_sample_1")` to select one in mock mode.
+
+Sample 10 is a transferee with student number `26-2-10010`: the middle digit records the year level on entry and does not change with the student’s current standing. Other new samples use entry year level 1. A separate Engineering adviser and student illustrate department and faculty scope. The staff personas also have recipient-owned notifications. Sample names and email addresses are synthetic; never treat them as real contacts.
+
+
+### Persona Tokens Reference
+
+| Persona Key          | Name                          | VSU Email               | Roles                                | Scope                           | Bearer Token                                                       |
+| -------------------- | ----------------------------- | ----------------------- | ------------------------------------ | ------------------------------- | ------------------------------------------------------------------ |
+| `student`            | Sta. Agata, Jerome Daniel S.  | `24-1-01798@vsu.edu.ph` | `student`                            | Own record (`DCST`)             | `mock-jwt:student:00000000-0000-4000-8000-000000000101`            |
+| `student_secondary`  | Concoles, Cyril Jade M.       | `23-1-02121@vsu.edu.ph` | `student`                            | Own record (`DCST`, invited)    | `mock-jwt:student_secondary:00000000-0000-4000-8000-000000000102`  |
+| `student_other_dept` | Flores, Raniel John B.        | `24-1-01926@vsu.edu.ph` | `student`                            | Own record (`DABE`)             | `mock-jwt:student_other_dept:00000000-0000-4000-8000-000000000103` |
+| `adviser`            | Polo, Marco Antonio P.        | `23-1-02224@vsu.edu.ph` | `adviser`                            | `DCST` (`Faculty of Computing`) | `mock-jwt:adviser:00000000-0000-4000-8000-000000000201`            |
+| `adviser_secondary`  | Coting, Eulo Rod M.           | `22-1-00856@vsu.edu.ph` | `adviser`                            | `DCST` (`Faculty of Computing`) | `mock-jwt:adviser_secondary:00000000-0000-4000-8000-000000000202`  |
+| `department_head`    | Bucol, Matthew Gerald A.      | `23-1-02044@vsu.edu.ph` | `department_head`, `adviser`         | `DCST`                          | `mock-jwt:department_head:00000000-0000-4000-8000-000000000301`    |
+| `department_staff`   | Dumilon, John Earl Patrick G. | `23-1-01072@vsu.edu.ph` | `department_staff`                   | `DCST`                          | `mock-jwt:department_staff:00000000-0000-4000-8000-000000000401`   |
+| `dean`               | Montera, Mhac Alester         | `23-1-02106@vsu.edu.ph` | `dean`, `adviser`                    | `Faculty of Computing` + `DCST` | `mock-jwt:dean:00000000-0000-4000-8000-000000000501`               |
+| `dean_dept_head`     | Tan, Ron Nicolas              | `23-1-00972@vsu.edu.ph` | `dean`, `department_head`, `adviser` | `Faculty of Computing` + `DCST` | `mock-jwt:dean_dept_head:00000000-0000-4000-8000-000000000502`     |
+| `admin`              | Lelis, Nietzchan Jake         | `23-1-01457@vsu.edu.ph` | `admin`, `adviser`                   | Institution-wide + `DCST`       | `mock-jwt:admin:00000000-0000-4000-8000-000000000601`              |
+
+---
+
+## 3. Resetting Stateful Mock Data
+
+Mutations (`POST`, `PUT`, `PATCH`, `DELETE`) update the in-memory synthetic store ([`src/mocks/store.ts`](./store.ts)). To reset all collections back to the deterministic seed state between tests or demo flows:
+
+```ts
+import { resetMockDatabase } from "@/mocks";
+
+resetMockDatabase();
+```

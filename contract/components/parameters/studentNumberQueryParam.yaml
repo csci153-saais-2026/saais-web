@@ -1,0 +1,8 @@
+name: student_number
+in: query
+description: Filter by student number (e.g. `eq.23-1-04412`)
+required: false
+schema:
+  type: string
+  maxLength: 70
+  pattern: ^eq\.[^\x00-\x1f]{1,64}$

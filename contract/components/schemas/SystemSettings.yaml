@@ -1,0 +1,70 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  warning_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  probation_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  dismissal_pct:
+    type: number
+    minimum: 0
+    maximum: 100
+  sender_email:
+    type: string
+    format: email
+    maxLength: 254
+  last_backup_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  last_backup_by:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+  last_backup_reference:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+  last_backup_location:
+    type:
+      - string
+      - "null"
+    maxLength: 500
+  last_backup_scope:
+    type:
+      - string
+      - "null"
+    enum:
+      - department_records
+      - department_records_and_audit_log
+      - institution_wide
+      - null
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - warning_pct
+  - probation_pct
+  - dismissal_pct
+  - sender_email
+  - updated_at

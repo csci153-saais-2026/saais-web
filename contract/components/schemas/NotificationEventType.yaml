@@ -1,0 +1,34 @@
+type: string
+enum:
+  - advising_note_added
+  - advising_plan_saved
+  - midterm_grades_posted
+  - final_grades_posted
+  - grade_corrected
+  - prerequisite_grade_corrected
+  - inc_completed
+  - grade_flag_submitted
+  - grade_flag_resolved
+  - grade_import_committed
+  - student_import_committed
+  - adviser_assigned
+  - adviser_reassigned_away
+  - bulk_adviser_reassigned
+  - curriculum_reassigned
+  - curriculum_transfer_endorsed
+  - curriculum_transfer_decided
+  - credit_decision_recorded
+  - credit_decision_revoked
+  - invitation_accepted
+  - term_encoding_closed
+  - term_override_toggled
+  - catalog_updated
+  - report_snapshot_ready
+  - inc_deadline_approaching
+  - inc_lapsed
+  - standing_threshold_alert
+  - encoding_deadline_approaching
+  - unassigned_students_pending
+  - invitation_expiring_soon
+  - backup_overdue_reminder
+description: Canonical domain event or scheduled rule that produced the notification

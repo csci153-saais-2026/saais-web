@@ -1,0 +1,49 @@
+type: object
+required:
+  - id
+  - attempt_id
+  - destination_curriculum_term_course_id
+  - decision_type
+  - decided_by
+  - decided_at
+  - units_credited
+  - student_id
+  - updated_at
+  - revoked_at
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  attempt_id:
+    type: string
+    format: uuid
+  destination_curriculum_term_course_id:
+    type: string
+    format: uuid
+  decision_type:
+    $ref: "./DecisionType.yaml"
+  decided_by:
+    type: string
+    format: uuid
+    readOnly: true
+  decided_at:
+    type: string
+    format: date-time
+    readOnly: true
+  units_credited:
+    type: number
+    example: 3
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+  revoked_at:
+    type:
+      - string
+      - "null"
+    format: date-time

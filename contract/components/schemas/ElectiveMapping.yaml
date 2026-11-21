@@ -1,0 +1,46 @@
+type: object
+required:
+  - id
+  - attempt_id
+  - curriculum_term_course_id
+  - mapped_by
+  - units_credited
+  - created_at
+  - updated_at
+  - student_id
+  - revoked_at
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  attempt_id:
+    type: string
+    format: uuid
+  curriculum_term_course_id:
+    type: string
+    format: uuid
+  mapped_by:
+    type: string
+    format: uuid
+    readOnly: true
+  units_credited:
+    type: number
+    example: 3
+    readOnly: true
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  revoked_at:
+    type:
+      - string
+      - "null"
+    format: date-time

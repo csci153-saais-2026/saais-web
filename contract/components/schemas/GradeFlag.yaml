@@ -1,0 +1,99 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  attempt_id:
+    type: string
+    format: uuid
+  reported_stage:
+    type:
+      - string
+      - "null"
+    enum:
+      - midterm
+      - final
+      - null
+  reported_grade_text:
+    type:
+      - string
+      - "null"
+    maxLength: 64
+  issue_type:
+    type: string
+    enum:
+      - wrong_grade
+      - incorrect_grade
+      - missing_grade
+      - wrong_course_credited
+      - wrong_status
+      - missing_completion
+      - other
+  details:
+    type: string
+    minLength: 1
+    maxLength: 2000
+  status:
+    type: string
+    enum:
+      - open
+      - corrected
+      - rejected
+  resolution_action:
+    type:
+      - string
+      - "null"
+    enum:
+      - correct
+      - reject
+      - null
+  corrected_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  corrected_status:
+    anyOf:
+      - $ref: "./AttemptStatus.yaml"
+      - type: "null"
+  resolution_note:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+  resolved_by:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+  resolved_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - student_id
+  - attempt_id
+  - issue_type
+  - details
+  - status
+  - created_at
+  - updated_at

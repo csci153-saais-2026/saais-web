@@ -1,13 +1,13 @@
-import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 export type GradeBand = {
-  label: string
-  percent: number
+  label: string;
+  percent: number;
   /** Optional trailing detail, e.g. "285 grades". */
-  detail?: string
-  tone?: "primary" | "soft" | "fail" | "inc" | "neutral"
-}
+  detail?: string;
+  tone?: "primary" | "soft" | "fail" | "inc" | "neutral";
+};
 
 const tones: Record<NonNullable<GradeBand["tone"]>, string> = {
   primary: "[&_[data-slot=progress-indicator]]:bg-primary",
@@ -15,7 +15,7 @@ const tones: Record<NonNullable<GradeBand["tone"]>, string> = {
   fail: "[&_[data-slot=progress-indicator]]:bg-status-fail",
   inc: "[&_[data-slot=progress-indicator]]:bg-status-inc",
   neutral: "[&_[data-slot=progress-indicator]]:bg-muted-2",
-}
+};
 
 /** Horizontal bar rows showing share of grades per band. */
 function GradeDistribution({ bands }: { bands: GradeBand[] }) {
@@ -27,14 +27,20 @@ function GradeDistribution({ bands }: { bands: GradeBand[] }) {
             <span>{b.label}</span>
             <span>
               <b className="font-semibold">{b.percent}%</b>
-              {b.detail && <span className="text-muted-foreground"> · {b.detail}</span>}
+              {b.detail && (
+                <span className="text-muted-foreground"> · {b.detail}</span>
+              )}
             </span>
           </div>
-          <Progress value={b.percent} aria-label={b.label} className={cn("h-1.5", tones[b.tone ?? "primary"])} />
+          <Progress
+            value={b.percent}
+            aria-label={b.label}
+            className={cn("h-1.5", tones[b.tone ?? "primary"])}
+          />
         </li>
       ))}
     </ul>
-  )
+  );
 }
 
-export { GradeDistribution }
+export { GradeDistribution };

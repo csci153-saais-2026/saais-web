@@ -1,0 +1,10 @@
+name: offset
+in: query
+description: Number of rows to skip for DoS pagination mitigation
+required: false
+schema:
+  type: integer
+  minimum: 0
+  default: 0
+  example: 0
+  maximum: 100000

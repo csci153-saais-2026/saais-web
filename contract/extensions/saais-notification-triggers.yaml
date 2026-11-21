@@ -1,0 +1,127 @@
+delivery: >-
+  Transactional Edge Functions insert Notification rows atomically with domain mutations and
+  queue email delivery when applicable; scheduled/deadline rules are evaluated daily via pg_cron
+  in production and on-demand via POST /functions/v1/notifications/evaluate-alerts (with
+  deterministic dedupe_key idempotency and optional reference_date for MSW mock testing).
+event_driven:
+  - event_type: advising_note_added
+    kind: note
+    source_operations: [addAdvisingNote]
+    recipients: [student]
+  - event_type: advising_plan_saved
+    kind: note
+    source_operations: [saveAdvisingPlan]
+    recipients: [student]
+  - event_type: midterm_grades_posted
+    kind: grade
+    source_operations: [recordGrades, encodeTermGrades, importGradesBatch]
+    recipients: [student]
+  - event_type: final_grades_posted
+    kind: grade
+    source_operations: [recordGrades, encodeTermGrades, importGradesBatch]
+    recipients: [student]
+  - event_type: grade_corrected
+    kind: grade
+    source_operations: [correctGrades]
+    recipients: [student, department_head]
+  - event_type: prerequisite_grade_corrected
+    kind: grade
+    source_operations: [correctPrerequisiteGrade]
+    recipients: [student, department_head]
+  - event_type: inc_completed
+    kind: grade
+    source_operations: [completeINC, correctINCCompletion]
+    recipients: [student]
+  - event_type: grade_flag_submitted
+    kind: flag
+    source_operations: [createGradeFlag]
+    recipients: [adviser, department_head]
+  - event_type: grade_flag_resolved
+    kind: flag
+    source_operations: [resolveGradeFlag]
+    recipients: [student, adviser]
+  - event_type: grade_import_committed
+    kind: import
+    source_operations: [importGradesBatch]
+    recipients: [adviser, department_head, department_staff]
+  - event_type: student_import_committed
+    kind: import
+    source_operations: [importStudentsBatch]
+    recipients: [adviser, department_head, admin]
+  - event_type: adviser_assigned
+    kind: person
+    source_operations: [inviteUser, reassignAdviser, bulkReassignAdvisers]
+    recipients: [student, adviser]
+  - event_type: adviser_reassigned_away
+    kind: person
+    source_operations: [reassignAdviser, bulkReassignAdvisers]
+    recipients: [adviser]
+  - event_type: curriculum_reassigned
+    kind: transfer
+    source_operations: [assignStudentCurriculum]
+    recipients: [student, adviser]
+  - event_type: curriculum_transfer_endorsed
+    kind: transfer
+    source_operations: [endorseCurriculumTransfer]
+    recipients: [department_head, student]
+  - event_type: curriculum_transfer_decided
+    kind: transfer
+    source_operations: [decideCurriculumTransfer]
+    recipients: [adviser, student]
+  - event_type: credit_decision_recorded
+    kind: grade
+    source_operations:
+      [createElectiveMapping, createEquivalencyDecision, createOutsideCredit]
+    recipients: [student]
+  - event_type: credit_decision_revoked
+    kind: alert
+    source_operations:
+      [revokeElectiveMapping, revokeEquivalencyDecision, revokeOutsideCredit]
+    recipients: [student, adviser]
+  - event_type: invitation_accepted
+    kind: person
+    source_operations: [verifyInviteToken]
+    recipients: [admin, department_head, department_staff]
+  - event_type: term_encoding_closed
+    kind: alert
+    source_operations: [closeSchoolTermEncoding]
+    recipients: [adviser, department_staff, department_head, dean]
+  - event_type: term_override_toggled
+    kind: alert
+    source_operations: [setSchoolTermOverride]
+    recipients: [adviser, department_head, admin]
+  - event_type: catalog_updated
+    kind: report
+    source_operations:
+      [
+        createCourse,
+        updateCourse,
+        createCurriculumVersion,
+        updateCurriculumVersion,
+      ]
+    recipients: [department_head, dean]
+scheduled_and_threshold:
+  - event_type: inc_deadline_approaching
+    kind: alert
+    windows_days: [30, 14, 7]
+    recipients: [student, adviser]
+  - event_type: inc_lapsed
+    kind: alert
+    recipients: [student, adviser, department_head]
+  - event_type: standing_threshold_alert
+    kind: alert
+    recipients: [student, adviser, department_head, dean]
+  - event_type: encoding_deadline_approaching
+    kind: alert
+    windows_days: [7, 3, 1]
+    recipients: [adviser, department_staff, department_head]
+  - event_type: unassigned_students_pending
+    kind: alert
+    recipients: [department_head, department_staff, admin]
+  - event_type: invitation_expiring_soon
+    kind: alert
+    windows_days: [3, 1]
+    recipients: [admin, department_head, department_staff]
+  - event_type: backup_overdue_reminder
+    kind: alert
+    recipients: [department_head, admin]

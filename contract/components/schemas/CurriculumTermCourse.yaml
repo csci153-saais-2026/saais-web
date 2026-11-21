@@ -1,0 +1,32 @@
+type: object
+required:
+  - id
+  - curriculum_term_id
+  - is_elective_slot
+  - nominal_units
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  curriculum_term_id:
+    type: string
+    format: uuid
+  course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  is_elective_slot:
+    type: boolean
+    example: false
+  slot_type:
+    $ref: "./CurriculumSlotType.yaml"
+  slot_label:
+    type:
+      - string
+      - "null"
+    example: null
+  nominal_units:
+    type: number
+    example: 3

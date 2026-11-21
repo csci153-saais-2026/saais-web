@@ -1,0 +1,5 @@
+type: string
+enum:
+  - transfer_equivalency
+  - discontinued_course_equivalency
+description: Course equivalency substitution category

@@ -1,0 +1,8 @@
+type: object
+additionalProperties: false
+properties:
+  curriculum_version_id:
+    type: string
+    format: uuid
+required:
+  - curriculum_version_id
