@@ -62,10 +62,49 @@ describe('AuthenticatedPortalLayout integration', () => {
     expect(screen.getByText('Ada Example')).toBeTruthy()
     expect(screen.getByText('ada@example.edu.ph')).toBeTruthy()
     expect(screen.getByText('AE')).toBeTruthy()
-    expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getByText('Office of the Dean')).toBeTruthy()
+    const breadcrumb = within(
+      screen.getByRole('navigation', { name: 'breadcrumb' }),
+    )
+    expect(breadcrumb.getByText('Office of the Dean')).toBeTruthy()
+    expect(breadcrumb.getByText('Faculty reports')).toBeTruthy()
     expect(screen.getByText('Report content')).toBeTruthy()
     expect(container.querySelectorAll('[data-slot="sidebar"]')).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Open navigation' })).toHaveLength(1)
+  })
+
+  it('keeps the Admin screen breadcrumb within the updated shared layout', () => {
+    auth.user = {
+      fullName: 'Admin Example',
+      email: 'admin@example.edu.ph',
+      primaryRole: 'admin',
+    }
+    auth.roles = ['admin']
+    auth.roleAssignments = [{ role: 'admin' }]
+    auth.activeRole = 'admin'
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/admin/audit-log']}>
+          <Routes>
+            <Route element={<AuthenticatedPortalLayout />}>
+              <Route
+                path="/admin/audit-log"
+                element={<div>Audit history content</div>}
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    const breadcrumb = within(
+      screen.getByRole('navigation', { name: 'breadcrumb' }),
+    )
+    expect(breadcrumb.getByText('Audit log')).toBeTruthy()
+    expect(screen.getByText('Audit history content')).toBeTruthy()
   })
 
   it('forwards sign-out and redirects after it completes', async () => {

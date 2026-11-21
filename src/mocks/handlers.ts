@@ -124,6 +124,50 @@ function studentMetrics(studentId: string, departmentId: string) {
 const departmentInviteRoles = new Set(['student', 'adviser', 'department_staff', 'department_head'])
 const resendableInvitationStates = new Set(['pending', 'expired', 'revoked', 'declined'])
 
+const roleTypes = new Set([
+  'student',
+  'adviser',
+  'department_head',
+  'department_staff',
+  'dean',
+  'admin',
+])
+
+function isRoleAssignmentInput(
+  value: unknown,
+): value is ApiSchema<'RoleAssignmentInput'> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const assignment = value as Record<string, unknown>
+  if (
+    Object.keys(assignment).some(
+      (key) => !['role', 'faculty_id', 'department_id'].includes(key),
+    ) ||
+    typeof assignment.role !== 'string' ||
+    !roleTypes.has(assignment.role)
+  ) {
+    return false
+  }
+  const validId = (id: unknown) =>
+    id === undefined ||
+    id === null ||
+    (typeof id === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      ))
+  return validId(assignment.faculty_id) && validId(assignment.department_id)
+}
+
+function isRoleAssignmentList(
+  value: unknown,
+): value is ApiSchema<'RoleAssignmentInput'>[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= 6 &&
+    value.every(isRoleAssignmentInput)
+  )
+}
+
 function canManageDepartmentInvite(persona: MockPersona, profile: ApiSchema<'Profile'>): boolean {
   if (persona.roles.includes('admin')) return true
   const roles = profile.roles?.length ? profile.roles : [profile.role]
@@ -323,6 +367,23 @@ function matchesPostgrestOperator(
   return true
 }
 
+function matchesPostgrestDisjunction<T extends object>(
+  row: T,
+  filterExpr: string,
+): boolean {
+  if (!filterExpr.startsWith('(') || !filterExpr.endsWith(')')) return false
+  const clauses = filterExpr.slice(1, -1).split(',')
+  if (clauses.length === 0 || clauses.length > 10) return false
+
+  const record = row as Record<string, unknown>
+  return clauses.some((clause) => {
+    const match = /^([a-z_]+)\.(ilike|like)\.(.*)$/.exec(clause)
+    if (!match) return false
+    const [, field, operator, pattern] = match
+    return matchesPostgrestOperator(record[field!], `${operator}.${pattern}`)
+  })
+}
+
 /** Appends a "change" row to the shared audit log, as the real backend does for department-head writes. */
 function recordMockAudit(
   persona: MockPersona,
@@ -366,17 +427,11 @@ function applyPostgrestQuery<T extends object>(
     })
   })
 
-  // Bounded course search shape published by listCourses: search code OR title.
-  const courseSearch = url.searchParams.get('or')
-  if (courseSearch) {
-    const match = /^\(code\.ilike\.(.+),title\.ilike\.(.+)\)$/.exec(courseSearch)
-    if (match?.[1] && match[2]) {
-      filtered = filtered.filter((row) => {
-        const record = row as Record<string, unknown>
-        return matchesPostgrestOperator(record.code, match[1]!) ||
-          matchesPostgrestOperator(record.title, match[2]!)
-      })
-    }
+  const orParam = url.searchParams.get('or')
+  if (orParam) {
+    filtered = filtered.filter((row) =>
+      matchesPostgrestDisjunction(row, orParam),
+    )
   }
 
   const andParam = url.searchParams.get('and')
@@ -481,6 +536,9 @@ export const saaisMswHandlers = [
     if (matchedProfile.status !== 'invited') {
       return errorJson(409, 'INVITE_ALREADY_USED', 'Invitation has already been activated.')
     }
+    if (matchedProfile.invitation_status === 'revoked') {
+      return errorJson(409, 'INVITE_REVOKED', 'Invitation has been revoked.')
+    }
     const dept = db.departments.find((d) => d.id === matchedProfile.department_id)
     const faculty = db.faculties.find((f) => f.id === matchedProfile.faculty_id)
     const response: ApiSchema<'PreviewInviteResponse'> = {
@@ -525,13 +583,20 @@ export const saaisMswHandlers = [
       db.profiles.find((p) => p.id === MOCK_PERSONAS.student_secondary.profileId) ??
       invitedProfiles[0]
 
-    if (matchedProfile) {
-      db.profiles = db.profiles.map((p) =>
-        p.id === matchedProfile.id
-          ? { ...p, status: 'active', invitation_status: 'accepted' }
-          : p,
-      )
+    if (!matchedProfile) {
+      return errorJson(404, 'INVITE_NOT_FOUND', 'Invitation not found.')
     }
+    if (matchedProfile.invitation_status === 'revoked') {
+      return errorJson(409, 'INVITE_REVOKED', 'Invitation has been revoked.')
+    }
+    if (matchedProfile.status !== 'invited') {
+      return errorJson(409, 'INVITE_ALREADY_USED', 'Invitation has already been activated.')
+    }
+    db.profiles = db.profiles.map((p) =>
+      p.id === matchedProfile.id
+        ? { ...p, status: 'active', invitation_status: 'accepted' }
+        : p,
+    )
 
     const response: ApiSchema<'VerifyInviteResponse'> = {
       success: true,
@@ -615,6 +680,17 @@ export const saaisMswHandlers = [
           'Cannot provision accounts outside your assigned department.',
         )
       }
+      if (
+        'department_id' in body &&
+        body.department_id === null &&
+        !persona.departmentId
+      ) {
+        return errorJson(
+          400,
+          'INVALID_INPUT',
+          'A department invitation requires an assigned department.',
+        )
+      }
       const program = body.role === 'student'
         ? getMockDatabase().programs.find(p => p.id === body.program_id)
         : undefined
@@ -652,6 +728,18 @@ export const saaisMswHandlers = [
     }
 
     const newProfileId = nextSyntheticUuid()
+    const assignedFacultyId =
+      'faculty_id' in body
+        ? body.faculty_id ?? null
+        : persona.facultyId ?? MOCK_IDS.facultyComputing
+    const assignedDepartmentId =
+      !persona.roles.includes('admin') &&
+      'department_id' in body &&
+      body.department_id === null
+        ? persona.departmentId ?? null
+        : 'department_id' in body
+        ? body.department_id ?? null
+        : persona.departmentId ?? MOCK_IDS.deptDcst
     db.profiles.push({
       id: newProfileId,
       role: body.role,
@@ -668,11 +756,22 @@ export const saaisMswHandlers = [
       invitation_expires_at: '2026-11-17T08:00:00Z',
       created_at: '2026-11-10T08:00:00Z',
       updated_at: '2026-11-10T08:00:00Z',
-      faculty_id: persona.facultyId ?? MOCK_IDS.facultyComputing,
-      department_id: persona.departmentId ?? MOCK_IDS.deptDcst,
+      faculty_id: assignedFacultyId,
+      department_id: assignedDepartmentId,
       avatar_url: null,
       consultation_hours: null,
     })
+
+    db.roleAssignments.push(
+      ...(body.role_assignments ?? []).map((assignment) => ({
+        id: nextSyntheticUuid(),
+        profile_id: newProfileId,
+        role: assignment.role,
+        faculty_id: assignment.faculty_id ?? null,
+        department_id: assignment.department_id ?? null,
+        created_at: '2026-11-10T08:00:00Z',
+      })),
+    )
 
     if (body.role === 'student') {
       const adviser = db.profiles.find(p => p.id === body.adviser_id)!
@@ -1076,8 +1175,15 @@ export const saaisMswHandlers = [
       'adviser',
     ])
     if ('response' in auth) return auth.response
+    const visibleSettings = auth.persona.roles.includes('admin')
+      ? getMockDatabase().systemSettings.filter(
+          (setting) => setting.department_id === null,
+        )
+      : getMockDatabase().systemSettings.filter(
+          (setting) => setting.department_id === auth.persona.departmentId,
+        )
     return applyPostgrestQuery(
-      getMockDatabase().systemSettings,
+      visibleSettings,
       new URL(request.url),
     )
   }),
@@ -1104,10 +1210,12 @@ export const saaisMswHandlers = [
       'adviser',
     ])
     if ('response' in auth) return auth.response
-    return applyPostgrestQuery(
-      getMockDatabase().auditLogEntries,
-      new URL(request.url),
+    const sortedEntries = [...getMockDatabase().auditLogEntries].sort(
+      (left, right) =>
+        right.created_at.localeCompare(left.created_at) ||
+        right.id.localeCompare(left.id),
     )
+    return applyPostgrestQuery(sortedEntries, new URL(request.url))
   }),
 
   // ===========================================================================
@@ -1166,27 +1274,67 @@ export const saaisMswHandlers = [
           null,
       }),
     )
-    const search = params.get('search')?.trim().toLocaleLowerCase() ?? ''
+    const search = params.get('search')?.trim().toLowerCase() ?? ''
     const requestedRole = params.get('role')
-    const scopedSummaries = summaries.filter(summary => {
-      const inDepartment = !departmentId
-        || summary.profile.department_id === departmentId
-        || summary.role_assignments?.some(assignment => assignment.department_id === departmentId)
-        || summary.student_organization?.department_id === departmentId
-      const inFaculty = !facultyId
-        || summary.profile.faculty_id === facultyId
-        || summary.role_assignments?.some(assignment => assignment.faculty_id === facultyId)
-        || summary.student_organization?.faculty_id === facultyId
-      const hasRole = !requestedRole
-        || summary.role_assignments?.some(assignment => assignment.role === requestedRole)
-        || summary.profile.roles?.includes(requestedRole as ApiSchema<'RoleType'>)
-        || summary.profile.role === requestedRole
-      const matchesSearch = !search
-        || summary.profile.full_name.toLocaleLowerCase().includes(search)
-        || summary.profile.email.toLocaleLowerCase().includes(search)
-      return inDepartment && inFaculty && hasRole && matchesSearch
+    const filtered = summaries.filter((summary) => {
+      const { profile, role_assignments: assignments, student_organization } =
+        summary
+      const roles = new Set([
+        profile.role,
+        ...(profile.roles ?? []),
+        ...assignments.map((assignment) => assignment.role),
+      ])
+      if (
+        requestedRole &&
+        !Array.from(roles).some((assignedRole) => assignedRole === requestedRole)
+      ) {
+        return false
+      }
+
+      if (
+        search &&
+        ![
+          profile.full_name,
+          profile.email,
+          profile.student_number ?? '',
+        ].some((value) => value.toLowerCase().includes(search))
+      ) {
+        return false
+      }
+
+      if (
+        departmentId &&
+        student_organization?.department_id !== departmentId &&
+        profile.department_id !== departmentId &&
+        !assignments.some(
+          (assignment) => assignment.department_id === departmentId,
+        )
+      ) {
+        return false
+      }
+      if (facultyId) {
+        const assignedDepartmentIds = [
+          profile.department_id,
+          ...assignments.map((assignment) => assignment.department_id),
+          student_organization?.department_id,
+        ].filter((id): id is string => Boolean(id))
+        const assignedFacultyIds = [
+          profile.faculty_id,
+          ...assignments.map((assignment) => assignment.faculty_id),
+          student_organization?.faculty_id,
+          ...db.departments
+            .filter((department) =>
+              assignedDepartmentIds.includes(department.id),
+            )
+            .map((department) => department.faculty_id),
+        ].filter((id): id is string => Boolean(id))
+        if (!assignedFacultyIds.includes(facultyId)) return false
+      }
+      return true
     })
-    return HttpResponse.json(scopedSummaries.slice(offset, offset + limit), { status: 200 })
+    return HttpResponse.json(filtered.slice(offset, offset + limit), {
+      status: 200,
+    })
   }),
 
   http.patch('*/functions/v1/accounts/:profile_id', async ({ request, params }) => {
@@ -1198,16 +1346,90 @@ export const saaisMswHandlers = [
     if (!profile) {
       return errorJson(404, 'NOT_FOUND', 'Profile not found.')
     }
-    const body = (await request.json().catch(() => ({}))) as ApiSchema<'AdminProfileUpdate'>
+    let parsedBody: unknown
+    try {
+      parsedBody = await request.json()
+    } catch {
+      return errorJson(400, 'INVALID_INPUT', 'Expected a JSON account update.')
+    }
+    if (
+      !parsedBody ||
+      typeof parsedBody !== 'object' ||
+      Array.isArray(parsedBody)
+    ) {
+      return errorJson(400, 'INVALID_INPUT', 'Expected a JSON account update.')
+    }
+    const body = parsedBody as ApiSchema<'AdminProfileUpdate'>
+    if (
+      Object.prototype.hasOwnProperty.call(parsedBody, 'role_assignments') &&
+      !isRoleAssignmentList(
+        (parsedBody as Record<string, unknown>).role_assignments,
+      )
+    ) {
+      return errorJson(400, 'INVALID_INPUT', 'Role assignments are invalid.')
+    }
+    const requestedAssignments = body.role_assignments
+    if (
+      profile.role !== 'student' &&
+      ((body.role ?? profile.role) === 'student' ||
+        requestedAssignments?.some((assignment) => assignment.role === 'student'))
+    ) {
+      return errorJson(
+        409,
+        'CONFLICT',
+        'An existing account cannot be converted to a student account.',
+      )
+    }
+    const existingRoleAssignments = db.roleAssignments.filter(
+      (assignment) => assignment.profile_id === profileId,
+    )
+    const replacementAssignments = requestedAssignments?.map((assignment) => ({
+          id: nextSyntheticUuid(),
+          profile_id: profileId,
+          role: assignment.role,
+          faculty_id: assignment.faculty_id ?? null,
+          department_id: assignment.department_id ?? null,
+          created_at: '2026-11-10T09:00:00Z',
+        }))
     const updated: ApiSchema<'Profile'> = {
       ...profile,
       ...(body.full_name !== undefined ? { full_name: body.full_name } : {}),
       ...(body.role !== undefined ? { role: body.role } : {}),
+      ...(body.role !== undefined || body.role_assignments !== undefined
+        ? {
+            roles: [
+              ...new Set([
+                body.role ?? profile.role,
+                ...(requestedAssignments ?? existingRoleAssignments).map(
+                  (assignment) => assignment.role,
+                ),
+              ]),
+            ],
+          }
+        : {}),
       ...(body.status !== undefined ? { status: body.status } : {}),
+      ...(body.faculty_id !== undefined
+        ? { faculty_id: body.faculty_id }
+        : {}),
+      ...(body.department_id !== undefined
+        ? { department_id: body.department_id }
+        : {}),
+      ...(body.student_number !== undefined
+        ? { student_number: body.student_number }
+        : {}),
+      ...(body.avatar_url !== undefined
+        ? { avatar_url: body.avatar_url }
+        : {}),
       ...(body.consultation_hours !== undefined
         ? { consultation_hours: body.consultation_hours }
         : {}),
       updated_at: '2026-11-10T09:00:00Z',
+    }
+    if (replacementAssignments) {
+      db.roleAssignments = db.roleAssignments.filter(
+        (assignment) => assignment.profile_id !== profileId,
+      )
+      db.roleAssignments.push(...replacementAssignments)
     }
     const idx = db.profiles.findIndex((p) => p.id === profileId)
     db.profiles[idx] = updated
@@ -2200,11 +2422,19 @@ export const saaisMswHandlers = [
     const url = new URL(request.url)
     const scope = url.searchParams.get('assignment_scope') ?? 'all'
     const departmentId = url.searchParams.get('department_id')
+    const facultyId = url.searchParams.get('faculty_id')
     if (departmentId && !canAccessDepartment(auth.persona, departmentId)) {
       return errorJson(
         403,
         'INSUFFICIENT_PRIVILEGE',
         'Not authorized to view this department student roster.',
+      )
+    }
+    if (facultyId && !canAccessFaculty(auth.persona, facultyId)) {
+      return errorJson(
+        403,
+        'INSUFFICIENT_PRIVILEGE',
+        'Not authorized to view this faculty student roster.',
       )
     }
 
@@ -2243,9 +2473,15 @@ export const saaisMswHandlers = [
       })
     }
     const search = url.searchParams.get('search')?.trim().toLowerCase()
+    const programId = url.searchParams.get('program_id')
     const curriculumVersionId = url.searchParams.get('curriculum_version_id')
+    const entryYear = url.searchParams.get('entry_year')
+    const yearLevel = url.searchParams.get('year_level')
     const adviserId = url.searchParams.get('adviser_id')
     const standing = url.searchParams.get('standing')
+    const hasDeficiencies = url.searchParams.get('has_deficiencies')
+    const hasOpenInc = url.searchParams.get('has_open_inc')
+    const hasOpenFlags = url.searchParams.get('has_open_flags')
     const matchingItems = items.filter(item => {
       const ownAssignments = db.adviserAssignments.filter(a => a.student_id === item.student_id && a.adviser_id === auth.persona.profileId)
       const isAdviser = auth.persona.roles.includes('adviser')
@@ -2256,11 +2492,19 @@ export const saaisMswHandlers = [
         ? ownAssignments.some(a => a.end_date !== null) && !ownAssignments.some(a => a.end_date === null)
         : item.assignment_status === 'past')) return false
       if (scope === 'unassigned' && item.assignment_status !== 'unassigned') return false
+      if (url.searchParams.get('unassigned_only') === 'true' && item.assignment_status !== 'unassigned') return false
       if (departmentId && item.department_id !== departmentId) return false
+      if (facultyId && item.faculty_id !== facultyId) return false
+      if (programId && item.program_id !== programId) return false
       if (curriculumVersionId && item.curriculum_version_id !== curriculumVersionId) return false
+      if (entryYear !== null && item.entry_year !== Number(entryYear)) return false
+      if (yearLevel !== null && item.year_level !== Number(yearLevel)) return false
       if (adviserId && item.adviser_id !== adviserId) return false
       if (search && !`${item.full_name} ${item.student_number} ${item.email ?? ''}`.toLowerCase().includes(search)) return false
       if (standing && item.standing !== standing) return false
+      if (hasDeficiencies !== null && (item.deficiencies_count > 0) !== (hasDeficiencies === 'true')) return false
+      if (hasOpenInc !== null && (item.open_inc_count > 0) !== (hasOpenInc === 'true')) return false
+      if (hasOpenFlags !== null && (item.open_flags_count > 0) !== (hasOpenFlags === 'true')) return false
       return true
     })
     const offsetValue = Number(url.searchParams.get('offset') ?? 0)
@@ -2271,10 +2515,32 @@ export const saaisMswHandlers = [
     const limit = Number.isSafeInteger(limitValue) && limitValue > 0
       ? Math.min(limitValue, 1000)
       : 20
-    const pageItems = matchingItems.slice(offset, offset + limit)
     const countStanding = (standing: ApiSchema<'StudentRosterItem'>['standing']) =>
       matchingItems.filter((item) => item.standing === standing).length
 
+    const sortBy = url.searchParams.get('sort_by') ?? 'full_name'
+    const sortDirection = url.searchParams.get('sort_dir') === 'desc' ? -1 : 1
+    const sorted = [...matchingItems].sort((left, right) => {
+      const comparison = (() => {
+        switch (sortBy) {
+          case 'student_number':
+            return left.student_number.localeCompare(right.student_number)
+          case 'year_level':
+            return left.year_level - right.year_level
+          case 'gwa':
+            return (left.gwa ?? Number.POSITIVE_INFINITY) - (right.gwa ?? Number.POSITIVE_INFINITY)
+          case 'units_earned':
+            return left.earned_units - right.earned_units
+          case 'standing':
+            return left.standing.localeCompare(right.standing)
+          case 'last_activity_at':
+            return (left.last_activity_at ?? '').localeCompare(right.last_activity_at ?? '')
+          default:
+            return left.full_name.localeCompare(right.full_name)
+        }
+      })()
+      return comparison * sortDirection
+    })
     const response: ApiSchema<'StudentRosterResponse'> = {
       total_count: matchingItems.length,
       unassigned_count: matchingItems.filter(
@@ -2282,7 +2548,9 @@ export const saaisMswHandlers = [
       ).length,
       with_deficiencies_count: matchingItems.filter((i) => i.deficiencies_count > 0)
         .length,
-      flagged_count: matchingItems.filter((i) => i.open_flags_count > 0).length,
+      flagged_count: matchingItems.filter(
+        (i) => i.open_flags_count > 0 || i.is_delinquent,
+      ).length,
       open_inc_students_count: matchingItems.filter((i) => i.open_inc_count > 0)
         .length,
       standing_counts: {
@@ -2291,7 +2559,7 @@ export const saaisMswHandlers = [
         probation: countStanding('probation'),
         dismissed: countStanding('dismissed'),
       },
-      items: pageItems,
+      items: sorted.slice(offset, offset + limit),
     }
     return HttpResponse.json(response, { status: 200 })
   }),
@@ -3305,7 +3573,7 @@ export const saaisMswHandlers = [
         adviser_name: adviser.full_name,
         adviser_email: adviser.email,
         adviser_faculty_name: 'Faculty of Computing',
-        adviser_consultation_hours: 'Tue & Thu, 13:00–16:00',
+        adviser_consultation_hours: 'Tue & Thu, 13:00â€“16:00',
         student_id: studentId,
         start_date: body.start_date ?? '2026-11-10',
         end_date: null,
@@ -4434,7 +4702,16 @@ export const saaisMswHandlers = [
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'SystemSettingsUpdateRequest'>
     const db = getMockDatabase()
-    const current = db.systemSettings[0]!
+    const departmentId = auth.persona.roles.includes('admin')
+      ? null
+      : body.department_id ?? auth.persona.departmentId
+    const settingsIndex = db.systemSettings.findIndex(
+      (setting) => setting.department_id === departmentId,
+    )
+    if (settingsIndex === -1) {
+      return errorJson(404, 'NOT_FOUND', 'System settings were not found.')
+    }
+    const current = db.systemSettings[settingsIndex]!
     const warning = body.warning_pct ?? current.warning_pct
     const probation = body.probation_pct ?? current.probation_pct
     const dismissal = body.dismissal_pct ?? current.dismissal_pct
@@ -4453,7 +4730,7 @@ export const saaisMswHandlers = [
       sender_email: body.sender_email ?? current.sender_email,
       updated_at: '2026-11-10T09:00:00Z',
     }
-    db.systemSettings[0] = updated
+    db.systemSettings[settingsIndex] = updated
     recordMockAudit(auth.persona, { action: 'settings_updated', entityType: 'system_settings', entityId: updated.id, label: 'Department settings', details: 'Updated department settings.' })
     return HttpResponse.json(updated, { status: 200 })
   }),
@@ -4463,7 +4740,16 @@ export const saaisMswHandlers = [
     if ('response' in auth) return auth.response
     const body = (await request.json().catch(() => ({}))) as ApiSchema<'RecordBackupRequest'>
     const db = getMockDatabase()
-    const current = db.systemSettings[0]!
+    const departmentId = auth.persona.roles.includes('admin')
+      ? null
+      : body.department_id ?? auth.persona.departmentId
+    const settingsIndex = db.systemSettings.findIndex(
+      (setting) => setting.department_id === departmentId,
+    )
+    if (settingsIndex === -1) {
+      return errorJson(404, 'NOT_FOUND', 'System settings were not found.')
+    }
+    const current = db.systemSettings[settingsIndex]!
     const updated: ApiSchema<'SystemSettings'> = {
       ...current,
       last_backup_at: body.completed_at ?? '2026-11-10T09:00:00Z',
@@ -4471,10 +4757,14 @@ export const saaisMswHandlers = [
       last_backup_reference: body.backup_reference ?? 'BKP-2026-11-10-001',
       last_backup_location:
         body.storage_location ?? 'vsu-saais-backups/2026-11-10.dump',
-      last_backup_scope: body.scope ?? 'institution_wide',
+      last_backup_scope:
+        body.scope ??
+        (auth.persona.roles.includes('admin')
+          ? 'institution_wide'
+          : 'department_records'),
       updated_at: '2026-11-10T09:00:00Z',
     }
-    db.systemSettings[0] = updated
+    db.systemSettings[settingsIndex] = updated
     recordMockAudit(auth.persona, { action: 'backup_recorded', entityType: 'system_settings', entityId: updated.id, label: 'Backup record', details: `Recorded backup ${updated.last_backup_reference ?? ''}.`.trim() })
     return HttpResponse.json(updated, { status: 200 })
   }),
