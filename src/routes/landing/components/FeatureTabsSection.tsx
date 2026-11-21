@@ -8,7 +8,7 @@ export function FeatureTabsSection() {
   return (
     <section
       id="features"
-      className="bg-card px-4 pt-0 pb-20 sm:px-8 md:pb-[112px] lg:px-14"
+      className="scroll-mt-20 bg-card px-4 pt-0 pb-20 sm:px-8 md:pb-[112px] lg:px-14"
     >
       <div className="mx-auto max-w-[1200px]">
         <div className="mx-auto max-w-[900px] text-center">

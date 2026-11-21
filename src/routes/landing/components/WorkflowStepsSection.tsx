@@ -16,7 +16,7 @@ export function WorkflowStepsSection() {
   return (
     <section
       id="workflow"
-      className="bg-background px-4 py-20 sm:px-8 md:py-[112px] lg:px-14"
+      className="scroll-mt-20 bg-background px-4 py-20 sm:px-8 md:py-[112px] lg:px-14"
     >
       <div className="mx-auto max-w-[1200px]">
         <div className="mx-auto max-w-[900px] text-center">

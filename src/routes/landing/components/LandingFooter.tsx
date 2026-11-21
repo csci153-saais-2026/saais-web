@@ -102,7 +102,7 @@ export function LandingFooter() {
 
         <div
           id="release-notes"
-          className="mt-[52px] grid grid-cols-1 gap-8 border-t border-[#F6F2E4]/[0.12] pt-[34px] lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-11"
+          className="mt-[52px] grid scroll-mt-20 grid-cols-1 gap-8 border-t border-[#F6F2E4]/[0.12] pt-[34px] lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-11"
         >
           <div className="hidden lg:block" />
           <div className="max-w-[460px]">
@@ -120,7 +120,7 @@ export function LandingFooter() {
               <Button
                 asChild
                 size="sm"
-                className="rounded-lg border border-background bg-background px-[18px] py-[9px] text-[13.5px] font-semibold text-forest-deep hover:bg-background/90"
+                className="rounded-lg border border-background bg-background px-[18px] py-[9px] text-[13.5px] font-semibold text-forest-deep hover:bg-background/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
               >
                 <Link to="/docs">{FOOTER_NEWSLETTER.buttonLabel}</Link>
               </Button>

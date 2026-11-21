@@ -61,7 +61,7 @@ export function RulesEngineGrid() {
   return (
     <section
       id="rules-engine"
-      className="bg-card px-4 py-20 sm:px-8 md:py-[112px] lg:px-14"
+      className="scroll-mt-20 bg-card px-4 py-20 sm:px-8 md:py-[112px] lg:px-14"
     >
       <div className="mx-auto max-w-[1200px]">
         <div className="mx-auto max-w-[900px] text-center">
@@ -76,7 +76,7 @@ export function RulesEngineGrid() {
           </p>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 gap-[22px] md:grid-cols-3">
           {RULES_ENGINE_CARDS.map((rule) => (
             <div
               key={rule.title}

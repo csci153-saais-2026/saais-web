@@ -9,7 +9,7 @@ export function LandingCtaSection({ onRequestWalkthrough }: LandingCtaSectionPro
   return (
     <section
       id="walkthrough"
-      className="relative overflow-hidden bg-forest-deep px-4 py-24 sm:px-8 md:py-32 lg:px-14"
+      className="relative scroll-mt-20 overflow-hidden bg-forest-deep px-4 py-24 sm:px-8 md:py-32 lg:px-14"
     >
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -38,7 +38,7 @@ export function LandingCtaSection({ onRequestWalkthrough }: LandingCtaSectionPro
             type="button"
             size="lg"
             onClick={onRequestWalkthrough}
-            className="rounded-lg border border-background bg-background px-[30px] py-[15px] text-base font-semibold text-forest-deep hover:bg-background/90"
+            className="rounded-lg border border-background bg-background px-[30px] py-[15px] text-base font-semibold text-forest-deep hover:bg-background/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
           >
             {CLOSING_CTA.buttonLabel}
           </Button>

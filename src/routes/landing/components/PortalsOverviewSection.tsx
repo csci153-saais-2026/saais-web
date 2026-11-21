@@ -33,7 +33,7 @@ export function PortalsOverviewSection() {
   return (
     <section
       id="portals"
-      className="bg-background px-4 pt-16 pb-20 sm:px-8 md:pt-[248px] md:pb-[112px] lg:px-14"
+      className="scroll-mt-20 bg-background px-4 pt-16 pb-20 sm:px-8 md:pt-[248px] md:pb-[112px] lg:px-14"
     >
       <div className="mx-auto max-w-[1200px]">
         <div className="mx-auto max-w-[900px] text-center">
@@ -46,7 +46,7 @@ export function PortalsOverviewSection() {
           </p>
         </div>
 
-        <div className="mt-[52px] grid grid-cols-1 gap-[26px] lg:grid-cols-3">
+        <div className="mt-[52px] grid grid-cols-1 gap-[26px] md:grid-cols-3">
           {PORTAL_CARDS.map((card) => (
             <Card
               key={card.id}

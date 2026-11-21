@@ -30,7 +30,7 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
   return (
     <section
       id="platform"
-      className={`relative overflow-visible bg-forest-deep px-4 pt-16 sm:px-8 md:pt-[104px] lg:px-14 ${
+      className={`relative scroll-mt-20 overflow-visible bg-forest-deep px-4 pt-16 sm:px-8 md:pt-[104px] lg:px-14 ${
         children ? 'pb-0' : 'pb-20 md:pb-24'
       }`}
     >
@@ -86,7 +86,7 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
               type="button"
               size="lg"
               onClick={handleWalkthrough}
-              className="rounded-lg border border-background bg-background px-[30px] py-[15px] text-base font-semibold text-forest-deep hover:bg-background/90"
+              className="rounded-lg border border-background bg-background px-[30px] py-[15px] text-base font-semibold text-forest-deep hover:bg-background/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
             >
               {HERO_CONTENT.primaryCta}
             </Button>
@@ -95,7 +95,7 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
               asChild
               variant="outline"
               size="lg"
-              className="rounded-lg border-[#F6F2E4]/30 bg-transparent px-[30px] py-[15px] text-base font-semibold text-background hover:border-background/60 hover:bg-transparent hover:text-background"
+              className="rounded-lg border-[#F6F2E4]/30 bg-transparent px-[30px] py-[15px] text-base font-semibold text-background hover:border-background/60 hover:bg-transparent hover:text-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background"
             >
               <Link to={HERO_CONTENT.secondaryCtaHref}>
                 {HERO_CONTENT.secondaryCta}

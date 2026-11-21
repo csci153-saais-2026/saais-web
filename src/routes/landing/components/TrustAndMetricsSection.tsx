@@ -56,14 +56,15 @@ export function TrustAndMetricsSection() {
       {/* Compliance commitments */}
       <section
         id="compliance"
-        className="bg-cream-deep px-4 py-16 sm:px-8 md:py-[86px] lg:px-14"
+        className="scroll-mt-20 bg-cream-deep px-4 py-16 sm:px-8 md:py-[86px] lg:px-14"
       >
         <div className="mx-auto max-w-[1200px]">
+          <h2 className="sr-only">{TRUST_BADGES_SECTION.kicker}</h2>
           <Kicker className="block text-center text-muted-2">
             {TRUST_BADGES_SECTION.kicker}
           </Kicker>
 
-          <div className="mt-[30px] grid grid-cols-1 gap-[22px] lg:grid-cols-3">
+          <div className="mt-[30px] grid grid-cols-1 gap-[22px] md:grid-cols-3">
             {TRUST_BADGES.map((badge) => {
               const Icon = BADGE_ICONS[badge.icon]
               return (
