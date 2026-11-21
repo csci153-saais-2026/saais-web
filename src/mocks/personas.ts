@@ -60,7 +60,6 @@ export const MOCK_IDS = {
   studentPrimary: '00000000-0000-4000-8000-000000000101',
   studentSecondary: '00000000-0000-4000-8000-000000000102',
   studentOtherDept: '00000000-0000-4000-8000-000000000103',
-  studentAchiever: '00000000-0000-4000-8000-000000000104',
   adviserPrimary: '00000000-0000-4000-8000-000000000201',
   adviserSecondary: '00000000-0000-4000-8000-000000000202',
   deptHeadDcst: '00000000-0000-4000-8000-000000000301',
@@ -102,7 +101,6 @@ export type MockPersonaKey =
   | 'student'
   | 'student_secondary'
   | 'student_other_dept'
-  | 'student_achiever'
   | 'adviser'
   | 'adviser_secondary'
   | 'department_head'
@@ -196,24 +194,6 @@ export const MOCK_PERSONAS: Readonly<Record<MockPersonaKey, MockPersona>> = {
     facultyId: MOCK_IDS.facultyEngineering,
     departmentId: MOCK_IDS.deptDabe,
     token: `mock-jwt:student_other_dept:${MOCK_IDS.studentOtherDept}`,
-  },
-  student_achiever: {
-    key: 'student_achiever',
-    profileId: MOCK_IDS.studentAchiever,
-    email: '30-1-00001@vsu.edu.ph',
-    fullName: 'Doe, John A.',
-    primaryRole: 'student',
-    roles: ['student'],
-    roleScopes: [
-      {
-        role: 'student',
-        scope_type: 'department',
-        scope_id: MOCK_IDS.deptDcst,
-      },
-    ],
-    facultyId: MOCK_IDS.facultyComputing,
-    departmentId: MOCK_IDS.deptDcst,
-    token: `mock-jwt:student_achiever:${MOCK_IDS.studentAchiever}`,
   },
   adviser: {
     key: 'adviser',

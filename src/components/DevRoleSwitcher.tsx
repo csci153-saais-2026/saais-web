@@ -13,7 +13,6 @@ const PERSONA_LIST: {
 }[] = [
   { key: 'student', badge: 'bg-[#2F4A12] text-[#FBF8EF]', desc: 'Student Primary (Active)' },
   { key: 'student_secondary', badge: 'bg-[#B0761A] text-white', desc: 'Student Invited (Pending)' },
-  { key: 'student_achiever', badge: 'bg-[#2F4A12] text-[#FBF8EF]', desc: 'Achiever Student (John Doe)' },
   { key: 'student_other_dept', badge: 'bg-[#2F4A12] text-[#FBF8EF]', desc: 'Other Dept Student' },
   { key: 'adviser', badge: 'bg-[#B0761A] text-white', desc: 'Primary Academic Adviser' },
   { key: 'adviser_secondary', badge: 'bg-[#B0761A] text-white', desc: 'Secondary Adviser' },
