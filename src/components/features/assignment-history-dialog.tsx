@@ -6,7 +6,6 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -130,13 +129,21 @@ export function AssignmentHistoryDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        showCloseButton={false}
         className={cn("sm:max-w-[720px]", className)}
       >
-        <DialogHeader>
-          <DialogTitle>Assignment history</DialogTitle>
-          <DialogDescription className="text-body text-muted-foreground">
-            Every adviser assigned to you, newest first. Past assignments stay on record.
-          </DialogDescription>
+        <DialogHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="min-w-0">
+            <DialogTitle>Assignment history</DialogTitle>
+            <DialogDescription className="text-body text-muted-foreground">
+              Every adviser assigned to you, newest first. Past assignments stay on record.
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" size="sm" className="shrink-0">
+              Close
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         {sortedAssignments.length > 0 ? (
@@ -148,7 +155,7 @@ export function AssignmentHistoryDialog({
                     <TableHead
                       key={header}
                       scope="col"
-                      className="px-3.5 py-2.5 text-kicker font-semibold text-muted-2 uppercase"
+                      className="px-3.5 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
                     >
                       {header}
                     </TableHead>
@@ -205,14 +212,6 @@ export function AssignmentHistoryDialog({
             No adviser assignments recorded yet.
           </p>
         )}
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Close
-            </Button>
-          </DialogClose>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -168,7 +168,7 @@ export function StudentProfileView({
                       <TableHead
                         key={header}
                         scope="col"
-                        className="px-3.5 py-2.5 text-kicker font-semibold text-muted-2 uppercase"
+                        className="px-3.5 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
                       >
                         {header}
                       </TableHead>

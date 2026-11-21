@@ -5,7 +5,6 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -147,13 +146,23 @@ export function CurriculumHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("sm:max-w-[760px]", className)}>
-        <DialogHeader>
-          <DialogTitle>Curriculum history</DialogTitle>
-          <DialogDescription className="text-body text-muted-foreground">
-            The curriculum versions you have followed, and any transfer in
-            progress.
-          </DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className={cn("sm:max-w-[760px]", className)}
+      >
+        <DialogHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="min-w-0">
+            <DialogTitle>Curriculum history</DialogTitle>
+            <DialogDescription className="text-body text-muted-foreground">
+              The curriculum versions you have followed, and any transfer in
+              progress.
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" size="sm" className="shrink-0">
+              Close
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         {rows.length > 0 ? (
@@ -166,7 +175,7 @@ export function CurriculumHistoryDialog({
                       <TableHead
                         key={header}
                         scope="col"
-                        className="px-3.5 py-2.5 text-kicker font-semibold text-muted-2 uppercase"
+                        className="px-3.5 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
                       >
                         {header}
                       </TableHead>
@@ -216,18 +225,6 @@ export function CurriculumHistoryDialog({
             No curriculum history recorded yet.
           </p>
         )}
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11 md:min-h-[38px]"
-            >
-              Close
-            </Button>
-          </DialogClose>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
