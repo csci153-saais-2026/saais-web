@@ -1,2 +1,2 @@
-import { serve } from '../_shared/serve.ts';
-serve('grades');
+import { serve } from "../_shared/serve.ts";
+serve("grades");
