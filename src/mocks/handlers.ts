@@ -1655,11 +1655,14 @@ export const saaisMswHandlers = [
       >;
       const db = getMockDatabase();
       const cloneId = body.clone_from_version_id;
-      if (cloneId != null && !hasMockRole(auth.persona, ["department_head"])) {
+      if (
+        cloneId != null &&
+        !hasMockRole(auth.persona, ["department_head", "department_staff"])
+      ) {
         return errorJson(
           403,
           "INSUFFICIENT_PRIVILEGE",
-          "Only a Department Head may clone a curriculum.",
+          "Only an in-scope Department Head or Department Staff member may clone a curriculum.",
         );
       }
       const source =
@@ -1676,14 +1679,20 @@ export const saaisMswHandlers = [
           (program) => program.id === body.program_id,
         );
         if (
-          !auth.persona.departmentId ||
-          sourceProgram?.department_id !== auth.persona.departmentId ||
-          targetProgram?.department_id !== auth.persona.departmentId
+          !sourceProgram?.department_id ||
+          sourceProgram.department_id !== targetProgram?.department_id ||
+          !auth.persona.roleScopes.some(
+            (scope) =>
+              (scope.role === "department_head" ||
+                scope.role === "department_staff") &&
+              scope.scope_type === "department" &&
+              scope.scope_id === sourceProgram.department_id,
+          )
         ) {
           return errorJson(
             403,
             "INSUFFICIENT_PRIVILEGE",
-            "Source and target must be within the Department Head scope.",
+            "Source and target must be within the assigned department scope.",
           );
         }
       }
