@@ -1219,7 +1219,7 @@ function buildInitialMockDatabase(): MockDatabaseState {
   const engineeringSlot = "42000000-0000-4000-8002-000000000001";
   const engineeringCourse = "50000000-0000-4000-8002-000000000001";
   const engineeringOffering = "62000000-0000-4000-8002-000000000001";
-  const engineeringAttempt = "80000000-0000-4000-8002-000000000001";
+  const engineeringAttempt = "80000000-0000-4000-8006-000000000001";
   db.curriculumTerms.push({
     id: engineeringTerm,
     curriculum_version_id: MOCK_IDS.curriculumBsabe,
