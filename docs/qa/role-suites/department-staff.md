@@ -49,7 +49,7 @@ All cases are **Not run**. These cases describe expected Department Staff pages 
 | STF-26 | Curricula / P1 | Terms and course/elective/GE slots | Inspect terms; add/edit slots; cancel and save. | Term position and requirement type are clear; saved changes persist and remain associated with correct curriculum. |
 | STF-27 | Curricula / P1 | New course from curriculum form | Start New course and inspect course catalog creation separately from curriculum slot attachment. | Course creation and slot assignment are distinct; no unintended slot is created. |
 | STF-28 | Curricula / P1 | Delete version/term/slot | Open confirmation; cancel, then confirm eligible delete. | Target is identified; dependencies are enforced; confirmed deletion is auditable. |
-| STF-29 | Curricula / P1 | Staff page | Look for Copy from/version clone action. | Head-only Copy from action is unavailable to Staff. |
+| STF-29 | Curricula / P1 | Staff assigned to the source and target department | Clone an existing version; repeat with an out-of-scope source or target. | Staff can copy an in-scope version; out-of-scope cloning is denied without creating a version. |
 
 ## Course catalog
 

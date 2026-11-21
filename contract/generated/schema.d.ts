@@ -667,7 +667,7 @@ export interface paths {
         put?: never;
         /**
          * Create or clone curriculum version
-         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Supports creating a blank version or cloning terms and course slots from an existing version via clone_from_version_id. Only a Department Head acting within their department may clone an existing version; Department Staff and Admin may create a blank version but cannot clone without an independently assigned Department Head role. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
+         * @description Department Head, Department Staff, or Admin validated transactional catalog operation. Supports creating a blank version or cloning terms and course slots from an existing version via clone_from_version_id. Department Heads and Department Staff acting within their assigned department may clone an existing version. Admin may create a blank version but cannot clone without an independently assigned Head or Staff role. Protect referenced history and required last children; lock parents and commit audit with the mutation. Raw table writes are not exposed by the frontend contract.
          */
         post: operations["createCurriculumVersion"];
         delete?: never;
@@ -2619,7 +2619,7 @@ export interface components {
             program_id: string;
             /**
              * Format: uuid
-             * @description Optional existing curriculum version UUID to clone terms and slots from; only a Department Head with scope over the source and target may use it.
+             * @description Optional existing curriculum version UUID to clone terms and slots from; a Department Head or Department Staff member with scope over both source and target may use it.
              */
             clone_from_version_id?: string | null;
             version_label?: string;

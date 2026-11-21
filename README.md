@@ -169,7 +169,7 @@ npm run contract:check    # fails if generated output is stale, or if PostgREST 
 npm run contract:docs     # build the static Redoc bundle
 ```
 
-`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [freeze record and workflow crosswalk](contract/FREEZE-0.3.0.md) document the approved contract version and change process. Redoc is also served in-app at `/docs` while the dev server is running.
+`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [0.3.0 freeze record](contract/FREEZE-0.3.0.md) documents the approved baseline and change process; the [0.3.1 candidate](contract/CANDIDATE-0.3.1.md) records the proposed cloning change. Redoc is also served in-app at `/docs` while the dev server is running.
 
 ### Seed Data Specification
 
@@ -295,7 +295,7 @@ rules/                 # Vite React best practices and development rules
 ### Program & Curriculum
 
 - A program has 1+ curriculum versions, each with an effectivity period.
-- Each curriculum version belongs to exactly 1 program. Department Heads may clone a version within their department; Department Staff and administrators may create blank versions but may clone only with an in-scope Department Head assignment.
+- Each curriculum version belongs to exactly 1 program. Department Heads and Department Staff may clone a version when both source and target belong to their assigned department. Administrators may create blank versions but need an in-scope Head or Staff role to clone.
 - A student is assigned to exactly 1 curriculum at a time; changes are tracked as dated history (transfer/shift events), never overwritten.
 - An adviser endorses a curriculum transfer with a reason; a Department Head approves or rejects it. Approval updates the curriculum assignment without automatically changing the student's adviser. After a cross-department transfer, the existing adviser remains assigned to that student until the destination department's Head or Staff separately reassigns them to an eligible adviser there; this grants no broader department access. Reassignment retains zero-gap continuity.
 - A curriculum has 1+ terms (year level + term-within-year sequence); each term has 1+ courses.
