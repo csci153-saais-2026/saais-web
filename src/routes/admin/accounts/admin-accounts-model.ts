@@ -130,10 +130,10 @@ export function validateAccountInvite(
 
   const needsFaculty = [...roles].some((role) =>
     ['adviser', 'department_head', 'department_staff', 'dean'].includes(role),
-  )
+  ) || values.primaryRole === 'student'
   const needsDepartment = [...roles].some((role) =>
     ['department_head', 'department_staff'].includes(role),
-  )
+  ) || values.primaryRole === 'student'
   if (needsFaculty && !values.facultyId) {
     errors.facultyId = 'Select the faculty for the assigned role.'
   }
@@ -163,6 +163,8 @@ export function validateAccountInvite(
     const program = programs.find((option) => option.id === values.programId)
     if (!program || program.status !== 'active') {
       errors.programId = 'Select an active program.'
+    } else if (program.department_id !== values.departmentId) {
+      errors.programId = 'Select a program in the chosen department.'
     }
 
     const curriculum = curricula.find(
