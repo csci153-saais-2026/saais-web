@@ -235,7 +235,7 @@ export function CourseInfoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className={cn("sm:max-w-[720px]", className)}
+        className={cn("sm:max-w-[800px]", className)}
       >
         <DialogHeader className="flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">
@@ -295,7 +295,7 @@ export function CourseInfoDialog({
                         <TableHead
                           key={header}
                           scope="col"
-                          className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
+                          className="px-3 py-2.5 text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
                         >
                           {header}
                         </TableHead>
@@ -309,41 +309,41 @@ export function CourseInfoDialog({
                         <TableRow key={attempt.attempt_id} className="border-line-soft">
                           <TableCell
                             label="Attempt"
-                            className="px-3.5 py-row font-mono text-cell tabular-nums text-foreground"
+                            className="px-3 py-row font-mono text-cell tabular-nums text-foreground"
                           >
                             {index + 1}
                           </TableCell>
                           <TableCell
                             label="Term"
-                            className="px-3.5 py-row text-cell tabular-nums text-foreground"
+                            className="px-3 py-row text-cell tabular-nums text-foreground"
                           >
                             {attempt.term_label}
                           </TableCell>
                           <TableCell
                             label="Midterm"
-                            className="px-3.5 py-row font-mono text-cell tabular-nums text-foreground"
+                            className="px-3 py-row font-mono text-cell tabular-nums text-foreground"
                           >
                             {formatMidtermCell(attempt)}
                           </TableCell>
                           <TableCell
                             label="Final"
-                            className="px-3.5 py-row font-mono text-cell tabular-nums text-foreground"
+                            className="px-3 py-row font-mono text-cell tabular-nums text-foreground"
                           >
                             {formatFinalCell(attempt)}
                           </TableCell>
                           <TableCell
                             label="Completion"
-                            className="px-3.5 py-row font-mono text-cell tabular-nums text-foreground"
+                            className="px-3 py-row font-mono text-cell tabular-nums text-foreground"
                           >
                             {formatCompletionCell(attempt)}
                           </TableCell>
                           <TableCell
                             label="Instructor"
-                            className="px-3.5 py-row text-cell text-foreground"
+                            className="px-3 py-row text-cell text-foreground"
                           >
                             {attempt.instructor?.trim() || "—"}
                           </TableCell>
-                          <TableCell label="Result" className="px-3.5 py-row text-cell">
+                          <TableCell label="Result" className="px-3 py-row text-cell">
                             <StatusBadge status={resultStatus} />
                           </TableCell>
                         </TableRow>
