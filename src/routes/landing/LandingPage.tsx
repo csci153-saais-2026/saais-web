@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { FeatureTabsSection } from '@/routes/landing/components/FeatureTabsSection'
 import { HeroChecklistPreview } from '@/routes/landing/components/HeroChecklistPreview'
 import { LandingCtaSection } from '@/routes/landing/components/LandingCtaSection'
@@ -10,14 +11,18 @@ import { PrerequisiteShowcaseSection } from '@/routes/landing/components/Prerequ
 import { RoadmapSection } from '@/routes/landing/components/RoadmapSection'
 import { RulesEngineGrid } from '@/routes/landing/components/RulesEngineGrid'
 import { TrustAndMetricsSection } from '@/routes/landing/components/TrustAndMetricsSection'
+import { WalkthroughDialog } from '@/routes/landing/components/WalkthroughDialog'
 import { WorkflowStepsSection } from '@/routes/landing/components/WorkflowStepsSection'
 
 export default function LandingPage() {
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false)
+  const openWalkthrough = () => setWalkthroughOpen(true)
+
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <LandingHeader />
+      <LandingHeader onRequestWalkthrough={openWalkthrough} />
       <main>
-        <LandingHero>
+        <LandingHero onRequestWalkthrough={openWalkthrough}>
           <HeroChecklistPreview />
         </LandingHero>
         <PortalsOverviewSection />
@@ -28,9 +33,13 @@ export default function LandingPage() {
         <WorkflowStepsSection />
         <RulesEngineGrid />
         <RoadmapSection />
-        <LandingCtaSection />
+        <LandingCtaSection onRequestWalkthrough={openWalkthrough} />
       </main>
       <LandingFooter />
+      <WalkthroughDialog
+        open={walkthroughOpen}
+        onOpenChange={setWalkthroughOpen}
+      />
     </div>
   )
 }
