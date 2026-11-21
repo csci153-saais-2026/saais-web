@@ -136,6 +136,37 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
 
         {children}
       </div>
+
+      {/* Full-width wavy fade: stacked translucent waves dissolve the green hero into the page background */}
+      {children && (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 280"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-[110px] w-full sm:h-[200px] text-background md:h-[360px] lg:h-[440px]"
+        >
+          <path
+            fill="currentColor"
+            fillOpacity="0.22"
+            d="M0 52C160 12 300 92 470 56S800 8 980 50 1300 86 1440 36V280H0Z"
+          />
+          <path
+            fill="currentColor"
+            fillOpacity="0.42"
+            d="M0 104C180 148 330 66 520 108S850 150 1020 100 1320 64 1440 112V280H0Z"
+          />
+          <path
+            fill="currentColor"
+            fillOpacity="0.68"
+            d="M0 168C150 128 320 200 500 166S840 124 1010 170 1310 196 1440 150V280H0Z"
+          />
+          <path
+            fill="currentColor"
+            fillOpacity="1"
+            d="M0 226C200 196 340 252 540 224S880 196 1060 228 1330 244 1440 214V280H0Z"
+          />
+        </svg>
+      )}
     </section>
   )
 }

@@ -1,4 +1,4 @@
-import { CheckIcon, UserIcon, UsersIcon } from '@/components/icons'
+import { ChartIcon, CheckIcon, GridIcon, ListIcon, UserIcon, UsersIcon } from '@/components/icons'
 import { Card } from '@/components/ui/card'
 import { Kicker } from '@/components/ui/kicker'
 import { PORTALS_SECTION, PORTAL_CARDS, type PortalCard } from '@/routes/landing/landingData'
@@ -26,6 +26,9 @@ function CogIcon({ className }: { className?: string }) {
 function PortalIcon({ icon }: { icon: PortalCard['icon'] }) {
   if (icon === 'user') return <UserIcon className="size-7" />
   if (icon === 'users') return <UsersIcon className="size-7" />
+  if (icon === 'chart') return <ChartIcon className="size-7" />
+  if (icon === 'list') return <ListIcon className="size-7" />
+  if (icon === 'grid') return <GridIcon className="size-7" />
   return <CogIcon className="size-7" />
 }
 
@@ -46,7 +49,7 @@ export function PortalsOverviewSection() {
           </p>
         </div>
 
-        <div className="mt-[52px] grid grid-cols-1 gap-[26px] md:grid-cols-3">
+        <div className="mt-[52px] grid grid-cols-1 gap-[26px] md:grid-cols-2 lg:grid-cols-3">
           {PORTAL_CARDS.map((card) => (
             <Card
               key={card.id}

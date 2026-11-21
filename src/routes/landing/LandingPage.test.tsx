@@ -22,7 +22,7 @@ describe('LandingPage', () => {
     cleanup()
   })
 
-  it('renders the hero headline, checklist preview rows, and links to /login and /docs/openapi', () => {
+  it('renders the hero headline, adviser portal preview, and links to /login and /docs/openapi', () => {
     renderLandingPage()
 
     expect(
@@ -32,13 +32,10 @@ describe('LandingPage', () => {
       }),
     ).toBeTruthy()
 
-    expect(screen.getByText('CS 101')).toBeTruthy()
-    expect(screen.getByText('Introduction to Computing')).toBeTruthy()
-    expect(
-      screen.getAllByText('Data Structures — retake').length,
-    ).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Algorithms')).toBeTruthy()
-    expect(screen.getByText('Open elective slot')).toBeTruthy()
+    const preview = screen.getByRole('img', {
+      name: /Adviser Portal showing an advisee/i,
+    })
+    expect(preview.getAttribute('src')).toBe('/adviser-checklist-preview.png')
 
     const signInLinks = screen.getAllByRole('link', { name: 'Sign in' })
     expect(signInLinks.some((el) => el.getAttribute('href') === '/login')).toBe(
@@ -119,5 +116,22 @@ describe('LandingPage', () => {
 
     fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('renders the FAQ with every question and its answer', () => {
+    renderLandingPage()
+
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'What registrars and advisers ask first.',
+      }),
+    ).toBeTruthy()
+    expect(screen.getByText('Who can read advising notes?')).toBeTruthy()
+    expect(
+      screen.getByText(/Attempt remarks are different: they are staff-only/),
+    ).toBeTruthy()
+    expect(screen.getByText('What happens to an INC after its deadline?')).toBeTruthy()
+    expect(document.querySelectorAll('#faq details').length).toBe(6)
   })
 })

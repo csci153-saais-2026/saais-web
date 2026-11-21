@@ -17,16 +17,6 @@ export const NAV_RIGHT_LINKS: readonly NavLinkItem[] = [
   { label: 'Documentation', href: '/docs' },
 ]
 
-export interface HeroChecklistRow {
-  code: string
-  title: string
-  units: string
-  term: string
-  status: Status
-  grade: string
-  provenance?: string
-}
-
 export const HERO_CONTENT = {
   kicker: 'Student Academic Advising Information System',
   headline: 'Advising that leaves a record.',
@@ -36,138 +26,112 @@ export const HERO_CONTENT = {
   secondaryCta: 'Read the API contract',
   secondaryCtaHref: '/docs/openapi',
   complianceMarks: [
-    { icon: 'shield', label: 'RA 10173 aligned' },
-    { icon: 'check', label: 'WCAG 2.1 AA' },
+    { icon: 'shield', label: 'Built for RA 10173 review' },
+    { icon: 'check', label: 'WCAG 2.1 AA target' },
     { icon: 'lock', label: 'Row-level security' },
     { icon: 'file', label: 'Immutable audit trail' },
   ] as const,
 } as const
 
-export const HERO_CHECKLIST_META = {
-  title: 'Curriculum checklist · Year 2, First Semester',
-  subtitle: '[Student name] · BS Computer Science · Curriculum version 2023–2024',
-  badges: ['Adviser assigned', '12 of 18 units earned'] as const,
-  footerNote:
-    'Every filled slot carries its provenance — a direct attempt, an equivalency decision, or an elective mapping — and the name of whoever approved it.',
-  termGwa: '1.58',
-  cumulativeGwa: '1.68',
+export const HERO_PREVIEW = {
+  src: '/adviser-checklist-preview.png',
+  alt: 'The SAAIS Adviser Portal showing an advisee’s curriculum checklist: cumulative GWA, counted units, year standing, deficiencies, and each requirement with its status, satisfaction source and attempts.',
+  width: 2533,
+  height: 1438,
 } as const
 
-export const HERO_CHECKLIST_ROWS: readonly HeroChecklistRow[] = [
-  {
-    code: 'CS 101',
-    title: 'Introduction to Computing',
-    units: '3.0',
-    term: 'AY 2024–2025 · 1st Sem',
-    status: 'passed',
-    grade: '1.25',
-  },
-  {
-    code: 'MATH 21',
-    title: 'Calculus I',
-    units: '5.0',
-    term: 'AY 2024–2025 · 1st Sem',
-    status: 'passed',
-    grade: '2.00',
-  },
-  {
-    code: 'CS 121',
-    title: 'Data Structures',
-    units: '3.0',
-    term: 'AY 2024–2025 · 2nd Sem',
-    status: 'inc',
-    grade: 'INC',
-  },
-  {
-    code: 'CS 121',
-    title: 'Data Structures — retake',
-    units: '3.0',
-    term: 'AY 2025–2026 · 1st Sem',
-    status: 'passed',
-    grade: '1.75',
-    provenance: '↳ grade_replacement · the earlier INC is superseded, not erased',
-  },
-  {
-    code: 'CS 132',
-    title: 'Algorithms',
-    units: '3.0',
-    term: 'AY 2025–2026 · 1st Sem',
-    status: 'enrolled',
-    grade: '—',
-    provenance: '↳ prerequisite override · approved by [adviser name]',
-  },
-  {
-    code: 'GE ELEC 2',
-    title: 'Open elective slot',
-    units: '3.0',
-    term: 'AY 2025–2026 · 1st Sem',
-    status: 'passed',
-    grade: '1.75',
-    provenance: '↳ elective mapping from PHILO 12 · 3.0 units earned',
-  },
-  {
-    code: 'STAT 101',
-    title: 'Statistics',
-    units: '3.0',
-    term: 'Not yet taken',
-    status: 'not-taken',
-    grade: '—',
-  },
-]
-
 export interface PortalCard {
-  id: 'student' | 'adviser' | 'admin'
-  icon: 'user' | 'users' | 'cog'
+  id: 'student' | 'adviser' | 'department-head' | 'department-staff' | 'dean' | 'admin'
+  icon: 'user' | 'users' | 'chart' | 'list' | 'grid' | 'cog'
   title: string
   description: string
   bullets: readonly string[]
 }
 
 export const PORTALS_SECTION = {
-  kicker: 'Three portals, one record',
-  title: 'One advising file, read three different ways.',
+  kicker: 'Six roles, one record',
+  title: 'One advising file, read six different ways.',
   subhead:
-    'Row-level security decides what each role can see. Advising notes and attempt remarks never reach a student session — not by convention, by policy in the database.',
+    'Row-level security decides what each role can see, scoped to its own department or college. A student reads their own record and advising notes; attempt remarks never reach a student session — not by convention, by policy in the database.',
 } as const
 
 export const PORTAL_CARDS: readonly PortalCard[] = [
   {
     id: 'student',
     icon: 'user',
-    title: 'For students',
+    title: 'Student',
     description:
       'Open the checklist you were handed on paper — but current. See which slots are filled, which retake counts, and what the lapsed INC does to your GWA before the term ends.',
     bullets: [
       'Curriculum checklist with live slot status',
       'Term and cumulative GWA, unit-weighted',
-      'Full attempt history across retakes',
-      'Your assigned adviser, always current',
+      'Enrollment history across every attempt and retake',
+      'Grade flags and a client-side PDF grade summary',
     ],
   },
   {
     id: 'adviser',
     icon: 'users',
-    title: 'For advisers',
+    title: 'Adviser',
     description:
       'Record the attempt, see the prerequisite warning, and decide — with the override written to an audit entry that nobody can quietly edit later.',
     bullets: [
-      'Advisee roster with delinquency and INC alerts',
-      'Soft prerequisite check with Continue / Cancel',
-      'Elective mapping and transfer equivalency',
-      'Dated, append-only advising notes',
+      'Advisee roster and dashboard with a PDF report',
+      'Grade entry, import, and grade-flag review',
+      'Prerequisite warning: Continue with override / Cancel',
+      'Elective mapping, equivalency, and dated advising notes',
+    ],
+  },
+  {
+    id: 'department-head',
+    icon: 'chart',
+    title: 'Department Head',
+    description:
+      'Steer the department’s academic structure: approve curriculum transfers, define equivalencies and outside credits, and review how the department’s students are progressing.',
+    bullets: [
+      'Curriculum-transfer approvals and curriculum-pair equivalencies',
+      'Outside (transferee and shiftee) credits with audited reasons',
+      'Curricula, academic terms, and department reports',
+      'Department audit log and scholastic-standing settings',
+    ],
+  },
+  {
+    id: 'department-staff',
+    icon: 'list',
+    title: 'Department Staff',
+    description:
+      'Keep the department’s records in order: who is enrolled, who advises whom, and which terms are open for encoding — without touching another department’s files.',
+    bullets: [
+      'Student directory with .csv and .xlsx import',
+      'Adviser reassignment with zero-gap handoffs',
+      'Academic terms and grade-encoding closures',
+      'Curricula, course catalogue, and department invitations',
+    ],
+  },
+  {
+    id: 'dean',
+    icon: 'grid',
+    title: 'Dean',
+    description:
+      'See the whole college at once, read-only. Compare departments, open faculty reports, and read the audit entries your office is asked to sign off on.',
+    bullets: [
+      'Faculty reports, filtered by department',
+      'Read-only student directory and records',
+      'Faculty-scoped audit log',
+      'Oversight across every constituent department',
     ],
   },
   {
     id: 'admin',
     icon: 'cog',
-    title: 'For administrators',
+    title: 'System Admin',
     description:
-      'Own the catalog: programs, versioned curricula, prerequisite links, repeatable rules, term locks — and read the audit log the registrar will ask you for.',
+      'Own the institution-wide setup: accounts, role assignments, faculties, departments, and degree programs — and read the system-wide audit log the registrar will ask you for.',
     bullets: [
       'Provision accounts; no public sign-up',
-      'Versioned curricula with delinquency thresholds',
-      'School terms, offerings, by-request flags',
-      'Read-only immutable audit viewer',
+      'Role assignments, including Dean and admin grants',
+      'Faculties, departments, programs, and a student directory',
+      'Scholastic-standing thresholds and a read-only audit log',
     ],
   },
 ]
@@ -279,12 +243,12 @@ export const FEATURE_TABS: readonly FeatureTabItem[] = [
     label: 'Rules engine',
     heading: 'Academic rules enforced in the database.',
     description:
-      'Repeatable course policies, lapsed INC evaluation, zero-gap adviser reassignments, and term locks run as transactional rules — never manual spreadsheet workarounds.',
+      'Retake replacement, lapsed INC evaluation, zero-gap adviser reassignments, and term locks run as transactional rules — never manual spreadsheet workarounds.',
     bullets: [
       {
         title: 'Soft prerequisite checks',
         description:
-          'Strict prerequisites warn at enrollment; advisers may continue with prerequisite_override = true.',
+          'Strict prerequisites warn at enrollment; advisers may continue with prerequisite_override = true and a written reason.',
       },
       {
         title: 'Scheduled INC lapse',
@@ -302,20 +266,20 @@ export const FEATURE_TABS: readonly FeatureTabItem[] = [
     panelTitle: 'Rule constraints in the advising schema',
     panelRows: [
       {
-        code: 'REPEAT',
-        title: 'grade_replacement',
+        code: 'RETAKE',
+        title: 'Numeric retake of a failed course',
         units: '3.0',
         status: 'passed',
-        statusLabel: 'Latest pass',
+        statusLabel: 'Replaces',
         outcome: 'enforced',
       },
       {
-        code: 'CREDIT',
-        title: 'additional_credit',
+        code: 'RETAKE',
+        title: 'Retake after a passing attempt',
         units: '3.0',
-        status: 'passed',
-        statusLabel: 'Stacks',
-        outcome: 'enforced',
+        status: 'failed',
+        statusLabel: 'Rejected',
+        outcome: 'blocked',
       },
       {
         code: 'PREREQ',
@@ -337,7 +301,7 @@ export const FEATURE_TABS: readonly FeatureTabItem[] = [
     panelFooterNote:
       'Every rule corresponds to a documented operation in the OpenAPI contract and a database constraint.',
     panelMetricLabel: 'Core entities',
-    panelMetricValue: '18',
+    panelMetricValue: '21',
   },
   {
     id: 'Audit trail',
@@ -359,7 +323,7 @@ export const FEATURE_TABS: readonly FeatureTabItem[] = [
       {
         title: 'Registrar-ready viewer',
         description:
-          'Filter by actor, student, or action without exposing private advising notes to students.',
+          'Role-scoped, read-only viewers with actor, student, action and date filters, plus CSV export.',
       },
     ],
     linkLabel: 'View compliance commitments',
@@ -418,7 +382,7 @@ export const PREREQUISITE_ENGINE_SECTION = {
   dialogAuditLine: 'Audited · [adviser]@[institution].edu.ph',
   dialogCancelLabel: 'Cancel',
   dialogContinueLabel: 'Continue with override',
-  linkLabel: 'Explore the three portals',
+  linkLabel: 'Explore the six portals',
   linkHref: '#portals',
 } as const
 
@@ -444,13 +408,13 @@ export const TRUST_BADGES_SECTION = {
 export const TRUST_BADGES: readonly TrustBadgeItem[] = [
   {
     icon: 'shield',
-    title: 'Aligned to RA 10173',
+    title: 'Built for RA 10173 review',
     description:
-      'Grades, enrollment records and advising notes are treated as sensitive personal information under the Philippine Data Privacy Act.',
+      'Grades, enrollment records and advising notes are treated as sensitive personal information under the Philippine Data Privacy Act. The formal compliance review is still required before any real-data deployment.',
   },
   {
     icon: 'check',
-    title: 'Built to WCAG 2.1 AA',
+    title: 'Targeting WCAG 2.1 AA',
     description:
       'Status is never colour alone; every badge carries a label and a shape. Full keyboard paths, including the override dialog. Audited in Phase 4.',
   },
@@ -463,7 +427,7 @@ export const TRUST_BADGES: readonly TrustBadgeItem[] = [
 ]
 
 export const BIG_NUMBER_SECTION = {
-  value: '18',
+  value: '21',
   caption:
     'core entities modelled in the advising schema — the whole advising record, not a subset of it',
   stats: [
@@ -499,7 +463,7 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     stepNumber: 1,
     label: 'Provision',
     description:
-      'Admin creates the profile and role. Google sign-in is rejected server-side unless the email is pre-registered.',
+      'An administrator — or a department Head or Staff, within their own department — creates the profile and role. Google sign-in is rejected server-side unless the email is pre-registered.',
     writes: [
       {
         entity: 'profile',
@@ -528,7 +492,7 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
       },
       {
         entity: 'advising_note',
-        description: 'dated, append-only note hidden from student sessions by RLS',
+        description: 'dated, append-only note the student can read; attempt remarks stay staff-only by RLS',
       },
       {
         entity: 'audit entry',
@@ -583,7 +547,7 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     stepNumber: 5,
     label: 'Audit',
     description:
-      'The registrar reads an append-only log the application itself cannot update or delete.',
+      'Role-scoped viewers read an append-only log the application itself cannot update or delete.',
     writes: [
       {
         entity: 'audit_log',
@@ -591,7 +555,7 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
       },
       {
         entity: 'export',
-        description: 'auditable student record and checklist summary for registrar review',
+        description: 'CSV export of the audit view, and client-side PDF checklist and grade summaries',
       },
     ],
   },
@@ -613,9 +577,9 @@ export const RULES_ENGINE_SECTION = {
 export const RULES_ENGINE_CARDS: readonly RulesEngineCard[] = [
   {
     icon: 'layers',
-    title: 'Repeatable types',
+    title: 'Retake replacement',
     description:
-      'grade_replacement keeps only the most recent passed attempt; additional_credit stacks every pass. A later failure never reverts a course already passed.',
+      'A failed course can be retaken; a numeric retake replaces the earlier failure in cumulative GWA while the original attempt stays on the transcript, marked Repeated. A passed course cannot be retaken.',
   },
   {
     icon: 'clock',
@@ -639,64 +603,60 @@ export const RULES_ENGINE_CARDS: readonly RulesEngineCard[] = [
     icon: 'check',
     title: 'Transfer equivalency',
     description:
-      'One-to-one decisions let a passed course from the old curriculum satisfy a destination slot without re-triggering a GWA recompute.',
+      'One-to-one decisions let a passed course satisfy a destination slot without creating a new attempt or changing GWA.',
   },
   {
     icon: 'lock',
     title: 'Term locks & by-request',
     description:
-      'Locked school terms refuse new attempts; by-request offerings stay visible to advisers without appearing as scheduled sections.',
+      'Locked terms refuse new attempts, and Heads and Staff close encoding per department; by-request offerings keep discontinued courses available to older curricula.',
   },
 ]
 
-export type RoadmapStatus = 'Built' | 'Planned'
-
-export interface RoadmapPhase {
-  phase: string
-  status: RoadmapStatus
-  title: string
-  description: string
+export interface FaqItem {
+  question: string
+  answer: string
 }
 
-export const ROADMAP_SECTION = {
-  kicker: 'Roadmap',
-  title: 'Delivered in five phases, not one big launch.',
+export const FAQ_SECTION = {
+  kicker: 'Questions',
+  title: 'What registrars and advisers ask first.',
   subhead:
-    'Phases 1 to 3 are built in the specification and the mockup set. Phases 4 and 5 are planned, and are drawn as planned — nothing here is deployed.',
+    'Short answers about accounts, enrollment, privacy, and the academic rules — each one a documented requirement, not a promise.',
 } as const
 
-export const ROADMAP_PHASES: readonly RoadmapPhase[] = [
+export const FAQ_ITEMS: readonly FaqItem[] = [
   {
-    phase: 'Phase 1',
-    status: 'Built',
-    title: 'Foundation & data engine',
-    description: 'Contract, schema, RLS, admin catalog',
+    question: 'Can students create their own accounts?',
+    answer:
+      'No. There is no public sign-up. An administrator — or a department Head or Staff member, within their own department — provisions the account, and the person sets a password through an expiring invitation link. Google sign-in works only when the Google email exactly matches a provisioned profile.',
   },
   {
-    phase: 'Phase 2',
-    status: 'Built',
-    title: 'Advising & checklists',
-    description: 'Assignments, attempts, GWA, portals',
+    question: 'Does SAAIS replace the registrar’s enrollment system?',
+    answer:
+      'No. Enrollment approval stays outside SAAIS. After approving it, the adviser records the approved courses here. SAAIS does not model section capacity, timetables, or classroom scheduling.',
   },
   {
-    phase: 'Phase 3',
-    status: 'Built',
-    title: 'Exceptions & rules',
-    description: 'INC lapse, electives, equivalencies, notes',
+    question: 'Who can read advising notes?',
+    answer:
+      'The student they concern, and authorized staff. Attempt remarks are different: they are staff-only, enforced in database queries and row-level security, not just hidden in the interface. Historical advisers keep read-only access and cannot add, archive, or restore notes.',
   },
   {
-    phase: 'Phase 4',
-    status: 'Planned',
-    title: 'Audit & compliance',
-    description: 'Audit viewer, PDF exports, WCAG, E2E',
+    question: 'Can an adviser enroll a student who has not met a prerequisite?',
+    answer:
+      'Yes — it is a soft check. A dialog names the missing requirement and offers Continue with override or Cancel. Continuing requires a written reason and is saved with the attempt and an audit entry; cancelling writes nothing.',
   },
   {
-    phase: 'Phase 5',
-    status: 'Planned',
-    title: 'Enhancements',
-    description: 'Prerequisite DAG, what-if simulator, AI assistant',
+    question: 'What happens to an INC after its deadline?',
+    answer:
+      'It stays INC permanently — it is never rewritten to failed. Past its deadline it counts as 5.00 for term GWA and as failed units for delinquency, and a completion grade can no longer be recorded. The default deadline is one calendar year after the end of the term in which the INC was incurred.',
   },
-]
+  {
+    question: 'Is a retaken course counted twice in the GWA?',
+    answer:
+      'No. A numeric retake replaces the earlier failure in cumulative GWA, and the original attempt stays on the transcript, marked Repeated. A course that has already been passed cannot be retaken.',
+  },
+] as const
 
 export const CLOSING_CTA = {
   title: 'A record your registrar can read starts here.',
@@ -730,7 +690,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'GWA engine', href: '#features' },
       { label: 'Rules engine', href: '#rules-engine' },
       { label: 'Audit trail', href: '#features' },
-      { label: 'Exports', href: '#roadmap' },
+      { label: 'Exports', href: '#features' },
     ],
   },
   {
@@ -738,7 +698,10 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'Student', href: '/login' },
       { label: 'Adviser', href: '/login' },
-      { label: 'Administrator', href: '/login' },
+      { label: 'Department Head', href: '/login' },
+      { label: 'Department Staff', href: '/login' },
+      { label: 'Dean', href: '/login' },
+      { label: 'System Admin', href: '/login' },
       { label: 'API documentation', href: '/docs/openapi' },
     ],
   },
@@ -754,7 +717,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
     title: 'Project',
     links: [
-      { label: 'About the team', href: '#roadmap' },
+      { label: 'FAQ', href: '#faq' },
       { label: 'Release notes', href: '#release-notes' },
       { label: 'Documentation', href: '/docs' },
       { label: 'Styleguide', href: '/styleguide' },
@@ -770,7 +733,7 @@ export const FOOTER_NEWSLETTER = {
   placeholder: 'you@[institution].edu.ph',
   buttonLabel: 'View release notes',
   signInNote:
-    "Looking for your institution's sign-in? Accounts are provisioned by an administrator — ask your adviser for the link.",
+    "Looking for your institution's sign-in? Accounts are provisioned by an administrator or your department — there is no public sign-up.",
 } as const
 
 export const FOOTER_LEGAL = {

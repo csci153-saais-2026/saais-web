@@ -8,7 +8,7 @@ import { LandingHero } from '@/routes/landing/components/LandingHero'
 import { MissionBand } from '@/routes/landing/components/MissionBand'
 import { PortalsOverviewSection } from '@/routes/landing/components/PortalsOverviewSection'
 import { PrerequisiteShowcaseSection } from '@/routes/landing/components/PrerequisiteShowcaseSection'
-import { RoadmapSection } from '@/routes/landing/components/RoadmapSection'
+import { FaqSection } from '@/routes/landing/components/FaqSection'
 import { RulesEngineGrid } from '@/routes/landing/components/RulesEngineGrid'
 import { TrustAndMetricsSection } from '@/routes/landing/components/TrustAndMetricsSection'
 import { WalkthroughDialog } from '@/routes/landing/components/WalkthroughDialog'
@@ -32,7 +32,7 @@ export default function LandingPage() {
         <TrustAndMetricsSection />
         <WorkflowStepsSection />
         <RulesEngineGrid />
-        <RoadmapSection />
+        <FaqSection />
         <LandingCtaSection onRequestWalkthrough={openWalkthrough} />
       </main>
       <LandingFooter />
