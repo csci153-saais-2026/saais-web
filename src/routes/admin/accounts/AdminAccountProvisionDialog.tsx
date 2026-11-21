@@ -120,7 +120,13 @@ export function AdminAccountProvisionDialog({
   onSubmit: (request: ApiSchema<'InviteRequest'>) => Promise<void>
 }) {
   const [values, setValues] = useState<AccountInviteValues>(EMPTY_VALUES)
+  const [selectedRoles, setSelectedRoles] = useState<AccountRole[]>([])
   const [errors, setErrors] = useState<AccountInviteErrors>({})
+  const inviteValues: AccountInviteValues = {
+    ...values,
+    primaryRole: selectedRoles[0] ?? 'student',
+    additionalRoles: selectedRoles.slice(1),
+  }
   const programById = useMemo(
     () => new Map(programs.map((program) => [program.id, program])),
     [programs],
@@ -142,17 +148,11 @@ export function AdminAccountProvisionDialog({
       Boolean(selectedProgram?.department_id) &&
       adviser.departmentId === selectedProgram?.department_id,
   )
-  const scopedRoles = [values.primaryRole, ...values.additionalRoles].filter(
-    (role) => role !== 'student' && role !== 'admin',
+  const programOptions = programs.filter(
+    (program) =>
+      program.status === 'active' &&
+      program.department_id === values.departmentId,
   )
-  const needsFaculty = scopedRoles.some((role) =>
-    ['adviser', 'department_head', 'department_staff', 'dean'].includes(role),
-  )
-  const needsDepartment = scopedRoles.some((role) =>
-    ['department_head', 'department_staff'].includes(role),
-  )
-  const showOrganization = needsFaculty || needsDepartment
-  const showDepartment = needsDepartment || Boolean(values.facultyId)
 
   function update<K extends keyof AccountInviteValues>(
     key: K,
@@ -162,33 +162,51 @@ export function AdminAccountProvisionDialog({
     setErrors((current) => ({ ...current, [key]: undefined }))
   }
 
-  function changePrimaryRole(value: string) {
-    const nextRole = accountRoles.find((option) => option.value === value)?.value
-    if (!nextRole) return
+  function toggleRole(role: AccountRole, checked: boolean) {
+    setSelectedRoles((current) => {
+      if (role === 'student') return checked ? ['student'] : []
+      if (current.includes('student')) return current
+      return checked
+        ? [...current, role]
+        : current.filter((currentRole) => currentRole !== role)
+    })
+    setErrors((current) => ({ ...current, additionalRoles: undefined }))
+  }
+
+  function changeFaculty(value: string) {
     setValues((current) => ({
       ...current,
-      primaryRole: nextRole,
-      additionalRoles: current.additionalRoles.filter(
-        (role) => role !== nextRole && role !== 'student',
-      ),
-      facultyId: '',
+      facultyId: value,
       departmentId: '',
+      programId: '',
+      curriculumVersionId: '',
+      adviserId: '',
     }))
     setErrors({})
   }
 
-  function toggleAdditionalRole(role: AccountRole, checked: boolean) {
-    if (role === 'student' && values.primaryRole !== 'student') return
-    const nextRoles = checked
-      ? [...values.additionalRoles, role]
-      : values.additionalRoles.filter((currentRole) => currentRole !== role)
-    update('additionalRoles', nextRoles)
+  function changeDepartment(value: string) {
+    setValues((current) => ({
+      ...current,
+      departmentId: value,
+      programId: '',
+      curriculumVersionId: '',
+      adviserId: '',
+    }))
+    setErrors({})
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (selectedRoles.length === 0) {
+      setErrors((current) => ({
+        ...current,
+        additionalRoles: 'Select at least one role.',
+      }))
+      return
+    }
     const nextErrors = validateAccountInvite(
-      values,
+      inviteValues,
       currentEmail,
       departments,
       programs.map((program) => ({
@@ -208,12 +226,12 @@ export function AdminAccountProvisionDialog({
     )
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
-    void onSubmit(buildAccountInviteRequest(values))
+    void onSubmit(buildAccountInviteRequest(inviteValues))
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Add account</DialogTitle>
           <DialogDescription>
@@ -263,56 +281,39 @@ export function AdminAccountProvisionDialog({
             </FormField>
           </div>
 
-          <FieldSelect
-            id="account-primary-role"
-            label="Primary role"
-            value={values.primaryRole}
-            onChange={changePrimaryRole}
-            placeholder="Select a primary role"
-            options={accountRoles.map((option) => ({
-              value: option.value,
-              label: option.label,
-            }))}
-          />
-
           <fieldset className="grid gap-2">
             <legend className="text-[13px] font-semibold text-muted-foreground">
-              Additional roles
+              Roles
             </legend>
             <p className="text-xs text-muted-foreground">
-              A student role must be primary so the required program,
-              curriculum, and adviser assignments can be created.
+              The first selected role is primary; other selected roles are
+              added as assignments. Student accounts cannot have other roles.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {accountRoles
-                .filter((option) => option.value !== values.primaryRole)
-                .map((option) => {
-                  const disabled =
-                    catalogsLoading ||
-                    (option.value === 'student' &&
-                      values.primaryRole !== 'student')
-                  const id = `account-additional-role-${option.value}`
-                  return (
-                    <label
-                      key={option.value}
-                      htmlFor={id}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <Checkbox
-                        id={id}
-                        checked={values.additionalRoles.includes(option.value)}
-                        disabled={disabled}
-                        onCheckedChange={(checked) =>
-                          toggleAdditionalRole(
-                            option.value,
-                            checked === true,
-                          )
-                        }
-                      />
-                      {option.label}
-                    </label>
-                  )
-                })}
+              {accountRoles.map((option) => {
+                const studentSelected = selectedRoles.includes('student')
+                const id = `account-role-${option.value}`
+                return (
+                  <label
+                    key={option.value}
+                    htmlFor={id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Checkbox
+                      id={id}
+                      checked={selectedRoles.includes(option.value)}
+                      disabled={
+                        catalogsLoading ||
+                        (studentSelected && option.value !== 'student')
+                      }
+                      onCheckedChange={(checked) =>
+                        toggleRole(option.value, checked === true)
+                      }
+                    />
+                    {option.label}
+                  </label>
+                )
+              })}
             </div>
             {errors.additionalRoles && (
               <p role="alert" className="text-xs font-medium text-destructive">
@@ -321,43 +322,36 @@ export function AdminAccountProvisionDialog({
             )}
           </fieldset>
 
-          {showOrganization && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FieldSelect
-                id="account-faculty"
-                label="Faculty"
-                value={values.facultyId}
-                onChange={(value) => {
-                  update('facultyId', value)
-                  update('departmentId', '')
-                }}
-                options={faculties.map((faculty) => ({
-                  value: faculty.id,
-                  label: faculty.name,
-                }))}
-                placeholder="Select a faculty"
-                disabled={catalogsLoading}
-                error={errors.facultyId}
-              />
-              {showDepartment && (
-                <FieldSelect
-                  id="account-department"
-                  label="Department"
-                  value={values.departmentId}
-                  onChange={(value) => update('departmentId', value)}
-                  options={departmentOptions.map((department) => ({
-                    value: department.id,
-                    label: department.name,
-                  }))}
-                  placeholder="Select a department"
-                  disabled={catalogsLoading || !values.facultyId}
-                  error={errors.departmentId}
-                />
-              )}
-            </div>
-          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldSelect
+              id="account-faculty"
+              label="Faculty"
+              value={values.facultyId}
+              onChange={changeFaculty}
+              options={faculties.map((faculty) => ({
+                value: faculty.id,
+                label: faculty.name,
+              }))}
+              placeholder="Select a faculty"
+              disabled={catalogsLoading}
+              error={errors.facultyId}
+            />
+            <FieldSelect
+              id="account-department"
+              label="Department"
+              value={values.departmentId}
+              onChange={changeDepartment}
+              options={departmentOptions.map((department) => ({
+                value: department.id,
+                label: department.name,
+              }))}
+              placeholder="Select a department"
+              disabled={catalogsLoading || !values.facultyId}
+              error={errors.departmentId}
+            />
+          </div>
 
-          {values.primaryRole === 'student' && (
+          {selectedRoles.includes('student') && (
             <section
               aria-labelledby="student-provisioning-heading"
               className="grid gap-4 rounded-md border border-border p-4"
@@ -418,14 +412,12 @@ export function AdminAccountProvisionDialog({
                   update('curriculumVersionId', '')
                   update('adviserId', '')
                 }}
-                options={programs
-                  .filter((program) => program.status === 'active')
-                  .map((program) => ({
+                options={programOptions.map((program) => ({
                     value: program.id,
                     label: `${program.code} · ${program.name}`,
                   }))}
                 placeholder="Select a program"
-                disabled={catalogsLoading}
+                disabled={catalogsLoading || !values.departmentId}
                 error={errors.programId}
               />
               <div className="grid gap-4 sm:grid-cols-2">
