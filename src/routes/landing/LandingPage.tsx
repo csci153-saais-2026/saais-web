@@ -4,6 +4,7 @@ import { LandingHeader } from '@/routes/landing/components/LandingHeader'
 import { LandingHero } from '@/routes/landing/components/LandingHero'
 import { MissionBand } from '@/routes/landing/components/MissionBand'
 import { PortalsOverviewSection } from '@/routes/landing/components/PortalsOverviewSection'
+import { PrerequisiteShowcaseSection } from '@/routes/landing/components/PrerequisiteShowcaseSection'
 
 export default function LandingPage() {
   return (
@@ -16,6 +17,7 @@ export default function LandingPage() {
         <PortalsOverviewSection />
         <MissionBand />
         <FeatureTabsSection />
+        <PrerequisiteShowcaseSection />
       </main>
     </div>
   )
