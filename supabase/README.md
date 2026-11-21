@@ -1,6 +1,6 @@
 # Jerome's SAAIS Edge Functions
 
-This implementation targets OpenAPI **0.3.0 at `cfa620c97c2a506537825edc1323f37ee5f843b3`**. The checked-in `contract/` remains at 0.2.1, as explicitly requested. Integrate the approved 0.3.0 contract, generated client and frontend before deployment. The generated runtime snapshot deliberately reads the assigned Git object, not the working-tree YAML.
+This implementation targets approved OpenAPI **0.3.1 at `8df551183962d19ab724c9f33c9a5f6d884d3ba5`**, with bundled SHA-256 `4be525583cfa343782e00e3c1daee087da92a213734e7ba75ff00006f5418d6f`. PR #111 records the frontend and backend representative approvals. The feature includes the latest backend parent and that approved contract change. The generator bundles the pinned Git tree and verifies its version and hash before producing the HTTP and SQL runtime schemas.
 
 ## Route ownership
 
@@ -27,9 +27,9 @@ node supabase/tools/test-database.cjs
 
 The database runner uses PostgreSQL binaries from `C:/Program Files/PostgreSQL/18/bin` by default. Set `PG_BINARY_DIR` for a different installation. It starts an isolated cluster under ignored `supabase/.temp/jerome-pg` on `127.0.0.1:55432`, creates a uniquely named temporary database, applies every migration, runs SQL tests plus a two-connection concurrency test, drops only that temporary database, and stops its server. Keep that port free. Its `bootstrap.sql` supplies a minimal **test-only** Auth schema; do not apply it to a Supabase project.
 
-The SQL suite checks successful execution of all 47 operations, response validation, body/path validation, unauthenticated and forbidden requests, scope isolation, multi-role authorization, owned notifications, RLS/grants, stale updates, history, conflicts, late transaction rollback, Unicode duplicate normalization, zero-unit snapshots, INC/direct-credit collisions and concurrent writes. It uses synthetic accounts and data.
+The SQL suite checks successful execution of all 47 operations, curriculum-cloning Head/Staff permissions, Admin-only and cross-department denials with no partial writes, response validation, body/path validation, unauthenticated and forbidden requests, scope isolation, multi-role authorization, owned notifications, RLS/grants, stale updates, history, conflicts, late transaction rollback, Unicode duplicate normalization, zero-unit snapshots, INC/direct-credit collisions and concurrent writes. It uses synthetic accounts and data.
 
-These checks do not emulate Supabase's gateway, cryptographic JWT verification, GoTrue, PostgREST, Deno isolates, cron extension or email delivery. Run `deno task --config supabase/deno.json check` and deployed authenticated integration tests when those services are available. Deno and Docker were unavailable during this implementation; PostgreSQL tests and TypeScript checks were executed instead.
+These checks do not emulate Supabase's gateway, cryptographic JWT verification, GoTrue, PostgREST, Deno isolates, cron extension or email delivery. Run `deno task --config supabase/deno.json check` and deployed authenticated integration tests when those services are available. The November 21 review also passed Deno checks for all five entry points and ran migrations and the SQL/concurrency suite in a disposable PostgreSQL 17.11 container with the test Auth stand-in.
 
 ## Runtime configuration
 
@@ -43,7 +43,7 @@ These checks do not emulate Supabase's gateway, cryptographic JWT verification, 
 
 ## Database integration
 
-The six `20261009...` migrations are copied unchanged from the existing team branch `origin/supabase/migrations` at `ec38495`. They remain the team's original schema contribution. Jerome's later migrations add required 0.3.0 dependencies, relax obsolete positive-only constraints for empty drafts/zero-unit requirements, and implement the assigned workflows. Existing rows are retained. Existing primary `student`, `adviser` and `admin` roles are backfilled into role assignments.
+The six `20261009...` migrations are copied unchanged from the existing team branch `origin/supabase/migrations` at `ec38495`. They remain the team's original schema contribution. Jerome's later migrations add required academic dependencies, relax obsolete positive-only constraints for empty drafts/zero-unit requirements, and implement the assigned workflows. Existing rows are retained. The November 21 migrations replace the catalog routine for the approved cloning rule and update the runtime contract snapshot. Apply these through migration history so existing databases receive both changes. Existing primary `student`, `adviser` and `admin` roles are backfilled into role assignments.
 
 Review existing provisioning before enabling the new roles. The old three-role schema did not contain the required Head/Staff/Dean assignments. Provision their actual department/faculty scopes through the team's authorized account workflow, not through client payloads. Do not reapply copied base SQL manually to a project that already records those migration versions.
 
@@ -71,7 +71,7 @@ Notification rows with `email_delivery_status='pending'` form the delivery queue
 
 ## Contract interpretation notes
 
-- Curriculum cloning copies the source's terms/slots and uses the requested new version metadata. Both flat and nested `curriculum` metadata forms are supported; explicitly requesting a clone takes its terms from the source.
+- Curriculum cloning requires an independently assigned Department Head or Department Staff role in the department shared by the source and target programs. Admin-only accounts may create blank versions. Multi-role accounts use their eligible scoped role for cloning and audit attribution. Separate assignments across departments do not permit cross-department cloning. Cloning copies the source's terms/slots and uses the requested new version metadata. Both flat and nested `curriculum` metadata forms are supported; explicitly requesting a clone takes its terms from the source.
 - Curriculum totals are recalculated from slots, including nested creates, cloning and slot edits/deletes. Earlier attempt-unit snapshots remain unchanged when catalog units change.
 - Preview chooses one passing source per destination using course identity before pair rules, retains additional-credit sources as permitted by the pinned enum, and computes carried/lost passing units and the units-weighted GWA of carried sources. The schema does not define a more detailed projected-GWA formula; confirm this interpretation with the academic owner before production acceptance.
 - Sources already used by live credit decisions are excluded from automatic reassignment matches. Earlier decisions remain intact; conflicting old decisions require explicit review/revocation before reusing the source. No historical decision is silently overwritten.
