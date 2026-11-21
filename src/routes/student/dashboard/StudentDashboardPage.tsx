@@ -10,7 +10,6 @@ import { DegreeProgress } from "@/components/features/degree-progress"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
 import { QuickAccess } from "@/components/features/quick-access"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { StatGrid } from "@/components/features/stat-tile"
 import { Button } from "@/components/ui/button"
 import {
@@ -78,12 +77,12 @@ function getFirstName(fullName?: string | null): string {
 }
 
 function getInitials(name?: string | null): string {
-  if (!name || !name.trim()) return "AD"
+  if (!name || !name.trim()) return "—"
   const cleaned = name
     .replace(/^(Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.|Engr\.)\s+/i, "")
     .trim()
   const parts = cleaned.split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "AD"
+  if (parts.length === 0) return "—"
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
@@ -96,7 +95,7 @@ export function StudentDashboardView({
   studentName,
   programName = "Unassigned program",
   curriculumLabel = "—",
-  delinquencyThresholdUnits = 12,
+  delinquencyThresholdUnits = null,
   adviserAssignments = [],
   recommendations = [],
   notes = [],
@@ -138,11 +137,10 @@ export function StudentDashboardView({
   }, [adviserAssignments])
 
   const adviserName =
-    currentAdviserAssignment?.adviser_name?.trim() || "Assigned Adviser"
-  const adviserInitials = getInitials(adviserName)
+    currentAdviserAssignment?.adviser_name?.trim() || "No adviser assigned"
+  const adviserInitials = getInitials(currentAdviserAssignment?.adviser_name)
   const adviserFaculty =
-    currentAdviserAssignment?.adviser_faculty_name?.trim() ||
-    "Faculty of Computing"
+    currentAdviserAssignment?.adviser_faculty_name?.trim() || "—"
   const adviserEmail =
     currentAdviserAssignment?.adviser_email?.trim() || "—"
   const assignedSince = formatShortDate(
@@ -177,7 +175,10 @@ export function StudentDashboardView({
           {
             label: "Academic standing",
             value: standingDisplay,
-            note: `${delinquencyThresholdUnits} failed units per term triggers a flag`,
+            note:
+              delinquencyThresholdUnits != null
+                ? `${delinquencyThresholdUnits} failed units per term triggers a flag`
+                : "Academic standing based on term failed units",
           },
           {
             label: "Open INC",
@@ -242,15 +243,13 @@ export function StudentDashboardView({
         </div>
       </div>
 
-      <SampleFooter>
-        Sample records for presentation · Reference date: 19 September 2026
-      </SampleFooter>
-
       <AdvisingNotesDialog
         open={notesOpen}
         onOpenChange={setNotesOpen}
         notes={notes}
-        defaultAuthorName={adviserName}
+        defaultAuthorName={
+          currentAdviserAssignment?.adviser_name?.trim() || undefined
+        }
       />
 
       <AssignmentHistoryDialog
@@ -266,6 +265,7 @@ interface DashboardMetaData {
   readonly studentName: string | null
   readonly programName: string
   readonly curriculumLabel: string
+  readonly delinquencyThresholdUnits: number | null
   readonly offeringMap: ReadonlyMap<string, ApiSchema<"CourseOffering">>
   readonly courseMap: ReadonlyMap<string, ApiSchema<"Course">>
 }
@@ -307,6 +307,7 @@ async function fetchDashboardMeta(
     studentName: profile?.full_name ?? null,
     programName: program?.name ?? "Unassigned program",
     curriculumLabel: curriculum?.version_label ?? "—",
+    delinquencyThresholdUnits: curriculum?.delinquency_threshold ?? null,
     offeringMap: new Map(offerings.map((o) => [o.id, o])),
     courseMap: new Map(courses.map((c) => [c.id, c])),
   }
@@ -372,6 +373,9 @@ export function StudentDashboardPage({
       studentName={metaQuery.data?.studentName ?? null}
       programName={metaQuery.data?.programName ?? "Unassigned program"}
       curriculumLabel={metaQuery.data?.curriculumLabel ?? "—"}
+      delinquencyThresholdUnits={
+        metaQuery.data?.delinquencyThresholdUnits ?? null
+      }
       adviserAssignments={dashboard.data.adviserAssignments}
       recommendations={recommendations}
       notes={dashboard.data.notes}

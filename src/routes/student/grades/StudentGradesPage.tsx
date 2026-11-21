@@ -7,7 +7,6 @@ import {
   ReportPdfPreviewDialog,
   type ReportAuditEventType,
 } from "@/components/features/report-pdf-preview-dialog"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { apiClient, postgrestFilter, type ApiSchema } from "@/lib/api"
@@ -273,10 +272,6 @@ export function StudentGradesView({
           <span className="font-mono">5.00</span> for GWA and failed units.
         </AlertDescription>
       </Alert>
-
-      <SampleFooter>
-        Sample records for presentation · Reference date: 19 September 2026
-      </SampleFooter>
 
       <FlagGradeDialog
         open={flagTarget !== null}

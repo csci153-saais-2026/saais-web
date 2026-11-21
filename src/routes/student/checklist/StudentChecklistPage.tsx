@@ -14,7 +14,6 @@ import {
   ReportPdfPreviewDialog,
   type ReportAuditEventType,
 } from "@/components/features/report-pdf-preview-dialog"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { StatGrid } from "@/components/features/stat-tile"
 import { Button } from "@/components/ui/button"
 import type { Status } from "@/components/ui/status-badge"
@@ -400,10 +399,6 @@ export function StudentChecklistView({
           </p>
         </Panel>
       )}
-
-      <SampleFooter>
-        Sample records for presentation · Reference date: 19 September 2026
-      </SampleFooter>
 
       <CourseInfoDialog
         open={selectedSlot !== null}

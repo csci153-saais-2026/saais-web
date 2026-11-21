@@ -5,7 +5,6 @@ import {
 } from "@/components/features/assignment-history-dialog"
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -258,10 +257,6 @@ export function StudentProfileView({
           </Panel>
         </div>
       </div>
-
-      <SampleFooter>
-        Sample records for presentation · Reference date: 19 September 2026
-      </SampleFooter>
 
       <AssignmentHistoryDialog
         open={assignmentDialogOpen}

@@ -1,6 +1,5 @@
 import { PageHeading } from "@/components/features/page-heading"
 import { Panel } from "@/components/features/panel"
-import { SampleFooter } from "@/components/features/sample-footer"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -40,10 +39,6 @@ export function StudentEnrollmentHistoryView({
         offeringDetails={offeringDetails}
         slotLabels={slotLabels}
       />
-
-      <SampleFooter>
-        Sample records for presentation · Reference date: 19 September 2026
-      </SampleFooter>
     </div>
   )
 }
