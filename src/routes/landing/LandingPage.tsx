@@ -1,3 +1,4 @@
+import { FeatureTabsSection } from '@/routes/landing/components/FeatureTabsSection'
 import { HeroChecklistPreview } from '@/routes/landing/components/HeroChecklistPreview'
 import { LandingHeader } from '@/routes/landing/components/LandingHeader'
 import { LandingHero } from '@/routes/landing/components/LandingHero'
@@ -14,6 +15,7 @@ export default function LandingPage() {
         </LandingHero>
         <PortalsOverviewSection />
         <MissionBand />
+        <FeatureTabsSection />
       </main>
     </div>
   )
