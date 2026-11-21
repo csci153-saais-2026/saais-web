@@ -2,10 +2,10 @@
 
 Status: **frozen** on 2026-11-20 (Asia/Manila). The frontend and backend teams approved the contract outside GitHub, as reported by the project team. See issue [#39](https://github.com/csci153-saais-2026/saais-web/issues/39).
 
-This is the historical 0.3.0 record. The proposed 0.3.1 change allowing scoped Department Staff to clone curricula is documented in [CANDIDATE-0.3.1.md](CANDIDATE-0.3.1.md); it requires new frontend and backend approval before being frozen.
+This is the historical 0.3.0 record. The approved 0.3.1 change allowing scoped Department Staff to clone curricula is documented in the [0.3.1 freeze record](CANDIDATE-0.3.1.md).
 
 - Contract: `contract/openapi.yaml`, `info.version: 0.3.0`.
-- Frozen bundled contract SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83`. To reproduce this historical hash, check out commit `8ad18c26a232319ee0c451715f596e5b9f12c4d6` in a separate worktree, install its dependencies, and run `node contract/candidate-hash.cjs` there. The current 0.3.1 candidate produces a different hash. The script resolves external references and hashes canonical JSON with recursively sorted object keys.
+- Frozen bundled contract SHA-256: `2134d2ce9176b0d48a448ea6c7c52b71bfbf2b94933d1f3d96aae535839bdd83`. To reproduce this historical hash, check out commit `8ad18c26a232319ee0c451715f596e5b9f12c4d6` in a separate worktree, install its dependencies, and run `node contract/candidate-hash.cjs` there. The current 0.3.1 contract produces a different hash. The script resolves external references and hashes canonical JSON with recursively sorted object keys.
 - Integrated source baseline: `964917c19a365c65bf5da3fded9f50b761375fe5` (merged SRS, contract, documentation, mocks, Postman and prototype changes).
 - The frozen version is identified by the bundled contract hash, which covers referenced files, not this document's commit. Future changes follow the change process below and must not silently alter this frozen identifier.
 - This is an API specification, not evidence that the backend, authorization or deployment is implemented.

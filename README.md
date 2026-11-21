@@ -169,7 +169,7 @@ npm run contract:check    # fails if generated output is stale, or if PostgREST 
 npm run contract:docs     # build the static Redoc bundle
 ```
 
-`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [0.3.0 freeze record](contract/FREEZE-0.3.0.md) documents the approved baseline and change process; the [0.3.1 candidate](contract/CANDIDATE-0.3.1.md) records the proposed cloning change. Redoc is also served in-app at `/docs` while the dev server is running.
+`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [0.3.0 freeze record](contract/FREEZE-0.3.0.md) documents the historical baseline and change process; the [0.3.1 freeze record](contract/CANDIDATE-0.3.1.md) records the approved cloning change. Redoc is also served in-app at `/docs` while the dev server is running.
 
 ### Seed Data Specification
 
