@@ -14,6 +14,12 @@ import { getMockDatabase } from "./store";
 
 let syntheticUuidCounter = 100;
 
+// The contract allows object-valued audit snapshots; the generator infers an
+// empty record for an object schema with unspecified properties.
+function auditSnapshot(value: Record<string, unknown>): ApiSchema<"AuditLogEntry">["old_value"] {
+  return value as ApiSchema<"AuditLogEntry">["old_value"];
+}
+
 function alreadyPassedCourse(
   studentId: string,
   offeringId: string,
@@ -5024,8 +5030,8 @@ export const saaisMswHandlers = [
         entity_type: "attempt",
         entity_id: attemptId,
         details_summary: "Corrected course grade or status.",
-        old_value: oldValue,
-        new_value: newValue,
+        old_value: auditSnapshot(oldValue),
+        new_value: auditSnapshot(newValue),
         reason: body.reason.trim(),
         created_at: updatedAt,
       });
@@ -5292,11 +5298,11 @@ export const saaisMswHandlers = [
         entity_type: "inc_resolution",
         entity_id: resolution.id,
         details_summary: `Corrected INC completion grade from ${oldValue.completion_grade} to ${corrected.completion_grade}.`,
-        old_value: oldValue,
-        new_value: {
+        old_value: auditSnapshot(oldValue),
+        new_value: auditSnapshot({
           completion_grade: corrected.completion_grade,
           effective_status: corrected.effective_status,
-        },
+        }),
         reason: body.reason,
         created_at: updatedAt,
       };
@@ -7083,8 +7089,8 @@ export const saaisMswHandlers = [
         details_summary: archived
           ? "Archived advising note."
           : "Restored advising note.",
-        old_value: { is_archived: note.is_archived },
-        new_value: { is_archived: archived },
+        old_value: auditSnapshot({ is_archived: note.is_archived }),
+        new_value: auditSnapshot({ is_archived: archived }),
         reason: null,
         created_at: new Date().toISOString(),
       });
