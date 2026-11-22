@@ -11,3 +11,13 @@ create function auth.jwt() returns jsonb language sql stable as $$select coalesc
 create function auth.uid() returns uuid language sql stable as $$select (auth.jwt()->>'sub')::uuid$$;
 grant usage on schema auth to authenticated,anon;
 grant execute on function auth.uid(),auth.jwt() to authenticated,anon;
+
+create schema if not exists storage;
+create table if not exists storage.objects(bucket_id text, name text, metadata jsonb);
+create table storage.buckets (
+  id text primary key, name text not null, public boolean not null,
+  file_size_limit bigint, allowed_mime_types text[]
+);
+alter table storage.objects enable row level security;
+grant usage on schema storage to authenticated, anon;
+grant select, insert, update, delete on storage.objects to authenticated, anon;
