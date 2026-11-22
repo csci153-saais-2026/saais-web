@@ -176,6 +176,7 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
       apiKey: TEST_API_KEY,
+      mode: "supabase",
       getAccessToken: () => currentToken,
       fetch: mockFetch,
     });
@@ -199,6 +200,7 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
 
     expect(seenRequests).toHaveLength(2);
     expect(seenRequests[0]?.headers.get("apikey")).toBe(TEST_API_KEY);
+    expect(seenRequests[0]?.headers.get("Accept-Profile")).toBe("saais_api");
     expect(seenRequests[0]?.headers.get("Authorization")).toBe(
       "Bearer jwt-initial",
     );

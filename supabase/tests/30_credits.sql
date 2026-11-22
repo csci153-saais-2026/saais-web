@@ -21,10 +21,20 @@ begin
   result:=test.call('revokeElectiveMapping',jsonb_build_object('student_id',student,'decision_id',result->>'id'),jsonb_build_object('reason','Test revoke','expected_updated_at',result->>'updated_at'));
   perform test.assert(result->>'revoked_at' is not null,'soft revoke mapping');
   body:=jsonb_build_object('attempt_id',source,'destination_curriculum_term_course_id',fixed,'decision_type','transfer_equivalency','justification','Test equivalency');
+  perform test.login(8);
+  perform test.expect('PT403','createEquivalencyDecision',jsonb_build_object('student_id',student),body);
+  perform test.login(4);
+  perform test.expect('PT404','createEquivalencyDecision',jsonb_build_object('student_id',student),
+    body||'{"attempt_id":"ffffffff-0000-4000-8000-000000000000"}');
+  perform test.expect('PT409','createEquivalencyDecision',jsonb_build_object('student_id',student),
+    body||'{"destination_curriculum_term_course_id":"ffffffff-0000-4000-8000-000000000000"}');
   result:=test.call('createEquivalencyDecision',jsonb_build_object('student_id',student),body);
+  perform test.expect('PT409','createEquivalencyDecision',jsonb_build_object('student_id',student),body);
   perform test.expect('PT409','createElectiveMapping',jsonb_build_object('student_id',student),jsonb_build_object('attempt_id',source,'curriculum_term_course_id',slot,'justification','Duplicate source'));
   result:=test.call('updateEquivalencyDecision',jsonb_build_object('student_id',student,'decision_id',result->>'id'),body||jsonb_build_object('expected_updated_at',result->>'updated_at'));
   result:=test.call('revokeEquivalencyDecision',jsonb_build_object('student_id',student,'decision_id',result->>'id'),jsonb_build_object('reason','Test revoke','expected_updated_at',result->>'updated_at'));
+  perform test.assert(result->>'revoked_at' is not null and (select count(*)=3 from public.audit_log_entry
+    where entity_id=(result->>'id')::uuid and student_id=student), 'equivalency preserves its row and all three audit events');
   perform test.assert((select count(*)>=4 from saais_private.credit_history where student_id=student),'effective-dated credit history');
   perform test.login(2);
   body:=jsonb_build_object('entry_type','transferee','origin_school',' Test  School ','original_course_code',' SRC 101 ','original_course_title','Prior Subject','units',3,'grade','2.00','destination_curriculum_term_course_id',slot,'reason','Passed prior course');

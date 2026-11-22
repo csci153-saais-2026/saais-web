@@ -1,3 +1,8 @@
+import {
+  InvitationError,
+  isInvitationRoute,
+  runInvitation,
+} from "./invitations.ts";
 import contract from "./contract.json" with { type: "json" };
 import mattContract from "./matt-contract.json" with { type: "json" };
 import { mattRoutes } from "./matt-routes.ts";
@@ -14,6 +19,7 @@ export type Operation = {
   status: number | null;
   errors: number[];
   matt?: boolean;
+  public?: boolean;
 };
 export type Environment = {
   url: string;
@@ -21,6 +27,7 @@ export type Environment = {
   publicKeys?: string[];
   origins: string[];
   assistant?: AssistantConfig;
+  serviceKey?: string;
 };
 export type RouteGroup = string;
 type Dependencies = {
@@ -90,8 +97,7 @@ export function operationsFor(group: RouteGroup): Operation[] {
     ...mattContract.operations
       .filter(
         (operation) =>
-          mattRoutes.has(operation.id) &&
-          !operation.public &&
+          (mattRoutes.has(operation.id) || isInvitationRoute(operation.id)) &&
           matchesGroup(operation),
       )
       .map((operation) => ({ ...operation, matt: true })),
@@ -145,8 +151,8 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       const projectKey = request.headers.get("apikey") || "";
       if (
         !(env.publicKeys || [env.publicKey]).includes(projectKey) ||
-        !authorization ||
-        !/^Bearer \S+$/i.test(authorization)
+        (!operation.public &&
+          (!authorization || !/^Bearer \S+$/i.test(authorization)))
       )
         return error(
           401,
@@ -223,9 +229,40 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           "Request body does not match this operation.",
           headers,
         );
+      const runProvisioning = async (
+        caller: { id: string; authorization: string } | null,
+      ) => {
+        try {
+          const result = await runInvitation(
+            operation.id,
+            body,
+            params.profile_id,
+            caller,
+            { url: env.url, serviceKey: env.serviceKey || "" },
+            fetcher,
+          );
+          return Response.json(result, {
+            status: operation.status || 200,
+            headers,
+          });
+        } catch (failure) {
+          if (!(failure instanceof InvitationError)) throw failure;
+          const status = operation.errors.includes(failure.status)
+            ? failure.status
+            : 500;
+          if (status === 429) headers.set("Retry-After", "60");
+          return error(
+            status,
+            status === 500 ? "XX000" : "PT" + status,
+            failure.message,
+            headers,
+          );
+        }
+      };
+      if (operation.public) return await runProvisioning(null);
       const upstreamHeaders = {
         apikey: projectKey,
-        Authorization: authorization,
+        Authorization: authorization!,
         "Content-Type": "application/json",
       };
       // Auth verifies the access token, independently of browser-provided claims.
@@ -243,6 +280,12 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       const identity = (await user.json()) as { id?: string };
       if (!identity.id || !uuid.test(identity.id))
         return error(401, "PGRST301", "Invalid user session.", headers);
+      if (isInvitationRoute(operation.id)) {
+        return await runProvisioning({
+          id: identity.id,
+          authorization: authorization!,
+        });
+      }
       // Use the caller JWT, never a service-role credential. SQL rechecks active
       // session/profile/role/scope at commit and makes the operation atomic.
       const assistant = operation.id === "askAdvisingAssistant";

@@ -27,6 +27,7 @@ export function environment(
       .map((value) => value.trim())
       .filter(Boolean),
     assistant: readAssistantConfig(get),
+    serviceKey: get("SUPABASE_SERVICE_ROLE_KEY"),
   };
 }
 

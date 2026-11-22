@@ -18,6 +18,7 @@ function run(name, options, quiet = false) {
 let started = false,
   created = false;
 try {
+  fs.mkdirSync(path.dirname(data), { recursive: true });
   if (!fs.existsSync(path.join(data, "PG_VERSION")))
     run("initdb", [
       "-D",
@@ -35,7 +36,9 @@ try {
     "-l",
     path.resolve("supabase/.temp/jerome-pg.log"),
     "-o",
-    "-h 127.0.0.1 -p 55432",
+    // Every client uses TCP. The CI user cannot write the Linux package's
+    // default Unix-socket directory under /var/run/postgresql.
+    "-h 127.0.0.1 -p 55432 -c unix_socket_directories=",
     "-w",
     "start",
   ]);
@@ -119,7 +122,7 @@ try {
   console.log("All migrations and SQL test files passed.");
 } catch (error) {
   console.error(error.message);
-  process.exitCode = 1;
+  process.exitCode = error.status ?? 1;
 } finally {
   if (created) run("dropdb", [...args, database]);
   if (started) run("pg_ctl", ["-D", data, "-m", "fast", "-w", "stop"]);
