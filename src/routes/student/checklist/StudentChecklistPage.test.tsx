@@ -54,7 +54,7 @@ const mockTerms: ChecklistTermSection[] = [
         status: "passed",
         required_units: 3,
         earned_units: 3,
-        source_attempt_id: "att-1",
+        source_attempt_id: "att-repeat",
         satisfaction_source: "Direct",
         credited_course_code: "CSIT 100",
         attempts: [
@@ -65,6 +65,18 @@ const mockTerms: ChecklistTermSection[] = [
             midterm_status: "graded",
             midterm_grade: 1.5,
             final_grade: 1.5,
+            recorded_status: "passed",
+            completion_grade: null,
+            effective_status: "passed",
+            instructor: "Prof. Tan",
+          },
+          {
+            attempt_id: "att-repeat",
+            school_term_id: "st-3",
+            term_label: "2025–2026 1st Semester",
+            midterm_status: "graded",
+            midterm_grade: 1.25,
+            final_grade: 1.25,
             recorded_status: "passed",
             completion_grade: null,
             effective_status: "passed",
@@ -152,7 +164,7 @@ describe("StudentChecklistView", () => {
     expect(
       screen.getByText("CSIT 100 · Introduction to Computing"),
     ).toBeTruthy();
-    expect(screen.getByText("Prof. Tan")).toBeTruthy();
+    expect(screen.getAllByText("Prof. Tan").length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
 
     fireEvent.click(
@@ -178,6 +190,26 @@ describe("StudentChecklistView", () => {
     fireEvent.click(selectTrigger);
     fireEvent.click(screen.getByRole("option", { name: "Currently enrolled" }));
     expect(screen.getByText("No matching requirements")).toBeTruthy();
+  });
+
+  it("keeps curriculum-position totals stable under the status filter and omits a misleading semester GWA", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    render(<StudentChecklistView summary={mockSummary} terms={mockTerms} />);
+    expect(screen.getByText("3/6")).toBeTruthy();
+    expect(screen.queryByText("Semester GWA")).toBeNull();
+
+    const select = screen.getByRole("combobox", { name: "Show requirements" });
+    fireEvent.click(select);
+    fireEvent.click(screen.getByRole("option", { name: "INC" }));
+    expect(screen.getByText("3/6")).toBeTruthy();
+    expect(screen.getAllByText("CSci 102").length).toBeGreaterThan(0);
+    expect(screen.queryByText("CSIT 100")).toBeNull();
+    expect(screen.queryByText("Semester GWA")).toBeNull();
+
+    fireEvent.click(select);
+    fireEvent.click(screen.getByRole("option", { name: "Passed / credited" }));
+    expect(screen.getByText("3/6")).toBeTruthy();
+    expect(screen.getByText("CSIT 100")).toBeTruthy();
   });
 });
 
