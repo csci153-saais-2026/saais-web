@@ -57,11 +57,19 @@ end$$;
 select test.login(5);
 set local role authenticated;
 do $$begin
+  if not exists(select 1 from public.profile where id=auth.uid()) then raise exception 'active caller cannot read own profile'; end if;
+  if exists(select 1 from public.profile where id<>auth.uid()) then raise exception 'profile RLS leak'; end if;
   if exists(select 1 from public.notification where recipient_id<>auth.uid()) then raise exception 'notification RLS leak'; end if;
   if exists(select 1 from public.role_assignment where profile_id<>auth.uid()) then raise exception 'role RLS leak'; end if;
   begin insert into public.course(department_id,code,title,units) values(gen_random_uuid(),'SPOOF','Spoof',3); raise exception 'raw insert allowed'; exception when insufficient_privilege then null; end;
   begin perform saais_private.catalog('createFaculty','{}','{"name":"Spoof"}'); raise exception 'private helper allowed'; exception when insufficient_privilege then null; end;
   perform public.jerome_operation('markNotificationsRead','{}','{"mark_all":true}');
+end$$;
+reset role;
+select test.login(10);
+set local role authenticated;
+do $$begin
+  if exists(select 1 from public.profile) then raise exception 'disabled caller can read a profile'; end if;
 end$$;
 reset role;
 set local role anon;
