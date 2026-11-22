@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { NotFoundPage } from "@/routes/NotFoundPage";
 
 const StudentDashboardPage = lazy(
   () => import("./dashboard/StudentDashboardPage"),
@@ -51,7 +52,7 @@ export default function StudentPortal() {
           path="profile"
           element={<StudentProfilePage studentId={user.id} />}
         />
-        <Route path="*" element={<Navigate to="/student" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   );

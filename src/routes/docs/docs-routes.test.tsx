@@ -9,6 +9,7 @@ vi.mock('redoc', async () => {
 
 import LoginPage from '@/routes/auth/LoginPage'
 import { AuthProvider } from '@/context/AuthProvider'
+import { QueryProvider } from '@/context/QueryProvider'
 import { getSupabaseClient, resetSupabaseClientForTests } from '@/lib/supabase/client'
 import { parseMarkdownBlocks } from '@/routes/docs/markdown-blocks'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -86,14 +87,14 @@ describe('DocsAuthGate & session policy', () => {
     const sdk = getSupabaseClient()
     const signIn = vi.spyOn(sdk.auth, 'signInWithPassword').mockResolvedValue({ data: { user: null, session: null }, error: null } as never)
     render(
-      <AuthProvider>
+      <QueryProvider><AuthProvider>
         <MemoryRouter initialEntries={['/login']}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/docs" element={<div>Signed in</div>} />
           </Routes>
         </MemoryRouter>
-      </AuthProvider>,
+      </AuthProvider></QueryProvider>,
     )
     fireEvent.change(screen.getByLabelText('Institutional email'), { target: { value: 'student@vsu.edu.ph' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password-test' } })

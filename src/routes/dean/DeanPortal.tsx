@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
+import { NotFoundPage } from "@/routes/NotFoundPage";
 
 const DeanReportsPage = lazy(
   () => import("@/routes/dean/reports/DeanReportsPage"),
@@ -27,7 +28,7 @@ export default function DeanPortal() {
           element={<Navigate to="/dean/students" replace />}
         />
         <Route path="audit-log" element={<DeanAuditLogPage />} />
-        <Route path="*" element={<Navigate to="reports" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   );
