@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDepartmentHeadQueryKey } from "./use-dh-query-key";
 import {
   getAuditEvents,
   getDepartmentAdvisers,
@@ -20,29 +21,46 @@ const keys = {
 } as const;
 
 export const useDirectoryStudents = () =>
-  useQuery({ queryKey: keys.students, queryFn: getDirectoryStudents });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(keys.students),
+    queryFn: getDirectoryStudents,
+  });
 export const useDepartmentAdvisers = () =>
-  useQuery({ queryKey: keys.advisers, queryFn: getDepartmentAdvisers });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(keys.advisers),
+    queryFn: getDepartmentAdvisers,
+  });
 export const useAuditEvents = () =>
-  useQuery({ queryKey: keys.audit, queryFn: () => getAuditEvents() });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(keys.audit),
+    queryFn: () => getAuditEvents(),
+  });
 export const useStudentAuditEvents = (studentId: string) =>
   useQuery({
-    queryKey: [...keys.audit, studentId],
+    queryKey: [...useDepartmentHeadQueryKey(keys.audit), studentId],
     queryFn: () => getAuditEvents(studentId),
   });
 export const useDepartmentSettings = () =>
-  useQuery({ queryKey: keys.settings, queryFn: getSettings });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(keys.settings),
+    queryFn: getSettings,
+  });
 export const useLastEncodingClosure = () =>
-  useQuery({ queryKey: keys.closure, queryFn: getLastEncodingClosure });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(keys.closure),
+    queryFn: getLastEncodingClosure,
+  });
 
 export function useReassignStudents() {
   const client = useQueryClient();
+  const studentKey = useDepartmentHeadQueryKey(keys.students);
+  const auditKey = useDepartmentHeadQueryKey(keys.audit);
   return useMutation({
     mutationFn: reassignStudents,
     onSuccess: () =>
       Promise.all([
-        client.invalidateQueries({ queryKey: keys.students }),
-        client.invalidateQueries({ queryKey: keys.audit }),
+        client.invalidateQueries({ queryKey: studentKey }),
+        client.invalidateQueries({ queryKey: auditKey }),
       ]),
   });
 }
@@ -51,11 +69,13 @@ function useSettingsMutation<T>(
   fn: (value: T) => ReturnType<typeof getSettings>,
 ) {
   const client = useQueryClient();
+  const settingsKey = useDepartmentHeadQueryKey(keys.settings);
+  const auditKey = useDepartmentHeadQueryKey(keys.audit);
   return useMutation({
     mutationFn: fn,
     onSuccess: (settings) => {
-      client.setQueryData(keys.settings, settings);
-      return client.invalidateQueries({ queryKey: keys.audit });
+      client.setQueryData(settingsKey, settings);
+      return client.invalidateQueries({ queryKey: auditKey });
     },
   });
 }

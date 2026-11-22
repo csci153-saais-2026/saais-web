@@ -20,11 +20,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { QueryMessage } from "../shared/dh-ui";
 import { useNotify } from "../shared/notify-context";
-import {
-  useDecideTransfer,
-  useTransfers,
-  type TransferRequest,
-} from "./transfers-api";
+import type { TransferRequest } from "./transfers-api";
+import { useDecideTransfer, useTransfers } from "./use-transfers";
 
 export default function CurriculumTransfersPage() {
   const [searchParams, setSearchParams] = useSearchParams();

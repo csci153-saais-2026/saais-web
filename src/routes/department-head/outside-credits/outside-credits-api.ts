@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, unwrapApiResult } from "@/lib/api";
 import { getRoster } from "@/routes/adviser/advisees/advisees.api";
+import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
 export interface OutsideCreditRecord {
   id: string;
@@ -183,7 +184,10 @@ async function getOutsideCredits() {
 }
 
 export const useOutsideCredits = () =>
-  useQuery({ queryKey: KEY, queryFn: getOutsideCredits });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(KEY),
+    queryFn: getOutsideCredits,
+  });
 
 export function useCreditCourse() {
   const client = useQueryClient();
