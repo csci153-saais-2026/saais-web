@@ -11,6 +11,7 @@ import {
 import { useScopedRequest } from "../use-scoped-request";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ChevronDownIcon, LockIcon, PencilIcon } from "@/components/icons";
 import {
   Collapsible,
@@ -37,6 +38,10 @@ import {
 } from "@/components/ui/table";
 import type { ApiSchema } from "@/lib/api";
 import { GradeSelect } from "../../GradeSelect";
+import {
+  gradeInputSchema,
+  gradeReasonSchema,
+} from "../../record-grades/inc-completion.schema";
 
 const statuses: Record<ApiSchema<"AttemptStatus">, Status> = {
   passed: "passed",
@@ -78,16 +83,37 @@ function GradeAction({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const parsedReason = gradeReasonSchema.safeParse(reason);
+    if (!parsedReason.success) {
+      setError(parsedReason.error.issues[0]?.message ?? "Enter a reason.");
+      return;
+    }
+    const gradeValues = inc || completedInc ? [grade] : [midterm, finalGrade];
+    const parsedGrades = gradeValues.map((value) =>
+      value ? gradeInputSchema.safeParse(value) : null,
+    );
+    const invalidGrade = parsedGrades.find(
+      (result) => result && !result.success,
+    );
+    if (invalidGrade && !invalidGrade.success) {
+      setError(
+        invalidGrade.error.issues[0]?.message ?? "Choose a valid grade.",
+      );
+      return;
+    }
+    const [midtermGrade, finalGradeValue] = parsedGrades.map((result) =>
+      result?.success ? result.data : undefined,
+    );
     setSaving(true);
     try {
       if (inc)
-        await completeInc(studentId, attempt, Number(grade), reason.trim());
+        await completeInc(studentId, attempt, midtermGrade!, parsedReason.data);
       else if (completedInc && resolution.data)
         await correctIncCompletion(
           studentId,
           attempt.id,
-          Number(grade),
-          reason.trim(),
+          midtermGrade!,
+          parsedReason.data,
           resolution.data.updated_at,
         );
       else if (!completedInc && (midterm || finalGrade)) {
@@ -95,17 +121,17 @@ function GradeAction({
           await correctGrade(
             studentId,
             attempt,
-            Number(midterm),
-            reason.trim(),
+            midtermGrade!,
+            parsedReason.data,
             "midterm",
-            Number(finalGrade),
+            finalGradeValue!,
           );
         else
           await correctGrade(
             studentId,
             attempt,
-            Number(midterm || finalGrade),
-            reason.trim(),
+            midtermGrade ?? finalGradeValue!,
+            parsedReason.data,
             midterm ? "midterm" : "final",
           );
       } else throw new Error("Select a grade to correct.");
@@ -186,8 +212,8 @@ function GradeAction({
             )}
             <label className="grid gap-1">
               {inc ? "Reason" : "Reason for change"}
-              <textarea
-                className="min-h-20 rounded-md border border-border px-3 py-2"
+              <Textarea
+                className="min-h-20"
                 placeholder="Required. This is written to the audit log."
                 required
                 maxLength={2000}
