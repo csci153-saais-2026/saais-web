@@ -142,17 +142,18 @@ export default function AdviserAssignmentsPage() {
       return listDepartmentAssignmentAdvisers(active.departmentId, signal);
     },
   });
+  const directoryData = directory.data;
   const students = useMemo(() => {
     const historyByStudent = new Map<
       string,
-      NonNullable<typeof directory.data>["history"]
+      Awaited<ReturnType<typeof listStudentAdviserAssignments>>
     >();
-    for (const assignment of directory.data?.history ?? []) {
+    for (const assignment of directoryData?.history ?? []) {
       const assignments = historyByStudent.get(assignment.student_id) ?? [];
       assignments.push(assignment);
       historyByStudent.set(assignment.student_id, assignments);
     }
-    return (directory.data?.students ?? []).map((student) => {
+    return (directoryData?.students ?? []).map((student) => {
       const assignments = (historyByStudent.get(student.student_id) ?? []).sort(
         (a, b) => a.start_date.localeCompare(b.start_date),
       );
@@ -175,7 +176,7 @@ export default function AdviserAssignmentsPage() {
         adviser: current?.adviser_name ?? "Unassigned",
       };
     });
-  }, [directory.data, today]);
+  }, [directoryData, today]);
   const matches = (item: (typeof students)[number], value: Filters) => {
     const query = value.search.trim().toLowerCase();
     return (

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -101,6 +102,17 @@ function clickAccountAction(accountName: string, action: string) {
   fireEvent.click(screen.getByRole("menuitem", { name: action }));
 }
 
+function renderPage() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <AdminAccountsPage />
+    </QueryClientProvider>,
+  );
+}
+
 describe("AdminAccountsPage", () => {
   beforeEach(() => {
     getMock.mockReset();
@@ -154,7 +166,7 @@ describe("AdminAccountsPage", () => {
   afterEach(cleanup);
 
   it("loads a bounded account page with roles, organization, and lifecycle states", async () => {
-    render(<AdminAccountsPage />);
+    renderPage();
 
     expect(await screen.findByText("Alex Adviser")).toBeTruthy();
     expect(screen.getByText("alex@vsu.edu.ph")).toBeTruthy();
@@ -177,7 +189,7 @@ describe("AdminAccountsPage", () => {
   });
 
   it("sends search and role filters to the list operation", async () => {
-    render(<AdminAccountsPage />);
+    renderPage();
     await screen.findByText("Alex Adviser");
 
     fireEvent.change(
@@ -217,7 +229,7 @@ describe("AdminAccountsPage", () => {
         ? Promise.resolve({ data: [], response: new Response() })
         : Promise.resolve({ data: [], response: new Response() }),
     );
-    const { unmount } = render(<AdminAccountsPage />);
+    const { unmount } = renderPage();
     expect(
       await screen.findByText(
         "No accounts match these search and filter values.",
@@ -230,7 +242,7 @@ describe("AdminAccountsPage", () => {
         ? Promise.reject(new Error("Accounts unavailable"))
         : Promise.resolve({ data: [], response: new Response() }),
     );
-    render(<AdminAccountsPage />);
+    renderPage();
     const errors = await screen.findAllByRole("alert");
     expect(
       errors.some((error) =>
@@ -263,7 +275,7 @@ describe("AdminAccountsPage", () => {
         }),
     );
 
-    render(<AdminAccountsPage />);
+    renderPage();
     await screen.findAllByText("Alex Adviser");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
@@ -278,7 +290,7 @@ describe("AdminAccountsPage", () => {
   });
 
   it("submits a valid account invitation and reports success", async () => {
-    render(<AdminAccountsPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));
 
     fireEvent.change(await screen.findByLabelText("Full name"), {
@@ -309,7 +321,7 @@ describe("AdminAccountsPage", () => {
   });
 
   it("uses the first checked role as primary and sends remaining role assignments", async () => {
-    render(<AdminAccountsPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));
 
     fireEvent.change(await screen.findByLabelText("Full name"), {
@@ -353,7 +365,7 @@ describe("AdminAccountsPage", () => {
   });
 
   it("makes Student exclusive and includes required student provisioning fields", async () => {
-    render(<AdminAccountsPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));
 
     fireEvent.change(await screen.findByLabelText("Full name"), {
@@ -422,7 +434,7 @@ describe("AdminAccountsPage", () => {
 
   it("keeps the provisioning dialog open and reports API failures", async () => {
     postMock.mockRejectedValueOnce(new Error("Duplicate email conflict"));
-    render(<AdminAccountsPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));
 
     fireEvent.change(await screen.findByLabelText("Full name"), {
@@ -449,7 +461,7 @@ describe("AdminAccountsPage", () => {
           resolveInvite = resolve;
         }),
     );
-    render(<AdminAccountsPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));
     fireEvent.change(await screen.findByLabelText("Full name"), {
       target: { value: "New Administrator" },
@@ -503,7 +515,7 @@ describe("AdminAccountsPage", () => {
       }),
     );
 
-    render(<AdminAccountsPage />);
+    renderPage();
     await screen.findByText("Alex Adviser");
     clickAccountAction("Alex Adviser", "Edit");
 

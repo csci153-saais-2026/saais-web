@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EllipsisIcon, PlusIcon } from "@/components/icons";
 import { useAuth } from "@/hooks/use-auth";
-import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import { type ApiSchema } from "@/lib/api";
 import {
   Table,
   TableBody,
@@ -50,6 +50,7 @@ import {
 } from "./admin-accounts-model";
 import { useAdminAccountCatalogs } from "./use-admin-account-catalogs";
 import { useAdminAccounts } from "./use-admin-accounts";
+import { useAdminAccountMutations } from "./use-admin-account-mutations";
 import { AdminAccountEditDialog } from "./AdminAccountEditDialog";
 import { AdminAccountProvisionDialog } from "./AdminAccountProvisionDialog";
 
@@ -165,6 +166,7 @@ export default function AdminAccountsPage() {
     loading: accountsLoading,
     reload: reloadAccounts,
   } = useAdminAccounts(query);
+  const accountMutations = useAdminAccountMutations();
   const {
     faculties,
     departments,
@@ -207,13 +209,9 @@ export default function AdminAccountsPage() {
     setInviteSuccess(null);
 
     try {
-      const result = await apiClient.POST("/functions/v1/auth/invite", {
-        body: request,
-      });
-      const response = unwrapApiResult(result);
+      const response = await accountMutations.invite.mutateAsync(request);
       setInviteSuccess(response.message || "Invitation sent successfully.");
       setInviteOpen(false);
-      reloadAccounts();
     } catch (requestError: unknown) {
       setInviteError(
         requestError instanceof Error
@@ -234,19 +232,16 @@ export default function AdminAccountsPage() {
     setAccountActionSuccess(null);
 
     try {
-      await unwrapApiResult(
-        await apiClient.PATCH("/functions/v1/accounts/{profile_id}", {
-          params: { path: { profile_id: account.profile.id } },
-          body: request,
-        }),
-      );
+      await accountMutations.update.mutateAsync({
+        profileId: account.profile.id,
+        body: request,
+      });
       setAccountActionSuccess(
         `Updated account details for ${account.profile.full_name}.`,
       );
       setEditingAccount((current) =>
         current?.profile.id === account.profile.id ? null : current,
       );
-      reloadAccounts();
     } catch (requestError: unknown) {
       setAccountActionError(
         requestError instanceof Error
@@ -268,22 +263,14 @@ export default function AdminAccountsPage() {
 
     try {
       if (action === "resend") {
-        const response = await unwrapApiResult(
-          await apiClient.POST(
-            "/functions/v1/accounts/{profile_id}/resend-invite",
-            { params: { path: { profile_id: account.profile.id } } },
-          ),
+        const response = await accountMutations.resend.mutateAsync(
+          account.profile.id,
         );
         setAccountActionSuccess(
           response.message || "Invitation resent successfully.",
         );
       } else {
-        await unwrapApiResult(
-          await apiClient.POST(
-            "/functions/v1/accounts/{profile_id}/revoke-invite",
-            { params: { path: { profile_id: account.profile.id } } },
-          ),
-        );
+        await accountMutations.revoke.mutateAsync(account.profile.id);
         setAccountActionSuccess(
           `Invitation revoked for ${account.profile.full_name}.`,
         );
@@ -291,7 +278,6 @@ export default function AdminAccountsPage() {
           current?.profile.id === account.profile.id ? null : current,
         );
       }
-      reloadAccounts();
     } catch (requestError: unknown) {
       setAccountActionError(
         requestError instanceof Error
@@ -375,7 +361,7 @@ export default function AdminAccountsPage() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={reloadAccounts}
+            onClick={() => void reloadAccounts()}
           >
             Retry
           </Button>

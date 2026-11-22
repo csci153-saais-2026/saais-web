@@ -1,4 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createElement, type PropsWithChildren } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAdminAccounts } from "./use-admin-accounts";
 
@@ -13,6 +15,15 @@ const query = {
   limit: 21,
   offset: 0,
 } as const;
+
+function createWrapper() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return function Wrapper({ children }: PropsWithChildren) {
+    return createElement(QueryClientProvider, { client }, children);
+  };
+}
 
 describe("useAdminAccounts", () => {
   beforeEach(() => {
@@ -34,20 +45,28 @@ describe("useAdminAccounts", () => {
       response: new Response(),
     });
 
-    const { result } = renderHook(() => useAdminAccounts(query));
+    const { result } = renderHook(() => useAdminAccounts(query), {
+      wrapper: createWrapper(),
+    });
 
     expect(result.current.loading).toBe(true);
     await waitFor(() => expect(result.current.accounts).toEqual(accounts));
-    expect(getMock).toHaveBeenCalledWith("/functions/v1/accounts", {
-      params: { query },
-    });
+    expect(getMock).toHaveBeenCalledWith(
+      "/functions/v1/accounts",
+      expect.objectContaining({
+        params: { query },
+        signal: expect.any(AbortSignal),
+      }),
+    );
     expect(result.current.error).toBeNull();
   });
 
   it("surfaces request failures and can retry", async () => {
     getMock.mockRejectedValueOnce(new Error("Accounts unavailable"));
 
-    const { result } = renderHook(() => useAdminAccounts(query));
+    const { result } = renderHook(() => useAdminAccounts(query), {
+      wrapper: createWrapper(),
+    });
     await waitFor(() =>
       expect(result.current.error).toBe("Accounts unavailable"),
     );
