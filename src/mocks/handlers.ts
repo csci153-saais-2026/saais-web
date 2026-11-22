@@ -710,14 +710,9 @@ function canAccessStudentRecord(
   persona: MockPersona,
   studentId: string,
   allowHistoric = false,
-  allowSelf = true,
 ): boolean {
   if (persona.roles.includes("admin")) return true;
-  if (
-    allowSelf &&
-    persona.roles.includes("student") &&
-    persona.profileId === studentId
-  )
+  if (persona.roles.includes("student") && persona.profileId === studentId)
     return true;
   const db = getMockDatabase();
   const adviserAssignment = db.adviserAssignments.find(
@@ -742,6 +737,18 @@ function canAccessStudentRecord(
       ["department_head", "department_staff"].includes(role),
     ) &&
       canAccessDepartment(persona, org.department_id))
+  );
+}
+
+function isCurrentAdviser(persona: MockPersona, studentId: string): boolean {
+  return (
+    persona.roles.includes("adviser") &&
+    getMockDatabase().adviserAssignments.some(
+      (assignment) =>
+        assignment.student_id === studentId &&
+        assignment.adviser_id === persona.profileId &&
+        assignment.end_date === null,
+    )
   );
 }
 
@@ -3298,15 +3305,10 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/students/:student_id/record-grades",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId, false, false)) {
+      if (!isCurrentAdviser(auth.persona, studentId)) {
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       }
       const body = (await request
@@ -3413,12 +3415,7 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/students/:student_id/encode-grades",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
       const body = (await request
@@ -3431,7 +3428,7 @@ export const saaisMswHandlers = [
           "school_term_id and rows are required.",
         );
       }
-      if (!canAccessStudentRecord(auth.persona, studentId, false, false))
+      if (!isCurrentAdviser(auth.persona, studentId))
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       if (departmentEncodingClosed(studentId, body.school_term_id))
         return encodingClosedResponse();

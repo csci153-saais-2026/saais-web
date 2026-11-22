@@ -183,4 +183,29 @@ describe("PostgREST mock query fidelity", () => {
       Object.assign(persona, { roles: originalRoles });
     }
   });
+  it("restricts grade encoding to the student's current adviser", async () => {
+    for (const persona of [
+      MOCK_PERSONAS.admin,
+      MOCK_PERSONAS.department_head,
+      MOCK_PERSONAS.dean,
+      MOCK_PERSONAS.student,
+      MOCK_PERSONAS.student_other_dept,
+    ]) {
+      for (const endpoint of ["record-grades", "encode-grades"]) {
+        const response = await fetch(
+          `${base}/functions/v1/students/${MOCK_PERSONAS.student.profileId}/${endpoint}`,
+          {
+            method: "POST",
+            headers: {
+              apikey: "test-key",
+              Authorization: `Bearer ${persona.token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ school_term_id: "term", rows: [] }),
+          },
+        );
+        expect(response.status).toBe(403);
+      }
+    }
+  });
 });
