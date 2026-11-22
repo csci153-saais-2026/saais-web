@@ -82,6 +82,37 @@ begin
     and exists (select 1 from public.adviser_assignment a where a.student_id = student and a.adviser_id = former and a.end_date is null),
     'A rejected batch rolls back its earlier assignment, audit event and notifications.');
 
+  begin
+    perform public.matt_operation('reassignAdviser', student_params, jsonb_build_object(
+      'adviser_id', incoming, 'start_date', '2026-01-01', 'reason', 'Invalid same-day handoff'
+    ));
+    raise exception 'Accepted handoff at the current assignment start.';
+  exception when sqlstate 'PT409' then null;
+  end;
+  begin
+    perform public.matt_operation('reassignAdviser', student_params, jsonb_build_object(
+      'adviser_id', incoming, 'start_date', (now() at time zone 'Asia/Manila')::date + 1,
+      'reason', 'Invalid future handoff'
+    ));
+    raise exception 'Accepted a future handoff.';
+  exception when sqlstate 'PT400' then null;
+  end;
+  begin
+    perform public.matt_operation('reassignAdviser', student_params, jsonb_build_object(
+      'adviser_id', former, 'start_date', '2026-02-01', 'reason', 'Same adviser'
+    ));
+    raise exception 'Accepted reassignment to the existing adviser.';
+  exception when sqlstate 'PT409' then null;
+  end;
+
+  begin
+    perform public.matt_operation('reassignAdviser', student_params, jsonb_build_object(
+      'adviser_id', other_student, 'start_date', '2026-02-01', 'reason', 'Ineligible adviser'
+    ));
+    raise exception 'Accepted a student as adviser.';
+  exception when sqlstate 'PT409' then null;
+  end;
+
   handoff := public.matt_operation('reassignAdviser', student_params, jsonb_build_object(
     'adviser_id', incoming, 'start_date', '2026-02-01', 'reason', 'Single handoff test'
   ));

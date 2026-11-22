@@ -124,6 +124,10 @@ export function createSaaisApiClient(
 
       request.headers.set("apikey", effectiveApiKey);
 
+      if (mode === "supabase" && schemaPath.startsWith("/rest/v1/")) {
+        request.headers.set("Accept-Profile", "saais_api");
+      }
+
       // Pre-login invitation verification uses `apikey` + body token only.
       if (isPublicContractPath(schemaPath)) {
         request.headers.delete("Authorization");
