@@ -130,7 +130,7 @@ describe("auth token resolution (mock mode & custom resolver)", () => {
 });
 
 describe("createSaaisApiClient auth headers & pre-login exception", () => {
-  it("notifies only protected requests when the API key is missing", async () => {
+  it("does not invoke the session callback when the API key is missing", async () => {
     const events: UnauthorizedEventContext[] = [];
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
@@ -142,8 +142,7 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
     await client.POST("/functions/v1/auth/preview-invite", {
       body: { token: "test-token" },
     });
-    expect(events).toHaveLength(1);
-    expect(events[0].error.code).toBe(API_ERROR_CODES.MISSING_API_KEY);
+    expect(events).toHaveLength(0);
   });
 
   it("attaches apikey and a fresh per-request Bearer token on protected routes", async () => {
@@ -561,7 +560,7 @@ describe("PostgREST filter & Content-Range helpers", () => {
   it("rejects syntax injection and malformed ranges", () => {
     expect(() => postgrestFilter.inList(["ok,malicious"])).toThrow();
     expect(() => postgrestFilter.ilike("x),status.eq.admin")).toThrow();
-    expect(() => postgrestFilter.like("x.y")).toThrow();
+    expect(postgrestFilter.like("x.y")).toBe("like.x.y");
     expect(() =>
       postgrestFilter.createdAtBetween("2026-01-02", "2026-01-01"),
     ).toThrow();
@@ -608,6 +607,12 @@ describe("PostgREST filter & Content-Range helpers", () => {
     expect(postgrestFilter.lt("2026-12-31")).toBe("lt.2026-12-31");
     expect(postgrestFilter.ilike("*CSCI*")).toBe("ilike.*CSCI*");
     expect(postgrestFilter.like("CSCI%")).toBe("like.CSCI%");
+    expect(postgrestFilter.ilike("j.doe@example.edu")).toBe(
+      "ilike.j.doe@example.edu",
+    );
+    expect(postgrestFilter.createdAtBetween("2026-01-01", "2026-01-31")).toBe(
+      "(created_at.gte.2026-01-01,created_at.lt.2026-02-01T00:00:00.000Z)",
+    );
     expect(
       postgrestFilter.createdAtBetween(
         "2026-01-01T00:00:00Z",

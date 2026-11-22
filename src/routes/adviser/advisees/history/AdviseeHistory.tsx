@@ -5,6 +5,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { useScopedRequest } from "../use-scoped-request";
 import { getStudentHistory } from "./history.api";
 import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/features/filter-bar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const MONTHS = [
   "Jan",
@@ -34,15 +43,6 @@ const roleLabel = (role?: string | null) =>
     : role
       ? role.charAt(0).toUpperCase() + role.slice(1).replaceAll("_", " ")
       : "System";
-
-/* Values below mirror mockup/Adviser/AdviseeHistory.dc.html. */
-const FIELD =
-  "rounded-[4px] border border-border bg-white px-3 py-[9px] text-[14px] leading-[1.4] text-foreground hover:border-[#C9C1A6] focus:border-primary focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-const SELECT_CHEVRON = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238C8A76' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`;
-const TH =
-  "whitespace-nowrap border-b border-border bg-secondary px-[14px] py-[10px] text-left text-[11.5px] font-semibold uppercase tracking-[0.09em] text-muted-2";
-const TD =
-  "border-b border-line-soft px-[14px] py-[11px] text-left align-top text-[13.5px]";
 
 function RolePill({ role }: { role?: string | null }) {
   const colors =
@@ -109,54 +109,39 @@ export default function AdviseeHistory() {
                 record. Entries cannot be edited.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2.5">
-              <input
-                type="search"
-                aria-label="Search the audit log"
-                placeholder="Search the log"
-                className={`${FIELD} w-55 placeholder:text-muted-2`}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+            <div className="w-full max-w-xl">
+              <FilterBar
+                searchLabel="Search the audit log"
+                searchPlaceholder="Search the log"
+                search={search}
+                onSearchChange={setSearch}
+                filterLabel="Filter by actor"
+                filter={filter}
+                onFilterChange={(value) => setFilter(value as typeof filter)}
+                filterOptions={[
+                  { value: "all", label: "All actions" },
+                  { value: "student", label: "Advisee actions" },
+                  { value: "adviser", label: "Adviser actions" },
+                ]}
               />
-              <select
-                aria-label="Filter by actor"
-                className={`${FIELD} w-47.5 cursor-pointer appearance-none bg-size-[16px] bg-position-[right_9px_center] bg-no-repeat pr-7.5`}
-                style={{ backgroundImage: SELECT_CHEVRON }}
-                value={filter}
-                onChange={(event) =>
-                  setFilter(event.target.value as typeof filter)
-                }
-              >
-                <option value="all">All actions</option>
-                <option value="student">Advisee actions</option>
-                <option value="adviser">Adviser actions</option>
-              </select>
             </div>
           </header>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th scope="col" className={TH}>
-                    Date and time
-                  </th>
-                  <th scope="col" className={TH}>
-                    Actor
-                  </th>
-                  <th scope="col" className={TH}>
-                    Action
-                  </th>
-                  <th scope="col" className={TH}>
-                    Details
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date and time</TableHead>
+                  <TableHead>Actor</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map((row) => {
                   const d = new Date(row.created_at);
                   return (
-                    <tr key={row.id} className="hover:bg-accent">
-                      <td className={TD}>
+                    <TableRow key={row.id}>
+                      <TableCell>
                         <time dateTime={row.created_at}>
                           <div className="font-mono text-[13px]">
                             {formatDate(d)}
@@ -165,24 +150,24 @@ export default function AdviseeHistory() {
                             {formatTime(d)}
                           </div>
                         </time>
-                      </td>
-                      <td className={TD}>
+                      </TableCell>
+                      <TableCell>
                         <div className="font-semibold">
                           {row.actor_name ?? "System"}
                         </div>
                         <div className="mt-0.75">
                           <RolePill role={row.actor_role} />
                         </div>
-                      </td>
-                      <td className={TD}>{humanizeAction(row.action)}</td>
-                      <td className={`${TD} text-[#3C4A2A]`}>
+                      </TableCell>
+                      <TableCell>{humanizeAction(row.action)}</TableCell>
+                      <TableCell className="text-[#3C4A2A]">
                         {row.details_summary ?? "—"}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
             {rows.length === 0 && (
               <p className="px-5 py-8 text-center text-[13.5px] text-muted-foreground">
                 No entries match. Try another search or filter.

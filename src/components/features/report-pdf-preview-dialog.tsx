@@ -1,5 +1,5 @@
-import * as React from "react"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -7,22 +7,23 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import type { ApiSchema } from "@/lib/api/types"
-import type { PdfReportPayload } from "@/lib/pdf/student-report-formatter"
-import { createStudentReportPdf } from "@/lib/pdf/student-report-pdf"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dialog";
+import type { ApiSchema } from "@/lib/api/types";
+import type { PdfReportPayload } from "@/lib/pdf/student-report-formatter";
+import { createStudentReportPdf } from "@/lib/pdf/student-report-pdf";
+import { cn } from "@/lib/utils";
 
-export type ReportAuditEventType = ApiSchema<"AuditViewEventRequest">["event_type"]
+export type ReportAuditEventType =
+  ApiSchema<"AuditViewEventRequest">["event_type"];
 
 export interface ReportPdfPreviewDialogProps {
-  readonly open: boolean
-  readonly onOpenChange: (open: boolean) => void
-  readonly report: PdfReportPayload | null
-  readonly filename?: string
-  readonly eventType?: ReportAuditEventType
-  readonly onPrint?: (eventType: ReportAuditEventType) => void
-  readonly className?: string
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly report: PdfReportPayload | null;
+  readonly filename?: string;
+  readonly eventType?: ReportAuditEventType;
+  readonly onPrint?: (eventType: ReportAuditEventType) => void;
+  readonly className?: string;
 }
 
 /**
@@ -39,47 +40,47 @@ export function ReportPdfPreviewDialog({
   className,
 }: ReportPdfPreviewDialogProps) {
   const [preview, setPreview] = React.useState<{
-    report: PdfReportPayload
-    url: string
-    error: boolean
-  } | null>(null)
+    report: PdfReportPayload;
+    url: string;
+    error: boolean;
+  } | null>(null);
 
   const resolvedFilename =
     filename?.trim() ||
     (report
       ? `SAAIS-${report.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`
-      : "SAAIS-report.pdf")
+      : "SAAIS-report.pdf");
 
-  const isCurrentPreview = Boolean(report && preview?.report === report)
-  const url = isCurrentPreview ? preview?.url ?? "" : ""
-  const error = isCurrentPreview ? Boolean(preview?.error) : false
+  const isCurrentPreview = Boolean(report && preview?.report === report);
+  const url = isCurrentPreview ? (preview?.url ?? "") : "";
+  const error = isCurrentPreview ? Boolean(preview?.error) : false;
 
   React.useEffect(() => {
-    if (!open || !report) return
+    if (!open || !report) return;
 
-    let active = true
-    let objectUrl = ""
+    let active = true;
+    let objectUrl = "";
 
     void createStudentReportPdf(report)
       .then((blob) => {
-        if (!active) return
+        if (!active) return;
         objectUrl =
           typeof URL.createObjectURL === "function"
             ? URL.createObjectURL(blob)
-            : ""
-        setPreview({ report, url: objectUrl, error: false })
+            : "";
+        setPreview({ report, url: objectUrl, error: false });
       })
       .catch(() => {
-        if (active) setPreview({ report, url: "", error: true })
-      })
+        if (active) setPreview({ report, url: "", error: true });
+      });
 
     return () => {
-      active = false
+      active = false;
       if (objectUrl && typeof URL.revokeObjectURL === "function") {
-        URL.revokeObjectURL(objectUrl)
+        URL.revokeObjectURL(objectUrl);
       }
-    }
-  }, [open, report])
+    };
+  }, [open, report]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,7 +88,7 @@ export function ReportPdfPreviewDialog({
         showCloseButton={false}
         className={cn(
           "flex h-[min(90dvh,900px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[1100px]",
-          className
+          className,
         )}
       >
         <DialogHeader className="flex flex-row items-center justify-between gap-4 border-b border-line-soft px-6 py-4">
@@ -149,5 +150,5 @@ export function ReportPdfPreviewDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

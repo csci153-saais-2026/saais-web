@@ -1,24 +1,20 @@
-import { FormField } from "@/components/features/form-field"
-import { Button } from "@/components/ui/button"
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export type ChecklistFilterValue =
-  | "all"
-  | "open"
-  | "passed"
-  | "inc"
-  | "currently_enrolled"
+  "all" | "open" | "passed" | "inc" | "currently_enrolled";
 
 export interface ChecklistFilterOption {
-  readonly value: ChecklistFilterValue
-  readonly label: string
+  readonly value: ChecklistFilterValue;
+  readonly label: string;
 }
 
 const CHECKLIST_FILTER_OPTIONS: readonly ChecklistFilterOption[] = [
@@ -27,15 +23,15 @@ const CHECKLIST_FILTER_OPTIONS: readonly ChecklistFilterOption[] = [
   { value: "passed", label: "Passed / credited" },
   { value: "inc", label: "INC" },
   { value: "currently_enrolled", label: "Currently enrolled" },
-]
+];
 
 export interface ChecklistToolbarProps {
-  readonly filter: ChecklistFilterValue
-  readonly onFilterChange: (value: ChecklistFilterValue) => void
-  readonly allCollapsed: boolean
-  readonly onToggleAll: () => void
-  readonly disableToggleAll?: boolean
-  readonly className?: string
+  readonly filter: ChecklistFilterValue;
+  readonly onFilterChange: (value: ChecklistFilterValue) => void;
+  readonly allCollapsed: boolean;
+  readonly onToggleAll: () => void;
+  readonly disableToggleAll?: boolean;
+  readonly className?: string;
 }
 
 /**
@@ -54,7 +50,7 @@ export function ChecklistToolbar({
     <div
       className={cn(
         "mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between",
-        className
+        className,
       )}
     >
       <FormField
@@ -97,5 +93,5 @@ export function ChecklistToolbar({
         </Button>
       </div>
     </div>
-  )
+  );
 }

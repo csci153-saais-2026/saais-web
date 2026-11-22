@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,38 +7,38 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { ApiClientError, type ApiSchema } from '@/lib/api'
+} from "@/components/ui/dialog";
+import { ApiClientError, type ApiSchema } from "@/lib/api";
 
-type Program = ApiSchema<'Program'>
+type Program = ApiSchema<"Program">;
 
 export function AdminProgramDeleteDialog({
   program,
   onOpenChange,
   onConfirm,
 }: {
-  program: Program
-  onOpenChange: (open: boolean) => void
-  onConfirm: (id: string) => Promise<void>
+  program: Program;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (id: string) => Promise<void>;
 }) {
-  const [deleting, setDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function confirmDelete() {
-    setDeleting(true)
-    setError(null)
+    setDeleting(true);
+    setError(null);
     try {
-      await onConfirm(program.id)
+      await onConfirm(program.id);
     } catch (requestError: unknown) {
       setError(
         requestError instanceof ApiClientError && requestError.isConflict
-          ? 'This program cannot be deleted while curriculum versions, student assignments, or historical records still reference it.'
+          ? "This program cannot be deleted while curriculum versions, student assignments, or historical records still reference it."
           : requestError instanceof Error
             ? requestError.message
-            : 'The program could not be deleted.',
-      )
+            : "The program could not be deleted.",
+      );
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
   }
 
@@ -48,9 +48,9 @@ export function AdminProgramDeleteDialog({
         <DialogHeader>
           <DialogTitle>Delete record</DialogTitle>
           <DialogDescription>
-            This permanently removes {program.code} · {program.name} if no curriculum, student,
-            or historical records depend on it. Related records will never be
-            deleted automatically.
+            This permanently removes {program.code} · {program.name} if no
+            curriculum, student, or historical records depend on it. Related
+            records will never be deleted automatically.
           </DialogDescription>
         </DialogHeader>
         {error && (
@@ -76,10 +76,10 @@ export function AdminProgramDeleteDialog({
             disabled={deleting}
             onClick={() => void confirmDelete()}
           >
-            {deleting ? 'Deleting…' : 'Delete'}
+            {deleting ? "Deleting…" : "Delete"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

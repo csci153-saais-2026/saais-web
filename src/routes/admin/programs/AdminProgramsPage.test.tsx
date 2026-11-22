@@ -1,17 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ApiClientError } from '@/lib/api'
-import AdminProgramsPage from './AdminProgramsPage'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { ApiClientError } from "@/lib/api";
+import AdminProgramsPage from "./AdminProgramsPage";
 
 const { getMock, postMock, patchMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
   patchMock: vi.fn(),
   deleteMock: vi.fn(),
-}))
+}));
 
-vi.mock('@/lib/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/api')>()
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api")>();
   return {
     ...actual,
     apiClient: {
@@ -21,240 +27,250 @@ vi.mock('@/lib/api', async (importOriginal) => {
       DELETE: deleteMock,
     },
     unwrapApiResult: (result: { data: unknown; error?: unknown }) => {
-      if (result.error) throw result.error
-      return result.data
+      if (result.error) throw result.error;
+      return result.data;
     },
-  }
-})
+  };
+});
 
 const program = {
-  id: 'program-1',
-  code: 'BSCS',
-  name: 'Computer Science',
+  id: "program-1",
+  code: "BSCS",
+  name: "Computer Science",
   nominal_duration: 4,
-  status: 'active',
-  department_id: 'department-1',
-} as const
+  status: "active",
+  department_id: "department-1",
+} as const;
 
 const departments = [
-  { id: 'department-1', name: 'Computer Science', faculty_id: 'faculty-1' },
-]
-const faculties = [{ id: 'faculty-1', name: 'Faculty of Computing' }]
+  { id: "department-1", name: "Computer Science", faculty_id: "faculty-1" },
+];
+const faculties = [{ id: "faculty-1", name: "Faculty of Computing" }];
 
-function result(
-  data: unknown,
-  contentRange = '0-0/1',
-) {
+function result(data: unknown, contentRange = "0-0/1") {
   return {
     data,
     error: undefined,
     response: new Response(null, {
-      headers: { 'Content-Range': contentRange },
+      headers: { "Content-Range": contentRange },
     }),
-  }
+  };
 }
 
 function programCalls() {
   return getMock.mock.calls.filter(
-    ([path]: [string]) => path === '/rest/v1/program',
-  )
+    ([path]: [string]) => path === "/rest/v1/program",
+  );
 }
 
 function clickRowAction(name: string, action: string) {
-  const trigger = screen.getByRole('button', { name: `Actions for ${name}` })
-  trigger.focus()
-  fireEvent.keyDown(trigger, { key: 'Enter', code: 'Enter' })
-  fireEvent.click(screen.getByRole('menuitem', { name: action }))
+  const trigger = screen.getByRole("button", { name: `Actions for ${name}` });
+  trigger.focus();
+  fireEvent.keyDown(trigger, { key: "Enter", code: "Enter" });
+  fireEvent.click(screen.getByRole("menuitem", { name: action }));
 }
 
-describe('AdminProgramsPage', () => {
+describe("AdminProgramsPage", () => {
   beforeEach(() => {
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
-    })
-    getMock.mockReset()
-    postMock.mockReset()
-    patchMock.mockReset()
-    deleteMock.mockReset()
-    getMock.mockImplementation((path: string, options?: { params?: { query?: { offset?: number } } }) => {
-      if (path === '/rest/v1/program') {
-        const offset = options?.params?.query?.offset ?? 0
-        const programs = offset === 0 ? [program] : []
-        const range = programs.length
-          ? `${offset}-${offset + programs.length - 1}/1`
-          : '*/1'
-        return Promise.resolve(result(programs, range))
-      }
-      if (path === '/rest/v1/department') {
-        return Promise.resolve(result(departments))
-      }
-      return Promise.resolve(result(faculties))
-    })
-    postMock.mockResolvedValue(result(program))
-    patchMock.mockResolvedValue(result(program))
-    deleteMock.mockResolvedValue(result(null, '*/0'))
-  })
-
-  afterEach(() => {
-    cleanup()
-    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
-  })
-
-  it('loads a bounded projection and displays the faculty from the program department', async () => {
-    render(<AdminProgramsPage />)
-
-    expect(await screen.findAllByText('Computer Science')).toHaveLength(2)
-    expect(screen.getByText('Faculty of Computing')).toBeTruthy()
-    expect(screen.getByText('Active')).toBeTruthy()
-    expect(programCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({
-        params: {
-          query: {
-            select: 'id,code,name,nominal_duration,status,department_id',
-            order: 'name.asc,id.asc',
-            limit: 20,
-            offset: 0,
-          },
-        },
-      }),
-    )
-  })
-
-  it('keeps forms unavailable until every organization catalog page loads', async () => {
-    const firstDepartmentPage = Array.from({ length: 1000 }, (_, index) => ({
-      id: `department-${index}`,
-      name: `Department ${index}`,
-      faculty_id: 'faculty-1',
-    }))
-    const firstFacultyPage = Array.from({ length: 1000 }, (_, index) => ({
-      id: `faculty-${index}`,
-      name: `Faculty ${index}`,
-    }))
+    });
+    getMock.mockReset();
+    postMock.mockReset();
+    patchMock.mockReset();
+    deleteMock.mockReset();
     getMock.mockImplementation(
       (
         path: string,
         options?: { params?: { query?: { offset?: number } } },
       ) => {
-        const offset = options?.params?.query?.offset ?? 0
-        if (path === '/rest/v1/program') {
-          return Promise.resolve(result([program], '0-0/1'))
+        if (path === "/rest/v1/program") {
+          const offset = options?.params?.query?.offset ?? 0;
+          const programs = offset === 0 ? [program] : [];
+          const range = programs.length
+            ? `${offset}-${offset + programs.length - 1}/1`
+            : "*/1";
+          return Promise.resolve(result(programs, range));
         }
-        if (path === '/rest/v1/department') {
+        if (path === "/rest/v1/department") {
+          return Promise.resolve(result(departments));
+        }
+        return Promise.resolve(result(faculties));
+      },
+    );
+    postMock.mockResolvedValue(result(program));
+    patchMock.mockResolvedValue(result(program));
+    deleteMock.mockResolvedValue(result(null, "*/0"));
+  });
+
+  afterEach(() => {
+    cleanup();
+    Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+  });
+
+  it("loads a bounded projection and displays the faculty from the program department", async () => {
+    render(<AdminProgramsPage />);
+
+    expect(await screen.findAllByText("Computer Science")).toHaveLength(2);
+    expect(screen.getByText("Faculty of Computing")).toBeTruthy();
+    expect(screen.getByText("Active")).toBeTruthy();
+    expect(programCalls()[0]?.[1]).toEqual(
+      expect.objectContaining({
+        params: {
+          query: {
+            select: "id,code,name,nominal_duration,status,department_id",
+            order: "name.asc,id.asc",
+            limit: 20,
+            offset: 0,
+          },
+        },
+      }),
+    );
+  });
+
+  it("keeps forms unavailable until every organization catalog page loads", async () => {
+    const firstDepartmentPage = Array.from({ length: 1000 }, (_, index) => ({
+      id: `department-${index}`,
+      name: `Department ${index}`,
+      faculty_id: "faculty-1",
+    }));
+    const firstFacultyPage = Array.from({ length: 1000 }, (_, index) => ({
+      id: `faculty-${index}`,
+      name: `Faculty ${index}`,
+    }));
+    getMock.mockImplementation(
+      (
+        path: string,
+        options?: { params?: { query?: { offset?: number } } },
+      ) => {
+        const offset = options?.params?.query?.offset ?? 0;
+        if (path === "/rest/v1/program") {
+          return Promise.resolve(result([program], "0-0/1"));
+        }
+        if (path === "/rest/v1/department") {
           return offset === 0
             ? Promise.resolve(result(firstDepartmentPage))
-            : new Promise(() => {})
+            : new Promise(() => {});
         }
         return offset === 0
           ? Promise.resolve(result(firstFacultyPage))
-          : new Promise(() => {})
+          : new Promise(() => {});
       },
-    )
-    const { unmount } = render(<AdminProgramsPage />)
+    );
+    const { unmount } = render(<AdminProgramsPage />);
 
-    await screen.findAllByText('Computer Science')
-    const addButton = screen.getByRole('button', { name: 'New program' })
-    expect(addButton.hasAttribute('disabled')).toBe(true)
+    await screen.findAllByText("Computer Science");
+    const addButton = screen.getByRole("button", { name: "New program" });
+    expect(addButton.hasAttribute("disabled")).toBe(true);
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith(
-        '/rest/v1/department',
+        "/rest/v1/department",
         expect.objectContaining({
           params: {
             query: expect.objectContaining({ limit: 1000, offset: 1000 }),
           },
         }),
-      )
+      );
       expect(getMock).toHaveBeenCalledWith(
-        '/rest/v1/faculty',
+        "/rest/v1/faculty",
         expect.objectContaining({
           params: {
             query: expect.objectContaining({ limit: 1000, offset: 1000 }),
           },
         }),
-      )
-    })
-    expect(addButton.hasAttribute('disabled')).toBe(true)
-    unmount()
-  })
+      );
+    });
+    expect(addButton.hasAttribute("disabled")).toBe(true);
+    unmount();
+  });
 
-  it('surfaces catalog request errors and retries the failed request', async () => {
-    let failFirstRequest = true
+  it("surfaces catalog request errors and retries the failed request", async () => {
+    let failFirstRequest = true;
     getMock.mockImplementation((path: string) => {
-      if (path === '/rest/v1/program' && failFirstRequest) {
-        failFirstRequest = false
-        return Promise.reject(new Error('Program catalog unavailable'))
+      if (path === "/rest/v1/program" && failFirstRequest) {
+        failFirstRequest = false;
+        return Promise.reject(new Error("Program catalog unavailable"));
       }
       return Promise.resolve(
         result(
-          path === '/rest/v1/program'
+          path === "/rest/v1/program"
             ? [program]
-            : path === '/rest/v1/department'
+            : path === "/rest/v1/department"
               ? departments
               : faculties,
         ),
-      )
-    })
-    render(<AdminProgramsPage />)
+      );
+    });
+    render(<AdminProgramsPage />);
 
-    expect(
-      (await screen.findByRole('alert')).textContent,
-    ).toContain('Program catalog unavailable')
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findAllByText('Computer Science')).toHaveLength(2)
-  })
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Program catalog unavailable",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findAllByText("Computer Science")).toHaveLength(2);
+  });
 
-  it('submits search and lifecycle filters and uses server pagination', async () => {
+  it("submits search and lifecycle filters and uses server pagination", async () => {
     const pagePrograms = Array.from({ length: 20 }, (_, index) => ({
       ...program,
       id: `program-${index}`,
-    }))
-    getMock.mockImplementation((path: string, options?: { params?: { query?: { offset?: number } } }) => {
-      if (path === '/rest/v1/program') {
-        const offset = options?.params?.query?.offset ?? 0
-        const rows = offset === 0 ? pagePrograms : [program]
+    }));
+    getMock.mockImplementation(
+      (
+        path: string,
+        options?: { params?: { query?: { offset?: number } } },
+      ) => {
+        if (path === "/rest/v1/program") {
+          const offset = options?.params?.query?.offset ?? 0;
+          const rows = offset === 0 ? pagePrograms : [program];
+          return Promise.resolve(
+            result(rows, `${offset}-${offset + rows.length - 1}/21`),
+          );
+        }
         return Promise.resolve(
-          result(rows, `${offset}-${offset + rows.length - 1}/21`),
-        )
-      }
-      return Promise.resolve(
-        result(path === '/rest/v1/department' ? departments : faculties),
-      )
-    })
-    render(<AdminProgramsPage />)
-    await screen.findAllByText('Faculty of Computing')
+          result(path === "/rest/v1/department" ? departments : faculties),
+        );
+      },
+    );
+    render(<AdminProgramsPage />);
+    await screen.findAllByText("Faculty of Computing");
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search records' }), {
-      target: { value: 'computer' },
-    })
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Search records" }),
+      {
+        target: { value: "computer" },
+      },
+    );
     await waitFor(() => {
       expect(programCalls().at(-1)?.[1]).toEqual(
         expect.objectContaining({
           params: {
             query: expect.objectContaining({
-              or: '(code.ilike.%computer%,name.ilike.%computer%)',
+              or: "(code.ilike.%computer%,name.ilike.%computer%)",
               offset: 0,
             }),
           },
         }),
-      )
-    })
+      );
+    });
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Inactive' }))
+    fireEvent.click(screen.getByRole("combobox", { name: "Filter" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Inactive" }));
     await waitFor(() => {
       expect(programCalls().at(-1)?.[1]).toEqual(
         expect.objectContaining({
           params: {
             query: expect.objectContaining({
-              status: 'eq.inactive',
+              status: "eq.inactive",
               offset: 0,
             }),
           },
         }),
-      )
-    })
+      );
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(programCalls().at(-1)?.[1]).toEqual(
         expect.objectContaining({
@@ -262,83 +278,84 @@ describe('AdminProgramsPage', () => {
             query: expect.objectContaining({ offset: 20 }),
           },
         }),
-      )
-    })
-  })
+      );
+    });
+  });
 
-  it('validates the form and creates programs through the catalog operation', async () => {
-    render(<AdminProgramsPage />)
-    await screen.findAllByText('Computer Science')
-    fireEvent.click(screen.getByRole('button', { name: 'New program' }))
+  it("validates the form and creates programs through the catalog operation", async () => {
+    render(<AdminProgramsPage />);
+    await screen.findAllByText("Computer Science");
+    fireEvent.click(screen.getByRole("button", { name: "New program" }));
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save record' }))
-    expect(await screen.findByText('Enter a program code between 2 and 250 characters.')).toBeTruthy()
-    expect(postMock).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole("button", { name: "Save record" }));
+    expect(
+      await screen.findByText(
+        "Enter a program code between 2 and 250 characters.",
+      ),
+    ).toBeTruthy();
+    expect(postMock).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText('Program code'), {
-      target: { value: 'BSIT' },
-    })
-    fireEvent.change(screen.getByLabelText('Program name'), {
-      target: { value: 'Information Technology' },
-    })
-    fireEvent.change(screen.getByLabelText('Duration in years'), {
-      target: { value: '4' },
-    })
-    fireEvent.click(screen.getByRole('combobox', { name: 'Faculty' }))
+    fireEvent.change(screen.getByLabelText("Program code"), {
+      target: { value: "BSIT" },
+    });
+    fireEvent.change(screen.getByLabelText("Program name"), {
+      target: { value: "Information Technology" },
+    });
+    fireEvent.change(screen.getByLabelText("Duration in years"), {
+      target: { value: "4" },
+    });
+    fireEvent.click(screen.getByRole("combobox", { name: "Faculty" }));
     fireEvent.click(
-      await screen.findByRole('option', { name: 'Faculty of Computing' }),
-    )
-    fireEvent.click(screen.getByRole('combobox', { name: 'Department' }))
+      await screen.findByRole("option", { name: "Faculty of Computing" }),
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Department" }));
     fireEvent.click(
-      await screen.findByRole('option', { name: 'Computer Science' }),
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Save record' }))
+      await screen.findByRole("option", { name: "Computer Science" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save record" }));
 
     await waitFor(() => {
-      expect(postMock).toHaveBeenCalledWith(
-        '/functions/v1/catalog/program',
-        {
-          body: {
-            code: 'BSIT',
-            name: 'Information Technology',
-            nominal_duration: 4,
-            status: 'active',
-            department_id: 'department-1',
-          },
+      expect(postMock).toHaveBeenCalledWith("/functions/v1/catalog/program", {
+        body: {
+          code: "BSIT",
+          name: "Information Technology",
+          nominal_duration: 4,
+          status: "active",
+          department_id: "department-1",
         },
-      )
-    })
-  })
+      });
+    });
+  });
 
-  it('updates programs through the catalog operation', async () => {
-    render(<AdminProgramsPage />)
-    await screen.findAllByText('Computer Science')
-    clickRowAction('Computer Science', 'Edit')
-    fireEvent.change(screen.getByLabelText('Program name'), {
-      target: { value: 'Computer Science and Technology' },
-    })
-    fireEvent.click(await screen.findByRole('button', { name: 'Save record' }))
+  it("updates programs through the catalog operation", async () => {
+    render(<AdminProgramsPage />);
+    await screen.findAllByText("Computer Science");
+    clickRowAction("Computer Science", "Edit");
+    fireEvent.change(screen.getByLabelText("Program name"), {
+      target: { value: "Computer Science and Technology" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Save record" }));
 
     await waitFor(() => {
       expect(patchMock).toHaveBeenCalledWith(
-        '/functions/v1/catalog/program/{id}',
+        "/functions/v1/catalog/program/{id}",
         expect.objectContaining({
-          params: { path: { id: 'program-1' } },
+          params: { path: { id: "program-1" } },
           body: expect.objectContaining({
-            name: 'Computer Science and Technology',
-            department_id: 'department-1',
+            name: "Computer Science and Technology",
+            department_id: "department-1",
           }),
         }),
-      )
-    })
-  })
+      );
+    });
+  });
 
-  it('explains dependency conflicts when deletion is rejected', async () => {
+  it("explains dependency conflicts when deletion is rejected", async () => {
     deleteMock.mockRejectedValueOnce(
       new ApiClientError({
         status: 409,
-        code: 'DEPENDENT_RECORDS_EXIST',
-        message: 'Conflict',
+        code: "DEPENDENT_RECORDS_EXIST",
+        message: "Conflict",
         details: null,
         hint: null,
         retryAfterSeconds: null,
@@ -349,35 +366,35 @@ describe('AdminProgramsPage', () => {
         isRateLimited: false,
         isNetworkError: false,
       }),
-    )
-    render(<AdminProgramsPage />)
-    await screen.findAllByText('Computer Science')
-    clickRowAction('Computer Science', 'Delete')
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+    );
+    render(<AdminProgramsPage />);
+    await screen.findAllByText("Computer Science");
+    clickRowAction("Computer Science", "Delete");
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
 
     expect(
       await screen.findByText(
-        'This program cannot be deleted while curriculum versions, student assignments, or historical records still reference it.',
+        "This program cannot be deleted while curriculum versions, student assignments, or historical records still reference it.",
       ),
-    ).toBeTruthy()
+    ).toBeTruthy();
     expect(deleteMock).toHaveBeenCalledWith(
-      '/functions/v1/catalog/program/{id}',
-      { params: { path: { id: 'program-1' } } },
-    )
-  })
+      "/functions/v1/catalog/program/{id}",
+      { params: { path: { id: "program-1" } } },
+    );
+  });
 
-  it('deletes an unreferenced program and refreshes the catalog', async () => {
-    render(<AdminProgramsPage />)
-    await screen.findAllByText('Computer Science')
-    clickRowAction('Computer Science', 'Delete')
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+  it("deletes an unreferenced program and refreshes the catalog", async () => {
+    render(<AdminProgramsPage />);
+    await screen.findAllByText("Computer Science");
+    clickRowAction("Computer Science", "Delete");
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
 
     await waitFor(() => {
       expect(deleteMock).toHaveBeenCalledWith(
-        '/functions/v1/catalog/program/{id}',
-        { params: { path: { id: 'program-1' } } },
-      )
-      expect(programCalls().length).toBeGreaterThan(1)
-    })
-  })
-})
+        "/functions/v1/catalog/program/{id}",
+        { params: { path: { id: "program-1" } } },
+      );
+      expect(programCalls().length).toBeGreaterThan(1);
+    });
+  });
+});

@@ -1,13 +1,13 @@
-import { DataTablePanel } from "@/components/features/data-table-panel"
-import { Button } from "@/components/ui/button"
-import type { BatchCurriculumRow } from "@/routes/dean/types"
+import { DataTablePanel } from "@/components/features/data-table-panel";
+import { Button } from "@/components/ui/button";
+import type { BatchCurriculumRow } from "@/routes/dean/types";
 
 export function FacultyBatchGwaTable({
   rows,
   onSelectBatch,
 }: {
-  rows: BatchCurriculumRow[]
-  onSelectBatch: (row: BatchCurriculumRow) => void
+  rows: BatchCurriculumRow[];
+  onSelectBatch: (row: BatchCurriculumRow) => void;
 }) {
   return (
     <DataTablePanel
@@ -54,5 +54,5 @@ export function FacultyBatchGwaTable({
         },
       ]}
     />
-  )
+  );
 }

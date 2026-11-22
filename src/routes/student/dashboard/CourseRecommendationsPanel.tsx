@@ -1,39 +1,39 @@
-import * as React from "react"
-import { Link } from "react-router"
-import type { ApiSchema } from "@/lib/api/types"
-import { Panel } from "@/components/features/panel"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { Link } from "react-router";
+import type { ApiSchema } from "@/lib/api/types";
+import { Panel } from "@/components/features/panel";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { cn } from "@/lib/utils";
 
 export type CourseRecommendationRow = ApiSchema<"AdvisingPlanItem"> & {
-  readonly code?: string | null
-  readonly course_code?: string | null
-  readonly title?: string | null
-  readonly course_title?: string | null
-  readonly units?: number | null
-  readonly term_label?: string | null
-  readonly adviser_name?: string | null
-}
+  readonly code?: string | null;
+  readonly course_code?: string | null;
+  readonly title?: string | null;
+  readonly course_title?: string | null;
+  readonly units?: number | null;
+  readonly term_label?: string | null;
+  readonly adviser_name?: string | null;
+};
 
 export interface CourseRecommendationsPanelProps {
-  readonly items: readonly CourseRecommendationRow[]
+  readonly items: readonly CourseRecommendationRow[];
   /** Optional lookup map by `course_offering_id` when `items` are raw `AdvisingPlanItem` rows. */
   readonly offeringDetails?: Readonly<
     Record<
       string,
       {
-        readonly code: string
-        readonly title?: string | null
-        readonly units?: number | null
-        readonly termLabel?: string | null
+        readonly code: string;
+        readonly title?: string | null;
+        readonly units?: number | null;
+        readonly termLabel?: string | null;
       }
     >
-  >
-  readonly termLabel?: string | null
-  readonly adviserName?: string | null
-  readonly checklistHref?: string
-  readonly className?: string
+  >;
+  readonly termLabel?: string | null;
+  readonly adviserName?: string | null;
+  readonly checklistHref?: string;
+  readonly className?: string;
 }
 
 /**
@@ -50,12 +50,12 @@ export function CourseRecommendationsPanel({
   className,
 }: CourseRecommendationsPanelProps) {
   const sortedItems = React.useMemo(() => {
-    return [...items].sort((a, b) => a.display_order - b.display_order)
-  }, [items])
+    return [...items].sort((a, b) => a.display_order - b.display_order);
+  }, [items]);
 
   const statusBadgeExtraProps = {
     label: "Suggested",
-  } as Record<string, unknown>
+  } as Record<string, unknown>;
 
   return (
     <Panel
@@ -75,35 +75,35 @@ export function CourseRecommendationsPanel({
           className="divide-y divide-line-soft"
         >
           {sortedItems.map((item) => {
-            const lookup = offeringDetails?.[item.course_offering_id]
+            const lookup = offeringDetails?.[item.course_offering_id];
             const code =
               item.code?.trim() ||
               item.course_code?.trim() ||
               lookup?.code?.trim() ||
-              item.course_offering_id
+              item.course_offering_id;
             const title =
               item.title?.trim() ||
               item.course_title?.trim() ||
               lookup?.title?.trim() ||
-              null
-            const units = item.units ?? lookup?.units ?? null
+              null;
+            const units = item.units ?? lookup?.units ?? null;
             const resolvedTerm =
               item.term_label?.trim() ||
               lookup?.termLabel?.trim() ||
               termLabel?.trim() ||
-              null
+              null;
             const resolvedAdviser =
-              item.adviser_name?.trim() || adviserName?.trim() || null
+              item.adviser_name?.trim() || adviserName?.trim() || null;
 
-            const metaParts: string[] = []
+            const metaParts: string[] = [];
             if (units != null) {
-              metaParts.push(`${units} ${units === 1 ? "unit" : "units"}`)
+              metaParts.push(`${units} ${units === 1 ? "unit" : "units"}`);
             }
             if (resolvedTerm) {
-              metaParts.push(resolvedTerm)
+              metaParts.push(resolvedTerm);
             }
             if (resolvedAdviser) {
-              metaParts.push(`suggested by ${resolvedAdviser}`)
+              metaParts.push(`suggested by ${resolvedAdviser}`);
             }
 
             return (
@@ -141,7 +141,7 @@ export function CourseRecommendationsPanel({
                   Suggested
                 </StatusBadge>
               </div>
-            )
+            );
           })}
         </div>
       ) : (
@@ -150,5 +150,5 @@ export function CourseRecommendationsPanel({
         </p>
       )}
     </Panel>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { HERO_PREVIEW } from '@/routes/landing/landingData'
+import { HERO_PREVIEW } from "@/routes/landing/landingData";
 
 export function HeroChecklistPreview() {
   return (
@@ -18,5 +18,5 @@ export function HeroChecklistPreview() {
         />
       </div>
     </div>
-  )
+  );
 }

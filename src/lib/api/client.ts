@@ -112,15 +112,7 @@ export function createSaaisApiClient(
           details: null,
           hint: "Configure VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY), or run with VITE_API_MODE=mock.",
         };
-        const response = jsonErrorResponse(401, payload);
-        if (!isPublicContractPath(schemaPath))
-          options.onUnauthorized?.({
-            schemaPath,
-            method: request.method,
-            status: 401,
-            error: normalizeApiError(payload, response),
-          });
-        return response;
+        return jsonErrorResponse(401, payload);
       }
 
       request.headers.set("apikey", effectiveApiKey);

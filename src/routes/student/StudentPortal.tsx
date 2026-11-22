@@ -1,32 +1,31 @@
-import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
-import { useAuth } from '@/hooks/use-auth'
+import { lazy, Suspense } from "react";
+import { Navigate, Route, Routes } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { NotFoundPage } from "@/routes/NotFoundPage";
 
 const StudentDashboardPage = lazy(
-  () => import('./dashboard/StudentDashboardPage'),
-)
+  () => import("./dashboard/StudentDashboardPage"),
+);
 const StudentChecklistPage = lazy(
-  () => import('./checklist/StudentChecklistPage'),
-)
-const StudentGradesPage = lazy(
-  () => import('./grades/StudentGradesPage'),
-)
+  () => import("./checklist/StudentChecklistPage"),
+);
+const StudentGradesPage = lazy(() => import("./grades/StudentGradesPage"));
 const StudentEnrollmentHistoryPage = lazy(
-  () => import('./enrollment-history/StudentEnrollmentHistoryPage'),
-)
-const StudentProfilePage = lazy(
-  () => import('./profile/StudentProfilePage'),
-)
+  () => import("./enrollment-history/StudentEnrollmentHistoryPage"),
+);
+const StudentProfilePage = lazy(() => import("./profile/StudentProfilePage"));
 
 export default function StudentPortal() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   if (!user?.id) {
-    return null
+    return null;
   }
 
   return (
-    <Suspense fallback={<div className="p-8 text-muted-foreground">Loading…</div>}>
+    <Suspense
+      fallback={<div className="p-8 text-muted-foreground">Loading…</div>}
+    >
       <Routes>
         <Route index element={<StudentDashboardPage studentId={user.id} />} />
         <Route
@@ -53,9 +52,8 @@ export default function StudentPortal() {
           path="profile"
           element={<StudentProfilePage studentId={user.id} />}
         />
-        <Route path="*" element={<Navigate to="/student" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
-  )
+  );
 }
-

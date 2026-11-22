@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -14,8 +14,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { BatchCurriculumRow, CohortStudentSample } from "@/routes/dean/types"
+} from "@/components/ui/table";
+import type {
+  BatchCurriculumRow,
+  CohortStudentSample,
+} from "@/routes/dean/types";
 
 export function CohortStudentsDialog({
   batch,
@@ -24,18 +27,20 @@ export function CohortStudentsDialog({
   onOpenChange,
   onOpenStudent,
 }: {
-  batch: BatchCurriculumRow | null
-  students: CohortStudentSample[]
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onOpenStudent?: (studentId: string) => void
+  batch: BatchCurriculumRow | null;
+  students: CohortStudentSample[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onOpenStudent?: (studentId: string) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {batch ? `Batch ${batch.batch} · Student GWA` : "Batch · Student GWA"}
+            {batch
+              ? `Batch ${batch.batch} · Student GWA`
+              : "Batch · Student GWA"}
           </DialogTitle>
           <DialogDescription>
             {batch
@@ -75,12 +80,17 @@ export function CohortStudentsDialog({
                       {student.studentNumber}
                     </TableCell>
                     <TableCell>{student.curriculum}</TableCell>
-                    <TableCell className="text-right font-mono">{student.gwa}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {student.gwa}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={4}
+                    className="py-6 text-center text-muted-foreground"
+                  >
                     No students match this cohort.
                   </TableCell>
                 </TableRow>
@@ -90,11 +100,15 @@ export function CohortStudentsDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Close
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

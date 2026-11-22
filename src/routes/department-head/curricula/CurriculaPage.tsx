@@ -1,26 +1,26 @@
-import * as React from "react"
-import { PlusIcon } from "@/components/icons"
-import { FormField } from "@/components/features/form-field"
-import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
-import { StatGrid } from "@/components/features/stat-tile"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { PlusIcon } from "@/components/icons";
+import { FormField } from "@/components/features/form-field";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
+import { StatGrid } from "@/components/features/stat-tile";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -28,21 +28,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { QueryMessage } from "../shared/dh-ui"
-import { useNotify } from "../shared/notify-context"
-import { formatDisplayDate } from "../shared/dh-utils"
+} from "@/components/ui/table";
+import { QueryMessage } from "../shared/dh-ui";
+import { useNotify } from "../shared/notify-context";
+import { formatDisplayDate } from "../shared/dh-utils";
 import {
   CURRICULUM_SEMESTERS,
   useCurricula,
-  useCurriculaActions,
   type CurriculumCourseSlot,
   type CurriculumSemester,
   type CurriculumSlotType,
   type CurriculumTermBlock,
   type CurriculumVersionRecord,
   type CurriculumVersionStatus,
-} from "./curricula-api"
+} from "./curricula-api";
+import { useCurriculaActions } from "./use-curricula-actions";
 
 type CurriculaDialogState =
   | { kind: "add-version" }
@@ -55,363 +55,471 @@ type CurriculaDialogState =
   | { kind: "add-slot"; termId: string }
   | { kind: "edit-slot"; termId: string; slotId: string }
   | { kind: "del-slot"; termId: string; slotId: string }
-  | null
+  | null;
 
-const YEAR_LEVELS = ["1", "2", "3", "4", "5"] as const
+const YEAR_LEVELS = ["1", "2", "3", "4", "5"] as const;
 const TERM_OPTIONS = [1, 2, 3, 4, 5].flatMap((y) =>
-  CURRICULUM_SEMESTERS.map((sem) => `Year ${y} · ${sem}`)
-)
+  CURRICULUM_SEMESTERS.map((sem) => `Year ${y} · ${sem}`),
+);
 const SLOT_TYPES: CurriculumSlotType[] = [
   "Required course",
   "Elective slot",
   "GE slot",
-]
+];
 
 function versionLabel(v: CurriculumVersionRecord) {
-  return `${v.prog} · ${v.year}`
+  return `${v.prog} · ${v.year}`;
 }
 
 function versionReferenceReason(version: CurriculumVersionRecord) {
-  if (version.enrolled > 0) return "Students are assigned to this curriculum."
+  if (version.enrolled > 0) return "Students are assigned to this curriculum.";
   if (version.references?.length) {
-    return `This curriculum is referenced by ${version.references.join(" and ")}.`
+    return `This curriculum is referenced by ${version.references.join(" and ")}.`;
   }
-  return null
+  return null;
 }
 
 export default function CurriculaPage() {
-  const query = useCurricula()
-  const actions = useCurriculaActions()
-  const versions = React.useMemo(() => query.data?.versions ?? [], [query.data])
-  const programs = query.data?.programs ?? []
-  const [selectedVersionId, setSelectedVersionId] = React.useState<string>("")
-  const [dialog, setDialog] = React.useState<CurriculaDialogState>(null)
-  const [formError, setFormError] = React.useState<string | null>(null)
+  const query = useCurricula();
+  const actions = useCurriculaActions();
+  const versions = React.useMemo(
+    () => query.data?.versions ?? [],
+    [query.data],
+  );
+  const programs = query.data?.programs ?? [];
+  const [selectedVersionId, setSelectedVersionId] = React.useState<string>("");
+  const [dialog, setDialog] = React.useState<CurriculaDialogState>(null);
+  const [formError, setFormError] = React.useState<string | null>(null);
 
   // Version form state
-  const [vProg, setVProg] = React.useState("")
-  const [vYear, setVYear] = React.useState("")
-  const [vUnits, setVUnits] = React.useState("147")
-  const [vFrom, setVFrom] = React.useState("")
-  const [vStatus, setVStatus] = React.useState<CurriculumVersionStatus>("draft")
+  const [vProg, setVProg] = React.useState("");
+  const [vYear, setVYear] = React.useState("");
+  const [vUnits, setVUnits] = React.useState("147");
+  const [vFrom, setVFrom] = React.useState("");
+  const [vStatus, setVStatus] =
+    React.useState<CurriculumVersionStatus>("draft");
+  const [vCloneFrom, setVCloneFrom] = React.useState("");
 
   // Term form state
-  const [tYear, setTYear] = React.useState("1")
-  const [tSem, setTSem] = React.useState<CurriculumSemester>("Semester 1")
+  const [tYear, setTYear] = React.useState("1");
+  const [tSem, setTSem] = React.useState<CurriculumSemester>("Semester 1");
 
   // Slot form state
-  const [sName, setSName] = React.useState("")
-  const [sUnits, setSUnits] = React.useState("3")
-  const [sType, setSType] = React.useState<CurriculumSlotType>("Required course")
+  const [sName, setSName] = React.useState("");
+  const [sUnits, setSUnits] = React.useState("3");
+  const [sType, setSType] =
+    React.useState<CurriculumSlotType>("Required course");
 
   // New course form state
-  const [ncCode, setNcCode] = React.useState("")
-  const [ncTitle, setNcTitle] = React.useState("")
-  const [ncUnits, setNcUnits] = React.useState("3")
-  const [ncCurId, setNcCurId] = React.useState("")
-  const [ncTerm, setNcTerm] = React.useState(TERM_OPTIONS[0])
-  const [ncKind, setNcKind] = React.useState<"Non-Elective" | "Elective">("Non-Elective")
+  const [ncCode, setNcCode] = React.useState("");
+  const [ncTitle, setNcTitle] = React.useState("");
+  const [ncUnits, setNcUnits] = React.useState("3");
+  const [ncCurId, setNcCurId] = React.useState("");
+  const [ncTerm, setNcTerm] = React.useState(TERM_OPTIONS[0]);
+  const [ncKind, setNcKind] = React.useState<"Non-Elective" | "Elective">(
+    "Non-Elective",
+  );
 
-  const showToast = useNotify()
+  const showToast = useNotify();
 
   const currentVersion =
-    versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null
+    versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null;
 
   const deleteTargetVersion =
     dialog?.kind === "del-version"
       ? versions.find((v) => v.id === dialog.versionId)
-      : null
+      : null;
   const deleteTargetTerm =
     dialog?.kind === "del-term" || dialog?.kind === "del-slot"
       ? currentVersion?.terms.find((t) => t.id === dialog.termId)
-      : null
+      : null;
   const deleteTargetSlot =
     dialog?.kind === "del-slot"
       ? deleteTargetTerm?.rows.find((r) => r.id === dialog.slotId)
-      : null
+      : null;
 
   const deleteBlockReason = (() => {
     switch (dialog?.kind) {
       case "del-version": {
-        if (!deleteTargetVersion) return "This curriculum is no longer available."
-        const referenceReason = versionReferenceReason(deleteTargetVersion)
-        if (referenceReason) return `${referenceReason} Retire it to preserve existing records.`
-        if (deleteTargetVersion.terms.some((term) => term.rows.some((slot) => slot.hasAcademicHistory))) {
-          return "This curriculum contains slots used by academic history. Retire it to preserve those records."
+        if (!deleteTargetVersion)
+          return "This curriculum is no longer available.";
+        const referenceReason = versionReferenceReason(deleteTargetVersion);
+        if (referenceReason)
+          return `${referenceReason} Retire it to preserve existing records.`;
+        if (
+          deleteTargetVersion.terms.some((term) =>
+            term.rows.some((slot) => slot.hasAcademicHistory),
+          )
+        ) {
+          return "This curriculum contains slots used by academic history. Retire it to preserve those records.";
         }
-        return null
+        return null;
       }
       case "del-term":
-        if (!currentVersion || !deleteTargetTerm) return "This term is no longer available."
+        if (!currentVersion || !deleteTargetTerm)
+          return "This term is no longer available.";
         if (deleteTargetTerm.rows.some((slot) => slot.hasAcademicHistory)) {
-          return "This term contains slots used by academic history."
+          return "This term contains slots used by academic history.";
         }
-        if (currentVersion.terms.length === 1 && versionReferenceReason(currentVersion)) {
-          return "A referenced curriculum must retain at least one term."
+        if (
+          currentVersion.terms.length === 1 &&
+          versionReferenceReason(currentVersion)
+        ) {
+          return "A referenced curriculum must retain at least one term.";
         }
-        return null
+        return null;
       case "del-slot":
-        if (!currentVersion || !deleteTargetTerm || !deleteTargetSlot) return "This slot is no longer available."
-        if (deleteTargetSlot.hasAcademicHistory) return "This slot is used by academic history."
-        if (deleteTargetTerm.rows.length === 1 && versionReferenceReason(currentVersion)) {
-          return "Each term in a referenced curriculum must retain at least one slot."
+        if (!currentVersion || !deleteTargetTerm || !deleteTargetSlot)
+          return "This slot is no longer available.";
+        if (deleteTargetSlot.hasAcademicHistory)
+          return "This slot is used by academic history.";
+        if (
+          deleteTargetTerm.rows.length === 1 &&
+          versionReferenceReason(currentVersion)
+        ) {
+          return "Each term in a referenced curriculum must retain at least one slot.";
         }
-        return null
+        return null;
       default:
-        return null
+        return null;
     }
-  })()
+  })();
 
   const closeDialog = () => {
-    setDialog(null)
-    setFormError(null)
-  }
+    setDialog(null);
+    setFormError(null);
+  };
 
   const openAddVersion = () => {
-    setVProg(programs[0]?.code ?? "")
-    setVYear("")
-    setVUnits("147")
-    setVFrom("")
-    setVStatus("draft")
-    setFormError(null)
-    setDialog({ kind: "add-version" })
-  }
+    setVProg(programs[0]?.code ?? "");
+    setVYear("");
+    setVUnits("147");
+    setVFrom("");
+    setVStatus("draft");
+    setVCloneFrom("");
+    setFormError(null);
+    setDialog({ kind: "add-version" });
+  };
 
   const openEditVersion = () => {
-    if (!currentVersion) return
-    setVProg(currentVersion.prog)
-    setVYear(currentVersion.year)
-    setVUnits(String(currentVersion.units))
-    setVFrom(currentVersion.from)
-    setVStatus(currentVersion.status)
-    setFormError(null)
-    setDialog({ kind: "edit-version", versionId: currentVersion.id })
-  }
+    if (!currentVersion) return;
+    setVProg(currentVersion.prog);
+    setVYear(currentVersion.year);
+    setVUnits(String(currentVersion.units));
+    setVFrom(currentVersion.from);
+    setVStatus(currentVersion.status);
+    setFormError(null);
+    setDialog({ kind: "edit-version", versionId: currentVersion.id });
+  };
 
   const openAddTerm = () => {
-    if (!currentVersion) return
-    setTYear("1")
-    setTSem("Semester 1")
-    setFormError(null)
-    setDialog({ kind: "add-term" })
-  }
+    if (!currentVersion) return;
+    setTYear("1");
+    setTSem("Semester 1");
+    setFormError(null);
+    setDialog({ kind: "add-term" });
+  };
 
   const openEditTerm = (term: CurriculumTermBlock) => {
-    setTYear(String(term.year))
-    setTSem(term.sem)
-    setFormError(null)
-    setDialog({ kind: "edit-term", termId: term.id })
-  }
+    setTYear(String(term.year));
+    setTSem(term.sem);
+    setFormError(null);
+    setDialog({ kind: "edit-term", termId: term.id });
+  };
 
   const openNewCourse = () => {
-    if (!currentVersion) return
-    setNcCode("")
-    setNcTitle("")
-    setNcUnits("3")
-    setNcCurId(currentVersion.id)
-    setNcTerm(TERM_OPTIONS[0])
-    setNcKind("Non-Elective")
-    setFormError(null)
-    setDialog({ kind: "new-course" })
-  }
+    if (!currentVersion) return;
+    setNcCode("");
+    setNcTitle("");
+    setNcUnits("3");
+    setNcCurId(currentVersion.id);
+    setNcTerm(TERM_OPTIONS[0]);
+    setNcKind("Non-Elective");
+    setFormError(null);
+    setDialog({ kind: "new-course" });
+  };
 
   const openAddSlot = (termId: string) => {
-    setSName("")
-    setSUnits("3")
-    setSType("Required course")
-    setFormError(null)
-    setDialog({ kind: "add-slot", termId })
-  }
+    setSName("");
+    setSUnits("3");
+    setSType("Required course");
+    setFormError(null);
+    setDialog({ kind: "add-slot", termId });
+  };
 
   const openEditSlot = (termId: string, slot: CurriculumCourseSlot) => {
-    setSName(slot.courseOrSlot)
-    setSUnits(String(slot.requiredUnits))
-    setSType(slot.type)
-    setFormError(null)
-    setDialog({ kind: "edit-slot", termId, slotId: slot.id })
-  }
+    setSName(slot.courseOrSlot);
+    setSUnits(String(slot.requiredUnits));
+    setSType(slot.type);
+    setFormError(null);
+    setDialog({ kind: "edit-slot", termId, slotId: slot.id });
+  };
 
   const handleConfirm = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!dialog || deleteBlockReason) return
+    e.preventDefault();
+    if (!dialog || deleteBlockReason) return;
     try {
-      await confirmDialog(dialog)
+      await confirmDialog(dialog);
     } catch (failure) {
-      setFormError(failure instanceof Error ? failure.message : "The change could not be saved.")
+      setFormError(
+        failure instanceof Error
+          ? failure.message
+          : "The change could not be saved.",
+      );
     }
-  }
+  };
 
   async function confirmDialog(active: NonNullable<CurriculaDialogState>) {
     if (active.kind === "add-version" || active.kind === "edit-version") {
-      const year = vYear.trim()
-      const units = Number(vUnits)
+      const year = vYear.trim();
+      const units = Number(vUnits);
       if (!year) {
-        setFormError("Enter the academic year, for example 2023\u20132024.")
-        return
+        setFormError("Enter the academic year, for example 2023\u20132024.");
+        return;
       }
       if (!Number.isFinite(units) || units <= 0) {
-        setFormError("Required units must be a positive number.")
-        return
+        setFormError("Required units must be a positive number.");
+        return;
       }
       if (!vFrom) {
-        setFormError("Choose the date this version takes effect.")
-        return
+        setFormError("Choose the date this version takes effect.");
+        return;
       }
-      const program = programs.find((item) => item.code === vProg)
+      const program = programs.find((item) => item.code === vProg);
       if (!program) {
-        setFormError("Choose a program.")
-        return
+        setFormError("Choose a program.");
+        return;
       }
       const duplicate = versions.some(
-        (v) => (active.kind === "add-version" || v.id !== active.versionId) && v.prog === vProg && v.year === year
-      )
+        (v) =>
+          (active.kind === "add-version" || v.id !== active.versionId) &&
+          v.prog === vProg &&
+          v.year === year,
+      );
       if (duplicate) {
-        setFormError(`${vProg} \u00b7 ${year} already exists.`)
-        return
+        setFormError(`${vProg} \u00b7 ${year} already exists.`);
+        return;
       }
-      const label = `${vProg} ${year}`
+      const label = `${vProg} ${year}`;
       if (active.kind === "edit-version") {
-        await actions.updateVersion(active.versionId, { label, start: vFrom, units, status: vStatus })
+        await actions.updateVersion(active.versionId, {
+          label,
+          start: vFrom,
+          units,
+          status: vStatus,
+          ...(vCloneFrom ? { cloneFromVersionId: vCloneFrom } : {}),
+        });
       } else {
-        const created = await actions.createVersion({ programId: program.id, label, start: vFrom, units, status: vStatus })
-        setSelectedVersionId(created.id)
+        const created = await actions.createVersion({
+          programId: program.id,
+          label,
+          start: vFrom,
+          units,
+          status: vStatus,
+        });
+        setSelectedVersionId(created.id);
       }
-      showToast(`${vProg} \u00b7 ${year} was saved.`)
-      closeDialog()
-      return
+      showToast(`${vProg} \u00b7 ${year} was saved.`);
+      closeDialog();
+      return;
     }
 
     if (active.kind === "del-version") {
-      const target = versions.find((v) => v.id === active.versionId)
-      await actions.deleteVersion(active.versionId)
-      setSelectedVersionId("")
-      showToast(`${target ? versionLabel(target) : "Version"} was deleted.`)
-      closeDialog()
-      return
+      const target = versions.find((v) => v.id === active.versionId);
+      await actions.deleteVersion(active.versionId);
+      setSelectedVersionId("");
+      showToast(`${target ? versionLabel(target) : "Version"} was deleted.`);
+      closeDialog();
+      return;
     }
 
-    if (!currentVersion) return
+    if (!currentVersion) return;
 
     if (active.kind === "add-term" || active.kind === "edit-term") {
-      const yearNum = Number(tYear)
+      const yearNum = Number(tYear);
       const duplicate = currentVersion.terms.some(
-        (t) => (active.kind === "add-term" || t.id !== active.termId) && t.year === yearNum && t.sem === tSem
-      )
+        (t) =>
+          (active.kind === "add-term" || t.id !== active.termId) &&
+          t.year === yearNum &&
+          t.sem === tSem,
+      );
       if (duplicate) {
-        setFormError(`Year ${yearNum} \u00b7 ${tSem} already exists in this version.`)
-        return
+        setFormError(
+          `Year ${yearNum} \u00b7 ${tSem} already exists in this version.`,
+        );
+        return;
       }
-      if (active.kind === "edit-term") await actions.updateTerm(active.termId, yearNum, tSem)
-      else await actions.createTerm(currentVersion.id, yearNum, tSem)
-      showToast(`Year ${yearNum} \u00b7 ${tSem} was saved.`)
-      closeDialog()
-      return
+      if (active.kind === "edit-term")
+        await actions.updateTerm(active.termId, yearNum, tSem);
+      else await actions.createTerm(currentVersion.id, yearNum, tSem);
+      showToast(`Year ${yearNum} \u00b7 ${tSem} was saved.`);
+      closeDialog();
+      return;
     }
 
     if (active.kind === "del-term") {
-      await actions.deleteTerm(active.termId)
-      showToast("The term was deleted.")
-      closeDialog()
-      return
+      await actions.deleteTerm(active.termId);
+      showToast("The term was deleted.");
+      closeDialog();
+      return;
     }
 
     if (active.kind === "new-course") {
-      const code = ncCode.trim()
-      const title = ncTitle.trim()
-      const unitsNum = Number(ncUnits)
+      const code = ncCode.trim();
+      const title = ncTitle.trim();
+      const unitsNum = Number(ncUnits);
       if (!code) {
-        setFormError("Enter the course code, for example CSIT 100.")
-        return
+        setFormError("Enter the course code, for example CSIT 100.");
+        return;
       }
       if (!title) {
-        setFormError("Enter the course title.")
-        return
+        setFormError("Enter the course title.");
+        return;
       }
       if (ncUnits.trim() === "" || !Number.isFinite(unitsNum) || unitsNum < 0) {
-        setFormError("Units must be zero or more.")
-        return
+        setFormError("Units must be zero or more.");
+        return;
       }
       const codeTaken = versions.some((v) =>
-        v.terms.some((t) => t.rows.some((r) => r.courseOrSlot.toLowerCase().startsWith(`${code.toLowerCase()} \u2014`)))
-      )
+        v.terms.some((t) =>
+          t.rows.some((r) =>
+            r.courseOrSlot
+              .toLowerCase()
+              .startsWith(`${code.toLowerCase()} \u2014`),
+          ),
+        ),
+      );
       if (codeTaken) {
-        setFormError(`${code} already exists. Course codes must be unique.`)
-        return
+        setFormError(`${code} already exists. Course codes must be unique.`);
+        return;
       }
 
-      const targetVersion = versions.find((v) => v.id === ncCurId) ?? currentVersion
-      const match = /^Year (\d) \u00b7 (.+)$/.exec(ncTerm)
-      const parsedYear = match ? Number(match[1]) : 1
-      const parsedSem = (match?.[2] ?? "Semester 1") as CurriculumSemester
-      let termId = targetVersion.terms.find((t) => t.year === parsedYear && t.sem === parsedSem)?.id
-      if (!termId) termId = (await actions.createTerm(targetVersion.id, parsedYear, parsedSem)).id
+      const targetVersion =
+        versions.find((v) => v.id === ncCurId) ?? currentVersion;
+      const match = /^Year (\d) \u00b7 (.+)$/.exec(ncTerm);
+      const parsedYear = match ? Number(match[1]) : 1;
+      const parsedSem = (match?.[2] ?? "Semester 1") as CurriculumSemester;
+      let termId = targetVersion.terms.find(
+        (t) => t.year === parsedYear && t.sem === parsedSem,
+      )?.id;
+      if (!termId)
+        termId = (
+          await actions.createTerm(targetVersion.id, parsedYear, parsedSem)
+        ).id;
       await actions.createCourse({
-        departmentId: targetVersion.departmentId, code, title, units: unitsNum, elective: ncKind === "Elective", termId,
-      })
-      setSelectedVersionId(targetVersion.id)
-      showToast(`${code} was added to ${versionLabel(targetVersion)}, ${ncTerm}.`)
-      closeDialog()
-      return
+        departmentId: targetVersion.departmentId,
+        code,
+        title,
+        units: unitsNum,
+        elective: ncKind === "Elective",
+        termId,
+      });
+      setSelectedVersionId(targetVersion.id);
+      showToast(
+        `${code} was added to ${versionLabel(targetVersion)}, ${ncTerm}.`,
+      );
+      closeDialog();
+      return;
     }
 
     if (active.kind === "add-slot" || active.kind === "edit-slot") {
-      const name = sName.trim()
-      const unitsNum = Number(sUnits)
+      const name = sName.trim();
+      const unitsNum = Number(sUnits);
       if (!name) {
-        setFormError("Enter the course or slot name.")
-        return
+        setFormError("Enter the course or slot name.");
+        return;
       }
       if (sUnits.trim() === "" || !Number.isFinite(unitsNum) || unitsNum < 0) {
-        setFormError("Required units must be zero or more.")
-        return
+        setFormError("Required units must be zero or more.");
+        return;
       }
-      if (active.kind === "edit-slot") await actions.updateSlot(active.slotId, name, unitsNum, sType)
-      else await actions.createSlot(active.termId, name, unitsNum, sType)
-      showToast(`${name} was saved.`)
-      closeDialog()
-      return
+      if (active.kind === "edit-slot")
+        await actions.updateSlot(active.slotId, name, unitsNum, sType);
+      else await actions.createSlot(active.termId, name, unitsNum, sType);
+      showToast(`${name} was saved.`);
+      closeDialog();
+      return;
     }
 
     if (active.kind === "del-slot") {
-      await actions.deleteSlot(active.slotId)
-      showToast("The course was removed.")
-      closeDialog()
+      await actions.deleteSlot(active.slotId);
+      showToast("The course was removed.");
+      closeDialog();
     }
   }
 
   const dialogMeta = (() => {
-    if (!dialog) return { title: "", confirmLabel: "", isDelete: false }
+    if (!dialog) return { title: "", confirmLabel: "", isDelete: false };
     switch (dialog.kind) {
       case "add-version":
-        return { title: "Add version", confirmLabel: "Add version", isDelete: false }
+        return {
+          title: "Add version",
+          confirmLabel: "Add version",
+          isDelete: false,
+        };
       case "edit-version":
-        return { title: "Edit version", confirmLabel: "Save changes", isDelete: false }
+        return {
+          title: "Edit version",
+          confirmLabel: "Save changes",
+          isDelete: false,
+        };
       case "del-version":
-        return { title: "Delete record", confirmLabel: "Delete", isDelete: true }
+        return {
+          title: "Delete record",
+          confirmLabel: "Delete",
+          isDelete: true,
+        };
       case "add-term":
-        return { title: "Add term", confirmLabel: "Add term", isDelete: false }
+        return { title: "Add term", confirmLabel: "Add term", isDelete: false };
       case "edit-term":
-        return { title: "Edit term", confirmLabel: "Save changes", isDelete: false }
+        return {
+          title: "Edit term",
+          confirmLabel: "Save changes",
+          isDelete: false,
+        };
       case "del-term":
-        return { title: "Delete record", confirmLabel: "Delete", isDelete: true }
+        return {
+          title: "Delete record",
+          confirmLabel: "Delete",
+          isDelete: true,
+        };
       case "new-course":
-        return { title: "New course", confirmLabel: "Add course", isDelete: false }
+        return {
+          title: "New course",
+          confirmLabel: "Add course",
+          isDelete: false,
+        };
       case "add-slot":
-        return { title: "Add course / slot", confirmLabel: "Add", isDelete: false }
+        return {
+          title: "Add course / slot",
+          confirmLabel: "Add",
+          isDelete: false,
+        };
       case "edit-slot":
-        return { title: "Edit course / slot", confirmLabel: "Save changes", isDelete: false }
+        return {
+          title: "Edit course / slot",
+          confirmLabel: "Save changes",
+          isDelete: false,
+        };
       case "del-slot":
-        return { title: "Delete record", confirmLabel: "Delete", isDelete: true }
+        return {
+          title: "Delete record",
+          confirmLabel: "Delete",
+          isDelete: true,
+        };
     }
-  })()
+  })();
 
   if (!query.data) {
     return (
       <div className="space-y-6">
-        <PageHeading title="Shape the path to graduation." subtitle="Versioned requirements keep past and present curricula distinct." />
+        <PageHeading
+          title="Shape the path to graduation."
+          subtitle="Versioned requirements keep past and present curricula distinct."
+        />
         <QueryMessage query={query} label="curricula" />
       </div>
-    )
+    );
   }
 
   return (
@@ -441,7 +549,11 @@ export default function CurriculaPage() {
             <SelectTrigger id="cu-version" className="w-full bg-card">
               <SelectValue placeholder="No versions" />
             </SelectTrigger>
-            <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+            <SelectContent
+              position="popper"
+              side="bottom"
+              avoidCollisions={false}
+            >
               {versions.map((v) => (
                 <SelectItem key={v.id} value={v.id}>
                   {versionLabel(v)}
@@ -512,7 +624,9 @@ export default function CurriculaPage() {
               },
               {
                 label: "Effective from",
-                value: formatDisplayDate(currentVersion.from, { padDay: false }),
+                value: formatDisplayDate(currentVersion.from, {
+                  padDay: false,
+                }),
                 note: "Version effectivity",
               },
               {
@@ -596,13 +710,22 @@ export default function CurriculaPage() {
                       ) : (
                         term.rows.map((slot) => (
                           <TableRow key={slot.id}>
-                            <TableCell label="Course / slot" className="font-medium text-foreground">
+                            <TableCell
+                              label="Course / slot"
+                              className="font-medium text-foreground"
+                            >
                               {slot.courseOrSlot}
                             </TableCell>
-                            <TableCell label="Required units" className="font-mono text-sm">
+                            <TableCell
+                              label="Required units"
+                              className="font-mono text-sm"
+                            >
                               {slot.requiredUnits}
                             </TableCell>
-                            <TableCell label="Type" className="text-muted-foreground">
+                            <TableCell
+                              label="Type"
+                              className="text-muted-foreground"
+                            >
                               {slot.type}
                             </TableCell>
                             <TableCell label="Actions">
@@ -651,19 +774,23 @@ export default function CurriculaPage() {
           </DialogHeader>
 
           <form onSubmit={handleConfirm} className="space-y-4">
-            {(dialog?.kind === "add-version" || dialog?.kind === "edit-version") && (
+            {(dialog?.kind === "add-version" ||
+              dialog?.kind === "edit-version") && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField label="Program" htmlFor="cu-prog">
-                  <Select
-                    value={vProg}
-                    onValueChange={setVProg}
-                  >
+                  <Select value={vProg} onValueChange={setVProg}>
                     <SelectTrigger id="cu-prog" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       {programs.map((program) => (
-                        <SelectItem key={program.id} value={program.code}>{program.code}</SelectItem>
+                        <SelectItem key={program.id} value={program.code}>
+                          {program.code}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -705,25 +832,58 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-status" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       <SelectItem value="active">active</SelectItem>
                       <SelectItem value="draft">draft</SelectItem>
                       <SelectItem value="retired">retired</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormField>
+                {dialog.kind === "add-version" && (
+                  <FormField
+                    label="Copy courses from (optional)"
+                    htmlFor="cu-clone"
+                  >
+                    <Select
+                      value={vCloneFrom || "blank"}
+                      onValueChange={(value) =>
+                        setVCloneFrom(value === "blank" ? "" : value)
+                      }
+                    >
+                      <SelectTrigger id="cu-clone" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="blank">
+                          Start with a blank version
+                        </SelectItem>
+                        {versions.map((source) => (
+                          <SelectItem key={source.id} value={source.id}>
+                            {versionLabel(source)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
               </div>
             )}
 
-            {dialog?.kind === "del-version" && deleteTargetVersion && !deleteBlockReason && (
-              <p className="text-sm text-foreground">
-                Delete{" "}
-                <strong className="font-semibold">
-                  {versionLabel(deleteTargetVersion)}
-                </strong>{" "}
-                and all of its terms? This can’t be undone.
-              </p>
-            )}
+            {dialog?.kind === "del-version" &&
+              deleteTargetVersion &&
+              !deleteBlockReason && (
+                <p className="text-sm text-foreground">
+                  Delete{" "}
+                  <strong className="font-semibold">
+                    {versionLabel(deleteTargetVersion)}
+                  </strong>{" "}
+                  and all of its terms? This can’t be undone.
+                </p>
+              )}
 
             {(dialog?.kind === "add-term" || dialog?.kind === "edit-term") && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -732,7 +892,11 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-tyear" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       {YEAR_LEVELS.map((y) => (
                         <SelectItem key={y} value={y}>
                           {y}
@@ -750,7 +914,11 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-tsem" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       {CURRICULUM_SEMESTERS.map((sem) => (
                         <SelectItem key={sem} value={sem}>
                           {sem}
@@ -762,15 +930,17 @@ export default function CurriculaPage() {
               </div>
             )}
 
-            {dialog?.kind === "del-term" && deleteTargetTerm && !deleteBlockReason && (
-              <p className="text-sm text-foreground">
-                Delete{" "}
-                <strong className="font-semibold">
-                  Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}
-                </strong>{" "}
-                and its {deleteTargetTerm.rows.length} course(s)?
-              </p>
-            )}
+            {dialog?.kind === "del-term" &&
+              deleteTargetTerm &&
+              !deleteBlockReason && (
+                <p className="text-sm text-foreground">
+                  Delete{" "}
+                  <strong className="font-semibold">
+                    Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}
+                  </strong>{" "}
+                  and its {deleteTargetTerm.rows.length} course(s)?
+                </p>
+              )}
 
             {dialog?.kind === "new-course" && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -803,7 +973,11 @@ export default function CurriculaPage() {
                     <SelectTrigger id="nc-cur" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       {versions.map((v) => (
                         <SelectItem key={v.id} value={v.id}>
                           {versionLabel(v)}
@@ -818,7 +992,11 @@ export default function CurriculaPage() {
                     <SelectTrigger id="nc-term" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       {TERM_OPTIONS.map((tOpt) => (
                         <SelectItem key={tOpt} value={tOpt}>
                           {tOpt}
@@ -838,7 +1016,11 @@ export default function CurriculaPage() {
                     <SelectTrigger id="nc-kind" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       <SelectItem value="Non-Elective">Non-Elective</SelectItem>
                       <SelectItem value="Elective">Elective</SelectItem>
                     </SelectContent>
@@ -877,7 +1059,11 @@ export default function CurriculaPage() {
                     <SelectTrigger id="cu-stype" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
                       {SLOT_TYPES.map((st) => (
                         <SelectItem key={st} value={st}>
                           {st}
@@ -889,19 +1075,24 @@ export default function CurriculaPage() {
               </div>
             )}
 
-            {dialog?.kind === "del-slot" && deleteTargetTerm && deleteTargetSlot && !deleteBlockReason && (
-              <p className="text-sm text-foreground">
-                Delete{" "}
-                <strong className="font-semibold">
-                  {deleteTargetSlot.courseOrSlot}
-                </strong>{" "}
-                from Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}?
-              </p>
-            )}
+            {dialog?.kind === "del-slot" &&
+              deleteTargetTerm &&
+              deleteTargetSlot &&
+              !deleteBlockReason && (
+                <p className="text-sm text-foreground">
+                  Delete{" "}
+                  <strong className="font-semibold">
+                    {deleteTargetSlot.courseOrSlot}
+                  </strong>{" "}
+                  from Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}?
+                </p>
+              )}
 
             {(formError || deleteBlockReason) && (
               <Alert variant="destructive" role="alert">
-                <AlertDescription>{deleteBlockReason ?? formError}</AlertDescription>
+                <AlertDescription>
+                  {deleteBlockReason ?? formError}
+                </AlertDescription>
               </Alert>
             )}
 
@@ -920,7 +1111,6 @@ export default function CurriculaPage() {
           </form>
         </DialogContent>
       </Dialog>
-
     </div>
-  )
+  );
 }

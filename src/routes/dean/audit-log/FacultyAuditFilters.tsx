@@ -1,14 +1,14 @@
-import { FormField } from "@/components/features/form-field"
-import { SearchInput } from "@/components/features/search-input"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { FormField } from "@/components/features/form-field";
+import { SearchInput } from "@/components/features/search-input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export function FacultyAuditFilters({
   person,
@@ -21,21 +21,21 @@ export function FacultyAuditFilters({
   onFromDateChange,
   onReset,
 }: {
-  person: string
-  onPersonChange: (value: string) => void
-  student: string
-  onStudentChange: (value: string) => void
-  action: string
-  onActionChange: (value: string) => void
-  fromDate: string
-  onFromDateChange: (value: string) => void
-  onReset: () => void
+  person: string;
+  onPersonChange: (value: string) => void;
+  student: string;
+  onStudentChange: (value: string) => void;
+  action: string;
+  onActionChange: (value: string) => void;
+  fromDate: string;
+  onFromDateChange: (value: string) => void;
+  onReset: () => void;
 }) {
   const hasFilters =
     person.trim() !== "" ||
     student.trim() !== "" ||
     action !== "all" ||
-    fromDate !== ""
+    fromDate !== "";
 
   return (
     <div className="grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-4">
@@ -59,7 +59,11 @@ export function FacultyAuditFilters({
 
       <FormField label="Action" htmlFor="audit-action">
         <Select value={action} onValueChange={onActionChange}>
-          <SelectTrigger id="audit-action" aria-label="Action" className="w-full min-w-0">
+          <SelectTrigger
+            id="audit-action"
+            aria-label="Action"
+            className="w-full min-w-0"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -92,5 +96,5 @@ export function FacultyAuditFilters({
         </Button>
       </div>
     </div>
-  )
+  );
 }

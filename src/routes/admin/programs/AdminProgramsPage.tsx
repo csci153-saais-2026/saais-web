@@ -1,104 +1,106 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { DataTablePanel } from '@/components/features/data-table-panel'
-import { FilterBar } from '@/components/features/filter-bar'
-import { PageHeading } from '@/components/features/page-heading'
-import { StatusBadge } from '@/components/ui/status-badge'
-import { Button } from '@/components/ui/button'
-import { RowActionsMenu } from '../shared/RowActionsMenu'
-import { AdminProgramDialog } from './AdminProgramDialog'
-import { AdminProgramDeleteDialog } from './AdminProgramDeleteDialog'
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { DataTablePanel } from "@/components/features/data-table-panel";
+import { FilterBar } from "@/components/features/filter-bar";
+import { PageHeading } from "@/components/features/page-heading";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { RowActionsMenu } from "../shared/RowActionsMenu";
+import { AdminProgramDialog } from "./AdminProgramDialog";
+import { AdminProgramDeleteDialog } from "./AdminProgramDeleteDialog";
 import {
   apiClient,
   parseContentRange,
   unwrapApiResult,
   type ApiSchema,
-} from '@/lib/api'
+} from "@/lib/api";
 import {
   buildProgramListQuery,
   PROGRAM_PAGE_SIZE,
   type ProgramStatusFilter,
-} from './admin-programs-model'
+} from "./admin-programs-model";
 
-type Program = ApiSchema<'Program'>
-type Department = Pick<ApiSchema<'Department'>, 'id' | 'name' | 'faculty_id'>
-type Faculty = Pick<ApiSchema<'Faculty'>, 'id' | 'name'>
+type Program = ApiSchema<"Program">;
+type Department = Pick<ApiSchema<"Department">, "id" | "name" | "faculty_id">;
+type Faculty = Pick<ApiSchema<"Faculty">, "id" | "name">;
 
-const ORGANIZATION_CATALOG_PAGE_SIZE = 1000
+const ORGANIZATION_CATALOG_PAGE_SIZE = 1000;
 
 async function loadAllPages<T>(
   loadPage: (offset: number) => Promise<readonly T[]>,
 ): Promise<T[]> {
-  const records: T[] = []
+  const records: T[] = [];
   for (let offset = 0; ; offset += ORGANIZATION_CATALOG_PAGE_SIZE) {
-    const page = await loadPage(offset)
-    records.push(...page)
-    if (page.length < ORGANIZATION_CATALOG_PAGE_SIZE) return records
+    const page = await loadPage(offset);
+    records.push(...page);
+    if (page.length < ORGANIZATION_CATALOG_PAGE_SIZE) return records;
   }
 }
 
 const STATUS_FILTERS = [
-  { value: 'all', label: 'All records' },
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'archived', label: 'Archived' },
-]
+  { value: "all", label: "All records" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "archived", label: "Archived" },
+];
 
 export default function AdminProgramsPage() {
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<ProgramStatusFilter>('all')
-  const [offset, setOffset] = useState(0)
-  const [reloadCount, setReloadCount] = useState(0)
-  const [programs, setPrograms] = useState<Program[]>([])
-  const [rangeTotal, setRangeTotal] = useState<number | null>(null)
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [faculties, setFaculties] = useState<Faculty[]>([])
-  const [loadedRequestKey, setLoadedRequestKey] = useState('')
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<ProgramStatusFilter>("all");
+  const [offset, setOffset] = useState(0);
+  const [reloadCount, setReloadCount] = useState(0);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [rangeTotal, setRangeTotal] = useState<number | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [loadedRequestKey, setLoadedRequestKey] = useState("");
   const [requestError, setRequestError] = useState<{
-    readonly key: string
-    readonly message: string
-  } | null>(null)
-  const [loadedCatalogRequest, setLoadedCatalogRequest] = useState(-1)
+    readonly key: string;
+    readonly message: string;
+  } | null>(null);
+  const [loadedCatalogRequest, setLoadedCatalogRequest] = useState(-1);
   const [catalogErrorState, setCatalogErrorState] = useState<{
-    readonly key: number
-    readonly message: string
-  } | null>(null)
-  const [catalogReloadCount, setCatalogReloadCount] = useState(0)
-  const [dialogProgram, setDialogProgram] = useState<Program | null | undefined>(
-    undefined,
-  )
-  const [deleteProgram, setDeleteProgram] = useState<Program | null>(null)
-  const [dialogMutationPending, setDialogMutationPending] = useState(false)
-  const [deletingProgramId, setDeletingProgramId] = useState<string | null>(null)
+    readonly key: number;
+    readonly message: string;
+  } | null>(null);
+  const [catalogReloadCount, setCatalogReloadCount] = useState(0);
+  const [dialogProgram, setDialogProgram] = useState<
+    Program | null | undefined
+  >(undefined);
+  const [deleteProgram, setDeleteProgram] = useState<Program | null>(null);
+  const [dialogMutationPending, setDialogMutationPending] = useState(false);
+  const [deletingProgramId, setDeletingProgramId] = useState<string | null>(
+    null,
+  );
 
   const { query, error: searchError } = useMemo(
     () => buildProgramListQuery(search, status, offset),
     [offset, search, status],
-  )
-  const requestKey = `${JSON.stringify(query)}:${reloadCount}`
-  const loading = Boolean(query) && loadedRequestKey !== requestKey
-  const error = requestError?.key === requestKey ? requestError.message : null
+  );
+  const requestKey = `${JSON.stringify(query)}:${reloadCount}`;
+  const loading = Boolean(query) && loadedRequestKey !== requestKey;
+  const error = requestError?.key === requestKey ? requestError.message : null;
   const hasNextPage =
     rangeTotal !== null
       ? offset + PROGRAM_PAGE_SIZE < rangeTotal
-      : programs.length === PROGRAM_PAGE_SIZE
-  const catalogsLoaded = loadedCatalogRequest === catalogReloadCount
+      : programs.length === PROGRAM_PAGE_SIZE;
+  const catalogsLoaded = loadedCatalogRequest === catalogReloadCount;
   const catalogError =
     catalogErrorState?.key === catalogReloadCount
       ? catalogErrorState.message
-      : null
+      : null;
 
   useEffect(() => {
-    let active = true
+    let active = true;
     void Promise.all([
       loadAllPages((offset) =>
         apiClient
-          .GET('/rest/v1/department', {
+          .GET("/rest/v1/department", {
             params: {
               query: {
-              select: 'id,name,faculty_id',
-              order: 'name.asc,id.asc',
-              limit: ORGANIZATION_CATALOG_PAGE_SIZE,
-              offset,
+                select: "id,name,faculty_id",
+                order: "name.asc,id.asc",
+                limit: ORGANIZATION_CATALOG_PAGE_SIZE,
+                offset,
               },
             },
           })
@@ -106,11 +108,11 @@ export default function AdminProgramsPage() {
       ),
       loadAllPages((offset) =>
         apiClient
-          .GET('/rest/v1/faculty', {
+          .GET("/rest/v1/faculty", {
             params: {
               query: {
-                select: 'id,name',
-                order: 'name.asc,id.asc',
+                select: "id,name",
+                order: "name.asc,id.asc",
                 limit: ORGANIZATION_CATALOG_PAGE_SIZE,
                 offset,
               },
@@ -120,148 +122,148 @@ export default function AdminProgramsPage() {
       ),
     ])
       .then(([nextDepartments, nextFaculties]) => {
-        if (!active) return
-        setDepartments(nextDepartments)
-        setFaculties(nextFaculties)
-        setLoadedCatalogRequest(catalogReloadCount)
+        if (!active) return;
+        setDepartments(nextDepartments);
+        setFaculties(nextFaculties);
+        setLoadedCatalogRequest(catalogReloadCount);
       })
       .catch((catalogRequestError: unknown) => {
-        if (!active) return
+        if (!active) return;
         setCatalogErrorState({
           key: catalogReloadCount,
           message:
             catalogRequestError instanceof Error
               ? catalogRequestError.message
-              : 'Faculty and department information could not be loaded.',
-        })
-        setLoadedCatalogRequest(catalogReloadCount)
-      })
+              : "Faculty and department information could not be loaded.",
+        });
+        setLoadedCatalogRequest(catalogReloadCount);
+      });
 
     return () => {
-      active = false
-    }
-  }, [catalogReloadCount])
+      active = false;
+    };
+  }, [catalogReloadCount]);
 
   useEffect(() => {
-    if (!query) return
+    if (!query) return;
 
-    let active = true
+    let active = true;
     void apiClient
-      .GET('/rest/v1/program', { params: { query } })
+      .GET("/rest/v1/program", { params: { query } })
       .then((result) => {
-        const nextPrograms = unwrapApiResult(result)
-        if (!active) return
-        setPrograms(nextPrograms)
+        const nextPrograms = unwrapApiResult(result);
+        if (!active) return;
+        setPrograms(nextPrograms);
         setRangeTotal(
-          parseContentRange(result.response.headers.get('Content-Range'))?.total ??
-            null,
-        )
-        setRequestError(null)
+          parseContentRange(result.response.headers.get("Content-Range"))
+            ?.total ?? null,
+        );
+        setRequestError(null);
       })
       .catch((programRequestError: unknown) => {
-        if (!active) return
+        if (!active) return;
         setRequestError({
           key: requestKey,
           message:
             programRequestError instanceof Error
               ? programRequestError.message
-              : 'The program catalog could not be loaded.',
-        })
+              : "The program catalog could not be loaded.",
+        });
       })
       .finally(() => {
-        if (active) setLoadedRequestKey(requestKey)
-      })
+        if (active) setLoadedRequestKey(requestKey);
+      });
 
     return () => {
-      active = false
-    }
-  }, [query, requestKey])
+      active = false;
+    };
+  }, [query, requestKey]);
 
   const retryPrograms = useCallback(() => {
-    setReloadCount((count) => count + 1)
-  }, [])
+    setReloadCount((count) => count + 1);
+  }, []);
 
   async function saveProgram(
     program: Program | null,
     request: Pick<
-      ApiSchema<'ProgramInsert'>,
-      'code' | 'name' | 'nominal_duration' | 'status' | 'department_id'
+      ApiSchema<"ProgramInsert">,
+      "code" | "name" | "nominal_duration" | "status" | "department_id"
     >,
   ) {
-    setDialogMutationPending(true)
+    setDialogMutationPending(true);
     try {
       if (program) {
         await unwrapApiResult(
-          await apiClient.PATCH('/functions/v1/catalog/program/{id}', {
+          await apiClient.PATCH("/functions/v1/catalog/program/{id}", {
             params: { path: { id: program.id } },
             body: request,
           }),
-        )
+        );
       } else {
         await unwrapApiResult(
-          await apiClient.POST('/functions/v1/catalog/program', {
+          await apiClient.POST("/functions/v1/catalog/program", {
             body: request,
           }),
-        )
+        );
       }
 
-      setDialogProgram(undefined)
-      retryPrograms()
+      setDialogProgram(undefined);
+      retryPrograms();
     } finally {
-      setDialogMutationPending(false)
+      setDialogMutationPending(false);
     }
   }
 
   async function removeProgram(id: string) {
-    setDeletingProgramId(id)
+    setDeletingProgramId(id);
     try {
       await unwrapApiResult(
-        await apiClient.DELETE('/functions/v1/catalog/program/{id}', {
+        await apiClient.DELETE("/functions/v1/catalog/program/{id}", {
           params: { path: { id } },
         }),
-      )
-      setDeleteProgram(null)
-      retryPrograms()
+      );
+      setDeleteProgram(null);
+      retryPrograms();
     } finally {
-      setDeletingProgramId(null)
+      setDeletingProgramId(null);
     }
   }
 
   const departmentsById = useMemo(
     () => new Map(departments.map((department) => [department.id, department])),
     [departments],
-  )
+  );
   const facultiesById = useMemo(
     () => new Map(faculties.map((faculty) => [faculty.id, faculty])),
     [faculties],
-  )
+  );
 
   function updateSearch(value: string) {
-    setOffset(0)
-    setSearch(value)
+    setOffset(0);
+    setSearch(value);
   }
 
   function updateStatus(value: string) {
     if (
-      value !== 'all' &&
-      value !== 'active' &&
-      value !== 'inactive' &&
-      value !== 'archived'
+      value !== "all" &&
+      value !== "active" &&
+      value !== "inactive" &&
+      value !== "archived"
     ) {
-      return
+      return;
     }
-    setOffset(0)
-    setStatus(value)
+    setOffset(0);
+    setStatus(value);
   }
 
   const columns = [
     {
-      header: 'Code',
-      className: 'font-mono font-semibold',
+      header: "Code",
+      className: "font-mono font-semibold",
       cell: (program: Program) => program.code,
     },
     {
-      header: 'Program',
+      header: "Program",
       cell: (program: Program) => (
         <div>
           <p className="font-medium">{program.name}</p>
@@ -272,35 +274,35 @@ export default function AdminProgramsPage() {
       ),
     },
     {
-      header: 'Department',
+      header: "Department",
       cell: (program: Program) => {
-        const department = departmentsById.get(program.department_id)
-        if (!department) return 'Unknown department'
+        const department = departmentsById.get(program.department_id);
+        if (!department) return "Unknown department";
         return (
           <div>
             <p>{department.name}</p>
             <p className="text-xs text-muted-foreground">
               {facultiesById.get(department.faculty_id)?.name ??
-                'Unknown faculty'}
+                "Unknown faculty"}
             </p>
           </div>
-        )
+        );
       },
     },
     {
-      header: 'Status',
+      header: "Status",
       cell: (program: Program) => (
         <StatusBadge
-          status={program.status === 'inactive' ? 'disabled' : program.status}
+          status={program.status === "inactive" ? "disabled" : program.status}
         >
           {program.status[0]!.toUpperCase() + program.status.slice(1)}
         </StatusBadge>
       ),
     },
     {
-      header: 'Actions',
+      header: "Actions",
       headerContent: <span className="sr-only">Actions</span>,
-      className: 'w-10 text-right',
+      className: "w-10 text-right",
       cell: (program: Program) => (
         <RowActionsMenu
           label={program.name}
@@ -310,7 +312,7 @@ export default function AdminProgramsPage() {
         />
       ),
     },
-  ]
+  ];
 
   return (
     <div className="grid gap-2">
@@ -387,20 +389,20 @@ export default function AdminProgramsPage() {
         rowKey={(program) => program.id}
         empty={
           loading
-            ? 'Loading programs…'
+            ? "Loading programs…"
             : searchError
-              ? 'Enter a valid search to view programs.'
+              ? "Enter a valid search to view programs."
               : error
-                ? 'Programs are unavailable.'
-                : search.trim() || status !== 'all'
-                  ? 'No programs match your search.'
-                  : 'No programs have been added to the catalog.'
+                ? "Programs are unavailable."
+                : search.trim() || status !== "all"
+                  ? "No programs match your search."
+                  : "No programs have been added to the catalog."
         }
         footer={
           loading
             ? undefined
             : `Page ${Math.floor(offset / PROGRAM_PAGE_SIZE) + 1}${
-                rangeTotal === null ? '' : ` · ${rangeTotal} programs`
+                rangeTotal === null ? "" : ` · ${rangeTotal} programs`
               }`
         }
       />
@@ -421,13 +423,15 @@ export default function AdminProgramsPage() {
         </Button>
         <span className="text-sm text-muted-foreground" aria-live="polite">
           {loading
-            ? 'Loading programs…'
+            ? "Loading programs…"
             : `Page ${Math.floor(offset / PROGRAM_PAGE_SIZE) + 1}`}
         </span>
         <Button
           variant="outline"
           size="sm"
-          disabled={!hasNextPage || loading || Boolean(error) || Boolean(searchError)}
+          disabled={
+            !hasNextPage || loading || Boolean(error) || Boolean(searchError)
+          }
           onClick={() => setOffset((current) => current + PROGRAM_PAGE_SIZE)}
         >
           Next
@@ -442,13 +446,13 @@ export default function AdminProgramsPage() {
 
       {dialogProgram !== undefined && (
         <AdminProgramDialog
-          key={dialogProgram?.id ?? 'new'}
+          key={dialogProgram?.id ?? "new"}
           program={dialogProgram}
           faculties={faculties}
           departments={departments}
           catalogsLoading={!catalogsLoaded || Boolean(catalogError)}
           onOpenChange={(open) => {
-            if (!open && !dialogMutationPending) setDialogProgram(undefined)
+            if (!open && !dialogMutationPending) setDialogProgram(undefined);
           }}
           onSubmit={(request) => saveProgram(dialogProgram, request)}
         />
@@ -458,12 +462,12 @@ export default function AdminProgramsPage() {
           program={deleteProgram}
           onOpenChange={(open) => {
             if (!open && deletingProgramId !== deleteProgram.id) {
-              setDeleteProgram(null)
+              setDeleteProgram(null);
             }
           }}
           onConfirm={removeProgram}
         />
       )}
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { PLATFORM_STATEMENT } from '@/routes/landing/landingData'
+import { PLATFORM_STATEMENT } from "@/routes/landing/landingData";
 
 export function MissionBand() {
   return (
@@ -14,5 +14,5 @@ export function MissionBand() {
         </h2>
       </div>
     </section>
-  )
+  );
 }

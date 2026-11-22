@@ -115,6 +115,19 @@ describe("Department Head integration", () => {
     ).toBeNull();
   });
 
+  it("renders deliberate 404 pages for unknown paths at both route levels", async () => {
+    openPortal("/department-head/unknown");
+    expect(
+      await screen.findByRole("heading", { name: "Page not found" }),
+    ).toBeTruthy();
+
+    cleanup();
+    openPortal("/not-a-route", null);
+    expect(
+      await screen.findByRole("heading", { name: "Page not found" }),
+    ).toBeTruthy();
+  });
+
   it("redirects a Head-only account away from Adviser routes", async () => {
     openPortal("/adviser/advisees");
     expect(

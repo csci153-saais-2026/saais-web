@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
-import { RecordTabs } from "@/components/features/student-record-header"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { RecordTabs } from "@/components/features/student-record-header";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Dialog,
   DialogContent,
@@ -10,42 +10,49 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { postDeanAuditViewEvent } from "@/routes/dean/audit-log/audit-log.api"
-import { DeanStudentAuditTab } from "@/routes/dean/students/DeanStudentAuditTab"
-import { DeanStudentChecklistTab } from "@/routes/dean/students/DeanStudentChecklistTab"
-import { DeanStudentGradesTab } from "@/routes/dean/students/DeanStudentGradesTab"
-import type { DeanStudentSummary } from "@/routes/dean/types"
+} from "@/components/ui/dialog";
+import { postDeanAuditViewEvent } from "@/routes/dean/audit-log/audit-log.api";
+import { DeanStudentAuditTab } from "@/routes/dean/students/DeanStudentAuditTab";
+import { DeanStudentChecklistTab } from "@/routes/dean/students/DeanStudentChecklistTab";
+import { DeanStudentGradesTab } from "@/routes/dean/students/DeanStudentGradesTab";
+import type { DeanStudentSummary } from "@/routes/dean/types";
 
 const DEAN_RECORD_TABS = [
   { value: "checklist", label: "Checklist" },
   { value: "grades", label: "Grades" },
   { value: "audit", label: "Audit log" },
-]
+];
 
 export function DeanStudentRecordDialog({
   student,
   onClose,
 }: {
-  student: DeanStudentSummary | null
-  onClose: () => void
+  student: DeanStudentSummary | null;
+  onClose: () => void;
 }) {
-  const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState("checklist")
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("checklist");
 
   useEffect(() => {
-    if (!student) return
+    if (!student) return;
     void postDeanAuditViewEvent({
       event_type: "student_record_viewed",
       student_id: student.studentId,
       details: `Viewed student academic record (${student.studentNumber})`,
     })
-      .then(() => queryClient.invalidateQueries({ queryKey: ["dean", "audit-log"] }))
-      .catch(() => undefined)
-  }, [student, queryClient])
+      .then(() =>
+        queryClient.invalidateQueries({ queryKey: ["dean", "audit-log"] }),
+      )
+      .catch(() => undefined);
+  }, [student, queryClient]);
 
   return (
-    <Dialog open={student !== null} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      open={student !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="flex h-[min(85dvh,760px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
         <DialogHeader className="sr-only">
           <DialogTitle>
@@ -63,7 +70,9 @@ export function DeanStudentRecordDialog({
             <div className="min-w-0">
               <h2 className="text-3xl leading-tight">{student.name}</h2>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <span className="font-mono text-[13px]">{student.studentNumber}</span>
+                <span className="font-mono text-[13px]">
+                  {student.studentNumber}
+                </span>
                 <span>· {student.program}</span>
                 <span>· {student.yearLabel}</span>
                 <span>· {student.email}</span>
@@ -77,8 +86,12 @@ export function DeanStudentRecordDialog({
               onValueChange={setActiveTab}
             />
 
-            {activeTab === "checklist" && <DeanStudentChecklistTab student={student} />}
-            {activeTab === "grades" && <DeanStudentGradesTab student={student} />}
+            {activeTab === "checklist" && (
+              <DeanStudentChecklistTab student={student} />
+            )}
+            {activeTab === "grades" && (
+              <DeanStudentGradesTab student={student} />
+            )}
             {activeTab === "audit" && <DeanStudentAuditTab student={student} />}
           </div>
         )}
@@ -90,5 +103,5 @@ export function DeanStudentRecordDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

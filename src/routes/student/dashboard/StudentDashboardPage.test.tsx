@@ -1,17 +1,23 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { MemoryRouter } from "react-router"
-import { apiClient, type ApiSchema } from "@/lib/api"
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { apiClient, type ApiSchema } from "@/lib/api";
 import {
   StudentDashboardPage,
   StudentDashboardView,
-} from "./StudentDashboardPage"
+} from "./StudentDashboardPage";
 
 afterEach(() => {
-  cleanup()
-  vi.restoreAllMocks()
-})
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const baseSummary: ApiSchema<"AcademicSummary"> = {
   student_id: "stu-1",
@@ -32,7 +38,7 @@ const baseSummary: ApiSchema<"AcademicSummary"> = {
     },
   ],
   computed_at: "2026-09-19T00:00:00Z",
-}
+};
 
 describe("StudentDashboardView", () => {
   it("renders numeric GWA, Good standing, INC radar, recommendations, and opens AdvisingNotesDialog & AssignmentHistoryDialog", () => {
@@ -80,32 +86,34 @@ describe("StudentDashboardView", () => {
             },
           ]}
         />
-      </MemoryRouter>
-    )
+      </MemoryRouter>,
+    );
 
-    expect(screen.getByText("A clearer path forward, Maria.")).toBeTruthy()
-    expect(screen.getByText("1.58")).toBeTruthy()
-    expect(screen.getByText("56")).toBeTruthy()
-    expect(screen.queryByText("/ 147")).toBeNull()
-    expect(screen.getByText("Good")).toBeTruthy()
-    expect(screen.getByText("CSci 102")).toBeTruthy()
-    expect(screen.getByText(/Due 26 Oct 2026/)).toBeTruthy()
-    expect(screen.getByText("CSci 104")).toBeTruthy()
-    expect(screen.getByText("Suggested")).toBeTruthy()
-
-    fireEvent.click(screen.getByRole("button", { name: "View Advising Notes" }))
-    expect(screen.getByText("Advising notes")).toBeTruthy()
-    expect(
-      screen.getByText("Review CSci 102 completion requirements.")
-    ).toBeTruthy()
-    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
+    expect(screen.getByText("A clearer path forward, Maria.")).toBeTruthy();
+    expect(screen.getByText("1.58")).toBeTruthy();
+    expect(screen.getByText("56")).toBeTruthy();
+    expect(screen.queryByText("/ 147")).toBeNull();
+    expect(screen.getByText("Good")).toBeTruthy();
+    expect(screen.getByText("CSci 102")).toBeTruthy();
+    expect(screen.getByText(/Due 26 Oct 2026/)).toBeTruthy();
+    expect(screen.getByText("CSci 104")).toBeTruthy();
+    expect(screen.getByText("Suggested")).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "View assignment history" })
-    )
-    expect(screen.getByText("Assignment history")).toBeTruthy()
-    expect(screen.getByText("Present")).toBeTruthy()
-  })
+      screen.getByRole("button", { name: "View Advising Notes" }),
+    );
+    expect(screen.getByText("Advising notes")).toBeTruthy();
+    expect(
+      screen.getByText("Review CSci 102 completion requirements."),
+    ).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "View assignment history" }),
+    );
+    expect(screen.getByText("Assignment history")).toBeTruthy();
+    expect(screen.getByText("Present")).toBeTruthy();
+  });
 
   it("renders Not available for null GWA, Flagged standing when delinquent, and empty recommendations", () => {
     render(
@@ -119,54 +127,54 @@ describe("StudentDashboardView", () => {
             deficiencies: [],
           }}
         />
-      </MemoryRouter>
-    )
+      </MemoryRouter>,
+    );
 
-    expect(screen.getByText("Not available")).toBeTruthy()
-    expect(screen.getByText("Flagged")).toBeTruthy()
-    expect(screen.getByText("No recommendations yet.")).toBeTruthy()
-  })
-})
+    expect(screen.getByText("Not available")).toBeTruthy();
+    expect(screen.getByText("Flagged")).toBeTruthy();
+    expect(screen.getByText("No recommendations yet.")).toBeTruthy();
+  });
+});
 
 describe("StudentDashboardPage", () => {
   it("shows Loading... while pending, Try again on error, and recovers on retry", async () => {
-    let callCount = 0
+    let callCount = 0;
     vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {
       if (path === "/functions/v1/students/{student_id}/academic-summary") {
-        callCount += 1
+        callCount += 1;
         if (callCount === 1) {
-          return Promise.reject(new Error("Network error")) as never
+          return Promise.reject(new Error("Network error")) as never;
         }
         return Promise.resolve({
           data: baseSummary,
           response: new Response(),
-        }) as never
+        }) as never;
       }
       return Promise.resolve({
         data: [],
         response: new Response(),
-      }) as never
-    })
+      }) as never;
+    });
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
-    })
+    });
 
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
           <StudentDashboardPage studentId="stu-1" />
         </MemoryRouter>
-      </QueryClientProvider>
-    )
+      </QueryClientProvider>,
+    );
 
-    expect(screen.getByRole("status").textContent).toBe("Loading...")
+    expect(screen.getByRole("status").textContent).toBe("Loading...");
 
-    const retryBtn = await screen.findByRole("button", { name: "Try again" })
-    fireEvent.click(retryBtn)
+    const retryBtn = await screen.findByRole("button", { name: "Try again" });
+    fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("1.58")).toBeTruthy()
-    })
-  })
-})
+      expect(screen.getByText("1.58")).toBeTruthy();
+    });
+  });
+});

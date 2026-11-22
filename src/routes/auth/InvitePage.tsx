@@ -1,136 +1,146 @@
-import * as React from 'react'
-import { Link } from 'react-router'
-import { AuthLayout } from '@/components/features/auth-layout'
-import { Panel } from '@/components/features/panel'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertIcon, CheckIcon } from '@/components/icons'
-import type { ApiSchema } from '@/lib/api'
+import * as React from "react";
+import { Link } from "react-router";
+import { AuthLayout } from "@/components/features/auth-layout";
+import { Panel } from "@/components/features/panel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertIcon, CheckIcon } from "@/components/icons";
+import type { ApiSchema } from "@/lib/api";
 import {
   declineInvitationToken,
   extractInviteTokenFromHash,
   previewInvitationToken,
   validatePasswordPolicy,
   verifyInvitationToken,
-} from '@/lib/auth/auth-service'
+} from "@/lib/auth/auth-service";
 
-type PreviewData = ApiSchema<'PreviewInviteResponse'>
+type PreviewData = ApiSchema<"PreviewInviteResponse">;
 
 export default function InvitePage() {
   const [token] = React.useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    const hash = window.location.hash
-    const extracted = extractInviteTokenFromHash(hash)
+    if (typeof window === "undefined") return null;
+    const hash = window.location.hash;
+    const extracted = extractInviteTokenFromHash(hash);
     if (hash) {
       window.history.replaceState(
         window.history.state,
-        '',
+        "",
         window.location.pathname + window.location.search,
-      )
+      );
     }
-    return extracted
-  })
+    return extracted;
+  });
 
-  const [loadingPreview, setLoadingPreview] = React.useState<boolean>(() => Boolean(token))
+  const [loadingPreview, setLoadingPreview] = React.useState<boolean>(() =>
+    Boolean(token),
+  );
   const [previewError, setPreviewError] = React.useState<string | null>(() =>
-    token ? null : 'No invitation token found. Please check your invitation email link.',
-  )
-  const [preview, setPreview] = React.useState<PreviewData | null>(null)
+    token
+      ? null
+      : "No invitation token found. Please check your invitation email link.",
+  );
+  const [preview, setPreview] = React.useState<PreviewData | null>(null);
 
-  const [password, setPassword] = React.useState('')
-  const [confirmPassword, setConfirmPassword] = React.useState('')
-  const [submitting, setSubmitting] = React.useState(false)
-  const [actionError, setActionError] = React.useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
-  const [declined, setDeclined] = React.useState(false)
+  const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(
+    null,
+  );
+  const [declined, setDeclined] = React.useState(false);
 
   React.useEffect(() => {
-    if (!token) return
+    if (!token) return;
 
-    let isCancelled = false
+    let isCancelled = false;
 
     async function loadPreview(tok: string) {
       try {
-        const data = await previewInvitationToken(tok)
+        const data = await previewInvitationToken(tok);
         if (!isCancelled) {
-          setPreview(data)
+          setPreview(data);
         }
       } catch (err: unknown) {
         if (!isCancelled) {
           const msg =
             err instanceof Error
               ? err.message
-              : 'An error occurred while loading your invitation.'
-          setPreviewError(msg)
+              : "An error occurred while loading your invitation.";
+          setPreviewError(msg);
         }
       } finally {
         if (!isCancelled) {
-          setLoadingPreview(false)
+          setLoadingPreview(false);
         }
       }
     }
 
-    void loadPreview(token)
+    void loadPreview(token);
 
     return () => {
-      isCancelled = true
-    }
-  }, [token])
+      isCancelled = true;
+    };
+  }, [token]);
 
   const handleAccept = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setActionError(null)
+    e.preventDefault();
+    setActionError(null);
 
     if (!token) {
-      setActionError('Invalid invitation session.')
-      return
+      setActionError("Invalid invitation session.");
+      return;
     }
 
-    const validation = validatePasswordPolicy(password)
+    const validation = validatePasswordPolicy(password);
     if (!validation.valid) {
-      setActionError(validation.error)
-      return
+      setActionError(validation.error);
+      return;
     }
 
     if (password !== confirmPassword) {
-      setActionError('Passwords do not match.')
-      return
+      setActionError("Passwords do not match.");
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
 
     try {
-      const data = await verifyInvitationToken(token, password)
+      const data = await verifyInvitationToken(token, password);
       setSuccessMessage(
-        data?.message || 'Your institutional account has been successfully activated!',
-      )
+        data?.message ||
+          "Your institutional account has been successfully activated!",
+      );
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : 'An error occurred during account activation.'
-      setActionError(msg)
+        err instanceof Error
+          ? err.message
+          : "An error occurred during account activation.";
+      setActionError(msg);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleDecline = async () => {
-    if (!token) return
+    if (!token) return;
 
-    setSubmitting(true)
-    setActionError(null)
+    setSubmitting(true);
+    setActionError(null);
 
     try {
-      await declineInvitationToken(token)
-      setDeclined(true)
+      await declineInvitationToken(token);
+      setDeclined(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to decline invitation.'
-      setActionError(msg)
+      const msg =
+        err instanceof Error ? err.message : "Failed to decline invitation.";
+      setActionError(msg);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <AuthLayout
@@ -139,23 +149,28 @@ export default function InvitePage() {
       bullets={[
         {
           icon: <CheckIcon className="w-4 h-4" />,
-          text: 'Accept your pre-registered academic advising account',
+          text: "Accept your pre-registered academic advising account",
         },
         {
           icon: <CheckIcon className="w-4 h-4" />,
-          text: 'Establish your institutional login password',
+          text: "Establish your institutional login password",
         },
         {
           icon: <CheckIcon className="w-4 h-4" />,
-          text: 'Verify your faculty and department assignment',
+          text: "Verify your faculty and department assignment",
         },
       ]}
     >
-      <Panel title="Account Setup" description="Complete your institutional registration.">
+      <Panel
+        title="Account Setup"
+        description="Complete your institutional registration."
+      >
         {loadingPreview ? (
           <div className="flex flex-col items-center justify-center p-8 gap-3">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-muted-foreground">Verifying invitation token…</p>
+            <p className="text-sm text-muted-foreground">
+              Verifying invitation token…
+            </p>
           </div>
         ) : previewError ? (
           <div className="grid gap-4">
@@ -165,8 +180,8 @@ export default function InvitePage() {
               <AlertDescription>{previewError}</AlertDescription>
             </Alert>
             <p className="text-sm text-muted-foreground">
-              If your link has expired or is invalid, please ask your department administrator to
-              resend your invitation.
+              If your link has expired or is invalid, please ask your department
+              administrator to resend your invitation.
             </p>
             <Link to="/login" className="inline-block mt-2">
               <Button variant="outline" className="w-full">
@@ -178,8 +193,8 @@ export default function InvitePage() {
           <div className="grid gap-4 text-center py-4">
             <h2 className="text-2xl font-bold">Invitation Declined</h2>
             <p className="text-sm text-muted-foreground">
-              You have declined this institutional invitation. The invitation link has been
-              invalidated.
+              You have declined this institutional invitation. The invitation
+              link has been invalidated.
             </p>
             <Link to="/login">
               <Button variant="outline" className="w-full mt-2">
@@ -201,12 +216,14 @@ export default function InvitePage() {
         ) : preview ? (
           <div className="grid gap-5">
             <div>
-              <h2 className="text-2xl font-bold">Welcome, {preview.full_name}</h2>
+              <h2 className="text-2xl font-bold">
+                Welcome, {preview.full_name}
+              </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                You have been invited to join SAAIS as{' '}
+                You have been invited to join SAAIS as{" "}
                 <span className="font-semibold text-foreground capitalize">
-                  {preview.role.replace(/_/g, ' ')}
-                </span>{' '}
+                  {preview.role.replace(/_/g, " ")}
+                </span>{" "}
                 for {preview.department_name || preview.faculty_name}.
               </p>
             </div>
@@ -224,7 +241,9 @@ export default function InvitePage() {
               )}
               {preview.faculty_name && (
                 <div>
-                  <span className="text-muted-foreground">Faculty/College: </span>
+                  <span className="text-muted-foreground">
+                    Faculty/College:{" "}
+                  </span>
                   <span className="font-medium">{preview.faculty_name}</span>
                 </div>
               )}
@@ -236,7 +255,9 @@ export default function InvitePage() {
               )}
               {preview.expires_at && (
                 <div>
-                  <span className="text-muted-foreground">Invitation Expires: </span>
+                  <span className="text-muted-foreground">
+                    Invitation Expires:{" "}
+                  </span>
                   <span className="font-medium">
                     {new Date(preview.expires_at).toLocaleDateString()}
                   </span>
@@ -256,7 +277,8 @@ export default function InvitePage() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  Must be 12–128 characters with uppercase, lowercase, and number.
+                  Must be 12–128 characters with uppercase, lowercase, and
+                  number.
                 </span>
               </div>
 
@@ -279,8 +301,12 @@ export default function InvitePage() {
                 </Alert>
               )}
 
-              <Button type="submit" disabled={submitting} className="w-full mt-2">
-                {submitting ? 'Activating account…' : 'Activate Account'}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full mt-2"
+              >
+                {submitting ? "Activating account…" : "Activate Account"}
               </Button>
 
               <Button
@@ -297,5 +323,5 @@ export default function InvitePage() {
         ) : null}
       </Panel>
     </AuthLayout>
-  )
+  );
 }

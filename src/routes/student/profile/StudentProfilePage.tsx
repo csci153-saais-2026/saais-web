@@ -1,11 +1,11 @@
-import * as React from "react"
+import * as React from "react";
 import {
   AssignmentHistoryDialog,
   type AdviserAssignmentRecord,
-} from "@/components/features/assignment-history-dialog"
-import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
-import { Button } from "@/components/ui/button"
+} from "@/components/features/assignment-history-dialog";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -13,34 +13,34 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { ApiSchema } from "@/lib/api"
-import { CurriculumHistoryDialog } from "./CurriculumHistoryDialog"
-import { ProfileDetailsPanel } from "./ProfileDetailsPanel"
-import { ProfilePhotoCard } from "./ProfilePhotoCard"
-import { uploadStudentPhotoObject } from "./student-profile.api"
+} from "@/components/ui/table";
+import type { ApiSchema } from "@/lib/api";
+import { CurriculumHistoryDialog } from "./CurriculumHistoryDialog";
+import { ProfileDetailsPanel } from "./ProfileDetailsPanel";
+import { ProfilePhotoCard } from "./ProfilePhotoCard";
+import { uploadStudentPhotoObject } from "./student-profile.api";
 import {
   useDeleteStudentPhoto,
   useUpdateStudentPhoto,
-} from "./use-student-photo"
-import { useStudentProfile } from "./use-student-profile"
+} from "./use-student-photo";
+import { useStudentProfile } from "./use-student-profile";
 import {
   studentPhotoSchema,
   type StudentPhotoValues,
-} from "./student-photo-schema"
+} from "./student-photo-schema";
 
 export interface StudentProfileViewProps {
-  readonly profile: ApiSchema<"Profile">
-  readonly programName?: string | null
-  readonly departmentName?: string | null
-  readonly collegeName?: string | null
-  readonly adviserAssignments?: readonly AdviserAssignmentRecord[]
-  readonly curriculumAssignments?: readonly ApiSchema<"StudentCurriculumAssignment">[]
-  readonly curriculumTransfers?: readonly ApiSchema<"CurriculumTransferRequest">[]
-  readonly curriculumLabels?: Readonly<Record<string, string>>
-  readonly onUploadPhoto?: (file: File) => Promise<void> | void
-  readonly onRemovePhoto?: () => Promise<void> | void
-  readonly isPhotoBusy?: boolean
+  readonly profile: ApiSchema<"Profile">;
+  readonly programName?: string | null;
+  readonly departmentName?: string | null;
+  readonly collegeName?: string | null;
+  readonly adviserAssignments?: readonly AdviserAssignmentRecord[];
+  readonly curriculumAssignments?: readonly ApiSchema<"StudentCurriculumAssignment">[];
+  readonly curriculumTransfers?: readonly ApiSchema<"CurriculumTransferRequest">[];
+  readonly curriculumLabels?: Readonly<Record<string, string>>;
+  readonly onUploadPhoto?: (file: File) => Promise<void> | void;
+  readonly onRemovePhoto?: () => Promise<void> | void;
+  readonly isPhotoBusy?: boolean;
 }
 
 const SHORT_MONTHS = [
@@ -56,30 +56,30 @@ const SHORT_MONTHS = [
   "Oct",
   "Nov",
   "Dec",
-] as const
+] as const;
 
 function formatShortDate(dateValue: string | null | undefined): string {
-  if (!dateValue) return "—"
-  const trimmed = dateValue.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
   if (isoMatch) {
-    const year = Number(isoMatch[1])
-    const monthIndex = Number(isoMatch[2]) - 1
-    const day = Number(isoMatch[3])
-    const monthLabel = SHORT_MONTHS[monthIndex]
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
     if (monthLabel && day >= 1 && day <= 31) {
-      return `${day} ${monthLabel} ${year}`
+      return `${day} ${monthLabel} ${year}`;
     }
   }
-  return trimmed
+  return trimmed;
 }
 
 function getInitials(fullName?: string | null): string {
-  if (!fullName || !fullName.trim()) return "ST"
-  const parts = fullName.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "ST"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+  if (!fullName || !fullName.trim()) return "ST";
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "ST";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 /**
@@ -98,19 +98,19 @@ export function StudentProfileView({
   onRemovePhoto,
   isPhotoBusy = false,
 }: StudentProfileViewProps) {
-  const [assignmentDialogOpen, setAssignmentDialogOpen] = React.useState(false)
-  const [curriculumDialogOpen, setCurriculumDialogOpen] = React.useState(false)
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = React.useState(false);
+  const [curriculumDialogOpen, setCurriculumDialogOpen] = React.useState(false);
 
-  const initials = getInitials(profile.full_name)
+  const initials = getInitials(profile.full_name);
 
   const activeCurriculum = React.useMemo(() => {
-    const current = curriculumAssignments.find((a) => a.end_date == null)
-    if (!current) return null
+    const current = curriculumAssignments.find((a) => a.end_date == null);
+    if (!current) return null;
     return (
       curriculumLabels?.[current.curriculum_version_id]?.trim() ||
       current.curriculum_version_id
-    )
-  }, [curriculumAssignments, curriculumLabels])
+    );
+  }, [curriculumAssignments, curriculumLabels]);
 
   return (
     <div>
@@ -162,12 +162,12 @@ export function StudentProfileView({
                 <TableBody>
                   {adviserAssignments.map((assignment) => {
                     const fromRaw =
-                      assignment.effective_from ?? assignment.start_date
+                      assignment.effective_from ?? assignment.start_date;
                     const toRaw =
                       assignment.effective_to !== undefined
                         ? assignment.effective_to
-                        : assignment.end_date
-                    const isActive = toRaw == null
+                        : assignment.end_date;
+                    const isActive = toRaw == null;
 
                     return (
                       <TableRow
@@ -194,7 +194,7 @@ export function StudentProfileView({
                           {isActive ? "Current" : formatShortDate(toRaw)}
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -256,56 +256,56 @@ export function StudentProfileView({
         curriculumLabels={curriculumLabels}
       />
     </div>
-  )
+  );
 }
 
 /**
  * Student Profile page container handling loading, error/retry, and profile photo updates.
  */
 export function StudentProfilePage({ studentId }: { studentId: string }) {
-  const { data, isPending, isError, refetch } = useStudentProfile(studentId)
-  const updatePhotoMutation = useUpdateStudentPhoto(studentId)
-  const deletePhotoMutation = useDeleteStudentPhoto(studentId)
+  const { data, isPending, isError, refetch } = useStudentProfile(studentId);
+  const updatePhotoMutation = useUpdateStudentPhoto(studentId);
+  const deletePhotoMutation = useDeleteStudentPhoto(studentId);
 
   const isPhotoBusy =
-    updatePhotoMutation.isPending || deletePhotoMutation.isPending
+    updatePhotoMutation.isPending || deletePhotoMutation.isPending;
 
-  const photoLockRef = React.useRef(false)
+  const photoLockRef = React.useRef(false);
 
   async function handleUploadPhoto(file: File) {
-    if (photoLockRef.current) return
-    photoLockRef.current = true
+    if (photoLockRef.current) return;
+    photoLockRef.current = true;
     try {
-      const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg"
+      const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
       const { storagePath, avatarUrl } = await uploadStudentPhotoObject(
         studentId,
         file,
-        mimeType
-      )
+        mimeType,
+      );
       const payload: StudentPhotoValues = studentPhotoSchema.parse({
         storage_object_path: storagePath,
         avatar_url: avatarUrl,
         mime_type: mimeType,
         file_size_bytes: file.size,
-      })
-      await updatePhotoMutation.mutateAsync(payload)
+      });
+      await updatePhotoMutation.mutateAsync(payload);
     } finally {
-      photoLockRef.current = false
+      photoLockRef.current = false;
     }
   }
 
   async function handleRemovePhoto() {
-    if (photoLockRef.current) return
-    photoLockRef.current = true
+    if (photoLockRef.current) return;
+    photoLockRef.current = true;
     try {
-      await deletePhotoMutation.mutateAsync()
+      await deletePhotoMutation.mutateAsync();
     } finally {
-      photoLockRef.current = false
+      photoLockRef.current = false;
     }
   }
 
   if (isPending) {
-    return <p role="status">Loading...</p>
+    return <p role="status">Loading...</p>;
   }
 
   if (isError || !data) {
@@ -314,15 +314,11 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
         title="Unable to load profile"
         description="We could not load your student profile right now."
       >
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void refetch()}
-        >
+        <Button type="button" variant="outline" onClick={() => void refetch()}>
           Try again
         </Button>
       </Panel>
-    )
+    );
   }
 
   return (
@@ -339,7 +335,7 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
       onRemovePhoto={handleRemovePhoto}
       isPhotoBusy={isPhotoBusy}
     />
-  )
+  );
 }
 
-export default StudentProfilePage
+export default StudentProfilePage;

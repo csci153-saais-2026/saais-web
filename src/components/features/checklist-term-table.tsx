@@ -1,20 +1,31 @@
-import { ChevronDownIcon } from "@/components/icons"
-import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Kicker } from "@/components/ui/kicker"
-import { StatusBadge, type Status } from "@/components/ui/status-badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ChevronDownIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Kicker } from "@/components/ui/kicker";
+import { StatusBadge, type Status } from "@/components/ui/status-badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export type ChecklistRow = {
-  code: string
-  title: string
-  unitsEarned: number
-  unitsRequired: number
-  status: Status
-  source: string
-  sourceDetail?: string
-  attempts: number
-}
+  code: string;
+  title: string;
+  unitsEarned: number;
+  unitsRequired: number;
+  status: Status;
+  source: string;
+  sourceDetail?: string;
+  attempts: number;
+};
 
 const CHECKLIST_COLUMNS = [
   { label: "Requirement", className: "w-[25%]" },
@@ -23,7 +34,7 @@ const CHECKLIST_COLUMNS = [
   { label: "Satisfaction source", className: "w-[19%]" },
   { label: "Attempts", className: "w-[10%]" },
   { label: "Course info", className: "w-[11%]" },
-] as const
+] as const;
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
@@ -31,7 +42,7 @@ function Summary({ label, value }: { label: string; value: string }) {
       <Kicker className="block text-[10.5px]">{label}</Kicker>
       <div className="font-heading text-lg font-bold text-primary">{value}</div>
     </div>
-  )
+  );
 }
 
 /** One collapsible semester block of the curriculum checklist, with its summary figures. */
@@ -46,15 +57,15 @@ function ChecklistTermGroup({
   open,
   onOpenChange,
 }: {
-  title: string
-  description?: string
-  passedUnits: number
-  totalUnits: number
-  semesterGwa?: string
-  rows: ChecklistRow[]
-  onCourseInfo?: (code: string) => void
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
+  title: string;
+  description?: string;
+  passedUnits: number;
+  totalUnits: number;
+  semesterGwa?: string;
+  rows: ChecklistRow[];
+  onCourseInfo?: (code: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
     <Collapsible
@@ -66,7 +77,11 @@ function ChecklistTermGroup({
       <CollapsibleTrigger className="flex w-full items-center gap-4 bg-secondary px-5 py-4 text-left">
         <span className="min-w-0 flex-1">
           <span className="block font-semibold">{title}</span>
-          {description && <span className="block text-sm text-muted-foreground">{description}</span>}
+          {description && (
+            <span className="block text-sm text-muted-foreground">
+              {description}
+            </span>
+          )}
         </span>
         <Summary label="Passed units" value={`${passedUnits}/${totalUnits}`} />
         <Summary label="Total units" value={String(totalUnits)} />
@@ -92,7 +107,9 @@ function ChecklistTermGroup({
               <TableRow key={r.code}>
                 <TableCell>
                   <b className="block font-semibold">{r.code}</b>
-                  <span className="text-xs text-muted-foreground">{r.title}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {r.title}
+                  </span>
                 </TableCell>
                 <TableCell>
                   {r.unitsEarned} / {r.unitsRequired}
@@ -102,13 +119,21 @@ function ChecklistTermGroup({
                 </TableCell>
                 <TableCell>
                   <span className="block">{r.source}</span>
-                  {r.sourceDetail && <span className="text-xs text-muted-foreground">{r.sourceDetail}</span>}
+                  {r.sourceDetail && (
+                    <span className="text-xs text-muted-foreground">
+                      {r.sourceDetail}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {r.attempts} {r.attempts === 1 ? "attempt" : "attempts"}
                 </TableCell>
                 <TableCell>
-                  <Button variant="outline" size="sm" onClick={() => onCourseInfo?.(r.code)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onCourseInfo?.(r.code)}
+                  >
                     Course info
                   </Button>
                 </TableCell>
@@ -118,7 +143,7 @@ function ChecklistTermGroup({
         </Table>
       </CollapsibleContent>
     </Collapsible>
-  )
+  );
 }
 
-export { ChecklistTermGroup }
+export { ChecklistTermGroup };

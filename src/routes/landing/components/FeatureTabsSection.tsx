@@ -1,8 +1,11 @@
-import { CheckIcon, ChevronRightIcon } from '@/components/icons'
-import { Kicker } from '@/components/ui/kicker'
-import { StatusBadge } from '@/components/ui/status-badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FEATURE_TABS, FEATURE_TABS_SECTION } from '@/routes/landing/landingData'
+import { CheckIcon, ChevronRightIcon } from "@/components/icons";
+import { Kicker } from "@/components/ui/kicker";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  FEATURE_TABS,
+  FEATURE_TABS_SECTION,
+} from "@/routes/landing/landingData";
 
 export function FeatureTabsSection() {
   return (
@@ -34,7 +37,11 @@ export function FeatureTabsSection() {
           </TabsList>
 
           {FEATURE_TABS.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id} className="mt-10 md:mt-[52px]">
+            <TabsContent
+              key={tab.id}
+              value={tab.id}
+              className="mt-10 md:mt-[52px]"
+            >
               <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-16">
                 <div>
                   <h3 className="max-w-[20ch] font-heading text-[28px] leading-[1.06] font-bold tracking-[-0.01em] text-foreground md:text-[34px]">
@@ -88,11 +95,15 @@ export function FeatureTabsSection() {
                         <span className="font-mono text-[13px] font-medium text-foreground tabular-nums">
                           {row.code}
                         </span>
-                        <div className="text-[13px] text-foreground">{row.title}</div>
+                        <div className="text-[13px] text-foreground">
+                          {row.title}
+                        </div>
                         <div className="text-[12.5px] text-muted-2 tabular-nums">
                           {row.units}
                         </div>
-                        <StatusBadge status={row.status}>{row.statusLabel}</StatusBadge>
+                        <StatusBadge status={row.status}>
+                          {row.statusLabel}
+                        </StatusBadge>
                         <div className="text-right text-[11.5px] text-muted-2">
                           {row.outcome}
                         </div>
@@ -105,7 +116,9 @@ export function FeatureTabsSection() {
                       {tab.panelFooterNote}
                     </p>
                     <div className="shrink-0 text-right">
-                      <Kicker className="text-muted-2">{tab.panelMetricLabel}</Kicker>
+                      <Kicker className="text-muted-2">
+                        {tab.panelMetricLabel}
+                      </Kicker>
                       <div className="mt-1 font-heading text-[26px] leading-[1.06] font-bold tracking-[-0.01em] text-primary tabular-nums">
                         {tab.panelMetricValue}
                       </div>
@@ -118,5 +131,5 @@ export function FeatureTabsSection() {
         </Tabs>
       </div>
     </section>
-  )
+  );
 }

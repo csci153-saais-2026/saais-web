@@ -1,6 +1,6 @@
-import { ChevronDownIcon } from '@/components/icons'
-import { Kicker } from '@/components/ui/kicker'
-import { FAQ_ITEMS, FAQ_SECTION } from '@/routes/landing/landingData'
+import { ChevronDownIcon } from "@/components/icons";
+import { Kicker } from "@/components/ui/kicker";
+import { FAQ_ITEMS, FAQ_SECTION } from "@/routes/landing/landingData";
 
 export function FaqSection() {
   return (
@@ -37,5 +37,5 @@ export function FaqSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
