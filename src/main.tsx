@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import { StartupErrorBoundary } from "./StartupErrorBoundary";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { resolveSaaisEnvConfig } from "@/lib/supabase/client";
@@ -46,7 +47,9 @@ async function start(): Promise<void> {
             The mock API could not start. API requests may fail.
           </div>
         )}
-        <App />
+        <StartupErrorBoundary>
+          <App />
+        </StartupErrorBoundary>
       </StrictMode>,
     );
   } catch (error) {

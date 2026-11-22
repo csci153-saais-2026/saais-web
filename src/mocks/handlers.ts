@@ -655,7 +655,9 @@ function applyPostgrestQuery<T extends object>(
     const terms = order
       .split(",")
       .map((term) =>
-        /^([a-z_][a-z0-9_]*)\.(asc|desc)(?:\.nulls(first|last))?$/i.exec(term),
+        /^([a-z_][a-z0-9_]*)(?:\.(asc|desc))?(?:\.nulls(first|last))?$/i.exec(
+          term,
+        ),
       );
     if (
       terms.some((term) => !term) ||
@@ -666,7 +668,7 @@ function applyPostgrestQuery<T extends object>(
     filtered.sort((left, right) => {
       for (const term of terms) {
         if (!term) continue;
-        const [, key, direction, nulls] = term;
+        const [, key, direction = "asc", nulls] = term;
         const a = (left as Record<string, unknown>)[key];
         const b = (right as Record<string, unknown>)[key];
         if (a == null || b == null) {
@@ -708,9 +710,14 @@ function canAccessStudentRecord(
   persona: MockPersona,
   studentId: string,
   allowHistoric = false,
+  allowSelf = true,
 ): boolean {
   if (persona.roles.includes("admin")) return true;
-  if (persona.roles.includes("student") && persona.profileId === studentId)
+  if (
+    allowSelf &&
+    persona.roles.includes("student") &&
+    persona.profileId === studentId
+  )
     return true;
   const db = getMockDatabase();
   const adviserAssignment = db.adviserAssignments.find(
@@ -3299,7 +3306,7 @@ export const saaisMswHandlers = [
       ]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (!canAccessStudentRecord(auth.persona, studentId, false, false)) {
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       }
       const body = (await request
@@ -3424,7 +3431,7 @@ export const saaisMswHandlers = [
           "school_term_id and rows are required.",
         );
       }
-      if (!canAccessStudentRecord(auth.persona, studentId))
+      if (!canAccessStudentRecord(auth.persona, studentId, false, false))
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       if (departmentEncodingClosed(studentId, body.school_term_id))
         return encodingClosedResponse();
@@ -3844,7 +3851,10 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ["student", "admin"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (
+        !auth.persona.roles.includes("admin") &&
+        auth.persona.profileId !== studentId
+      ) {
         return errorJson(
           403,
           "INSUFFICIENT_PRIVILEGE",
@@ -4940,7 +4950,10 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ["student", "admin"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (
+        !auth.persona.roles.includes("admin") &&
+        auth.persona.profileId !== studentId
+      ) {
         return errorJson(
           403,
           "INSUFFICIENT_PRIVILEGE",
@@ -4982,7 +4995,10 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ["student", "admin"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (
+        !auth.persona.roles.includes("admin") &&
+        auth.persona.profileId !== studentId
+      ) {
         return errorJson(
           403,
           "INSUFFICIENT_PRIVILEGE",

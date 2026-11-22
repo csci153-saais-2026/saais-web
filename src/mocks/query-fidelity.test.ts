@@ -47,6 +47,14 @@ describe("PostgREST mock query fidelity", () => {
       })
     ).json();
     expect(sorted.map((row: { id: string }) => row.id)).toEqual(["one", "two"]);
+    for (const order of ["units", "units.nullslast"]) {
+      const rows = await (await read("/rest/v1/course", { order })).json();
+      expect(rows.map((row: { id: string }) => row.id)).toEqual([
+        "three",
+        "one",
+        "two",
+      ]);
+    }
     const wildcards = await (
       await read("/rest/v1/course", { title: "ilike.*juan*cruz*" })
     ).json();
@@ -149,6 +157,28 @@ describe("PostgREST mock query fidelity", () => {
       expect(
         (await getSummary(MOCK_PERSONAS.student_other_dept.profileId)).status,
       ).toBe(403);
+      const ownGradeWrite = await fetch(
+        `${base}/functions/v1/students/${persona.profileId}/record-grades`,
+        {
+          method: "POST",
+          headers: adviserHeaders,
+        },
+      );
+      expect(ownGradeWrite.status).toBe(403);
+      for (const [path, method] of [
+        ["grade-flags", "POST"],
+        ["photo", "PUT"],
+        ["photo", "DELETE"],
+      ]) {
+        const response = await fetch(
+          `${base}/functions/v1/students/${MOCK_PERSONAS.student.profileId}/${path}`,
+          {
+            method,
+            headers: adviserHeaders,
+          },
+        );
+        expect(response.status).toBe(403);
+      }
     } finally {
       Object.assign(persona, { roles: originalRoles });
     }
