@@ -31,6 +31,7 @@ test-results
 .env.*.local
 .supabase/local
 supabase/.temp
+supabase/.branches/
 
 # Agent and temporary teamwork metadata
 .agents/

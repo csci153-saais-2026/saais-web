@@ -111,3 +111,29 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  database:
+    name: Supabase database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+      - name: Start local Supabase database
+        run: supabase db start
+      - name: Reset local database without seed
+        run: supabase db reset --local --no-seed
+      - name: Run pgTAP
+        run: node supabase/tools/test-pgtap.cjs
+      - name: Run domain, application, and concurrency regression suites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql
+          export PG_BINARY_DIR="$(pg_config --bindir)"
+          node supabase/tools/test-database.cjs
