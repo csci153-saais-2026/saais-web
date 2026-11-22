@@ -43,3 +43,6 @@ verify_jwt = true
 
 [functions.grades]
 verify_jwt = true
+
+[functions.auth]
+verify_jwt = false
