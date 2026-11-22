@@ -14,6 +14,38 @@ This implementation targets approved OpenAPI **0.3.1 at `8df551183962d19ab724c9f
 
 The HTTP layer validates headers, path syntax, JSON encoding and size, verifies the user with Supabase Auth, and invokes `public.jerome_operation` with the **caller's JWT and public project key**. No service-role key is used. That SQL boundary independently validates the pinned request schema, active session/profile, provisioned role assignments, scope and ownership. It dispatches to private domain routines and validates/project-filters the response before committing. Constraints, history, audit and notification writes participate in the same transaction.
 
+## Local synthetic dataset
+
+`supabase/seed.sql` is a snapshot of the shared MSW scenarios plus synthetic
+catalog examples for prerequisite chains and a discontinued course offered by
+request. It creates local Auth identities, profiles, assignments and connected
+academic records. It is intended only for a disposable local project; do not run
+it against a project containing real users or records.
+
+With the Supabase CLI and Docker running, start the local stack and rebuild it:
+
+```sh
+npx supabase start
+npx supabase db reset
+```
+
+The reset destroys and recreates the local database. All synthetic accounts use
+the local test password `gwapoX123!`. For example, sign in as student
+`24-1-01798@vsu.edu.ph`, adviser `23-1-02224@vsu.edu.ph`, or administrator
+`23-1-01457@vsu.edu.ph`. Invited and disabled profiles are included to exercise
+their access restrictions.
+
+The seed includes a grade-replacement example for a failed course. Although the
+database retains a legacy `additional_credit` enum value, the current academic
+rule does not permit retaking a course that has already been passed. Do not use
+the legacy category as permission to retake a passed course.
+
+After reset, check the key academic scenarios and role counts:
+
+```sh
+npx supabase db query --file supabase/seed-tests/seed-integrity.sql
+```
+
 ## Local checks
 
 Run from the repository root with the existing npm dependencies installed:
