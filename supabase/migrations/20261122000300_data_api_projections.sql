@@ -279,7 +279,7 @@ select
   r.last_backup_at, r.last_backup_by, r.last_backup_reference, r.last_backup_location,
   r.last_backup_scope, r.updated_at
 from public.system_settings r
-where saais_private.can_read_department(r.department_id, array['department_head', 'department_staff', 'dean', 'admin']) or (
+where saais_private.can_read_department(r.department_id, array['department_head', 'dean', 'admin']) or (
     r.department_id is null and saais_private.own_active_record(auth.uid()) and (
       exists (select 1 from public.role_assignment a where a.profile_id = auth.uid() and a.role in ('adviser','department_head','dean'))
     )

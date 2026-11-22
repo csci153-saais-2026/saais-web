@@ -24,7 +24,11 @@ revoke execute on function saais_private.matt_attempt_result(uuid), saais_privat
 -- Removing a column requires recreating the view. Keep its existing scope and grant.
 drop view saais_api.attempt_result;
 create view saais_api.attempt_result with (security_barrier = true) as
-select r.*
+select r.id, s.student_id, r.course_offering_id, r.curriculum_term_course_id,
+  r.recorded_status, r.midterm_status, r.midterm_grade, r.final_grade, r.inc_deadline,
+  r.instructor, r.prerequisite_override, r.prerequisite_grade_override, r.units_attempted,
+  r.revision, r.created_at, r.updated_at, r.completion_grade, r.resolved_at,
+  r.effective_status, r.gwa_grade, r.is_lapsed_inc, r.is_repeated, r.counts_toward_cumulative_gwa
 from saais_api.student_organization s
 cross join lateral saais_private.read_attempt_results(s.student_id) result
 cross join lateral jsonb_to_record(result) as r (

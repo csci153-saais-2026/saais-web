@@ -9,6 +9,21 @@ create table saais_private.public_invitation_budget (
 );
 revoke all on saais_private.public_invitation_budget from public, anon, authenticated;
 
+-- A reissued link starts a fresh budget; changing no token keeps existing counters.
+create function saais_private.clear_rotated_invitation_budget() returns trigger
+language plpgsql set search_path = pg_catalog as $$
+begin
+  if new.token_hash is distinct from old.token_hash then
+    delete from saais_private.public_invitation_budget where token_hash = old.token_hash;
+  end if;
+  return new;
+end;
+$$;
+create trigger clear_rotated_invitation_budget before update of token_hash
+on saais_private.account_invitation for each row
+execute function saais_private.clear_rotated_invitation_budget();
+
+
 create or replace function public.saais_invitation_service(
   p_operation text, p_stage text, p_body jsonb, p_actor uuid default null,
   p_session uuid default null, p_profile uuid default null, p_token text default null,

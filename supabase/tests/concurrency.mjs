@@ -97,6 +97,32 @@ console.log(
   "Overlapping adviser reassignments: one committed and one conflicted.",
 );
 
+// A filtered result request must not run the expensive attempt helper for other students.
+const explain = await run(psql, [
+  ...args,
+  "-c",
+  `select test.login(1);
+  explain (analyze, format json) select * from saais_api.attempt_result
+  where student_id = '00000005-0000-4000-8000-000000000000';`,
+]);
+const plan = JSON.parse(explain.stdout.slice(explain.stdout.indexOf("[")))[0]
+  .Plan;
+function findAttemptHelper(node) {
+  if (node["Function Name"] === "read_attempt_results") return node;
+  for (const child of node.Plans || []) {
+    const found = findAttemptHelper(child);
+    if (found) return found;
+  }
+  return null;
+}
+const helper = findAttemptHelper(plan);
+assert.ok(helper, "The query plan includes the attempt-result helper");
+assert.equal(
+  helper["Actual Loops"],
+  1,
+  "The helper runs for only the requested student",
+);
+
 // Two issued invitations give independent, bounded budget keys.
 const firstHash = "a".repeat(64);
 const secondHash = "b".repeat(64);

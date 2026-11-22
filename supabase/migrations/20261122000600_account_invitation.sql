@@ -156,20 +156,46 @@ declare
   v_request jsonb := p_body || jsonb_build_object('email', lower(btrim(p_body->>'email')));
   v_reservation saais_private.invite_reservation;
   v_auth uuid;
+  v_department uuid;
   v_date date := (now() at time zone 'Asia/Manila')::date;
   v_result jsonb;
 begin
   perform pg_advisory_xact_lock(531201, 1);
-  select * into v_scope from saais_private.validate_invitee(v_request);
   select r.* into v_reservation from saais_private.invite_reservation r
     where r.email = v_request->>'email' for update;
   if v_reservation.id is not null then
-    if v_reservation.requested_by <> v_actor or v_reservation.request <> v_request or p_mode = 'preview' then
+    if (v_reservation.requested_by <> v_actor and not saais_private.has_role('admin')) or p_mode = 'preview' then
       perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
     end if;
     if v_reservation.profile_id is not null then
+      if v_reservation.request <> v_request then
+        perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
+      end if;
+      -- Recheck current actor scope without requiring a retired curriculum or adviser to become active again.
+      if not saais_private.has_role('admin') then
+        v_department := coalesce((saais_private.organization(v_reservation.profile_id)->>'department_id')::uuid,
+          (select department_id from public.profile where id = v_reservation.profile_id));
+        if v_department is null then
+          perform saais_private.fail(403, 'This invitation is outside your authorized scope.');
+        end if;
+        perform saais_private.require_scope(array['department_head','department_staff'], v_department);
+        if exists (select 1 from public.role_assignment a where a.profile_id = v_reservation.profile_id
+          and (a.role in ('admin','dean') or (a.role <> 'student' and a.department_id is distinct from v_department))) then
+          perform saais_private.fail(403, 'This invitation is outside your authorized scope.');
+        end if;
+      end if;
       return jsonb_build_object('success', true, 'message', 'Account already provisioned.',
         'profile_id', v_reservation.profile_id);
+    end if;
+    if v_reservation.request <> v_request then
+      -- Correct only the mutable adviser for an unfinished student reservation, retaining
+      -- the same reserved identity and revalidating the complete updated request.
+      if p_mode <> 'prepare' or v_reservation.request->>'role' <> 'student'
+        or (v_reservation.request - 'adviser_id') <> (v_request - 'adviser_id') then
+        perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
+      end if;
+      select * into v_scope from saais_private.validate_invitee(v_request);
+      update saais_private.invite_reservation set request = v_request where id = v_reservation.id;
     end if;
   elsif exists (select 1 from public.profile p
     where lower(btrim(p.email)) = v_request->>'email' or p.student_number = v_request->>'student_number')
@@ -177,6 +203,7 @@ begin
     or exists (select 1 from saais_private.invite_reservation r where r.student_number = v_request->>'student_number') then
     perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
   end if;
+  select * into v_scope from saais_private.validate_invitee(v_request);
   if p_mode = 'preview' then return '{}'::jsonb; end if;
   if v_reservation.id is null and p_mode = 'prepare' then
     insert into saais_private.invite_reservation (email, student_number, requested_by, request)
@@ -228,7 +255,7 @@ begin
   if auth.uid() = p_profile or (not saais_private.has_role('admin') and (
     v_department is null or exists (
       select 1 from public.role_assignment a where a.profile_id = p_profile
-        and (a.role in ('admin','dean') or (a.department_id is not null and a.department_id <> v_department))
+        and (a.role in ('admin','dean') or (a.role <> 'student' and a.department_id is distinct from v_department))
     )
   )) then
     perform saais_private.fail(403, 'This invitation is outside your authorized scope.');
