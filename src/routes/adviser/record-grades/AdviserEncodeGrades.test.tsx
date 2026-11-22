@@ -476,7 +476,7 @@ describe("encoding workspace identity", () => {
       );
       fireEvent.click(
         within(screen.getByRole("dialog")).getByRole("radio", {
-          name: new RegExp(code),
+          name: (name) => name.includes(code),
         }),
       );
       fireEvent.click(
