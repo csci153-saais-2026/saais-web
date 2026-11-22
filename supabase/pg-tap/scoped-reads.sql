@@ -90,11 +90,13 @@ select throws_ok('select id from saais_api.profile', '42501', null, 'Anonymous u
 reset role;
 
 select test.login(2);
+set local role authenticated;
 select lives_ok($cmd$
   select public.matt_operation('reassignAdviser', '{"student_id":"00000005-0000-4000-8000-000000000000"}',
     '{"adviser_id":"00000008-0000-4000-8000-000000000000","start_date":"2026-02-01","reason":"Scoped handoff"}')
 $cmd$, 'Head can reassign an eligible adviser');
 set constraints all immediate;
+reset role;
 select is((select count(*) from public.adviser_assignment
   where student_id = '00000005-0000-4000-8000-000000000000' and end_date is null),
   1::bigint, 'Reassignment leaves one open assignment');
