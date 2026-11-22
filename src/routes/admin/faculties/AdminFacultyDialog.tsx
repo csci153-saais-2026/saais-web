@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { FormField } from '@/components/features/form-field'
-import { Button } from '@/components/ui/button'
+import { useState, type FormEvent } from "react";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,62 +8,62 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import type { ApiSchema } from '@/lib/api'
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import type { ApiSchema } from "@/lib/api";
 import {
   buildFacultyRequest,
   validateFacultyForm,
   type FacultyFormErrors,
   type FacultyFormValues,
-} from './admin-faculties-model'
+} from "./admin-faculties-model";
 
-type Faculty = ApiSchema<'Faculty'>
-type FacultyRequest = Pick<ApiSchema<'FacultyInsert'>, 'name' | 'code'>
+type Faculty = ApiSchema<"Faculty">;
+type FacultyRequest = Pick<ApiSchema<"FacultyInsert">, "name" | "code">;
 
 export function AdminFacultyDialog({
   faculty,
   onOpenChange,
   onSubmit,
 }: {
-  faculty: Faculty | null
-  onOpenChange: (open: boolean) => void
-  onSubmit: (request: FacultyRequest) => Promise<void>
+  faculty: Faculty | null;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (request: FacultyRequest) => Promise<void>;
 }) {
   const [values, setValues] = useState<FacultyFormValues>(() => ({
-    name: faculty?.name ?? '',
-    code: faculty?.code ?? '',
-  }))
-  const [errors, setErrors] = useState<FacultyFormErrors>({})
-  const [submitting, setSubmitting] = useState(false)
-  const [submissionError, setSubmissionError] = useState<string | null>(null)
+    name: faculty?.name ?? "",
+    code: faculty?.code ?? "",
+  }));
+  const [errors, setErrors] = useState<FacultyFormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   function update<K extends keyof FacultyFormValues>(
     key: K,
     value: FacultyFormValues[K],
   ) {
-    setValues((current) => ({ ...current, [key]: value }))
-    setErrors((current) => ({ ...current, [key]: undefined }))
+    setValues((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const nextErrors = validateFacultyForm(values)
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    event.preventDefault();
+    const nextErrors = validateFacultyForm(values);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
-    setSubmissionError(null)
-    setSubmitting(true)
+    setSubmissionError(null);
+    setSubmitting(true);
     try {
-      await onSubmit(buildFacultyRequest(values))
+      await onSubmit(buildFacultyRequest(values));
     } catch (requestError: unknown) {
       setSubmissionError(
         requestError instanceof Error
           ? requestError.message
-          : 'The faculty could not be saved.',
-      )
+          : "The faculty could not be saved.",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
@@ -71,7 +71,7 @@ export function AdminFacultyDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{faculty ? 'Edit faculty' : 'Add faculty'}</DialogTitle>
+          <DialogTitle>{faculty ? "Edit faculty" : "Add faculty"}</DialogTitle>
           <DialogDescription>
             Faculty records support institution-wide department and program
             organization.
@@ -97,7 +97,7 @@ export function AdminFacultyDialog({
               maxLength={250}
               aria-invalid={Boolean(errors.name)}
               disabled={submitting}
-              onChange={(event) => update('name', event.currentTarget.value)}
+              onChange={(event) => update("name", event.currentTarget.value)}
             />
           </FormField>
           <FormField
@@ -112,7 +112,7 @@ export function AdminFacultyDialog({
               maxLength={50}
               aria-invalid={Boolean(errors.code)}
               disabled={submitting}
-              onChange={(event) => update('code', event.currentTarget.value)}
+              onChange={(event) => update("code", event.currentTarget.value)}
             />
           </FormField>
           <DialogFooter>
@@ -126,14 +126,14 @@ export function AdminFacultyDialog({
             </Button>
             <Button type="submit" disabled={submitting}>
               {submitting
-                ? 'Saving…'
+                ? "Saving…"
                 : faculty
-                  ? 'Save faculty'
-                  : 'Add faculty'}
+                  ? "Save faculty"
+                  : "Add faculty"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

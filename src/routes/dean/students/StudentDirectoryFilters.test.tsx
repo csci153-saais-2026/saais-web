@@ -1,15 +1,15 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { StudentDirectoryFilters } from "@/routes/dean/students/StudentDirectoryFilters"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { StudentDirectoryFilters } from "@/routes/dean/students/StudentDirectoryFilters";
 
 describe("StudentDirectoryFilters", () => {
   afterEach(() => {
-    cleanup()
-  })
+    cleanup();
+  });
 
   it("disables Reset filters when no filters are active and calls onReset when filters are set", () => {
-    const onReset = vi.fn()
-    const onQueryChange = vi.fn()
+    const onReset = vi.fn();
+    const onQueryChange = vi.fn();
 
     const { rerender } = render(
       <StudentDirectoryFilters
@@ -23,15 +23,20 @@ describe("StudentDirectoryFilters", () => {
         adviserOptions={["Prof. Mara Reyes"]}
         onReset={onReset}
       />,
-    )
+    );
 
-    const resetButton = screen.getByRole("button", { name: "Reset filters" }) as HTMLButtonElement
-    expect(resetButton.disabled).toBe(true)
+    const resetButton = screen.getByRole("button", {
+      name: "Reset filters",
+    }) as HTMLButtonElement;
+    expect(resetButton.disabled).toBe(true);
 
-    fireEvent.change(screen.getByPlaceholderText("Search by student name or ID"), {
-      target: { value: "Ana" },
-    })
-    expect(onQueryChange).toHaveBeenCalledWith("Ana")
+    fireEvent.change(
+      screen.getByPlaceholderText("Search by student name or ID"),
+      {
+        target: { value: "Ana" },
+      },
+    );
+    expect(onQueryChange).toHaveBeenCalledWith("Ana");
 
     rerender(
       <StudentDirectoryFilters
@@ -45,10 +50,10 @@ describe("StudentDirectoryFilters", () => {
         adviserOptions={["Prof. Mara Reyes"]}
         onReset={onReset}
       />,
-    )
+    );
 
-    expect(resetButton.disabled).toBe(false)
-    fireEvent.click(resetButton)
-    expect(onReset).toHaveBeenCalledTimes(1)
-  })
-})
+    expect(resetButton.disabled).toBe(false);
+    fireEvent.click(resetButton);
+    expect(onReset).toHaveBeenCalledTimes(1);
+  });
+});

@@ -1,167 +1,169 @@
-import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
+import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChecklistTermGroup,
   type ChecklistRow,
-} from "@/components/features/checklist-term-table"
+} from "@/components/features/checklist-term-table";
 import {
   CourseInfoDialog,
   type CourseInfoSlotRecord,
-} from "@/components/features/course-info-dialog"
-import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
+} from "@/components/features/course-info-dialog";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
 import {
   ReportPdfPreviewDialog,
   type ReportAuditEventType,
-} from "@/components/features/report-pdf-preview-dialog"
-import { StatGrid } from "@/components/features/stat-tile"
-import { Button } from "@/components/ui/button"
-import type { Status } from "@/components/ui/status-badge"
-import { fetchAllPages } from "../fetch-all-pages"
+} from "@/components/features/report-pdf-preview-dialog";
+import { StatGrid } from "@/components/features/stat-tile";
+import { Button } from "@/components/ui/button";
+import type { Status } from "@/components/ui/status-badge";
+import { fetchAllPages } from "../fetch-all-pages";
 import {
   apiClient,
   postgrestFilter,
   unwrapApiResult,
   type ApiSchema,
-} from "@/lib/api"
+} from "@/lib/api";
 import {
   formatChecklistReport,
   formatTwoDecimalGrade,
   type PdfReportPayload,
-} from "@/lib/pdf/student-report-formatter"
+} from "@/lib/pdf/student-report-formatter";
 import {
   ChecklistToolbar,
   type ChecklistFilterValue,
-} from "./ChecklistToolbar"
+} from "./ChecklistToolbar";
 import {
   useRecordChecklistExport,
   useStudentChecklist,
-} from "./use-student-checklist"
+} from "./use-student-checklist";
 
-export interface ChecklistSlotDisplayItem
-  extends ApiSchema<"ChecklistSlotResult"> {
-  readonly code: string
-  readonly title: string
-  readonly slotType?: ApiSchema<"CurriculumSlotType">
-  readonly isLapsedInc?: boolean
+export interface ChecklistSlotDisplayItem extends ApiSchema<"ChecklistSlotResult"> {
+  readonly code: string;
+  readonly title: string;
+  readonly slotType?: ApiSchema<"CurriculumSlotType">;
+  readonly isLapsedInc?: boolean;
 }
 
 export interface ChecklistTermSection {
-  readonly id: string
-  readonly yearLevel: number
-  readonly termSequence: number
-  readonly title: string
-  readonly description?: string
-  readonly slots: readonly ChecklistSlotDisplayItem[]
+  readonly id: string;
+  readonly yearLevel: number;
+  readonly termSequence: number;
+  readonly title: string;
+  readonly description?: string;
+  readonly slots: readonly ChecklistSlotDisplayItem[];
 }
 
 export interface StudentChecklistViewProps {
-  readonly summary: ApiSchema<"AcademicSummary">
-  readonly terms: readonly ChecklistTermSection[]
-  readonly studentName?: string | null
-  readonly studentNumber?: string | null
-  readonly programLabel?: string | null
-  readonly curriculumLabel?: string | null
-  readonly adviserName?: string | null
-  readonly department?: Partial<ApiSchema<"Department">> | null
-  readonly faculty?: Partial<ApiSchema<"Faculty">> | null
-  readonly onPrintReport?: (eventType: ReportAuditEventType) => void
+  readonly summary: ApiSchema<"AcademicSummary">;
+  readonly terms: readonly ChecklistTermSection[];
+  readonly studentName?: string | null;
+  readonly studentNumber?: string | null;
+  readonly programLabel?: string | null;
+  readonly curriculumLabel?: string | null;
+  readonly adviserName?: string | null;
+  readonly department?: Partial<ApiSchema<"Department">> | null;
+  readonly faculty?: Partial<ApiSchema<"Faculty">> | null;
+  readonly onPrintReport?: (eventType: ReportAuditEventType) => void;
 }
 
 function formatYearStanding(yearLevel?: number | null): string {
-  const n = yearLevel ?? 1
-  if (n === 1) return "1st year"
-  if (n === 2) return "2nd year"
-  if (n === 3) return "3rd year"
-  return `${n}th year`
+  const n = yearLevel ?? 1;
+  if (n === 1) return "1st year";
+  if (n === 2) return "2nd year";
+  if (n === 3) return "3rd year";
+  return `${n}th year`;
 }
 
 function formatTermSequenceLabel(termSequence: number): string {
-  if (termSequence === 1) return "Semester 1"
-  if (termSequence === 2) return "Semester 2"
-  if (termSequence === 3) return "Summer"
-  return `Term ${termSequence}`
+  if (termSequence === 1) return "Semester 1";
+  if (termSequence === 2) return "Semester 2";
+  if (termSequence === 3) return "Summer";
+  return `Term ${termSequence}`;
 }
 
 function mapSlotStatusToBadge(
   status: ApiSchema<"ChecklistSlotResult">["status"],
-  isLapsedInc?: boolean
+  isLapsedInc?: boolean,
 ): Status {
-  if (status === "inc" && isLapsedInc) return "inc-lapsed"
+  if (status === "inc" && isLapsedInc) return "inc-lapsed";
   switch (status) {
     case "passed":
-      return "passed"
+      return "passed";
     case "failed":
-      return "failed"
+      return "failed";
     case "inc":
-      return "inc"
+      return "inc";
     case "currently_enrolled":
-      return "enrolled"
+      return "enrolled";
     case "dr":
-      return "dr"
+      return "dr";
     case "na":
-      return "na"
+      return "na";
     case "not_taken":
     default:
-      return "not-taken"
+      return "not-taken";
   }
 }
 
 function pickSourceAttempt(
-  slot: Pick<ApiSchema<"ChecklistSlotResult">, "attempts" | "source_attempt_id">
+  slot: Pick<
+    ApiSchema<"ChecklistSlotResult">,
+    "attempts" | "source_attempt_id"
+  >,
 ) {
-  const attempts = slot.attempts ?? []
+  const attempts = slot.attempts ?? [];
   return (
     (slot.source_attempt_id
       ? attempts.find((a) => a.attempt_id === slot.source_attempt_id)
       : undefined) ?? attempts[attempts.length - 1]
-  )
+  );
 }
 
 function getEffectiveGradeFromSlot(
-  slot: ChecklistSlotDisplayItem
+  slot: ChecklistSlotDisplayItem,
 ): number | string | null {
-  const sourceAttempt = pickSourceAttempt(slot)
-  if (!sourceAttempt) return null
+  const sourceAttempt = pickSourceAttempt(slot);
+  if (!sourceAttempt) return null;
   if (sourceAttempt.completion_grade != null) {
-    return sourceAttempt.completion_grade
+    return sourceAttempt.completion_grade;
   }
   if (sourceAttempt.final_grade != null) {
-    return sourceAttempt.final_grade
+    return sourceAttempt.final_grade;
   }
   if (sourceAttempt.recorded_status === "inc") {
-    return slot.isLapsedInc ? 5 : "INC"
+    return slot.isLapsedInc ? 5 : "INC";
   }
-  if (sourceAttempt.recorded_status === "dr") return "DR"
-  if (sourceAttempt.recorded_status === "na") return "NA"
-  return null
+  if (sourceAttempt.recorded_status === "dr") return "DR";
+  if (sourceAttempt.recorded_status === "na") return "NA";
+  return null;
 }
 
 function slotMatchesFilter(
   slot: ChecklistSlotDisplayItem,
-  filter: ChecklistFilterValue
+  filter: ChecklistFilterValue,
 ): boolean {
-  if (filter === "all") return true
-  if (filter === "open") return slot.status === "not_taken"
-  return slot.status === filter
+  if (filter === "all") return true;
+  if (filter === "open") return slot.status === "not_taken";
+  return slot.status === filter;
 }
 
 function buildRowFromSlot(slot: ChecklistSlotDisplayItem): ChecklistRow {
-  const grade = getEffectiveGradeFromSlot(slot)
+  const grade = getEffectiveGradeFromSlot(slot);
   const sourceLabel =
     slot.satisfaction_source ??
-    (slot.status === "not_taken" ? "Not yet taken" : "Direct")
-  const creditedCode = slot.credited_course_code?.trim() || slot.code
+    (slot.status === "not_taken" ? "Not yet taken" : "Direct");
+  const creditedCode = slot.credited_course_code?.trim() || slot.code;
   const gradeDisplay =
     grade != null
       ? formatTwoDecimalGrade(grade, "—")
       : slot.status === "not_taken"
         ? null
-        : "—"
+        : "—";
   const sourceDetail =
     slot.status === "not_taken"
       ? undefined
-      : `${creditedCode} · grade ${gradeDisplay ?? "—"}`
+      : `${creditedCode} · grade ${gradeDisplay ?? "—"}`;
 
   return {
     code: slot.code,
@@ -172,28 +174,28 @@ function buildRowFromSlot(slot: ChecklistSlotDisplayItem): ChecklistRow {
     source: sourceLabel,
     sourceDetail,
     attempts: slot.attempts?.length ?? 0,
-  }
+  };
 }
 
 function computeSemesterGwa(
-  slots: readonly ChecklistSlotDisplayItem[]
+  slots: readonly ChecklistSlotDisplayItem[],
 ): string | undefined {
-  let points = 0
-  let units = 0
+  let points = 0;
+  let units = 0;
   for (const slot of slots) {
-    const grade = getEffectiveGradeFromSlot(slot)
+    const grade = getEffectiveGradeFromSlot(slot);
     if (typeof grade === "number" && Number.isFinite(grade)) {
-      points += grade * slot.required_units
-      units += slot.required_units
+      points += grade * slot.required_units;
+      units += slot.required_units;
     }
   }
-  if (units <= 0) return undefined
-  return (points / units).toFixed(2)
+  if (units <= 0) return undefined;
+  return (points / units).toFixed(2);
 }
 
 function toCourseInfoSlotRecord(
   slot: ChecklistSlotDisplayItem,
-  term: ChecklistTermSection
+  term: ChecklistTermSection,
 ): CourseInfoSlotRecord {
   return {
     ...slot,
@@ -203,7 +205,7 @@ function toCourseInfoSlotRecord(
       slot.required_units === 1 ? "unit" : "units"
     } · ${term.title}`,
     is_lapsed_inc: slot.isLapsedInc,
-  }
+  };
 }
 
 /**
@@ -221,13 +223,13 @@ export function StudentChecklistView({
   faculty,
   onPrintReport,
 }: StudentChecklistViewProps) {
-  const [filter, setFilter] = React.useState<ChecklistFilterValue>("all")
+  const [filter, setFilter] = React.useState<ChecklistFilterValue>("all");
   const [collapsedIds, setCollapsedIds] = React.useState<ReadonlySet<string>>(
-    () => new Set()
-  )
+    () => new Set(),
+  );
   const [selectedSlot, setSelectedSlot] =
-    React.useState<CourseInfoSlotRecord | null>(null)
-  const [previewOpen, setPreviewOpen] = React.useState(false)
+    React.useState<CourseInfoSlotRecord | null>(null);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
 
   const filteredTerms = React.useMemo(() => {
     return terms
@@ -235,31 +237,31 @@ export function StudentChecklistView({
         ...term,
         slots: term.slots.filter((slot) => slotMatchesFilter(slot, filter)),
       }))
-      .filter((term) => term.slots.length > 0)
-  }, [terms, filter])
+      .filter((term) => term.slots.length > 0);
+  }, [terms, filter]);
 
   const allCollapsed =
     filteredTerms.length > 0 &&
-    filteredTerms.every((term) => collapsedIds.has(term.id))
+    filteredTerms.every((term) => collapsedIds.has(term.id));
 
   function handleToggleAll() {
     if (allCollapsed) {
-      setCollapsedIds(new Set())
+      setCollapsedIds(new Set());
     } else {
-      setCollapsedIds(new Set(filteredTerms.map((term) => term.id)))
+      setCollapsedIds(new Set(filteredTerms.map((term) => term.id)));
     }
   }
 
   function handleToggleTerm(termId: string) {
     setCollapsedIds((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(termId)) {
-        next.delete(termId)
+        next.delete(termId);
       } else {
-        next.add(termId)
+        next.add(termId);
       }
-      return next
-    })
+      return next;
+    });
   }
 
   const reportPayload = React.useMemo<PdfReportPayload>(() => {
@@ -285,7 +287,7 @@ export function StudentChecklistView({
           isLapsedInc: slot.isLapsedInc,
         })),
       })),
-    })
+    });
   }, [
     studentName,
     studentNumber,
@@ -297,21 +299,20 @@ export function StudentChecklistView({
     summary.earned_units,
     summary.required_units,
     filteredTerms,
-  ])
+  ]);
 
   const gwaDisplay =
-    summary.gwa === null ? "Not available" : summary.gwa.toFixed(2)
-  const countedUnits = summary.counted_units ?? summary.earned_units
-  const deficiencies = summary.deficiencies ?? []
-  const deficienciesCount =
-    summary.deficiencies_count ?? deficiencies.length
+    summary.gwa === null ? "Not available" : summary.gwa.toFixed(2);
+  const countedUnits = summary.counted_units ?? summary.earned_units;
+  const deficiencies = summary.deficiencies ?? [];
+  const deficienciesCount = summary.deficiencies_count ?? deficiencies.length;
   const deficiencyNote =
     deficienciesCount > 0
       ? deficiencies
           .slice(0, 2)
           .map((d) => d.course_code)
           .join(", ")
-      : "No open deficiencies"
+      : "No open deficiencies";
 
   return (
     <div>
@@ -368,13 +369,13 @@ export function StudentChecklistView({
           {filteredTerms.map((term) => {
             const passedUnits = term.slots.reduce(
               (acc, slot) => acc + slot.earned_units,
-              0
-            )
+              0,
+            );
             const totalUnits = term.slots.reduce(
               (acc, slot) => acc + slot.required_units,
-              0
-            )
-            const semesterGwa = computeSemesterGwa(term.slots)
+              0,
+            );
+            const semesterGwa = computeSemesterGwa(term.slots);
 
             return (
               <ChecklistTermGroup
@@ -391,13 +392,13 @@ export function StudentChecklistView({
                 open={!collapsedIds.has(term.id)}
                 onOpenChange={() => handleToggleTerm(term.id)}
                 onCourseInfo={(code) => {
-                  const matched = term.slots.find((s) => s.code === code)
+                  const matched = term.slots.find((s) => s.code === code);
                   if (matched) {
-                    setSelectedSlot(toCourseInfoSlotRecord(matched, term))
+                    setSelectedSlot(toCourseInfoSlotRecord(matched, term));
                   }
                 }}
               />
-            )
+            );
           })}
         </div>
       ) : (
@@ -411,7 +412,7 @@ export function StudentChecklistView({
       <CourseInfoDialog
         open={selectedSlot !== null}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) setSelectedSlot(null)
+          if (!nextOpen) setSelectedSlot(null);
         }}
         slot={selectedSlot}
       />
@@ -424,35 +425,35 @@ export function StudentChecklistView({
         onPrint={onPrintReport}
       />
     </div>
-  )
+  );
 }
 
 interface ChecklistMetaData {
-  readonly summary: ApiSchema<"AcademicSummary">
-  readonly studentName: string | null
-  readonly studentNumber: string | null
-  readonly programLabel: string | null
-  readonly curriculumLabel: string | null
-  readonly adviserName: string | null
-  readonly department: Partial<ApiSchema<"Department">> | null
-  readonly faculty: Partial<ApiSchema<"Faculty">> | null
-  readonly curriculumVersionId: string | null
-  readonly currTerms: readonly ApiSchema<"CurriculumTerm">[]
-  readonly currSlots: readonly ApiSchema<"CurriculumTermCourse">[]
-  readonly courses: readonly ApiSchema<"Course">[]
+  readonly summary: ApiSchema<"AcademicSummary">;
+  readonly studentName: string | null;
+  readonly studentNumber: string | null;
+  readonly programLabel: string | null;
+  readonly curriculumLabel: string | null;
+  readonly adviserName: string | null;
+  readonly department: Partial<ApiSchema<"Department">> | null;
+  readonly faculty: Partial<ApiSchema<"Faculty">> | null;
+  readonly curriculumVersionId: string | null;
+  readonly currTerms: readonly ApiSchema<"CurriculumTerm">[];
+  readonly currSlots: readonly ApiSchema<"CurriculumTermCourse">[];
+  readonly courses: readonly ApiSchema<"Course">[];
 }
 
 async function fetchChecklistMeta(
-  studentId: string
+  studentId: string,
 ): Promise<ChecklistMetaData> {
   const summaryRes = await apiClient.GET(
     "/functions/v1/students/{student_id}/academic-summary",
     {
       params: { path: { student_id: studentId } },
-    }
-  )
+    },
+  );
 
-  const summary = unwrapApiResult(summaryRes)
+  const summary = unwrapApiResult(summaryRes);
 
   const [
     profiles,
@@ -483,14 +484,14 @@ async function fetchChecklistMeta(
         apiClient.GET("/rest/v1/curriculum_term", {
           params: { query: { order: "id.asc", limit, offset } },
         }),
-      (row) => row.id
+      (row) => row.id,
     ),
     fetchAllPages(
       (limit, offset) =>
         apiClient.GET("/rest/v1/curriculum_term_course", {
           params: { query: { order: "id.asc", limit, offset } },
         }),
-      (row) => row.id
+      (row) => row.id,
     ),
     apiClient.GET("/rest/v1/course").then(unwrapApiResult),
     apiClient
@@ -506,19 +507,19 @@ async function fetchChecklistMeta(
       .then(unwrapApiResult),
     apiClient.GET("/rest/v1/department").then(unwrapApiResult),
     apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
-  ])
+  ]);
 
-  const profile = profiles[0] ?? null
-  const org = orgs[0] ?? null
+  const profile = profiles[0] ?? null;
+  const org = orgs[0] ?? null;
 
-  const program = programs.find((p) => p.id === org?.program_id) ?? null
+  const program = programs.find((p) => p.id === org?.program_id) ?? null;
   const curriculum =
-    curricula.find((c) => c.id === org?.curriculum_version_id) ?? null
+    curricula.find((c) => c.id === org?.curriculum_version_id) ?? null;
   const department =
-    departments.find((d) => d.id === org?.department_id) ?? null
-  const faculty = faculties.find((f) => f.id === org?.faculty_id) ?? null
+    departments.find((d) => d.id === org?.department_id) ?? null;
+  const faculty = faculties.find((f) => f.id === org?.faculty_id) ?? null;
   const activeAssignment =
-    assignments.find((a) => a.end_date == null) ?? assignments[0] ?? null
+    assignments.find((a) => a.end_date == null) ?? assignments[0] ?? null;
 
   return {
     summary,
@@ -533,55 +534,54 @@ async function fetchChecklistMeta(
     currTerms,
     currSlots,
     courses,
-  }
+  };
 }
 
 function isLapsedIncAttempt(
-  attempt: ReturnType<typeof pickSourceAttempt>
+  attempt: ReturnType<typeof pickSourceAttempt>,
 ): boolean {
   return (
     attempt?.recorded_status === "inc" &&
     attempt.effective_status === "failed" &&
     attempt.completion_grade == null
-  )
+  );
 }
 
 function buildChecklistTermSections(
   slotResults: readonly ApiSchema<"ChecklistSlotResult">[],
-  meta: ChecklistMetaData
+  meta: ChecklistMetaData,
 ): ChecklistTermSection[] {
-  const courseMap = new Map(meta.courses.map((c) => [c.id, c]))
-  const slotDefMap = new Map(meta.currSlots.map((s) => [s.id, s]))
+  const courseMap = new Map(meta.courses.map((c) => [c.id, c]));
+  const slotDefMap = new Map(meta.currSlots.map((s) => [s.id, s]));
 
   const scopedTerms = meta.curriculumVersionId
     ? meta.currTerms.filter(
-        (t) => t.curriculum_version_id === meta.curriculumVersionId
+        (t) => t.curriculum_version_id === meta.curriculumVersionId,
       )
-    : meta.currTerms
+    : meta.currTerms;
 
   const sortedTerms = [...scopedTerms].sort(
-    (a, b) =>
-      a.year_level - b.year_level || a.term_sequence - b.term_sequence
-  )
+    (a, b) => a.year_level - b.year_level || a.term_sequence - b.term_sequence,
+  );
 
-  const slotsByTermId = new Map<string, ChecklistSlotDisplayItem[]>()
-  const ungroupedSlots: ChecklistSlotDisplayItem[] = []
+  const slotsByTermId = new Map<string, ChecklistSlotDisplayItem[]>();
+  const ungroupedSlots: ChecklistSlotDisplayItem[] = [];
 
   for (const result of slotResults) {
-    const slotDef = slotDefMap.get(result.curriculum_term_course_id)
+    const slotDef = slotDefMap.get(result.curriculum_term_course_id);
     const course = slotDef?.course_id
       ? courseMap.get(slotDef.course_id)
-      : undefined
+      : undefined;
     const code =
       course?.code ??
       slotDef?.slot_label ??
       result.credited_course_code ??
-      "Requirement"
+      "Requirement";
     const title =
       course?.title ??
       (slotDef?.is_elective_slot
         ? "Elective requirement"
-        : result.credited_course_title ?? "Curriculum course")
+        : (result.credited_course_title ?? "Curriculum course"));
 
     const displayItem: ChecklistSlotDisplayItem = {
       ...result,
@@ -589,14 +589,14 @@ function buildChecklistTermSections(
       title,
       slotType: slotDef?.slot_type,
       isLapsedInc: isLapsedIncAttempt(pickSourceAttempt(result)),
-    }
+    };
 
     if (slotDef?.curriculum_term_id) {
-      const list = slotsByTermId.get(slotDef.curriculum_term_id) ?? []
-      list.push(displayItem)
-      slotsByTermId.set(slotDef.curriculum_term_id, list)
+      const list = slotsByTermId.get(slotDef.curriculum_term_id) ?? [];
+      list.push(displayItem);
+      slotsByTermId.set(slotDef.curriculum_term_id, list);
     } else {
-      ungroupedSlots.push(displayItem)
+      ungroupedSlots.push(displayItem);
     }
   }
 
@@ -606,11 +606,11 @@ function buildChecklistTermSections(
       yearLevel: term.year_level,
       termSequence: term.term_sequence,
       title: `Year ${term.year_level} · ${formatTermSequenceLabel(
-        term.term_sequence
+        term.term_sequence,
       )}`,
       slots: slotsByTermId.get(term.id) ?? [],
     }))
-    .filter((section) => section.slots.length > 0)
+    .filter((section) => section.slots.length > 0);
 
   if (ungroupedSlots.length > 0) {
     termSections.push({
@@ -619,35 +619,31 @@ function buildChecklistTermSections(
       termSequence: 1,
       title: "Additional requirements",
       slots: ungroupedSlots,
-    })
+    });
   }
 
-  return termSections
+  return termSections;
 }
 
 /**
  * Student Curriculum Checklist page container handling loading, error/retry, and data hydration.
  */
-export function StudentChecklistPage({
-  studentId,
-}: {
-  studentId: string
-}) {
-  const checklistQuery = useStudentChecklist(studentId)
-  const exportMutation = useRecordChecklistExport(studentId)
+export function StudentChecklistPage({ studentId }: { studentId: string }) {
+  const checklistQuery = useStudentChecklist(studentId);
+  const exportMutation = useRecordChecklistExport(studentId);
   const metaQuery = useQuery({
     queryKey: ["student", studentId, "checklist-meta"],
     queryFn: () => fetchChecklistMeta(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 
   const terms = React.useMemo(() => {
-    if (!checklistQuery.data || !metaQuery.data) return []
-    return buildChecklistTermSections(checklistQuery.data, metaQuery.data)
-  }, [checklistQuery.data, metaQuery.data])
+    if (!checklistQuery.data || !metaQuery.data) return [];
+    return buildChecklistTermSections(checklistQuery.data, metaQuery.data);
+  }, [checklistQuery.data, metaQuery.data]);
 
   if (checklistQuery.isPending || metaQuery.isPending) {
-    return <p role="status">Loading...</p>
+    return <p role="status">Loading...</p>;
   }
 
   if (
@@ -671,7 +667,7 @@ export function StudentChecklistPage({
           Try again
         </Button>
       </Panel>
-    )
+    );
   }
 
   return (
@@ -686,10 +682,10 @@ export function StudentChecklistPage({
       department={metaQuery.data.department}
       faculty={metaQuery.data.faculty}
       onPrintReport={() => {
-        void exportMutation.mutateAsync(undefined).catch(() => undefined)
+        void exportMutation.mutateAsync(undefined).catch(() => undefined);
       }}
     />
-  )
+  );
 }
 
-export default StudentChecklistPage
+export default StudentChecklistPage;

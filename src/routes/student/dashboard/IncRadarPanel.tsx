@@ -1,20 +1,20 @@
-import * as React from "react"
-import type { ApiSchema } from "@/lib/api/types"
-import { Panel } from "@/components/features/panel"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import type { ApiSchema } from "@/lib/api/types";
+import { Panel } from "@/components/features/panel";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { cn } from "@/lib/utils";
 
 export type IncRadarDeficiencyItem = ApiSchema<"StudentDeficiencyItem"> & {
   /** Optional fallback if caller passes `code` instead of `course_code`. */
-  readonly code?: string | null
+  readonly code?: string | null;
   /** Optional fallback if caller passes `title` instead of `course_title`. */
-  readonly title?: string | null
-}
+  readonly title?: string | null;
+};
 
 export interface IncRadarPanelProps {
   /** Open INC items or the full `AcademicSummary.deficiencies` array (automatically filtered to `open_inc`). */
-  readonly deficiencies: readonly IncRadarDeficiencyItem[]
-  readonly className?: string
+  readonly deficiencies: readonly IncRadarDeficiencyItem[];
+  readonly className?: string;
 }
 
 const SHORT_MONTHS = [
@@ -30,42 +30,39 @@ const SHORT_MONTHS = [
   "Oct",
   "Nov",
   "Dec",
-] as const
+] as const;
 
 function formatDeadlineDate(dateValue: string | null | undefined): string {
-  if (!dateValue) return "—"
-  const trimmed = dateValue.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
   if (isoMatch) {
-    const year = Number(isoMatch[1])
-    const monthIndex = Number(isoMatch[2]) - 1
-    const day = Number(isoMatch[3])
-    const monthLabel = SHORT_MONTHS[monthIndex]
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
     if (monthLabel && day >= 1 && day <= 31) {
-      return `${day} ${monthLabel} ${year}`
+      return `${day} ${monthLabel} ${year}`;
     }
   }
-  return trimmed
+  return trimmed;
 }
 
 /**
  * Student Dashboard "Keep on your radar" panel.
  * Highlights open INC deficiencies with their completion deadline and `<StatusBadge status="inc" />`.
  */
-export function IncRadarPanel({
-  deficiencies,
-  className,
-}: IncRadarPanelProps) {
+export function IncRadarPanel({ deficiencies, className }: IncRadarPanelProps) {
   const openIncItems = React.useMemo(() => {
-    return deficiencies.filter((item) => item.kind === "open_inc")
-  }, [deficiencies])
+    return deficiencies.filter((item) => item.kind === "open_inc");
+  }, [deficiencies]);
 
   const subtitle =
     openIncItems.length > 0
       ? `${openIncItems.length} incomplete ${
           openIncItems.length === 1 ? "course" : "courses"
         } to review`
-      : "Nothing needs your attention"
+      : "Nothing needs your attention";
 
   return (
     <Panel
@@ -75,19 +72,16 @@ export function IncRadarPanel({
       className={cn(className)}
     >
       {openIncItems.length > 0 ? (
-        <div
-          data-slot="inc-radar-list"
-          className="divide-y divide-line-soft"
-        >
+        <div data-slot="inc-radar-list" className="divide-y divide-line-soft">
           {openIncItems.map((item, idx) => {
             const code =
-              item.course_code?.trim() || item.code?.trim() || "Course"
+              item.course_code?.trim() || item.code?.trim() || "Course";
             const title =
-              item.course_title?.trim() || item.title?.trim() || null
-            const deadlineLabel = formatDeadlineDate(item.inc_deadline)
+              item.course_title?.trim() || item.title?.trim() || null;
+            const deadlineLabel = formatDeadlineDate(item.inc_deadline);
             const noteText =
               item.detail?.trim() ||
-              "Coordinate requirements with your instructor."
+              "Coordinate requirements with your instructor.";
 
             return (
               <div
@@ -118,7 +112,7 @@ export function IncRadarPanel({
 
                 <StatusBadge status="inc" />
               </div>
-            )
+            );
           })}
         </div>
       ) : (
@@ -127,5 +121,5 @@ export function IncRadarPanel({
         </p>
       )}
     </Panel>
-  )
+  );
 }

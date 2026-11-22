@@ -1,9 +1,9 @@
-import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api"
+import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 
 export async function getDeanStudents(
   signal?: AbortSignal,
 ): Promise<ApiSchema<"StudentRosterResponse">> {
-  const items: ApiSchema<"StudentRosterItem">[] = []
+  const items: ApiSchema<"StudentRosterItem">[] = [];
 
   for (let offset = 0; ; offset += 100) {
     const page = unwrapApiResult(
@@ -11,31 +11,34 @@ export async function getDeanStudents(
         params: { query: { limit: 100, offset } },
         signal,
       }),
-    )
-    items.push(...page.items)
+    );
+    items.push(...page.items);
     if (items.length >= page.total_count || page.items.length === 0) {
-      return { ...page, items }
+      return { ...page, items };
     }
   }
 }
 
 export async function getDeanStudentChecklist(studentId: string): Promise<{
-  results: ApiSchema<"ChecklistSlotResult">[]
-  slots: ApiSchema<"CurriculumTermCourse">[]
-  terms: ApiSchema<"CurriculumTerm">[]
-  courses: ApiSchema<"Course">[]
+  results: ApiSchema<"ChecklistSlotResult">[];
+  slots: ApiSchema<"CurriculumTermCourse">[];
+  terms: ApiSchema<"CurriculumTerm">[];
+  courses: ApiSchema<"Course">[];
 }> {
   const results = unwrapApiResult(
     await apiClient.GET("/functions/v1/students/{student_id}/checklist", {
-      params: { path: { student_id: studentId }, query: { limit: 100, offset: 0 } },
+      params: {
+        path: { student_id: studentId },
+        query: { limit: 100, offset: 0 },
+      },
     }),
-  )
+  );
   const [slots, terms, courses] = await Promise.all([
     unwrapApiResult(await apiClient.GET("/rest/v1/curriculum_term_course")),
     unwrapApiResult(await apiClient.GET("/rest/v1/curriculum_term")),
     unwrapApiResult(await apiClient.GET("/rest/v1/course")),
-  ])
-  return { results, slots, terms, courses }
+  ]);
+  return { results, slots, terms, courses };
 }
 
 export async function getDeanStudentGrades(
@@ -45,13 +48,15 @@ export async function getDeanStudentGrades(
     await apiClient.GET("/functions/v1/students/{student_id}/grades", {
       params: { path: { student_id: studentId } },
     }),
-  )
+  );
 }
 
 export async function getDeanCourses(): Promise<ApiSchema<"Course">[]> {
-  return unwrapApiResult(await apiClient.GET("/rest/v1/course"))
+  return unwrapApiResult(await apiClient.GET("/rest/v1/course"));
 }
 
-export async function getDeanCourseOfferings(): Promise<ApiSchema<"CourseOffering">[]> {
-  return unwrapApiResult(await apiClient.GET("/rest/v1/course_offering"))
+export async function getDeanCourseOfferings(): Promise<
+  ApiSchema<"CourseOffering">[]
+> {
+  return unwrapApiResult(await apiClient.GET("/rest/v1/course_offering"));
 }

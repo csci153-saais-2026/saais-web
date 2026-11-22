@@ -1,13 +1,13 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router'
-import { CheckIcon, LockIcon, NoteIcon, ShieldIcon } from '@/components/icons'
-import { Button } from '@/components/ui/button'
-import { Kicker } from '@/components/ui/kicker'
-import { HERO_CONTENT } from '@/routes/landing/landingData'
+import type { ReactNode } from "react";
+import { Link } from "react-router";
+import { CheckIcon, LockIcon, NoteIcon, ShieldIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Kicker } from "@/components/ui/kicker";
+import { HERO_CONTENT } from "@/routes/landing/landingData";
 
 export interface LandingHeroProps {
-  onRequestWalkthrough?: () => void
-  children?: ReactNode
+  onRequestWalkthrough?: () => void;
+  children?: ReactNode;
 }
 
 const COMPLIANCE_ICONS = {
@@ -15,23 +15,26 @@ const COMPLIANCE_ICONS = {
   check: CheckIcon,
   lock: LockIcon,
   file: NoteIcon,
-} as const
+} as const;
 
-export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps) {
+export function LandingHero({
+  onRequestWalkthrough,
+  children,
+}: LandingHeroProps) {
   const handleWalkthrough = () => {
     if (onRequestWalkthrough) {
-      onRequestWalkthrough()
-      return
+      onRequestWalkthrough();
+      return;
     }
-    const target = document.getElementById('walkthrough')
-    target?.scrollIntoView({ behavior: 'smooth' })
-  }
+    const target = document.getElementById("walkthrough");
+    target?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <section
       id="platform"
       className={`relative scroll-mt-20 overflow-visible bg-forest-deep px-4 pt-16 sm:px-8 md:pt-[104px] lg:px-14 ${
-        children ? 'pb-0' : 'pb-20 md:pb-24'
+        children ? "pb-0" : "pb-20 md:pb-24"
       }`}
     >
       {/* Hero aura mesh — four corner-anchored blend-mode layers from DESIGN.md §2 */}
@@ -43,28 +46,28 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
           className="pointer-events-none absolute inset-0 translate-z-0 mix-blend-screen blur-[260px]"
           style={{
             background:
-              'radial-gradient(circle at 24% 18%, rgba(74,107,34,0.55) 0%, transparent 45%)',
+              "radial-gradient(circle at 24% 18%, rgba(74,107,34,0.55) 0%, transparent 45%)",
           }}
         />
         <div
           className="pointer-events-none absolute inset-0 translate-z-0 mix-blend-screen blur-[260px]"
           style={{
             background:
-              'radial-gradient(circle at 78% 14%, rgba(47,74,18,0.45) 0%, transparent 42%)',
+              "radial-gradient(circle at 78% 14%, rgba(47,74,18,0.45) 0%, transparent 42%)",
           }}
         />
         <div
           className="pointer-events-none absolute inset-0 translate-z-0 mix-blend-screen blur-[252px]"
           style={{
             background:
-              'radial-gradient(circle at 40% 78%, rgba(246,226,174,0.18) 0%, transparent 50%)',
+              "radial-gradient(circle at 40% 78%, rgba(246,226,174,0.18) 0%, transparent 50%)",
           }}
         />
         <div
           className="pointer-events-none absolute inset-0 translate-z-0 mix-blend-overlay blur-[198px]"
           style={{
             background:
-              'radial-gradient(circle at 88% 88%, rgba(224,168,46,0.22) 0%, transparent 32%)',
+              "radial-gradient(circle at 88% 88%, rgba(224,168,46,0.22) 0%, transparent 32%)",
           }}
         />
       </div>
@@ -120,7 +123,7 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
 
           <div className="mt-10 flex flex-wrap justify-center gap-x-[34px] gap-y-3.5">
             {HERO_CONTENT.complianceMarks.map((mark) => {
-              const Icon = COMPLIANCE_ICONS[mark.icon]
+              const Icon = COMPLIANCE_ICONS[mark.icon];
               return (
                 <div
                   key={mark.label}
@@ -129,7 +132,7 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
                   <Icon className="size-4 shrink-0 text-gold" />
                   <span>{mark.label}</span>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -168,5 +171,5 @@ export function LandingHero({ onRequestWalkthrough, children }: LandingHeroProps
         </svg>
       )}
     </section>
-  )
+  );
 }

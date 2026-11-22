@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { useAuth } from '@/hooks/use-auth'
-import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertIcon } from '@/components/icons'
-import { Button } from '@/components/ui/button'
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { ROLE_DEFAULT_ROUTE } from "@/lib/auth/auth-service";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 
 export default function OAuthCallback() {
   const {
@@ -16,35 +16,37 @@ export default function OAuthCallback() {
     entryBlockedReason,
     authError,
     retryHydration,
-  } = useAuth()
-  const navigate = useNavigate()
+  } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(
-      window.location.search || window.location.hash.replace(/^#/, ''),
-    )
-    const errorMsg = params.get('error_description') || params.get('error')
+      window.location.search || window.location.hash.replace(/^#/, ""),
+    );
+    const errorMsg = params.get("error_description") || params.get("error");
 
     if (errorMsg) {
-      navigate(`/login?error=${encodeURIComponent(errorMsg)}`, { replace: true })
-      return
+      navigate(`/login?error=${encodeURIComponent(errorMsg)}`, {
+        replace: true,
+      });
+      return;
     }
 
-    if (isLoading || authError) return
+    if (isLoading || authError) return;
 
     if (user && isAllowedToEnter && roles.length > 0) {
       const targetRole =
-        activeRole && roles.includes(activeRole) ? activeRole : roles[0]
-      const target = ROLE_DEFAULT_ROUTE[targetRole] || '/settings'
-      navigate(target, { replace: true })
+        activeRole && roles.includes(activeRole) ? activeRole : roles[0];
+      const target = ROLE_DEFAULT_ROUTE[targetRole] || "/settings";
+      navigate(target, { replace: true });
     } else if (entryBlockedReason) {
       navigate(`/login?error=${encodeURIComponent(entryBlockedReason)}`, {
         replace: true,
-      })
+      });
     } else {
-      navigate('/login', { replace: true })
+      navigate("/login", { replace: true });
     }
   }, [
     user,
@@ -55,7 +57,7 @@ export default function OAuthCallback() {
     entryBlockedReason,
     authError,
     navigate,
-  ])
+  ]);
 
   if (authError) {
     return (
@@ -81,7 +83,7 @@ export default function OAuthCallback() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -93,5 +95,5 @@ export default function OAuthCallback() {
         </span>
       </div>
     </div>
-  )
+  );
 }

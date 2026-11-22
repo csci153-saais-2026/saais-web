@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from "vitest"
-import { formatChecklistReport } from "./student-report-formatter"
-import { createStudentReportPdf } from "./student-report-pdf"
+import { describe, expect, it, vi } from "vitest";
+import { formatChecklistReport } from "./student-report-formatter";
+import { createStudentReportPdf } from "./student-report-pdf";
 
 describe("createStudentReportPdf", () => {
   it("generates an institutional PDF blob for a formatted checklist report", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockRejectedValue(new Error("Asset unavailable"))
-    )
+      vi.fn().mockRejectedValue(new Error("Asset unavailable")),
+    );
     try {
       const report = formatChecklistReport({
         studentName: "Maria Isabel Bautista",
@@ -38,26 +38,26 @@ describe("createStudentReportPdf", () => {
         earnedUnits: 3,
         requiredUnits: 147,
         generatedOn: "2026-09-19",
-      })
+      });
 
-      const blob = await createStudentReportPdf(report)
-      expect(blob.type).toBe("application/pdf")
-      expect(blob.size).toBeGreaterThan(1000)
+      const blob = await createStudentReportPdf(report);
+      expect(blob.type).toBe("application/pdf");
+      expect(blob.size).toBeGreaterThan(1000);
 
       const contents = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result))
-        reader.onerror = reject
-        reader.readAsText(blob)
-      })
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsText(blob);
+      });
 
-      expect(contents).toContain("PROGRAM CHECKLIST")
-      expect(contents).toContain("CSIT 100")
-      expect(contents).toContain("Prof. Ramon Reyes")
-      expect(contents).toContain("Dr. Elena Cruz")
-      expect(contents).toContain("Page 1 of 1")
+      expect(contents).toContain("PROGRAM CHECKLIST");
+      expect(contents).toContain("CSIT 100");
+      expect(contents).toContain("Prof. Ramon Reyes");
+      expect(contents).toContain("Dr. Elena Cruz");
+      expect(contents).toContain("Page 1 of 1");
     } finally {
-      vi.unstubAllGlobals()
+      vi.unstubAllGlobals();
     }
-  })
-})
+  });
+});

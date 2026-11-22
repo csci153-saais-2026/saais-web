@@ -1,19 +1,19 @@
-import { CheckIcon, LockIcon, ShieldIcon } from '@/components/icons'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Kicker } from '@/components/ui/kicker'
+import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Kicker } from "@/components/ui/kicker";
 import {
   BIG_NUMBER_SECTION,
   TESTIMONIAL_PLACEHOLDER,
   TRUST_BADGES,
   TRUST_BADGES_SECTION,
   type TrustBadgeItem,
-} from '@/routes/landing/landingData'
+} from "@/routes/landing/landingData";
 
-const BADGE_ICONS: Record<TrustBadgeItem['icon'], typeof ShieldIcon> = {
+const BADGE_ICONS: Record<TrustBadgeItem["icon"], typeof ShieldIcon> = {
   shield: ShieldIcon,
   check: CheckIcon,
   lock: LockIcon,
-}
+};
 
 export function TrustAndMetricsSection() {
   return (
@@ -66,7 +66,7 @@ export function TrustAndMetricsSection() {
 
           <div className="mt-[30px] grid grid-cols-1 gap-[22px] md:grid-cols-3">
             {TRUST_BADGES.map((badge) => {
-              const Icon = BADGE_ICONS[badge.icon]
+              const Icon = BADGE_ICONS[badge.icon];
               return (
                 <div
                   key={badge.title}
@@ -82,7 +82,7 @@ export function TrustAndMetricsSection() {
                     {badge.description}
                   </p>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -115,5 +115,5 @@ export function TrustAndMetricsSection() {
         </div>
       </section>
     </>
-  )
+  );
 }

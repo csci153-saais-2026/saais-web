@@ -1,17 +1,24 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import { FormField } from '@/components/features/form-field'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { useMemo, useState, type FormEvent } from "react";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import type { ApiSchema } from '@/lib/api'
+} from "@/components/ui/select";
+import type { ApiSchema } from "@/lib/api";
 import {
   accountRoles,
   buildAccountInviteRequest,
@@ -19,36 +26,33 @@ import {
   type AccountInviteErrors,
   type AccountInviteValues,
   type AccountRole,
-} from './admin-accounts-model'
-import type { AdviserOption } from './use-admin-account-catalogs'
+} from "./admin-accounts-model";
+import type { AdviserOption } from "./use-admin-account-catalogs";
 
-type Faculty = Pick<ApiSchema<'Faculty'>, 'id' | 'name'>
-type Department = Pick<
-  ApiSchema<'Department'>,
-  'id' | 'name' | 'faculty_id'
->
+type Faculty = Pick<ApiSchema<"Faculty">, "id" | "name">;
+type Department = Pick<ApiSchema<"Department">, "id" | "name" | "faculty_id">;
 type Program = Pick<
-  ApiSchema<'Program'>,
-  'id' | 'code' | 'name' | 'department_id' | 'status'
->
+  ApiSchema<"Program">,
+  "id" | "code" | "name" | "department_id" | "status"
+>;
 type Curriculum = Pick<
-  ApiSchema<'CurriculumVersion'>,
-  'id' | 'program_id' | 'version_label' | 'status'
->
+  ApiSchema<"CurriculumVersion">,
+  "id" | "program_id" | "version_label" | "status"
+>;
 
 const EMPTY_VALUES: AccountInviteValues = {
-  fullName: '',
-  email: '',
-  primaryRole: 'student',
+  fullName: "",
+  email: "",
+  primaryRole: "student",
   additionalRoles: [],
-  facultyId: '',
-  departmentId: '',
-  studentNumber: '',
-  programId: '',
-  curriculumVersionId: '',
-  adviserId: '',
-  entryYear: '',
-}
+  facultyId: "",
+  departmentId: "",
+  studentNumber: "",
+  programId: "",
+  curriculumVersionId: "",
+  adviserId: "",
+  entryYear: "",
+};
 
 function FieldSelect({
   id,
@@ -60,14 +64,14 @@ function FieldSelect({
   disabled = false,
   error,
 }: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: readonly { value: string; label: string }[]
-  placeholder: string
-  disabled?: boolean
-  error?: string
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly { value: string; label: string }[];
+  placeholder: string;
+  disabled?: boolean;
+  error?: string;
 }) {
   return (
     <FormField label={label} htmlFor={id} error={error}>
@@ -89,7 +93,7 @@ function FieldSelect({
         </SelectContent>
       </Select>
     </FormField>
-  )
+  );
 }
 
 export function AdminAccountProvisionDialog({
@@ -106,104 +110,104 @@ export function AdminAccountProvisionDialog({
   submissionError,
   onSubmit,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  currentEmail: string
-  faculties: readonly Faculty[]
-  departments: readonly Department[]
-  programs: readonly Program[]
-  curricula: readonly Curriculum[]
-  advisers: readonly AdviserOption[]
-  catalogsLoading: boolean
-  submitting: boolean
-  submissionError: string | null
-  onSubmit: (request: ApiSchema<'InviteRequest'>) => Promise<void>
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentEmail: string;
+  faculties: readonly Faculty[];
+  departments: readonly Department[];
+  programs: readonly Program[];
+  curricula: readonly Curriculum[];
+  advisers: readonly AdviserOption[];
+  catalogsLoading: boolean;
+  submitting: boolean;
+  submissionError: string | null;
+  onSubmit: (request: ApiSchema<"InviteRequest">) => Promise<void>;
 }) {
-  const [values, setValues] = useState<AccountInviteValues>(EMPTY_VALUES)
-  const [selectedRoles, setSelectedRoles] = useState<AccountRole[]>([])
-  const [errors, setErrors] = useState<AccountInviteErrors>({})
+  const [values, setValues] = useState<AccountInviteValues>(EMPTY_VALUES);
+  const [selectedRoles, setSelectedRoles] = useState<AccountRole[]>([]);
+  const [errors, setErrors] = useState<AccountInviteErrors>({});
   const inviteValues: AccountInviteValues = {
     ...values,
-    primaryRole: selectedRoles[0] ?? 'student',
+    primaryRole: selectedRoles[0] ?? "student",
     additionalRoles: selectedRoles.slice(1),
-  }
+  };
   const programById = useMemo(
     () => new Map(programs.map((program) => [program.id, program])),
     [programs],
-  )
+  );
   const selectedProgram = values.programId
     ? programById.get(values.programId)
-    : undefined
+    : undefined;
   const departmentOptions = departments.filter(
     (department) =>
       !values.facultyId || department.faculty_id === values.facultyId,
-  )
+  );
   const curriculumOptions = curricula.filter(
     (curriculum) =>
-      curriculum.status === 'active' &&
+      curriculum.status === "active" &&
       curriculum.program_id === values.programId,
-  )
+  );
   const adviserOptions = advisers.filter(
     (adviser) =>
       Boolean(selectedProgram?.department_id) &&
       adviser.departmentId === selectedProgram?.department_id,
-  )
+  );
   const programOptions = programs.filter(
     (program) =>
-      program.status === 'active' &&
+      program.status === "active" &&
       program.department_id === values.departmentId,
-  )
+  );
 
   function update<K extends keyof AccountInviteValues>(
     key: K,
     value: AccountInviteValues[K],
   ) {
-    setValues((current) => ({ ...current, [key]: value }))
-    setErrors((current) => ({ ...current, [key]: undefined }))
+    setValues((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
   }
 
   function toggleRole(role: AccountRole, checked: boolean) {
     setSelectedRoles((current) => {
-      if (role === 'student') return checked ? ['student'] : []
-      if (current.includes('student')) return current
+      if (role === "student") return checked ? ["student"] : [];
+      if (current.includes("student")) return current;
       return checked
         ? [...current, role]
-        : current.filter((currentRole) => currentRole !== role)
-    })
-    setErrors((current) => ({ ...current, additionalRoles: undefined }))
+        : current.filter((currentRole) => currentRole !== role);
+    });
+    setErrors((current) => ({ ...current, additionalRoles: undefined }));
   }
 
   function changeFaculty(value: string) {
     setValues((current) => ({
       ...current,
       facultyId: value,
-      departmentId: '',
-      programId: '',
-      curriculumVersionId: '',
-      adviserId: '',
-    }))
-    setErrors({})
+      departmentId: "",
+      programId: "",
+      curriculumVersionId: "",
+      adviserId: "",
+    }));
+    setErrors({});
   }
 
   function changeDepartment(value: string) {
     setValues((current) => ({
       ...current,
       departmentId: value,
-      programId: '',
-      curriculumVersionId: '',
-      adviserId: '',
-    }))
-    setErrors({})
+      programId: "",
+      curriculumVersionId: "",
+      adviserId: "",
+    }));
+    setErrors({});
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
     if (selectedRoles.length === 0) {
       setErrors((current) => ({
         ...current,
-        additionalRoles: 'Select at least one role.',
-      }))
-      return
+        additionalRoles: "Select at least one role.",
+      }));
+      return;
     }
     const nextErrors = validateAccountInvite(
       inviteValues,
@@ -223,10 +227,10 @@ export function AdminAccountProvisionDialog({
         id: adviser.id,
         department_id: adviser.departmentId,
       })),
-    )
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-    void onSubmit(buildAccountInviteRequest(inviteValues))
+    );
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+    void onSubmit(buildAccountInviteRequest(inviteValues));
   }
 
   return (
@@ -261,7 +265,9 @@ export function AdminAccountProvisionDialog({
                 maxLength={150}
                 value={values.fullName}
                 aria-invalid={Boolean(errors.fullName)}
-                onChange={(event) => update('fullName', event.currentTarget.value)}
+                onChange={(event) =>
+                  update("fullName", event.currentTarget.value)
+                }
               />
             </FormField>
             <FormField
@@ -276,7 +282,7 @@ export function AdminAccountProvisionDialog({
                 maxLength={254}
                 value={values.email}
                 aria-invalid={Boolean(errors.email)}
-                onChange={(event) => update('email', event.currentTarget.value)}
+                onChange={(event) => update("email", event.currentTarget.value)}
               />
             </FormField>
           </div>
@@ -286,13 +292,13 @@ export function AdminAccountProvisionDialog({
               Roles
             </legend>
             <p className="text-xs text-muted-foreground">
-              The first selected role is primary; other selected roles are
-              added as assignments. Student accounts cannot have other roles.
+              The first selected role is primary; other selected roles are added
+              as assignments. Student accounts cannot have other roles.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {accountRoles.map((option) => {
-                const studentSelected = selectedRoles.includes('student')
-                const id = `account-role-${option.value}`
+                const studentSelected = selectedRoles.includes("student");
+                const id = `account-role-${option.value}`;
                 return (
                   <label
                     key={option.value}
@@ -304,7 +310,7 @@ export function AdminAccountProvisionDialog({
                       checked={selectedRoles.includes(option.value)}
                       disabled={
                         catalogsLoading ||
-                        (studentSelected && option.value !== 'student')
+                        (studentSelected && option.value !== "student")
                       }
                       onCheckedChange={(checked) =>
                         toggleRole(option.value, checked === true)
@@ -312,7 +318,7 @@ export function AdminAccountProvisionDialog({
                     />
                     {option.label}
                   </label>
-                )
+                );
               })}
             </div>
             {errors.additionalRoles && (
@@ -351,7 +357,7 @@ export function AdminAccountProvisionDialog({
             />
           </div>
 
-          {selectedRoles.includes('student') && (
+          {selectedRoles.includes("student") && (
             <section
               aria-labelledby="student-provisioning-heading"
               className="grid gap-4 rounded-md border border-border p-4"
@@ -380,7 +386,7 @@ export function AdminAccountProvisionDialog({
                     value={values.studentNumber}
                     aria-invalid={Boolean(errors.studentNumber)}
                     onChange={(event) =>
-                      update('studentNumber', event.currentTarget.value)
+                      update("studentNumber", event.currentTarget.value)
                     }
                   />
                 </FormField>
@@ -398,7 +404,7 @@ export function AdminAccountProvisionDialog({
                     value={values.entryYear}
                     aria-invalid={Boolean(errors.entryYear)}
                     onChange={(event) =>
-                      update('entryYear', event.currentTarget.value)
+                      update("entryYear", event.currentTarget.value)
                     }
                   />
                 </FormField>
@@ -408,14 +414,14 @@ export function AdminAccountProvisionDialog({
                 label="Program"
                 value={values.programId}
                 onChange={(value) => {
-                  update('programId', value)
-                  update('curriculumVersionId', '')
-                  update('adviserId', '')
+                  update("programId", value);
+                  update("curriculumVersionId", "");
+                  update("adviserId", "");
                 }}
                 options={programOptions.map((program) => ({
-                    value: program.id,
-                    label: `${program.code} · ${program.name}`,
-                  }))}
+                  value: program.id,
+                  label: `${program.code} · ${program.name}`,
+                }))}
                 placeholder="Select a program"
                 disabled={catalogsLoading || !values.departmentId}
                 error={errors.programId}
@@ -425,7 +431,7 @@ export function AdminAccountProvisionDialog({
                   id="account-curriculum"
                   label="Curriculum"
                   value={values.curriculumVersionId}
-                  onChange={(value) => update('curriculumVersionId', value)}
+                  onChange={(value) => update("curriculumVersionId", value)}
                   options={curriculumOptions.map((curriculum) => ({
                     value: curriculum.id,
                     label: curriculum.version_label,
@@ -438,7 +444,7 @@ export function AdminAccountProvisionDialog({
                   id="account-adviser"
                   label="Initial adviser"
                   value={values.adviserId}
-                  onChange={(value) => update('adviserId', value)}
+                  onChange={(value) => update("adviserId", value)}
                   options={adviserOptions.map((adviser) => ({
                     value: adviser.id,
                     label: adviser.fullName,
@@ -461,11 +467,11 @@ export function AdminAccountProvisionDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={submitting || catalogsLoading}>
-              {submitting ? 'Sending invitation…' : 'Send invitation'}
+              {submitting ? "Sending invitation…" : "Send invitation"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

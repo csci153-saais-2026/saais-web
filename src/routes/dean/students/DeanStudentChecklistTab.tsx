@@ -1,8 +1,11 @@
-import { useState } from "react"
-import { ChecklistTermGroup, type ChecklistRow } from "@/components/features/checklist-term-group"
-import { DegreeProgress } from "@/components/features/degree-progress"
-import { XIcon } from "@/components/icons"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import {
+  ChecklistTermGroup,
+  type ChecklistRow,
+} from "@/components/features/checklist-term-group";
+import { DegreeProgress } from "@/components/features/degree-progress";
+import { XIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -10,8 +13,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { StatusBadge, type Status } from "@/components/ui/status-badge"
+} from "@/components/ui/dialog";
+import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import {
   Table,
   TableBody,
@@ -19,11 +22,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { ApiSchema } from "@/lib/api"
-import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState"
-import { useDeanStudentChecklist } from "@/routes/dean/students/use-dean-students"
-import type { DeanStudentSummary } from "@/routes/dean/types"
+} from "@/components/ui/table";
+import type { ApiSchema } from "@/lib/api";
+import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
+import { useDeanStudentChecklist } from "@/routes/dean/students/use-dean-students";
+import type { DeanStudentSummary } from "@/routes/dean/types";
 
 const STATUS_MAP: Record<ApiSchema<"ChecklistSlotResult">["status"], Status> = {
   not_taken: "not-taken",
@@ -33,9 +36,12 @@ const STATUS_MAP: Record<ApiSchema<"ChecklistSlotResult">["status"], Status> = {
   inc: "inc",
   dr: "dr",
   na: "na",
-}
+};
 
-const CATEGORY_LABELS: Record<NonNullable<ApiSchema<"Course">["category"]>, string> = {
+const CATEGORY_LABELS: Record<
+  NonNullable<ApiSchema<"Course">["category"]>,
+  string
+> = {
   major: "Major",
   ge: "GE",
   elective: "Elective",
@@ -43,7 +49,7 @@ const CATEGORY_LABELS: Record<NonNullable<ApiSchema<"Course">["category"]>, stri
   nstp: "NSTP",
   foundation: "Foundation",
   service: "Service",
-}
+};
 
 const ATTEMPT_HEADERS = [
   "Attempt",
@@ -53,33 +59,37 @@ const ATTEMPT_HEADERS = [
   "Completion",
   "Instructor",
   "Result",
-]
+];
 
 function ordinal(n: number) {
-  const suffix = new Intl.PluralRules("en", { type: "ordinal" }).select(n)
-  return `${n}${suffix === "one" ? "st" : suffix === "two" ? "nd" : suffix === "few" ? "rd" : "th"}`
+  const suffix = new Intl.PluralRules("en", { type: "ordinal" }).select(n);
+  return `${n}${suffix === "one" ? "st" : suffix === "two" ? "nd" : suffix === "few" ? "rd" : "th"}`;
 }
 
 function formatGrade(value: number | null | undefined) {
-  return value == null ? null : value.toFixed(2)
+  return value == null ? null : value.toFixed(2);
 }
 
 function buildChecklistTerms(data: {
-  results: ApiSchema<"ChecklistSlotResult">[]
-  slots: ApiSchema<"CurriculumTermCourse">[]
-  terms: ApiSchema<"CurriculumTerm">[]
-  courses: ApiSchema<"Course">[]
+  results: ApiSchema<"ChecklistSlotResult">[];
+  slots: ApiSchema<"CurriculumTermCourse">[];
+  terms: ApiSchema<"CurriculumTerm">[];
+  courses: ApiSchema<"Course">[];
 }) {
-  const groups = new Map<string, ChecklistRow[]>()
+  const groups = new Map<string, ChecklistRow[]>();
 
   for (const result of data.results) {
-    const slot = data.slots.find((item) => item.id === result.curriculum_term_course_id)
-    const term = data.terms.find((item) => item.id === slot?.curriculum_term_id)
-    const course = data.courses.find((item) => item.id === slot?.course_id)
+    const slot = data.slots.find(
+      (item) => item.id === result.curriculum_term_course_id,
+    );
+    const term = data.terms.find(
+      (item) => item.id === slot?.curriculum_term_id,
+    );
+    const course = data.courses.find((item) => item.id === slot?.course_id);
     const title = term
       ? `Year ${term.year_level} · Semester ${term.term_sequence}`
-      : "Other requirements"
-    const attempts = result.attempts?.length ?? 0
+      : "Other requirements";
+    const attempts = result.attempts?.length ?? 0;
 
     const row: ChecklistRow = {
       code: course?.code ?? slot?.slot_label ?? "Requirement",
@@ -91,19 +101,25 @@ function buildChecklistTerms(data: {
         result.satisfaction_source ??
         (attempts > 0 ? "Direct attempt" : "Not yet satisfied"),
       attempts,
-    }
+    };
 
-    groups.set(title, [...(groups.get(title) ?? []), row])
+    groups.set(title, [...(groups.get(title) ?? []), row]);
   }
 
   return [...groups]
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-    .map(([title, rows]) => ({ title, rows }))
+    .map(([title, rows]) => ({ title, rows }));
 }
 
-export function DeanStudentChecklistTab({ student }: { student: DeanStudentSummary }) {
-  const [selectedCourseCode, setSelectedCourseCode] = useState<string | null>(null)
-  const checklistQuery = useDeanStudentChecklist(student.studentId)
+export function DeanStudentChecklistTab({
+  student,
+}: {
+  student: DeanStudentSummary;
+}) {
+  const [selectedCourseCode, setSelectedCourseCode] = useState<string | null>(
+    null,
+  );
+  const checklistQuery = useDeanStudentChecklist(student.studentId);
 
   if (!checklistQuery.data) {
     return (
@@ -113,32 +129,37 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
         label="student checklist"
         onRetry={() => void checklistQuery.refetch()}
       />
-    )
+    );
   }
 
-  const data = checklistQuery.data
-  const terms = buildChecklistTerms(data)
+  const data = checklistQuery.data;
+  const terms = buildChecklistTerms(data);
 
   const selectedCourse = selectedCourseCode
-    ? data.courses.find((c) => c.code === selectedCourseCode) ?? null
-    : null
+    ? (data.courses.find((c) => c.code === selectedCourseCode) ?? null)
+    : null;
   const selectedSlot = selectedCourseCode
-    ? data.slots.find((s) =>
-        selectedCourse ? s.course_id === selectedCourse.id : s.slot_label === selectedCourseCode,
-      ) ?? null
-    : null
+    ? (data.slots.find((s) =>
+        selectedCourse
+          ? s.course_id === selectedCourse.id
+          : s.slot_label === selectedCourseCode,
+      ) ?? null)
+    : null;
   const selectedResult = selectedSlot
-    ? data.results.find((r) => r.curriculum_term_course_id === selectedSlot.id) ?? null
-    : null
+    ? (data.results.find(
+        (r) => r.curriculum_term_course_id === selectedSlot.id,
+      ) ?? null)
+    : null;
   const selectedTerm = selectedSlot
-    ? data.terms.find((t) => t.id === selectedSlot.curriculum_term_id) ?? null
-    : null
+    ? (data.terms.find((t) => t.id === selectedSlot.curriculum_term_id) ?? null)
+    : null;
 
   const modalTitle = selectedCourse
     ? `${selectedCourse.code} · ${selectedCourse.title}`
-    : selectedSlot?.slot_label ?? selectedCourseCode ?? "Course info"
+    : (selectedSlot?.slot_label ?? selectedCourseCode ?? "Course info");
 
-  const requiredUnits = selectedResult?.required_units ?? selectedCourse?.units ?? 0
+  const requiredUnits =
+    selectedResult?.required_units ?? selectedCourse?.units ?? 0;
   const modalMeta = [
     `${requiredUnits} ${requiredUnits === 1 ? "unit" : "units"}`,
     selectedCourse?.category ? CATEGORY_LABELS[selectedCourse.category] : null,
@@ -147,10 +168,10 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
       : null,
   ]
     .filter(Boolean)
-    .join(" · ")
+    .join(" · ");
 
-  const attempts = selectedResult?.attempts ?? []
-  const fixes = selectedResult?.grade_fix_history ?? []
+  const attempts = selectedResult?.attempts ?? [];
+  const fixes = selectedResult?.grade_fix_history ?? [];
 
   return (
     <div className="space-y-6">
@@ -160,7 +181,8 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
         earned={student.unitsEarned}
         required={student.unitsRequired}
       >
-        Cumulative GWA: <strong className="font-mono text-primary">{student.gwa}</strong>
+        Cumulative GWA:{" "}
+        <strong className="font-mono text-primary">{student.gwa}</strong>
       </DegreeProgress>
 
       {terms.length === 0 ? (
@@ -174,7 +196,10 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
               key={term.title}
               title={term.title}
               passedUnits={term.rows.reduce((sum, r) => sum + r.unitsEarned, 0)}
-              totalUnits={term.rows.reduce((sum, r) => sum + r.unitsRequired, 0)}
+              totalUnits={term.rows.reduce(
+                (sum, r) => sum + r.unitsRequired,
+                0,
+              )}
               rows={term.rows}
               onCourseInfo={setSelectedCourseCode}
             />
@@ -185,7 +210,7 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
       <Dialog
         open={selectedCourseCode !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedCourseCode(null)
+          if (!open) setSelectedCourseCode(null);
         }}
       >
         <DialogContent
@@ -218,7 +243,8 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
                 <span>Status:</span>
                 <StatusBadge status={STATUS_MAP[selectedResult.status]} />
                 <span className="text-muted-foreground">
-                  · {attempts.length} {attempts.length === 1 ? "attempt" : "attempts"}
+                  · {attempts.length}{" "}
+                  {attempts.length === 1 ? "attempt" : "attempts"}
                 </span>
               </div>
             )}
@@ -240,12 +266,15 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
                 <TableBody>
                   {attempts.map((a, index) => (
                     <TableRow key={a.attempt_id}>
-                      <TableCell className="px-3.5 py-2.75">{index + 1}</TableCell>
+                      <TableCell className="px-3.5 py-2.75">
+                        {index + 1}
+                      </TableCell>
                       <TableCell className="px-3.5 py-2.75 whitespace-normal">
                         {a.term_label}
                       </TableCell>
                       <TableCell className="px-3.5 py-2.75">
-                        {formatGrade(a.midterm_grade) ?? (a.midterm_status === "dr" ? "DR" : "—")}
+                        {formatGrade(a.midterm_grade) ??
+                          (a.midterm_status === "dr" ? "DR" : "—")}
                       </TableCell>
                       <TableCell className="px-3.5 py-2.75">
                         {formatGrade(a.final_grade) ?? "—"}
@@ -269,13 +298,15 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
               </p>
             )}
 
-            <h3 className="mt-5.5 text-[15.5px] font-semibold">Grade fix history</h3>
+            <h3 className="mt-5.5 text-[15.5px] font-semibold">
+              Grade fix history
+            </h3>
             {fixes.length > 0 ? (
               <ul className="mt-2.5 grid gap-1.5 text-[13.5px] text-muted-foreground">
                 {fixes.map((entry, index) => (
                   <li key={`${entry.changed_at}:${index}`}>
-                    {new Date(entry.changed_at).toLocaleString()} · {entry.old_grade ?? "—"} →{" "}
-                    {entry.new_grade ?? "—"}
+                    {new Date(entry.changed_at).toLocaleString()} ·{" "}
+                    {entry.old_grade ?? "—"} → {entry.new_grade ?? "—"}
                   </li>
                 ))}
               </ul>
@@ -288,5 +319,5 @@ export function DeanStudentChecklistTab({ student }: { student: DeanStudentSumma
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

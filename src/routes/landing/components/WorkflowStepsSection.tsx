@@ -1,17 +1,19 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Kicker } from '@/components/ui/kicker'
-import { cn } from '@/lib/utils'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Kicker } from "@/components/ui/kicker";
+import { cn } from "@/lib/utils";
 import {
   WORKFLOW_SECTION,
   WORKFLOW_STEPS,
   type WorkflowStepId,
-} from '@/routes/landing/landingData'
+} from "@/routes/landing/landingData";
 
 export function WorkflowStepsSection() {
-  const [activeId, setActiveId] = useState<WorkflowStepId>(WORKFLOW_SECTION.defaultStep)
+  const [activeId, setActiveId] = useState<WorkflowStepId>(
+    WORKFLOW_SECTION.defaultStep,
+  );
   const activeStep =
-    WORKFLOW_STEPS.find((step) => step.id === activeId) ?? WORKFLOW_STEPS[0]
+    WORKFLOW_STEPS.find((step) => step.id === activeId) ?? WORKFLOW_STEPS[0];
 
   return (
     <section
@@ -31,7 +33,7 @@ export function WorkflowStepsSection() {
           className="mt-10 flex flex-wrap items-center justify-center gap-2.5"
         >
           {WORKFLOW_STEPS.map((step) => {
-            const isActive = step.id === activeStep.id
+            const isActive = step.id === activeStep.id;
             return (
               <Button
                 key={step.id}
@@ -40,15 +42,15 @@ export function WorkflowStepsSection() {
                 aria-pressed={isActive}
                 onClick={() => setActiveId(step.id)}
                 className={cn(
-                  'h-auto rounded-lg px-[22px] py-2.5 text-sm font-semibold',
+                  "h-auto rounded-lg px-[22px] py-2.5 text-sm font-semibold",
                   isActive
-                    ? 'border-primary bg-primary text-background hover:bg-primary hover:text-background'
-                    : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground',
+                    ? "border-primary bg-primary text-background hover:bg-primary hover:text-background"
+                    : "border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground",
                 )}
               >
                 {step.label}
               </Button>
-            )
+            );
           })}
         </div>
 
@@ -97,5 +99,5 @@ export function WorkflowStepsSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

@@ -1,6 +1,6 @@
-import * as React from "react"
-import type { ApiSchema } from "@/lib/api/types"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import type { ApiSchema } from "@/lib/api/types";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -16,25 +16,27 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export type AdviserAssignmentRecord = ApiSchema<"AdviserAssignment"> & {
   /** Compatibility alias if caller passes `effective_from` instead of `start_date`. */
-  readonly effective_from?: string
+  readonly effective_from?: string;
   /** Compatibility alias if caller passes `effective_to` instead of `end_date`. */
-  readonly effective_to?: string | null
+  readonly effective_to?: string | null;
   /** Optional explicit note override. */
-  readonly note?: string | null
-}
+  readonly note?: string | null;
+};
 
 export interface AssignmentHistoryDialogProps {
-  readonly open: boolean
-  readonly onOpenChange: (open: boolean) => void
-  readonly assignments: readonly AdviserAssignmentRecord[]
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly assignments: readonly AdviserAssignmentRecord[];
   /** Optional map or callback to resolve adviser display names from `adviser_id`. */
-  readonly adviserNames?: Readonly<Record<string, string>> | ((adviserId: string) => string | undefined)
-  readonly className?: string
+  readonly adviserNames?:
+    | Readonly<Record<string, string>>
+    | ((adviserId: string) => string | undefined);
+  readonly className?: string;
 }
 
 const SHORT_MONTHS = [
@@ -50,55 +52,66 @@ const SHORT_MONTHS = [
   "Oct",
   "Nov",
   "Dec",
-] as const
+] as const;
 
 function formatAssignmentDate(dateValue: string | null | undefined): string {
-  if (!dateValue) return "—"
-  const trimmed = dateValue.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
   if (isoMatch) {
-    const year = Number(isoMatch[1])
-    const monthIndex = Number(isoMatch[2]) - 1
-    const day = Number(isoMatch[3])
-    const monthLabel = SHORT_MONTHS[monthIndex]
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
     if (monthLabel && day >= 1 && day <= 31) {
-      return `${day} ${monthLabel} ${year}`
+      return `${day} ${monthLabel} ${year}`;
     }
   }
-  return trimmed
+  return trimmed;
 }
 
 function resolveAdviserName(
   assignment: AdviserAssignmentRecord,
-  adviserNames?: Readonly<Record<string, string>> | ((adviserId: string) => string | undefined)
+  adviserNames?:
+    | Readonly<Record<string, string>>
+    | ((adviserId: string) => string | undefined),
 ): string {
   if (assignment.adviser_name && assignment.adviser_name.trim().length > 0) {
-    return assignment.adviser_name
+    return assignment.adviser_name;
   }
   if (typeof adviserNames === "function") {
-    const resolved = adviserNames(assignment.adviser_id)
-    if (resolved && resolved.trim().length > 0) return resolved
+    const resolved = adviserNames(assignment.adviser_id);
+    if (resolved && resolved.trim().length > 0) return resolved;
   } else if (adviserNames && assignment.adviser_id in adviserNames) {
-    const resolved = adviserNames[assignment.adviser_id]
-    if (resolved && resolved.trim().length > 0) return resolved
+    const resolved = adviserNames[assignment.adviser_id];
+    if (resolved && resolved.trim().length > 0) return resolved;
   }
-  return assignment.adviser_id
+  return assignment.adviser_id;
 }
 
-function resolveAssignmentNote(assignment: AdviserAssignmentRecord, isActive: boolean): string {
+function resolveAssignmentNote(
+  assignment: AdviserAssignmentRecord,
+  isActive: boolean,
+): string {
   if (assignment.note && assignment.note.trim().length > 0) {
-    return assignment.note
+    return assignment.note;
   }
-  if (assignment.handover_label && assignment.handover_label.trim().length > 0) {
-    return assignment.handover_label
+  if (
+    assignment.handover_label &&
+    assignment.handover_label.trim().length > 0
+  ) {
+    return assignment.handover_label;
   }
-  if (assignment.handed_over_to_name && assignment.handed_over_to_name.trim().length > 0) {
-    return `Handed over to ${assignment.handed_over_to_name}`
+  if (
+    assignment.handed_over_to_name &&
+    assignment.handed_over_to_name.trim().length > 0
+  ) {
+    return `Handed over to ${assignment.handed_over_to_name}`;
   }
   if (isActive) {
-    return "Current adviser"
+    return "Current adviser";
   }
-  return "—"
+  return "—";
 }
 
 /**
@@ -114,33 +127,42 @@ export function AssignmentHistoryDialog({
 }: AssignmentHistoryDialogProps) {
   const sortedAssignments = React.useMemo(() => {
     return [...assignments].sort((a, b) => {
-      const aTo = a.effective_to !== undefined ? a.effective_to : a.end_date
-      const bTo = b.effective_to !== undefined ? b.effective_to : b.end_date
-      const aActive = aTo == null
-      const bActive = bTo == null
-      if (aActive !== bActive) return aActive ? -1 : 1
+      const aTo = a.effective_to !== undefined ? a.effective_to : a.end_date;
+      const bTo = b.effective_to !== undefined ? b.effective_to : b.end_date;
+      const aActive = aTo == null;
+      const bActive = bTo == null;
+      if (aActive !== bActive) return aActive ? -1 : 1;
 
-      const aFrom = (a.effective_from ?? a.start_date) || ""
-      const bFrom = (b.effective_from ?? b.start_date) || ""
-      return bFrom.localeCompare(aFrom)
-    })
-  }, [assignments])
+      const aFrom = (a.effective_from ?? a.start_date) || "";
+      const bFrom = (b.effective_from ?? b.start_date) || "";
+      return bFrom.localeCompare(aFrom);
+    });
+  }, [assignments]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className={cn("max-h-[90dvh] overflow-y-auto sm:max-w-[720px]", className)}
+        className={cn(
+          "max-h-[90dvh] overflow-y-auto sm:max-w-[720px]",
+          className,
+        )}
       >
         <DialogHeader className="flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">
             <DialogTitle>Assignment history</DialogTitle>
             <DialogDescription className="text-body text-muted-foreground">
-              Every adviser assigned to you, newest first. Past assignments stay on record.
+              Every adviser assigned to you, newest first. Past assignments stay
+              on record.
             </DialogDescription>
           </div>
           <DialogClose asChild>
-            <Button type="button" variant="outline" size="sm" className="shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+            >
               Close
             </Button>
           </DialogClose>
@@ -164,16 +186,22 @@ export function AssignmentHistoryDialog({
               </TableHeader>
               <TableBody>
                 {sortedAssignments.map((assignment) => {
-                  const fromRaw = assignment.effective_from ?? assignment.start_date
+                  const fromRaw =
+                    assignment.effective_from ?? assignment.start_date;
                   const toRaw =
                     assignment.effective_to !== undefined
                       ? assignment.effective_to
-                      : assignment.end_date
-                  const isActive = toRaw == null
-                  const adviserLabel = resolveAdviserName(assignment, adviserNames)
-                  const fromLabel = formatAssignmentDate(fromRaw)
-                  const toLabel = isActive ? "Present" : formatAssignmentDate(toRaw)
-                  const noteLabel = resolveAssignmentNote(assignment, isActive)
+                      : assignment.end_date;
+                  const isActive = toRaw == null;
+                  const adviserLabel = resolveAdviserName(
+                    assignment,
+                    adviserNames,
+                  );
+                  const fromLabel = formatAssignmentDate(fromRaw);
+                  const toLabel = isActive
+                    ? "Present"
+                    : formatAssignmentDate(toRaw);
+                  const noteLabel = resolveAssignmentNote(assignment, isActive);
 
                   return (
                     <TableRow key={assignment.id} className="border-line-soft">
@@ -202,7 +230,7 @@ export function AssignmentHistoryDialog({
                         {noteLabel}
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })}
               </TableBody>
             </Table>
@@ -214,5 +242,5 @@ export function AssignmentHistoryDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

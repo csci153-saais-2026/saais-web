@@ -1,26 +1,36 @@
-import * as React from "react"
-import { FlagIcon } from "@/components/icons"
-import { FormField } from "@/components/features/form-field"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import * as React from "react";
+import { FlagIcon } from "@/components/icons";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export type ImportPreviewRow = {
-  rowNumber: number | string
-  studentNumber: string
+  rowNumber: number | string;
+  studentNumber: string;
   /** `pass` renders the green pill, `fail` the red one. */
-  tone: "pass" | "fail"
+  tone: "pass" | "fail";
   /** Text inside the Result pill. */
-  result: string
-}
+  result: string;
+};
 
 const PILL = {
   pass: "inline-flex items-center gap-1.5 rounded-sm bg-[var(--status-pass-bg)] px-2 py-1 font-semibold text-[var(--status-pass)]",
   fail: "inline-flex items-center gap-1.5 rounded-sm bg-[var(--status-fail-bg)] px-2 py-1 font-semibold text-[var(--status-fail)]",
-}
-const DOT = { pass: "bg-[var(--status-pass)]", fail: "bg-[var(--status-fail)]" }
+};
+const DOT = {
+  pass: "bg-[var(--status-pass)]",
+  fail: "bg-[var(--status-fail)]",
+};
 
 const FILE_INPUT =
-  "block min-h-[54px] w-full rounded-sm border border-border bg-background px-4 py-3 font-sans text-body font-semibold file:mr-2 file:inline-flex file:appearance-auto file:items-center file:rounded-sm file:border file:border-solid file:border-[#767676] file:bg-[#efefef] file:px-2 file:py-0 file:font-sans file:text-base file:font-normal file:text-foreground hover:file:bg-[#e7e7e7]"
+  "block min-h-[54px] w-full rounded-sm border border-border bg-background px-4 py-3 font-sans text-body font-semibold file:mr-2 file:inline-flex file:appearance-auto file:items-center file:rounded-sm file:border file:border-solid file:border-[#767676] file:bg-[#efefef] file:px-2 file:py-0 file:font-sans file:text-base file:font-normal file:text-foreground hover:file:bg-[#e7e7e7]";
 
 /**
  * Presentational "Import students from spreadsheet" modal shared by the staff and
@@ -50,37 +60,42 @@ function StudentImportModal({
   primaryDisabled,
   onPrimary,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   /** Optional trigger button; rendered with `asChild`. */
-  trigger?: React.ReactNode
-  title?: string
-  notice: React.ReactNode
-  fileHint?: string
-  fileError?: string
-  fileDisabled?: boolean
-  inputRef?: React.Ref<HTMLInputElement>
-  inputProps?: Omit<React.ComponentProps<"input">, "type" | "id" | "accept" | "onChange" | "disabled">
-  onFileChange: (file: File | undefined) => void
-  previewHeading?: string
-  previewCaption?: string
-  rows: ImportPreviewRow[]
+  trigger?: React.ReactNode;
+  title?: string;
+  notice: React.ReactNode;
+  fileHint?: string;
+  fileError?: string;
+  fileDisabled?: boolean;
+  inputRef?: React.Ref<HTMLInputElement>;
+  inputProps?: Omit<
+    React.ComponentProps<"input">,
+    "type" | "id" | "accept" | "onChange" | "disabled"
+  >;
+  onFileChange: (file: File | undefined) => void;
+  previewHeading?: string;
+  previewCaption?: string;
+  rows: ImportPreviewRow[];
   /** Shown in the table body when there are no rows. */
-  emptyMessage?: React.ReactNode
+  emptyMessage?: React.ReactNode;
   /** Status lines, errors and result tables rendered under the validation table. */
-  children?: React.ReactNode
-  cancelLabel?: string
-  cancelDisabled?: boolean
-  primaryLabel: string
-  primaryDisabled?: boolean
-  onPrimary: () => void
+  children?: React.ReactNode;
+  cancelLabel?: string;
+  cancelDisabled?: boolean;
+  primaryLabel: string;
+  primaryDisabled?: boolean;
+  onPrimary: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-h-[90dvh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-md p-0 sm:max-w-2xl">
         <DialogHeader className="border-b border-border px-6 py-4.5 pr-14">
-          <DialogTitle className="font-heading text-[24px] leading-[1.08] font-bold tracking-[-0.01em]">{title}</DialogTitle>
+          <DialogTitle className="font-heading text-[24px] leading-[1.08] font-bold tracking-[-0.01em]">
+            {title}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="min-h-0 space-y-6 overflow-y-auto p-6">
@@ -89,7 +104,12 @@ function StudentImportModal({
             <p>{notice}</p>
           </div>
 
-          <FormField label="Spreadsheet file" htmlFor="student-import-file" hint={fileHint} error={fileError}>
+          <FormField
+            label="Spreadsheet file"
+            htmlFor="student-import-file"
+            hint={fileHint}
+            error={fileError}
+          >
             <input
               {...inputProps}
               id="student-import-file"
@@ -110,24 +130,45 @@ function StudentImportModal({
                 <caption className="sr-only">{previewCaption}</caption>
                 <thead className="sticky top-0 bg-cream-deep text-xs tracking-wider text-muted-2 uppercase">
                   <tr>
-                    {["Row", "Student ID", "Result"].map((label) => <th key={label} scope="col" className="px-4 py-3">{label}</th>)}
+                    {["Row", "Student ID", "Result"].map((label) => (
+                      <th key={label} scope="col" className="px-4 py-3">
+                        {label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="text-xs">
                   {rows.length === 0 ? (
-                    <tr><td colSpan={3} className="h-24 px-4 text-center text-muted-foreground">{emptyMessage}</td></tr>
-                  ) : rows.map((row) => (
-                    <tr key={row.rowNumber} className="border-t border-border">
-                      <td className="px-4 py-3">{row.rowNumber}</td>
-                      <td className="px-4 py-3">{row.studentNumber || "—"}</td>
-                      <td className="px-4 py-3">
-                        <span className={PILL[row.tone]}>
-                          <span aria-hidden="true" className={`size-2 rounded-full ${DOT[row.tone]}`} />
-                          {row.result}
-                        </span>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="h-24 px-4 text-center text-muted-foreground"
+                      >
+                        {emptyMessage}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    rows.map((row) => (
+                      <tr
+                        key={row.rowNumber}
+                        className="border-t border-border"
+                      >
+                        <td className="px-4 py-3">{row.rowNumber}</td>
+                        <td className="px-4 py-3">
+                          {row.studentNumber || "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={PILL[row.tone]}>
+                            <span
+                              aria-hidden="true"
+                              className={`size-2 rounded-full ${DOT[row.tone]}`}
+                            />
+                            {row.result}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -137,13 +178,26 @@ function StudentImportModal({
 
         <div className="border-t border-border px-6 py-4">
           <DialogFooter className="flex-row">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={cancelDisabled}>{cancelLabel}</Button>
-            <Button type="button" onClick={onPrimary} disabled={primaryDisabled}>{primaryLabel}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={cancelDisabled}
+            >
+              {cancelLabel}
+            </Button>
+            <Button
+              type="button"
+              onClick={onPrimary}
+              disabled={primaryDisabled}
+            >
+              {primaryLabel}
+            </Button>
           </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
-export { StudentImportModal }
+export { StudentImportModal };

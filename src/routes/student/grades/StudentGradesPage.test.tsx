@@ -1,14 +1,20 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { apiClient, type ApiSchema } from "@/lib/api"
-import { StudentGradesPage, StudentGradesView } from "./StudentGradesPage"
-import type { TermGradesSection } from "./TermGradesPanel"
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { apiClient, type ApiSchema } from "@/lib/api";
+import { StudentGradesPage, StudentGradesView } from "./StudentGradesPage";
+import type { TermGradesSection } from "./TermGradesPanel";
 
 afterEach(() => {
-  cleanup()
-  vi.restoreAllMocks()
-})
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const mockTerms: TermGradesSection[] = [
   {
@@ -91,7 +97,7 @@ const mockTerms: TermGradesSection[] = [
       },
     ],
   },
-]
+];
 
 const mockFlags: ApiSchema<"GradeFlag">[] = [
   {
@@ -106,47 +112,47 @@ const mockFlags: ApiSchema<"GradeFlag">[] = [
     created_at: "2026-09-10T08:00:00Z",
     updated_at: "2026-09-10T08:00:00Z",
   },
-]
+];
 
 describe("StudentGradesView", () => {
   it("renders term GWA, lock states, INC deadline, distinct INC vs INC lapsed, and GradeFlagsListDialog", () => {
-    render(<StudentGradesView terms={mockTerms} flags={mockFlags} />)
+    render(<StudentGradesView terms={mockTerms} flags={mockFlags} />);
 
-    expect(screen.getByText(/Term GWA 1\.75.*Open term/)).toBeTruthy()
-    expect(screen.getByText(/Term GWA 5\.00.*Locked term/)).toBeTruthy()
-    expect(screen.getByText("Due 26 Oct 2026")).toBeTruthy()
-    expect(screen.getAllByText("INC").length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByText("INC lapsed").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/Term GWA 1\.75.*Open term/)).toBeTruthy();
+    expect(screen.getByText(/Term GWA 5\.00.*Locked term/)).toBeTruthy();
+    expect(screen.getByText("Due 26 Oct 2026")).toBeTruthy();
+    expect(screen.getAllByText("INC").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("INC lapsed").length).toBeGreaterThanOrEqual(1);
 
-    const flaggedBtn = screen.getByRole("button", { name: "Flagged" })
-    expect(flaggedBtn.getAttribute("aria-pressed")).toBe("true")
+    const flaggedBtn = screen.getByRole("button", { name: "Flagged" });
+    expect(flaggedBtn.getAttribute("aria-pressed")).toBe("true");
 
-    fireEvent.click(screen.getByRole("button", { name: "View Grade Flags" }))
-    expect(screen.getByText("Grade flags")).toBeTruthy()
-    expect(screen.getByText("Class record showed 1.50.")).toBeTruthy()
-    expect(screen.getByText("Under review")).toBeTruthy()
-  })
+    fireEvent.click(screen.getByRole("button", { name: "View Grade Flags" }));
+    expect(screen.getByText("Grade flags")).toBeTruthy();
+    expect(screen.getByText("Class record showed 1.50.")).toBeTruthy();
+    expect(screen.getByText("Under review")).toBeTruthy();
+  });
 
   it("submits FlagGradeDialog and invokes onCreateFlag", async () => {
-    const onCreateFlag = vi.fn().mockResolvedValue(undefined)
+    const onCreateFlag = vi.fn().mockResolvedValue(undefined);
     render(
       <StudentGradesView
         terms={mockTerms}
         flags={[]}
         onCreateFlag={onCreateFlag}
-      />
-    )
+      />,
+    );
 
-    const flagButtons = screen.getAllByRole("button", { name: "Flag Grade" })
-    fireEvent.click(flagButtons[0])
+    const flagButtons = screen.getAllByRole("button", { name: "Flag Grade" });
+    fireEvent.click(flagButtons[0]);
 
-    expect(screen.getByText("Flag a grade")).toBeTruthy()
-    const detailsInput = screen.getByLabelText("Details")
+    expect(screen.getByText("Flag a grade")).toBeTruthy();
+    const detailsInput = screen.getByLabelText("Details");
     fireEvent.change(detailsInput, {
       target: { value: "Final grade should be 1.50." },
-    })
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: "Submit flag" }))
+    fireEvent.click(screen.getByRole("button", { name: "Submit flag" }));
 
     await waitFor(() => {
       expect(onCreateFlag).toHaveBeenCalledWith(
@@ -154,51 +160,51 @@ describe("StudentGradesView", () => {
           attempt_id: "att-1",
           issue_type: "incorrect_grade",
           details: "Final grade should be 1.50.",
-        })
-      )
-    })
-  })
-})
+        }),
+      );
+    });
+  });
+});
 
 describe("StudentGradesPage", () => {
   it("shows Loading... while pending, Try again on error, and recovers on retry", async () => {
-    let callCount = 0
+    let callCount = 0;
     vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {
       if (path === "/functions/v1/students/{student_id}/grades") {
-        callCount += 1
+        callCount += 1;
         if (callCount === 1) {
-          return Promise.reject(new Error("Network error")) as never
+          return Promise.reject(new Error("Network error")) as never;
         }
         return Promise.resolve({
           data: mockTerms,
           response: new Response(),
-        }) as never
+        }) as never;
       }
       return Promise.resolve({
         data: [],
         response: new Response(),
-      }) as never
-    })
+      }) as never;
+    });
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
-    })
+    });
 
     render(
       <QueryClientProvider client={queryClient}>
         <StudentGradesPage studentId="stu-1" />
-      </QueryClientProvider>
-    )
+      </QueryClientProvider>,
+    );
 
-    expect(screen.getByRole("status").textContent).toBe("Loading...")
+    expect(screen.getByRole("status").textContent).toBe("Loading...");
 
-    const retryBtn = await screen.findByRole("button", { name: "Try again" })
-    fireEvent.click(retryBtn)
+    const retryBtn = await screen.findByRole("button", { name: "Try again" });
+    fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/2025 - 2026 · 1st Semester/)).toBeTruthy()
-    })
-  })
+      expect(screen.getByText(/2025 - 2026 · 1st Semester/)).toBeTruthy();
+    });
+  });
 
   it("submits a grade flag via useCreateGradeFlag and invalidates grade-flags and academic-summary queries", async () => {
     vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {
@@ -206,13 +212,13 @@ describe("StudentGradesPage", () => {
         return Promise.resolve({
           data: mockTerms,
           response: new Response(),
-        }) as never
+        }) as never;
       }
       return Promise.resolve({
         data: [],
         response: new Response(),
-      }) as never
-    })
+      }) as never;
+    });
 
     const postSpy = vi.spyOn(apiClient, "POST").mockResolvedValue({
       data: {
@@ -231,45 +237,45 @@ describe("StudentGradesPage", () => {
         updated_at: "2026-01-12T08:00:00Z",
       },
       response: new Response(),
-    } as never)
+    } as never);
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
-    })
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     render(
       <QueryClientProvider client={queryClient}>
         <StudentGradesPage studentId="stu-1" />
-      </QueryClientProvider>
-    )
+      </QueryClientProvider>,
+    );
 
     const flagButtons = await screen.findAllByRole("button", {
       name: "Flag Grade",
-    })
-    fireEvent.click(flagButtons[0])
+    });
+    fireEvent.click(flagButtons[0]);
 
     fireEvent.change(screen.getByLabelText("Details"), {
       target: { value: "Final grade should be 1.50." },
-    })
-    fireEvent.click(screen.getByRole("button", { name: "Submit flag" }))
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit flag" }));
 
     await waitFor(() => {
       expect(postSpy).toHaveBeenCalledWith(
         "/functions/v1/students/{student_id}/grade-flags",
         expect.objectContaining({
           params: { path: { student_id: "stu-1" } },
-        })
-      )
-    })
+        }),
+      );
+    });
 
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: ["student", "stu-1", "grade-flags"],
-      })
+      });
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: ["student", "stu-1", "academic-summary"],
-      })
-    })
-  })
-})
+      });
+    });
+  });
+});

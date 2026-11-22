@@ -1,15 +1,15 @@
-import React from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router'
-import { useAuth } from '@/hooks/use-auth'
-import { ROLE_DEFAULT_ROUTE } from '@/lib/auth/auth-service'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertIcon } from '@/components/icons'
-import type { SaaisRole } from '@/mocks/personas'
+import React from "react";
+import { Navigate, Outlet, useLocation } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { ROLE_DEFAULT_ROUTE } from "@/lib/auth/auth-service";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertIcon } from "@/components/icons";
+import type { SaaisRole } from "@/mocks/personas";
 
 interface ProtectedRouteProps {
-  allowedRoles?: SaaisRole[]
-  children?: React.ReactNode
+  allowedRoles?: SaaisRole[];
+  children?: React.ReactNode;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -26,8 +26,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     authError,
     retryHydration,
     signOut,
-  } = useAuth()
-  const location = useLocation()
+  } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -39,7 +39,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           </span>
         </div>
       </div>
-    )
+    );
   }
 
   if (authError && !user) {
@@ -69,7 +69,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!user || !isAllowedToEnter) {
@@ -79,19 +79,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         state={{ from: location, blockedReason: entryBlockedReason }}
         replace
       />
-    )
+    );
   }
 
   if (allowedRoles && allowedRoles.length > 0) {
-    const hasAllowedRole = roles.some((r) => allowedRoles.includes(r))
+    const hasAllowedRole = roles.some((r) => allowedRoles.includes(r));
     if (!hasAllowedRole) {
       const target =
-        (activeRole && roles.includes(activeRole) && ROLE_DEFAULT_ROUTE[activeRole]) ||
+        (activeRole &&
+          roles.includes(activeRole) &&
+          ROLE_DEFAULT_ROUTE[activeRole]) ||
         (roles[0] && ROLE_DEFAULT_ROUTE[roles[0]]) ||
-        '/login'
-      return <Navigate to={target} replace />
+        "/login";
+      return <Navigate to={target} replace />;
     }
   }
 
-  return children ? <>{children}</> : <Outlet />
-}
+  return children ? <>{children}</> : <Outlet />;
+};

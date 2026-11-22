@@ -1,13 +1,13 @@
-import { Link } from 'react-router'
-import { NoteIcon } from '@/components/icons'
-import { BrandMark } from '@/components/ui/brand-mark'
-import { Kicker } from '@/components/ui/kicker'
+import { Link } from "react-router";
+import { NoteIcon } from "@/components/icons";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { Kicker } from "@/components/ui/kicker";
 import {
   FOOTER_BRAND,
   FOOTER_COLUMNS,
   FOOTER_LEGAL,
   FOOTER_SIGN_IN_NOTE,
-} from '@/routes/landing/landingData'
+} from "@/routes/landing/landingData";
 
 export function LandingFooter() {
   return (
@@ -76,7 +76,7 @@ export function LandingFooter() {
               <ul className="mt-3.5 list-none p-0">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    {link.href.startsWith('/') ? (
+                    {link.href.startsWith("/") ? (
                       <Link
                         to={link.href}
                         className="inline-block rounded-sm py-[5px] text-[13.5px] text-[#F6F2E4]/[0.62] transition-colors hover:text-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -112,5 +112,5 @@ export function LandingFooter() {
         </div>
       </div>
     </footer>
-  )
+  );
 }

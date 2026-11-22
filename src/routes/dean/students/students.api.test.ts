@@ -1,11 +1,23 @@
-import { http, HttpResponse } from "msw"
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
-import { loginAsMockPersona, logoutMockPersona, resetMockDatabase } from "@/mocks"
-import { saaisMockServer } from "@/mocks/node"
-import { getDeanStudents } from "@/routes/dean/students/students.api"
+import { http, HttpResponse } from "msw";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import {
+  loginAsMockPersona,
+  logoutMockPersona,
+  resetMockDatabase,
+} from "@/mocks";
+import { saaisMockServer } from "@/mocks/node";
+import { getDeanStudents } from "@/routes/dean/students/students.api";
 
 vi.mock("@/lib/api", async (importOriginal) => {
-  const api = await importOriginal<typeof import("@/lib/api")>()
+  const api = await importOriginal<typeof import("@/lib/api")>();
   return {
     ...api,
     apiClient: api.createSaaisApiClient({
@@ -14,27 +26,27 @@ vi.mock("@/lib/api", async (importOriginal) => {
       mode: "mock",
       fetch: (...args) => globalThis.fetch(...args),
     }),
-  }
-})
+  };
+});
 
-beforeAll(() => saaisMockServer.listen())
+beforeAll(() => saaisMockServer.listen());
 afterEach(() => {
-  saaisMockServer.resetHandlers()
-  resetMockDatabase()
-  logoutMockPersona()
-})
-afterAll(() => saaisMockServer.close())
+  saaisMockServer.resetHandlers();
+  resetMockDatabase();
+  logoutMockPersona();
+});
+afterAll(() => saaisMockServer.close());
 
 describe("students.api", () => {
   it("paginates through all pages when fetching dean students", async () => {
-    loginAsMockPersona("dean")
-    const seenOffsets: string[] = []
+    loginAsMockPersona("dean");
+    const seenOffsets: string[] = [];
 
     saaisMockServer.use(
       http.get("*/functions/v1/students", ({ request }) => {
-        const offset = new URL(request.url).searchParams.get("offset") ?? "0"
-        seenOffsets.push(offset)
-        const count = offset === "0" ? 100 : 1
+        const offset = new URL(request.url).searchParams.get("offset") ?? "0";
+        seenOffsets.push(offset);
+        const count = offset === "0" ? 100 : 1;
         return HttpResponse.json({
           total_count: 101,
           unassigned_count: 0,
@@ -82,12 +94,12 @@ describe("students.api", () => {
             handover_label: null,
             last_activity_at: null,
           })),
-        })
+        });
       }),
-    )
+    );
 
-    const response = await getDeanStudents()
-    expect(seenOffsets).toEqual(["0", "100"])
-    expect(response.items).toHaveLength(101)
-  })
-})
+    const response = await getDeanStudents();
+    expect(seenOffsets).toEqual(["0", "100"]);
+    expect(response.items).toHaveLength(101);
+  });
+});

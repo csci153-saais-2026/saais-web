@@ -1,166 +1,162 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DataTablePanel } from '@/components/features/data-table-panel'
-import { FormField } from '@/components/features/form-field'
-import { PageHeading } from '@/components/features/page-heading'
-import { SearchInput } from '@/components/features/search-input'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DataTablePanel } from "@/components/features/data-table-panel";
+import { FormField } from "@/components/features/form-field";
+import { PageHeading } from "@/components/features/page-heading";
+import { SearchInput } from "@/components/features/search-input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import {
-  apiClient,
-  parseContentRange,
-  unwrapApiResult,
-} from '@/lib/api'
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { apiClient, parseContentRange, unwrapApiResult } from "@/lib/api";
 import {
   AUDIT_ACTION_CATEGORIES,
   AUDIT_PAGE_SIZE,
   buildAuditListQuery,
   type AuditFilters,
   type AuditLogRow,
-} from './admin-audit-model'
-import type { Column } from '@/components/features/data-table-panel'
+} from "./admin-audit-model";
+import type { Column } from "@/components/features/data-table-panel";
 
-const FILTER_DEBOUNCE_MS = 300
+const FILTER_DEBOUNCE_MS = 300;
 
 /** The mockup's Action dropdown offers only the three headline categories. */
 const AUDIT_ACTION_FILTER_OPTIONS = AUDIT_ACTION_CATEGORIES.filter((category) =>
-  ['view', 'change', 'sign_in'].includes(category.value),
-)
+  ["view", "change", "sign_in"].includes(category.value),
+);
 
 const EMPTY_FILTERS: AuditFilters = {
-  person: '',
-  student: '',
-  action: '',
-  category: '',
-  entityType: '',
-  from: '',
-  to: '',
-}
+  person: "",
+  student: "",
+  action: "",
+  category: "",
+  entityType: "",
+  from: "",
+  to: "",
+};
 
 function humanize(value: string) {
   return value
-    .split('_')
+    .split("_")
     .filter(Boolean)
     .map((part) => part[0]!.toUpperCase() + part.slice(1))
-    .join(' ')
+    .join(" ");
 }
 
 function formatTimestamp(value: string) {
-  const date = new Date(value)
+  const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? value
-    : new Intl.DateTimeFormat('en-PH', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      }).format(date)
+    : new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
 }
 
 export default function AdminAuditLogPage() {
-  const [filters, setFilters] = useState<AuditFilters>(EMPTY_FILTERS)
+  const [filters, setFilters] = useState<AuditFilters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] =
-    useState<AuditFilters>(EMPTY_FILTERS)
-  const [offset, setOffset] = useState(0)
-  const [reloadCount, setReloadCount] = useState(0)
-  const [entries, setEntries] = useState<AuditLogRow[]>([])
-  const [rangeTotal, setRangeTotal] = useState<number | null>(null)
-  const [loadedRequestKey, setLoadedRequestKey] = useState('')
+    useState<AuditFilters>(EMPTY_FILTERS);
+  const [offset, setOffset] = useState(0);
+  const [reloadCount, setReloadCount] = useState(0);
+  const [entries, setEntries] = useState<AuditLogRow[]>([]);
+  const [rangeTotal, setRangeTotal] = useState<number | null>(null);
+  const [loadedRequestKey, setLoadedRequestKey] = useState("");
   const [requestError, setRequestError] = useState<{
-    readonly key: string
-    readonly message: string
-  } | null>(null)
+    readonly key: string;
+    readonly message: string;
+  } | null>(null);
 
   const { query, error: filterError } = useMemo(
     () => buildAuditListQuery(appliedFilters, offset),
     [appliedFilters, offset],
-  )
-  const requestKey = query ? `${JSON.stringify(query)}:${reloadCount}` : ''
-  const loading = Boolean(query) && loadedRequestKey !== requestKey
-  const error = requestError?.key === requestKey ? requestError.message : null
+  );
+  const requestKey = query ? `${JSON.stringify(query)}:${reloadCount}` : "";
+  const loading = Boolean(query) && loadedRequestKey !== requestKey;
+  const error = requestError?.key === requestKey ? requestError.message : null;
   const hasNextPage =
     rangeTotal !== null
       ? offset + AUDIT_PAGE_SIZE < rangeTotal
-      : entries.length === AUDIT_PAGE_SIZE
+      : entries.length === AUDIT_PAGE_SIZE;
 
   useEffect(() => {
-    if (!query) return
+    if (!query) return;
 
-    let active = true
+    let active = true;
     void apiClient
-      .GET('/rest/v1/audit_log_entry', { params: { query } })
+      .GET("/rest/v1/audit_log_entry", { params: { query } })
       .then((result) => {
-        const nextEntries = unwrapApiResult(result)
-        if (!active) return
-        setEntries(nextEntries)
+        const nextEntries = unwrapApiResult(result);
+        if (!active) return;
+        setEntries(nextEntries);
         setRangeTotal(
-          parseContentRange(result.response.headers.get('Content-Range'))
+          parseContentRange(result.response.headers.get("Content-Range"))
             ?.total ?? null,
-        )
-        setRequestError(null)
+        );
+        setRequestError(null);
       })
       .catch((requestError: unknown) => {
-        if (!active) return
+        if (!active) return;
         setRequestError({
           key: requestKey,
           message:
             requestError instanceof Error
               ? requestError.message
-              : 'Audit history could not be loaded.',
-        })
+              : "Audit history could not be loaded.",
+        });
       })
       .finally(() => {
-        if (active) setLoadedRequestKey(requestKey)
-      })
+        if (active) setLoadedRequestKey(requestKey);
+      });
 
     return () => {
-      active = false
-    }
-  }, [query, requestKey])
+      active = false;
+    };
+  }, [query, requestKey]);
 
   const retry = useCallback(() => {
-    setReloadCount((count) => count + 1)
-  }, [])
+    setReloadCount((count) => count + 1);
+  }, []);
 
   function updateFilter<K extends keyof AuditFilters>(
     key: K,
     value: AuditFilters[K],
   ) {
-    setFilters((current) => ({ ...current, [key]: value }))
+    setFilters((current) => ({ ...current, [key]: value }));
   }
 
-  const filtersTouched = useRef(false)
+  const filtersTouched = useRef(false);
   useEffect(() => {
     if (!filtersTouched.current) {
-      filtersTouched.current = true
-      return
+      filtersTouched.current = true;
+      return;
     }
     const timer = window.setTimeout(() => {
       // A date range needs both ends; wait until the second date is chosen.
-      const complete = Boolean(filters.from) === Boolean(filters.to)
+      const complete = Boolean(filters.from) === Boolean(filters.to);
       const next = {
         ...filters,
-        from: complete ? filters.from : '',
-        to: complete ? filters.to : '',
-      }
+        from: complete ? filters.from : "",
+        to: complete ? filters.to : "",
+      };
       setAppliedFilters((current) => {
-        if (JSON.stringify(current) === JSON.stringify(next)) return current
-        setOffset(0)
-        return next
-      })
-    }, FILTER_DEBOUNCE_MS)
-    return () => window.clearTimeout(timer)
-  }, [filters])
+        if (JSON.stringify(current) === JSON.stringify(next)) return current;
+        setOffset(0);
+        return next;
+      });
+    }, FILTER_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [filters]);
 
   const columns: Column<AuditLogRow>[] = [
     {
-      header: 'Timestamp',
-      className: 'whitespace-nowrap',
+      header: "Timestamp",
+      className: "whitespace-nowrap",
       cell: (entry) => (
         <time dateTime={entry.created_at}>
           {formatTimestamp(entry.created_at)}
@@ -168,10 +164,10 @@ export default function AdminAuditLogPage() {
       ),
     },
     {
-      header: 'Person',
+      header: "Person",
       cell: (entry) => (
         <div>
-          <p className="font-medium">{entry.actor_name || 'System'}</p>
+          <p className="font-medium">{entry.actor_name || "System"}</p>
           {entry.actor_role && (
             <p className="text-xs text-muted-foreground">
               {humanize(entry.actor_role)}
@@ -181,7 +177,7 @@ export default function AdminAuditLogPage() {
       ),
     },
     {
-      header: 'Action',
+      header: "Action",
       cell: (entry) => (
         <div className="grid justify-items-start gap-1">
           {entry.action_category && (
@@ -196,7 +192,7 @@ export default function AdminAuditLogPage() {
       ),
     },
     {
-      header: 'Student / record',
+      header: "Student / record",
       cell: (entry) => (
         <div>
           {entry.student_name && (
@@ -217,14 +213,13 @@ export default function AdminAuditLogPage() {
       ),
     },
     {
-      header: 'Details',
-      cell: (entry) => entry.details_summary || 'No details provided.',
+      header: "Details",
+      cell: (entry) => entry.details_summary || "No details provided.",
     },
-  ]
+  ];
 
-  const visibleEntries =
-    loading || error || filterError ? [] : entries
-  const pageNumber = Math.floor(offset / AUDIT_PAGE_SIZE) + 1
+  const visibleEntries = loading || error || filterError ? [] : entries;
+  const pageNumber = Math.floor(offset / AUDIT_PAGE_SIZE) + 1;
 
   return (
     <div className="grid gap-2">
@@ -268,7 +263,7 @@ export default function AdminAuditLogPage() {
                 value={filters.person}
                 maxLength={100}
                 placeholder="Search person name"
-                onChange={(event) => updateFilter('person', event.target.value)}
+                onChange={(event) => updateFilter("person", event.target.value)}
               />
             </FormField>
             <FormField label="Student" htmlFor="audit-student">
@@ -277,14 +272,16 @@ export default function AdminAuditLogPage() {
                 value={filters.student}
                 maxLength={100}
                 placeholder="Search student name or ID"
-                onChange={(event) => updateFilter('student', event.target.value)}
+                onChange={(event) =>
+                  updateFilter("student", event.target.value)
+                }
               />
             </FormField>
             <FormField label="Action" htmlFor="audit-category">
               <Select
-                value={filters.category || 'all'}
+                value={filters.category || "all"}
                 onValueChange={(value) =>
-                  updateFilter('category', value === 'all' ? '' : value)
+                  updateFilter("category", value === "all" ? "" : value)
                 }
               >
                 <SelectTrigger id="audit-category" className="w-full">
@@ -305,7 +302,7 @@ export default function AdminAuditLogPage() {
                 id="audit-date-from"
                 type="date"
                 value={filters.from}
-                onChange={(event) => updateFilter('from', event.target.value)}
+                onChange={(event) => updateFilter("from", event.target.value)}
               />
             </FormField>
             <FormField label="To date" htmlFor="audit-date-to">
@@ -313,7 +310,7 @@ export default function AdminAuditLogPage() {
                 id="audit-date-to"
                 type="date"
                 value={filters.to}
-                onChange={(event) => updateFilter('to', event.target.value)}
+                onChange={(event) => updateFilter("to", event.target.value)}
               />
             </FormField>
           </div>
@@ -323,14 +320,14 @@ export default function AdminAuditLogPage() {
         rowKey={(entry) => entry.id}
         empty={
           loading
-            ? 'Loading audit history…'
+            ? "Loading audit history…"
             : filterError
-              ? 'Correct the filters to view audit history.'
+              ? "Correct the filters to view audit history."
               : error
-                ? 'Audit history is unavailable.'
+                ? "Audit history is unavailable."
                 : entries.length === 0
-                  ? 'No entries match these filters.'
-                  : 'No audit entries are available on this page.'
+                  ? "No entries match these filters."
+                  : "No audit entries are available on this page."
         }
         footer={
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -345,9 +342,7 @@ export default function AdminAuditLogPage() {
                 size="sm"
                 disabled={offset === 0 || loading || Boolean(error)}
                 onClick={() =>
-                  setOffset((current) =>
-                    Math.max(0, current - AUDIT_PAGE_SIZE),
-                  )
+                  setOffset((current) => Math.max(0, current - AUDIT_PAGE_SIZE))
                 }
               >
                 Previous
@@ -367,5 +362,5 @@ export default function AdminAuditLogPage() {
         }
       />
     </div>
-  )
+  );
 }

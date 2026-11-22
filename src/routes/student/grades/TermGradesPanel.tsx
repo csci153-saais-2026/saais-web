@@ -1,11 +1,11 @@
-import { ChevronDownIcon } from "@/components/icons"
-import { Button } from "@/components/ui/button"
+import { ChevronDownIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import { StatusBadge, type Status } from "@/components/ui/status-badge"
+} from "@/components/ui/collapsible";
+import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import {
   Table,
   TableBody,
@@ -13,46 +13,46 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { ApiSchema } from "@/lib/api/types"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/table";
+import type { ApiSchema } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 
 export type TermGradesAttemptRow = ApiSchema<"AttemptResult"> & {
-  readonly code?: string | null
-  readonly title?: string | null
-}
+  readonly code?: string | null;
+  readonly title?: string | null;
+};
 
 export type TermGradesSection = Omit<ApiSchema<"TermGrades">, "attempts"> & {
-  readonly attempts: readonly TermGradesAttemptRow[]
-  readonly is_locked?: boolean
-  readonly failed_units?: number
-}
+  readonly attempts: readonly TermGradesAttemptRow[];
+  readonly is_locked?: boolean;
+  readonly failed_units?: number;
+};
 
 export interface TermGradesPanelProps {
-  readonly term: TermGradesSection
-  readonly isLocked?: boolean
+  readonly term: TermGradesSection;
+  readonly isLocked?: boolean;
   readonly courseDetails?: Readonly<
     Record<
       string,
       {
-        readonly code: string
-        readonly title?: string | null
+        readonly code: string;
+        readonly title?: string | null;
       }
     >
-  >
-  readonly openFlagAttemptIds?: ReadonlySet<string>
-  readonly open?: boolean
-  readonly onOpenChange?: (open: boolean) => void
+  >;
+  readonly openFlagAttemptIds?: ReadonlySet<string>;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
   readonly onFlagClick?: (
     attempt: TermGradesAttemptRow,
     meta: {
-      readonly code: string
-      readonly title: string
-      readonly recordedGrade: string
-      readonly reportedStage: "midterm" | "final"
-    }
-  ) => void
-  readonly className?: string
+      readonly code: string;
+      readonly title: string;
+      readonly recordedGrade: string;
+      readonly reportedStage: "midterm" | "final";
+    },
+  ) => void;
+  readonly className?: string;
 }
 
 const GRADES_COLUMNS = [
@@ -62,7 +62,7 @@ const GRADES_COLUMNS = [
   { label: "Final / completion", className: "md:w-[18%]" },
   { label: "Status", className: "md:w-[16%]" },
   { label: "Flag", className: "md:w-[14%]" },
-] as const
+] as const;
 
 const SHORT_MONTHS = [
   "Jan",
@@ -77,71 +77,71 @@ const SHORT_MONTHS = [
   "Oct",
   "Nov",
   "Dec",
-] as const
+] as const;
 
 function formatDeadlineDate(dateValue: string | null | undefined): string {
-  if (!dateValue) return "—"
-  const trimmed = dateValue.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
   if (isoMatch) {
-    const year = Number(isoMatch[1])
-    const monthIndex = Number(isoMatch[2]) - 1
-    const day = Number(isoMatch[3])
-    const monthLabel = SHORT_MONTHS[monthIndex]
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
     if (monthLabel && day >= 1 && day <= 31) {
-      return `${day} ${monthLabel} ${year}`
+      return `${day} ${monthLabel} ${year}`;
     }
   }
-  return trimmed
+  return trimmed;
 }
 
 function mapAttemptStatusToBadge(attempt: TermGradesAttemptRow): Status {
-  if (attempt.is_lapsed_inc) return "inc-lapsed"
+  if (attempt.is_lapsed_inc) return "inc-lapsed";
   switch (attempt.effective_status) {
     case "passed":
-      return "passed"
+      return "passed";
     case "failed":
-      return "failed"
+      return "failed";
     case "inc":
-      return "inc"
+      return "inc";
     case "currently_enrolled":
-      return "enrolled"
+      return "enrolled";
     case "dr":
-      return "dr"
+      return "dr";
     case "na":
     default:
-      return "na"
+      return "na";
   }
 }
 
 function formatMidtermGrade(attempt: TermGradesAttemptRow): string {
-  if (attempt.midterm_status === "dr") return "DR"
-  if (attempt.midterm_grade != null) return attempt.midterm_grade.toFixed(2)
-  return "—"
+  if (attempt.midterm_status === "dr") return "DR";
+  if (attempt.midterm_grade != null) return attempt.midterm_grade.toFixed(2);
+  return "—";
 }
 
 function formatFinalOrCompletionGrade(attempt: TermGradesAttemptRow): string {
   if (attempt.completion_grade != null) {
-    return `${attempt.completion_grade.toFixed(2)} (INC)`
+    return `${attempt.completion_grade.toFixed(2)} (INC)`;
   }
   if (attempt.is_lapsed_inc) {
-    return "INC (5.00)"
+    return "INC (5.00)";
   }
-  if (attempt.recorded_status === "inc") return "INC"
-  if (attempt.recorded_status === "dr") return "DR"
-  if (attempt.recorded_status === "na") return "NA"
-  if (attempt.final_grade != null) return attempt.final_grade.toFixed(2)
-  return "—"
+  if (attempt.recorded_status === "inc") return "INC";
+  if (attempt.recorded_status === "dr") return "DR";
+  if (attempt.recorded_status === "na") return "NA";
+  if (attempt.final_grade != null) return attempt.final_grade.toFixed(2);
+  return "—";
 }
 
 function computeFailedUnits(attempts: readonly TermGradesAttemptRow[]): number {
-  let failed = 0
+  let failed = 0;
   for (const attempt of attempts) {
     if (attempt.effective_status === "failed") {
-      failed += attempt.units_attempted
+      failed += attempt.units_attempted;
     }
   }
-  return failed
+  return failed;
 }
 
 /**
@@ -158,9 +158,9 @@ export function TermGradesPanel({
   onFlagClick,
   className,
 }: TermGradesPanelProps) {
-  const locked = isLocked ?? term.is_locked ?? false
-  const failedUnits = term.failed_units ?? computeFailedUnits(term.attempts)
-  const gwaText = term.gwa === null ? "—" : term.gwa.toFixed(2)
+  const locked = isLocked ?? term.is_locked ?? false;
+  const failedUnits = term.failed_units ?? computeFailedUnits(term.attempts);
+  const gwaText = term.gwa === null ? "—" : term.gwa.toFixed(2);
 
   return (
     <Collapsible
@@ -169,7 +169,7 @@ export function TermGradesPanel({
       defaultOpen={open === undefined ? true : undefined}
       className={cn(
         "mb-4 overflow-hidden rounded-md border border-border bg-card",
-        className
+        className,
       )}
     >
       <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-4 bg-secondary px-5 py-4 text-left hover:bg-row-hover">
@@ -200,7 +200,7 @@ export function TermGradesPanel({
                     scope="col"
                     className={cn(
                       colClass,
-                      "text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase"
+                      "text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase",
                     )}
                   >
                     {label}
@@ -210,29 +210,31 @@ export function TermGradesPanel({
             </TableHeader>
             <TableBody>
               {term.attempts.map((attempt) => {
-                const lookup = courseDetails?.[attempt.course_offering_id]
+                const lookup = courseDetails?.[attempt.course_offering_id];
                 const code =
                   attempt.code?.trim() ||
                   lookup?.code?.trim() ||
-                  attempt.course_offering_id
+                  attempt.course_offering_id;
                 const title =
-                  attempt.title?.trim() || lookup?.title?.trim() || ""
-                const midtermText = formatMidtermGrade(attempt)
-                const finalText = formatFinalOrCompletionGrade(attempt)
+                  attempt.title?.trim() || lookup?.title?.trim() || "";
+                const midtermText = formatMidtermGrade(attempt);
+                const finalText = formatFinalOrCompletionGrade(attempt);
                 const recordedGradeForFlag =
                   finalText !== "—"
                     ? finalText
                     : midtermText !== "—"
                       ? `mid ${midtermText}`
-                      : "No grade yet"
+                      : "No grade yet";
                 const reportedStage: "midterm" | "final" =
-                  finalText === "—" && midtermText !== "—" ? "midterm" : "final"
-                const badgeStatus = mapAttemptStatusToBadge(attempt)
-                const isFlagged = openFlagAttemptIds?.has(attempt.id) ?? false
+                  finalText === "—" && midtermText !== "—"
+                    ? "midterm"
+                    : "final";
+                const badgeStatus = mapAttemptStatusToBadge(attempt);
+                const isFlagged = openFlagAttemptIds?.has(attempt.id) ?? false;
                 const showIncDue =
                   attempt.effective_status === "inc" &&
                   !attempt.is_lapsed_inc &&
-                  !!attempt.inc_deadline
+                  !!attempt.inc_deadline;
 
                 return (
                   <TableRow key={attempt.id} className="border-line-soft">
@@ -267,7 +269,10 @@ export function TermGradesPanel({
                     >
                       {finalText}
                     </TableCell>
-                    <TableCell label="Status" className="px-3.5 py-row text-cell">
+                    <TableCell
+                      label="Status"
+                      className="px-3.5 py-row text-cell"
+                    >
                       <div className="flex flex-col items-end gap-1 md:items-start">
                         <StatusBadge status={badgeStatus} />
                         {showIncDue && (
@@ -291,7 +296,7 @@ export function TermGradesPanel({
                         className={cn(
                           "min-h-11 md:min-h-[38px]",
                           isFlagged &&
-                            "border-notice-advisory-border bg-notice-advisory-bg text-notice-advisory hover:bg-notice-advisory-bg"
+                            "border-notice-advisory-border bg-notice-advisory-bg text-notice-advisory hover:bg-notice-advisory-bg",
                         )}
                         onClick={() =>
                           onFlagClick?.(attempt, {
@@ -306,7 +311,7 @@ export function TermGradesPanel({
                       </Button>
                     </TableCell>
                   </TableRow>
-                )
+                );
               })}
             </TableBody>
           </Table>
@@ -317,5 +322,5 @@ export function TermGradesPanel({
         )}
       </CollapsibleContent>
     </Collapsible>
-  )
+  );
 }

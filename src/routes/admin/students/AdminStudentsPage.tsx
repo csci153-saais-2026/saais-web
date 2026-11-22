@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { FormField } from '@/components/features/form-field'
-import { PageHeading } from '@/components/features/page-heading'
-import { Panel } from '@/components/features/panel'
-import { SearchInput } from '@/components/features/search-input'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { FormField } from "@/components/features/form-field";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
+import { SearchInput } from "@/components/features/search-input";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Sheet,
   SheetClose,
@@ -15,14 +15,14 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -30,47 +30,47 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   apiClient,
   unwrapApiResult,
   type ApiSchema,
   type OperationQuery,
-} from '@/lib/api'
+} from "@/lib/api";
 
-const PAGE_SIZE = 20
-const ALL = 'all'
+const PAGE_SIZE = 20;
+const ALL = "all";
 
-type RosterQuery = OperationQuery<'listStudentRoster'>
-type Roster = ApiSchema<'StudentRosterResponse'>
-type Standing = NonNullable<RosterQuery['standing']>
-type SortColumn = NonNullable<RosterQuery['sort_by']>
-type BooleanFilter = 'all' | 'true' | 'false'
-type FilterOption = { value: string; label: string }
+type RosterQuery = OperationQuery<"listStudentRoster">;
+type Roster = ApiSchema<"StudentRosterResponse">;
+type Standing = NonNullable<RosterQuery["standing"]>;
+type SortColumn = NonNullable<RosterQuery["sort_by"]>;
+type BooleanFilter = "all" | "true" | "false";
+type FilterOption = { value: string; label: string };
 
 const standingOptions: { value: Standing; label: string }[] = [
-  { value: 'good_standing', label: 'Good standing' },
-  { value: 'warning', label: 'Warning' },
-  { value: 'probation', label: 'Probation' },
-  { value: 'dismissed', label: 'Dismissed' },
-]
+  { value: "good_standing", label: "Good standing" },
+  { value: "warning", label: "Warning" },
+  { value: "probation", label: "Probation" },
+  { value: "dismissed", label: "Dismissed" },
+];
 
 const booleanFilterOptions = [
-  { value: 'all', label: 'Any' },
-  { value: 'true', label: 'With condition' },
-  { value: 'false', label: 'Without condition' },
-] as const
+  { value: "all", label: "Any" },
+  { value: "true", label: "With condition" },
+  { value: "false", label: "Without condition" },
+] as const;
 
 function formatGwa(gwa: number | null | undefined): string {
-  return gwa == null ? '—' : gwa.toFixed(2)
+  return gwa == null ? "—" : gwa.toFixed(2);
 }
 
 function isStanding(value: string): value is Standing {
-  return standingOptions.some((option) => option.value === value)
+  return standingOptions.some((option) => option.value === value);
 }
 
 function isBooleanFilter(value: string): value is BooleanFilter {
-  return booleanFilterOptions.some((option) => option.value === value)
+  return booleanFilterOptions.some((option) => option.value === value);
 }
 
 function FilterSelect({
@@ -81,12 +81,12 @@ function FilterSelect({
   options,
   disabled = false,
 }: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: FilterOption[]
-  disabled?: boolean
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: FilterOption[];
+  disabled?: boolean;
 }) {
   return (
     <FormField label={label} htmlFor={id}>
@@ -103,34 +103,34 @@ function FilterSelect({
         </SelectContent>
       </Select>
     </FormField>
-  )
+  );
 }
 
 export default function AdminStudentsPage() {
-  const [search, setSearch] = useState('')
-  const [facultyId, setFacultyId] = useState(ALL)
-  const [programId, setProgramId] = useState(ALL)
-  const [yearLevel, setYearLevel] = useState(ALL)
-  const [standing, setStanding] = useState<Standing | typeof ALL>(ALL)
-  const [hasDeficiencies, setHasDeficiencies] = useState<BooleanFilter>(ALL)
-  const [hasOpenInc, setHasOpenInc] = useState<BooleanFilter>(ALL)
-  const [hasOpenFlags, setHasOpenFlags] = useState<BooleanFilter>(ALL)
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
-  const [sortBy, setSortBy] = useState<SortColumn>('full_name')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-  const [page, setPage] = useState(0)
-  const [reload, setReload] = useState(0)
-  const [roster, setRoster] = useState<Roster | null>(null)
-  const [loadedRequestKey, setLoadedRequestKey] = useState('')
+  const [search, setSearch] = useState("");
+  const [facultyId, setFacultyId] = useState(ALL);
+  const [programId, setProgramId] = useState(ALL);
+  const [yearLevel, setYearLevel] = useState(ALL);
+  const [standing, setStanding] = useState<Standing | typeof ALL>(ALL);
+  const [hasDeficiencies, setHasDeficiencies] = useState<BooleanFilter>(ALL);
+  const [hasOpenInc, setHasOpenInc] = useState<BooleanFilter>(ALL);
+  const [hasOpenFlags, setHasOpenFlags] = useState<BooleanFilter>(ALL);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortColumn>("full_name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(0);
+  const [reload, setReload] = useState(0);
+  const [roster, setRoster] = useState<Roster | null>(null);
+  const [loadedRequestKey, setLoadedRequestKey] = useState("");
   const [requestError, setRequestError] = useState<{
-    key: string
-    message: string
-  } | null>(null)
-  const [facultyOptions, setFacultyOptions] = useState<FilterOption[]>([])
-  const [programOptions, setProgramOptions] = useState<FilterOption[]>([])
-  const [catalogsLoaded, setCatalogsLoaded] = useState(false)
-  const [catalogError, setCatalogError] = useState<string | null>(null)
-  const [catalogReload, setCatalogReload] = useState(0)
+    key: string;
+    message: string;
+  } | null>(null);
+  const [facultyOptions, setFacultyOptions] = useState<FilterOption[]>([]);
+  const [programOptions, setProgramOptions] = useState<FilterOption[]>([]);
+  const [catalogsLoaded, setCatalogsLoaded] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogReload, setCatalogReload] = useState(0);
 
   const query = useMemo<RosterQuery>(() => {
     const request: RosterQuery = {
@@ -138,17 +138,18 @@ export default function AdminStudentsPage() {
       offset: page * PAGE_SIZE,
       sort_by: sortBy,
       sort_dir: sortDir,
-    }
+    };
 
-    if (search.trim()) request.search = search.trim()
-    if (facultyId !== ALL) request.faculty_id = facultyId
-    if (programId !== ALL) request.program_id = programId
-    if (yearLevel !== ALL) request.year_level = Number(yearLevel)
-    if (standing !== ALL) request.standing = standing
-    if (hasDeficiencies !== ALL) request.has_deficiencies = hasDeficiencies === 'true'
-    if (hasOpenInc !== ALL) request.has_open_inc = hasOpenInc === 'true'
-    if (hasOpenFlags !== ALL) request.has_open_flags = hasOpenFlags === 'true'
-    return request
+    if (search.trim()) request.search = search.trim();
+    if (facultyId !== ALL) request.faculty_id = facultyId;
+    if (programId !== ALL) request.program_id = programId;
+    if (yearLevel !== ALL) request.year_level = Number(yearLevel);
+    if (standing !== ALL) request.standing = standing;
+    if (hasDeficiencies !== ALL)
+      request.has_deficiencies = hasDeficiencies === "true";
+    if (hasOpenInc !== ALL) request.has_open_inc = hasOpenInc === "true";
+    if (hasOpenFlags !== ALL) request.has_open_flags = hasOpenFlags === "true";
+    return request;
   }, [
     page,
     sortBy,
@@ -161,90 +162,91 @@ export default function AdminStudentsPage() {
     hasDeficiencies,
     hasOpenInc,
     hasOpenFlags,
-  ])
-  const requestKey = `${JSON.stringify(query)}:${reload}`
-  const loading = loadedRequestKey !== requestKey
-  const error = requestError?.key === requestKey ? requestError.message : null
+  ]);
+  const requestKey = `${JSON.stringify(query)}:${reload}`;
+  const loading = loadedRequestKey !== requestKey;
+  const error = requestError?.key === requestKey ? requestError.message : null;
 
   useEffect(() => {
-    let active = true
+    let active = true;
 
     void apiClient
-      .GET('/functions/v1/students', { params: { query } })
+      .GET("/functions/v1/students", { params: { query } })
       .then(unwrapApiResult)
       .then((result) => {
-        if (!active) return
-        setRoster(result)
+        if (!active) return;
+        setRoster(result);
         setRequestError((current) =>
           current?.key === requestKey ? null : current,
-        )
+        );
       })
       .catch((requestError: unknown) => {
-        if (!active) return
+        if (!active) return;
         setRequestError({
           key: requestKey,
           message:
             requestError instanceof Error
               ? requestError.message
-              : 'The student roster could not be loaded.',
-        })
+              : "The student roster could not be loaded.",
+        });
       })
       .finally(() => {
-        if (active) setLoadedRequestKey(requestKey)
-      })
+        if (active) setLoadedRequestKey(requestKey);
+      });
 
     return () => {
-      active = false
-    }
-  }, [
-    query,
-    requestKey,
-  ])
+      active = false;
+    };
+  }, [query, requestKey]);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     void Promise.all([
-      apiClient.GET('/rest/v1/faculty', {
-        params: {
-          query: { select: 'id,name', order: 'name.asc', limit: 1000 },
-        },
-      }).then(unwrapApiResult),
-      apiClient.GET('/rest/v1/program', {
-        params: {
-          query: { select: 'id,code,name', order: 'name.asc', limit: 1000 },
-        },
-      }).then(unwrapApiResult),
+      apiClient
+        .GET("/rest/v1/faculty", {
+          params: {
+            query: { select: "id,name", order: "name.asc", limit: 1000 },
+          },
+        })
+        .then(unwrapApiResult),
+      apiClient
+        .GET("/rest/v1/program", {
+          params: {
+            query: { select: "id,code,name", order: "name.asc", limit: 1000 },
+          },
+        })
+        .then(unwrapApiResult),
     ])
       .then(([faculties, programs]) => {
-        if (!active) return
+        if (!active) return;
         setFacultyOptions(
           faculties.map((faculty) => ({
             value: faculty.id,
             label: faculty.name,
           })),
-        )
+        );
         setProgramOptions(
           programs.map((program) => ({
             value: program.id,
             label: `${program.code} · ${program.name}`,
           })),
-        )
-        setCatalogError(null)
-        setCatalogsLoaded(true)
+        );
+        setCatalogError(null);
+        setCatalogsLoaded(true);
       })
       .catch((requestError: unknown) => {
-        if (!active) return
+        if (!active) return;
         setCatalogError(
           requestError instanceof Error
             ? requestError.message
-            : 'Faculty and program filters could not be loaded.',
-        )
-      })
+            : "Faculty and program filters could not be loaded.",
+        );
+      });
 
     return () => {
-      active = false
-    }
-  }, [catalogReload])
+      active = false;
+    };
+  }, [catalogReload]);
   const hasActiveFilters =
     Boolean(search.trim()) ||
     facultyId !== ALL ||
@@ -253,7 +255,7 @@ export default function AdminStudentsPage() {
     standing !== ALL ||
     hasDeficiencies !== ALL ||
     hasOpenInc !== ALL ||
-    hasOpenFlags !== ALL
+    hasOpenFlags !== ALL;
   const activeFilterCount = [
     facultyId,
     programId,
@@ -262,50 +264,50 @@ export default function AdminStudentsPage() {
     hasDeficiencies,
     hasOpenInc,
     hasOpenFlags,
-  ].filter((value) => value !== ALL).length
-  const totalCount = roster?.total_count ?? 0
-  const pageCount = Math.ceil(totalCount / PAGE_SIZE)
+  ].filter((value) => value !== ALL).length;
+  const totalCount = roster?.total_count ?? 0;
+  const pageCount = Math.ceil(totalCount / PAGE_SIZE);
 
   function resetPageAnd<T>(setter: (value: T) => void, value: T) {
-    setPage(0)
-    setter(value)
+    setPage(0);
+    setter(value);
   }
 
   function resetFilters() {
-    setPage(0)
-    setFacultyId(ALL)
-    setProgramId(ALL)
-    setYearLevel(ALL)
-    setStanding(ALL)
-    setHasDeficiencies(ALL)
-    setHasOpenInc(ALL)
-    setHasOpenFlags(ALL)
+    setPage(0);
+    setFacultyId(ALL);
+    setProgramId(ALL);
+    setYearLevel(ALL);
+    setStanding(ALL);
+    setHasDeficiencies(ALL);
+    setHasOpenInc(ALL);
+    setHasOpenFlags(ALL);
   }
 
   function toggleSort(column: SortColumn) {
     if (sortBy === column) {
-      setSortDir((direction) => (direction === 'asc' ? 'desc' : 'asc'))
+      setSortDir((direction) => (direction === "asc" ? "desc" : "asc"));
     } else {
-      setSortBy(column)
-      setSortDir('asc')
+      setSortBy(column);
+      setSortDir("asc");
     }
-    setPage(0)
+    setPage(0);
   }
 
   function sortHeading(label: string, column: SortColumn) {
-    const active = sortBy === column
-    const marker = active ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+    const active = sortBy === column;
+    const marker = active ? (sortDir === "asc" ? " ↑" : " ↓") : "";
     return (
       <button
         type="button"
         className="text-[11.5px] font-semibold tracking-[0.09em] uppercase hover:text-foreground focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
-        aria-label={`Sort by ${label}${active ? `, currently ${sortDir}ending` : ''}`}
+        aria-label={`Sort by ${label}${active ? `, currently ${sortDir}ending` : ""}`}
         onClick={() => toggleSort(column)}
       >
         {label}
         {marker}
       </button>
-    )
+    );
   }
 
   return (
@@ -330,7 +332,7 @@ export default function AdminStudentsPage() {
                   type="button"
                   variant="outline"
                   aria-label={`Filter students, ${activeFilterCount} active ${
-                    activeFilterCount === 1 ? 'filter' : 'filters'
+                    activeFilterCount === 1 ? "filter" : "filters"
                   }`}
                 >
                   <span>Filter</span>
@@ -343,7 +345,8 @@ export default function AdminStudentsPage() {
                 <SheetHeader className="border-b border-border p-6 pr-14">
                   <SheetTitle>Student filters</SheetTitle>
                   <SheetDescription>
-                    Narrow the roster by organization, year, and academic conditions.
+                    Narrow the roster by organization, year, and academic
+                    conditions.
                   </SheetDescription>
                 </SheetHeader>
                 <div className="flex-1 space-y-4 overflow-y-auto p-6">
@@ -353,7 +356,7 @@ export default function AdminStudentsPage() {
                     value={facultyId}
                     onChange={(value) => resetPageAnd(setFacultyId, value)}
                     options={[
-                      { value: ALL, label: 'All faculties' },
+                      { value: ALL, label: "All faculties" },
                       ...facultyOptions,
                     ]}
                     disabled={!catalogsLoaded}
@@ -364,7 +367,7 @@ export default function AdminStudentsPage() {
                     value={programId}
                     onChange={(value) => resetPageAnd(setProgramId, value)}
                     options={[
-                      { value: ALL, label: 'All programs' },
+                      { value: ALL, label: "All programs" },
                       ...programOptions,
                     ]}
                     disabled={!catalogsLoaded}
@@ -375,7 +378,7 @@ export default function AdminStudentsPage() {
                     value={yearLevel}
                     onChange={(value) => resetPageAnd(setYearLevel, value)}
                     options={[
-                      { value: ALL, label: 'All year levels' },
+                      { value: ALL, label: "All year levels" },
                       ...[1, 2, 3, 4, 5, 6].map((year) => ({
                         value: String(year),
                         label: `Year ${year}`,
@@ -388,11 +391,11 @@ export default function AdminStudentsPage() {
                     value={standing}
                     onChange={(value) => {
                       if (value === ALL || isStanding(value)) {
-                        resetPageAnd(setStanding, value)
+                        resetPageAnd(setStanding, value);
                       }
                     }}
                     options={[
-                      { value: ALL, label: 'All standings' },
+                      { value: ALL, label: "All standings" },
                       ...standingOptions,
                     ]}
                   />
@@ -402,13 +405,13 @@ export default function AdminStudentsPage() {
                     value={hasDeficiencies}
                     onChange={(value) => {
                       if (isBooleanFilter(value)) {
-                        resetPageAnd(setHasDeficiencies, value)
+                        resetPageAnd(setHasDeficiencies, value);
                       }
                     }}
                     options={[
-                      { value: ALL, label: 'Any deficiencies' },
-                      { value: 'true', label: 'Has deficiencies' },
-                      { value: 'false', label: 'No deficiencies' },
+                      { value: ALL, label: "Any deficiencies" },
+                      { value: "true", label: "Has deficiencies" },
+                      { value: "false", label: "No deficiencies" },
                     ]}
                   />
                   <FilterSelect
@@ -417,13 +420,13 @@ export default function AdminStudentsPage() {
                     value={hasOpenInc}
                     onChange={(value) => {
                       if (isBooleanFilter(value)) {
-                        resetPageAnd(setHasOpenInc, value)
+                        resetPageAnd(setHasOpenInc, value);
                       }
                     }}
                     options={[
-                      { value: ALL, label: 'Any open INC' },
-                      { value: 'true', label: 'Has open INC' },
-                      { value: 'false', label: 'No open INC' },
+                      { value: ALL, label: "Any open INC" },
+                      { value: "true", label: "Has open INC" },
+                      { value: "false", label: "No open INC" },
                     ]}
                   />
                   <FilterSelect
@@ -432,13 +435,13 @@ export default function AdminStudentsPage() {
                     value={hasOpenFlags}
                     onChange={(value) => {
                       if (isBooleanFilter(value)) {
-                        resetPageAnd(setHasOpenFlags, value)
+                        resetPageAnd(setHasOpenFlags, value);
                       }
                     }}
                     options={[
-                      { value: ALL, label: 'Any open flags' },
-                      { value: 'true', label: 'Has open flags' },
-                      { value: 'false', label: 'No open flags' },
+                      { value: ALL, label: "Any open flags" },
+                      { value: "true", label: "Has open flags" },
+                      { value: "false", label: "No open flags" },
                     ]}
                   />
                 </div>
@@ -523,19 +526,19 @@ export default function AdminStudentsPage() {
             <TableHeader className="bg-secondary">
               <TableRow>
                 <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading('Student', 'full_name')}
+                  {sortHeading("Student", "full_name")}
                 </TableHead>
                 <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading('Student no.', 'student_number')}
+                  {sortHeading("Student no.", "student_number")}
                 </TableHead>
                 <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   Curriculum
                 </TableHead>
                 <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading('Year', 'year_level')}
+                  {sortHeading("Year", "year_level")}
                 </TableHead>
                 <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading('GWA', 'gwa')}
+                  {sortHeading("GWA", "gwa")}
                 </TableHead>
                 <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
                   Open flags
@@ -548,7 +551,10 @@ export default function AdminStudentsPage() {
             <TableBody>
               {roster.items.map((student) => (
                 <TableRow key={student.student_id}>
-                  <TableCell label="Student" className="whitespace-normal px-3.5 py-[11px] text-[13.5px]">
+                  <TableCell
+                    label="Student"
+                    className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
+                  >
                     <div className="break-words font-semibold leading-tight">
                       {student.full_name}
                     </div>
@@ -559,16 +565,22 @@ export default function AdminStudentsPage() {
                   >
                     {student.student_number}
                   </TableCell>
-                  <TableCell label="Curriculum" className="whitespace-normal px-3.5 py-[11px] text-[13.5px]">
+                  <TableCell
+                    label="Curriculum"
+                    className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
+                  >
                     <div className="break-words leading-tight">
                       {student.curriculum_label}
                     </div>
                     <div className="break-words text-xs leading-tight text-muted-foreground">
-                      {student.program_code} ·{' '}
-                      {student.entry_year ?? 'Entry year unavailable'}
+                      {student.program_code} ·{" "}
+                      {student.entry_year ?? "Entry year unavailable"}
                     </div>
                   </TableCell>
-                  <TableCell label="Year" className="whitespace-normal px-3.5 py-[11px] text-[13.5px]">
+                  <TableCell
+                    label="Year"
+                    className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
+                  >
                     {student.year_level}
                   </TableCell>
                   <TableCell
@@ -577,7 +589,10 @@ export default function AdminStudentsPage() {
                   >
                     {formatGwa(student.gwa)}
                   </TableCell>
-                  <TableCell label="Open flags" className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]">
+                  <TableCell
+                    label="Open flags"
+                    className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]"
+                  >
                     {student.open_flags_count > 0 ? (
                       <StatusBadge status="flagged">
                         {student.open_flags_count} open
@@ -611,15 +626,15 @@ export default function AdminStudentsPage() {
             <p className="px-5 py-8 text-center text-sm text-muted-foreground">
               {hasActiveFilters
                 ? search.trim()
-                  ? 'No students match that search.'
-                  : 'No students match the selected filters.'
-                : 'No students are available in the roster.'}
+                  ? "No students match that search."
+                  : "No students match the selected filters."
+                : "No students are available in the roster."}
             </p>
           )}
           <div className="flex flex-col gap-3 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>
               {totalCount === 0
-                ? '0 students'
+                ? "0 students"
                 : `Showing ${page * PAGE_SIZE + 1}–${Math.min(
                     page * PAGE_SIZE + roster.items.length,
                     totalCount,
@@ -650,5 +665,5 @@ export default function AdminStudentsPage() {
         </Panel>
       ) : null}
     </div>
-  )
+  );
 }

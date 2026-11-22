@@ -1,12 +1,12 @@
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
-import type { DeanAuditAction } from "@/routes/dean/types"
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { DeanAuditAction } from "@/routes/dean/types";
 
 const PILL_STYLES: Readonly<Record<DeanAuditAction, string>> = {
   Change: "border-transparent bg-[#FBF0D6] text-[#8A6206]",
   "Sign-in": "border-transparent bg-[#E7F0E2] text-[#2C6430]",
   View: "border-transparent bg-[#E4EDF4] text-[#2A4C6B]",
-}
+};
 
 export function DeanAuditActionPill({ action }: { action: DeanAuditAction }) {
   return (
@@ -19,5 +19,5 @@ export function DeanAuditActionPill({ action }: { action: DeanAuditAction }) {
     >
       {action}
     </Badge>
-  )
+  );
 }

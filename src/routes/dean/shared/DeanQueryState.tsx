@@ -1,6 +1,6 @@
-import { Panel } from "@/components/features/panel"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { Panel } from "@/components/features/panel";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 export function DeanQueryState({
   isLoading,
@@ -11,22 +11,25 @@ export function DeanQueryState({
   emptyMessage,
   onRetry,
 }: {
-  isLoading: boolean
-  isError: boolean
-  isEmpty?: boolean
-  label: string
-  emptyTitle?: string
-  emptyMessage?: string
-  onRetry?: () => void
+  isLoading: boolean;
+  isError: boolean;
+  isEmpty?: boolean;
+  label: string;
+  emptyTitle?: string;
+  emptyMessage?: string;
+  onRetry?: () => void;
 }) {
   if (isLoading) {
     return (
-      <Panel title={`Loading ${label}…`} description="Fetching records from the server.">
+      <Panel
+        title={`Loading ${label}…`}
+        description="Fetching records from the server."
+      >
         <p role="status" className="py-4 text-sm text-muted-foreground">
           Loading {label}…
         </p>
       </Panel>
-    )
+    );
   }
 
   if (isError) {
@@ -41,7 +44,7 @@ export function DeanQueryState({
           )}
         </AlertDescription>
       </Alert>
-    )
+    );
   }
 
   if (isEmpty) {
@@ -56,8 +59,8 @@ export function DeanQueryState({
           )}
         </div>
       </Panel>
-    )
+    );
   }
 
-  return null
+  return null;
 }

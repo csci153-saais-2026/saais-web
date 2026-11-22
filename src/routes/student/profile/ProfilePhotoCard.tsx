@@ -1,20 +1,18 @@
-import * as React from "react"
-import { Panel } from "@/components/features/panel"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import {
-  studentPhotoFileSchema,
-} from "./student-photo-schema"
+import * as React from "react";
+import { Panel } from "@/components/features/panel";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { studentPhotoFileSchema } from "./student-photo-schema";
 
 export interface ProfilePhotoCardProps {
-  readonly initials: string
-  readonly avatarUrl?: string | null
-  readonly fullName?: string | null
-  readonly onUpload?: (file: File) => Promise<void> | void
-  readonly onRemove?: () => Promise<void> | void
-  readonly isBusy?: boolean
-  readonly className?: string
+  readonly initials: string;
+  readonly avatarUrl?: string | null;
+  readonly fullName?: string | null;
+  readonly onUpload?: (file: File) => Promise<void> | void;
+  readonly onRemove?: () => Promise<void> | void;
+  readonly isBusy?: boolean;
+  readonly className?: string;
 }
 
 /**
@@ -30,50 +28,50 @@ export function ProfilePhotoCard({
   isBusy = false,
   className,
 }: ProfilePhotoCardProps) {
-  const inputRef = React.useRef<HTMLInputElement>(null)
-  const [statusMessage, setStatusMessage] = React.useState<string>("")
-  const [errorMessage, setErrorMessage] = React.useState<string>("")
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [statusMessage, setStatusMessage] = React.useState<string>("");
+  const [errorMessage, setErrorMessage] = React.useState<string>("");
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (!file) return
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
 
     const validation = studentPhotoFileSchema.safeParse({
       mime_type: file.type,
       file_size_bytes: file.size,
-    })
+    });
 
     if (!validation.success) {
-      const firstIssue = validation.error.issues[0]
-      setStatusMessage("")
-      setErrorMessage(firstIssue?.message ?? "Invalid image file.")
-      return
+      const firstIssue = validation.error.issues[0];
+      setStatusMessage("");
+      setErrorMessage(firstIssue?.message ?? "Invalid image file.");
+      return;
     }
 
-    setErrorMessage("")
+    setErrorMessage("");
     try {
-      await onUpload?.(file)
-      setStatusMessage("Photo updated.")
+      await onUpload?.(file);
+      setStatusMessage("Photo updated.");
     } catch (err) {
-      setStatusMessage("")
+      setStatusMessage("");
       setErrorMessage(
-        err instanceof Error ? err.message : "Could not update photo."
-      )
+        err instanceof Error ? err.message : "Could not update photo.",
+      );
     }
   }
 
   async function handleRemove() {
-    if (!avatarUrl) return
-    setErrorMessage("")
+    if (!avatarUrl) return;
+    setErrorMessage("");
     try {
-      await onRemove?.()
-      setStatusMessage("Photo removed.")
+      await onRemove?.();
+      setStatusMessage("Photo removed.");
     } catch (err) {
-      setStatusMessage("")
+      setStatusMessage("");
       setErrorMessage(
-        err instanceof Error ? err.message : "Could not remove photo."
-      )
+        err instanceof Error ? err.message : "Could not remove photo.",
+      );
     }
   }
 
@@ -138,15 +136,12 @@ export function ProfilePhotoCard({
           )}
 
           {!errorMessage && statusMessage && (
-            <p
-              role="status"
-              className="mt-2.5 text-cell text-muted-foreground"
-            >
+            <p role="status" className="mt-2.5 text-cell text-muted-foreground">
               {statusMessage}
             </p>
           )}
         </div>
       </div>
     </Panel>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-import { AlertIcon, ChevronRightIcon } from '@/components/icons'
-import { Button } from '@/components/ui/button'
-import { Kicker } from '@/components/ui/kicker'
-import { PREREQUISITE_ENGINE_SECTION } from '@/routes/landing/landingData'
+import { AlertIcon, ChevronRightIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Kicker } from "@/components/ui/kicker";
+import { PREREQUISITE_ENGINE_SECTION } from "@/routes/landing/landingData";
 
 export function PrerequisiteShowcaseSection() {
   return (
@@ -24,7 +24,7 @@ export function PrerequisiteShowcaseSection() {
             className="pointer-events-none absolute -right-[160px] -bottom-[200px] size-[560px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle at 40% 40%, rgba(224,168,46,0.16), rgba(224,168,46,0) 64%)',
+                "radial-gradient(circle at 40% 40%, rgba(224,168,46,0.16), rgba(224,168,46,0) 64%)",
             }}
             aria-hidden="true"
           />
@@ -42,19 +42,19 @@ export function PrerequisiteShowcaseSection() {
                 <p className="mt-3 max-w-[74ch] text-sm leading-[1.6] text-muted-foreground">
                   <strong className="font-semibold text-foreground">
                     {PREREQUISITE_ENGINE_SECTION.dialogStudent}
-                  </strong>{' '}
-                  has not passed{' '}
+                  </strong>{" "}
+                  has not passed{" "}
                   <span className="font-mono text-[13px] font-medium text-foreground">
                     {PREREQUISITE_ENGINE_SECTION.dialogMissingCourse}
                   </span>
-                  , a strict prerequisite of{' '}
+                  , a strict prerequisite of{" "}
                   <span className="font-mono text-[13px] font-medium text-foreground">
                     {PREREQUISITE_ENGINE_SECTION.dialogTargetCourse}
                   </span>
-                  . Continuing records the attempt with{' '}
+                  . Continuing records the attempt with{" "}
                   <strong className="font-semibold text-foreground">
                     prerequisite_override = true
-                  </strong>{' '}
+                  </strong>{" "}
                   and writes an audit entry under your name.
                 </p>
               </div>
@@ -96,5 +96,5 @@ export function PrerequisiteShowcaseSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

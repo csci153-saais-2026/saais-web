@@ -1,21 +1,21 @@
-import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   EnrollmentHistoryTable,
   type EnrollmentHistoryRow,
-} from "./EnrollmentHistoryTable"
-import type { EnrollmentHistoryOfferingDetail } from "./student-enrollment-history.api"
-import { useStudentEnrollmentHistory } from "./use-student-enrollment-history"
+} from "./EnrollmentHistoryTable";
+import type { EnrollmentHistoryOfferingDetail } from "./student-enrollment-history.api";
+import { useStudentEnrollmentHistory } from "./use-student-enrollment-history";
 
 export interface StudentEnrollmentHistoryViewProps {
-  readonly attempts: readonly EnrollmentHistoryRow[]
+  readonly attempts: readonly EnrollmentHistoryRow[];
   readonly offeringDetails?: Readonly<
     Record<string, EnrollmentHistoryOfferingDetail>
-  >
-  readonly slotLabels?: Readonly<Record<string, string>>
-  readonly className?: string
+  >;
+  readonly slotLabels?: Readonly<Record<string, string>>;
+  readonly className?: string;
 }
 
 /**
@@ -40,7 +40,7 @@ export function StudentEnrollmentHistoryView({
         slotLabels={slotLabels}
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -49,13 +49,13 @@ export function StudentEnrollmentHistoryView({
 export function StudentEnrollmentHistoryPage({
   studentId,
 }: {
-  studentId: string
+  studentId: string;
 }) {
   const { data, isPending, isError, refetch } =
-    useStudentEnrollmentHistory(studentId)
+    useStudentEnrollmentHistory(studentId);
 
   if (isPending) {
-    return <p role="status">Loading...</p>
+    return <p role="status">Loading...</p>;
   }
 
   if (isError || !data) {
@@ -64,15 +64,11 @@ export function StudentEnrollmentHistoryPage({
         title="Unable to load enrollment history"
         description="We could not load your course enrollment history right now."
       >
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void refetch()}
-        >
+        <Button type="button" variant="outline" onClick={() => void refetch()}>
           Try again
         </Button>
       </Panel>
-    )
+    );
   }
 
   return (
@@ -81,7 +77,7 @@ export function StudentEnrollmentHistoryPage({
       offeringDetails={data.offeringDetails}
       slotLabels={data.slotLabels}
     />
-  )
+  );
 }
 
-export default StudentEnrollmentHistoryPage
+export default StudentEnrollmentHistoryPage;

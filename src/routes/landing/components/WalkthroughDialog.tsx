@@ -1,7 +1,7 @@
-import { useRef, useState, type FormEvent } from 'react'
-import { CheckIcon } from '@/components/icons'
-import { FormField } from '@/components/features/form-field'
-import { Button } from '@/components/ui/button'
+import { useRef, useState, type FormEvent } from "react";
+import { CheckIcon } from "@/components/icons";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,76 +9,79 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { CLOSING_CTA } from '@/routes/landing/landingData'
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { CLOSING_CTA } from "@/routes/landing/landingData";
 
 export interface WalkthroughDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 interface ValidationErrors {
-  name?: string
-  email?: string
+  name?: string;
+  email?: string;
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function WalkthroughDialog({ open, onOpenChange }: WalkthroughDialogProps) {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState('')
-  const [notes, setNotes] = useState('')
-  const [errors, setErrors] = useState<ValidationErrors>({})
-  const [submitted, setSubmitted] = useState(false)
+export function WalkthroughDialog({
+  open,
+  onOpenChange,
+}: WalkthroughDialogProps) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [notes, setNotes] = useState("");
+  const [errors, setErrors] = useState<ValidationErrors>({});
+  const [submitted, setSubmitted] = useState(false);
 
-  const nameRef = useRef<HTMLInputElement>(null)
-  const emailRef = useRef<HTMLInputElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
-    setName('')
-    setEmail('')
-    setRole('')
-    setNotes('')
-    setErrors({})
-    setSubmitted(false)
-  }
+    setName("");
+    setEmail("");
+    setRole("");
+    setNotes("");
+    setErrors({});
+    setSubmitted(false);
+  };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      resetForm()
+      resetForm();
     }
-    onOpenChange(nextOpen)
-  }
+    onOpenChange(nextOpen);
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+    event.preventDefault();
 
-    const nextErrors: ValidationErrors = {}
+    const nextErrors: ValidationErrors = {};
     if (!name.trim()) {
-      nextErrors.name = 'Enter your name or office.'
+      nextErrors.name = "Enter your name or office.";
     }
     if (!email.trim()) {
-      nextErrors.email = 'Enter an institutional email address.'
+      nextErrors.email = "Enter an institutional email address.";
     } else if (!EMAIL_PATTERN.test(email.trim())) {
-      nextErrors.email = 'Enter a valid email address.'
+      nextErrors.email = "Enter a valid email address.";
     }
 
     if (nextErrors.name || nextErrors.email) {
-      setErrors(nextErrors)
+      setErrors(nextErrors);
       if (nextErrors.name) {
-        nameRef.current?.focus()
+        nameRef.current?.focus();
       } else if (nextErrors.email) {
-        emailRef.current?.focus()
+        emailRef.current?.focus();
       }
-      return
+      return;
     }
 
-    setErrors({})
-    setSubmitted(true)
-  }
+    setErrors({});
+    setSubmitted(true);
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -125,8 +128,9 @@ export function WalkthroughDialog({ open, onOpenChange }: WalkthroughDialogProps
                 id="walkthrough-name"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value)
-                  if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }))
+                  setName(e.target.value);
+                  if (errors.name)
+                    setErrors((prev) => ({ ...prev, name: undefined }));
                 }}
                 placeholder="[Adviser or department head name]"
                 aria-invalid={Boolean(errors.name)}
@@ -145,8 +149,9 @@ export function WalkthroughDialog({ open, onOpenChange }: WalkthroughDialogProps
                 type="email"
                 value={email}
                 onChange={(e) => {
-                  setEmail(e.target.value)
-                  if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+                  setEmail(e.target.value);
+                  if (errors.email)
+                    setErrors((prev) => ({ ...prev, email: undefined }));
                 }}
                 placeholder="you@[institution].edu.ph"
                 aria-invalid={Boolean(errors.email)}
@@ -198,5 +203,5 @@ export function WalkthroughDialog({ open, onOpenChange }: WalkthroughDialogProps
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

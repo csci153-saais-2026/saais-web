@@ -1,43 +1,43 @@
-import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Link } from "react-router"
-import { AdviserCard } from "@/components/features/adviser-card"
+import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router";
+import { AdviserCard } from "@/components/features/adviser-card";
 import {
   AssignmentHistoryDialog,
   type AdviserAssignmentRecord,
-} from "@/components/features/assignment-history-dialog"
-import { DegreeProgress } from "@/components/features/degree-progress"
-import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
-import { QuickAccess } from "@/components/features/quick-access"
-import { StatGrid } from "@/components/features/stat-tile"
-import { Button } from "@/components/ui/button"
+} from "@/components/features/assignment-history-dialog";
+import { DegreeProgress } from "@/components/features/degree-progress";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
+import { QuickAccess } from "@/components/features/quick-access";
+import { StatGrid } from "@/components/features/stat-tile";
+import { Button } from "@/components/ui/button";
 import {
   apiClient,
   postgrestFilter,
   unwrapApiResult,
   type ApiSchema,
-} from "@/lib/api"
-import { AdvisingNotesDialog } from "./AdvisingNotesDialog"
+} from "@/lib/api";
+import { AdvisingNotesDialog } from "./AdvisingNotesDialog";
 import {
   CourseRecommendationsPanel,
   type CourseRecommendationRow,
-} from "./CourseRecommendationsPanel"
-import { IncRadarPanel, type IncRadarDeficiencyItem } from "./IncRadarPanel"
-import { useStudentDashboard } from "./use-student-dashboard"
+} from "./CourseRecommendationsPanel";
+import { IncRadarPanel, type IncRadarDeficiencyItem } from "./IncRadarPanel";
+import { useStudentDashboard } from "./use-student-dashboard";
 
 export interface StudentDashboardViewProps {
-  readonly summary: ApiSchema<"AcademicSummary">
-  readonly studentName?: string | null
-  readonly programName?: string | null
-  readonly curriculumLabel?: string | null
-  readonly delinquencyThresholdUnits?: number | null
-  readonly adviserAssignments?: readonly AdviserAssignmentRecord[]
-  readonly recommendations?: readonly CourseRecommendationRow[]
-  readonly notes?: readonly ApiSchema<"AdvisingNote">[]
-  readonly checklistHref?: string
-  readonly gradesHref?: string
-  readonly historyHref?: string
+  readonly summary: ApiSchema<"AcademicSummary">;
+  readonly studentName?: string | null;
+  readonly programName?: string | null;
+  readonly curriculumLabel?: string | null;
+  readonly delinquencyThresholdUnits?: number | null;
+  readonly adviserAssignments?: readonly AdviserAssignmentRecord[];
+  readonly recommendations?: readonly CourseRecommendationRow[];
+  readonly notes?: readonly ApiSchema<"AdvisingNote">[];
+  readonly checklistHref?: string;
+  readonly gradesHref?: string;
+  readonly historyHref?: string;
 }
 
 const SHORT_MONTHS = [
@@ -53,39 +53,39 @@ const SHORT_MONTHS = [
   "Oct",
   "Nov",
   "Dec",
-] as const
+] as const;
 
 function formatShortDate(dateValue: string | null | undefined): string {
-  if (!dateValue) return "—"
-  const trimmed = dateValue.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
   if (isoMatch) {
-    const year = Number(isoMatch[1])
-    const monthIndex = Number(isoMatch[2]) - 1
-    const day = Number(isoMatch[3])
-    const monthLabel = SHORT_MONTHS[monthIndex]
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
     if (monthLabel && day >= 1 && day <= 31) {
-      return `${day} ${monthLabel} ${year}`
+      return `${day} ${monthLabel} ${year}`;
     }
   }
-  return trimmed
+  return trimmed;
 }
 
 function getFirstName(fullName?: string | null): string {
-  if (!fullName || !fullName.trim()) return "Student"
-  const parts = fullName.trim().split(/\s+/)
-  return parts[0] || "Student"
+  if (!fullName || !fullName.trim()) return "Student";
+  const parts = fullName.trim().split(/\s+/);
+  return parts[0] || "Student";
 }
 
 function getInitials(name?: string | null): string {
-  if (!name || !name.trim()) return "—"
+  if (!name || !name.trim()) return "—";
   const cleaned = name
     .replace(/^(Prof\.|Dr\.|Mr\.|Ms\.|Mrs\.|Engr\.)\s+/i, "")
-    .trim()
-  const parts = cleaned.split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "—"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    .trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 /**
@@ -104,50 +104,49 @@ export function StudentDashboardView({
   gradesHref = "/student/grades",
   historyHref = "/student/history",
 }: StudentDashboardViewProps) {
-  const [notesOpen, setNotesOpen] = React.useState(false)
+  const [notesOpen, setNotesOpen] = React.useState(false);
   const [assignmentHistoryOpen, setAssignmentHistoryOpen] =
-    React.useState(false)
+    React.useState(false);
 
-  const firstName = getFirstName(studentName)
+  const firstName = getFirstName(studentName);
   const gwaDisplay =
-    summary.gwa === null ? "Not available" : summary.gwa.toFixed(2)
-  const countedUnits = summary.counted_units ?? summary.earned_units
-  const standingDisplay = summary.is_delinquent ? "Flagged" : "Good"
+    summary.gwa === null ? "Not available" : summary.gwa.toFixed(2);
+  const countedUnits = summary.counted_units ?? summary.earned_units;
+  const standingDisplay = summary.is_delinquent ? "Flagged" : "Good";
 
   const deficiencies = React.useMemo(
     () => (summary.deficiencies ?? []) as readonly IncRadarDeficiencyItem[],
-    [summary.deficiencies]
-  )
+    [summary.deficiencies],
+  );
   const openIncDeficiencies = React.useMemo(
     () => deficiencies.filter((d) => d.kind === "open_inc"),
-    [deficiencies]
-  )
-  const openIncCount = summary.open_inc_count ?? openIncDeficiencies.length
+    [deficiencies],
+  );
+  const openIncCount = summary.open_inc_count ?? openIncDeficiencies.length;
   const openIncNote =
-    openIncCount > 0 ? "Review completion deadlines" : "No incomplete grades"
+    openIncCount > 0 ? "Review completion deadlines" : "No incomplete grades";
 
   const currentAdviserAssignment = React.useMemo(() => {
     return (
       adviserAssignments.find(
         (a) =>
-          (a.effective_to !== undefined ? a.effective_to : a.end_date) == null
+          (a.effective_to !== undefined ? a.effective_to : a.end_date) == null,
       ) ??
       adviserAssignments[0] ??
       null
-    )
-  }, [adviserAssignments])
+    );
+  }, [adviserAssignments]);
 
   const adviserName =
-    currentAdviserAssignment?.adviser_name?.trim() || "No adviser assigned"
-  const adviserInitials = getInitials(currentAdviserAssignment?.adviser_name)
+    currentAdviserAssignment?.adviser_name?.trim() || "No adviser assigned";
+  const adviserInitials = getInitials(currentAdviserAssignment?.adviser_name);
   const adviserFaculty =
-    currentAdviserAssignment?.adviser_faculty_name?.trim() || "—"
-  const adviserEmail =
-    currentAdviserAssignment?.adviser_email?.trim() || "—"
+    currentAdviserAssignment?.adviser_faculty_name?.trim() || "—";
+  const adviserEmail = currentAdviserAssignment?.adviser_email?.trim() || "—";
   const assignedSince = formatShortDate(
     currentAdviserAssignment?.effective_from ??
-      currentAdviserAssignment?.start_date
-  )
+      currentAdviserAssignment?.start_date,
+  );
 
   return (
     <div>
@@ -256,20 +255,20 @@ export function StudentDashboardView({
         assignments={adviserAssignments}
       />
     </div>
-  )
+  );
 }
 
 interface DashboardMetaData {
-  readonly studentName: string | null
-  readonly programName: string
-  readonly curriculumLabel: string
-  readonly delinquencyThresholdUnits: number | null
-  readonly offeringMap: ReadonlyMap<string, ApiSchema<"CourseOffering">>
-  readonly courseMap: ReadonlyMap<string, ApiSchema<"Course">>
+  readonly studentName: string | null;
+  readonly programName: string;
+  readonly curriculumLabel: string;
+  readonly delinquencyThresholdUnits: number | null;
+  readonly offeringMap: ReadonlyMap<string, ApiSchema<"CourseOffering">>;
+  readonly courseMap: ReadonlyMap<string, ApiSchema<"Course">>;
 }
 
 async function fetchDashboardMeta(
-  studentId: string
+  studentId: string,
 ): Promise<DashboardMetaData> {
   const [profiles, orgs, offerings, courses, programs, curricula] =
     await Promise.all([
@@ -287,13 +286,13 @@ async function fetchDashboardMeta(
       apiClient.GET("/rest/v1/course").then(unwrapApiResult),
       apiClient.GET("/rest/v1/program").then(unwrapApiResult),
       apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
-    ])
+    ]);
 
-  const profile = profiles[0] ?? null
-  const org = orgs[0] ?? null
+  const profile = profiles[0] ?? null;
+  const org = orgs[0] ?? null;
 
-  const program = programs.find((p) => p.id === org?.program_id)
-  const curriculum = curricula.find((c) => c.id === org?.curriculum_version_id)
+  const program = programs.find((p) => p.id === org?.program_id);
+  const curriculum = curricula.find((c) => c.id === org?.curriculum_version_id);
 
   return {
     studentName: profile?.full_name ?? null,
@@ -302,42 +301,38 @@ async function fetchDashboardMeta(
     delinquencyThresholdUnits: curriculum?.delinquency_threshold ?? null,
     offeringMap: new Map(offerings.map((o) => [o.id, o])),
     courseMap: new Map(courses.map((c) => [c.id, c])),
-  }
+  };
 }
 
 /**
  * Student Dashboard page container handling loading, error/retry, and data hydration.
  */
-export function StudentDashboardPage({
-  studentId,
-}: {
-  studentId: string
-}) {
-  const dashboard = useStudentDashboard(studentId)
+export function StudentDashboardPage({ studentId }: { studentId: string }) {
+  const dashboard = useStudentDashboard(studentId);
   const metaQuery = useQuery({
     queryKey: ["student", studentId, "dashboard-meta"],
     queryFn: () => fetchDashboardMeta(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 
   const recommendations = React.useMemo<CourseRecommendationRow[]>(() => {
-    const planItems = dashboard.data?.planItems ?? []
-    const offeringMap = metaQuery.data?.offeringMap
-    const courseMap = metaQuery.data?.courseMap
+    const planItems = dashboard.data?.planItems ?? [];
+    const offeringMap = metaQuery.data?.offeringMap;
+    const courseMap = metaQuery.data?.courseMap;
     return planItems.map((item) => {
-      const offering = offeringMap?.get(item.course_offering_id)
-      const course = offering ? courseMap?.get(offering.course_id) : undefined
+      const offering = offeringMap?.get(item.course_offering_id);
+      const course = offering ? courseMap?.get(offering.course_id) : undefined;
       return {
         ...item,
         code: course?.code ?? null,
         title: course?.title ?? null,
         units: course?.units ?? null,
-      }
-    })
-  }, [dashboard.data?.planItems, metaQuery.data])
+      };
+    });
+  }, [dashboard.data?.planItems, metaQuery.data]);
 
   if (dashboard.isPending || metaQuery.isPending) {
-    return <p role="status">Loading...</p>
+    return <p role="status">Loading...</p>;
   }
 
   if (dashboard.isError || !dashboard.data) {
@@ -356,7 +351,7 @@ export function StudentDashboardPage({
           Try again
         </Button>
       </Panel>
-    )
+    );
   }
 
   return (
@@ -372,7 +367,7 @@ export function StudentDashboardPage({
       recommendations={recommendations}
       notes={dashboard.data.notes}
     />
-  )
+  );
 }
 
-export default StudentDashboardPage
+export default StudentDashboardPage;
