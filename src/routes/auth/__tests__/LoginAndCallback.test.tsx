@@ -6,10 +6,16 @@ import {
   fireEvent,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import LoginPage from "../LoginPage";
 import OAuthCallback from "../OAuthCallback";
 import { AuthContext, type AuthContextValue } from "@/context/auth-context";
+import { AUTH_RETURN_TO_KEY } from "@/lib/auth/redirect-target";
+
+function CurrentLocation() {
+  const location = useLocation();
+  return <div>{`${location.pathname}${location.search}${location.hash}`}</div>;
+}
 
 function buildAuthStub(overrides: Partial<AuthContextValue>): AuthContextValue {
   return {
@@ -179,5 +185,85 @@ describe("LoginPage & OAuthCallback", () => {
     expect(screen.getByText(/Network timeout loading profile/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Retry/i }));
     expect(retryMock).toHaveBeenCalled();
+  });
+
+  it("preserves a direct destination, including query and hash, on an authenticated login visit", async () => {
+    render(
+      <AuthContext.Provider
+        value={buildAuthStub({
+          user: {
+            id: "stu-1",
+            email: "student@vsu.edu.ph",
+            fullName: "Student",
+            primaryRole: "student",
+            roles: ["student"],
+            status: "active",
+          },
+          roles: ["student"],
+          activeRole: "student",
+          isAuthenticated: true,
+          isAllowedToEnter: true,
+        })}
+      >
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: "/login",
+              state: {
+                from: {
+                  pathname: "/student/grades",
+                  search: "?term=2026",
+                  hash: "#results",
+                },
+              },
+            },
+          ]}
+        >
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/student/*" element={<CurrentLocation />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    );
+    expect(
+      await screen.findByText("/student/grades?term=2026#results"),
+    ).toBeTruthy();
+  });
+
+  it("restores the OAuth return destination, including query and hash", async () => {
+    sessionStorage.setItem(
+      AUTH_RETURN_TO_KEY,
+      "/student/checklist?term=2026#incomplete",
+    );
+    render(
+      <AuthContext.Provider
+        value={buildAuthStub({
+          user: {
+            id: "stu-1",
+            email: "student@vsu.edu.ph",
+            fullName: "Student",
+            primaryRole: "student",
+            roles: ["student"],
+            status: "active",
+          },
+          roles: ["student"],
+          activeRole: "student",
+          isAuthenticated: true,
+          isAllowedToEnter: true,
+        })}
+      >
+        <MemoryRouter initialEntries={["/auth/callback"]}>
+          <Routes>
+            <Route path="/auth/callback" element={<OAuthCallback />} />
+            <Route path="/student/*" element={<CurrentLocation />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    );
+    expect(
+      await screen.findByText("/student/checklist?term=2026#incomplete"),
+    ).toBeTruthy();
+    expect(sessionStorage.getItem(AUTH_RETURN_TO_KEY)).toBeNull();
   });
 });

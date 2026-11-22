@@ -7,35 +7,15 @@ import type { SignInValues } from "@/components/features/sign-in-schema";
 import { CheckIcon } from "@/components/icons";
 import { useAuth } from "@/hooks/use-auth";
 import { ROLE_DEFAULT_ROUTE } from "@/lib/auth/auth-service";
-import type { SaaisRole } from "@/mocks/personas";
+import {
+  AUTH_RETURN_TO_KEY,
+  destinationAllowedForRoles,
+  safeInternalDestination,
+} from "@/lib/auth/redirect-target";
 
 interface LoginLocationState {
-  from?: { pathname: string };
+  from?: { pathname?: string; search?: string; hash?: string };
   blockedReason?: string | null;
-}
-
-function isDestinationAllowedForRoles(
-  pathname: string,
-  roles: readonly SaaisRole[],
-): boolean {
-  if (pathname.startsWith("/student")) return roles.includes("student");
-  if (pathname.startsWith("/adviser")) return roles.includes("adviser");
-  if (
-    pathname.startsWith("/department-head") ||
-    pathname.startsWith("/dept-head")
-  ) {
-    return roles.includes("department_head");
-  }
-  if (
-    pathname.startsWith("/department-staff") ||
-    pathname.startsWith("/staff")
-  ) {
-    return roles.includes("department_staff");
-  }
-  if (pathname.startsWith("/dean")) return roles.includes("dean");
-  if (pathname.startsWith("/admin")) return roles.includes("admin");
-  if (pathname === "/settings" || pathname === "/change-password") return true;
-  return true;
 }
 
 export default function LoginPage() {
@@ -79,12 +59,19 @@ export default function LoginPage() {
     const fallbackRole =
       activeRole && roles.includes(activeRole) ? activeRole : roles[0];
     const defaultPortal = ROLE_DEFAULT_ROUTE[fallbackRole] ?? "/settings";
-    const fromPath = locationState?.from?.pathname;
+    const from = locationState?.from;
+    const fromPath = safeInternalDestination(
+      from?.pathname
+        ? `${from.pathname}${from.search ?? ""}${from.hash ?? ""}`
+        : null,
+    );
 
     const target =
       fromPath &&
-      fromPath !== "/login" &&
-      isDestinationAllowedForRoles(fromPath, roles)
+      destinationAllowedForRoles(
+        new URL(fromPath, window.location.origin).pathname,
+        roles,
+      )
         ? fromPath
         : defaultPortal;
 
@@ -115,6 +102,13 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setErrorMessage(null);
     try {
+      const from = locationState?.from;
+      const destination = safeInternalDestination(
+        from?.pathname
+          ? `${from.pathname}${from.search ?? ""}${from.hash ?? ""}`
+          : null,
+      );
+      if (destination) sessionStorage.setItem(AUTH_RETURN_TO_KEY, destination);
       await signInWithGoogle();
     } catch (err: unknown) {
       const msg =

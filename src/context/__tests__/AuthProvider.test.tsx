@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import * as React from "react";
 import { AuthProvider } from "../AuthProvider";
+import { QueryProvider } from "../QueryProvider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { MOCK_PERSONAS } from "@/mocks/personas";
 import { resetMockDatabase } from "@/mocks/store";
@@ -131,7 +133,9 @@ describe("AuthProvider, useAuth & Environment Config", () => {
   it("restores mock session synchronously so protected routes do not redirect on refresh", () => {
     sessionStorage.setItem("saais_active_mock_persona", "adviser");
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <AuthProvider>{children}</AuthProvider>
+      <QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryProvider>
     );
 
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -144,7 +148,9 @@ describe("AuthProvider, useAuth & Environment Config", () => {
 
   it("completes mock initialization with isLoading: false when storage is empty", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <AuthProvider>{children}</AuthProvider>
+      <QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryProvider>
     );
 
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -155,7 +161,9 @@ describe("AuthProvider, useAuth & Environment Config", () => {
 
   it("exercises Student-only, Adviser-only, Dept-Head-only, Dean-only, and Multi-role synthetic personas", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <AuthProvider>{children}</AuthProvider>
+      <QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryProvider>
     );
 
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -200,6 +208,77 @@ describe("AuthProvider, useAuth & Environment Config", () => {
     });
     expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it("clears sensitive cached data when mock identity or active role changes", () => {
+    const queryClient = new QueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
+    );
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    queryClient.setQueryData(
+      ["department-head", "students", "private"],
+      ["old account data"],
+    );
+    act(() => result.current.switchMockPersona("department_head"));
+    expect(
+      queryClient.getQueryData(["department-head", "students", "private"]),
+    ).toBeUndefined();
+
+    queryClient.setQueryData(
+      ["department-head", "students", "private"],
+      ["old scope data"],
+    );
+    act(() => result.current.setActiveRole("adviser"));
+    expect(
+      queryClient.getQueryData(["department-head", "students", "private"]),
+    ).toBeUndefined();
+
+    queryClient.setQueryData(
+      ["department-head", "students", "private"],
+      ["signed in data"],
+    );
+    act(() => {
+      void result.current.signOut();
+    });
+    expect(
+      queryClient.getQueryData(["department-head", "students", "private"]),
+    ).toBeUndefined();
+    queryClient.clear();
+  });
+
+  it("cancels in-flight sensitive reads before clearing identity-scoped data", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
+    );
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    let requestSignal: AbortSignal | undefined;
+    const pending = queryClient.fetchQuery({
+      queryKey: ["department-head", "students", "sensitive"],
+      queryFn: ({ signal }) => {
+        requestSignal = signal;
+        return new Promise<string[]>((resolve) => {
+          signal.addEventListener("abort", () => resolve(["aborted"]));
+        });
+      },
+    });
+    void pending.catch(() => undefined);
+    await Promise.resolve();
+
+    act(() => result.current.switchMockPersona("department_head"));
+
+    expect(requestSignal?.aborted).toBe(true);
+    expect(
+      queryClient.getQueryData(["department-head", "students", "sensitive"]),
+    ).toBeUndefined();
+    queryClient.clear();
   });
 
   it("preserves the confirmed rejection reason across cleanup sign-out when account is disabled", async () => {
@@ -271,7 +350,9 @@ describe("AuthProvider, useAuth & Environment Config", () => {
       } as never);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <AuthProvider>{children}</AuthProvider>
+      <QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryProvider>
     );
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -285,7 +366,9 @@ describe("AuthProvider, useAuth & Environment Config", () => {
 
   it("rejects password sign-in for unrecognized, invited, and disabled accounts and honors keepSignedIn", async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <AuthProvider>{children}</AuthProvider>
+      <QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryProvider>
     );
     const { result } = renderHook(() => useAuth(), { wrapper });
     const personas = getSyntheticPersonas();
@@ -371,7 +454,9 @@ describe("AuthProvider, useAuth & Environment Config", () => {
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <AuthProvider>{children}</AuthProvider>
+      <QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryProvider>
     );
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
