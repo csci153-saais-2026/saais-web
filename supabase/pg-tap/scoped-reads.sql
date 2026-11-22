@@ -8,6 +8,24 @@ select no_plan();
 \ir ../tests/15_people.sql
 \ir ../tests/25_student_setup.sql
 
+with term as (
+  insert into public.school_term(start_year, end_year, term_type, ends_on)
+  values (2096, 2097, '1st Semester', '2096-12-01') returning id
+), offering as (
+  insert into public.course_offering(school_term_id, course_id)
+  select term.id, (select (value->>'id')::uuid from test.records where name = 'source_course') from term
+  returning id, school_term_id
+)
+insert into test.records select 'passed_retake_offering', to_jsonb(offering) from offering;
+select test.login(4);
+select throws_ok(format(
+  'select public.matt_operation(%L, %L::jsonb, %L::jsonb)', 'recordGrades',
+  '{"student_id":"00000005-0000-4000-8000-000000000000"}',
+  (select jsonb_build_object('school_term_id', value->>'school_term_id',
+    'course_offering_id', value->>'id', 'confirmed_enrollment', true)::text
+    from test.records where name = 'passed_retake_offering')),
+  'PT409', null, 'An adviser cannot enroll a student again in an already passed course');
+
 insert into public.advising_note(student_id, authored_by, body_text, is_archived, archived_at, archived_by)
 select student, adviser, message, archived,
   case when archived then now() end, case when archived then adviser end
@@ -126,6 +144,10 @@ reset role;
 select is((select count(*) from public.adviser_assignment
   where student_id = '00000005-0000-4000-8000-000000000000' and end_date is null),
   1::bigint, 'Reassignment leaves one open assignment');
+select throws_ok($cmd$
+  insert into public.adviser_assignment(adviser_id, student_id, start_date, reason)
+  values ('00000004-0000-4000-8000-000000000000', '00000005-0000-4000-8000-000000000000', '2026-03-01', 'Duplicate assignment')
+$cmd$, '23505', null, 'A student cannot have two active adviser assignments');
 select is((select before.end_date from public.adviser_assignment before
   join public.adviser_assignment after on after.student_id = before.student_id and after.end_date is null
   where before.student_id = '00000005-0000-4000-8000-000000000000' and before.end_date is not null),

@@ -129,6 +129,8 @@ jobs:
         run: supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >/dev/null
       - name: Verify signed-in attempt-result projection through PostgREST
         run: node --test supabase/tools/test-attempt-result-gateway.mjs
+      - name: Verify Auth signup hook and synthetic seed
+        run: node --test supabase/tools/test-auth-and-seed.mjs
       - name: Reset local database without seed
         run: supabase db reset --local --no-seed
       - name: Run pgTAP

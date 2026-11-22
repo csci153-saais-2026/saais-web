@@ -57,6 +57,23 @@ node supabase/tools/check-pinned-contract.cjs
 node supabase/tools/test-database.cjs
 ```
 
+With the disposable local Supabase stack running and seeded, test the Auth hook
+and seed through the real local services, then reset without the seed for pgTAP:
+
+```sh
+node --test supabase/tools/test-auth-and-seed.mjs
+npx supabase db reset --local --no-seed
+node supabase/tools/test-pgtap.cjs
+```
+
+The second command destroys the local database. The Auth test uses a temporary
+reservation and removes its synthetic user. The before-user-created hook is
+enabled in the local config and rejects public signup without a matching trusted
+reservation. Supabase's privileged Auth admin API bypasses this hook, so the
+service-role key must remain server-side and provisioning must validate its own
+authorization. Hosted hook configuration and Google OAuth remain deployment
+tasks; RLS and active-profile checks continue to enforce data access.
+
 The database runner runs the domain suite, then rebuilds its disposable database for application fixtures and rolls back each application test. This keeps sample identities, transfer decisions and term locks isolated between the suites. It uses PostgreSQL binaries from `C:/Program Files/PostgreSQL/18/bin` by default. Set `PG_BINARY_DIR` for a different installation. It starts an isolated cluster under ignored `supabase/.temp/jerome-pg` on `127.0.0.1:55432`, creates a uniquely named temporary database, applies every migration, runs SQL tests plus a two-connection concurrency test, drops only that temporary database, and stops its server. Keep that port free. Its `bootstrap.sql` supplies a minimal **test-only** Auth schema; do not apply it to a Supabase project.
 
 The SQL suite checks successful execution of all 47 operations, curriculum-cloning Head/Staff permissions, Admin-only and cross-department denials with no partial writes, response validation, body/path validation, unauthenticated and forbidden requests, scope isolation, multi-role authorization, owned notifications, RLS/grants, stale updates, history, conflicts, late transaction rollback, Unicode duplicate normalization, zero-unit snapshots, INC/direct-credit collisions and concurrent writes. It uses synthetic accounts and data.
