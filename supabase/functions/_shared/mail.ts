@@ -5,7 +5,7 @@ type MailEnvironment = {
   transportKey: string;
   sender: string;
   siteUrl: string;
-  recipients: Set<string>;
+  recipients: Set<string> | null;
 };
 type Mail = {
   id: string;
@@ -20,6 +20,10 @@ type Mail = {
 export function readMailEnvironment(
   get: (name: string) => string | undefined,
 ): MailEnvironment {
+  const allowedRecipients = get("SAAIS_MAIL_ALLOWED_RECIPIENTS");
+  const unrestricted =
+    get("SAAIS_MAIL_ENVIRONMENT") === "production" &&
+    allowedRecipients === undefined;
   return {
     url: (get("SUPABASE_URL") || "").replace(/\/$/, ""),
     serviceKey: get("SUPABASE_SERVICE_ROLE_KEY") || "",
@@ -27,12 +31,14 @@ export function readMailEnvironment(
     transportKey: get("SAAIS_RESEND_API_KEY") || "",
     sender: get("SAAIS_MAIL_FROM") || "",
     siteUrl: get("SAAIS_SITE_URL") || "",
-    recipients: new Set(
-      (get("SAAIS_MAIL_ALLOWED_RECIPIENTS") || "")
-        .split(",")
-        .map((address) => address.trim().toLowerCase())
-        .filter(Boolean),
-    ),
+    recipients: unrestricted
+      ? null
+      : new Set(
+          (allowedRecipients ?? "")
+            .split(",")
+            .map((address) => address.trim().toLowerCase())
+            .filter(Boolean),
+        ),
   };
 }
 
@@ -81,12 +87,15 @@ export function createMailHandler(
       !env.url ||
       !env.serviceKey ||
       !env.transportKey ||
-      !env.sender
+      !env.sender ||
+      env.recipients?.size === 0
     ) {
       return new Response(null, { status: 503 });
     }
     try {
-      const response = await rpc("saais_claim_email", {});
+      const response = await rpc("saais_claim_email", {
+        p_allowed_recipients: env.recipients ? [...env.recipients] : null,
+      });
       if (!response.ok) return new Response(null, { status: 503 });
       const messages = (await response.json()) as Mail[];
       const outcomes: PromiseSettledResult<string>[] = [];
@@ -94,49 +103,48 @@ export function createMailHandler(
         outcomes.push(
           ...(await Promise.allSettled(
             messages.slice(offset, offset + 4).map(async (mail) => {
-              let outcome = "retry";
               if (
-                env.recipients.size &&
-                !env.recipients.has(mail.email.toLowerCase())
+                env.recipients &&
+                !env.recipients.has(mail.email.trim().toLowerCase())
               ) {
-                outcome = "failed";
-              } else {
-                const link = new URL("/invite", site);
-                link.hash = `token=${mail.token ?? ""}`;
-                const message =
-                  mail.kind === "invitation"
-                    ? `Set up your SAAIS account using this invitation link: ${link.href}`
-                    : mail.message;
-                try {
-                  const delivery = await fetcher(
-                    "https://api.resend.com/emails",
-                    {
-                      method: "POST",
-                      redirect: "error",
-                      headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${env.transportKey}`,
-                        "Idempotency-Key": `saais/${mail.kind}/${mail.id}`,
-                      },
-                      body: JSON.stringify({
-                        from: env.sender,
-                        to: [mail.email],
-                        subject: mail.subject,
-                        text: message,
-                      }),
-                      signal: AbortSignal.timeout(5000),
+                throw new Error("Claimed recipient is not allowed.");
+              }
+              let outcome = "retry";
+              const link = new URL("/invite", site);
+              link.hash = `token=${mail.token ?? ""}`;
+              const message =
+                mail.kind === "invitation"
+                  ? `Set up your SAAIS account using this invitation link: ${link.href}`
+                  : mail.message;
+              try {
+                const delivery = await fetcher(
+                  "https://api.resend.com/emails",
+                  {
+                    method: "POST",
+                    redirect: "error",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${env.transportKey}`,
+                      "Idempotency-Key": `saais/${mail.kind}/${mail.id}`,
                     },
-                  );
-                  if (delivery.ok) outcome = "sent";
-                  else if (
-                    delivery.status < 500 &&
-                    ![401, 403, 408, 409, 429].includes(delivery.status)
-                  )
-                    outcome = "failed";
-                  await delivery.body?.cancel();
-                } catch {
-                  /* Retry with the same provider idempotency key. */
-                }
+                    body: JSON.stringify({
+                      from: env.sender,
+                      to: [mail.email],
+                      subject: mail.subject,
+                      text: message,
+                    }),
+                    signal: AbortSignal.timeout(5000),
+                  },
+                );
+                if (delivery.ok) outcome = "sent";
+                else if (
+                  delivery.status < 500 &&
+                  ![401, 403, 408, 409, 429].includes(delivery.status)
+                )
+                  outcome = "failed";
+                await delivery.body?.cancel();
+              } catch {
+                /* Retry with the same provider idempotency key. */
               }
               const result = await rpc("saais_finish_email", {
                 p_id: mail.id,

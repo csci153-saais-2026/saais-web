@@ -61,6 +61,13 @@ begin
   perform public.saais_invitation_service('inviteUser', 'finish', request, staff, staff_session, null, token);
   perform test.assert((select count(*) = 1 from saais_private.invite_email where profile_id = target),
     'Identical retries do not queue another invitation');
+  perform test.assert(not exists(select 1 from public.saais_claim_email(array['unapproved@example.test'])
+    where kind = 'invitation'), 'Unapproved invitations do not reach the provider');
+  perform test.assert((select m.attempts = 0 and m.lease is null from saais_private.invite_email m where m.profile_id = target),
+    'An unapproved invitation retains its token and delivery attempts');
+  perform test.assert(exists(select 1 from public.saais_claim_email(array[request->>'email'])
+    where kind = 'invitation' and email = request->>'email'), 'Corrected allowlist can lease the held invitation');
+
   begin
     perform public.saais_invitation_service('inviteUser', 'prepare', request || '{"email":"other-fixture@vsu.edu.ph"}', staff, staff_session);
     raise exception 'Duplicate student number was accepted';
