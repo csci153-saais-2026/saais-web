@@ -54,17 +54,13 @@ if (!base) {
         // A force-pushed-away tip may no longer be fetchable. Compare the
         // pushed branch with its configured base instead of failing the check.
         const defaultBranch = event.repository?.default_branch;
-        base = defaultBranch
-          ? `origin/${defaultBranch}`
-          : "origin/feat/contract-mock";
+        base = defaultBranch ? `origin/${defaultBranch}` : "origin/dev";
         useMergeBase = true;
       }
     }
   } else {
     const defaultBranch = event.repository?.default_branch;
-    base = defaultBranch
-      ? `origin/${defaultBranch}`
-      : "origin/feat/contract-mock";
+    base = defaultBranch ? `origin/${defaultBranch}` : "origin/dev";
     useMergeBase = isCi;
   }
 }
@@ -124,19 +120,22 @@ const prettierCli = path.join(
 );
 
 try {
-  execFileSync(
-    process.execPath,
-    [
-      prettierCli,
-      "--check",
-      "--ignore-path",
-      ".gitignore",
-      "--ignore-path",
-      ".prettierignore",
-      ...uniqueChangedPaths,
-    ],
-    { stdio: "inherit" },
-  );
+  // Batch paths to stay below Windows' command-line length limit.
+  for (let i = 0; i < uniqueChangedPaths.length; i += 70) {
+    execFileSync(
+      process.execPath,
+      [
+        prettierCli,
+        "--check",
+        "--ignore-path",
+        ".gitignore",
+        "--ignore-path",
+        ".prettierignore",
+        ...uniqueChangedPaths.slice(i, i + 70),
+      ],
+      { stdio: "inherit" },
+    );
+  }
 } catch (error) {
   process.exit(error.status ?? 1);
 }

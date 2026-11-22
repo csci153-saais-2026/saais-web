@@ -47,6 +47,22 @@ describe("resolveSaaisEnvConfig & Supabase client setup", () => {
     expect(config.apiBaseUrl).toBeTruthy();
   });
 
+  it("rejects missing production configuration and permits an explicit external mock", () => {
+    expect(() => resolveSaaisEnvConfig({ PROD: true })).toThrow(
+      /configuration/i,
+    );
+    expect(() => resolveSaaisEnvConfig({ VITE_API_MODE: "supabase" })).toThrow(
+      /URL/i,
+    );
+    expect(
+      resolveSaaisEnvConfig({
+        PROD: true,
+        VITE_API_MODE: "mock",
+        VITE_API_BASE_URL: "http://localhost:4010",
+      }).mode,
+    ).toBe("mock");
+  });
+
   it("auto-detects supabase mode and prefers VITE_SUPABASE_PUBLISHABLE_KEY over VITE_SUPABASE_ANON_KEY", () => {
     const config = resolveSaaisEnvConfig({
       VITE_SUPABASE_URL: " https://proj.supabase.co ",
@@ -130,7 +146,7 @@ describe("auth token resolution (mock mode & custom resolver)", () => {
 });
 
 describe("createSaaisApiClient auth headers & pre-login exception", () => {
-  it("notifies only protected requests when the API key is missing", async () => {
+  it("does not report missing API keys as expired user sessions", async () => {
     const events: UnauthorizedEventContext[] = [];
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
@@ -142,8 +158,7 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
     await client.POST("/functions/v1/auth/preview-invite", {
       body: { token: "test-token" },
     });
-    expect(events).toHaveLength(1);
-    expect(events[0].error.code).toBe(API_ERROR_CODES.MISSING_API_KEY);
+    expect(events).toHaveLength(0);
   });
 
   it("attaches apikey and a fresh per-request Bearer token on protected routes", async () => {
@@ -561,7 +576,10 @@ describe("PostgREST filter & Content-Range helpers", () => {
   it("rejects syntax injection and malformed ranges", () => {
     expect(() => postgrestFilter.inList(["ok,malicious"])).toThrow();
     expect(() => postgrestFilter.ilike("x),status.eq.admin")).toThrow();
-    expect(() => postgrestFilter.like("x.y")).toThrow();
+    expect(postgrestFilter.like("x.y")).toBe("like.x.y");
+    expect(postgrestFilter.ilike("*ma.cristina@example.com*")).toBe(
+      "ilike.*ma.cristina@example.com*",
+    );
     expect(() =>
       postgrestFilter.createdAtBetween("2026-01-02", "2026-01-01"),
     ).toThrow();
@@ -616,6 +634,20 @@ describe("PostgREST filter & Content-Range helpers", () => {
     ).toBe(
       "(created_at.gte.2026-01-01T00:00:00Z,created_at.lte.2026-01-31T23:59:59Z)",
     );
+    expect(
+      postgrestFilter.createdAtBetween("2026-01-31T10:00:00Z", "2026-01-31"),
+    ).toBe(
+      "(created_at.gte.2026-01-31T10:00:00Z,created_at.lt.2026-02-01T00:00:00.000Z)",
+    );
+    expect(
+      postgrestFilter.createdAtBetween("2024-02-28", "2024-02-29"),
+    ).toContain("created_at.lt.2024-03-01");
+    expect(() =>
+      postgrestFilter.createdAtBetween("2026-02-30", "2026-03-01"),
+    ).toThrow();
+    expect(() =>
+      postgrestFilter.createdAtBetween("9999-12-31", "9999-12-31"),
+    ).toThrow();
 
     expect(() => postgrestFilter.inList([])).toThrow(RangeError);
     expect(() =>

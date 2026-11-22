@@ -51,6 +51,21 @@ export function resolveSaaisEnvConfig(
           ? "supabase"
           : "mock";
 
+  if (mode === "supabase" && !supabaseUrl && !explicitBaseUrl) {
+    throw new Error(
+      "Supabase API URL is not configured. Set VITE_SUPABASE_URL or VITE_API_BASE_URL.",
+    );
+  }
+  if (
+    env.PROD === true &&
+    mode === "mock" &&
+    !(rawMode === "mock" && explicitBaseUrl)
+  ) {
+    throw new Error(
+      "Production API configuration is missing. Configure Supabase, or explicitly configure an external mock API.",
+    );
+  }
+
   const apiBaseUrl =
     explicitBaseUrl ??
     (mode === "supabase" ? supabaseUrl : null) ??

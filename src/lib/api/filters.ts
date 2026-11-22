@@ -60,25 +60,25 @@ export const postgrestFilter = {
   },
 
   ilike(pattern: string): `ilike.${string}` {
-    if (/[(),."\\]/.test(pattern))
+    if (/[(),"\\]/.test(pattern))
       throw new TypeError("Pattern contains PostgREST syntax characters.");
     return `ilike.${pattern}`;
   },
 
   like(pattern: string): `like.${string}` {
-    if (/[(),."\\]/.test(pattern))
+    if (/[(),"\\]/.test(pattern))
       throw new TypeError("Pattern contains PostgREST syntax characters.");
     return `like.${pattern}`;
   },
 
   /**
-   * Builds the bounded PostgREST `and` filter for closed `created_at` date/timestamp intervals:
-   * `(created_at.gte.<from>,created_at.lte.<to>)`.
+   * Builds a bounded UTC interval. A date-only upper bound includes the whole
+   * day; timestamp upper bounds are inclusive.
    */
   createdAtBetween(
     from: string,
     to: string,
-  ): `(created_at.gte.${string},created_at.lte.${string})` {
+  ): `(created_at.gte.${string},created_at.${"lt" | "lte"}.${string})` {
     const iso =
       /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2}))?$/;
     if (
@@ -86,9 +86,27 @@ export const postgrestFilter = {
       !iso.test(to) ||
       !Number.isFinite(Date.parse(from)) ||
       !Number.isFinite(Date.parse(to)) ||
-      Date.parse(from) > Date.parse(to)
+      (to.length === 10
+        ? Date.parse(from) >= Date.parse(to) + 86_400_000
+        : Date.parse(from) > Date.parse(to))
     )
       throw new TypeError("Expected an ordered ISO date or timestamp range.");
+    for (const value of [from, to]) {
+      const datePart = value.slice(0, 10);
+      const parsed = new Date(`${datePart}T00:00:00Z`);
+      if (
+        datePart.startsWith("0000-") ||
+        !Number.isFinite(parsed.getTime()) ||
+        parsed.toISOString().slice(0, 10) !== datePart
+      )
+        throw new TypeError("Expected a valid calendar date.");
+    }
+    if (to.length === 10) {
+      const nextDay = new Date(Date.parse(to) + 86_400_000).toISOString();
+      if (nextDay.length !== 24)
+        throw new RangeError("Upper date is out of range.");
+      return `(created_at.gte.${from},created_at.lt.${nextDay})`;
+    }
     return `(created_at.gte.${from},created_at.lte.${to})`;
   },
 } as const;
