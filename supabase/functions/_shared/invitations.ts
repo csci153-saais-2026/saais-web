@@ -145,6 +145,9 @@ export async function runInvitation(
     return rpc("finish", input, newToken());
   }
 
+  // Admission commits before invitation work, including requests that later fail validation.
+  await rpc("admit", {});
+
   if (id === "inviteUser") return provision(data);
   if (id === "resendAccountInvite") return rpc("start", data, newToken());
   if (id === "revokeAccountInvite") return rpc("start", data);

@@ -250,6 +250,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           const status = operation.errors.includes(failure.status)
             ? failure.status
             : 500;
+          if (status === 429) headers.set("Retry-After", "60");
           return error(
             status,
             status === 500 ? "XX000" : "PT" + status,

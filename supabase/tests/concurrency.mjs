@@ -96,3 +96,75 @@ await run(psql, [
 console.log(
   "Overlapping adviser reassignments: one committed and one conflicted.",
 );
+
+for (const operation of [
+  "previewInviteToken",
+  "verifyInviteToken",
+  "declineInviteToken",
+]) {
+  await run(psql, [
+    ...args,
+    "-c",
+    `insert into saais_private.public_invitation_budget values ('${operation}', now(), 59)`,
+  ]);
+  const admit = `select public.saais_invitation_service('${operation}', 'admit', '{}');`;
+  const requests = await Promise.allSettled(
+    Array.from({ length: 6 }, () => run(psql, [...args, "-c", admit])),
+  );
+  assert.equal(
+    requests.filter((result) => result.status === "fulfilled").length,
+    1,
+  );
+  for (const result of requests.filter(
+    (result) => result.status === "rejected",
+  )) {
+    assert.match(result.reason.stderr, /PT429/);
+  }
+  await run(psql, [
+    ...args,
+    "-c",
+    `select test.assert((select count = 60 from saais_private.public_invitation_budget
+      where operation = '${operation}'), 'Only the last slot may be consumed concurrently');
+      update saais_private.public_invitation_budget set window_start = now() - interval '61 seconds'
+        where operation = '${operation}';
+      ${admit}
+      select test.assert((select count = 1 from saais_private.public_invitation_budget
+        where operation = '${operation}'), 'The next window restores capacity');`,
+  ]);
+}
+console.log(
+  "Concurrent public invitation requests respect each operation's persistent limit.",
+);
+
+const admin = "00000001-0000-4000-8000-000000000000";
+const adminSession = "00000001-0000-4000-8000-000000000001";
+await run(psql, [
+  ...args,
+  "-c",
+  `insert into saais_private.request_budget
+    select '${admin}', date_trunc('minute', now()) + minute * interval '1 minute', 120
+    from generate_series(0, 1) minute
+    on conflict on constraint request_budget_pkey do update set count = 120`,
+]);
+const exhausted = await Promise.allSettled(
+  Array.from({ length: 6 }, () =>
+    run(psql, [
+      ...args,
+      "-c",
+      `select public.saais_invitation_service('inviteUser', 'admit', '{}', '${admin}', '${adminSession}');`,
+    ]),
+  ),
+);
+for (const result of exhausted) {
+  assert.equal(result.status, "rejected");
+  assert.match(result.reason.stderr, /PT429/);
+}
+await run(psql, [
+  ...args,
+  "-c",
+  `select test.assert(not exists(select 1 from saais_private.request_budget
+    where actor_id = '${admin}' and count > 120), 'Concurrent admissions cannot overspend the shared budget');`,
+]);
+console.log(
+  "Concurrent authenticated admissions fail after exhausting the shared budget.",
+);
