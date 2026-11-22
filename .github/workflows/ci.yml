@@ -132,8 +132,29 @@ jobs:
       - name: Run pgTAP
         run: node supabase/tools/test-pgtap.cjs
       - name: Run domain, application, and concurrency regression suites
+        id: postgres-regressions
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql
           export PG_BINARY_DIR="$(pg_config --bindir)"
           node supabase/tools/test-database.cjs
+      - name: Print PostgreSQL regression diagnostics
+        if: ${{ failure() && steps.postgres-regressions.outcome == 'failure' }}
+        run: |
+          log_dir=supabase/.temp
+          log="$log_dir/jerome-pg.log"
+          if [ -r "$log" ]; then
+            cat "$log"
+          else
+            echo "::warning::Expected PostgreSQL log is missing or unreadable: $log"
+            if [ -d "$log_dir" ]; then
+              find "$log_dir" -maxdepth 3 -type f \( -iname '*postgres*.log' -o -iname '*pg*.log' \) \
+                -print -exec tail -n 100 {} \;
+              ls -ld "$log_dir" "$log_dir/jerome-pg" 2>/dev/null || true
+            else
+              echo "PostgreSQL temporary directory was not created."
+            fi
+            postgres_bin="$(pg_config --bindir 2>/dev/null)" &&
+              "$postgres_bin/postgres" --version || true
+            ss -ltn '( sport = :55432 )' || true
+          fi
