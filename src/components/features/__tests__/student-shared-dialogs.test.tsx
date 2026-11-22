@@ -1,17 +1,17 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { AssignmentHistoryDialog } from "@/components/features/assignment-history-dialog"
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { AssignmentHistoryDialog } from "@/components/features/assignment-history-dialog";
 import {
   CourseInfoDialog,
   type CourseInfoSlotRecord,
-} from "@/components/features/course-info-dialog"
-import { ReportPdfPreviewDialog } from "@/components/features/report-pdf-preview-dialog"
-import { formatChecklistReport } from "@/lib/pdf/student-report-formatter"
+} from "@/components/features/course-info-dialog";
+import { ReportPdfPreviewDialog } from "@/components/features/report-pdf-preview-dialog";
+import { formatChecklistReport } from "@/lib/pdf/student-report-formatter";
 
 afterEach(() => {
-  cleanup()
-  vi.restoreAllMocks()
-})
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("AssignmentHistoryDialog", () => {
   it("renders gap-free adviser assignment rows with Present for active end_date and data-label attributes", () => {
@@ -40,23 +40,23 @@ describe("AssignmentHistoryDialog", () => {
             created_at: "2024-06-12T08:00:00Z",
           },
         ]}
-      />
-    )
+      />,
+    );
 
-    expect(screen.getByText("Assignment history")).toBeTruthy()
-    expect(screen.getByText("Prof. Ramon Reyes")).toBeTruthy()
-    expect(screen.getByText("Present")).toBeTruthy()
-    expect(screen.getByText("Current adviser")).toBeTruthy()
-    expect(screen.getByText("Prof. Lourdes Mendez")).toBeTruthy()
-    expect(screen.getByText("Handed over to Prof. Reyes")).toBeTruthy()
+    expect(screen.getByText("Assignment history")).toBeTruthy();
+    expect(screen.getByText("Prof. Ramon Reyes")).toBeTruthy();
+    expect(screen.getByText("Present")).toBeTruthy();
+    expect(screen.getByText("Current adviser")).toBeTruthy();
+    expect(screen.getByText("Prof. Lourdes Mendez")).toBeTruthy();
+    expect(screen.getByText("Handed over to Prof. Reyes")).toBeTruthy();
 
-    const cells = Array.from(document.querySelectorAll("td"))
-    expect(cells[0].getAttribute("data-label")).toBe("Adviser")
-    expect(cells[1].getAttribute("data-label")).toBe("From")
-    expect(cells[2].getAttribute("data-label")).toBe("To")
-    expect(cells[3].getAttribute("data-label")).toBe("Note")
-  })
-})
+    const cells = Array.from(document.querySelectorAll("td"));
+    expect(cells[0].getAttribute("data-label")).toBe("Adviser");
+    expect(cells[1].getAttribute("data-label")).toBe("From");
+    expect(cells[2].getAttribute("data-label")).toBe("To");
+    expect(cells[3].getAttribute("data-label")).toBe("Note");
+  });
+});
 
 describe("CourseInfoDialog", () => {
   it("renders StatusBadge, GOLD_DP exception provenance, attempts table, and grade_fix_history", () => {
@@ -105,19 +105,21 @@ describe("CourseInfoDialog", () => {
           actor_name: "Prof. Ramon Reyes",
         },
       ],
-    }
+    };
 
     render(
-      <CourseInfoDialog open onOpenChange={() => undefined} slot={slot} />
-    )
+      <CourseInfoDialog open onOpenChange={() => undefined} slot={slot} />,
+    );
 
-    expect(screen.getByText("CSci 135 · Software Engineering I")).toBeTruthy()
-    const sourceEl = document.querySelector('[data-slot="satisfaction-source"]')!
-    expect(sourceEl.textContent).toContain("Transfer equivalency")
-    expect(sourceEl.className).toContain("text-gold-deep")
-    expect(screen.getByText("Prof. Santos")).toBeTruthy()
-    expect(screen.getByText(/03 Mar 2026.*Prof\. Ramon Reyes/)).toBeTruthy()
-  })
+    expect(screen.getByText("CSci 135 · Software Engineering I")).toBeTruthy();
+    const sourceEl = document.querySelector(
+      '[data-slot="satisfaction-source"]',
+    )!;
+    expect(sourceEl.textContent).toContain("Transfer equivalency");
+    expect(sourceEl.className).toContain("text-gold-deep");
+    expect(screen.getByText("Prof. Santos")).toBeTruthy();
+    expect(screen.getByText(/03 Mar 2026.*Prof\. Ramon Reyes/)).toBeTruthy();
+  });
 
   it("distinguishes INC lapsed from INC in CourseInfoDialog", () => {
     const slot: CourseInfoSlotRecord = {
@@ -146,29 +148,29 @@ describe("CourseInfoDialog", () => {
         },
       ],
       grade_fix_history: [],
-    }
+    };
 
     render(
-      <CourseInfoDialog open onOpenChange={() => undefined} slot={slot} />
-    )
+      <CourseInfoDialog open onOpenChange={() => undefined} slot={slot} />,
+    );
 
-    expect(screen.getAllByText("INC lapsed").length).toBeGreaterThanOrEqual(2)
-  })
-})
+    expect(screen.getAllByText("INC lapsed").length).toBeGreaterThanOrEqual(2);
+  });
+});
 
 describe("ReportPdfPreviewDialog", () => {
   it("generates the actual PDF preview in an iframe and triggers onPrint on Download PDF", async () => {
-    const onPrint = vi.fn()
+    const onPrint = vi.fn();
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockRejectedValue(new Error("Asset unavailable"))
-    )
+      vi.fn().mockRejectedValue(new Error("Asset unavailable")),
+    );
     const createObjectUrlSpy = vi
       .spyOn(URL, "createObjectURL")
-      .mockReturnValue("blob:mock-pdf")
+      .mockReturnValue("blob:mock-pdf");
     const revokeObjectUrlSpy = vi
       .spyOn(URL, "revokeObjectURL")
-      .mockImplementation(() => undefined)
+      .mockImplementation(() => undefined);
     const report = formatChecklistReport({
       studentName: "Maria Isabel Bautista",
       studentNumber: "23-1-04412",
@@ -188,7 +190,7 @@ describe("ReportPdfPreviewDialog", () => {
           ],
         },
       ],
-    })
+    });
 
     render(
       <ReportPdfPreviewDialog
@@ -196,24 +198,24 @@ describe("ReportPdfPreviewDialog", () => {
         onOpenChange={() => undefined}
         report={report}
         onPrint={onPrint}
-      />
-    )
+      />,
+    );
 
-    expect(screen.getByText("Preview: Program checklist")).toBeTruthy()
-    const iframe = await screen.findByTitle("Preview: Program checklist")
-    expect(iframe.getAttribute("src")).toBe("blob:mock-pdf")
-    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1)
+    expect(screen.getByText("Preview: Program checklist")).toBeTruthy();
+    const iframe = await screen.findByTitle("Preview: Program checklist");
+    expect(iframe.getAttribute("src")).toBe("blob:mock-pdf");
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
 
-    const downloadLink = screen.getByRole("link", { name: "Download PDF" })
+    const downloadLink = screen.getByRole("link", { name: "Download PDF" });
     expect(downloadLink.getAttribute("download")).toBe(
-      "SAAIS-program-checklist.pdf"
-    )
-    downloadLink.addEventListener("click", (e) => e.preventDefault())
-    fireEvent.click(downloadLink)
-    expect(onPrint).toHaveBeenCalledWith("pdf_exported")
+      "SAAIS-program-checklist.pdf",
+    );
+    downloadLink.addEventListener("click", (e) => e.preventDefault());
+    fireEvent.click(downloadLink);
+    expect(onPrint).toHaveBeenCalledWith("pdf_exported");
 
-    createObjectUrlSpy.mockRestore()
-    revokeObjectUrlSpy.mockRestore()
-    vi.unstubAllGlobals()
-  })
-})
+    createObjectUrlSpy.mockRestore();
+    revokeObjectUrlSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+});

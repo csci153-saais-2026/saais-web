@@ -1,17 +1,23 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { apiClient } from "@/lib/api"
-import type { EnrollmentHistoryRow } from "./EnrollmentHistoryTable"
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { apiClient } from "@/lib/api";
+import type { EnrollmentHistoryRow } from "./EnrollmentHistoryTable";
 import {
   StudentEnrollmentHistoryPage,
   StudentEnrollmentHistoryView,
-} from "./StudentEnrollmentHistoryPage"
+} from "./StudentEnrollmentHistoryPage";
 
 afterEach(() => {
-  cleanup()
-  vi.restoreAllMocks()
-})
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const mockAttempts: EnrollmentHistoryRow[] = [
   {
@@ -82,80 +88,82 @@ const mockAttempts: EnrollmentHistoryRow[] = [
     is_repeated: false,
     counts_toward_cumulative_gwa: true,
   },
-]
+];
 
 describe("StudentEnrollmentHistoryView", () => {
   it("renders attempts across terms, StatusBadges, 2-decimal grades, data-label, and slot provenance", () => {
-    render(<StudentEnrollmentHistoryView attempts={mockAttempts} />)
+    render(<StudentEnrollmentHistoryView attempts={mockAttempts} />);
 
-    expect(screen.getByText("Your enrollment history.")).toBeTruthy()
-    expect(screen.getByText("2025 - 2026 · 1st Semester")).toBeTruthy()
+    expect(screen.getByText("Your enrollment history.")).toBeTruthy();
+    expect(screen.getByText("2025 - 2026 · 1st Semester")).toBeTruthy();
     expect(
-      screen.getAllByText("2024 - 2025 · 2nd Semester").length
-    ).toBeGreaterThanOrEqual(2)
+      screen.getAllByText("2024 - 2025 · 2nd Semester").length,
+    ).toBeGreaterThanOrEqual(2);
 
-    expect(screen.getByText("Enrolled")).toBeTruthy()
-    expect(screen.getByText("Passed")).toBeTruthy()
-    expect(screen.getByText("INC lapsed")).toBeTruthy()
+    expect(screen.getByText("Enrolled")).toBeTruthy();
+    expect(screen.getByText("Passed")).toBeTruthy();
+    expect(screen.getByText("INC lapsed")).toBeTruthy();
 
-    expect(screen.getByText("1.75")).toBeTruthy()
-    expect(screen.getByText("5.00")).toBeTruthy()
-    expect(screen.getByText("—")).toBeTruthy()
+    expect(screen.getByText("1.75")).toBeTruthy();
+    expect(screen.getByText("5.00")).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy();
 
-    expect(screen.getByText("No direct slot")).toBeTruthy()
+    expect(screen.getByText("No direct slot")).toBeTruthy();
 
-    const cells = Array.from(document.querySelectorAll("td"))
-    expect(cells[0].getAttribute("data-label")).toBe("Course")
-    expect(cells[1].getAttribute("data-label")).toBe("School term")
-    expect(cells[2].getAttribute("data-label")).toBe("Status")
-    expect(cells[3].getAttribute("data-label")).toBe("Grade")
-    expect(cells[4].getAttribute("data-label")).toBe("Provenance")
-    expect(cells[4].textContent).toBe("CSIT 103")
-  })
+    const cells = Array.from(document.querySelectorAll("td"));
+    expect(cells[0].getAttribute("data-label")).toBe("Course");
+    expect(cells[1].getAttribute("data-label")).toBe("School term");
+    expect(cells[2].getAttribute("data-label")).toBe("Status");
+    expect(cells[3].getAttribute("data-label")).toBe("Grade");
+    expect(cells[4].getAttribute("data-label")).toBe("Provenance");
+    expect(cells[4].textContent).toBe("CSIT 103");
+  });
 
   it("renders empty state when there are no attempts", () => {
-    render(<StudentEnrollmentHistoryView attempts={[]} />)
-    expect(screen.getByText("No enrollment attempts recorded yet.")).toBeTruthy()
-  })
-})
+    render(<StudentEnrollmentHistoryView attempts={[]} />);
+    expect(
+      screen.getByText("No enrollment attempts recorded yet."),
+    ).toBeTruthy();
+  });
+});
 
 describe("StudentEnrollmentHistoryPage", () => {
   it("shows Loading... while pending, Try again on error, and recovers on retry", async () => {
-    let callCount = 0
+    let callCount = 0;
     vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {
       if (path === "/rest/v1/attempt_result") {
-        callCount += 1
+        callCount += 1;
         if (callCount === 1) {
-          return Promise.reject(new Error("Network error")) as never
+          return Promise.reject(new Error("Network error")) as never;
         }
         return Promise.resolve({
           data: mockAttempts,
           response: new Response(),
-        }) as never
+        }) as never;
       }
       return Promise.resolve({
         data: [],
         response: new Response(),
-      }) as never
-    })
+      }) as never;
+    });
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
-    })
+    });
 
     render(
       <QueryClientProvider client={queryClient}>
         <StudentEnrollmentHistoryPage studentId="stu-1" />
-      </QueryClientProvider>
-    )
+      </QueryClientProvider>,
+    );
 
-    expect(screen.getByRole("status").textContent).toBe("Loading...")
+    expect(screen.getByRole("status").textContent).toBe("Loading...");
 
-    const retryBtn = await screen.findByRole("button", { name: "Try again" })
-    fireEvent.click(retryBtn)
+    const retryBtn = await screen.findByRole("button", { name: "Try again" });
+    fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("1.75")).toBeTruthy()
-    })
-  })
-})
+      expect(screen.getByText("1.75")).toBeTruthy();
+    });
+  });
+});

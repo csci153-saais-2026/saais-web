@@ -1,18 +1,18 @@
-import { EllipsisIcon } from '@/components/icons'
-import { Button } from '@/components/ui/button'
+import { EllipsisIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
 
 interface RowActionsMenuProps {
-  readonly label: string
-  readonly onEdit: () => void
-  readonly onDelete: () => void
-  readonly editDisabled?: boolean
-  readonly deleteDisabled?: boolean
+  readonly label: string;
+  readonly onEdit: () => void;
+  readonly onDelete: () => void;
+  readonly editDisabled?: boolean;
+  readonly deleteDisabled?: boolean;
 }
 
 export function RowActionsMenu({
@@ -47,5 +47,5 @@ export function RowActionsMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

@@ -1,8 +1,8 @@
-import type { FacultyDepartmentReport } from "@/routes/dean/types"
+import type { FacultyDepartmentReport } from "@/routes/dean/types";
 
-const LOGOS = ["bagong-pilipinas.png", "vsu-wordmark.png"] as const
-const GREEN = "#29450e"
-const CREAM = "#f8f6ed"
+const LOGOS = ["bagong-pilipinas.png", "vsu-wordmark.png"] as const;
+const GREEN = "#29450e";
+const CREAM = "#f8f6ed";
 
 function cleanPdfText(value: string | number): string {
   return String(value)
@@ -11,15 +11,15 @@ function cleanPdfText(value: string | number): string {
     .replace(/→/g, "->")
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
-    .replaceAll(String.fromCharCode(160), " ")
+    .replaceAll(String.fromCharCode(160), " ");
 }
 
 async function loadLogo(name: string): Promise<Uint8Array | null> {
   try {
-    const response = await fetch(`${import.meta.env.BASE_URL}${name}`)
-    return response.ok ? new Uint8Array(await response.arrayBuffer()) : null
+    const response = await fetch(`${import.meta.env.BASE_URL}${name}`);
+    return response.ok ? new Uint8Array(await response.arrayBuffer()) : null;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -27,13 +27,13 @@ export function buildFacultyReportFilename(
   department: FacultyDepartmentReport["department"],
 ): string {
   if (department === "All departments") {
-    return "SAAIS-faculty-reports.pdf"
+    return "SAAIS-faculty-reports.pdf";
   }
   const slug = department
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-  return `SAAIS-faculty-reports-${slug}.pdf`
+    .replace(/^-|-$/g, "");
+  return `SAAIS-faculty-reports-${slug}.pdf`;
 }
 
 export function buildFacultyReportPdfLines(
@@ -41,7 +41,9 @@ export function buildFacultyReportPdfLines(
   generatedBy = "Dean",
   facultyName?: string,
 ): string[] {
-  const scope = [facultyName?.trim(), report.department].filter(Boolean).join(" | ")
+  const scope = [facultyName?.trim(), report.department]
+    .filter(Boolean)
+    .join(" | ");
 
   return [
     "SAAIS - Office of the Dean | Faculty Reports",
@@ -50,9 +52,10 @@ export function buildFacultyReportPdfLines(
     `Students: ${report.students} | Mean GWA: ${report.meanGwa} | With deficiencies: ${report.withDeficiencies}`,
     ...report.bands.map((band) => `${band.label}: ${band.percent}%`),
     ...report.batchRows.map(
-      (row) => `${row.batch} | ${row.curriculum} | ${row.students} | ${row.meanGwa}`,
+      (row) =>
+        `${row.batch} | ${row.curriculum} | ${row.students} | ${row.meanGwa}`,
     ),
-  ]
+  ];
 }
 
 /**
@@ -62,87 +65,93 @@ export async function createFacultyReportPdf(
   report: FacultyDepartmentReport,
   options?: { facultyName?: string; deanName?: string },
 ): Promise<Blob> {
-  const { jsPDF } = await import("jspdf")
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
-  const logos = await Promise.all(LOGOS.map(loadLogo))
-  const pageWidth = pdf.internal.pageSize.getWidth()
-  const pageHeight = pdf.internal.pageSize.getHeight()
-  const margin = 14
-  const bodyWidth = pageWidth - margin * 2
-  let y = 0
+  const { jsPDF } = await import("jspdf");
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const logos = await Promise.all(LOGOS.map(loadLogo));
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 14;
+  const bodyWidth = pageWidth - margin * 2;
+  let y = 0;
 
   const text = (
     value: string | number,
     x: number,
     top: number,
     textOptions?: Parameters<typeof pdf.text>[3],
-  ) => pdf.text(cleanPdfText(value), x, top, textOptions)
+  ) => pdf.text(cleanPdfText(value), x, top, textOptions);
 
   const stripe = () => {
-    pdf.setFillColor(GREEN)
-    pdf.rect(0, 0, pageWidth, 2, "F")
-  }
-  const ink = () => pdf.setTextColor("#111111")
+    pdf.setFillColor(GREEN);
+    pdf.rect(0, 0, pageWidth, 2, "F");
+  };
+  const ink = () => pdf.setTextColor("#111111");
 
-  const facultyLabel = options?.facultyName?.trim() || "Faculty unavailable"
-  const subtitle = report.department === "All departments" ? "All departments" : report.department
+  const facultyLabel = options?.facultyName?.trim() || "Faculty unavailable";
+  const subtitle =
+    report.department === "All departments"
+      ? "All departments"
+      : report.department;
 
   // Institutional letterhead
-  stripe()
-  const [bagong, vsu] = logos
-  if (bagong) pdf.addImage(bagong, "PNG", margin, 10, 22, 21)
-  if (vsu) pdf.addImage(vsu, "PNG", margin + 25, 10, 58, 21)
-  const dividerX = margin + 88
-  pdf.setDrawColor(GREEN)
-  pdf.line(dividerX, 10, dividerX, 31)
-  pdf.setTextColor(GREEN)
-  pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(9)
-  text("Office of the Dean", dividerX + 5, 17)
-  pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(12)
+  stripe();
+  const [bagong, vsu] = logos;
+  if (bagong) pdf.addImage(bagong, "PNG", margin, 10, 22, 21);
+  if (vsu) pdf.addImage(vsu, "PNG", margin + 25, 10, 58, 21);
+  const dividerX = margin + 88;
+  pdf.setDrawColor(GREEN);
+  pdf.line(dividerX, 10, dividerX, 31);
+  pdf.setTextColor(GREEN);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  text("Office of the Dean", dividerX + 5, 17);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12);
   pdf.text(
-    pdf.splitTextToSize(cleanPdfText(facultyLabel), pageWidth - margin - dividerX - 5) as string[],
+    pdf.splitTextToSize(
+      cleanPdfText(facultyLabel),
+      pageWidth - margin - dividerX - 5,
+    ) as string[],
     dividerX + 5,
     24,
-  )
+  );
 
-  ink()
-  pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(13)
-  text("FACULTY REPORTS", pageWidth / 2, 44, { align: "center" })
-  pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(8.5)
-  text(subtitle, pageWidth / 2, 50, { align: "center" })
-  y = 58
+  ink();
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(13);
+  text("FACULTY REPORTS", pageWidth / 2, 44, { align: "center" });
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.5);
+  text(subtitle, pageWidth / 2, 50, { align: "center" });
+  y = 58;
 
   const stats = [
     { label: "Students", value: report.students },
     { label: "Mean GWA", value: report.meanGwa },
     { label: "With deficiencies", value: report.withDeficiencies },
-  ]
-  const gap = 3
-  const cardWidth = (bodyWidth - gap * (stats.length - 1)) / stats.length
+  ];
+  const gap = 3;
+  const cardWidth = (bodyWidth - gap * (stats.length - 1)) / stats.length;
   stats.forEach((stat, index) => {
-    const x = margin + index * (cardWidth + gap)
-    pdf.setFillColor("#eef2eb")
-    pdf.rect(x, y, cardWidth, 17, "F")
-    pdf.setFont("helvetica", "normal")
-    pdf.setFontSize(7)
-    text(stat.label.toUpperCase(), x + 3, y + 5)
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(13)
-    text(stat.value, x + 3, y + 12.5)
-  })
-  y += 25
+    const x = margin + index * (cardWidth + gap);
+    pdf.setFillColor("#eef2eb");
+    pdf.rect(x, y, cardWidth, 17, "F");
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    text(stat.label.toUpperCase(), x + 3, y + 5);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    text(stat.value, x + 3, y + 12.5);
+  });
+  y += 25;
 
   const ensure = (space: number) => {
-    if (y + space <= pageHeight - 16) return false
-    pdf.addPage()
-    stripe()
-    y = 16
-    return true
-  }
+    if (y + space <= pageHeight - 16) return false;
+    pdf.addPage();
+    stripe();
+    y = 16;
+    return true;
+  };
 
   const sections = [
     {
@@ -155,103 +164,119 @@ export async function createFacultyReportPdf(
     {
       title: "GWA by batch and curriculum version",
       headers: ["Batch", "Curriculum", "Students", "Mean GWA"],
-      rows: report.batchRows.map((r) => [r.batch, r.curriculum, r.students, r.meanGwa]),
+      rows: report.batchRows.map((r) => [
+        r.batch,
+        r.curriculum,
+        r.students,
+        r.meanGwa,
+      ]),
       weights: [1, 2.5, 1, 1],
       rightAlign: [2, 3],
     },
-  ]
+  ];
 
   for (const section of sections) {
-    const totalWeight = section.weights.reduce((sum, w) => sum + w, 0)
-    const widths = section.weights.map((w) => (bodyWidth * w) / totalWeight)
-    const right = new Set(section.rightAlign)
+    const totalWeight = section.weights.reduce((sum, w) => sum + w, 0);
+    const widths = section.weights.map((w) => (bodyWidth * w) / totalWeight);
+    const right = new Set(section.rightAlign);
 
     const drawHeading = (suffix = "") => {
-      pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(10.5)
-      ink()
-      text(section.title + suffix, margin, y)
-      y += 4
-    }
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      ink();
+      text(section.title + suffix, margin, y);
+      y += 4;
+    };
 
     const drawHeader = () => {
-      pdf.setFillColor(GREEN)
-      pdf.rect(margin, y, bodyWidth, 7, "F")
-      pdf.setTextColor("#ffffff")
-      pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(8)
-      let x = margin
+      pdf.setFillColor(GREEN);
+      pdf.rect(margin, y, bodyWidth, 7, "F");
+      pdf.setTextColor("#ffffff");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      let x = margin;
       section.headers.forEach((header, col) => {
         if (right.has(col)) {
-          text(header, x + widths[col] - 3, y + 4.8, { align: "right" })
+          text(header, x + widths[col] - 3, y + 4.8, { align: "right" });
         } else {
-          text(header, x + 3, y + 4.8)
+          text(header, x + 3, y + 4.8);
         }
-        x += widths[col]
-      })
-      ink()
-      y += 7
-    }
+        x += widths[col];
+      });
+      ink();
+      y += 7;
+    };
 
-    ensure(28)
-    drawHeading()
-    drawHeader()
+    ensure(28);
+    drawHeading();
+    drawHeader();
 
     section.rows.forEach((row, idx) => {
-      pdf.setFont("helvetica", "normal")
-      pdf.setFontSize(8)
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
       const cells = section.headers.map(
-        (_, col) => pdf.splitTextToSize(cleanPdfText(row[col] ?? "-"), widths[col] - 6) as string[],
-      )
-      const rowHeight = Math.max(...cells.map((lines) => lines.length)) * 4 + 3.5
+        (_, col) =>
+          pdf.splitTextToSize(
+            cleanPdfText(row[col] ?? "-"),
+            widths[col] - 6,
+          ) as string[],
+      );
+      const rowHeight =
+        Math.max(...cells.map((lines) => lines.length)) * 4 + 3.5;
       if (ensure(rowHeight + 8)) {
-        drawHeading(" (continued)")
-        drawHeader()
+        drawHeading(" (continued)");
+        drawHeader();
       }
       if (idx % 2 === 1) {
-        pdf.setFillColor(CREAM)
-        pdf.rect(margin, y, bodyWidth, rowHeight, "F")
+        pdf.setFillColor(CREAM);
+        pdf.rect(margin, y, bodyWidth, rowHeight, "F");
       }
-      let x = margin
+      let x = margin;
       cells.forEach((lines, col) => {
         if (right.has(col)) {
-          pdf.text(lines, x + widths[col] - 3, y + 4.6, { align: "right" })
+          pdf.text(lines, x + widths[col] - 3, y + 4.6, { align: "right" });
         } else {
-          pdf.text(lines, x + 3, y + 4.6)
+          pdf.text(lines, x + 3, y + 4.6);
         }
-        x += widths[col]
-      })
-      y += rowHeight
-    })
+        x += widths[col];
+      });
+      y += rowHeight;
+    });
 
-    y += 8
+    y += 8;
   }
 
-  ensure(32)
-  pdf.setDrawColor("#888888")
-  pdf.line(pageWidth - margin - 75, y + 14, pageWidth - margin - 10, y + 14)
+  ensure(32);
+  pdf.setDrawColor("#888888");
+  pdf.line(pageWidth - margin - 75, y + 14, pageWidth - margin - 10, y + 14);
   if (options?.deanName) {
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(8)
-    text(options.deanName, pageWidth - margin - 42.5, y + 19, { align: "center" })
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    text(options.deanName, pageWidth - margin - 42.5, y + 19, {
+      align: "center",
+    });
   }
-  pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(8)
-  text("Noted by: Dean", pageWidth - margin - 42.5, y + 24, { align: "center" })
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  text("Noted by: Dean", pageWidth - margin - 42.5, y + 24, {
+    align: "center",
+  });
 
-  const pages = pdf.getNumberOfPages()
+  const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
-    pdf.setPage(page)
-    pdf.setFont("helvetica", "normal")
-    pdf.setFontSize(7)
-    pdf.setTextColor("#666666")
+    pdf.setPage(page);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    pdf.setTextColor("#666666");
     text(
       `Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} through SAAIS`,
       margin,
       pageHeight - 7,
-    )
-    text(`Page ${page} of ${pages}`, pageWidth - margin, pageHeight - 7, { align: "right" })
+    );
+    text(`Page ${page} of ${pages}`, pageWidth - margin, pageHeight - 7, {
+      align: "right",
+    });
   }
 
-  return pdf.output("blob")
+  return pdf.output("blob");
 }

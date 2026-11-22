@@ -1,11 +1,11 @@
-import * as React from "react"
-import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
+import { cn } from "@/lib/utils";
 
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
 }
 
 function DropdownMenuTrigger({
@@ -16,7 +16,7 @@ function DropdownMenuTrigger({
       data-slot="dropdown-menu-trigger"
       {...props}
     />
-  )
+  );
 }
 
 function DropdownMenuContent({
@@ -33,12 +33,12 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         className={cn(
           "z-50 min-w-32 overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md outline-hidden",
-          className
+          className,
         )}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
-  )
+  );
 }
 
 function DropdownMenuItem({
@@ -50,11 +50,11 @@ function DropdownMenuItem({
       data-slot="dropdown-menu-item"
       className={cn(
         "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -62,4 +62,4 @@ export {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-}
+};

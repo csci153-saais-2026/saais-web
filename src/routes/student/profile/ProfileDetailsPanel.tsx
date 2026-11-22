@@ -1,15 +1,15 @@
-import { FormField } from "@/components/features/form-field"
-import { Panel } from "@/components/features/panel"
-import { Input } from "@/components/ui/input"
-import type { ApiSchema } from "@/lib/api/types"
-import { cn } from "@/lib/utils"
+import { FormField } from "@/components/features/form-field";
+import { Panel } from "@/components/features/panel";
+import { Input } from "@/components/ui/input";
+import type { ApiSchema } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 
 export interface ProfileDetailsPanelProps {
-  readonly profile: ApiSchema<"Profile">
-  readonly programName?: string | null
-  readonly departmentName?: string | null
-  readonly collegeName?: string | null
-  readonly className?: string
+  readonly profile: ApiSchema<"Profile">;
+  readonly programName?: string | null;
+  readonly departmentName?: string | null;
+  readonly collegeName?: string | null;
+  readonly className?: string;
 }
 
 /**
@@ -107,5 +107,5 @@ export function ProfileDetailsPanel({
         </FormField>
       </div>
     </Panel>
-  )
+  );
 }

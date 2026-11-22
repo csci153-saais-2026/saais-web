@@ -1,6 +1,6 @@
-import * as React from "react"
-import type { ApiSchema } from "@/lib/api/types"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import type { ApiSchema } from "@/lib/api/types";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -8,17 +8,19 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 export interface AdvisingNotesDialogProps {
-  readonly open: boolean
-  readonly onOpenChange: (open: boolean) => void
-  readonly notes: readonly ApiSchema<"AdvisingNote">[]
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly notes: readonly ApiSchema<"AdvisingNote">[];
   /** Optional fallback or map for resolving staff author display names when `author_name` is omitted. */
-  readonly authorNames?: Readonly<Record<string, string>> | ((authorId: string) => string | undefined)
-  readonly defaultAuthorName?: string
-  readonly className?: string
+  readonly authorNames?:
+    | Readonly<Record<string, string>>
+    | ((authorId: string) => string | undefined);
+  readonly defaultAuthorName?: string;
+  readonly className?: string;
 }
 
 const SHORT_MONTHS = [
@@ -34,40 +36,42 @@ const SHORT_MONTHS = [
   "Oct",
   "Nov",
   "Dec",
-] as const
+] as const;
 
 function formatNoteDate(dateValue: string | null | undefined): string {
-  if (!dateValue) return "—"
-  const trimmed = dateValue.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
   if (isoMatch) {
-    const year = Number(isoMatch[1])
-    const monthIndex = Number(isoMatch[2]) - 1
-    const day = Number(isoMatch[3])
-    const monthLabel = SHORT_MONTHS[monthIndex]
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
     if (monthLabel && day >= 1 && day <= 31) {
-      return `${day} ${monthLabel} ${year}`
+      return `${day} ${monthLabel} ${year}`;
     }
   }
-  return trimmed
+  return trimmed;
 }
 
 function resolveAuthorLabel(
   note: ApiSchema<"AdvisingNote">,
-  authorNames?: Readonly<Record<string, string>> | ((authorId: string) => string | undefined),
-  defaultAuthorName = "Academic Adviser"
+  authorNames?:
+    | Readonly<Record<string, string>>
+    | ((authorId: string) => string | undefined),
+  defaultAuthorName = "Academic Adviser",
 ): string {
   if (note.author_name && note.author_name.trim().length > 0) {
-    return note.author_name.trim()
+    return note.author_name.trim();
   }
   if (typeof authorNames === "function") {
-    const resolved = authorNames(note.authored_by)
-    if (resolved && resolved.trim().length > 0) return resolved.trim()
+    const resolved = authorNames(note.authored_by);
+    if (resolved && resolved.trim().length > 0) return resolved.trim();
   } else if (authorNames && note.authored_by in authorNames) {
-    const resolved = authorNames[note.authored_by]
-    if (resolved && resolved.trim().length > 0) return resolved.trim()
+    const resolved = authorNames[note.authored_by];
+    if (resolved && resolved.trim().length > 0) return resolved.trim();
   }
-  return defaultAuthorName
+  return defaultAuthorName;
 }
 
 /**
@@ -85,25 +89,34 @@ export function AdvisingNotesDialog({
 }: AdvisingNotesDialogProps) {
   const sortedNotes = React.useMemo(() => {
     return [...notes].sort((a, b) =>
-      (b.created_at || "").localeCompare(a.created_at || "")
-    )
-  }, [notes])
+      (b.created_at || "").localeCompare(a.created_at || ""),
+    );
+  }, [notes]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className={cn("max-h-[90dvh] overflow-y-auto sm:max-w-[640px]", className)}
+        className={cn(
+          "max-h-[90dvh] overflow-y-auto sm:max-w-[640px]",
+          className,
+        )}
       >
         <DialogHeader className="flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">
             <DialogTitle>Advising notes</DialogTitle>
             <DialogDescription className="text-body text-muted-foreground">
-              Guidance recorded by your academic adviser across your advising sessions.
+              Guidance recorded by your academic adviser across your advising
+              sessions.
             </DialogDescription>
           </div>
           <DialogClose asChild>
-            <Button type="button" variant="outline" size="sm" className="shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+            >
               Close
             </Button>
           </DialogClose>
@@ -118,9 +131,9 @@ export function AdvisingNotesDialog({
               const authorLabel = resolveAuthorLabel(
                 note,
                 authorNames,
-                defaultAuthorName
-              )
-              const dateLabel = formatNoteDate(note.created_at)
+                defaultAuthorName,
+              );
+              const dateLabel = formatNoteDate(note.created_at);
 
               return (
                 <article
@@ -150,7 +163,7 @@ export function AdvisingNotesDialog({
                     </time>
                   </div>
                 </article>
-              )
+              );
             })}
           </div>
         ) : (
@@ -160,5 +173,5 @@ export function AdvisingNotesDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,7 +1,18 @@
-import { ChartIcon, CheckIcon, GridIcon, ListIcon, UserIcon, UsersIcon } from '@/components/icons'
-import { Card } from '@/components/ui/card'
-import { Kicker } from '@/components/ui/kicker'
-import { PORTALS_SECTION, PORTAL_CARDS, type PortalCard } from '@/routes/landing/landingData'
+import {
+  ChartIcon,
+  CheckIcon,
+  GridIcon,
+  ListIcon,
+  UserIcon,
+  UsersIcon,
+} from "@/components/icons";
+import { Card } from "@/components/ui/card";
+import { Kicker } from "@/components/ui/kicker";
+import {
+  PORTALS_SECTION,
+  PORTAL_CARDS,
+  type PortalCard,
+} from "@/routes/landing/landingData";
 
 function CogIcon({ className }: { className?: string }) {
   return (
@@ -20,16 +31,16 @@ function CogIcon({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="3.2" />
       <path d="M12 2.6v2.4M12 19v2.4M21.4 12H19M5 12H2.6M18.6 5.4l-1.7 1.7M7.1 16.9l-1.7 1.7M18.6 18.6l-1.7-1.7M7.1 7.1L5.4 5.4" />
     </svg>
-  )
+  );
 }
 
-function PortalIcon({ icon }: { icon: PortalCard['icon'] }) {
-  if (icon === 'user') return <UserIcon className="size-7" />
-  if (icon === 'users') return <UsersIcon className="size-7" />
-  if (icon === 'chart') return <ChartIcon className="size-7" />
-  if (icon === 'list') return <ListIcon className="size-7" />
-  if (icon === 'grid') return <GridIcon className="size-7" />
-  return <CogIcon className="size-7" />
+function PortalIcon({ icon }: { icon: PortalCard["icon"] }) {
+  if (icon === "user") return <UserIcon className="size-7" />;
+  if (icon === "users") return <UsersIcon className="size-7" />;
+  if (icon === "chart") return <ChartIcon className="size-7" />;
+  if (icon === "list") return <ListIcon className="size-7" />;
+  if (icon === "grid") return <GridIcon className="size-7" />;
+  return <CogIcon className="size-7" />;
 }
 
 export function PortalsOverviewSection() {
@@ -83,5 +94,5 @@ export function PortalsOverviewSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

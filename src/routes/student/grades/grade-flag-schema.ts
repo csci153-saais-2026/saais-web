@@ -1,5 +1,5 @@
-import { z } from "zod"
-import type { ApiSchema } from "@/lib/api/types"
+import { z } from "zod";
+import type { ApiSchema } from "@/lib/api/types";
 
 export const gradeFlagIssueTypes = [
   "incorrect_grade",
@@ -9,9 +9,9 @@ export const gradeFlagIssueTypes = [
   "wrong_status",
   "missing_completion",
   "other",
-] as const
+] as const;
 
-export const gradeFlagReportedStages = ["midterm", "final"] as const
+export const gradeFlagReportedStages = ["midterm", "final"] as const;
 
 /**
  * Client-side Zod schema for student grade flag submission,
@@ -27,6 +27,6 @@ export const gradeFlagSchema = z.object({
     .trim()
     .min(1, "Please describe the grade issue before submitting.")
     .max(2000, "Details must be 2,000 characters or fewer."),
-}) satisfies z.ZodType<ApiSchema<"GradeFlagCreateRequest">>
+}) satisfies z.ZodType<ApiSchema<"GradeFlagCreateRequest">>;
 
-export type GradeFlagValues = z.infer<typeof gradeFlagSchema>
+export type GradeFlagValues = z.infer<typeof gradeFlagSchema>;

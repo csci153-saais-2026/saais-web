@@ -1,5 +1,5 @@
-import { ChartIcon, NoteIcon, UsersIcon } from "@/components/icons"
-import type { NavSection } from "@/components/features/sidebar"
+import { ChartIcon, NoteIcon, UsersIcon } from "@/components/icons";
+import type { NavSection } from "@/components/features/sidebar";
 
 export const deanNav: NavSection = {
   title: "Dean",
@@ -8,4 +8,4 @@ export const deanNav: NavSection = {
     { label: "Students", href: "/dean/students", icon: UsersIcon },
     { label: "Audit log", href: "/dean/audit-log", icon: NoteIcon },
   ],
-}
+};

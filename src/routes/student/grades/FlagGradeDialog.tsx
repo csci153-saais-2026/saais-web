@@ -1,6 +1,6 @@
-import * as React from "react"
-import { FormField } from "@/components/features/form-field"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,54 +8,51 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import type { ApiSchema } from "@/lib/api/types"
-import { cn } from "@/lib/utils"
-import {
-  gradeFlagSchema,
-  type GradeFlagValues,
-} from "./grade-flag-schema"
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type { ApiSchema } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
+import { gradeFlagSchema, type GradeFlagValues } from "./grade-flag-schema";
 
-export type FlagGradeIssueType = GradeFlagValues["issue_type"]
+export type FlagGradeIssueType = GradeFlagValues["issue_type"];
 
 export interface FlagGradeTarget {
-  readonly attemptId: string
-  readonly code: string
-  readonly title: string
-  readonly recordedGrade: string
-  readonly reportedStage?: "midterm" | "final" | null
+  readonly attemptId: string;
+  readonly code: string;
+  readonly title: string;
+  readonly recordedGrade: string;
+  readonly reportedStage?: "midterm" | "final" | null;
 }
 
 export interface FlagGradeDialogProps {
-  readonly open: boolean
-  readonly onOpenChange: (open: boolean) => void
-  readonly target: FlagGradeTarget | null
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly target: FlagGradeTarget | null;
   readonly onSubmit: (
-    payload: ApiSchema<"GradeFlagCreateRequest">
-  ) => Promise<void> | void
-  readonly isSubmitting?: boolean
-  readonly submitError?: string | null
-  readonly className?: string
+    payload: ApiSchema<"GradeFlagCreateRequest">,
+  ) => Promise<void> | void;
+  readonly isSubmitting?: boolean;
+  readonly submitError?: string | null;
+  readonly className?: string;
 }
 
 const ISSUE_TYPE_OPTIONS: readonly {
-  readonly value: FlagGradeIssueType
-  readonly label: string
+  readonly value: FlagGradeIssueType;
+  readonly label: string;
 }[] = [
   { value: "incorrect_grade", label: "Incorrect grade" },
   { value: "missing_grade", label: "Missing grade" },
   { value: "wrong_course_credited", label: "Wrong course credited" },
   { value: "other", label: "Other" },
-]
+];
 
 /**
  * Student Grades modal for flagging a recorded grade or missing grade for adviser review.
@@ -70,27 +67,30 @@ export function FlagGradeDialog({
   className,
 }: FlagGradeDialogProps) {
   const [issueType, setIssueType] =
-    React.useState<FlagGradeIssueType>("incorrect_grade")
-  const [details, setDetails] = React.useState("")
-  const [detailsError, setDetailsError] = React.useState<string>()
+    React.useState<FlagGradeIssueType>("incorrect_grade");
+  const [details, setDetails] = React.useState("");
+  const [detailsError, setDetailsError] = React.useState<string>();
 
-  const prevTargetIdRef = React.useRef<string | null>(null)
-  const prevOpenRef = React.useRef<boolean>(false)
+  const prevTargetIdRef = React.useRef<string | null>(null);
+  const prevOpenRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
-    const targetId = target?.attemptId ?? null
-    if ((open && !prevOpenRef.current) || targetId !== prevTargetIdRef.current) {
-      setIssueType("incorrect_grade")
-      setDetails("")
-      setDetailsError(undefined)
+    const targetId = target?.attemptId ?? null;
+    if (
+      (open && !prevOpenRef.current) ||
+      targetId !== prevTargetIdRef.current
+    ) {
+      setIssueType("incorrect_grade");
+      setDetails("");
+      setDetailsError(undefined);
     }
-    prevOpenRef.current = open
-    prevTargetIdRef.current = targetId
-  }, [open, target?.attemptId])
+    prevOpenRef.current = open;
+    prevTargetIdRef.current = targetId;
+  }, [open, target?.attemptId]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!target) return
+    e.preventDefault();
+    if (!target) return;
 
     const parsed = gradeFlagSchema.safeParse({
       attempt_id: target.attemptId,
@@ -98,24 +98,25 @@ export function FlagGradeDialog({
       reported_grade_text: target.recordedGrade,
       issue_type: issueType,
       details,
-    })
+    });
 
     if (!parsed.success) {
       const detailsIssue = parsed.error.issues.find(
-        (issue) => issue.path[0] === "details"
-      )
+        (issue) => issue.path[0] === "details",
+      );
       setDetailsError(
-        detailsIssue?.message ?? "Please describe the grade issue before submitting."
-      )
-      return
+        detailsIssue?.message ??
+          "Please describe the grade issue before submitting.",
+      );
+      return;
     }
 
-    setDetailsError(undefined)
-    await onSubmit(parsed.data)
+    setDetailsError(undefined);
+    await onSubmit(parsed.data);
   }
 
-  const courseDisplay = target ? `${target.code} · ${target.title}` : "—"
-  const gradeDisplay = target?.recordedGrade || "No grade yet"
+  const courseDisplay = target ? `${target.code} · ${target.title}` : "—";
+  const gradeDisplay = target?.recordedGrade || "No grade yet";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,9 +191,9 @@ export function FlagGradeDialog({
                 id="flag-grade-details"
                 value={details}
                 onChange={(e) => {
-                  setDetails(e.target.value)
+                  setDetails(e.target.value);
                   if (detailsError && e.target.value.trim()) {
-                    setDetailsError(undefined)
+                    setDetailsError(undefined);
                   }
                 }}
                 placeholder="Explain what appears incorrect or missing."
@@ -230,5 +231,5 @@ export function FlagGradeDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

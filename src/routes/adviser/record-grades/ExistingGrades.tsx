@@ -310,7 +310,10 @@ function ExistingAttempt({
         )}
       </div>
       <span aria-hidden="true" />
-      <p className="sr-only">Saved courses cannot be removed. Previously recorded grades are changed through the grade correction workflow.</p>
+      <p className="sr-only">
+        Saved courses cannot be removed. Previously recorded grades are changed
+        through the grade correction workflow.
+      </p>
     </div>
   );
 }

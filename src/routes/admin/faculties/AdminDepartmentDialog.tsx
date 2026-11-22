@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { FormField } from '@/components/features/form-field'
-import { Button } from '@/components/ui/button'
+import { useState, type FormEvent } from "react";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,29 +8,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import type { ApiSchema } from '@/lib/api'
+} from "@/components/ui/select";
+import type { ApiSchema } from "@/lib/api";
 import {
   buildDepartmentRequest,
   validateDepartmentForm,
   type DepartmentFormErrors,
   type DepartmentFormValues,
-} from './admin-faculties-model'
+} from "./admin-faculties-model";
 
-type Department = ApiSchema<'Department'>
-type Faculty = Pick<ApiSchema<'Faculty'>, 'id' | 'name'>
+type Department = ApiSchema<"Department">;
+type Faculty = Pick<ApiSchema<"Faculty">, "id" | "name">;
 type DepartmentRequest = Pick<
-  ApiSchema<'DepartmentInsert'>,
-  'faculty_id' | 'name' | 'code'
->
+  ApiSchema<"DepartmentInsert">,
+  "faculty_id" | "name" | "code"
+>;
 
 export function AdminDepartmentDialog({
   department,
@@ -38,46 +38,46 @@ export function AdminDepartmentDialog({
   onOpenChange,
   onSubmit,
 }: {
-  department: Department | null
-  faculties: readonly Faculty[]
-  onOpenChange: (open: boolean) => void
-  onSubmit: (request: DepartmentRequest) => Promise<void>
+  department: Department | null;
+  faculties: readonly Faculty[];
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (request: DepartmentRequest) => Promise<void>;
 }) {
   const [values, setValues] = useState<DepartmentFormValues>(() => ({
-    name: department?.name ?? '',
-    code: department?.code ?? '',
-    facultyId: department?.faculty_id ?? '',
-  }))
-  const [errors, setErrors] = useState<DepartmentFormErrors>({})
-  const [submitting, setSubmitting] = useState(false)
-  const [submissionError, setSubmissionError] = useState<string | null>(null)
+    name: department?.name ?? "",
+    code: department?.code ?? "",
+    facultyId: department?.faculty_id ?? "",
+  }));
+  const [errors, setErrors] = useState<DepartmentFormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   function update<K extends keyof DepartmentFormValues>(
     key: K,
     value: DepartmentFormValues[K],
   ) {
-    setValues((current) => ({ ...current, [key]: value }))
-    setErrors((current) => ({ ...current, [key]: undefined }))
+    setValues((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const nextErrors = validateDepartmentForm(values, faculties)
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    event.preventDefault();
+    const nextErrors = validateDepartmentForm(values, faculties);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
-    setSubmissionError(null)
-    setSubmitting(true)
+    setSubmissionError(null);
+    setSubmitting(true);
     try {
-      await onSubmit(buildDepartmentRequest(values))
+      await onSubmit(buildDepartmentRequest(values));
     } catch (requestError: unknown) {
       setSubmissionError(
         requestError instanceof Error
           ? requestError.message
-          : 'The department could not be saved.',
-      )
+          : "The department could not be saved.",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
@@ -86,7 +86,7 @@ export function AdminDepartmentDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {department ? 'Edit department' : 'Add department'}
+            {department ? "Edit department" : "Add department"}
           </DialogTitle>
           <DialogDescription>
             Assign the department to its parent faculty. Related records are not
@@ -113,7 +113,7 @@ export function AdminDepartmentDialog({
               maxLength={250}
               aria-invalid={Boolean(errors.name)}
               disabled={submitting}
-              onChange={(event) => update('name', event.currentTarget.value)}
+              onChange={(event) => update("name", event.currentTarget.value)}
             />
           </FormField>
           <FormField
@@ -128,7 +128,7 @@ export function AdminDepartmentDialog({
               maxLength={50}
               aria-invalid={Boolean(errors.code)}
               disabled={submitting}
-              onChange={(event) => update('code', event.currentTarget.value)}
+              onChange={(event) => update("code", event.currentTarget.value)}
             />
           </FormField>
           <FormField
@@ -138,7 +138,7 @@ export function AdminDepartmentDialog({
           >
             <Select
               value={values.facultyId}
-              onValueChange={(value) => update('facultyId', value)}
+              onValueChange={(value) => update("facultyId", value)}
               disabled={faculties.length === 0 || submitting}
             >
               <SelectTrigger
@@ -171,16 +171,19 @@ export function AdminDepartmentDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || faculties.length === 0}>
+            <Button
+              type="submit"
+              disabled={submitting || faculties.length === 0}
+            >
               {submitting
-                ? 'Saving…'
+                ? "Saving…"
                 : department
-                  ? 'Save department'
-                  : 'Add department'}
+                  ? "Save department"
+                  : "Add department"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,5 +1,5 @@
-import { Panel } from "@/components/features/panel"
-import { StatusBadge, type Status } from "@/components/ui/status-badge"
+import { Panel } from "@/components/features/panel";
+import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import {
   Table,
   TableBody,
@@ -7,57 +7,57 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { ApiSchema } from "@/lib/api/types"
-import { cn } from "@/lib/utils"
-import type { EnrollmentHistoryOfferingDetail } from "./student-enrollment-history.api"
+} from "@/components/ui/table";
+import type { ApiSchema } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
+import type { EnrollmentHistoryOfferingDetail } from "./student-enrollment-history.api";
 
 export type EnrollmentHistoryRow = ApiSchema<"AttemptResult"> & {
-  readonly course_code?: string | null
-  readonly course_title?: string | null
-  readonly school_term_label?: string | null
-  readonly provenance_slot_code?: string | null
-}
+  readonly course_code?: string | null;
+  readonly course_title?: string | null;
+  readonly school_term_label?: string | null;
+  readonly provenance_slot_code?: string | null;
+};
 
 export interface EnrollmentHistoryTableProps {
-  readonly attempts: readonly EnrollmentHistoryRow[]
+  readonly attempts: readonly EnrollmentHistoryRow[];
   readonly offeringDetails?: Readonly<
     Record<string, EnrollmentHistoryOfferingDetail>
-  >
-  readonly slotLabels?: Readonly<Record<string, string>>
-  readonly className?: string
+  >;
+  readonly slotLabels?: Readonly<Record<string, string>>;
+  readonly className?: string;
 }
 
 function mapAttemptStatusToBadge(attempt: EnrollmentHistoryRow): Status {
-  if (attempt.is_lapsed_inc) return "inc-lapsed"
+  if (attempt.is_lapsed_inc) return "inc-lapsed";
   switch (attempt.effective_status) {
     case "passed":
-      return "passed"
+      return "passed";
     case "failed":
-      return "failed"
+      return "failed";
     case "inc":
-      return "inc"
+      return "inc";
     case "currently_enrolled":
-      return "enrolled"
+      return "enrolled";
     case "dr":
-      return "dr"
+      return "dr";
     case "na":
     default:
-      return "na"
+      return "na";
   }
 }
 
 function formatAttemptGrade(attempt: EnrollmentHistoryRow): string {
   if (attempt.completion_grade != null) {
-    return attempt.completion_grade.toFixed(2)
+    return attempt.completion_grade.toFixed(2);
   }
   if (attempt.final_grade != null) {
-    return attempt.final_grade.toFixed(2)
+    return attempt.final_grade.toFixed(2);
   }
   if (attempt.is_lapsed_inc) {
-    return "5.00"
+    return "5.00";
   }
-  return "—"
+  return "—";
 }
 
 /**
@@ -90,31 +90,31 @@ export function EnrollmentHistoryTable({
                   >
                     {header}
                   </TableHead>
-                )
+                ),
               )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {attempts.map((attempt) => {
-              const offering = offeringDetails?.[attempt.course_offering_id]
+              const offering = offeringDetails?.[attempt.course_offering_id];
               const code =
                 attempt.course_code?.trim() ||
                 offering?.code?.trim() ||
-                attempt.course_offering_id
+                attempt.course_offering_id;
               const title =
-                attempt.course_title?.trim() || offering?.title?.trim() || ""
+                attempt.course_title?.trim() || offering?.title?.trim() || "";
               const termLabel =
                 attempt.school_term_label?.trim() ||
                 offering?.termLabel?.trim() ||
-                "—"
-              const badgeStatus = mapAttemptStatusToBadge(attempt)
-              const gradeDisplay = formatAttemptGrade(attempt)
+                "—";
+              const badgeStatus = mapAttemptStatusToBadge(attempt);
+              const gradeDisplay = formatAttemptGrade(attempt);
               const provenanceCode =
                 attempt.provenance_slot_code?.trim() ||
                 (attempt.curriculum_term_course_id
                   ? slotLabels?.[attempt.curriculum_term_course_id]?.trim()
                   : undefined) ||
-                null
+                null;
 
               return (
                 <TableRow key={attempt.id} className="border-line-soft">
@@ -150,13 +150,13 @@ export function EnrollmentHistoryTable({
                       "px-3.5 py-row text-cell",
                       provenanceCode
                         ? "font-mono tabular-nums text-foreground"
-                        : "text-muted-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     {provenanceCode ?? "No direct slot"}
                   </TableCell>
                 </TableRow>
-              )
+              );
             })}
           </TableBody>
         </Table>
@@ -166,5 +166,5 @@ export function EnrollmentHistoryTable({
         </p>
       )}
     </Panel>
-  )
+  );
 }

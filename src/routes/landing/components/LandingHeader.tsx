@@ -1,33 +1,33 @@
-import { useState } from 'react'
-import { Link } from 'react-router'
-import { MenuIcon } from '@/components/icons'
-import { BrandMark } from '@/components/ui/brand-mark'
-import { Button } from '@/components/ui/button'
+import { useState } from "react";
+import { Link } from "react-router";
+import { MenuIcon } from "@/components/icons";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
-import { NAV_LEFT_LINKS, NAV_RIGHT_LINKS } from '@/routes/landing/landingData'
+} from "@/components/ui/sheet";
+import { NAV_LEFT_LINKS, NAV_RIGHT_LINKS } from "@/routes/landing/landingData";
 
 export interface LandingHeaderProps {
-  onRequestWalkthrough?: () => void
+  onRequestWalkthrough?: () => void;
 }
 
 export function LandingHeader({ onRequestWalkthrough }: LandingHeaderProps) {
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleWalkthrough = () => {
-    setMobileOpen(false)
+    setMobileOpen(false);
     if (onRequestWalkthrough) {
-      onRequestWalkthrough()
-      return
+      onRequestWalkthrough();
+      return;
     }
-    const target = document.getElementById('walkthrough')
-    target?.scrollIntoView({ behavior: 'smooth' })
-  }
+    const target = document.getElementById("walkthrough");
+    target?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card">
@@ -41,7 +41,10 @@ export function LandingHeader({ onRequestWalkthrough }: LandingHeaderProps) {
             <BrandMark className="text-foreground" />
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-6 md:flex">
+          <nav
+            aria-label="Primary"
+            className="hidden items-center gap-6 md:flex"
+          >
             {NAV_LEFT_LINKS.map((item) => (
               <a
                 key={item.label}
@@ -56,7 +59,7 @@ export function LandingHeader({ onRequestWalkthrough }: LandingHeaderProps) {
 
         <div className="hidden items-center gap-6 md:flex">
           {NAV_RIGHT_LINKS.map((item) =>
-            item.href.startsWith('/') ? (
+            item.href.startsWith("/") ? (
               <Link
                 key={item.label}
                 to={item.href}
@@ -112,9 +115,12 @@ export function LandingHeader({ onRequestWalkthrough }: LandingHeaderProps) {
                 </SheetTitle>
               </SheetHeader>
 
-              <nav aria-label="Mobile navigation" className="flex flex-col gap-1 px-4 py-4">
+              <nav
+                aria-label="Mobile navigation"
+                className="flex flex-col gap-1 px-4 py-4"
+              >
                 {[...NAV_LEFT_LINKS, ...NAV_RIGHT_LINKS].map((item) =>
-                  item.href.startsWith('/') ? (
+                  item.href.startsWith("/") ? (
                     <Link
                       key={item.label}
                       to={item.href}
@@ -158,5 +164,5 @@ export function LandingHeader({ onRequestWalkthrough }: LandingHeaderProps) {
         </div>
       </div>
     </header>
-  )
+  );
 }

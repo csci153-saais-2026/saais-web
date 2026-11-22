@@ -1,11 +1,13 @@
-import { Button } from '@/components/ui/button'
-import { CLOSING_CTA } from '@/routes/landing/landingData'
+import { Button } from "@/components/ui/button";
+import { CLOSING_CTA } from "@/routes/landing/landingData";
 
 export interface LandingCtaSectionProps {
-  onRequestWalkthrough?: () => void
+  onRequestWalkthrough?: () => void;
 }
 
-export function LandingCtaSection({ onRequestWalkthrough }: LandingCtaSectionProps) {
+export function LandingCtaSection({
+  onRequestWalkthrough,
+}: LandingCtaSectionProps) {
   return (
     <section
       id="walkthrough"
@@ -19,7 +21,7 @@ export function LandingCtaSection({ onRequestWalkthrough }: LandingCtaSectionPro
           className="absolute -top-[300px] left-1/2 -ml-[450px] size-[900px] rounded-full"
           style={{
             background:
-              'radial-gradient(circle at 50% 50%, rgba(224,168,46,0.16), rgba(224,168,46,0) 62%)',
+              "radial-gradient(circle at 50% 50%, rgba(224,168,46,0.16), rgba(224,168,46,0) 62%)",
           }}
         />
       </div>
@@ -49,5 +51,5 @@ export function LandingCtaSection({ onRequestWalkthrough }: LandingCtaSectionPro
         </div>
       </div>
     </section>
-  )
+  );
 }

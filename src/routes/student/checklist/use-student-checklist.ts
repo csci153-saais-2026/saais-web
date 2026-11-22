@@ -1,8 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   fetchStudentChecklist,
   recordChecklistExportEvent,
-} from "./student-checklist.api"
+} from "./student-checklist.api";
 
 /**
  * Fetches the student's curriculum checklist slots.
@@ -12,7 +12,7 @@ export function useStudentChecklist(studentId: string) {
     queryKey: ["student", studentId, "checklist"],
     queryFn: () => fetchStudentChecklist(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 }
 
 /**
@@ -22,5 +22,5 @@ export function useRecordChecklistExport(studentId: string) {
   return useMutation({
     mutationFn: (details?: string) =>
       recordChecklistExportEvent(studentId, details),
-  })
+  });
 }

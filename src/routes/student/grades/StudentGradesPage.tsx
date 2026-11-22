@@ -1,69 +1,63 @@
-import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
-import { AlertIcon } from "@/components/icons"
-import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
+import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertIcon } from "@/components/icons";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
 import {
   ReportPdfPreviewDialog,
   type ReportAuditEventType,
-} from "@/components/features/report-pdf-preview-dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+} from "@/components/features/report-pdf-preview-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   apiClient,
   postgrestFilter,
   unwrapApiResult,
   type ApiSchema,
-} from "@/lib/api"
+} from "@/lib/api";
 import {
   formatGradeSummaryReport,
   type PdfReportPayload,
-} from "@/lib/pdf/student-report-formatter"
+} from "@/lib/pdf/student-report-formatter";
 import {
   useCreateGradeFlag,
   useRecordGradesExport,
   useStudentGradeFlags,
   useStudentGrades,
-} from "./use-student-grades"
-import {
-  FlagGradeDialog,
-  type FlagGradeTarget,
-} from "./FlagGradeDialog"
+} from "./use-student-grades";
+import { FlagGradeDialog, type FlagGradeTarget } from "./FlagGradeDialog";
 import {
   GradeFlagsListDialog,
   type GradeFlagAttemptMeta,
   type GradeFlagDisplayItem,
-} from "./GradeFlagsListDialog"
-import {
-  TermGradesPanel,
-  type TermGradesSection,
-} from "./TermGradesPanel"
+} from "./GradeFlagsListDialog";
+import { TermGradesPanel, type TermGradesSection } from "./TermGradesPanel";
 
 export interface StudentGradesViewProps {
-  readonly terms: readonly TermGradesSection[]
-  readonly flags?: readonly GradeFlagDisplayItem[]
+  readonly terms: readonly TermGradesSection[];
+  readonly flags?: readonly GradeFlagDisplayItem[];
   readonly courseDetails?: Readonly<
     Record<
       string,
       {
-        readonly code: string
-        readonly title?: string | null
+        readonly code: string;
+        readonly title?: string | null;
       }
     >
-  >
-  readonly studentName?: string | null
-  readonly studentNumber?: string | null
-  readonly programLabel?: string | null
-  readonly curriculumLabel?: string | null
-  readonly adviserName?: string | null
-  readonly department?: Partial<ApiSchema<"Department">> | null
-  readonly faculty?: Partial<ApiSchema<"Faculty">> | null
+  >;
+  readonly studentName?: string | null;
+  readonly studentNumber?: string | null;
+  readonly programLabel?: string | null;
+  readonly curriculumLabel?: string | null;
+  readonly adviserName?: string | null;
+  readonly department?: Partial<ApiSchema<"Department">> | null;
+  readonly faculty?: Partial<ApiSchema<"Faculty">> | null;
   readonly onCreateFlag?: (
-    payload: ApiSchema<"GradeFlagCreateRequest">
-  ) => Promise<void> | void
-  readonly isSubmittingFlag?: boolean
-  readonly flagSubmitError?: string | null
-  readonly onPrintReport?: (eventType: ReportAuditEventType) => void
+    payload: ApiSchema<"GradeFlagCreateRequest">,
+  ) => Promise<void> | void;
+  readonly isSubmittingFlag?: boolean;
+  readonly flagSubmitError?: string | null;
+  readonly onPrintReport?: (eventType: ReportAuditEventType) => void;
 }
 
 /**
@@ -86,36 +80,34 @@ export function StudentGradesView({
   onPrintReport,
 }: StudentGradesViewProps) {
   const [collapsedIds, setCollapsedIds] = React.useState<ReadonlySet<string>>(
-    () => new Set()
-  )
+    () => new Set(),
+  );
   const [flagTarget, setFlagTarget] = React.useState<FlagGradeTarget | null>(
-    null
-  )
-  const [flagsListOpen, setFlagsListOpen] = React.useState(false)
-  const [previewOpen, setPreviewOpen] = React.useState(false)
+    null,
+  );
+  const [flagsListOpen, setFlagsListOpen] = React.useState(false);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
 
   const sortedTerms = React.useMemo(() => {
-    return [...terms].sort(
-      (a, b) => b.chronological_key - a.chronological_key
-    )
-  }, [terms])
+    return [...terms].sort((a, b) => b.chronological_key - a.chronological_key);
+  }, [terms]);
 
   const openFlagAttemptIds = React.useMemo(() => {
-    const ids = new Set<string>()
+    const ids = new Set<string>();
     for (const flag of flags) {
       if (flag.status === "open") {
-        ids.add(flag.attempt_id)
+        ids.add(flag.attempt_id);
       }
     }
-    return ids
-  }, [flags])
+    return ids;
+  }, [flags]);
 
   const attemptMeta = React.useMemo(() => {
-    const map: Record<string, GradeFlagAttemptMeta> = {}
+    const map: Record<string, GradeFlagAttemptMeta> = {};
     for (const term of sortedTerms) {
-      const termLabel = `${term.school_year} · ${term.term_type}`
+      const termLabel = `${term.school_year} · ${term.term_type}`;
       for (const attempt of term.attempts) {
-        const lookup = courseDetails?.[attempt.course_offering_id]
+        const lookup = courseDetails?.[attempt.course_offering_id];
         map[attempt.id] = {
           code:
             attempt.code?.trim() ||
@@ -123,34 +115,34 @@ export function StudentGradesView({
             attempt.course_offering_id,
           title: attempt.title?.trim() || lookup?.title?.trim() || null,
           termLabel,
-        }
+        };
       }
     }
-    return map
-  }, [sortedTerms, courseDetails])
+    return map;
+  }, [sortedTerms, courseDetails]);
 
   const allCollapsed =
     sortedTerms.length > 0 &&
-    sortedTerms.every((term) => collapsedIds.has(term.school_term_id))
+    sortedTerms.every((term) => collapsedIds.has(term.school_term_id));
 
   function handleToggleAll() {
     if (allCollapsed) {
-      setCollapsedIds(new Set())
+      setCollapsedIds(new Set());
     } else {
-      setCollapsedIds(new Set(sortedTerms.map((term) => term.school_term_id)))
+      setCollapsedIds(new Set(sortedTerms.map((term) => term.school_term_id)));
     }
   }
 
   function handleToggleTerm(termId: string) {
     setCollapsedIds((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(termId)) {
-        next.delete(termId)
+        next.delete(termId);
       } else {
-        next.add(termId)
+        next.add(termId);
       }
-      return next
-    })
+      return next;
+    });
   }
 
   const reportPayload = React.useMemo<PdfReportPayload>(() => {
@@ -167,15 +159,15 @@ export function StudentGradesView({
         term_type: term.term_type,
         gwa: term.gwa,
         attempts: term.attempts.map((attempt) => {
-          const lookup = courseDetails?.[attempt.course_offering_id]
+          const lookup = courseDetails?.[attempt.course_offering_id];
           return {
             ...attempt,
             code: attempt.code ?? lookup?.code ?? null,
             title: attempt.title ?? lookup?.title ?? null,
-          }
+          };
         }),
       })),
-    })
+    });
   }, [
     studentName,
     studentNumber,
@@ -186,13 +178,13 @@ export function StudentGradesView({
     faculty,
     sortedTerms,
     courseDetails,
-  ])
+  ]);
 
   async function handleFlagSubmit(
-    payload: ApiSchema<"GradeFlagCreateRequest">
+    payload: ApiSchema<"GradeFlagCreateRequest">,
   ) {
-    await onCreateFlag?.(payload)
-    setFlagTarget(null)
+    await onCreateFlag?.(payload);
+    setFlagTarget(null);
   }
 
   return (
@@ -247,8 +239,8 @@ export function StudentGradesView({
               onOpenChange={() => handleToggleTerm(term.school_term_id)}
               onFlagClick={(attempt, meta) => {
                 if (openFlagAttemptIds.has(attempt.id)) {
-                  setFlagsListOpen(true)
-                  return
+                  setFlagsListOpen(true);
+                  return;
                 }
                 setFlagTarget({
                   attemptId: attempt.id,
@@ -256,7 +248,7 @@ export function StudentGradesView({
                   title: meta.title,
                   recordedGrade: meta.recordedGrade,
                   reportedStage: meta.reportedStage,
-                })
+                });
               }}
             />
           ))}
@@ -282,7 +274,7 @@ export function StudentGradesView({
       <FlagGradeDialog
         open={flagTarget !== null}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) setFlagTarget(null)
+          if (!nextOpen) setFlagTarget(null);
         }}
         target={flagTarget}
         onSubmit={handleFlagSubmit}
@@ -305,42 +297,42 @@ export function StudentGradesView({
         onPrint={onPrintReport}
       />
     </div>
-  )
+  );
 }
 
 interface GradesPageData {
-  readonly terms: readonly TermGradesSection[]
-  readonly flags: readonly GradeFlagDisplayItem[]
+  readonly terms: readonly TermGradesSection[];
+  readonly flags: readonly GradeFlagDisplayItem[];
   readonly courseDetails: Readonly<
     Record<string, { readonly code: string; readonly title?: string | null }>
-  >
-  readonly studentName: string | null
-  readonly studentNumber: string | null
-  readonly programLabel: string | null
-  readonly curriculumLabel: string | null
-  readonly adviserName: string | null
-  readonly department: Partial<ApiSchema<"Department">> | null
-  readonly faculty: Partial<ApiSchema<"Faculty">> | null
+  >;
+  readonly studentName: string | null;
+  readonly studentNumber: string | null;
+  readonly programLabel: string | null;
+  readonly curriculumLabel: string | null;
+  readonly adviserName: string | null;
+  readonly department: Partial<ApiSchema<"Department">> | null;
+  readonly faculty: Partial<ApiSchema<"Faculty">> | null;
 }
 
 interface GradesMetadata {
-  readonly schoolTerms: readonly ApiSchema<"SchoolTerm">[]
-  readonly offerings: readonly ApiSchema<"CourseOffering">[]
-  readonly courses: readonly ApiSchema<"Course">[]
-  readonly profile: ApiSchema<"Profile"> | null
-  readonly org: ApiSchema<"StudentOrganization"> | null
-  readonly programs: readonly ApiSchema<"Program">[]
-  readonly curricula: readonly ApiSchema<"CurriculumVersion">[]
+  readonly schoolTerms: readonly ApiSchema<"SchoolTerm">[];
+  readonly offerings: readonly ApiSchema<"CourseOffering">[];
+  readonly courses: readonly ApiSchema<"Course">[];
+  readonly profile: ApiSchema<"Profile"> | null;
+  readonly org: ApiSchema<"StudentOrganization"> | null;
+  readonly programs: readonly ApiSchema<"Program">[];
+  readonly curricula: readonly ApiSchema<"CurriculumVersion">[];
   readonly assignments: readonly Pick<
     ApiSchema<"AdviserAssignment">,
     "id" | "adviser_id" | "adviser_name" | "start_date" | "end_date"
-  >[]
-  readonly departments: readonly ApiSchema<"Department">[]
-  readonly faculties: readonly ApiSchema<"Faculty">[]
+  >[];
+  readonly departments: readonly ApiSchema<"Department">[];
+  readonly faculties: readonly ApiSchema<"Faculty">[];
 }
 
 async function fetchStudentGradesMetadata(
-  studentId: string
+  studentId: string,
 ): Promise<GradesMetadata> {
   const [
     schoolTerms,
@@ -382,7 +374,7 @@ async function fetchStudentGradesMetadata(
       .then(unwrapApiResult),
     apiClient.GET("/rest/v1/department").then(unwrapApiResult),
     apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
-  ])
+  ]);
 
   return {
     schoolTerms,
@@ -395,39 +387,39 @@ async function fetchStudentGradesMetadata(
     assignments,
     departments,
     faculties,
-  }
+  };
 }
 
 function buildGradesPageData(
   rawTerms: readonly ApiSchema<"TermGrades">[],
   flags: readonly ApiSchema<"GradeFlag">[],
-  metadata: GradesMetadata | null
+  metadata: GradesMetadata | null,
 ): GradesPageData {
-  const schoolTerms = metadata?.schoolTerms ?? []
-  const offerings = metadata?.offerings ?? []
-  const courses = metadata?.courses ?? []
-  const profile = metadata?.profile ?? null
-  const org = metadata?.org ?? null
-  const programs = metadata?.programs ?? []
-  const curricula = metadata?.curricula ?? []
-  const assignments = metadata?.assignments ?? []
-  const departments = metadata?.departments ?? []
-  const faculties = metadata?.faculties ?? []
+  const schoolTerms = metadata?.schoolTerms ?? [];
+  const offerings = metadata?.offerings ?? [];
+  const courses = metadata?.courses ?? [];
+  const profile = metadata?.profile ?? null;
+  const org = metadata?.org ?? null;
+  const programs = metadata?.programs ?? [];
+  const curricula = metadata?.curricula ?? [];
+  const assignments = metadata?.assignments ?? [];
+  const departments = metadata?.departments ?? [];
+  const faculties = metadata?.faculties ?? [];
 
-  const termLockMap = new Map(schoolTerms.map((t) => [t.id, t.is_locked]))
-  const courseMap = new Map(courses.map((c) => [c.id, c]))
+  const termLockMap = new Map(schoolTerms.map((t) => [t.id, t.is_locked]));
+  const courseMap = new Map(courses.map((c) => [c.id, c]));
 
   const courseDetails: Record<
     string,
     { readonly code: string; readonly title?: string | null }
-  > = {}
+  > = {};
   for (const offering of offerings) {
-    const course = courseMap.get(offering.course_id)
+    const course = courseMap.get(offering.course_id);
     if (course) {
       courseDetails[offering.id] = {
         code: course.code,
         title: course.title,
-      }
+      };
     }
   }
 
@@ -435,23 +427,23 @@ function buildGradesPageData(
     ...term,
     is_locked: termLockMap.get(term.school_term_id) ?? false,
     attempts: term.attempts.map((attempt) => {
-      const course = courseDetails[attempt.course_offering_id]
+      const course = courseDetails[attempt.course_offering_id];
       return {
         ...attempt,
         code: course?.code ?? null,
         title: course?.title ?? null,
-      }
+      };
     }),
-  }))
+  }));
 
-  const program = programs.find((p) => p.id === org?.program_id) ?? null
+  const program = programs.find((p) => p.id === org?.program_id) ?? null;
   const curriculum =
-    curricula.find((c) => c.id === org?.curriculum_version_id) ?? null
+    curricula.find((c) => c.id === org?.curriculum_version_id) ?? null;
   const department =
-    departments.find((d) => d.id === org?.department_id) ?? null
-  const faculty = faculties.find((f) => f.id === org?.faculty_id) ?? null
+    departments.find((d) => d.id === org?.department_id) ?? null;
+  const faculty = faculties.find((f) => f.id === org?.faculty_id) ?? null;
   const activeAssignment =
-    assignments.find((a) => a.end_date == null) ?? assignments[0] ?? null
+    assignments.find((a) => a.end_date == null) ?? assignments[0] ?? null;
 
   return {
     terms,
@@ -464,7 +456,7 @@ function buildGradesPageData(
     adviserName: activeAssignment?.adviser_name ?? null,
     department,
     faculty,
-  }
+  };
 }
 
 /**
@@ -472,52 +464,52 @@ function buildGradesPageData(
  * and grade summary PDF preview.
  */
 export function StudentGradesPage({ studentId }: { studentId: string }) {
-  const gradesQuery = useStudentGrades(studentId)
-  const flagsQuery = useStudentGradeFlags(studentId)
+  const gradesQuery = useStudentGrades(studentId);
+  const flagsQuery = useStudentGradeFlags(studentId);
   const metaQuery = useQuery({
     queryKey: ["student", studentId, "grades-meta"],
     queryFn: () => fetchStudentGradesMetadata(studentId),
     enabled: Boolean(studentId),
-  })
-  const createFlagMutation = useCreateGradeFlag(studentId)
-  const recordExportMutation = useRecordGradesExport(studentId)
+  });
+  const createFlagMutation = useCreateGradeFlag(studentId);
+  const recordExportMutation = useRecordGradesExport(studentId);
 
   const data = React.useMemo(() => {
-    if (!gradesQuery.data) return null
+    if (!gradesQuery.data) return null;
     return buildGradesPageData(
       gradesQuery.data,
       flagsQuery.data ?? [],
-      metaQuery.data ?? null
-    )
-  }, [gradesQuery.data, flagsQuery.data, metaQuery.data])
+      metaQuery.data ?? null,
+    );
+  }, [gradesQuery.data, flagsQuery.data, metaQuery.data]);
 
   const isPending =
-    gradesQuery.isPending || flagsQuery.isPending || metaQuery.isPending
+    gradesQuery.isPending || flagsQuery.isPending || metaQuery.isPending;
   const isError =
-    gradesQuery.isError || flagsQuery.isError || metaQuery.isError
+    gradesQuery.isError || flagsQuery.isError || metaQuery.isError;
 
   const refetch = React.useCallback(async () => {
     await Promise.all([
       gradesQuery.refetch(),
       flagsQuery.refetch(),
       metaQuery.refetch(),
-    ])
-  }, [gradesQuery, flagsQuery, metaQuery])
+    ]);
+  }, [gradesQuery, flagsQuery, metaQuery]);
 
   async function handleCreateFlag(
-    payload: ApiSchema<"GradeFlagCreateRequest">
+    payload: ApiSchema<"GradeFlagCreateRequest">,
   ) {
-    await createFlagMutation.mutateAsync(payload)
+    await createFlagMutation.mutateAsync(payload);
   }
 
   const flagSubmitError = createFlagMutation.error
     ? createFlagMutation.error instanceof Error
       ? createFlagMutation.error.message
       : "Could not submit your grade flag. Please try again."
-    : null
+    : null;
 
   if (isPending) {
-    return <p role="status">Loading...</p>
+    return <p role="status">Loading...</p>;
   }
 
   if (isError || !data) {
@@ -526,15 +518,11 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
         title="Unable to load grades"
         description="We could not load your grade records right now."
       >
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void refetch()}
-        >
+        <Button type="button" variant="outline" onClick={() => void refetch()}>
           Try again
         </Button>
       </Panel>
-    )
+    );
   }
 
   return (
@@ -553,10 +541,10 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
       isSubmittingFlag={createFlagMutation.isPending}
       flagSubmitError={flagSubmitError}
       onPrintReport={() => {
-        recordExportMutation.mutate(undefined)
+        recordExportMutation.mutate(undefined);
       }}
     />
-  )
+  );
 }
 
-export default StudentGradesPage
+export default StudentGradesPage;

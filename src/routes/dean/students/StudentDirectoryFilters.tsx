@@ -1,14 +1,14 @@
-import { useId } from "react"
-import { FormField } from "@/components/features/form-field"
-import { SearchInput } from "@/components/features/search-input"
-import { Button } from "@/components/ui/button"
+import { useId } from "react";
+import { FormField } from "@/components/features/form-field";
+import { SearchInput } from "@/components/features/search-input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export function StudentDirectoryFilters({
   query,
@@ -22,19 +22,20 @@ export function StudentDirectoryFilters({
   onReset,
   disabled = false,
 }: {
-  query: string
-  onQueryChange: (value: string) => void
-  curriculum: string
-  onCurriculumChange: (value: string) => void
-  curriculumOptions: string[]
-  adviser: string
-  onAdviserChange: (value: string) => void
-  adviserOptions: string[]
-  onReset: () => void
-  disabled?: boolean
+  query: string;
+  onQueryChange: (value: string) => void;
+  curriculum: string;
+  onCurriculumChange: (value: string) => void;
+  curriculumOptions: string[];
+  adviser: string;
+  onAdviserChange: (value: string) => void;
+  adviserOptions: string[];
+  onReset: () => void;
+  disabled?: boolean;
 }) {
-  const id = useId()
-  const hasFilters = query.trim() !== "" || curriculum !== "all" || adviser !== "all"
+  const id = useId();
+  const hasFilters =
+    query.trim() !== "" || curriculum !== "all" || adviser !== "all";
 
   return (
     <div
@@ -57,7 +58,11 @@ export function StudentDirectoryFilters({
           onValueChange={onCurriculumChange}
           disabled={disabled}
         >
-          <SelectTrigger id={`${id}-curriculum`} aria-label="Curriculum" className="w-full min-w-0">
+          <SelectTrigger
+            id={`${id}-curriculum`}
+            aria-label="Curriculum"
+            className="w-full min-w-0"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -77,7 +82,11 @@ export function StudentDirectoryFilters({
           onValueChange={onAdviserChange}
           disabled={disabled}
         >
-          <SelectTrigger id={`${id}-adviser`} aria-label="Adviser" className="w-full min-w-0">
+          <SelectTrigger
+            id={`${id}-adviser`}
+            aria-label="Adviser"
+            className="w-full min-w-0"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -101,5 +110,5 @@ export function StudentDirectoryFilters({
         Reset filters
       </Button>
     </div>
-  )
+  );
 }

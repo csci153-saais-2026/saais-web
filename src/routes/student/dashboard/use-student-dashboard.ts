@@ -1,17 +1,17 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query";
 import {
   fetchStudentAcademicSummary,
   fetchStudentAdviserAssignments,
   fetchStudentAdvisingNotes,
   fetchStudentPlanItems,
-} from "./student-dashboard.api"
+} from "./student-dashboard.api";
 
 export function useStudentAcademicSummary(studentId: string) {
   return useQuery({
     queryKey: ["student", studentId, "academic-summary"],
     queryFn: () => fetchStudentAcademicSummary(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 }
 
 export function useStudentPlanItems(studentId: string) {
@@ -19,7 +19,7 @@ export function useStudentPlanItems(studentId: string) {
     queryKey: ["student", studentId, "plan-items"],
     queryFn: () => fetchStudentPlanItems(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 }
 
 export function useStudentAdvisingNotes(studentId: string) {
@@ -27,7 +27,7 @@ export function useStudentAdvisingNotes(studentId: string) {
     queryKey: ["student", studentId, "advising-notes"],
     queryFn: () => fetchStudentAdvisingNotes(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 }
 
 export function useStudentAdviserAssignments(studentId: string) {
@@ -35,29 +35,29 @@ export function useStudentAdviserAssignments(studentId: string) {
     queryKey: ["student", studentId, "adviser-assignments"],
     queryFn: () => fetchStudentAdviserAssignments(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 }
 
 /**
  * Combined React Query hook for the Student Dashboard screen.
  */
 export function useStudentDashboard(studentId: string) {
-  const summaryQuery = useStudentAcademicSummary(studentId)
-  const planItemsQuery = useStudentPlanItems(studentId)
-  const notesQuery = useStudentAdvisingNotes(studentId)
-  const adviserAssignmentsQuery = useStudentAdviserAssignments(studentId)
+  const summaryQuery = useStudentAcademicSummary(studentId);
+  const planItemsQuery = useStudentPlanItems(studentId);
+  const notesQuery = useStudentAdvisingNotes(studentId);
+  const adviserAssignmentsQuery = useStudentAdviserAssignments(studentId);
 
   const isPending =
     summaryQuery.isPending ||
     planItemsQuery.isPending ||
     notesQuery.isPending ||
-    adviserAssignmentsQuery.isPending
+    adviserAssignmentsQuery.isPending;
 
   const isError =
     summaryQuery.isError ||
     planItemsQuery.isError ||
     notesQuery.isError ||
-    adviserAssignmentsQuery.isError
+    adviserAssignmentsQuery.isError;
 
   const data =
     summaryQuery.data &&
@@ -70,7 +70,7 @@ export function useStudentDashboard(studentId: string) {
           notes: notesQuery.data,
           adviserAssignments: adviserAssignmentsQuery.data,
         }
-      : undefined
+      : undefined;
 
   async function refetch() {
     await Promise.all([
@@ -78,7 +78,7 @@ export function useStudentDashboard(studentId: string) {
       planItemsQuery.refetch(),
       notesQuery.refetch(),
       adviserAssignmentsQuery.refetch(),
-    ])
+    ]);
   }
 
   return {
@@ -96,5 +96,5 @@ export function useStudentDashboard(studentId: string) {
     planItemsQuery,
     notesQuery,
     adviserAssignmentsQuery,
-  }
+  };
 }

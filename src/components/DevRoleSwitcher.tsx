@@ -1,34 +1,90 @@
-import React, { useState } from 'react'
-import { useAuth } from '@/hooks/use-auth'
+import React, { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import {
   getSyntheticPersonas,
   type SyntheticPersonaKey,
-} from '@/lib/auth/mock-auth-service'
-import type { SaaisRole } from '@/mocks/personas'
+} from "@/lib/auth/mock-auth-service";
+import type { SaaisRole } from "@/mocks/personas";
 
 const PERSONA_LIST: {
-  key: SyntheticPersonaKey
-  badge: string
-  desc: string
+  key: SyntheticPersonaKey;
+  badge: string;
+  desc: string;
 }[] = [
-  { key: 'student', badge: 'bg-[#2F4A12] text-[#FBF8EF]', desc: 'Student Primary (Active)' },
-  { key: 'student_secondary', badge: 'bg-[#B0761A] text-white', desc: 'Student Invited (Pending)' },
-  { key: 'student_other_dept', badge: 'bg-[#2F4A12] text-[#FBF8EF]', desc: 'Other Dept Student' },
-  { key: 'adviser', badge: 'bg-[#B0761A] text-white', desc: 'Primary Academic Adviser' },
-  { key: 'adviser_secondary', badge: 'bg-[#B0761A] text-white', desc: 'Secondary Adviser' },
-  { key: 'invited_adviser', badge: 'bg-[#B0761A] text-white', desc: 'Adviser Invited (Pending)' },
-  { key: 'department_head_only', badge: 'bg-[#285A84] text-white', desc: 'Dept Head Only' },
-  { key: 'department_head', badge: 'bg-[#285A84] text-white', desc: 'Dept Head + Adviser' },
-  { key: 'department_staff', badge: 'bg-[#4B6B94] text-white', desc: 'Department Staff' },
-  { key: 'dean_only', badge: 'bg-[#6D327C] text-white', desc: 'Dean-Only Account' },
-  { key: 'dean', badge: 'bg-[#6D327C] text-white', desc: 'Computing Dean + Adviser' },
-  { key: 'dean_dept_head', badge: 'bg-[#8E3250] text-white', desc: 'Dean + Dept Head + Adviser' },
-  { key: 'admin', badge: 'bg-[#9E2E1C] text-white', desc: 'System Admin + Adviser' },
-  { key: 'disabled_account', badge: 'bg-[#6E6C58] text-white', desc: 'Inactive / Disabled Account' },
-]
+  {
+    key: "student",
+    badge: "bg-[#2F4A12] text-[#FBF8EF]",
+    desc: "Student Primary (Active)",
+  },
+  {
+    key: "student_secondary",
+    badge: "bg-[#B0761A] text-white",
+    desc: "Student Invited (Pending)",
+  },
+  {
+    key: "student_other_dept",
+    badge: "bg-[#2F4A12] text-[#FBF8EF]",
+    desc: "Other Dept Student",
+  },
+  {
+    key: "adviser",
+    badge: "bg-[#B0761A] text-white",
+    desc: "Primary Academic Adviser",
+  },
+  {
+    key: "adviser_secondary",
+    badge: "bg-[#B0761A] text-white",
+    desc: "Secondary Adviser",
+  },
+  {
+    key: "invited_adviser",
+    badge: "bg-[#B0761A] text-white",
+    desc: "Adviser Invited (Pending)",
+  },
+  {
+    key: "department_head_only",
+    badge: "bg-[#285A84] text-white",
+    desc: "Dept Head Only",
+  },
+  {
+    key: "department_head",
+    badge: "bg-[#285A84] text-white",
+    desc: "Dept Head + Adviser",
+  },
+  {
+    key: "department_staff",
+    badge: "bg-[#4B6B94] text-white",
+    desc: "Department Staff",
+  },
+  {
+    key: "dean_only",
+    badge: "bg-[#6D327C] text-white",
+    desc: "Dean-Only Account",
+  },
+  {
+    key: "dean",
+    badge: "bg-[#6D327C] text-white",
+    desc: "Computing Dean + Adviser",
+  },
+  {
+    key: "dean_dept_head",
+    badge: "bg-[#8E3250] text-white",
+    desc: "Dean + Dept Head + Adviser",
+  },
+  {
+    key: "admin",
+    badge: "bg-[#9E2E1C] text-white",
+    desc: "System Admin + Adviser",
+  },
+  {
+    key: "disabled_account",
+    badge: "bg-[#6E6C58] text-white",
+    desc: "Inactive / Disabled Account",
+  },
+];
 
 export const DevRoleSwitcher: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
   const {
     user,
     roles,
@@ -39,13 +95,13 @@ export const DevRoleSwitcher: React.FC = () => {
     switchMockPersona,
     setActiveRole,
     signOut,
-  } = useAuth()
+  } = useAuth();
 
   if (!import.meta.env.DEV || !isMockMode) {
-    return null
+    return null;
   }
 
-  const personas = getSyntheticPersonas()
+  const personas = getSyntheticPersonas();
 
   return (
     <aside
@@ -70,9 +126,9 @@ export const DevRoleSwitcher: React.FC = () => {
           </div>
 
           <p className="text-[11px] text-[rgba(246,242,228,0.7)] mb-2">
-            Active User:{' '}
+            Active User:{" "}
             <span className="font-bold text-white">
-              {user ? user.fullName : 'Logged Out'}
+              {user ? user.fullName : "Logged Out"}
             </span>
             {user && !isAllowedToEnter && (
               <span className="ml-1 text-[#F87171] font-semibold">
@@ -93,8 +149,8 @@ export const DevRoleSwitcher: React.FC = () => {
                     onClick={() => setActiveRole(r as SaaisRole)}
                     className={`px-2 py-0.5 rounded text-[10px] font-medium transition cursor-pointer ${
                       activeRole === r
-                        ? 'bg-[#E0A82E] text-[#1D2F0A] font-bold'
-                        : 'bg-[rgba(255,255,255,0.15)] text-white hover:bg-[rgba(255,255,255,0.25)]'
+                        ? "bg-[#E0A82E] text-[#1D2F0A] font-bold"
+                        : "bg-[rgba(255,255,255,0.15)] text-white hover:bg-[rgba(255,255,255,0.25)]"
                     }`}
                   >
                     {r.toUpperCase()}
@@ -106,23 +162,25 @@ export const DevRoleSwitcher: React.FC = () => {
 
           <div className="flex flex-col gap-1.5">
             {PERSONA_LIST.map(({ key, badge, desc }) => {
-              const persona = personas[key]
-              const isSelected = activePersonaKey === key
+              const persona = personas[key];
+              const isSelected = activePersonaKey === key;
               return (
                 <button
                   key={key}
                   onClick={() => switchMockPersona(key)}
                   className={`flex flex-col items-start p-2 rounded text-left transition-colors cursor-pointer ${
                     isSelected
-                      ? 'bg-[rgba(246,242,228,0.18)] border border-[#E0A82E]'
-                      : 'hover:bg-[rgba(246,242,228,0.08)] border border-transparent'
+                      ? "bg-[rgba(246,242,228,0.18)] border border-[#E0A82E]"
+                      : "hover:bg-[rgba(246,242,228,0.08)] border border-transparent"
                   }`}
                 >
                   <div className="flex items-center gap-1.5 w-full justify-between">
                     <span className="font-medium text-white">
                       {persona.fullName}
                     </span>
-                    <span className={`px-1.5 py-0.2 rounded text-[9px] ${badge}`}>
+                    <span
+                      className={`px-1.5 py-0.2 rounded text-[9px] ${badge}`}
+                    >
                       {persona.primaryRole.toUpperCase()}
                     </span>
                   </div>
@@ -130,18 +188,18 @@ export const DevRoleSwitcher: React.FC = () => {
                     {desc} ({persona.email})
                   </span>
                 </button>
-              )
+              );
             })}
 
             <button
               onClick={() => {
-                switchMockPersona(null)
-                void signOut()
+                switchMockPersona(null);
+                void signOut();
               }}
               className={`flex flex-col items-start p-2 rounded text-left transition-colors cursor-pointer mt-1 ${
                 !user
-                  ? 'bg-[rgba(246,242,228,0.18)] border border-[#E0A82E]'
-                  : 'hover:bg-[rgba(246,242,228,0.08)] border border-transparent'
+                  ? "bg-[rgba(246,242,228,0.18)] border border-[#E0A82E]"
+                  : "hover:bg-[rgba(246,242,228,0.08)] border border-transparent"
               }`}
             >
               <div className="flex items-center gap-1.5 w-full justify-between">
@@ -163,13 +221,13 @@ export const DevRoleSwitcher: React.FC = () => {
         >
           <span className="w-2 h-2 rounded-full bg-[#E0A82E] animate-pulse" />
           <span className="font-medium text-[11px]">
-            Dev Persona:{' '}
+            Dev Persona:{" "}
             <span className="font-bold text-[#E0A82E]">
-              {user ? `${user.fullName} (${activeRole})` : 'Logged Out'}
+              {user ? `${user.fullName} (${activeRole})` : "Logged Out"}
             </span>
           </span>
         </button>
       )}
     </aside>
-  )
-}
+  );
+};

@@ -1,17 +1,18 @@
-import { useMemo, useState } from "react"
-import { PageHeading } from "@/components/features/page-heading"
-import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState"
-import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog"
-import { StudentDirectoryFilters } from "@/routes/dean/students/StudentDirectoryFilters"
-import { StudentDirectoryTable } from "@/routes/dean/students/StudentDirectoryTable"
-import { useDeanStudents } from "@/routes/dean/students/use-dean-students"
-import type { DeanStudentSummary } from "@/routes/dean/types"
+import { useMemo, useState } from "react";
+import { PageHeading } from "@/components/features/page-heading";
+import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
+import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog";
+import { StudentDirectoryFilters } from "@/routes/dean/students/StudentDirectoryFilters";
+import { StudentDirectoryTable } from "@/routes/dean/students/StudentDirectoryTable";
+import { useDeanStudents } from "@/routes/dean/students/use-dean-students";
+import type { DeanStudentSummary } from "@/routes/dean/types";
 
 export default function DeanStudentsPage() {
-  const [query, setQuery] = useState("")
-  const [curriculum, setCurriculum] = useState("all")
-  const [adviser, setAdviser] = useState("all")
-  const [selectedStudent, setSelectedStudent] = useState<DeanStudentSummary | null>(null)
+  const [query, setQuery] = useState("");
+  const [curriculum, setCurriculum] = useState("all");
+  const [adviser, setAdviser] = useState("all");
+  const [selectedStudent, setSelectedStudent] =
+    useState<DeanStudentSummary | null>(null);
 
   const {
     students,
@@ -21,35 +22,37 @@ export default function DeanStudentsPage() {
     isError,
     isFacultyUnavailable,
     refetch,
-  } = useDeanStudents()
+  } = useDeanStudents();
 
   const curriculumOptions = useMemo(
     () => Array.from(new Set(students.map((s) => s.curriculum))).sort(),
     [students],
-  )
+  );
   const adviserOptions = useMemo(
     () => Array.from(new Set(students.map((s) => s.adviser))).sort(),
     [students],
-  )
+  );
 
   const filteredStudents = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
+    const normalized = query.trim().toLowerCase();
     return students.filter((student) => {
       const matchesQuery =
         normalized === "" ||
-        `${student.name} ${student.studentNumber}`.toLowerCase().includes(normalized)
+        `${student.name} ${student.studentNumber}`
+          .toLowerCase()
+          .includes(normalized);
       const matchesCurriculum =
-        curriculum === "all" || student.curriculum === curriculum
-      const matchesAdviser = adviser === "all" || student.adviser === adviser
-      return matchesQuery && matchesCurriculum && matchesAdviser
-    })
-  }, [students, query, curriculum, adviser])
+        curriculum === "all" || student.curriculum === curriculum;
+      const matchesAdviser = adviser === "all" || student.adviser === adviser;
+      return matchesQuery && matchesCurriculum && matchesAdviser;
+    });
+  }, [students, query, curriculum, adviser]);
 
   const handleReset = () => {
-    setQuery("")
-    setCurriculum("all")
-    setAdviser("all")
-  }
+    setQuery("");
+    setCurriculum("all");
+    setAdviser("all");
+  };
 
   return (
     <div className="space-y-6">
@@ -94,5 +97,5 @@ export default function DeanStudentsPage() {
         onClose={() => setSelectedStudent(null)}
       />
     </div>
-  )
+  );
 }

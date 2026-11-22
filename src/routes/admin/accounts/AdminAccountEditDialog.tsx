@@ -1,30 +1,34 @@
-import { useState, type FormEvent } from 'react'
-import { FormField } from '@/components/features/form-field'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { useState, type FormEvent } from "react";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import type { ApiSchema } from '@/lib/api'
+} from "@/components/ui/select";
+import type { ApiSchema } from "@/lib/api";
 import {
   accountRoles,
   getAccountRoles,
   profileStatuses,
   type AccountRole,
-} from './admin-accounts-model'
+} from "./admin-accounts-model";
 
-type Account = ApiSchema<'AccountSummary'>
-type Faculty = Pick<ApiSchema<'Faculty'>, 'id' | 'name'>
-type Department = Pick<
-  ApiSchema<'Department'>,
-  'id' | 'name' | 'faculty_id'
->
+type Account = ApiSchema<"AccountSummary">;
+type Faculty = Pick<ApiSchema<"Faculty">, "id" | "name">;
+type Department = Pick<ApiSchema<"Department">, "id" | "name" | "faculty_id">;
 
 export function AdminAccountEditDialog({
   account,
@@ -35,112 +39,113 @@ export function AdminAccountEditDialog({
   onOpenChange,
   onSubmit,
 }: {
-  account: Account
-  faculties: readonly Faculty[]
-  departments: readonly Department[]
-  submitting: boolean
-  submissionError: string | null
-  onOpenChange: (open: boolean) => void
-  onSubmit: (request: ApiSchema<'AdminProfileUpdate'>) => Promise<void>
+  account: Account;
+  faculties: readonly Faculty[];
+  departments: readonly Department[];
+  submitting: boolean;
+  submissionError: string | null;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (request: ApiSchema<"AdminProfileUpdate">) => Promise<void>;
 }) {
-  const [fullName, setFullName] = useState(account.profile.full_name)
+  const [fullName, setFullName] = useState(account.profile.full_name);
   const [primaryRole, setPrimaryRole] = useState<AccountRole>(
     account.profile.role,
-  )
+  );
   const [additionalRoles, setAdditionalRoles] = useState<AccountRole[]>(
     getAccountRoles(account).filter(
       (role) =>
         role !== account.profile.role &&
-        !(role === 'student' && account.profile.role !== 'student'),
+        !(role === "student" && account.profile.role !== "student"),
     ),
-  )
-  const [status, setStatus] = useState(account.profile.status)
-  const initialAssignment = account.role_assignments?.find(
-    (assignment) => assignment.role === account.profile.role,
-  ) ?? account.role_assignments?.[0]
+  );
+  const [status, setStatus] = useState(account.profile.status);
+  const initialAssignment =
+    account.role_assignments?.find(
+      (assignment) => assignment.role === account.profile.role,
+    ) ?? account.role_assignments?.[0];
   const [facultyId, setFacultyId] = useState(
     initialAssignment?.faculty_id ??
       account.student_organization?.faculty_id ??
       account.profile.faculty_id ??
-      '',
-  )
+      "",
+  );
   const [departmentId, setDepartmentId] = useState(
     initialAssignment?.department_id ??
       account.student_organization?.department_id ??
       account.profile.department_id ??
-      '',
-  )
-  const [validationError, setValidationError] = useState<string | null>(null)
-  const roles = [primaryRole, ...additionalRoles]
+      "",
+  );
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const roles = [primaryRole, ...additionalRoles];
   const needsFaculty = roles.some((role) =>
-    ['adviser', 'department_head', 'department_staff', 'dean'].includes(role),
-  )
+    ["adviser", "department_head", "department_staff", "dean"].includes(role),
+  );
   const needsDepartment = roles.some((role) =>
-    ['department_head', 'department_staff'].includes(role),
-  )
-  const showDepartmentSelector =
-    needsDepartment || roles.includes('adviser')
+    ["department_head", "department_staff"].includes(role),
+  );
+  const showDepartmentSelector = needsDepartment || roles.includes("adviser");
   const visibleDepartments = departments.filter(
-    (department) =>
-      !facultyId || department.faculty_id === facultyId,
-  )
+    (department) => !facultyId || department.faculty_id === facultyId,
+  );
 
   function toggleRole(role: AccountRole, checked: boolean) {
-    if (role === 'student' && primaryRole !== 'student') return
+    if (role === "student" && primaryRole !== "student") return;
     setAdditionalRoles((current) =>
       checked
         ? Array.from(new Set([...current, role]))
         : current.filter((assignedRole) => assignedRole !== role),
-    )
+    );
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const name = fullName.trim()
+    event.preventDefault();
+    const name = fullName.trim();
     if (!name || name.length > 150) {
-      setValidationError('Enter a name between 1 and 150 characters.')
-      return
+      setValidationError("Enter a name between 1 and 150 characters.");
+      return;
     }
     if (needsFaculty && !facultyId) {
-      setValidationError('Select a faculty for the assigned roles.')
-      return
+      setValidationError("Select a faculty for the assigned roles.");
+      return;
     }
     if (needsDepartment && !departmentId) {
-      setValidationError('Select a department for the assigned roles.')
-      return
+      setValidationError("Select a department for the assigned roles.");
+      return;
     }
-    const department = departments.find((item) => item.id === departmentId)
+    const department = departments.find((item) => item.id === departmentId);
     if (departmentId && department && facultyId !== department.faculty_id) {
-      setValidationError('Choose a department in the selected faculty.')
-      return
+      setValidationError("Choose a department in the selected faculty.");
+      return;
     }
 
-    setValidationError(null)
+    setValidationError(null);
     const assignmentsByRole = new Map(
       account.role_assignments?.map((assignment) => [
         assignment.role,
         assignment,
       ]) ?? [],
-    )
-    const request: ApiSchema<'AdminProfileUpdate'> = {
+    );
+    const request: ApiSchema<"AdminProfileUpdate"> = {
       full_name: name,
       role: primaryRole,
       role_assignments: roles.map((role) => {
-        const existingAssignment = assignmentsByRole.get(role)
-        const isEditedScope = role === primaryRole
+        const existingAssignment = assignmentsByRole.get(role);
+        const isEditedScope = role === primaryRole;
         return {
           role,
-          faculty_id: isEditedScope || !existingAssignment
-            ? facultyId || null
-            : existingAssignment.faculty_id,
-          department_id: isEditedScope || !existingAssignment
-            ? departmentId || null
-            : existingAssignment.department_id,
-        }
+          faculty_id:
+            isEditedScope || !existingAssignment
+              ? facultyId || null
+              : existingAssignment.faculty_id,
+          department_id:
+            isEditedScope || !existingAssignment
+              ? departmentId || null
+              : existingAssignment.department_id,
+        };
       }),
       status,
-    }
-    void onSubmit(request)
+    };
+    void onSubmit(request);
   }
 
   return (
@@ -177,15 +182,18 @@ export function AdminAccountEditDialog({
                 onValueChange={(value) => {
                   const nextRole = accountRoles.find(
                     (option) => option.value === value,
-                  )?.value
-                  if (!nextRole) return
-                  setPrimaryRole(nextRole)
+                  )?.value;
+                  if (!nextRole) return;
+                  setPrimaryRole(nextRole);
                   setAdditionalRoles((current) =>
                     current.filter((role) => role !== nextRole),
-                  )
+                  );
                 }}
               >
-                <SelectTrigger id="edit-account-primary-role" className="w-full">
+                <SelectTrigger
+                  id="edit-account-primary-role"
+                  className="w-full"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -203,8 +211,8 @@ export function AdminAccountEditDialog({
                 onValueChange={(value) => {
                   const nextStatus = profileStatuses.find(
                     (option) => option.value === value,
-                  )?.value
-                  if (nextStatus) setStatus(nextStatus)
+                  )?.value;
+                  if (nextStatus) setStatus(nextStatus);
                 }}
               >
                 <SelectTrigger id="edit-account-status" className="w-full">
@@ -229,13 +237,10 @@ export function AdminAccountEditDialog({
                 .filter(
                   (option) =>
                     option.value !== primaryRole &&
-                    !(
-                      option.value === 'student' &&
-                      primaryRole !== 'student'
-                    ),
+                    !(option.value === "student" && primaryRole !== "student"),
                 )
                 .map((option) => {
-                  const id = `edit-account-role-${option.value}`
+                  const id = `edit-account-role-${option.value}`;
                   return (
                     <label
                       key={option.value}
@@ -251,7 +256,7 @@ export function AdminAccountEditDialog({
                       />
                       {option.label}
                     </label>
-                  )
+                  );
                 })}
             </div>
           </fieldset>
@@ -261,8 +266,8 @@ export function AdminAccountEditDialog({
                 <Select
                   value={facultyId}
                   onValueChange={(value) => {
-                    setFacultyId(value)
-                    setDepartmentId('')
+                    setFacultyId(value);
+                    setDepartmentId("");
                   }}
                 >
                   <SelectTrigger id="edit-account-faculty" className="w-full">
@@ -279,10 +284,7 @@ export function AdminAccountEditDialog({
               </FormField>
               {showDepartmentSelector && (
                 <FormField label="Department" htmlFor="edit-account-department">
-                  <Select
-                    value={departmentId}
-                    onValueChange={setDepartmentId}
-                  >
+                  <Select value={departmentId} onValueChange={setDepartmentId}>
                     <SelectTrigger
                       id="edit-account-department"
                       className="w-full"
@@ -312,11 +314,11 @@ export function AdminAccountEditDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Saving changes…' : 'Save changes'}
+              {submitting ? "Saving changes…" : "Save changes"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,10 +1,10 @@
-import { CheckIcon, ClockIcon, LockIcon, SwapIcon } from '@/components/icons'
-import { Kicker } from '@/components/ui/kicker'
+import { CheckIcon, ClockIcon, LockIcon, SwapIcon } from "@/components/icons";
+import { Kicker } from "@/components/ui/kicker";
 import {
   RULES_ENGINE_CARDS,
   RULES_ENGINE_SECTION,
   type RulesEngineCard,
-} from '@/routes/landing/landingData'
+} from "@/routes/landing/landingData";
 
 function LayersIcon({ className }: { className?: string }) {
   return (
@@ -23,7 +23,7 @@ function LayersIcon({ className }: { className?: string }) {
       <path d="M12 3l9 4.8-9 4.8-9-4.8z" />
       <path d="M3 12.4l9 4.8 9-4.8M3 16.9l9 4.8 9-4.8" />
     </svg>
-  )
+  );
 }
 
 function NodeIcon({ className }: { className?: string }) {
@@ -45,16 +45,16 @@ function NodeIcon({ className }: { className?: string }) {
       <circle cx="6" cy="18" r="2.6" />
       <path d="M8.4 7.2l7.2 3.6M8.4 16.8l7.2-3.6" />
     </svg>
-  )
+  );
 }
 
-function RuleIcon({ icon }: { icon: RulesEngineCard['icon'] }) {
-  if (icon === 'layers') return <LayersIcon className="size-5 shrink-0" />
-  if (icon === 'clock') return <ClockIcon className="size-5 shrink-0" />
-  if (icon === 'swap') return <SwapIcon className="size-5 shrink-0" />
-  if (icon === 'node') return <NodeIcon className="size-5 shrink-0" />
-  if (icon === 'check') return <CheckIcon className="size-5 shrink-0" />
-  return <LockIcon className="size-5 shrink-0" />
+function RuleIcon({ icon }: { icon: RulesEngineCard["icon"] }) {
+  if (icon === "layers") return <LayersIcon className="size-5 shrink-0" />;
+  if (icon === "clock") return <ClockIcon className="size-5 shrink-0" />;
+  if (icon === "swap") return <SwapIcon className="size-5 shrink-0" />;
+  if (icon === "node") return <NodeIcon className="size-5 shrink-0" />;
+  if (icon === "check") return <CheckIcon className="size-5 shrink-0" />;
+  return <LockIcon className="size-5 shrink-0" />;
 }
 
 export function RulesEngineGrid() {
@@ -96,5 +96,5 @@ export function RulesEngineGrid() {
         </div>
       </div>
     </section>
-  )
+  );
 }

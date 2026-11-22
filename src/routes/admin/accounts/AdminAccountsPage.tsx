@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
-import { FormField } from '@/components/features/form-field'
-import { PageHeading } from '@/components/features/page-heading'
-import { Panel } from '@/components/features/panel'
-import { SearchInput } from '@/components/features/search-input'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { useMemo, useState } from "react";
+import { FormField } from "@/components/features/form-field";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
+import { SearchInput } from "@/components/features/search-input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -13,24 +13,24 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { StatusBadge } from '@/components/ui/status-badge'
+} from "@/components/ui/select";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { EllipsisIcon, PlusIcon } from '@/components/icons'
-import { useAuth } from '@/hooks/use-auth'
-import { apiClient, unwrapApiResult, type ApiSchema } from '@/lib/api'
+} from "@/components/ui/dropdown-menu";
+import { EllipsisIcon, PlusIcon } from "@/components/icons";
+import { useAuth } from "@/hooks/use-auth";
+import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 import {
   Table,
   TableBody,
@@ -38,7 +38,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   ACCOUNT_PAGE_SIZE,
   ALL_ACCOUNTS_FILTER,
@@ -47,15 +47,15 @@ import {
   getAccountRoleLabel,
   getAccountRoles,
   type AccountRole,
-} from './admin-accounts-model'
-import { useAdminAccountCatalogs } from './use-admin-account-catalogs'
-import { useAdminAccounts } from './use-admin-accounts'
-import { AdminAccountEditDialog } from './AdminAccountEditDialog'
-import { AdminAccountProvisionDialog } from './AdminAccountProvisionDialog'
+} from "./admin-accounts-model";
+import { useAdminAccountCatalogs } from "./use-admin-account-catalogs";
+import { useAdminAccounts } from "./use-admin-accounts";
+import { AdminAccountEditDialog } from "./AdminAccountEditDialog";
+import { AdminAccountProvisionDialog } from "./AdminAccountProvisionDialog";
 
-type Faculty = ApiSchema<'Faculty'>
-type Department = ApiSchema<'Department'>
-type Account = ApiSchema<'AccountSummary'>
+type Faculty = ApiSchema<"Faculty">;
+type Department = ApiSchema<"Department">;
+type Account = ApiSchema<"AccountSummary">;
 
 function FilterSelect({
   id,
@@ -65,12 +65,12 @@ function FilterSelect({
   children,
   disabled = false,
 }: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  children: React.ReactNode
-  disabled?: boolean
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <FormField label={label} htmlFor={id}>
@@ -81,7 +81,7 @@ function FilterSelect({
         <SelectContent>{children}</SelectContent>
       </Select>
     </FormField>
-  )
+  );
 }
 
 function getOrganization(
@@ -89,81 +89,82 @@ function getOrganization(
   departmentsById: ReadonlyMap<string, Department>,
   facultiesById: ReadonlyMap<string, Faculty>,
 ): { faculty: string; department: string } {
-  const profile = account.profile
-  const assignment = account.role_assignments?.find(
-    (roleAssignment) => roleAssignment.role === profile.role,
-  ) ?? account.role_assignments?.[0]
+  const profile = account.profile;
+  const assignment =
+    account.role_assignments?.find(
+      (roleAssignment) => roleAssignment.role === profile.role,
+    ) ?? account.role_assignments?.[0];
   const departmentId =
     account.student_organization?.department_id ??
     assignment?.department_id ??
-    profile.department_id
+    profile.department_id;
   const department = departmentId
     ? departmentsById.get(departmentId)
-    : undefined
+    : undefined;
   const facultyId =
     account.student_organization?.faculty_id ??
     assignment?.faculty_id ??
     profile.faculty_id ??
-    department?.faculty_id
-  const faculty = facultyId ? facultiesById.get(facultyId) : undefined
+    department?.faculty_id;
+  const faculty = facultyId ? facultiesById.get(facultyId) : undefined;
 
   return {
-    faculty: faculty?.name ?? '—',
-    department: department?.name ?? '—',
-  }
+    faculty: faculty?.name ?? "—",
+    department: department?.name ?? "—",
+  };
 }
 
 function getInitials(fullName: string): string {
   const parts = fullName
-    .replace(/\b(Dr|Prof)\.?\s+/gi, '')
-    .replace(/,/g, ' ')
+    .replace(/\b(Dr|Prof)\.?\s+/gi, "")
+    .replace(/,/g, " ")
     .trim()
     .split(/\s+/)
-    .filter(Boolean)
-  if (parts.length === 0) return 'U'
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-  return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase()
+    .filter(Boolean);
+  if (parts.length === 0) return "U";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
 }
 
 function getInvitationStatusLabel(
-  status: ApiSchema<'InvitationStatus'> | null | undefined,
+  status: ApiSchema<"InvitationStatus"> | null | undefined,
 ): string {
-  if (!status) return '—'
-  return status.charAt(0).toUpperCase() + status.slice(1)
+  if (!status) return "—";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export default function AdminAccountsPage() {
-  const { user } = useAuth()
-  const [search, setSearch] = useState('')
+  const { user } = useAuth();
+  const [search, setSearch] = useState("");
   const [role, setRole] = useState<AccountRole | typeof ALL_ACCOUNTS_FILTER>(
     ALL_ACCOUNTS_FILTER,
-  )
-  const [facultyId, setFacultyId] = useState(ALL_ACCOUNTS_FILTER)
-  const [departmentId, setDepartmentId] = useState(ALL_ACCOUNTS_FILTER)
-  const [page, setPage] = useState(0)
-  const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteSubmitting, setInviteSubmitting] = useState(false)
-  const [inviteError, setInviteError] = useState<string | null>(null)
-  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
-  const [revokeTarget, setRevokeTarget] = useState<Account | null>(null)
-  const [accountActionId, setAccountActionId] = useState<string | null>(null)
+  );
+  const [facultyId, setFacultyId] = useState(ALL_ACCOUNTS_FILTER);
+  const [departmentId, setDepartmentId] = useState(ALL_ACCOUNTS_FILTER);
+  const [page, setPage] = useState(0);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<Account | null>(null);
+  const [accountActionId, setAccountActionId] = useState<string | null>(null);
   const [accountActionError, setAccountActionError] = useState<string | null>(
     null,
-  )
+  );
   const [accountActionSuccess, setAccountActionSuccess] = useState<
     string | null
-  >(null)
+  >(null);
   const query = useMemo(
     () => buildAccountQuery({ search, role, facultyId, departmentId }, page),
     [search, role, facultyId, departmentId, page],
-  )
+  );
   const {
     accounts,
     error: accountsError,
     loading: accountsLoading,
     reload: reloadAccounts,
-  } = useAdminAccounts(query)
+  } = useAdminAccounts(query);
   const {
     faculties,
     departments,
@@ -173,133 +174,132 @@ export default function AdminAccountsPage() {
     error: catalogsError,
     loading: catalogsLoading,
     reload: reloadCatalogs,
-  } = useAdminAccountCatalogs()
+  } = useAdminAccountCatalogs();
   const facultiesById = useMemo(
     () => new Map(faculties.map((faculty) => [faculty.id, faculty])),
     [faculties],
-  )
+  );
   const departmentsById = useMemo(
     () => new Map(departments.map((department) => [department.id, department])),
     [departments],
-  )
+  );
   const visibleDepartments = departments.filter(
     (department) =>
-      facultyId === ALL_ACCOUNTS_FILTER ||
-      department.faculty_id === facultyId,
-  )
-  const visibleAccounts = accounts.slice(0, ACCOUNT_PAGE_SIZE)
-  const hasNextPage = accounts.length > ACCOUNT_PAGE_SIZE
+      facultyId === ALL_ACCOUNTS_FILTER || department.faculty_id === facultyId,
+  );
+  const visibleAccounts = accounts.slice(0, ACCOUNT_PAGE_SIZE);
+  const hasNextPage = accounts.length > ACCOUNT_PAGE_SIZE;
 
   function resetPageAnd<T>(setter: (value: T) => void, value: T) {
-    setPage(0)
-    setter(value)
+    setPage(0);
+    setter(value);
   }
 
   function changeFaculty(value: string) {
-    setPage(0)
-    setFacultyId(value)
-    setDepartmentId(ALL_ACCOUNTS_FILTER)
+    setPage(0);
+    setFacultyId(value);
+    setDepartmentId(ALL_ACCOUNTS_FILTER);
   }
 
-  async function submitInvitation(request: ApiSchema<'InviteRequest'>) {
-    setInviteSubmitting(true)
-    setInviteError(null)
-    setInviteSuccess(null)
+  async function submitInvitation(request: ApiSchema<"InviteRequest">) {
+    setInviteSubmitting(true);
+    setInviteError(null);
+    setInviteSuccess(null);
 
     try {
-      const result = await apiClient.POST('/functions/v1/auth/invite', {
+      const result = await apiClient.POST("/functions/v1/auth/invite", {
         body: request,
-      })
-      const response = unwrapApiResult(result)
-      setInviteSuccess(response.message || 'Invitation sent successfully.')
-      setInviteOpen(false)
-      reloadAccounts()
+      });
+      const response = unwrapApiResult(result);
+      setInviteSuccess(response.message || "Invitation sent successfully.");
+      setInviteOpen(false);
+      reloadAccounts();
     } catch (requestError: unknown) {
       setInviteError(
         requestError instanceof Error
           ? requestError.message
-          : 'The invitation could not be sent. Please try again.',
-      )
+          : "The invitation could not be sent. Please try again.",
+      );
     } finally {
-      setInviteSubmitting(false)
+      setInviteSubmitting(false);
     }
   }
 
   async function updateAccount(
     account: Account,
-    request: ApiSchema<'AdminProfileUpdate'>,
+    request: ApiSchema<"AdminProfileUpdate">,
   ) {
-    setAccountActionId(account.profile.id)
-    setAccountActionError(null)
-    setAccountActionSuccess(null)
+    setAccountActionId(account.profile.id);
+    setAccountActionError(null);
+    setAccountActionSuccess(null);
 
     try {
       await unwrapApiResult(
-        await apiClient.PATCH('/functions/v1/accounts/{profile_id}', {
+        await apiClient.PATCH("/functions/v1/accounts/{profile_id}", {
           params: { path: { profile_id: account.profile.id } },
           body: request,
         }),
-      )
+      );
       setAccountActionSuccess(
         `Updated account details for ${account.profile.full_name}.`,
-      )
+      );
       setEditingAccount((current) =>
         current?.profile.id === account.profile.id ? null : current,
-      )
-      reloadAccounts()
+      );
+      reloadAccounts();
     } catch (requestError: unknown) {
       setAccountActionError(
         requestError instanceof Error
           ? requestError.message
-          : 'Account changes could not be saved.',
-      )
+          : "Account changes could not be saved.",
+      );
     } finally {
-      setAccountActionId(null)
+      setAccountActionId(null);
     }
   }
 
   async function runInvitationAction(
     account: Account,
-    action: 'resend' | 'revoke',
+    action: "resend" | "revoke",
   ) {
-    setAccountActionId(account.profile.id)
-    setAccountActionError(null)
-    setAccountActionSuccess(null)
+    setAccountActionId(account.profile.id);
+    setAccountActionError(null);
+    setAccountActionSuccess(null);
 
     try {
-      if (action === 'resend') {
+      if (action === "resend") {
         const response = await unwrapApiResult(
           await apiClient.POST(
-            '/functions/v1/accounts/{profile_id}/resend-invite',
+            "/functions/v1/accounts/{profile_id}/resend-invite",
             { params: { path: { profile_id: account.profile.id } } },
           ),
-        )
+        );
         setAccountActionSuccess(
-          response.message || 'Invitation resent successfully.',
-        )
+          response.message || "Invitation resent successfully.",
+        );
       } else {
         await unwrapApiResult(
           await apiClient.POST(
-            '/functions/v1/accounts/{profile_id}/revoke-invite',
+            "/functions/v1/accounts/{profile_id}/revoke-invite",
             { params: { path: { profile_id: account.profile.id } } },
           ),
-        )
+        );
         setAccountActionSuccess(
           `Invitation revoked for ${account.profile.full_name}.`,
-        )
+        );
         setRevokeTarget((current) =>
           current?.profile.id === account.profile.id ? null : current,
-        )
+        );
       }
-      reloadAccounts()
+      reloadAccounts();
     } catch (requestError: unknown) {
       setAccountActionError(
         requestError instanceof Error
           ? requestError.message
-          : `The invitation could not be ${action === 'resend' ? 'resent' : 'revoked'}.`,
-      )
+          : `The invitation could not be ${action === "resend" ? "resent" : "revoked"}.`,
+      );
     } finally {
-      setAccountActionId(null)
+      setAccountActionId(null);
     }
   }
 
@@ -314,9 +314,9 @@ export default function AdminAccountsPage() {
             type="button"
             disabled={inviteSubmitting}
             onClick={() => {
-              setInviteError(null)
-              setInviteSuccess(null)
-              setInviteOpen(true)
+              setInviteError(null);
+              setInviteSuccess(null);
+              setInviteOpen(true);
             }}
           >
             <PlusIcon />
@@ -406,8 +406,8 @@ export default function AdminAccountsPage() {
             onChange={(value) => {
               const selectedRole = accountRoles.find(
                 (option) => option.value === value,
-              )?.value
-              resetPageAnd(setRole, selectedRole ?? ALL_ACCOUNTS_FILTER)
+              )?.value;
+              resetPageAnd(setRole, selectedRole ?? ALL_ACCOUNTS_FILTER);
             }}
           >
             <SelectItem value={ALL_ACCOUNTS_FILTER}>All roles</SelectItem>
@@ -452,8 +452,8 @@ export default function AdminAccountsPage() {
         title="Accounts"
         description={
           accountsLoading
-            ? 'Loading institution-wide account records.'
-            : `${visibleAccounts.length} account${visibleAccounts.length === 1 ? '' : 's'} shown on this page.`
+            ? "Loading institution-wide account records."
+            : `${visibleAccounts.length} account${visibleAccounts.length === 1 ? "" : "s"} shown on this page.`
         }
         flush
       >
@@ -499,20 +499,21 @@ export default function AdminAccountsPage() {
               </TableRow>
             ) : (
               visibleAccounts.map((account) => {
-                const profile = account.profile
-                const roles = getAccountRoles(account)
-                const invitationStatus = profile.invitation_status
+                const profile = account.profile;
+                const roles = getAccountRoles(account);
+                const invitationStatus = profile.invitation_status;
                 const hasPendingInvitation =
-                  invitationStatus === 'pending' && profile.status === 'invited'
+                  invitationStatus === "pending" &&
+                  profile.status === "invited";
                 const isCurrentAccount =
                   profile.id === user?.id ||
                   profile.email.trim().toLowerCase() ===
-                    user?.email?.trim().toLowerCase()
+                    user?.email?.trim().toLowerCase();
                 const organization = getOrganization(
                   account,
                   departmentsById,
                   facultiesById,
-                )
+                );
                 return (
                   <TableRow key={profile.id}>
                     <TableCell label="Name" className="whitespace-normal">
@@ -530,7 +531,8 @@ export default function AdminAccountsPage() {
                             <StatusBadge status={profile.status} />
                             {invitationStatus && (
                               <Badge variant="outline">
-                                Invitation: {getInvitationStatusLabel(invitationStatus)}
+                                Invitation:{" "}
+                                {getInvitationStatusLabel(invitationStatus)}
                               </Badge>
                             )}
                           </div>
@@ -584,27 +586,35 @@ export default function AdminAccountsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            disabled={isCurrentAccount || accountActionId === profile.id}
+                            disabled={
+                              isCurrentAccount || accountActionId === profile.id
+                            }
                             onSelect={() => {
-                              setAccountActionError(null)
-                              setEditingAccount(account)
+                              setAccountActionError(null);
+                              setEditingAccount(account);
                             }}
                           >
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            disabled={!hasPendingInvitation || accountActionId === profile.id}
+                            disabled={
+                              !hasPendingInvitation ||
+                              accountActionId === profile.id
+                            }
                             onSelect={() =>
-                              void runInvitationAction(account, 'resend')
+                              void runInvitationAction(account, "resend")
                             }
                           >
                             Resend
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            disabled={!hasPendingInvitation || accountActionId === profile.id}
+                            disabled={
+                              !hasPendingInvitation ||
+                              accountActionId === profile.id
+                            }
                             onSelect={() => {
-                              setAccountActionError(null)
-                              setRevokeTarget(account)
+                              setAccountActionError(null);
+                              setRevokeTarget(account);
                             }}
                           >
                             Revoke
@@ -613,7 +623,7 @@ export default function AdminAccountsPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                )
+                );
               })
             )}
           </TableBody>
@@ -648,9 +658,9 @@ export default function AdminAccountsPage() {
         <AdminAccountProvisionDialog
           open={inviteOpen}
           onOpenChange={(open) => {
-            if (open || !inviteSubmitting) setInviteOpen(open)
+            if (open || !inviteSubmitting) setInviteOpen(open);
           }}
-          currentEmail={user?.email ?? ''}
+          currentEmail={user?.email ?? ""}
           faculties={faculties}
           departments={departments}
           programs={programs}
@@ -670,11 +680,8 @@ export default function AdminAccountsPage() {
           submitting={accountActionId === editingAccount.profile.id}
           submissionError={accountActionError}
           onOpenChange={(open) => {
-            if (
-              !open &&
-              accountActionId !== editingAccount.profile.id
-            ) {
-              setEditingAccount(null)
+            if (!open && accountActionId !== editingAccount.profile.id) {
+              setEditingAccount(null);
             }
           }}
           onSubmit={(request) => updateAccount(editingAccount, request)}
@@ -685,7 +692,7 @@ export default function AdminAccountsPage() {
           open
           onOpenChange={(open) => {
             if (!open && accountActionId !== revokeTarget.profile.id) {
-              setRevokeTarget(null)
+              setRevokeTarget(null);
             }
           }}
         >
@@ -693,9 +700,9 @@ export default function AdminAccountsPage() {
             <DialogHeader>
               <DialogTitle>Revoke invitation?</DialogTitle>
               <DialogDescription>
-                This invalidates the invitation for {revokeTarget.profile.email}.
-                The account holder will no longer be able to use this invitation
-                link.
+                This invalidates the invitation for {revokeTarget.profile.email}
+                . The account holder will no longer be able to use this
+                invitation link.
               </DialogDescription>
             </DialogHeader>
             {accountActionError && (
@@ -716,16 +723,16 @@ export default function AdminAccountsPage() {
                 type="button"
                 variant="destructive"
                 disabled={accountActionId === revokeTarget.profile.id}
-                onClick={() => void runInvitationAction(revokeTarget, 'revoke')}
+                onClick={() => void runInvitationAction(revokeTarget, "revoke")}
               >
                 {accountActionId === revokeTarget.profile.id
-                  ? 'Revoking…'
-                  : 'Revoke invitation'}
+                  ? "Revoking…"
+                  : "Revoke invitation"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
     </div>
-  )
+  );
 }

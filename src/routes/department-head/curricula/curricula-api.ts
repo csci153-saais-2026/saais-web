@@ -1,152 +1,385 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 
-export type CurriculumVersionStatus = "active" | "draft" | "retired"
-export type CurriculumSemester = "Semester 1" | "Semester 2" | "Midyear"
-export type CurriculumSlotType = "Required course" | "Elective slot" | "GE slot"
+export type CurriculumVersionStatus = "active" | "draft" | "retired";
+export type CurriculumSemester = "Semester 1" | "Semester 2" | "Midyear";
+export type CurriculumSlotType =
+  "Required course" | "Elective slot" | "GE slot";
 
-export const CURRICULUM_SEMESTERS: CurriculumSemester[] = ["Semester 1", "Semester 2", "Midyear"]
+export const CURRICULUM_SEMESTERS: CurriculumSemester[] = [
+  "Semester 1",
+  "Semester 2",
+  "Midyear",
+];
 
 export interface CurriculumCourseSlot {
-  id: string
-  courseOrSlot: string
-  requiredUnits: number
-  type: CurriculumSlotType
-  hasAcademicHistory?: boolean
+  id: string;
+  courseOrSlot: string;
+  requiredUnits: number;
+  type: CurriculumSlotType;
+  hasAcademicHistory?: boolean;
 }
 
 export interface CurriculumTermBlock {
-  id: string
-  year: number
-  sem: CurriculumSemester
-  rows: CurriculumCourseSlot[]
+  id: string;
+  year: number;
+  sem: CurriculumSemester;
+  rows: CurriculumCourseSlot[];
 }
 
 export interface CurriculumVersionRecord {
-  id: string
-  programId: string
-  departmentId: string
+  id: string;
+  programId: string;
+  departmentId: string;
   /** Program code, e.g. BSCS. */
-  prog: string
+  prog: string;
   /** Version label without the program code, e.g. "2024-2025 v1". */
-  year: string
-  units: number
-  enrolled: number
-  from: string
-  status: CurriculumVersionStatus
-  terms: CurriculumTermBlock[]
-  references?: ("curriculum transfer requests" | "course equivalence rules")[]
+  year: string;
+  units: number;
+  enrolled: number;
+  from: string;
+  status: CurriculumVersionStatus;
+  terms: CurriculumTermBlock[];
+  references?: ("curriculum transfer requests" | "course equivalence rules")[];
 }
 
 export interface CurriculaData {
-  versions: CurriculumVersionRecord[]
-  programs: { id: string; code: string }[]
+  versions: CurriculumVersionRecord[];
+  programs: { id: string; code: string }[];
 }
 
-const KEY = ["department-head", "curricula"] as const
-const sequenceOf = (sem: CurriculumSemester) => CURRICULUM_SEMESTERS.indexOf(sem) + 1
-const semesterOf = (sequence: number): CurriculumSemester => CURRICULUM_SEMESTERS[sequence - 1] ?? "Semester 1"
+const KEY = ["department-head", "curricula"] as const;
+const sequenceOf = (sem: CurriculumSemester) =>
+  CURRICULUM_SEMESTERS.indexOf(sem) + 1;
+const semesterOf = (sequence: number): CurriculumSemester =>
+  CURRICULUM_SEMESTERS[sequence - 1] ?? "Semester 1";
 
-const SLOT_TYPE_LABEL: Partial<Record<ApiSchema<"CurriculumSlotType">, CurriculumSlotType>> = { elective: "Elective slot", ge: "GE slot" }
-const SLOT_TYPE_API: Record<CurriculumSlotType, ApiSchema<"CurriculumSlotType">> = { "Required course": "required", "Elective slot": "elective", "GE slot": "ge" }
+const SLOT_TYPE_LABEL: Partial<
+  Record<ApiSchema<"CurriculumSlotType">, CurriculumSlotType>
+> = { elective: "Elective slot", ge: "GE slot" };
+const SLOT_TYPE_API: Record<
+  CurriculumSlotType,
+  ApiSchema<"CurriculumSlotType">
+> = {
+  "Required course": "required",
+  "Elective slot": "elective",
+  "GE slot": "ge",
+};
 
 async function getCurricula(): Promise<CurriculaData> {
-  const get = <T,>(load: () => Promise<{ data?: T; error?: unknown }>) => load().then(unwrapApiResult as (value: { data?: T; error?: unknown }) => T)
-  const [versions, programs, terms, slots, courses, transfers, pairs] = await Promise.all([
-    get(() => apiClient.GET("/rest/v1/curriculum_version", { params: { query: { select: "*", limit: 100 } } })),
-    get(() => apiClient.GET("/rest/v1/program", { params: { query: { select: "*", limit: 100 } } })),
-    get(() => apiClient.GET("/rest/v1/curriculum_term", { params: { query: { select: "*", limit: 100 } } })),
-    get(() => apiClient.GET("/rest/v1/curriculum_term_course", { params: { query: { select: "*", limit: 100 } } })),
-    get(() => apiClient.GET("/rest/v1/course", { params: { query: { select: "*", limit: 100 } } })),
-    get(() => apiClient.GET("/rest/v1/curriculum_transfer_request", { params: { query: { select: "*", limit: 100 } } })),
-    get(() => apiClient.GET("/rest/v1/curriculum_pair_equivalence", { params: { query: { select: "*", limit: 100 } } })),
-  ])
+  const get = <T>(load: () => Promise<{ data?: T; error?: unknown }>) =>
+    load().then(unwrapApiResult as (value: { data?: T; error?: unknown }) => T);
+  const [versions, programs, terms, slots, courses, transfers, pairs] =
+    await Promise.all([
+      get(() =>
+        apiClient.GET("/rest/v1/curriculum_version", {
+          params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+      get(() =>
+        apiClient.GET("/rest/v1/program", {
+          params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+      get(() =>
+        apiClient.GET("/rest/v1/curriculum_term", {
+          params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+      get(() =>
+        apiClient.GET("/rest/v1/curriculum_term_course", {
+          params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+      get(() =>
+        apiClient.GET("/rest/v1/course", {
+          params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+      get(() =>
+        apiClient.GET("/rest/v1/curriculum_transfer_request", {
+          params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+      get(() =>
+        apiClient.GET("/rest/v1/curriculum_pair_equivalence", {
+          params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+    ]);
   const records = versions.map((version): CurriculumVersionRecord => {
-    const program = programs.find((item) => item.id === version.program_id)
-    const code = program?.code ?? "Program"
-    const references: NonNullable<CurriculumVersionRecord["references"]> = []
-    if (transfers.some((item) => item.from_curriculum_version_id === version.id || item.to_curriculum_version_id === version.id)) references.push("curriculum transfer requests")
-    if (pairs.some((item) => item.from_curriculum_version_id === version.id || item.to_curriculum_version_id === version.id)) references.push("course equivalence rules")
+    const program = programs.find((item) => item.id === version.program_id);
+    const code = program?.code ?? "Program";
+    const references: NonNullable<CurriculumVersionRecord["references"]> = [];
+    if (
+      transfers.some(
+        (item) =>
+          item.from_curriculum_version_id === version.id ||
+          item.to_curriculum_version_id === version.id,
+      )
+    )
+      references.push("curriculum transfer requests");
+    if (
+      pairs.some(
+        (item) =>
+          item.from_curriculum_version_id === version.id ||
+          item.to_curriculum_version_id === version.id,
+      )
+    )
+      references.push("course equivalence rules");
     return {
-      id: version.id, programId: version.program_id, departmentId: program?.department_id ?? "", prog: code,
-      year: version.version_label.startsWith(`${code} `) ? version.version_label.slice(code.length + 1) : version.version_label,
-      units: version.total_units, enrolled: version.enrolled_student_count ?? 0, from: version.effective_start,
-      status: version.status === "active" || version.status === "draft" ? version.status : "retired",
+      id: version.id,
+      programId: version.program_id,
+      departmentId: program?.department_id ?? "",
+      prog: code,
+      year: version.version_label.startsWith(`${code} `)
+        ? version.version_label.slice(code.length + 1)
+        : version.version_label,
+      units: version.total_units,
+      enrolled: version.enrolled_student_count ?? 0,
+      from: version.effective_start,
+      status:
+        version.status === "active" || version.status === "draft"
+          ? version.status
+          : "retired",
       references: references.length ? references : undefined,
-      terms: terms.filter((term) => term.curriculum_version_id === version.id)
-        .sort((a, b) => a.year_level - b.year_level || a.term_sequence - b.term_sequence)
+      terms: terms
+        .filter((term) => term.curriculum_version_id === version.id)
+        .sort(
+          (a, b) =>
+            a.year_level - b.year_level || a.term_sequence - b.term_sequence,
+        )
         .map((term): CurriculumTermBlock => ({
-          id: term.id, year: term.year_level, sem: semesterOf(term.term_sequence),
-          rows: slots.filter((slot) => slot.curriculum_term_id === term.id).map((slot): CurriculumCourseSlot => {
-            const course = courses.find((item) => item.id === slot.course_id)
-            return {
-              id: slot.id,
-              courseOrSlot: course ? `${course.code} — ${course.title}` : slot.slot_label ?? "Unnamed slot",
-              requiredUnits: slot.nominal_units,
-              type: (slot.slot_type && SLOT_TYPE_LABEL[slot.slot_type]) || "Required course",
-            }
-          }),
+          id: term.id,
+          year: term.year_level,
+          sem: semesterOf(term.term_sequence),
+          rows: slots
+            .filter((slot) => slot.curriculum_term_id === term.id)
+            .map((slot): CurriculumCourseSlot => {
+              const course = courses.find((item) => item.id === slot.course_id);
+              return {
+                id: slot.id,
+                courseOrSlot: course
+                  ? `${course.code} — ${course.title}`
+                  : (slot.slot_label ?? "Unnamed slot"),
+                requiredUnits: slot.nominal_units,
+                type:
+                  (slot.slot_type && SLOT_TYPE_LABEL[slot.slot_type]) ||
+                  "Required course",
+              };
+            }),
         })),
-    }
-  })
-  return { versions: records, programs: programs.map((program) => ({ id: program.id, code: program.code })) }
+    };
+  });
+  return {
+    versions: records,
+    programs: programs.map((program) => ({
+      id: program.id,
+      code: program.code,
+    })),
+  };
 }
 
-export const useCurricula = () => useQuery({ queryKey: KEY, queryFn: getCurricula })
+export const useCurricula = () =>
+  useQuery({ queryKey: KEY, queryFn: getCurricula });
 
 /** Catalog writes. Each rejects with the API's message (for example when records depend on the item). */
 export function useCurriculaActions() {
-  const client = useQueryClient()
-  const refresh = () => client.invalidateQueries({ queryKey: KEY })
-  const useAction = <A extends unknown[], R>(fn: (...args: A) => Promise<R>) => useMutation({ mutationFn: (args: A) => fn(...args), onSuccess: refresh })
-  const run = <A extends unknown[], R>(mutation: ReturnType<typeof useAction<A, R>>) => (...args: A) => mutation.mutateAsync(args)
+  const client = useQueryClient();
+  const refresh = () => client.invalidateQueries({ queryKey: KEY });
+  const useAction = <A extends unknown[], R>(fn: (...args: A) => Promise<R>) =>
+    useMutation({ mutationFn: (args: A) => fn(...args), onSuccess: refresh });
+  const run =
+    <A extends unknown[], R>(mutation: ReturnType<typeof useAction<A, R>>) =>
+    (...args: A) =>
+      mutation.mutateAsync(args);
 
-  const createVersion = useAction(async (input: { programId: string; label: string; start: string; units: number; status: CurriculumVersionStatus }) => {
-    const created = unwrapApiResult(await apiClient.POST("/functions/v1/catalog/curriculum_version", {
-      body: { program_id: input.programId, version_label: input.label, effective_start: input.start, total_units: input.units },
-    }))
-    if (input.status !== "draft") {
-      unwrapApiResult(await apiClient.PATCH("/functions/v1/catalog/curriculum_version/{id}", { params: { path: { id: created.id } }, body: { status: input.status } }))
-    }
-    return created
-  })
-  const updateVersion = useAction(async (id: string, input: { label: string; start: string; units: number; status: CurriculumVersionStatus }) =>
-    unwrapApiResult(await apiClient.PATCH("/functions/v1/catalog/curriculum_version/{id}", {
-      params: { path: { id } }, body: { version_label: input.label, effective_start: input.start, total_units: input.units, status: input.status },
-    })))
-  const deleteVersion = useAction(async (id: string) => unwrapApiResult(await apiClient.DELETE("/functions/v1/catalog/curriculum_version/{id}", { params: { path: { id } } })))
+  const createVersion = useAction(
+    async (input: {
+      programId: string;
+      label: string;
+      start: string;
+      units: number;
+      status: CurriculumVersionStatus;
+    }) => {
+      const created = unwrapApiResult(
+        await apiClient.POST("/functions/v1/catalog/curriculum_version", {
+          body: {
+            program_id: input.programId,
+            version_label: input.label,
+            effective_start: input.start,
+            total_units: input.units,
+          },
+        }),
+      );
+      if (input.status !== "draft") {
+        unwrapApiResult(
+          await apiClient.PATCH(
+            "/functions/v1/catalog/curriculum_version/{id}",
+            {
+              params: { path: { id: created.id } },
+              body: { status: input.status },
+            },
+          ),
+        );
+      }
+      return created;
+    },
+  );
+  const updateVersion = useAction(
+    async (
+      id: string,
+      input: {
+        label: string;
+        start: string;
+        units: number;
+        status: CurriculumVersionStatus;
+      },
+    ) =>
+      unwrapApiResult(
+        await apiClient.PATCH("/functions/v1/catalog/curriculum_version/{id}", {
+          params: { path: { id } },
+          body: {
+            version_label: input.label,
+            effective_start: input.start,
+            total_units: input.units,
+            status: input.status,
+          },
+        }),
+      ),
+  );
+  const deleteVersion = useAction(async (id: string) =>
+    unwrapApiResult(
+      await apiClient.DELETE("/functions/v1/catalog/curriculum_version/{id}", {
+        params: { path: { id } },
+      }),
+    ),
+  );
 
-  const createTerm = useAction(async (versionId: string, year: number, sem: CurriculumSemester) =>
-    unwrapApiResult(await apiClient.POST("/functions/v1/catalog/curriculum_term", {
-      body: { curriculum_version_id: versionId, year_level: year, term_sequence: sequenceOf(sem), slots: [] },
-    })))
-  const updateTerm = useAction(async (id: string, year: number, sem: CurriculumSemester) =>
-    unwrapApiResult(await apiClient.PATCH("/functions/v1/catalog/curriculum_term/{id}", { params: { path: { id } }, body: { year_level: year, term_sequence: sequenceOf(sem) } })))
-  const deleteTerm = useAction(async (id: string) => unwrapApiResult(await apiClient.DELETE("/functions/v1/catalog/curriculum_term/{id}", { params: { path: { id } } })))
+  const createTerm = useAction(
+    async (versionId: string, year: number, sem: CurriculumSemester) =>
+      unwrapApiResult(
+        await apiClient.POST("/functions/v1/catalog/curriculum_term", {
+          body: {
+            curriculum_version_id: versionId,
+            year_level: year,
+            term_sequence: sequenceOf(sem),
+            slots: [],
+          },
+        }),
+      ),
+  );
+  const updateTerm = useAction(
+    async (id: string, year: number, sem: CurriculumSemester) =>
+      unwrapApiResult(
+        await apiClient.PATCH("/functions/v1/catalog/curriculum_term/{id}", {
+          params: { path: { id } },
+          body: { year_level: year, term_sequence: sequenceOf(sem) },
+        }),
+      ),
+  );
+  const deleteTerm = useAction(async (id: string) =>
+    unwrapApiResult(
+      await apiClient.DELETE("/functions/v1/catalog/curriculum_term/{id}", {
+        params: { path: { id } },
+      }),
+    ),
+  );
 
-  const createSlot = useAction(async (termId: string, name: string, units: number, type: CurriculumSlotType) =>
-    unwrapApiResult(await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
-      body: { curriculum_term_id: termId, course_id: null, slot_label: name, nominal_units: units, slot_type: SLOT_TYPE_API[type], is_elective_slot: type === "Elective slot" },
-    })))
-  const updateSlot = useAction(async (id: string, name: string, units: number, type: CurriculumSlotType) =>
-    unwrapApiResult(await apiClient.PATCH("/functions/v1/catalog/curriculum_term_course/{id}", {
-      params: { path: { id } }, body: { slot_label: name, nominal_units: units, slot_type: SLOT_TYPE_API[type], is_elective_slot: type === "Elective slot" },
-    })))
-  const deleteSlot = useAction(async (id: string) => unwrapApiResult(await apiClient.DELETE("/functions/v1/catalog/curriculum_term_course/{id}", { params: { path: { id } } })))
+  const createSlot = useAction(
+    async (
+      termId: string,
+      name: string,
+      units: number,
+      type: CurriculumSlotType,
+    ) =>
+      unwrapApiResult(
+        await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
+          body: {
+            curriculum_term_id: termId,
+            course_id: null,
+            slot_label: name,
+            nominal_units: units,
+            slot_type: SLOT_TYPE_API[type],
+            is_elective_slot: type === "Elective slot",
+          },
+        }),
+      ),
+  );
+  const updateSlot = useAction(
+    async (id: string, name: string, units: number, type: CurriculumSlotType) =>
+      unwrapApiResult(
+        await apiClient.PATCH(
+          "/functions/v1/catalog/curriculum_term_course/{id}",
+          {
+            params: { path: { id } },
+            body: {
+              slot_label: name,
+              nominal_units: units,
+              slot_type: SLOT_TYPE_API[type],
+              is_elective_slot: type === "Elective slot",
+            },
+          },
+        ),
+      ),
+  );
+  const deleteSlot = useAction(async (id: string) =>
+    unwrapApiResult(
+      await apiClient.DELETE(
+        "/functions/v1/catalog/curriculum_term_course/{id}",
+        { params: { path: { id } } },
+      ),
+    ),
+  );
 
-  const createCourse = useAction(async (input: { departmentId: string; code: string; title: string; units: number; elective: boolean; termId: string }) => {
-    const course = unwrapApiResult(await apiClient.POST("/functions/v1/catalog/course", {
-      body: { department_id: input.departmentId, code: input.code, title: input.title, units: input.units, category: input.elective ? "elective" : "major", is_elective: input.elective, status: "active", repeatable_type: "none" },
-    }))
-    unwrapApiResult(await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
-      body: { curriculum_term_id: input.termId, course_id: course.id, nominal_units: input.units, slot_type: input.elective ? "elective" : "required", is_elective_slot: input.elective },
-    }))
-    return course
-  })
+  const createCourse = useAction(
+    async (input: {
+      departmentId: string;
+      code: string;
+      title: string;
+      units: number;
+      elective: boolean;
+      termId: string;
+    }) => {
+      const course = unwrapApiResult(
+        await apiClient.POST("/functions/v1/catalog/course", {
+          body: {
+            department_id: input.departmentId,
+            code: input.code,
+            title: input.title,
+            units: input.units,
+            category: input.elective ? "elective" : "major",
+            is_elective: input.elective,
+            status: "active",
+            repeatable_type: "none",
+          },
+        }),
+      );
+      unwrapApiResult(
+        await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
+          body: {
+            curriculum_term_id: input.termId,
+            course_id: course.id,
+            nominal_units: input.units,
+            slot_type: input.elective ? "elective" : "required",
+            is_elective_slot: input.elective,
+          },
+        }),
+      );
+      return course;
+    },
+  );
 
   return {
-    createVersion: run(createVersion), updateVersion: run(updateVersion), deleteVersion: run(deleteVersion),
-    createTerm: run(createTerm), updateTerm: run(updateTerm), deleteTerm: run(deleteTerm),
-    createSlot: run(createSlot), updateSlot: run(updateSlot), deleteSlot: run(deleteSlot), createCourse: run(createCourse),
-  }
+    createVersion: run(createVersion),
+    updateVersion: run(updateVersion),
+    deleteVersion: run(deleteVersion),
+    createTerm: run(createTerm),
+    updateTerm: run(updateTerm),
+    deleteTerm: run(deleteTerm),
+    createSlot: run(createSlot),
+    updateSlot: run(updateSlot),
+    deleteSlot: run(deleteSlot),
+    createCourse: run(createCourse),
+  };
 }

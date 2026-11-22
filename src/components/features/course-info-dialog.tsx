@@ -1,6 +1,6 @@
-import * as React from "react"
-import type { ApiSchema } from "@/lib/api/types"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import type { ApiSchema } from "@/lib/api/types";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -8,8 +8,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { StatusBadge, type Status } from "@/components/ui/status-badge"
+} from "@/components/ui/dialog";
+import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import {
   Table,
   TableBody,
@@ -17,35 +17,39 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
-export type CourseInfoAttemptRecord = ApiSchema<"ChecklistSlotAttemptSummary"> & {
-  /** Optional flag when an INC attempt has lapsed (evaluates as 5.00 while keeping INC status). */
-  readonly is_lapsed_inc?: boolean
-}
+export type CourseInfoAttemptRecord =
+  ApiSchema<"ChecklistSlotAttemptSummary"> & {
+    /** Optional flag when an INC attempt has lapsed (evaluates as 5.00 while keeping INC status). */
+    readonly is_lapsed_inc?: boolean;
+  };
 
-export type CourseInfoSlotRecord = Omit<ApiSchema<"ChecklistSlotResult">, "attempts"> & {
-  readonly attempts?: readonly CourseInfoAttemptRecord[]
+export type CourseInfoSlotRecord = Omit<
+  ApiSchema<"ChecklistSlotResult">,
+  "attempts"
+> & {
+  readonly attempts?: readonly CourseInfoAttemptRecord[];
   /** Optional display code for the requirement slot (e.g. "CSIT 100" or "CS Elective 1"). */
-  readonly code?: string | null
+  readonly code?: string | null;
   /** Optional display title for the requirement slot. */
-  readonly title?: string | null
+  readonly title?: string | null;
   /** Optional metadata subtitle (e.g. "3 units · Major · 1st Year, 1st Semester"). */
-  readonly meta?: string | null
+  readonly meta?: string | null;
   /** Optional flag when the slot's active attempt is a lapsed INC. */
-  readonly is_lapsed_inc?: boolean
-}
+  readonly is_lapsed_inc?: boolean;
+};
 
 export interface CourseInfoDialogProps {
-  readonly open: boolean
-  readonly onOpenChange: (open: boolean) => void
-  readonly slot: CourseInfoSlotRecord | null
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly slot: CourseInfoSlotRecord | null;
   /** Optional dialog heading override (defaults to `code · title` or credited course info). */
-  readonly title?: string
+  readonly title?: string;
   /** Optional subtitle metadata override (defaults to `slot.meta` or required units summary). */
-  readonly meta?: string
-  readonly className?: string
+  readonly meta?: string;
+  readonly className?: string;
 }
 
 const EXCEPTION_SOURCES: ReadonlySet<string> = new Set([
@@ -53,7 +57,7 @@ const EXCEPTION_SOURCES: ReadonlySet<string> = new Set([
   "Transfer equivalency",
   "Discontinued equivalency",
   "Outside credit",
-])
+]);
 
 const SHORT_MONTHS = [
   "Jan",
@@ -68,53 +72,53 @@ const SHORT_MONTHS = [
   "Oct",
   "Nov",
   "Dec",
-] as const
+] as const;
 
 function formatShortDate(dateValue: string | null | undefined): string {
-  if (!dateValue) return ""
-  const trimmed = dateValue.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed)
+  if (!dateValue) return "";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
   if (isoMatch) {
-    const year = Number(isoMatch[1])
-    const monthIndex = Number(isoMatch[2]) - 1
-    const day = String(Number(isoMatch[3])).padStart(2, "0")
-    const monthLabel = SHORT_MONTHS[monthIndex]
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = String(Number(isoMatch[3])).padStart(2, "0");
+    const monthLabel = SHORT_MONTHS[monthIndex];
     if (monthLabel) {
-      return `${day} ${monthLabel} ${year}`
+      return `${day} ${monthLabel} ${year}`;
     }
   }
-  return trimmed
+  return trimmed;
 }
 
 function formatGradeValue(grade: number | string | null | undefined): string {
-  if (grade === null || grade === undefined || grade === "") return "—"
+  if (grade === null || grade === undefined || grade === "") return "—";
   if (typeof grade === "number") {
-    return grade.toFixed(2)
+    return grade.toFixed(2);
   }
-  return String(grade)
+  return String(grade);
 }
 
 function mapSlotStatusToBadge(
   status: ApiSchema<"ChecklistSlotResult">["status"],
-  isLapsedInc?: boolean
+  isLapsedInc?: boolean,
 ): Status {
-  if (status === "inc" && isLapsedInc) return "inc-lapsed"
+  if (status === "inc" && isLapsedInc) return "inc-lapsed";
   switch (status) {
     case "passed":
-      return "passed"
+      return "passed";
     case "failed":
-      return "failed"
+      return "failed";
     case "inc":
-      return "inc"
+      return "inc";
     case "currently_enrolled":
-      return "enrolled"
+      return "enrolled";
     case "dr":
-      return "dr"
+      return "dr";
     case "na":
-      return "na"
+      return "na";
     case "not_taken":
     default:
-      return "not-taken"
+      return "not-taken";
   }
 }
 
@@ -125,57 +129,59 @@ function mapAttemptStatusToBadge(attempt: CourseInfoAttemptRecord): Status {
       attempt.effective_status === "failed" &&
       attempt.completion_grade == null)
   ) {
-    return "inc-lapsed"
+    return "inc-lapsed";
   }
   switch (attempt.effective_status) {
     case "passed":
-      return "passed"
+      return "passed";
     case "failed":
-      return "failed"
+      return "failed";
     case "inc":
-      return "inc"
+      return "inc";
     case "currently_enrolled":
-      return "enrolled"
+      return "enrolled";
     case "dr":
-      return "dr"
+      return "dr";
     case "na":
     default:
-      return "na"
+      return "na";
   }
 }
 
 function formatMidtermCell(attempt: CourseInfoAttemptRecord): string {
-  if (attempt.midterm_status === "dr") return "DR"
-  if (attempt.midterm_grade != null) return attempt.midterm_grade.toFixed(2)
-  return "—"
+  if (attempt.midterm_status === "dr") return "DR";
+  if (attempt.midterm_grade != null) return attempt.midterm_grade.toFixed(2);
+  return "—";
 }
 
 function formatFinalCell(attempt: CourseInfoAttemptRecord): string {
-  if (attempt.recorded_status === "inc") return "INC"
-  if (attempt.recorded_status === "dr") return "DR"
-  if (attempt.recorded_status === "na") return "NA"
-  if (attempt.final_grade != null) return attempt.final_grade.toFixed(2)
-  return "—"
+  if (attempt.recorded_status === "inc") return "INC";
+  if (attempt.recorded_status === "dr") return "DR";
+  if (attempt.recorded_status === "na") return "NA";
+  if (attempt.final_grade != null) return attempt.final_grade.toFixed(2);
+  return "—";
 }
 
 function formatCompletionCell(attempt: CourseInfoAttemptRecord): string {
   if (attempt.completion_grade != null) {
-    return attempt.completion_grade.toFixed(2)
+    return attempt.completion_grade.toFixed(2);
   }
-  return "—"
+  return "—";
 }
 
 function formatGradeFixEntry(entry: ApiSchema<"GradeFixHistoryEntry">): string {
-  const datePart = formatShortDate(entry.changed_at)
-  const actorPart = entry.actor_name?.trim() || ""
+  const datePart = formatShortDate(entry.changed_at);
+  const actorPart = entry.actor_name?.trim() || "";
   if (entry.summary && entry.summary.trim().length > 0) {
-    const prefix = [datePart, actorPart].filter(Boolean).join(" · ")
-    return prefix ? `${prefix} · ${entry.summary.trim()}` : entry.summary.trim()
+    const prefix = [datePart, actorPart].filter(Boolean).join(" · ");
+    return prefix
+      ? `${prefix} · ${entry.summary.trim()}`
+      : entry.summary.trim();
   }
-  const oldVal = formatGradeValue(entry.old_grade)
-  const newVal = formatGradeValue(entry.new_grade)
-  const changePart = `grade fixed ${oldVal} → ${newVal}`
-  return [datePart, actorPart, changePart].filter(Boolean).join(" · ")
+  const oldVal = formatGradeValue(entry.old_grade);
+  const newVal = formatGradeValue(entry.new_grade);
+  const changePart = `grade fixed ${oldVal} → ${newVal}`;
+  return [datePart, actorPart, changePart].filter(Boolean).join(" · ");
 }
 
 /**
@@ -190,62 +196,75 @@ export function CourseInfoDialog({
   meta,
   className,
 }: CourseInfoDialogProps) {
-  const attempts = slot?.attempts ?? []
-  const gradeFixes = slot?.grade_fix_history ?? []
+  const attempts = slot?.attempts ?? [];
+  const gradeFixes = slot?.grade_fix_history ?? [];
 
   const resolvedTitle = React.useMemo(() => {
-    if (title && title.trim().length > 0) return title.trim()
-    if (!slot) return "Course information"
-    const code = slot.code ?? slot.credited_course_code
-    const courseTitle = slot.title ?? slot.credited_course_title
-    if (code && courseTitle) return `${code} · ${courseTitle}`
-    if (code) return code
-    if (courseTitle) return courseTitle
-    return "Course information"
-  }, [slot, title])
+    if (title && title.trim().length > 0) return title.trim();
+    if (!slot) return "Course information";
+    const code = slot.code ?? slot.credited_course_code;
+    const courseTitle = slot.title ?? slot.credited_course_title;
+    if (code && courseTitle) return `${code} · ${courseTitle}`;
+    if (code) return code;
+    if (courseTitle) return courseTitle;
+    return "Course information";
+  }, [slot, title]);
 
   const resolvedMeta = React.useMemo(() => {
-    if (meta && meta.trim().length > 0) return meta.trim()
-    if (!slot) return ""
-    if (slot.meta && slot.meta.trim().length > 0) return slot.meta.trim()
-    return `${slot.earned_units} / ${slot.required_units} units`
-  }, [slot, meta])
+    if (meta && meta.trim().length > 0) return meta.trim();
+    if (!slot) return "";
+    if (slot.meta && slot.meta.trim().length > 0) return slot.meta.trim();
+    return `${slot.earned_units} / ${slot.required_units} units`;
+  }, [slot, meta]);
 
   const isExceptionSource =
-    !!slot?.satisfaction_source && EXCEPTION_SOURCES.has(slot.satisfaction_source)
+    !!slot?.satisfaction_source &&
+    EXCEPTION_SOURCES.has(slot.satisfaction_source);
 
   const badgeStatus = slot
     ? mapSlotStatusToBadge(slot.status, slot.is_lapsed_inc)
-    : "not-taken"
+    : "not-taken";
 
   const sourceLine = React.useMemo(() => {
-    if (!slot) return null
+    if (!slot) return null;
     if (!slot.satisfaction_source) {
-      return slot.status === "not_taken" ? "Not yet taken" : null
+      return slot.status === "not_taken" ? "Not yet taken" : null;
     }
-    const creditedDetail = [slot.credited_course_code, slot.credited_course_title]
+    const creditedDetail = [
+      slot.credited_course_code,
+      slot.credited_course_title,
+    ]
       .filter(Boolean)
-      .join(" · ")
+      .join(" · ");
     return creditedDetail
       ? `${slot.satisfaction_source} (${creditedDetail})`
-      : slot.satisfaction_source
-  }, [slot])
+      : slot.satisfaction_source;
+  }, [slot]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className={cn("max-h-[90dvh] overflow-y-auto sm:max-w-[800px]", className)}
+        className={cn(
+          "max-h-[90dvh] overflow-y-auto sm:max-w-[800px]",
+          className,
+        )}
       >
         <DialogHeader className="flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">
             <DialogTitle>{resolvedTitle}</DialogTitle>
             <DialogDescription className="text-body text-muted-foreground">
-              {resolvedMeta || "Checklist requirement details and attempt record."}
+              {resolvedMeta ||
+                "Checklist requirement details and attempt record."}
             </DialogDescription>
           </div>
           <DialogClose asChild>
-            <Button type="button" variant="outline" size="sm" className="shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+            >
               Close
             </Button>
           </DialogClose>
@@ -258,7 +277,8 @@ export function CourseInfoDialog({
               <StatusBadge status={badgeStatus} />
               <span aria-hidden="true">·</span>
               <span className="font-mono tabular-nums">
-                {attempts.length} {attempts.length === 1 ? "attempt" : "attempts"}
+                {attempts.length}{" "}
+                {attempts.length === 1 ? "attempt" : "attempts"}
               </span>
               {sourceLine && (
                 <>
@@ -269,7 +289,7 @@ export function CourseInfoDialog({
                       "text-cell",
                       isExceptionSource
                         ? "font-medium text-gold-deep"
-                        : "text-muted-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     {sourceLine}
@@ -304,9 +324,12 @@ export function CourseInfoDialog({
                   </TableHeader>
                   <TableBody>
                     {attempts.map((attempt, index) => {
-                      const resultStatus = mapAttemptStatusToBadge(attempt)
+                      const resultStatus = mapAttemptStatusToBadge(attempt);
                       return (
-                        <TableRow key={attempt.attempt_id} className="border-line-soft">
+                        <TableRow
+                          key={attempt.attempt_id}
+                          className="border-line-soft"
+                        >
                           <TableCell
                             label="Attempt"
                             className="px-3 py-row font-mono text-cell tabular-nums text-foreground"
@@ -343,11 +366,14 @@ export function CourseInfoDialog({
                           >
                             {attempt.instructor?.trim() || "—"}
                           </TableCell>
-                          <TableCell label="Result" className="px-3 py-row text-cell">
+                          <TableCell
+                            label="Result"
+                            className="px-3 py-row text-cell"
+                          >
                             <StatusBadge status={resultStatus} />
                           </TableCell>
                         </TableRow>
-                      )
+                      );
                     })}
                   </TableBody>
                 </Table>
@@ -387,5 +413,5 @@ export function CourseInfoDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

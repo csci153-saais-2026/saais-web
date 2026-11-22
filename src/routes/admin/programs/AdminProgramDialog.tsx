@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { FormField } from '@/components/features/form-field'
-import { Button } from '@/components/ui/button'
+import { useState, type FormEvent } from "react";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,29 +8,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import type { ApiSchema } from '@/lib/api'
+} from "@/components/ui/select";
+import type { ApiSchema } from "@/lib/api";
 import {
   validateProgramForm,
   type ProgramFormErrors,
   type ProgramFormValues,
-} from './admin-programs-model'
+} from "./admin-programs-model";
 
-type Program = ApiSchema<'Program'>
+type Program = ApiSchema<"Program">;
 type ProgramRequest = Pick<
-  ApiSchema<'ProgramInsert'>,
-  'code' | 'name' | 'nominal_duration' | 'status' | 'department_id'
->
-type Department = Pick<ApiSchema<'Department'>, 'id' | 'name' | 'faculty_id'>
-type Faculty = Pick<ApiSchema<'Faculty'>, 'id' | 'name'>
+  ApiSchema<"ProgramInsert">,
+  "code" | "name" | "nominal_duration" | "status" | "department_id"
+>;
+type Department = Pick<ApiSchema<"Department">, "id" | "name" | "faculty_id">;
+type Faculty = Pick<ApiSchema<"Faculty">, "id" | "name">;
 
 function initialValues(
   program: Program | null,
@@ -38,15 +38,15 @@ function initialValues(
 ): ProgramFormValues {
   const department = departments.find(
     (item) => item.id === program?.department_id,
-  )
+  );
   return {
-    code: program?.code ?? '',
-    name: program?.name ?? '',
-    duration: program ? String(program.nominal_duration) : '4',
-    facultyId: department?.faculty_id ?? '',
-    departmentId: program?.department_id ?? '',
-    status: program?.status ?? 'active',
-  }
+    code: program?.code ?? "",
+    name: program?.name ?? "",
+    duration: program ? String(program.nominal_duration) : "4",
+    facultyId: department?.faculty_id ?? "",
+    departmentId: program?.department_id ?? "",
+    status: program?.status ?? "active",
+  };
 }
 
 export function AdminProgramDialog({
@@ -57,72 +57,68 @@ export function AdminProgramDialog({
   onOpenChange,
   onSubmit,
 }: {
-  program: Program | null
-  faculties: readonly Faculty[]
-  departments: readonly Department[]
-  catalogsLoading: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (request: ProgramRequest) => Promise<void>
+  program: Program | null;
+  faculties: readonly Faculty[];
+  departments: readonly Department[];
+  catalogsLoading: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (request: ProgramRequest) => Promise<void>;
 }) {
   const [values, setValues] = useState(() =>
     initialValues(program, departments),
-  )
-  const [errors, setErrors] = useState<ProgramFormErrors>({})
-  const [submitting, setSubmitting] = useState(false)
-  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  );
+  const [errors, setErrors] = useState<ProgramFormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   function update<K extends keyof ProgramFormValues>(
     key: K,
     value: ProgramFormValues[K],
   ) {
-    setValues((current) => ({ ...current, [key]: value }))
-    setErrors((current) => ({ ...current, [key]: undefined }))
+    setValues((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const nextErrors = validateProgramForm(values, departments, faculties)
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    event.preventDefault();
+    const nextErrors = validateProgramForm(values, departments, faculties);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
-    setSubmissionError(null)
-    setSubmitting(true)
+    setSubmissionError(null);
+    setSubmitting(true);
     const request = {
       code: values.code.trim(),
       name: values.name.trim(),
       nominal_duration: Number(values.duration),
       status: values.status,
       department_id: values.departmentId,
-    }
+    };
 
     try {
-      await onSubmit(request)
+      await onSubmit(request);
     } catch (requestError: unknown) {
       setSubmissionError(
         requestError instanceof Error
           ? requestError.message
-          : 'The program could not be saved.',
-      )
+          : "The program could not be saved.",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   const availableDepartments = departments.filter(
     (department) =>
       !values.facultyId || department.faculty_id === values.facultyId,
-  )
+  );
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            {program ? 'Edit program' : 'New program'}
-          </DialogTitle>
-          <DialogDescription>
-            Codes and names must be unique.
-          </DialogDescription>
+          <DialogTitle>{program ? "Edit program" : "New program"}</DialogTitle>
+          <DialogDescription>Codes and names must be unique.</DialogDescription>
         </DialogHeader>
         <form className="grid gap-5" onSubmit={submit} noValidate>
           {submissionError && (
@@ -145,7 +141,7 @@ export function AdminProgramDialog({
                 value={values.code}
                 maxLength={250}
                 aria-invalid={Boolean(errors.code)}
-                onChange={(event) => update('code', event.currentTarget.value)}
+                onChange={(event) => update("code", event.currentTarget.value)}
               />
             </FormField>
             <FormField
@@ -161,7 +157,7 @@ export function AdminProgramDialog({
                 value={values.duration}
                 aria-invalid={Boolean(errors.duration)}
                 onChange={(event) =>
-                  update('duration', event.currentTarget.value)
+                  update("duration", event.currentTarget.value)
                 }
               />
             </FormField>
@@ -177,7 +173,7 @@ export function AdminProgramDialog({
               value={values.name}
               maxLength={250}
               aria-invalid={Boolean(errors.name)}
-              onChange={(event) => update('name', event.currentTarget.value)}
+              onChange={(event) => update("name", event.currentTarget.value)}
             />
           </FormField>
 
@@ -190,8 +186,8 @@ export function AdminProgramDialog({
               <Select
                 value={values.facultyId}
                 onValueChange={(value) => {
-                  update('facultyId', value)
-                  update('departmentId', '')
+                  update("facultyId", value);
+                  update("departmentId", "");
                 }}
                 disabled={catalogsLoading || submitting}
               >
@@ -218,10 +214,8 @@ export function AdminProgramDialog({
             >
               <Select
                 value={values.departmentId}
-                onValueChange={(value) => update('departmentId', value)}
-                disabled={
-                  catalogsLoading || submitting || !values.facultyId
-                }
+                onValueChange={(value) => update("departmentId", value)}
+                disabled={catalogsLoading || submitting || !values.facultyId}
               >
                 <SelectTrigger
                   id="program-department"
@@ -246,19 +240,16 @@ export function AdminProgramDialog({
               value={values.status}
               onValueChange={(value) => {
                 if (
-                  value === 'active' ||
-                  value === 'inactive' ||
-                  value === 'archived'
+                  value === "active" ||
+                  value === "inactive" ||
+                  value === "archived"
                 ) {
-                  update('status', value)
+                  update("status", value);
                 }
               }}
               disabled={submitting}
             >
-              <SelectTrigger
-                id="program-status"
-                className="w-full sm:max-w-xs"
-              >
+              <SelectTrigger id="program-status" className="w-full sm:max-w-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -298,13 +289,11 @@ export function AdminProgramDialog({
                 departments.length === 0
               }
             >
-              {submitting
-                ? 'Saving…'
-                : 'Save record'}
+              {submitting ? "Saving…" : "Save record"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

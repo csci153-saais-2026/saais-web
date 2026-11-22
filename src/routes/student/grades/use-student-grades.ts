@@ -1,9 +1,9 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   fetchStudentGradeFlags,
   fetchStudentGrades,
   recordGradesExportEvent,
-} from "./student-grades.api"
+} from "./student-grades.api";
 
 /**
  * Fetches the student's newest-first semester grades.
@@ -13,7 +13,7 @@ export function useStudentGrades(studentId: string) {
     queryKey: ["student", studentId, "grades"],
     queryFn: () => fetchStudentGrades(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 }
 
 /**
@@ -24,7 +24,7 @@ export function useStudentGradeFlags(studentId: string) {
     queryKey: ["student", studentId, "grade-flags"],
     queryFn: () => fetchStudentGradeFlags(studentId),
     enabled: Boolean(studentId),
-  })
+  });
 }
 
 /**
@@ -34,7 +34,7 @@ export function useRecordGradesExport(studentId: string) {
   return useMutation({
     mutationFn: (details?: string) =>
       recordGradesExportEvent(studentId, details),
-  })
+  });
 }
 
-export { useCreateGradeFlag } from "./use-create-grade-flag"
+export { useCreateGradeFlag } from "./use-create-grade-flag";
