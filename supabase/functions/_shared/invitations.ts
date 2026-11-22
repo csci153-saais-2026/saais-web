@@ -145,8 +145,8 @@ export async function runInvitation(
     return rpc("finish", input, newToken());
   }
 
-  // Admission commits before invitation work, including requests that later fail validation.
-  await rpc("admit", {});
+  // Protected operations use the authenticated actor budget.
+  if (caller) await rpc("admit", {});
 
   if (id === "inviteUser") return provision(data);
   if (id === "resendAccountInvite") return rpc("start", data, newToken());
@@ -232,6 +232,8 @@ export async function runInvitation(
       ),
     ),
   );
+  // Admission precedes database redemption and Auth work. Only the hash crosses the boundary.
+  await rpc("admit", {}, hash);
   const safeBody: Json = { ...data, token: hash };
   if (id !== "verifyInviteToken") return rpc("start", safeBody, hash);
 

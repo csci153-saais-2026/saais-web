@@ -97,6 +97,16 @@ console.log(
   "Overlapping adviser reassignments: one committed and one conflicted.",
 );
 
+// Two issued invitations give independent, bounded budget keys.
+const firstHash = "a".repeat(64);
+const secondHash = "b".repeat(64);
+await run(psql, [
+  ...args,
+  "-c",
+  `insert into saais_private.account_invitation(profile_id, token_hash) values
+  ('00000001-0000-4000-8000-000000000000', '${firstHash}'),
+  ('00000002-0000-4000-8000-000000000000', '${secondHash}');`,
+]);
 for (const operation of [
   "previewInviteToken",
   "verifyInviteToken",
@@ -105,11 +115,15 @@ for (const operation of [
   await run(psql, [
     ...args,
     "-c",
-    `insert into saais_private.public_invitation_budget values ('${operation}', now(), 59)`,
+    `insert into saais_private.public_invitation_budget(operation, token_hash, window_start, count)
+    values ('${operation}', '${firstHash}', now(), 59)`,
   ]);
-  const admit = `select public.saais_invitation_service('${operation}', 'admit', '{}');`;
+  const admit = (hash) =>
+    `select public.saais_invitation_service('${operation}', 'admit', '{}', null, null, null, '${hash}');`;
   const requests = await Promise.allSettled(
-    Array.from({ length: 6 }, () => run(psql, [...args, "-c", admit])),
+    Array.from({ length: 6 }, () =>
+      run(psql, [...args, "-c", admit(firstHash)]),
+    ),
   );
   assert.equal(
     requests.filter((result) => result.status === "fulfilled").length,
@@ -120,20 +134,42 @@ for (const operation of [
   )) {
     assert.match(result.reason.stderr, /PT429/);
   }
+  // Exhausting one invitation must not prevent a different invitation from progressing.
   await run(psql, [
     ...args,
     "-c",
-    `select test.assert((select count = 60 from saais_private.public_invitation_budget
-      where operation = '${operation}'), 'Only the last slot may be consumed concurrently');
-      update saais_private.public_invitation_budget set window_start = now() - interval '61 seconds'
-        where operation = '${operation}';
-      ${admit}
-      select test.assert((select count = 1 from saais_private.public_invitation_budget
-        where operation = '${operation}'), 'The next window restores capacity');`,
+    `${admit(secondHash)}
+    select test.assert((select count = 60 from saais_private.public_invitation_budget
+      where operation = '${operation}' and token_hash = '${firstHash}'), 'First token consumes only its last slot');
+    select test.assert((select count = 1 from saais_private.public_invitation_budget
+      where operation = '${operation}' and token_hash = '${secondHash}'), 'Second token has its own budget');
+    update saais_private.public_invitation_budget set window_start = now() - interval '61 seconds'
+      where operation = '${operation}' and token_hash = '${firstHash}';
+    ${admit(firstHash)}
+    select test.assert((select count = 1 from saais_private.public_invitation_budget
+      where operation = '${operation}' and token_hash = '${firstHash}'), 'The next window restores capacity');`,
+  ]);
+  const unknown = await Promise.allSettled([
+    run(psql, [...args, "-c", admit("c".repeat(64))]),
+  ]);
+  assert.equal(unknown[0].status, "rejected");
+  assert.match(unknown[0].reason.stderr, /PT404/);
+  await run(psql, [
+    ...args,
+    "-c",
+    `select test.assert(not exists(select 1 from saais_private.public_invitation_budget
+    where token_hash = '${"c".repeat(64)}'), 'Unknown tokens cannot create budget rows');`,
   ]);
 }
+await run(psql, [
+  ...args,
+  "-c",
+  `delete from saais_private.account_invitation where token_hash in ('${firstHash}', '${secondHash}');
+  select test.assert(not exists(select 1 from saais_private.public_invitation_budget where token_hash in ('${firstHash}', '${secondHash}')),
+    'Deleting invitations removes their budget rows');`,
+]);
 console.log(
-  "Concurrent public invitation requests respect each operation's persistent limit.",
+  "Concurrent invitation budgets isolate issued tokens and discard unknown tokens.",
 );
 
 const admin = "00000001-0000-4000-8000-000000000000";

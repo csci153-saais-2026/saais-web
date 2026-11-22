@@ -53,7 +53,8 @@ test("pre-login invitations use the public key and forward a hash to the service
       const rpc = JSON.parse(options.body);
       if (rpc.p_stage === "admit") {
         assert.deepEqual(rpc.p_body, {});
-        assert.equal(rpc.p_token, null);
+        assert.match(rpc.p_token, /^[0-9a-f]{64}$/);
+        assert.notEqual(rpc.p_token, token);
         return Response.json({});
       }
       assert.equal(rpc.p_actor, null);
@@ -122,7 +123,8 @@ for (const [route, operation, body, allowedStages] of [
   ],
   ["decline-invite", "declineInviteToken", { reason: "Declined" }, ["start"]],
 ]) {
-  test(`${operation} admits before token or Auth work and stops all limited requests`, async () => {
+  test(`${operation} isolates invitation budgets and rejects malformed tokens`, async () => {
+    const admitted = new Map();
     const calls = [];
     const handler = createHandler("auth", {
       env,
@@ -136,42 +138,36 @@ for (const [route, operation, body, allowedStages] of [
         assert.equal(rpc.p_operation, operation);
         if (rpc.p_stage === "admit") {
           assert.deepEqual(rpc.p_body, {});
-          assert.equal(rpc.p_token, null);
+          assert.match(rpc.p_token, /^[0-9a-f]{64}$/);
           assert.equal(rpc.p_actor, null);
           calls.push("admit");
-          return calls.length === 1
-            ? Response.json({})
-            : Response.json(budgetError, { status: 429 });
+          const count = (admitted.get(rpc.p_token) || 0) + 1;
+          admitted.set(rpc.p_token, count);
+          return count > 1
+            ? Response.json(budgetError, { status: 429 })
+            : Response.json({});
         }
         calls.push(rpc.p_stage);
         return Response.json({ profile_id: id, success: true });
       },
     });
-    const allowed = await handler(
-      request(`/auth/${route}`, { ...body, token }),
-    );
-    assert.equal(allowed.status, 200);
+    const first = await handler(request(`/auth/${route}`, { ...body, token }));
+    assert.equal(first.status, 200);
     assert.deepEqual(calls, ["admit", ...allowedStages]);
-    const limited = await Promise.all(
-      ["b", "c", "d", "e"].map((character, index) =>
-        handler(
-          request(
-            `/auth/${route}`,
-            { ...body, token: character.repeat(64) },
-            false,
-            {
-              "x-forwarded-for": `192.0.2.${index + 1}`,
-              "x-client-id": character,
-            },
-          ),
-        ),
-      ),
+    await assertLimited(
+      await handler(request(`/auth/${route}`, { ...body, token })),
     );
-    for (const response of limited) await assertLimited(response);
-    assert.deepEqual(
-      calls.slice(1 + allowedStages.length),
-      Array(4).fill("admit"),
+    const other = await handler(
+      request(`/auth/${route}`, { ...body, token: "b".repeat(64) }),
     );
+    assert.equal(other.status, 200);
+    const before = calls.length;
+    assert.equal(
+      (await handler(request(`/auth/${route}`, { ...body, token: "invalid" })))
+        .status,
+      404,
+    );
+    assert.equal(calls.length, before);
   });
 }
 

@@ -1,6 +1,9 @@
--- Keep one persistent bucket per public operation. No caller-controlled input forms a key.
+-- Limit each existing invitation token independently. The foreign key bounds
+-- storage to issued invitations and removes counters when invitations are deleted.
 create table saais_private.public_invitation_budget (
-  operation text primary key check (operation in ('previewInviteToken','verifyInviteToken','declineInviteToken')),
+  operation text not null check (operation in ('previewInviteToken','verifyInviteToken','declineInviteToken')),
+  token_hash text not null references saais_private.account_invitation(token_hash) on update cascade on delete cascade,
+  primary key (operation, token_hash),
   window_start timestamptz not null,
   count integer not null check (count between 1 and 60)
 );
@@ -21,10 +24,14 @@ declare
 begin
   if is_public then
     if p_stage = 'admit' then
-      -- This is committed before token validation, so invalid tokens also use the limit.
-      insert into saais_private.public_invitation_budget as b (operation, window_start, count)
-        values (p_operation, admitted_at, 1)
-        on conflict (operation) do update set
+      -- Only issued tokens receive a bucket; arbitrary hashes cannot grow the table.
+      if p_token is null or p_token !~ '^[0-9a-f]{64}$'
+        or not exists (select 1 from saais_private.account_invitation i where i.token_hash = p_token) then
+        perform saais_private.fail(404, 'Invitation not found.');
+      end if;
+      insert into saais_private.public_invitation_budget as b (operation, token_hash, window_start, count)
+        values (p_operation, p_token, admitted_at, 1)
+        on conflict (operation, token_hash) do update set
           window_start = case when b.window_start <= admitted_at - interval '1 minute'
             then admitted_at else b.window_start end,
           count = case when b.window_start <= admitted_at - interval '1 minute'
