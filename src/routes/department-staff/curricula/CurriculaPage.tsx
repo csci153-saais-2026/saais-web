@@ -231,6 +231,7 @@ export default function CurriculaPage() {
           key={editing.id}
           version={editing}
           programs={catalog.data.programs}
+          versions={catalog.data.versions}
           onClose={() => setEditing(null)}
           onUpdated={(id) => {
             setSelection(id);
@@ -242,6 +243,7 @@ export default function CurriculaPage() {
       {creating && catalog.data && (
         <CurriculumVersionDialog
           programs={catalog.data.programs}
+          versions={catalog.data.versions}
           onClose={() => setCreating(false)}
           onCreated={(id) => {
             setSelection(id);

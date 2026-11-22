@@ -98,6 +98,7 @@ export default function CurriculaPage() {
   const [vFrom, setVFrom] = React.useState("");
   const [vStatus, setVStatus] =
     React.useState<CurriculumVersionStatus>("draft");
+  const [vCloneFrom, setVCloneFrom] = React.useState("");
 
   // Term form state
   const [tYear, setTYear] = React.useState("1");
@@ -195,6 +196,7 @@ export default function CurriculaPage() {
     setVUnits("147");
     setVFrom("");
     setVStatus("draft");
+    setVCloneFrom("");
     setFormError(null);
     setDialog({ kind: "add-version" });
   };
@@ -305,6 +307,7 @@ export default function CurriculaPage() {
           start: vFrom,
           units,
           status: vStatus,
+          ...(vCloneFrom ? { cloneFromVersionId: vCloneFrom } : {}),
         });
       } else {
         const created = await actions.createVersion({
@@ -840,6 +843,33 @@ export default function CurriculaPage() {
                     </SelectContent>
                   </Select>
                 </FormField>
+                {dialog.kind === "add-version" && (
+                  <FormField
+                    label="Copy courses from (optional)"
+                    htmlFor="cu-clone"
+                  >
+                    <Select
+                      value={vCloneFrom || "blank"}
+                      onValueChange={(value) =>
+                        setVCloneFrom(value === "blank" ? "" : value)
+                      }
+                    >
+                      <SelectTrigger id="cu-clone" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="blank">
+                          Start with a blank version
+                        </SelectItem>
+                        {versions.map((source) => (
+                          <SelectItem key={source.id} value={source.id}>
+                            {versionLabel(source)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
               </div>
             )}
 

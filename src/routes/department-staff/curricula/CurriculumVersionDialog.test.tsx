@@ -146,11 +146,19 @@ describe("Blank version input validation", () => {
     { total_units: NaN },
     { delinquency_threshold: -0.25 },
     { status: "invented" },
-    { clone_from_version_id: programId },
   ])("rejects invalid or unsupported creation fields: %j", (fields) => {
     expect(
       curriculumVersionSchema.safeParse({ ...values, ...fields }).success,
     ).toBe(false);
+  });
+
+  it("accepts a source curriculum to clone", () => {
+    expect(
+      curriculumVersionSchema.safeParse({
+        ...values,
+        clone_from_version_id: programId,
+      }).success,
+    ).toBe(true);
   });
 });
 
@@ -374,6 +382,28 @@ describe("Edit curriculum version", () => {
 });
 
 describe("Create curriculum version", () => {
+  it("sends the selected source version to the shared clone operation", async () => {
+    const source = {
+      ...saved,
+      id: "22222222-2222-4222-8222-222222222222",
+      version_label: "BSCS 2024",
+    };
+    vi.mocked(listCurricula).mockResolvedValue({
+      programs: [program],
+      versions: [source],
+    });
+    mount();
+    await openForm();
+    fireEvent.click(screen.getByLabelText("Copy courses from (optional)"));
+    fireEvent.click(await screen.findByRole("option", { name: "BSCS 2024" }));
+    fillForm();
+    fireEvent.click(screen.getByRole("button", { name: "Add version" }));
+    await waitFor(() => expect(createCurriculumVersion).toHaveBeenCalled());
+    expect(createCurriculumVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ clone_from_version_id: source.id }),
+    );
+  });
+
   it("creates the first blank version, refreshes options and selects the returned version", async () => {
     const client = mount();
     await openForm();

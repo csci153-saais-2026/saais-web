@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
 export type CurriculumVersionStatus = "active" | "draft" | "retired";
 export type CurriculumSemester = "Semester 1" | "Semester 2" | "Midyear";
@@ -180,8 +181,12 @@ async function getCurricula(): Promise<CurriculaData> {
   };
 }
 
-export const useCurricula = () =>
-  useQuery({ queryKey: KEY, queryFn: getCurricula });
+export const useCurricula = () => {
+  return useQuery({
+    queryKey: useDepartmentHeadQueryKey(KEY),
+    queryFn: getCurricula,
+  });
+};
 
 /** Catalog writes. Each rejects with the API's message (for example when records depend on the item). */
 export function useCurriculaActions() {
@@ -201,6 +206,7 @@ export function useCurriculaActions() {
       start: string;
       units: number;
       status: CurriculumVersionStatus;
+      cloneFromVersionId?: string;
     }) => {
       const created = unwrapApiResult(
         await apiClient.POST("/functions/v1/catalog/curriculum_version", {
@@ -209,6 +215,9 @@ export function useCurriculaActions() {
             version_label: input.label,
             effective_start: input.start,
             total_units: input.units,
+            ...(input.cloneFromVersionId
+              ? { clone_from_version_id: input.cloneFromVersionId }
+              : {}),
           },
         }),
       );
