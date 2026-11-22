@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { test } from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 
 test("signed-in student sees only safe attempt results through PostgREST", async () => {
   const {
@@ -53,14 +54,24 @@ test("signed-in student sees only safe attempt results through PostgREST", async
   async function list(query) {
     const response = await fetch(`${api}/rest/v1/attempt_result${query}`, {
       headers: { ...headers, "Accept-Profile": "saais_api" },
+      signal: AbortSignal.timeout(5000),
     });
     return { status: response.status, body: await response.json() };
   }
 
-  const ordinary = await list(
-    "?select=id,student_id,final_grade,effective_status&limit=100",
-  );
-  assert.equal(ordinary.status, 200);
+  const approvedFields =
+    "?select=id,student_id,final_grade,effective_status&limit=100";
+  let ordinary = await list(approvedFields);
+  // PostgREST may serve requests before the schema cache is loaded after a reset.
+  for (
+    let retry = 0;
+    retry < 15 && ordinary.status === 503 && ordinary.body.code === "PGRST002";
+    retry++
+  ) {
+    await delay(1000);
+    ordinary = await list(approvedFields);
+  }
+  assert.equal(ordinary.status, 200, "Read approved fields from PostgREST");
   assert.ok(ordinary.body.length > 0, "The fixture has its own attempts");
   for (const row of ordinary.body) {
     assert.equal(row.student_id, studentId);
