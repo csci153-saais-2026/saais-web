@@ -49,3 +49,7 @@ verify_jwt = false
 
 [functions.mail-delivery]
 verify_jwt = false
+
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/saais_before_user_created"
