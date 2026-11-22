@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiClient,
   postgrestFilter,
@@ -30,7 +29,7 @@ export interface TransferDecisionHistory {
   decisionReason: string;
 }
 
-const KEY = ["department-head", "transfers"] as const;
+export const TRANSFER_QUERY_KEY = ["department-head", "transfers"] as const;
 const dateLabel = (value?: string | null) =>
   value
     ? new Intl.DateTimeFormat("en-GB", {
@@ -56,7 +55,7 @@ async function readPages<T>(
   throw new Error("Too many records to load. Contact your administrator.");
 }
 
-async function getTransfers() {
+export async function getTransfers() {
   const [requests, versions, students] = await Promise.all([
     readPages((offset) =>
       apiClient
@@ -154,39 +153,4 @@ async function getTransfers() {
       decisionReason: request.decision_note ?? "",
     }));
   return { pending, history };
-}
-
-export const useTransfers = () =>
-  useQuery({ queryKey: KEY, queryFn: getTransfers });
-
-export function useDecideTransfer() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      decision,
-      note,
-    }: {
-      id: string;
-      decision: "approved" | "rejected";
-      note: string;
-    }) =>
-      unwrapApiResult(
-        await apiClient.POST(
-          "/functions/v1/curriculum-transfers/{transfer_id}/decision",
-          {
-            params: { path: { transfer_id: id } },
-            body:
-              decision === "approved"
-                ? { decision, ...(note ? { decision_note: note } : {}) }
-                : { decision, decision_note: note },
-          },
-        ),
-      ),
-    onSuccess: () =>
-      Promise.all([
-        client.invalidateQueries({ queryKey: KEY }),
-        client.invalidateQueries({ queryKey: ["department-head", "students"] }),
-      ]),
-  });
 }

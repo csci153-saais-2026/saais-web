@@ -6,8 +6,10 @@ import { completeInc } from "../advisees/checklist/record.api";
 import type { getTermOfferings } from "./encode.api";
 import { GradeSelect } from "../GradeSelect";
 import { outcomeStatus } from "./grade-encoding";
+import { incCompletionSchema } from "./inc-completion.schema";
 import { emptyDraft, type ExistingDraft } from "./existing-draft";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogTrigger,
@@ -49,12 +51,35 @@ function PendingInc({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    grade?: string;
+    reason?: string;
+  }>({});
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+    setFieldErrors({});
+    const parsed = incCompletionSchema.safeParse({
+      completionGrade: grade,
+      reason,
+    });
+    if (!parsed.success) {
+      const next: { grade?: string; reason?: string } = {};
+      for (const issue of parsed.error.issues) {
+        if (issue.path[0] === "completionGrade") next.grade ??= issue.message;
+        if (issue.path[0] === "reason") next.reason ??= issue.message;
+      }
+      setFieldErrors(next);
+      return;
+    }
     setBusy(true);
     try {
-      await completeInc(studentId, attempt, Number(grade), reason.trim());
+      await completeInc(
+        studentId,
+        attempt,
+        parsed.data.completionGrade,
+        parsed.data.reason,
+      );
       setOpen(false);
       onSaved();
     } catch (e) {
@@ -108,23 +133,49 @@ function PendingInc({
               <label className="grid gap-1.5">
                 Completion grade
                 <GradeSelect
+                  id="inc-completion-grade"
                   vsuScale
                   required
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
+                  aria-invalid={!!fieldErrors.grade}
+                  aria-describedby={
+                    fieldErrors.grade ? "inc-grade-error" : undefined
+                  }
                 />
+                {fieldErrors.grade && (
+                  <span
+                    id="inc-grade-error"
+                    className="text-sm text-destructive"
+                  >
+                    {fieldErrors.grade}
+                  </span>
+                )}
               </label>
               <label className="grid gap-1.5">
                 Reason
-                <textarea
+                <Textarea
+                  id="inc-completion-reason"
                   rows={3}
-                  className="min-h-21 resize-y rounded-md border border-border px-3 py-2"
+                  className="min-h-21 resize-y"
                   placeholder="Required. This is written to the audit log."
                   maxLength={2000}
+                  aria-invalid={!!fieldErrors.reason}
+                  aria-describedby={
+                    fieldErrors.reason ? "inc-reason-error" : undefined
+                  }
                   required
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                 />
+                {fieldErrors.reason && (
+                  <span
+                    id="inc-reason-error"
+                    className="text-sm text-destructive"
+                  >
+                    {fieldErrors.reason}
+                  </span>
+                )}
               </label>
               {error && <p role="alert">{error}</p>}
             </div>

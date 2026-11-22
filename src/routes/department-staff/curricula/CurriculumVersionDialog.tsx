@@ -55,6 +55,7 @@ function versionError(error: unknown, editing: boolean): string {
 
 type CurriculumVersionDialogProps = {
   programs: Program[];
+  versions: CurriculumVersion[];
   onClose: () => void;
 } & (
   | {
@@ -71,6 +72,7 @@ type CurriculumVersionDialogProps = {
 
 export function CurriculumVersionDialog({
   programs,
+  versions,
   onClose,
   onCreated,
   version,
@@ -112,6 +114,7 @@ export function CurriculumVersionDialog({
         }
       : {
           program_id: programs[0]?.id ?? "",
+          clone_from_version_id: "",
           version_label: "",
           effective_start: "",
           effective_end: "",
@@ -258,6 +261,40 @@ export function CurriculumVersionDialog({
                 {...register("version_label")}
               />
             </FormField>
+            {!editing && (
+              <FormField
+                label="Copy courses from (optional)"
+                htmlFor="new-version-source"
+              >
+                <Controller
+                  name="clone_from_version_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "blank"}
+                      onValueChange={(value) =>
+                        field.onChange(value === "blank" ? "" : value)
+                      }
+                      disabled={pending}
+                    >
+                      <SelectTrigger id="new-version-source" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="blank">
+                          Start with a blank version
+                        </SelectItem>
+                        {versions.map((source) => (
+                          <SelectItem key={source.id} value={source.id}>
+                            {source.version_label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+            )}
             <FormField
               label="Required units"
               htmlFor="new-version-units"

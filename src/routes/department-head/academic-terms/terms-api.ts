@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 import { formatDisplayDate, formatTermDateRange } from "../shared/dh-utils";
+import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
+import { schoolTermFormSchema } from "@/lib/validation/school-term.schema";
 
 export type AcademicTermRecord = {
   id: string;
@@ -80,7 +82,10 @@ async function getAcademicTerms(): Promise<AcademicTermRecord[]> {
 }
 
 export const useAcademicTerms = () =>
-  useQuery({ queryKey: KEY, queryFn: getAcademicTerms });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(KEY),
+    queryFn: getAcademicTerms,
+  });
 
 export function useCreateTerm() {
   const client = useQueryClient();
@@ -88,15 +93,20 @@ export function useCreateTerm() {
     mutationFn: async (term: NewTerm) => {
       const years = /^\s*(\d{4})\s*[–-]\s*(\d{4})\s*$/.exec(term.academicYear);
       if (!years) throw new Error("Enter the academic year as 2025–2026.");
+      const termType = SEMESTER_TO_API[term.semester];
+      if (!termType) throw new Error("Select a valid semester.");
+      const body = schoolTermFormSchema.parse({
+        start_year: Number(years[1]),
+        end_year: Number(years[2]),
+        term_type: termType,
+        starts_on: term.startDate,
+        ends_on: term.endDate,
+        encoding_deadline: term.deadline,
+      });
       const created = unwrapApiResult(
         await apiClient.POST("/functions/v1/catalog/school_term", {
           body: {
-            start_year: Number(years[1]),
-            end_year: Number(years[2]),
-            term_type: SEMESTER_TO_API[term.semester] ?? "1st Semester",
-            starts_on: term.startDate,
-            ends_on: term.endDate,
-            encoding_deadline: term.deadline,
+            ...body,
             is_locked: false,
           },
         }),

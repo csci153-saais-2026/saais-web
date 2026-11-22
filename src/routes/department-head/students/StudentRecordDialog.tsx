@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 import {
   ChecklistTermGroup,
   type ChecklistRow,
@@ -139,7 +140,10 @@ const CELL = "px-3.5 py-2.5 text-[13.5px]";
 function ChecklistTab({ student }: { student: DirectoryStudent }) {
   const [selected, setSelected] = useState<CourseInfo | null>(null);
   const checklist = useQuery({
-    queryKey: ["department-head", "checklist", student.id],
+    queryKey: [
+      ...useDepartmentHeadQueryKey(["department-head", "checklist"]),
+      student.id,
+    ],
     queryFn: () => getChecklist(student.id),
   });
   if (!checklist.data)
@@ -178,7 +182,10 @@ function ChecklistTab({ student }: { student: DirectoryStudent }) {
 
 function GradesTab({ student }: { student: DirectoryStudent }) {
   const grades = useQuery({
-    queryKey: ["department-head", "grades", student.id],
+    queryKey: [
+      ...useDepartmentHeadQueryKey(["department-head", "grades"]),
+      student.id,
+    ],
     queryFn: () => getGrades(student.id),
   });
   if (!grades.data) return <QueryMessage query={grades} label="the grades" />;

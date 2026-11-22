@@ -202,6 +202,35 @@ describe("admin accounts model", () => {
     });
   });
 
+  it.each(["24100001", "24-1-1234", "24-12-12345", "24-1-123456"])(
+    "rejects malformed student number %s",
+    (studentNumber) => {
+      expect(
+        validateAccountInvite(
+          { ...studentInvite, studentNumber },
+          "",
+          departments,
+          programs,
+          curricula,
+          advisers,
+        ).studentNumber,
+      ).toMatch(/YY-N-NNNNN/);
+    },
+  );
+
+  it("accepts a valid student number with leading zeroes", () => {
+    expect(
+      validateAccountInvite(
+        { ...studentInvite, studentNumber: "24-1-00124" },
+        "",
+        departments,
+        programs,
+        curricula,
+        advisers,
+      ),
+    ).not.toHaveProperty("studentNumber");
+  });
+
   it("rejects mismatched curriculum, adviser, and role organization", () => {
     expect(
       validateAccountInvite(

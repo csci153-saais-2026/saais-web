@@ -177,22 +177,6 @@ function buildRowFromSlot(slot: ChecklistSlotDisplayItem): ChecklistRow {
   };
 }
 
-function computeSemesterGwa(
-  slots: readonly ChecklistSlotDisplayItem[],
-): string | undefined {
-  let points = 0;
-  let units = 0;
-  for (const slot of slots) {
-    const grade = getEffectiveGradeFromSlot(slot);
-    if (typeof grade === "number" && Number.isFinite(grade)) {
-      points += grade * slot.required_units;
-      units += slot.required_units;
-    }
-  }
-  if (units <= 0) return undefined;
-  return (points / units).toFixed(2);
-}
-
 function toCourseInfoSlotRecord(
   slot: ChecklistSlotDisplayItem,
   term: ChecklistTermSection,
@@ -367,15 +351,16 @@ export function StudentChecklistView({
       {filteredTerms.length > 0 ? (
         <div className="grid gap-1">
           {filteredTerms.map((term) => {
-            const passedUnits = term.slots.reduce(
+            const allTermSlots =
+              terms.find((item) => item.id === term.id)?.slots ?? term.slots;
+            const passedUnits = allTermSlots.reduce(
               (acc, slot) => acc + slot.earned_units,
               0,
             );
-            const totalUnits = term.slots.reduce(
+            const totalUnits = allTermSlots.reduce(
               (acc, slot) => acc + slot.required_units,
               0,
             );
-            const semesterGwa = computeSemesterGwa(term.slots);
 
             return (
               <ChecklistTermGroup
@@ -387,7 +372,6 @@ export function StudentChecklistView({
                 }
                 passedUnits={passedUnits}
                 totalUnits={totalUnits}
-                semesterGwa={semesterGwa}
                 rows={term.slots.map(buildRowFromSlot)}
                 open={!collapsedIds.has(term.id)}
                 onOpenChange={() => handleToggleTerm(term.id)}

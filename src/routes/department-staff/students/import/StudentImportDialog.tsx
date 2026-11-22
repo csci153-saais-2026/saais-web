@@ -8,6 +8,7 @@ import {
 import sampleUrl from "./student-import-sample.csv?url";
 import { Button } from "@/components/ui/button";
 import { ApiClientError } from "@/lib/api";
+import { STUDENT_NUMBER_PATTERN } from "@/lib/validation/student-number";
 import {
   useStudentImportCommit,
   type StudentImportScope,
@@ -31,7 +32,6 @@ import {
 } from "./student-import.api";
 
 const FILE_SIZE_LABEL = `${MAX_STUDENT_IMPORT_FILE_SIZE / (1024 * 1024)} MiB`;
-const STUDENT_NUMBER_PATTERN = /^\d{2}-\d-\d{5}$/;
 function getLocalErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "The selected file could not be read.";

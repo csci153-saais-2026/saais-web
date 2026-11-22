@@ -21,6 +21,7 @@ import ForgotPasswordPage from "../ForgotPasswordPage";
 import ResetPasswordPage from "../ResetPasswordPage";
 import ChangePasswordPage from "../ChangePasswordPage";
 import { AuthProvider } from "@/context/AuthProvider";
+import { QueryProvider } from "@/context/QueryProvider";
 import { AuthContext, type AuthContextValue } from "@/context/auth-context";
 import { apiClient, createSaaisApiClient } from "@/lib/api";
 import { MOCK_PERSONAS } from "@/mocks/personas";
@@ -84,11 +85,13 @@ describe("InvitePage & Password Flows", () => {
   it("displays an error if no invitation token is found in the URL hash", async () => {
     window.location.hash = "";
     render(
-      <AuthProvider>
-        <MemoryRouter>
-          <InvitePage />
-        </MemoryRouter>
-      </AuthProvider>,
+      <QueryProvider>
+        <AuthProvider>
+          <MemoryRouter>
+            <InvitePage />
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryProvider>,
     );
 
     expect(await screen.findByText(/No invitation token found/i)).toBeTruthy();
@@ -120,11 +123,13 @@ describe("InvitePage & Password Flows", () => {
     } as never);
 
     render(
-      <AuthProvider>
-        <MemoryRouter>
-          <InvitePage />
-        </MemoryRouter>
-      </AuthProvider>,
+      <QueryProvider>
+        <AuthProvider>
+          <MemoryRouter>
+            <InvitePage />
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryProvider>,
     );
 
     expect(replaceStateSpy).toHaveBeenCalledWith(
@@ -187,11 +192,13 @@ describe("InvitePage & Password Flows", () => {
 
     for (const email of emails) {
       const { unmount } = render(
-        <AuthProvider>
-          <MemoryRouter>
-            <ForgotPasswordPage />
-          </MemoryRouter>
-        </AuthProvider>,
+        <QueryProvider>
+          <AuthProvider>
+            <MemoryRouter>
+              <ForgotPasswordPage />
+            </MemoryRouter>
+          </AuthProvider>
+        </QueryProvider>,
       );
       fireEvent.change(screen.getByLabelText(/Institutional email/i), {
         target: { value: email },
@@ -269,11 +276,13 @@ describe("InvitePage & Password Flows", () => {
 
   it("validates ChangePasswordPage policy inside <AuthProvider>", async () => {
     render(
-      <AuthProvider>
-        <MemoryRouter>
-          <ChangePasswordPage />
-        </MemoryRouter>
-      </AuthProvider>,
+      <QueryProvider>
+        <AuthProvider>
+          <MemoryRouter>
+            <ChangePasswordPage />
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryProvider>,
     );
     fireEvent.change(screen.getByLabelText(/^Current Password$/i), {
       target: { value: "SamePassword123" },
@@ -294,11 +303,13 @@ describe("InvitePage & Password Flows", () => {
 
   it("keeps password visibility button labels fixed while exposing visibility state", () => {
     render(
-      <AuthProvider>
-        <MemoryRouter>
-          <ChangePasswordPage />
-        </MemoryRouter>
-      </AuthProvider>,
+      <QueryProvider>
+        <AuthProvider>
+          <MemoryRouter>
+            <ChangePasswordPage />
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryProvider>,
     );
 
     const visibilityButtons = [

@@ -5,9 +5,8 @@ import { DevRoleSwitcher } from "@/components/DevRoleSwitcher";
 import { AuthenticatedPortalLayout } from "@/components/features/AuthenticatedPortalLayout";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { DepartmentHeadLayout } from "@/routes/department-head/DepartmentHeadLayout";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-const queryClient = new QueryClient();
+import { NotFoundPage } from "@/routes/NotFoundPage";
+import { QueryProvider } from "@/context/QueryProvider";
 
 const LandingPage = lazy(() => import("@/routes/landing/LandingPage"));
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"));
@@ -70,7 +69,7 @@ const NotificationsPage = lazy(
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryProvider>
       <AuthProvider>
         <BrowserRouter>
           <Suspense
@@ -183,6 +182,7 @@ function App() {
                       />
                       <Route path="audit-log" element={<AuditLogPage />} />
                       <Route path="settings" element={<SettingsPage />} />
+                      <Route path="*" element={<NotFoundPage />} />
                     </Route>
                     <Route
                       path="/dept-head/*"
@@ -191,12 +191,13 @@ function App() {
                   </Route>
                 </Route>
               </Route>
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
           <DevRoleSwitcher />
         </BrowserRouter>
       </AuthProvider>
-    </QueryClientProvider>
+    </QueryProvider>
   );
 }
 

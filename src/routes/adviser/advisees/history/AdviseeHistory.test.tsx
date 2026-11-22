@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import type { ApiSchema } from "@/lib/api";
@@ -12,6 +12,9 @@ vi.mock("../../Adviser", () => ({
   AdviserPage: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("./history.api", () => ({ getStudentHistory: vi.fn() }));
+beforeAll(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+});
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
@@ -53,8 +56,7 @@ it("filters the selected student’s audit entries by search and actor", async (
     target: { value: "note" },
   });
   expect(screen.queryByText("Plan viewed")).toBeNull();
-  fireEvent.change(screen.getByLabelText("Filter by actor"), {
-    target: { value: "student" },
-  });
+  fireEvent.click(screen.getByRole("combobox", { name: "Filter by actor" }));
+  fireEvent.click(screen.getByRole("option", { name: "Advisee actions" }));
   expect(screen.queryByText("Note created")).toBeNull();
 });

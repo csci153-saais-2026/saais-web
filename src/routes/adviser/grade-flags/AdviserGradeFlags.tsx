@@ -16,6 +16,11 @@ import {
 } from "@/components/ui/dialog";
 import { isApiClientError, type ApiSchema } from "@/lib/api";
 import { GradeSelect } from "../GradeSelect";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  gradeInputSchema,
+  gradeReasonSchema,
+} from "../record-grades/inc-completion.schema";
 function Resolve({
   flag,
   attempt,
@@ -46,6 +51,11 @@ function Resolve({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (refreshing || reviewedRevision !== attempt.revision) return;
+    const parsedReason = gradeReasonSchema.safeParse(reason);
+    if (!parsedReason.success) {
+      setError(parsedReason.error.issues[0]?.message ?? "Enter a reason.");
+      return;
+    }
     if (
       action === "correct" &&
       grade === "inc" &&
@@ -54,12 +64,20 @@ function Resolve({
       setError("INC is a final status and cannot be used as a midterm grade.");
       return;
     }
+    const parsedGrade =
+      action === "correct" && grade !== "inc" && grade !== "dr"
+        ? gradeInputSchema.safeParse(grade)
+        : null;
+    if (parsedGrade && !parsedGrade.success) {
+      setError(parsedGrade.error.issues[0]?.message ?? "Choose a valid grade.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       await resolveFlag(flag.id, {
         resolution_action: action,
-        resolution_note: reason.trim(),
+        resolution_note: parsedReason.data,
         expected_revision: attempt.revision,
         ...(action === "correct"
           ? grade === "inc"
@@ -68,7 +86,7 @@ function Resolve({
               ? flag.reported_stage === "midterm"
                 ? { corrected_midterm_status: "dr" as const }
                 : { corrected_status: "dr" as const }
-              : { corrected_grade: Number(grade) }
+              : { corrected_grade: parsedGrade?.data }
           : {}),
       });
       setOpen(false);
@@ -149,9 +167,10 @@ function Resolve({
             )}
             <label className="grid gap-1">
               {action === "correct" ? "Reason for change" : "Reply / reason"}
-              <textarea
+              <Textarea
                 placeholder="Required. This is written to the audit log."
-                className="rounded-md border px-3 py-2"
+                className="resize-y"
+                maxLength={2000}
                 required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}

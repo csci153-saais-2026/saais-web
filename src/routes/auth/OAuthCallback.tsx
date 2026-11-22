@@ -5,6 +5,11 @@ import { ROLE_DEFAULT_ROUTE } from "@/lib/auth/auth-service";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import {
+  AUTH_RETURN_TO_KEY,
+  destinationAllowedForRoles,
+  safeInternalDestination,
+} from "@/lib/auth/redirect-target";
 
 export default function OAuthCallback() {
   const {
@@ -28,6 +33,7 @@ export default function OAuthCallback() {
     const errorMsg = params.get("error_description") || params.get("error");
 
     if (errorMsg) {
+      sessionStorage.removeItem(AUTH_RETURN_TO_KEY);
       navigate(`/login?error=${encodeURIComponent(errorMsg)}`, {
         replace: true,
       });
@@ -39,13 +45,26 @@ export default function OAuthCallback() {
     if (user && isAllowedToEnter && roles.length > 0) {
       const targetRole =
         activeRole && roles.includes(activeRole) ? activeRole : roles[0];
-      const target = ROLE_DEFAULT_ROUTE[targetRole] || "/settings";
+      const requested = safeInternalDestination(
+        sessionStorage.getItem(AUTH_RETURN_TO_KEY),
+      );
+      sessionStorage.removeItem(AUTH_RETURN_TO_KEY);
+      const target =
+        requested &&
+        destinationAllowedForRoles(
+          new URL(requested, window.location.origin).pathname,
+          roles,
+        )
+          ? requested
+          : ROLE_DEFAULT_ROUTE[targetRole] || "/settings";
       navigate(target, { replace: true });
     } else if (entryBlockedReason) {
+      sessionStorage.removeItem(AUTH_RETURN_TO_KEY);
       navigate(`/login?error=${encodeURIComponent(entryBlockedReason)}`, {
         replace: true,
       });
     } else {
+      sessionStorage.removeItem(AUTH_RETURN_TO_KEY);
       navigate("/login", { replace: true });
     }
   }, [

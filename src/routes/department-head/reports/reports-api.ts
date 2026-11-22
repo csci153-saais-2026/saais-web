@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient, unwrapApiResult } from "@/lib/api";
 import { getRoster } from "@/routes/adviser/advisees/advisees.api";
 import type { ReportOption, ReportStudent } from "./report-model";
+import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
 export type ReportSource = {
   students: ReportStudent[];
@@ -63,6 +64,6 @@ async function getReportSource(): Promise<ReportSource> {
 
 export const useReportSource = () =>
   useQuery({
-    queryKey: ["department-head", "report-source"],
+    queryKey: useDepartmentHeadQueryKey(["department-head", "report-source"]),
     queryFn: getReportSource,
   });

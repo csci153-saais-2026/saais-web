@@ -327,7 +327,7 @@ describe("Department Staff course catalog", () => {
   ] as const)(
     "saves a checked course with %s relationship",
     async (type, label) => {
-      renderCourseCatalog();
+      renderCourseCatalog("/department-staff/course-catalog?page=1");
       fireEvent.click(
         await screen.findByRole("button", {
           name: "View prerequisites for CSCI 198",
@@ -440,7 +440,7 @@ describe("Department Staff course catalog", () => {
           ),
         ),
       );
-      renderCourseCatalog();
+      renderCourseCatalog("/department-staff/course-catalog?page=1");
       fireEvent.click(
         await screen.findByRole("button", {
           name: "View prerequisites for CSCI 198",

@@ -1,4 +1,5 @@
 import type { ApiSchema, OperationQuery } from "@/lib/api";
+import { STUDENT_NUMBER_PATTERN } from "@/lib/validation/student-number";
 
 export const ACCOUNT_PAGE_SIZE = 20;
 export const ACCOUNT_FETCH_LIMIT = ACCOUNT_PAGE_SIZE + 1;
@@ -153,8 +154,9 @@ export function validateAccountInvite(
   if (values.primaryRole === "student") {
     if (!values.studentNumber.trim()) {
       errors.studentNumber = "Enter the student number.";
-    } else if (values.studentNumber.trim().length > 64) {
-      errors.studentNumber = "Student number must be 64 characters or fewer.";
+    } else if (!STUDENT_NUMBER_PATTERN.test(values.studentNumber.trim())) {
+      errors.studentNumber =
+        "Use the format YY-N-NNNNN (for example, 24-1-00124).";
     }
 
     const program = programs.find((option) => option.id === values.programId);

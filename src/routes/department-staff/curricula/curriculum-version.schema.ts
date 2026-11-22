@@ -9,6 +9,9 @@ const units = z
 export const curriculumVersionSchema = z
   .object({
     program_id: z.uuid("Select an authorized program."),
+    clone_from_version_id: z
+      .union([z.uuid(), z.literal(""), z.null()])
+      .optional(),
     version_label: z
       .string()
       .trim()
@@ -69,11 +72,16 @@ export type NewCurriculumVersion = Pick<
   | "total_units"
   | "delinquency_threshold"
   | "status"
->;
+> & { clone_from_version_id?: string | null };
 
 export function blankVersionRequest(
   values: CurriculumVersionValues,
 ): NewCurriculumVersion {
   const parsed = curriculumVersionSchema.parse(values);
-  return { ...parsed, effective_end: parsed.effective_end || null };
+  const { clone_from_version_id, ...base } = parsed;
+  return {
+    ...base,
+    effective_end: base.effective_end || null,
+    ...(clone_from_version_id ? { clone_from_version_id } : {}),
+  };
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, unwrapApiResult } from "@/lib/api";
+import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
 export interface EquivalenceCourse {
   id: string;
@@ -118,7 +119,10 @@ async function getEquivalenceData() {
 }
 
 export const useEquivalenceData = () =>
-  useQuery({ queryKey: KEY, queryFn: getEquivalenceData });
+  useQuery({
+    queryKey: useDepartmentHeadQueryKey(KEY),
+    queryFn: getEquivalenceData,
+  });
 
 export function useAddEquivalence() {
   const client = useQueryClient();

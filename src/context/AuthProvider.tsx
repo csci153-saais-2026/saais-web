@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import type { ApiSchema } from "@/lib/api";
 import {
   AuthHydrationError,
@@ -165,6 +166,7 @@ function resolveInitialMockAuthState(
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const queryClient = useQueryClient();
   const envConfig = resolveSaaisEnvConfig();
   const isMockMode = envConfig.mode === "mock" && !envConfig.configError;
 
@@ -212,6 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const clearAuthState = useCallback(
     (options?: { preserveBlockedReason?: string | null }) => {
       hydrationRequestIdRef.current += 1;
+      queryClient.clear();
       setUser(null);
       setProfile(null);
       setSession(null);
@@ -228,7 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         clearMockPersonaSession();
       }
     },
-    [isMockMode],
+    [isMockMode, queryClient],
   );
 
   const applyMockPersona = useCallback(
@@ -239,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     ) => {
       if (!isMockMode) return;
       const shouldPersist = persistChoice ?? keepSignedInRef.current;
+      queryClient.clear();
       keepSignedInRef.current = shouldPersist;
       setKeepSignedIn(shouldPersist);
       setSupabaseSessionPersistence(shouldPersist);
@@ -295,7 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       writeStoredValue(MOCK_PERSONA_STORAGE_KEY, key, shouldPersist);
       writeStoredValue(ACTIVE_ROLE_STORAGE_KEY, defaultRole, shouldPersist);
     },
-    [isMockMode],
+    [isMockMode, queryClient],
   );
 
   const switchMockPersona = useCallback(
@@ -316,6 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (!nextSession?.user) {
         if (requestId !== hydrationRequestIdRef.current) return;
+        queryClient.clear();
         setUser(null);
         setProfile(null);
         setSession(null);
@@ -331,6 +336,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setIsLoading(true);
       setAuthError(null);
+      queryClient.clear();
 
       try {
         const boundary = await fetchAuthenticatedUserBoundary(
@@ -418,7 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsLoading(false);
       }
     },
-    [clearAuthState],
+    [clearAuthState, queryClient],
   );
 
   const retryHydration = useCallback(async () => {
@@ -453,6 +459,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsPasswordRecovery(true);
       } else if (event === "SIGNED_OUT") {
         setIsPasswordRecovery(false);
+        queryClient.clear();
       }
       if (!nextSession) {
         hydrationRequestIdRef.current += 1;
@@ -496,7 +503,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [isMockMode, envConfig.configError, applyMockPersona]);
+  }, [isMockMode, envConfig.configError, applyMockPersona, queryClient]);
 
   // Schedule hydration asynchronously outside the onAuthStateChange callback
   useEffect(() => {
@@ -644,10 +651,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const setActiveRole = useCallback(
     (role: SaaisRole) => {
       if (!roles.includes(role)) return;
+      if (role !== activeRole) queryClient.clear();
       setActiveRoleState(role);
       writeStoredValue(ACTIVE_ROLE_STORAGE_KEY, role, keepSignedInRef.current);
     },
-    [roles],
+    [roles, activeRole, queryClient],
   );
 
   const eligibility = useMemo(

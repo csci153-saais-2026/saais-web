@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
 export type CurriculumVersionStatus = "active" | "draft" | "retired";
 export type CurriculumSemester = "Semester 1" | "Semester 2" | "Midyear";
@@ -180,206 +181,201 @@ async function getCurricula(): Promise<CurriculaData> {
   };
 }
 
-export const useCurricula = () =>
-  useQuery({ queryKey: KEY, queryFn: getCurricula });
+export const useCurricula = () => {
+  return useQuery({
+    queryKey: useDepartmentHeadQueryKey(KEY),
+    queryFn: getCurricula,
+  });
+};
 
-/** Catalog writes. Each rejects with the API's message (for example when records depend on the item). */
-export function useCurriculaActions() {
-  const client = useQueryClient();
-  const refresh = () => client.invalidateQueries({ queryKey: KEY });
-  const useAction = <A extends unknown[], R>(fn: (...args: A) => Promise<R>) =>
-    useMutation({ mutationFn: (args: A) => fn(...args), onSuccess: refresh });
-  const run =
-    <A extends unknown[], R>(mutation: ReturnType<typeof useAction<A, R>>) =>
-    (...args: A) =>
-      mutation.mutateAsync(args);
+export type CreateCurriculumVersionInput = {
+  programId: string;
+  label: string;
+  start: string;
+  units: number;
+  status: CurriculumVersionStatus;
+  cloneFromVersionId?: string;
+};
 
-  const createVersion = useAction(
-    async (input: {
-      programId: string;
-      label: string;
-      start: string;
-      units: number;
-      status: CurriculumVersionStatus;
-    }) => {
-      const created = unwrapApiResult(
-        await apiClient.POST("/functions/v1/catalog/curriculum_version", {
-          body: {
-            program_id: input.programId,
-            version_label: input.label,
-            effective_start: input.start,
-            total_units: input.units,
-          },
-        }),
-      );
-      if (input.status !== "draft") {
-        unwrapApiResult(
-          await apiClient.PATCH(
-            "/functions/v1/catalog/curriculum_version/{id}",
-            {
-              params: { path: { id: created.id } },
-              body: { status: input.status },
-            },
-          ),
-        );
-      }
-      return created;
-    },
-  );
-  const updateVersion = useAction(
-    async (
-      id: string,
-      input: {
-        label: string;
-        start: string;
-        units: number;
-        status: CurriculumVersionStatus;
+export async function createCurriculumVersion(
+  input: CreateCurriculumVersionInput,
+) {
+  const created = unwrapApiResult(
+    await apiClient.POST("/functions/v1/catalog/curriculum_version", {
+      body: {
+        program_id: input.programId,
+        version_label: input.label,
+        effective_start: input.start,
+        total_units: input.units,
+        ...(input.cloneFromVersionId
+          ? { clone_from_version_id: input.cloneFromVersionId }
+          : {}),
       },
-    ) =>
-      unwrapApiResult(
-        await apiClient.PATCH("/functions/v1/catalog/curriculum_version/{id}", {
-          params: { path: { id } },
-          body: {
-            version_label: input.label,
-            effective_start: input.start,
-            total_units: input.units,
-            status: input.status,
-          },
-        }),
-      ),
+    }),
   );
-  const deleteVersion = useAction(async (id: string) =>
+  if (input.status !== "draft") {
     unwrapApiResult(
-      await apiClient.DELETE("/functions/v1/catalog/curriculum_version/{id}", {
-        params: { path: { id } },
+      await apiClient.PATCH("/functions/v1/catalog/curriculum_version/{id}", {
+        params: { path: { id: created.id } },
+        body: { status: input.status },
       }),
-    ),
-  );
+    );
+  }
+  return created;
+}
 
-  const createTerm = useAction(
-    async (versionId: string, year: number, sem: CurriculumSemester) =>
-      unwrapApiResult(
-        await apiClient.POST("/functions/v1/catalog/curriculum_term", {
-          body: {
-            curriculum_version_id: versionId,
-            year_level: year,
-            term_sequence: sequenceOf(sem),
-            slots: [],
-          },
-        }),
-      ),
+export type UpdateCurriculumVersionInput = Omit<
+  CreateCurriculumVersionInput,
+  "programId" | "cloneFromVersionId"
+>;
+
+export async function updateCurriculumVersion(
+  id: string,
+  input: UpdateCurriculumVersionInput,
+) {
+  return unwrapApiResult(
+    await apiClient.PATCH("/functions/v1/catalog/curriculum_version/{id}", {
+      params: { path: { id } },
+      body: {
+        version_label: input.label,
+        effective_start: input.start,
+        total_units: input.units,
+        status: input.status,
+      },
+    }),
   );
-  const updateTerm = useAction(
-    async (id: string, year: number, sem: CurriculumSemester) =>
-      unwrapApiResult(
-        await apiClient.PATCH("/functions/v1/catalog/curriculum_term/{id}", {
-          params: { path: { id } },
-          body: { year_level: year, term_sequence: sequenceOf(sem) },
-        }),
-      ),
+}
+
+export async function deleteCurriculumVersion(id: string) {
+  return unwrapApiResult(
+    await apiClient.DELETE("/functions/v1/catalog/curriculum_version/{id}", {
+      params: { path: { id } },
+    }),
   );
-  const deleteTerm = useAction(async (id: string) =>
-    unwrapApiResult(
-      await apiClient.DELETE("/functions/v1/catalog/curriculum_term/{id}", {
+}
+
+export async function createCurriculumTerm(
+  versionId: string,
+  year: number,
+  sem: CurriculumSemester,
+) {
+  return unwrapApiResult(
+    await apiClient.POST("/functions/v1/catalog/curriculum_term", {
+      body: {
+        curriculum_version_id: versionId,
+        year_level: year,
+        term_sequence: sequenceOf(sem),
+        slots: [],
+      },
+    }),
+  );
+}
+
+export async function updateCurriculumTerm(
+  id: string,
+  year: number,
+  sem: CurriculumSemester,
+) {
+  return unwrapApiResult(
+    await apiClient.PATCH("/functions/v1/catalog/curriculum_term/{id}", {
+      params: { path: { id } },
+      body: { year_level: year, term_sequence: sequenceOf(sem) },
+    }),
+  );
+}
+
+export async function deleteCurriculumTerm(id: string) {
+  return unwrapApiResult(
+    await apiClient.DELETE("/functions/v1/catalog/curriculum_term/{id}", {
+      params: { path: { id } },
+    }),
+  );
+}
+
+export async function createCurriculumSlot(
+  termId: string,
+  name: string,
+  units: number,
+  type: CurriculumSlotType,
+) {
+  return unwrapApiResult(
+    await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
+      body: {
+        curriculum_term_id: termId,
+        course_id: null,
+        slot_label: name,
+        nominal_units: units,
+        slot_type: SLOT_TYPE_API[type],
+        is_elective_slot: type === "Elective slot",
+      },
+    }),
+  );
+}
+
+export async function updateCurriculumSlot(
+  id: string,
+  name: string,
+  units: number,
+  type: CurriculumSlotType,
+) {
+  return unwrapApiResult(
+    await apiClient.PATCH("/functions/v1/catalog/curriculum_term_course/{id}", {
+      params: { path: { id } },
+      body: {
+        slot_label: name,
+        nominal_units: units,
+        slot_type: SLOT_TYPE_API[type],
+        is_elective_slot: type === "Elective slot",
+      },
+    }),
+  );
+}
+
+export async function deleteCurriculumSlot(id: string) {
+  return unwrapApiResult(
+    await apiClient.DELETE(
+      "/functions/v1/catalog/curriculum_term_course/{id}",
+      {
         params: { path: { id } },
-      }),
+      },
     ),
   );
+}
 
-  const createSlot = useAction(
-    async (
-      termId: string,
-      name: string,
-      units: number,
-      type: CurriculumSlotType,
-    ) =>
-      unwrapApiResult(
-        await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
-          body: {
-            curriculum_term_id: termId,
-            course_id: null,
-            slot_label: name,
-            nominal_units: units,
-            slot_type: SLOT_TYPE_API[type],
-            is_elective_slot: type === "Elective slot",
-          },
-        }),
-      ),
-  );
-  const updateSlot = useAction(
-    async (id: string, name: string, units: number, type: CurriculumSlotType) =>
-      unwrapApiResult(
-        await apiClient.PATCH(
-          "/functions/v1/catalog/curriculum_term_course/{id}",
-          {
-            params: { path: { id } },
-            body: {
-              slot_label: name,
-              nominal_units: units,
-              slot_type: SLOT_TYPE_API[type],
-              is_elective_slot: type === "Elective slot",
-            },
-          },
-        ),
-      ),
-  );
-  const deleteSlot = useAction(async (id: string) =>
-    unwrapApiResult(
-      await apiClient.DELETE(
-        "/functions/v1/catalog/curriculum_term_course/{id}",
-        { params: { path: { id } } },
-      ),
-    ),
-  );
+export type CreateCatalogCourseInput = {
+  departmentId: string;
+  code: string;
+  title: string;
+  units: number;
+  elective: boolean;
+  termId: string;
+};
 
-  const createCourse = useAction(
-    async (input: {
-      departmentId: string;
-      code: string;
-      title: string;
-      units: number;
-      elective: boolean;
-      termId: string;
-    }) => {
-      const course = unwrapApiResult(
-        await apiClient.POST("/functions/v1/catalog/course", {
-          body: {
-            department_id: input.departmentId,
-            code: input.code,
-            title: input.title,
-            units: input.units,
-            category: input.elective ? "elective" : "major",
-            is_elective: input.elective,
-            status: "active",
-            repeatable_type: "none",
-          },
-        }),
-      );
-      unwrapApiResult(
-        await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
-          body: {
-            curriculum_term_id: input.termId,
-            course_id: course.id,
-            nominal_units: input.units,
-            slot_type: input.elective ? "elective" : "required",
-            is_elective_slot: input.elective,
-          },
-        }),
-      );
-      return course;
-    },
+export async function createCatalogCourse(input: CreateCatalogCourseInput) {
+  const course = unwrapApiResult(
+    await apiClient.POST("/functions/v1/catalog/course", {
+      body: {
+        department_id: input.departmentId,
+        code: input.code,
+        title: input.title,
+        units: input.units,
+        category: input.elective ? "elective" : "major",
+        is_elective: input.elective,
+        status: "active",
+        repeatable_type: "none",
+      },
+    }),
   );
-
-  return {
-    createVersion: run(createVersion),
-    updateVersion: run(updateVersion),
-    deleteVersion: run(deleteVersion),
-    createTerm: run(createTerm),
-    updateTerm: run(updateTerm),
-    deleteTerm: run(deleteTerm),
-    createSlot: run(createSlot),
-    updateSlot: run(updateSlot),
-    deleteSlot: run(deleteSlot),
-    createCourse: run(createCourse),
-  };
+  unwrapApiResult(
+    await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
+      body: {
+        curriculum_term_id: input.termId,
+        course_id: course.id,
+        nominal_units: input.units,
+        slot_type: input.elective ? "elective" : "required",
+        is_elective_slot: input.elective,
+      },
+    }),
+  );
+  return course;
 }
