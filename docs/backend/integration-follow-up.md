@@ -6,7 +6,7 @@ Both runtime snapshots use approved OpenAPI 0.3.1 at `8df551183962d19ab724c9f33c
 
 The advising assistant requires the student's current adviser assignment. Reassignment removes the former adviser's access to assistant context. Its HTTP tests cover authentication, scope rejection before provider calls, malformed context, provider errors/timeouts, bounded output and the approved response fields. Its SQL test performs a real assignment handoff with synthetic accounts. The contract's generic `current-or-historic-assigned-students-read-only` scope label needs a future wording clarification for this current-adviser rule, requested in the PR review. The approved contract hash is retained.
 
-## Remaining work and affected workflows
+## Original PR #70 follow-up list
 
 | Work | What remains | Affected workflow | Tracking |
 | --- | --- | --- | --- |
@@ -42,3 +42,47 @@ npm run build
 Set `PG_BINARY_DIR` to the installed PostgreSQL binary directory, then run `node supabase/tools/test-database.cjs`. The runner applies all migrations for both suites. The domain suite includes the catalog, cloning, credit and concurrency checks. The application suite starts with the initial catalog/people/student fixtures and rolls back each test file so its sample records do not alter the next test.
 
 Relevant GitHub tracking is [backend #3](https://github.com/csci153-saais-2026/saais-web/issues/3), [RLS #7](https://github.com/csci153-saais-2026/saais-web/issues/7), [scheduling #49](https://github.com/csci153-saais-2026/saais-web/issues/49), [pgTAP #50](https://github.com/csci153-saais-2026/saais-web/issues/50), and [setup #51](https://github.com/csci153-saais-2026/saais-web/issues/51).
+
+## Backend follow-up verification
+
+PR #118 merged into `feat/backend` at `1bb81ce`. Its own-profile policy remains the public-schema bootstrap boundary. The shared API client sends `Accept-Profile: saais_api` on Supabase PostgREST reads. The Edge RPCs continue to use the default `public` schema. The views publish explicit contract fields, derive adviser contact and transfer labels, and apply the caller's student, department, or faculty scope. Raw audit snapshots are available to administrators. Assigned advisers keep historical record reads after handoff, while note changes, grade recording, the assistant, and private photo reads use the current assignment.
+
+### Academic acceptance checks
+
+| Issue | Entry point and verification |
+| --- | --- |
+| #46 | `recordGrades` implements the enrollment and initial grade workflow. `matt-enrollment.sql` checks the assigned adviser, cross-user denial, quarter-step grade validation, explicit enrollment and prerequisite override, existing passed courses, duplicate offerings, department and global term locks, audited writes, and rollback of a partially processed encoding batch. |
+| #47 | `matt-students.sql` checks eligibility, cross-department bulk rollback, invalid dates, the outgoing and incoming history, and former adviser permissions. `concurrency.mjs` waits until the first reassignment transaction is holding its locks before submitting a second reassignment and verifies one audited winner. |
+| #48 | `30_credits.sql` and `35_credit_failures.sql` check student-specific equivalency, unauthorized and invalid sources/destinations, source and destination collisions, the audit history, and retained academic attempts. |
+| #49 | `lapsed-inc.sql` advances a private reference date across the deadline, checks GWA and delinquency, verifies the persisted INC and failed grade history, and exercises repeated and stale runs. |
+| #50 | `scoped-reads.sql` uses the existing synthetic fixture conventions and tests all six roles, archived notes, staff remarks, account-scoped notifications, cross-department reads, and adviser handoff against the published projections. |
+
+### Local checks
+
+Start local Supabase, reset the disposable database without the seed, and run pgTAP. The runner includes the shared SQL fixtures in each rollback-only suite.
+
+```sh
+supabase start
+supabase db reset --local --no-seed
+node supabase/tools/test-pgtap.cjs
+node --test supabase/tests/*.test.mjs
+```
+
+The existing `node supabase/tools/test-database.cjs` runner uses disposable PostgreSQL with Auth and Storage stand-ins. Set `PG_BINARY_DIR` to its binary directory. For browser or gateway testing, reset the local project with the repository seed and use the approved synthetic accounts. Avoid scripting hosted resets or loading this seed into shared environments.
+
+The seeded local gateway checks used real signed-in sessions for Student, Adviser, Department Staff, Department Head, Dean, and Admin. Profile hydration, scoped student organization reads, recipient-only notifications, and direct private-field denial passed. A student uploaded and deleted a PNG in the private bucket, all six authorized sessions downloaded it, and public and out-of-faculty requests failed. The local Edge gateway also passed invitation retry, token preview, one-time password activation, and student batch preview and partial commit. Email delivery and the adviser assistant use stub providers in automated tests.
+
+In the supplied hosted project, each of the six approved test accounts signed in with the public project key, returned one own profile, and returned zero profiles for a cross-user query on the existing public route. The new read schema returned 406 for every role. The hosted checks still pending are role-scoped catalog and student record queries, archived notes, attempt remarks, audit metadata, notification isolation, private-field restrictions, and private Storage across assignments and departments. Hosted invitation mail, real assistant responses after a reassignment, and scheduled runs require deployment and provider configuration.
+
+### Daily INC recomputation
+
+`saais-daily-lapsed-inc-gwa` runs at 00:01 Asia/Manila (`1 16 * * *` with UTC cron), ahead of the existing 00:05 alerts. An unresolved INC contributes 5.00 starting the day after its deadline. The job preserves the attempt and recomputes cumulative GWA, failed units, and term delinquency for affected students using the same formulas as the live read paths. It records dated values in `saais_private.lapsed_inc_recomputation` and advances each changed student's cache revision once per run.
+
+The migration installs the job when `pg_cron` is available. If the team enables Cron afterward, the database owner can register it with `cron.schedule('saais-daily-lapsed-inc-gwa', '1 16 * * *', 'select public.recompute_lapsed_inc_gwa()')`. Confirm the schedule, job owner, and UTC timezone in Supabase Cron, then monitor `cron.job_run_details`. A failed run rolls back its writes. Operators can retry with `select public.recompute_lapsed_inc_gwa()` as the owner or service role. The next run catches previously missed deadlines. A same-day retry uses the same snapshot key and skips unchanged results.
+
+### Deployment and provider coordination
+
+- **Data API and Storage.** Apply the additive migrations in the team-designated test project and add `saais_api` to the exposed Data API schemas while keeping `public` as the default. Deploy the shared API client with the profile header. Confirm all six roles against the actual catalog, profile, student organization, grades, archived notes, staff remarks, and audit query paths. Check cross-user, cross-department, and cross-faculty denials, base-table field restrictions, recipient-only notifications, and current adviser photo access. Deploy and verify the private `student-photos` bucket. Use signed-in authenticated Storage downloads and own-student or administrator writes.
+- **Accounts.** Deploy `auth`, `accounts`, and `students` against the same schema. The `auth` function uses its own project-key and invitation-token checks for pre-login operations. Protected entry points also verify the signed-in caller and recheck database scope. Supabase supplies the service-role credential server-side. A failed row can be retried with its original normalized input. The reservation ties the trusted Auth identity to the same database row, so a failed response after Auth creation can resume without adopting unrelated identities or duplicating assignments. Unfinished reservations remain visible to operators in `saais_private.invite_reservation`. Inspect the reservation and its matching Auth metadata before resolving an abandoned reservation. Google OAuth eligibility and verified provider activation are coordinated separately under #51.
+- **Email.** Deploy `mail-delivery` and configure `SAAIS_RESEND_API_KEY`, a verified `SAAIS_MAIL_FROM`, the HTTPS `SAAIS_SITE_URL`, and a random `SAAIS_MAIL_WORKER_SECRET` in the approved secret store. Set `SAAIS_MAIL_ALLOWED_RECIPIENTS` to the authorized test mailboxes in the hosted test project. Schedule an HTTPS POST every minute with the `x-saais-mail-secret` header from the scheduler's secret store. Set up monitoring for non-2xx worker responses, increasing retry counts, and failed notifications. Retries back off and use the same Resend idempotency key. The worker sends invitation links in URL fragments and notification emails that direct the user to sign in. Confirm delivery, resend, and revocation with the approved mailboxes before enabling use.
+- **Adviser assistant.** The backend already checks the current assignment before retrieving academic context and sending it to the provider. The team must approve an HTTPS OpenAI-compatible Chat Completions endpoint and model, set `SAAIS_ASSISTANT_ENDPOINT`, `SAAIS_ASSISTANT_MODEL`, and `SAAIS_ASSISTANT_API_KEY` as Edge secrets, then deploy `students`. The Adviser frontend owner can enable the existing `askAdvisingAssistant` call from `src/routes/adviser/advisees/advising/AdvisingAssistant.tsx` for configured Supabase deployments. Verify a current adviser can ask a grounded question and that the former adviser gets 403 after reassignment before any provider call.
