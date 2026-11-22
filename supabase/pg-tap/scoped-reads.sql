@@ -22,6 +22,13 @@ insert into public.notification(recipient_id, kind, event_type, title, body)
 select id, 'person', 'adviser_assigned', 'Fixture notice', 'Fixture body'
 from public.profile where status = 'active';
 
+insert into public.audit_log_entry (actor_name, student_id, action, entity_type, entity_id, old_value, new_value)
+select 'Correction fixture actor', student_id, 'correctGrades', 'attempt', id,
+  '{"final_grade": 2.5}', '{"final_grade": 2}'
+from public.attempt;
+select is((select jsonb_array_length(saais_private.matt_grade_fix_history(id)) from public.attempt), 1,
+  'Fixture has actual correction history');
+
 select test.login(5);
 set local role authenticated;
 select results_eq('select body_text from saais_api.advising_note order by body_text',
@@ -31,6 +38,18 @@ select is_empty('select id from saais_api.profile where id <> auth.uid()', 'Stud
 select is((select count(*) from saais_api.student_organization), 1::bigint, 'Student can read own organization');
 select is((select count(*) from saais_api.attempt_result where recorded_status = 'passed'), 1::bigint,
   'Student can read the projected result for their own course');
+select is((select final_grade from saais_api.attempt_result), 2::numeric,
+  'Student can read the approved grade');
+select ok((select not (to_jsonb(result) ? 'grade_fix_history')
+  from (select * from saais_api.attempt_result) result), 'Wildcard view reads omit correction history');
+select throws_ok('select grade_fix_history from saais_api.attempt_result', '42703', null,
+  'Correction history cannot be selected from the view');
+select is((select r from saais_private.read_attempt_results(auth.uid()) r),
+  (select to_jsonb(r) from saais_api.attempt_result r), 'Direct projection helper returns exactly the safe view fields');
+select throws_ok('select saais_private.matt_grade_fix_history(auth.uid())', '42501', null,
+  'Student cannot execute the underlying correction-history helper');
+select throws_ok('select saais_private.matt_attempt_result(auth.uid())', '42501', null,
+  'Student cannot execute the internal mutation response helper');
 select is_empty('select id from saais_api.audit_log_entry', 'Student cannot read audit data');
 select throws_ok('select reason from public.adviser_assignment', '42501', null,
   'Base assignment cannot reveal the internal reason');
@@ -41,9 +60,16 @@ select throws_ok('select created_by from saais_api.attempt_result', '42703', nul
 select is_empty('select id from saais_api.notification where recipient_id <> auth.uid()', 'Student notifications are private');
 reset role;
 
+select test.login(9);
+set local role authenticated;
+select is_empty($cmd$select * from saais_private.read_attempt_results('00000005-0000-4000-8000-000000000000')$cmd$,
+  'A different student cannot call the direct helper for a known attempt');
+reset role;
+
 select test.login(4);
 set local role authenticated;
 select is((select count(*) from saais_api.advising_note), 2::bigint, 'Current adviser sees assigned notes');
+select is((select count(*) from saais_api.attempt_result), 1::bigint, 'Current adviser retains scoped result access');
 select is((select count(*) from saais_api.attempt_remark), 1::bigint, 'Current adviser sees assigned attempt remarks');
 select is((select count(*) from saais_api.student_organization), 1::bigint, 'Adviser sees only their assigned student');
 reset role;

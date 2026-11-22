@@ -125,8 +125,10 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: 2.111.0
-      - name: Start local Supabase database
-        run: supabase db start
+      - name: Start local Supabase Auth and Data API with synthetic seed
+        run: supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >/dev/null
+      - name: Verify signed-in attempt-result projection through PostgREST
+        run: node --test supabase/tools/test-attempt-result-gateway.mjs
       - name: Reset local database without seed
         run: supabase db reset --local --no-seed
       - name: Run pgTAP
