@@ -51,3 +51,48 @@ await run(psql, [...args, "-c", verify]);
 console.log(
   "Concurrent duplicate writes: one committed, one rejected; academic and audit rows remain consistent.",
 );
+
+const student = "00000019-0000-4000-8000-000000000000";
+const reassign = (adviser) => `
+  select test.login(2);
+  select public.matt_operation('reassignAdviser', '{"student_id":"${student}"}',
+    '{"adviser_id":"${adviser}","start_date":"2026-02-01","reason":"Overlapping reassignment"}');
+`;
+const first = run(psql, [
+  ...args,
+  "-c",
+  `begin; set application_name = 'saais_adviser_handoff'; ${reassign("00000008-0000-4000-8000-000000000000")} select pg_sleep(2); commit;`,
+]);
+const observed = `select exists(select 1 from pg_stat_activity
+  where application_name = 'saais_adviser_handoff' and wait_event = 'PgSleep');`;
+let holdingLock = false;
+for (let poll = 0; poll < 30 && !holdingLock; poll++) {
+  const result = await run(psql, [...args, "-c", observed]);
+  holdingLock = result.stdout.trim() === "t";
+}
+assert.ok(
+  holdingLock,
+  "First reassignment must be open before starting the competing transaction",
+);
+
+const second = run(psql, [
+  ...args,
+  "-c",
+  reassign("00000004-0000-4000-8000-000000000000"),
+]);
+const handoff = await Promise.allSettled([first, second]);
+assert.equal(handoff[0].status, "fulfilled");
+assert.equal(handoff[1].status, "rejected");
+assert.match(handoff[1].reason.stderr, /PT409/);
+await run(psql, [
+  ...args,
+  "-c",
+  `select test.assert((select count(*) = 2 and count(*) filter (where end_date is null) = 1
+      from public.adviser_assignment where student_id = '${student}'), 'Overlapping reassignment changed history twice');
+    select test.assert((select count(*) = 1 from public.audit_log_entry
+      where student_id = '${student}' and action = 'reassignAdviser' and reason = 'Overlapping reassignment'),
+      'Exactly one audited reassignment must commit');`,
+]);
+console.log(
+  "Overlapping adviser reassignments: one committed and one conflicted.",
+);
