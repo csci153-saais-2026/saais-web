@@ -18,7 +18,16 @@ export function computeGradeDistribution(
   studentIds: Set<string>,
 ): GradeBand[] {
   const scoped = attempts.filter((a) => studentIds.has(a.student_id));
-  const total = scoped.length;
+  const eligible = scoped.filter(
+    (attempt) =>
+      attempt.effective_status === "inc" ||
+      attempt.effective_status === "dr" ||
+      attempt.effective_status === "na" ||
+      attempt.is_lapsed_inc ||
+      attempt.completion_grade != null ||
+      attempt.final_grade != null,
+  );
+  const total = eligible.length;
   if (total === 0) {
     return [
       { label: "1.00–1.50", percent: 0, tone: "primary" },
@@ -35,7 +44,7 @@ export function computeGradeDistribution(
   let band5 = 0;
   let bandInc = 0;
 
-  for (const a of scoped) {
+  for (const a of eligible) {
     if (
       a.effective_status === "inc" ||
       a.effective_status === "dr" ||
