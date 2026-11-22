@@ -42,6 +42,7 @@ import {
   type AcademicTermRecord,
 } from "./terms-api";
 import { buildTermsPdf } from "./terms-pdf";
+import { schoolTermFormSchema } from "@/lib/validation/school-term.schema";
 
 const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const;
 
@@ -89,6 +90,9 @@ export default function AcademicTermsPage() {
   const closeEncoding = useCloseEncoding();
   const terms = termsQuery.data ?? [];
   const [formError, setFormError] = React.useState("");
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
+    {},
+  );
   const [isAddTermOpen, setIsAddTermOpen] = React.useState(false);
   const [termToClose, setTermToClose] =
     React.useState<AcademicTermRecord | null>(null);
@@ -111,9 +115,53 @@ export default function AcademicTermsPage() {
 
   const handleCreateTerm = async () => {
     setFormError("");
+    const errors: Record<string, string> = {};
+    const years = /^\s*(\d{4})\s*[–-]\s*(\d{4})\s*$/.exec(newAY);
+    if (!years) errors.academicYear = "Enter the academic year as 2025–2026.";
+    const termTypes: Record<
+      string,
+      "1st Semester" | "2nd Semester" | "Summer"
+    > = {
+      "1st semester": "1st Semester",
+      "2nd semester": "2nd Semester",
+      Midyear: "Summer",
+    };
+    const termType = termTypes[newSem];
+    if (!termType) errors.semester = "Select a valid semester.";
+    if (years && termType) {
+      const result = schoolTermFormSchema.safeParse({
+        start_year: Number(years[1]),
+        end_year: Number(years[2]),
+        term_type: termType,
+        starts_on: newStartDate,
+        ends_on: newEndDate,
+        encoding_deadline: newDeadline,
+      });
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          const field = issue.path[0];
+          const key =
+            field === "start_year" || field === "end_year"
+              ? "academicYear"
+              : field === "term_type"
+                ? "semester"
+                : field === "starts_on"
+                  ? "startDate"
+                  : field === "ends_on"
+                    ? "endDate"
+                    : "deadline";
+          errors[key] ??= issue.message;
+        }
+      }
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setFormError("Correct the highlighted fields before adding the term.");
+      return;
+    }
     try {
       const created = await createTerm.mutateAsync({
-        academicYear: newAY.trim() || "2025–2026",
+        academicYear: newAY.trim(),
         semester: newSem,
         startDate: newStartDate,
         endDate: newEndDate,
@@ -298,14 +346,23 @@ export default function AcademicTermsPage() {
         }
       >
         <div className="grid grid-cols-1 gap-4.5 sm:grid-cols-2">
-          <FormField label="Academic year" htmlFor="at-ay">
+          <FormField
+            label="Academic year"
+            htmlFor="at-ay"
+            error={fieldErrors.academicYear}
+          >
             <Input
               id="at-ay"
               value={newAY}
+              aria-invalid={!!fieldErrors.academicYear}
               onChange={(e) => setNewAY(e.target.value)}
             />
           </FormField>
-          <FormField label="Semester" htmlFor="at-sem">
+          <FormField
+            label="Semester"
+            htmlFor="at-sem"
+            error={fieldErrors.semester}
+          >
             <Select value={newSem} onValueChange={setNewSem}>
               <SelectTrigger id="at-sem" className="w-full">
                 <SelectValue />
@@ -319,7 +376,11 @@ export default function AcademicTermsPage() {
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Start date" htmlFor="at-start">
+          <FormField
+            label="Start date"
+            htmlFor="at-start"
+            error={fieldErrors.startDate}
+          >
             <Input
               id="at-start"
               type="date"
@@ -327,7 +388,11 @@ export default function AcademicTermsPage() {
               onChange={(e) => setNewStartDate(e.target.value)}
             />
           </FormField>
-          <FormField label="Actual end date" htmlFor="at-end">
+          <FormField
+            label="Actual end date"
+            htmlFor="at-end"
+            error={fieldErrors.endDate}
+          >
             <Input
               id="at-end"
               type="date"
@@ -335,7 +400,11 @@ export default function AcademicTermsPage() {
               onChange={(e) => setNewEndDate(e.target.value)}
             />
           </FormField>
-          <FormField label="Encoding deadline" htmlFor="at-deadline">
+          <FormField
+            label="Encoding deadline"
+            htmlFor="at-deadline"
+            error={fieldErrors.deadline}
+          >
             <Input
               id="at-deadline"
               type="date"

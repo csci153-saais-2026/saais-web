@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { isApiClientError, type ApiSchema } from "@/lib/api";
 import { GradeSelect } from "../GradeSelect";
+import { Textarea } from "@/components/ui/textarea";
 function Resolve({
   flag,
   attempt,
@@ -149,9 +150,10 @@ function Resolve({
             )}
             <label className="grid gap-1">
               {action === "correct" ? "Reason for change" : "Reply / reason"}
-              <textarea
+              <Textarea
                 placeholder="Required. This is written to the audit log."
-                className="rounded-md border px-3 py-2"
+                className="resize-y"
+                maxLength={2000}
                 required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
