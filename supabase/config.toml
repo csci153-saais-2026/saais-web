@@ -3,6 +3,7 @@ project_id = "saais"
 [api]
 enabled = true
 max_rows = 1000
+schemas = ["public", "saais_api", "graphql_public"]
 
 [functions.catalog]
 verify_jwt = true
