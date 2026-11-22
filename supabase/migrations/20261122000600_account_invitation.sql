@@ -197,13 +197,16 @@ begin
       select * into v_scope from saais_private.validate_invitee(v_request);
       update saais_private.invite_reservation set request = v_request where id = v_reservation.id;
     end if;
-  elsif exists (select 1 from public.profile p
-    where lower(btrim(p.email)) = v_request->>'email' or p.student_number = v_request->>'student_number')
-    or exists (select 1 from auth.users u where lower(u.email) = v_request->>'email')
-    or exists (select 1 from saais_private.invite_reservation r where r.student_number = v_request->>'student_number') then
-    perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
   end if;
   select * into v_scope from saais_private.validate_invitee(v_request);
+  if v_reservation.id is null and (
+    exists (select 1 from public.profile p
+      where lower(btrim(p.email)) = v_request->>'email' or p.student_number = v_request->>'student_number')
+    or exists (select 1 from auth.users u where lower(u.email) = v_request->>'email')
+    or exists (select 1 from saais_private.invite_reservation r where r.student_number = v_request->>'student_number')
+  ) then
+    perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
+  end if;
   if p_mode = 'preview' then return '{}'::jsonb; end if;
   if v_reservation.id is null and p_mode = 'prepare' then
     insert into saais_private.invite_reservation (email, student_number, requested_by, request)
