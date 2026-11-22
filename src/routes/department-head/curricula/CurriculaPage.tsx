@@ -35,7 +35,6 @@ import { formatDisplayDate } from "../shared/dh-utils";
 import {
   CURRICULUM_SEMESTERS,
   useCurricula,
-  useCurriculaActions,
   type CurriculumCourseSlot,
   type CurriculumSemester,
   type CurriculumSlotType,
@@ -43,6 +42,7 @@ import {
   type CurriculumVersionRecord,
   type CurriculumVersionStatus,
 } from "./curricula-api";
+import { useCurriculaActions } from "./use-curricula-actions";
 
 type CurriculaDialogState =
   | { kind: "add-version" }
