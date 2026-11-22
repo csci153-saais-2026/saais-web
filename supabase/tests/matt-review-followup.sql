@@ -82,4 +82,3 @@ begin
     'Reissued token has a fresh budget');
 end;
 $$;
-
