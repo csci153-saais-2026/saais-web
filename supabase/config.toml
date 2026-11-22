@@ -46,3 +46,6 @@ verify_jwt = true
 
 [functions.auth]
 verify_jwt = false
+
+[functions.mail-delivery]
+verify_jwt = false
