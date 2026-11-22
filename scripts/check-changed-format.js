@@ -31,6 +31,7 @@ const isCi = Boolean(process.env.GITHUB_EVENT_NAME);
 const explicitBase = process.argv[2];
 let base = explicitBase ?? event.pull_request?.base?.sha;
 let useMergeBase = isPullRequest || Boolean(explicitBase);
+let fallbackAfterMissingTip = false;
 
 if (!base) {
   const before =
@@ -54,17 +55,14 @@ if (!base) {
         // A force-pushed-away tip may no longer be fetchable. Compare the
         // pushed branch with its configured base instead of failing the check.
         const defaultBranch = event.repository?.default_branch;
-        base = defaultBranch
-          ? `origin/${defaultBranch}`
-          : "origin/feat/contract-mock";
+        base = defaultBranch ? `origin/${defaultBranch}` : "origin/dev";
         useMergeBase = true;
+        fallbackAfterMissingTip = true;
       }
     }
   } else {
     const defaultBranch = event.repository?.default_branch;
-    base = defaultBranch
-      ? `origin/${defaultBranch}`
-      : "origin/feat/contract-mock";
+    base = defaultBranch ? `origin/${defaultBranch}` : "origin/dev";
     useMergeBase = isCi;
   }
 }
@@ -73,9 +71,21 @@ const head = process.env.GITHUB_SHA ?? "HEAD";
 const range = `${base}${useMergeBase ? "..." : ".."}${head}`;
 let changedOutput;
 try {
+  const sameCommit =
+    fallbackAfterMissingTip &&
+    execFileSync("git", ["rev-parse", `${base}^{commit}`], {
+      encoding: "utf8",
+    }).trim() ===
+      execFileSync("git", ["rev-parse", `${head}^{commit}`], {
+        encoding: "utf8",
+      }).trim();
+  if (sameCommit)
+    console.warn("Previous push tip unavailable; checking all tracked files.");
   changedOutput = execFileSync(
     "git",
-    ["diff", "--name-only", "-z", "--diff-filter=ACMR", range],
+    sameCommit
+      ? ["ls-tree", "-r", "--name-only", "-z", head]
+      : ["diff", "--name-only", "-z", "--diff-filter=ACMR", range],
     { encoding: "utf8" },
   );
 } catch {
@@ -124,19 +134,22 @@ const prettierCli = path.join(
 );
 
 try {
-  execFileSync(
-    process.execPath,
-    [
-      prettierCli,
-      "--check",
-      "--ignore-path",
-      ".gitignore",
-      "--ignore-path",
-      ".prettierignore",
-      ...uniqueChangedPaths,
-    ],
-    { stdio: "inherit" },
-  );
+  // Batch paths to stay below Windows' command-line length limit.
+  for (let i = 0; i < uniqueChangedPaths.length; i += 70) {
+    execFileSync(
+      process.execPath,
+      [
+        prettierCli,
+        "--check",
+        "--ignore-path",
+        ".gitignore",
+        "--ignore-path",
+        ".prettierignore",
+        ...uniqueChangedPaths.slice(i, i + 70),
+      ],
+      { stdio: "inherit" },
+    );
+  }
 } catch (error) {
   process.exit(error.status ?? 1);
 }
