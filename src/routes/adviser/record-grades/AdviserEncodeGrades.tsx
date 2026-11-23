@@ -178,7 +178,17 @@ function TermEditor({
         {!data && !loadError && <p role="status">Loading offerings…</p>}
         {loadError && (
           <div role="alert">
-            <p>{loadError}</p>
+            <p>
+              The operation could not be completed. Try again.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Course offerings for this term could not be loaded. If the problem
+              persists, the selected term may not have offerings data available
+              yet — try a different term or contact a system administrator.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground/70">
+              Detail: {loadError}
+            </p>
             <Button onClick={() => setRevision((n) => n + 1)}>Try again</Button>
           </div>
         )}

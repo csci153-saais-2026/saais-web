@@ -94,6 +94,70 @@ afterEach(() => {
   auth.isMockMode = true;
 });
 describe("encoding workspace identity", () => {
+  it("searches required courses by code and electives by title before adding them", async () => {
+    const offerings = [
+      {
+        offering: { id: "offering-required", course_id: "course-required" },
+        code: "CSCI 153",
+        title: "Web Systems",
+        direct_curriculum_slot_id: "slot-required",
+        has_unmet_strict_prerequisites: false,
+      },
+      {
+        offering: { id: "offering-elective", course_id: "course-elective" },
+        code: "CSCI 198",
+        title: "Advanced Web Applications",
+        direct_curriculum_slot_id: null,
+        is_elective: true,
+        has_unmet_strict_prerequisites: false,
+      },
+    ] as Awaited<ReturnType<typeof getTermOfferings>>;
+    vi.mocked(getEncodingChoices).mockResolvedValue(choices);
+    vi.mocked(getGrades).mockResolvedValue(data);
+    vi.mocked(getTermOfferings).mockResolvedValue(offerings);
+    vi.mocked(getElectiveSlots).mockResolvedValue([
+      { id: "slot-elective", label: "Technical elective", used: false },
+    ]);
+    render(
+      <MemoryRouter>
+        <Encode />
+      </MemoryRouter>,
+    );
+    fireEvent.change(await screen.findByLabelText("Advisee"), {
+      target: { value: "student-one" },
+    });
+    fireEvent.change(screen.getByLabelText("Term"), {
+      target: { value: "term-one" },
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add course" }));
+    const requiredDialog = screen.getByRole("dialog");
+    fireEvent.change(within(requiredDialog).getByLabelText("Search courses"), {
+      target: { value: "CSCI 153" },
+    });
+    fireEvent.click(
+      within(requiredDialog).getByRole("radio", { name: /CSCI 153/ }),
+    );
+    fireEvent.click(
+      within(requiredDialog).getByRole("button", { name: "Add course" }),
+    );
+    expect(await screen.findByText("Web Systems")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add course" }));
+    const electiveDialog = screen.getByRole("dialog");
+    fireEvent.change(within(electiveDialog).getByLabelText("Search courses"), {
+      target: { value: "Advanced Web Applications" },
+    });
+    fireEvent.change(
+      within(electiveDialog).getByLabelText("Elective course for Elective 1"),
+      { target: { value: "offering-elective" } },
+    );
+    fireEvent.click(
+      within(electiveDialog).getByRole("button", { name: "Add course" }),
+    );
+    expect(await screen.findByText("Advanced Web Applications")).toBeTruthy();
+  });
+
   it("does not offer deletion for a saved course", async () => {
     vi.mocked(getEncodingChoices).mockResolvedValue(choices);
     vi.mocked(getGrades).mockResolvedValue(data);

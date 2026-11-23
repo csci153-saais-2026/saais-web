@@ -1,4 +1,4 @@
-﻿import { apiClient, unwrapApiResult } from "@/lib/api";
+import { apiClient, unwrapApiResult } from "@/lib/api";
 import type { ApiSchema } from "@/lib/api";
 import { getRoster } from "../advisees/advisees.api";
 import { getChecklist } from "../advisees/checklist/record.api";
@@ -12,15 +12,30 @@ export async function getEncodingChoices() {
   return { students, terms };
 }
 export async function getTermOfferings(studentId: string, termId: string) {
+  const pageSize = 100;
+  const maxOfferings = 1000;
+  const fetchOfferings = async () => {
+    const all = [];
+    for (let offset = 0; offset < maxOfferings; offset += pageSize) {
+      const page = await apiClient
+        .GET("/functions/v1/students/{student_id}/course-offerings", {
+          params: {
+            path: { student_id: studentId },
+            // F-01: do not issue the known-failing limit=1000 request. Paginate
+            // in bounded pages so all offerings remain available to code/title
+            // search and elective selection.
+            query: { school_term_id: termId, limit: pageSize, offset },
+          },
+        })
+        .then(unwrapApiResult);
+      all.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return all;
+  };
+
   const [offerings, courses] = await Promise.all([
-    apiClient
-      .GET("/functions/v1/students/{student_id}/course-offerings", {
-        params: {
-          path: { student_id: studentId },
-          query: { school_term_id: termId, limit: 1000 },
-        },
-      })
-      .then(unwrapApiResult),
+    fetchOfferings(),
     apiClient
       .GET("/rest/v1/course", {
         params: { query: { select: "id,is_elective", limit: 1000 } },
