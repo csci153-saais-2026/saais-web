@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 
 export const gradeInputSchema = z
   .string()
@@ -16,7 +17,7 @@ export const gradeReasonSchema = z
   .string()
   .trim()
   .min(1, "Enter a reason.")
-  .max(2000, "Use at most 2,000 characters.");
+  .max(REASON_MAX_LENGTH, REASON_MAX_MESSAGE);
 
 export const incCompletionSchema = z.object({
   completionGrade: gradeInputSchema,

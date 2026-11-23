@@ -17,6 +17,7 @@ import {
 import { isApiClientError, type ApiSchema } from "@/lib/api";
 import { GradeSelect } from "../GradeSelect";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import {
   gradeInputSchema,
   gradeReasonSchema,
@@ -170,7 +171,7 @@ function Resolve({
               <Textarea
                 placeholder="Required. This is written to the audit log."
                 className="resize-y"
-                maxLength={2000}
+                maxLength={REASON_MAX_LENGTH}
                 required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}

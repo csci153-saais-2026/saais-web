@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { reassignmentSchema } from "./reassignment.schema";
 
 describe("reassignment input validation", () => {
@@ -7,17 +8,17 @@ describe("reassignment input validation", () => {
     effective_since: "2026-04-01",
   };
 
-  it("accepts a 2,000-character reason and rejects a longer reason", () => {
+  it("accepts a reason at the character limit and rejects a longer reason", () => {
     expect(
       reassignmentSchema.safeParse({
         ...validInput,
-        reason: "a".repeat(2000),
+        reason: "a".repeat(REASON_MAX_LENGTH),
       }).success,
     ).toBe(true);
     expect(
       reassignmentSchema.safeParse({
         ...validInput,
-        reason: "a".repeat(2001),
+        reason: "a".repeat(REASON_MAX_LENGTH + 1),
       }).success,
     ).toBe(false);
   });

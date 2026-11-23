@@ -10,6 +10,7 @@ import { incCompletionSchema } from "./inc-completion.schema";
 import { emptyDraft, type ExistingDraft } from "./existing-draft";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import {
   Dialog,
   DialogTrigger,
@@ -164,7 +165,7 @@ function PendingInc({
                   rows={3}
                   className="min-h-21 resize-y"
                   placeholder="Required. This is written to the audit log."
-                  maxLength={2000}
+                  maxLength={REASON_MAX_LENGTH}
                   aria-invalid={!!fieldErrors.reason}
                   aria-describedby={
                     fieldErrors.reason ? "inc-reason-error" : undefined

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import type { ApiSchema } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { gradeFlagSchema, type GradeFlagValues } from "./grade-flag-schema";
@@ -189,6 +190,7 @@ export function FlagGradeDialog({
             >
               <Textarea
                 id="flag-grade-details"
+                maxLength={REASON_MAX_LENGTH}
                 value={details}
                 onChange={(e) => {
                   setDetails(e.target.value);
