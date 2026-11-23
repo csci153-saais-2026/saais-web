@@ -134,7 +134,24 @@ describe('Adviser assignment preparation reads', () => {
     ).rejects.toThrow('Adviser assignment history is incomplete')
   })
 
-  it('rejects malformed assignment dates before exposing history to selection', async () => {
+  it("accepts PostgreSQL timestamptz offsets from live PostgREST responses", async () => {
+    server.use(
+      http.get("*/rest/v1/adviser_assignment", () =>
+        HttpResponse.json([
+          {
+            ...reassignedRecord(studentIds[0], 0),
+            created_at: "2026-11-10T09:00:00+00:00",
+          },
+        ]),
+      ),
+    );
+
+    await expect(
+      listStudentAdviserAssignments([studentIds[0]]),
+    ).resolves.toHaveLength(1);
+  });
+  
+  it("rejects malformed assignment dates before exposing history to selection", async () => {
     server.use(
       http.get('*/rest/v1/adviser_assignment', () =>
         HttpResponse.json([

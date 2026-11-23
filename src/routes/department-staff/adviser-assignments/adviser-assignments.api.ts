@@ -40,42 +40,46 @@ export async function listDepartmentAssignmentAdvisers(departmentId: string, sig
   return advisers.sort((a,b) => a.label.localeCompare(b.label))
 }
 
-const ASSIGNMENT_HISTORY_LIMIT = 1000
-const adviserAssignmentHistorySchema = z.object({
-  id: z.uuid(),
-  adviser_id: z.uuid(),
-  adviser_name: z.string().nullable().optional(),
-  adviser_email: z.string().nullable().optional(),
-  adviser_faculty_name: z.string().nullable().optional(),
-  adviser_consultation_hours: z.string().nullable().optional(),
-  student_id: z.uuid(),
-  start_date: z.iso.date(),
-  end_date: z.iso.date().nullable(),
-  handed_over_to_adviser_id: z.uuid().nullable().optional(),
-  handed_over_to_name: z.string().nullable().optional(),
-  handover_label: z.string().nullable().optional(),
-  created_at: z.iso.datetime(),
-}).strict()
-const reassignmentResponseSchema = z.object({
-  reassigned_count: z.number().int().min(0),
-  assignments: z.array(
-    z.object({
-      id: z.uuid(),
-      adviser_id: z.uuid(),
-      adviser_name: z.string().nullable().optional(),
-      adviser_email: z.string().nullable().optional(),
-      adviser_faculty_name: z.string().nullable().optional(),
-      adviser_consultation_hours: z.string().nullable().optional(),
-      student_id: z.uuid(),
-      start_date: z.iso.date(),
-      end_date: z.iso.date().nullable().optional(),
-      handed_over_to_adviser_id: z.uuid().nullable().optional(),
-      handed_over_to_name: z.string().nullable().optional(),
-      handover_label: z.string().nullable().optional(),
-      created_at: z.iso.datetime(),
-    }),
-  ),
-}).strict()
+const ASSIGNMENT_HISTORY_LIMIT = 1000;
+const adviserAssignmentHistorySchema = z
+  .object({
+    id: z.uuid(),
+    adviser_id: z.uuid(),
+    adviser_name: z.string().nullable().optional(),
+    adviser_email: z.string().nullable().optional(),
+    adviser_faculty_name: z.string().nullable().optional(),
+    adviser_consultation_hours: z.string().nullable().optional(),
+    student_id: z.uuid(),
+    start_date: z.iso.date(),
+    end_date: z.iso.date().nullable(),
+    handed_over_to_adviser_id: z.uuid().nullable().optional(),
+    handed_over_to_name: z.string().nullable().optional(),
+    handover_label: z.string().nullable().optional(),
+    created_at: z.iso.datetime({ offset: true }),
+  })
+  .strict();
+const reassignmentResponseSchema = z
+  .object({
+    reassigned_count: z.number().int().min(0),
+    assignments: z.array(
+      z.object({
+        id: z.uuid(),
+        adviser_id: z.uuid(),
+        adviser_name: z.string().nullable().optional(),
+        adviser_email: z.string().nullable().optional(),
+        adviser_faculty_name: z.string().nullable().optional(),
+        adviser_consultation_hours: z.string().nullable().optional(),
+        student_id: z.uuid(),
+        start_date: z.iso.date(),
+        end_date: z.iso.date().nullable().optional(),
+        handed_over_to_adviser_id: z.uuid().nullable().optional(),
+        handed_over_to_name: z.string().nullable().optional(),
+        handover_label: z.string().nullable().optional(),
+        created_at: z.iso.datetime({ offset: true }),
+      }),
+    ),
+  })
+  .strict();
 
 function completeRead(
   result: { data?: unknown; error?: unknown; response: Response },
