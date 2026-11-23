@@ -183,7 +183,7 @@ function PlanEditor({
               <span className="text-sm">{selected.length} selected</span>
               <Button
                 className="ml-auto"
-                disabled={busy || !data.assignmentId}
+                disabled={busy || !data.assignmentId || selected.length === 0}
                 onClick={() => void save()}
               >
                 {busy ? "Saving…" : "Add selected to plan"}

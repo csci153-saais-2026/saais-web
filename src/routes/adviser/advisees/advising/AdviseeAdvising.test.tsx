@@ -74,6 +74,29 @@ afterEach(() => {
   auth.isMockMode = false;
 });
 describe("term advising identity", () => {
+  it("disables Add selected to plan until a course is selected", async () => {
+    vi.mocked(getAdvisingTerms).mockResolvedValue([
+      { id: "term-two", school_year: "2026", term_type: "1st Semester" },
+    ] as ApiSchema<"SchoolTerm">[]);
+    vi.mocked(getAdvisingData).mockResolvedValue({
+      ...data,
+      items: [],
+    });
+    render(page());
+    fireEvent.change(await screen.findByLabelText("School term"), {
+      target: { value: "term-two" },
+    });
+    const addButton = (await screen.findByRole("button", {
+      name: "Add selected to plan",
+    })) as HTMLButtonElement;
+    expect(addButton.disabled).toBe(true);
+
+    fireEvent.click(await screen.findByRole("checkbox", { name: /CS 2/ }));
+    expect(addButton.disabled).toBe(false);
+
+    fireEvent.click(await screen.findByRole("checkbox", { name: /CS 2/ }));
+    expect(addButton.disabled).toBe(true);
+  });
   it("saves the selected recommendation for the selected student and term", async () => {
     vi.mocked(getAdvisingTerms).mockResolvedValue([
       { id: "term-two", school_year: "2026", term_type: "1st Semester" },
