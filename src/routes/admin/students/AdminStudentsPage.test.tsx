@@ -296,7 +296,7 @@ describe("AdminStudentsPage", () => {
     getMock.mockImplementation(() => new Promise(() => {}));
     render(<AdminStudentsPage />);
 
-    expect(screen.getByRole("status").textContent).toContain(
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
       "Loading student roster",
     );
   });

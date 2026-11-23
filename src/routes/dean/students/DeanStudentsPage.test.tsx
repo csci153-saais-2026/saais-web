@@ -103,7 +103,9 @@ describe("DeanStudentsPage", () => {
     loginAsMockPersona("dean");
     renderStudentsPage();
 
-    expect(screen.getByRole("status").textContent).toMatch(/Loading students/i);
+    expect(document.querySelector("[skullet-status]")?.textContent).toMatch(
+      /Loading students/i,
+    );
     expect(await screen.findByText("Faculty of Computing")).toBeTruthy();
     expect(screen.queryByText(/opening a record is logged/i)).toBeNull();
     expect(screen.queryByText(/read-only/i)).toBeNull();

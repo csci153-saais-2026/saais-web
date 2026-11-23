@@ -6,7 +6,10 @@ import { AuthenticatedPortalLayout } from "@/components/features/AuthenticatedPo
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { DepartmentHeadLayout } from "@/routes/department-head/DepartmentHeadLayout";
 import { NotFoundPage } from "@/routes/NotFoundPage";
+import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/context/QueryProvider";
+import { SkulletProvider } from "skullet/react";
+import { PageSkeleton } from "@/components/features/loading-skeletons";
 
 const LandingPage = lazy(() => import("@/routes/landing/LandingPage"));
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"));
@@ -69,135 +72,146 @@ const NotificationsPage = lazy(
 
 function App() {
   return (
-    <QueryProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Suspense
-            fallback={<div className="p-8 text-muted-foreground">Loading…</div>}
-          >
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/auth/callback" element={<OAuthCallback />} />
-              <Route path="/invite" element={<InvitePage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/styleguide" element={<StyleguidePage />} />
-              <Route path="/docs" element={<DocsHubPage />} />
-              <Route path="/docs/openapi" element={<OpenApiDocsPage />} />
+    <SkulletProvider mode="system" theme={{ animation: "shimmer" }}>
+      <QueryProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Suspense fallback={<PageSkeleton label="Loading…" />}>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/auth/callback" element={<OAuthCallback />} />
+                <Route path="/invite" element={<InvitePage />} />
+                <Route
+                  path="/forgot-password"
+                  element={<ForgotPasswordPage />}
+                />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/styleguide" element={<StyleguidePage />} />
+                <Route path="/docs" element={<DocsHubPage />} />
+                <Route path="/docs/openapi" element={<OpenApiDocsPage />} />
 
-              {/* Authenticated shell wrapping all protected portals and settings */}
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AuthenticatedPortalLayout />}>
-                  <Route
-                    path="/notifications"
-                    element={<NotificationsPage />}
-                  />
-                  <Route path="/settings" element={<ChangePasswordPage />} />
-                  <Route
-                    path="/change-password"
-                    element={<Navigate to="/settings" replace />}
-                  />
-
-                  <Route
-                    element={<ProtectedRoute allowedRoles={["student"]} />}
-                  >
-                    <Route path="/student/*" element={<StudentPortal />} />
-                  </Route>
-
-                  <Route
-                    element={<ProtectedRoute allowedRoles={["adviser"]} />}
-                  >
-                    <Route path="/adviser/*" element={<AdviserPortal />} />
-                  </Route>
-
-                  <Route
-                    element={
-                      <ProtectedRoute allowedRoles={["department_staff"]} />
-                    }
-                  >
+                {/* Authenticated shell wrapping all protected portals and settings */}
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AuthenticatedPortalLayout />}>
                     <Route
-                      path="/department-staff/*"
-                      element={<DepartmentStaffPortal />}
+                      path="/notifications"
+                      element={<NotificationsPage />}
                     />
+                    <Route path="/settings" element={<ChangePasswordPage />} />
                     <Route
-                      path="/staff/*"
-                      element={<Navigate to="/department-staff" replace />}
+                      path="/change-password"
+                      element={<Navigate to="/settings" replace />}
                     />
-                  </Route>
 
-                  <Route element={<ProtectedRoute allowedRoles={["dean"]} />}>
-                    <Route path="/dean/*" element={<DeanPortal />} />
-                  </Route>
-
-                  <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-                    <Route path="/admin/*" element={<AdminRoutes />} />
-                  </Route>
-                  <Route
-                    element={
-                      <ProtectedRoute allowedRoles={["department_head"]} />
-                    }
-                  >
                     <Route
-                      path="/department-head"
-                      element={<DepartmentHeadLayout />}
+                      element={<ProtectedRoute allowedRoles={["student"]} />}
+                    >
+                      <Route path="/student/*" element={<StudentPortal />} />
+                    </Route>
+
+                    <Route
+                      element={<ProtectedRoute allowedRoles={["adviser"]} />}
+                    >
+                      <Route path="/adviser/*" element={<AdviserPortal />} />
+                    </Route>
+
+                    <Route
+                      element={
+                        <ProtectedRoute allowedRoles={["department_staff"]} />
+                      }
                     >
                       <Route
-                        index
-                        element={<Navigate to="curriculum-transfers" replace />}
+                        path="/department-staff/*"
+                        element={<DepartmentStaffPortal />}
                       />
                       <Route
-                        path="transfers"
-                        element={
-                          <Navigate to="../curriculum-transfers" replace />
-                        }
+                        path="/staff/*"
+                        element={<Navigate to="/department-staff" replace />}
                       />
-                      <Route
-                        path="curriculum-transfers"
-                        element={<CurriculumTransfersPage />}
-                      />
-                      <Route path="curricula" element={<CurriculaPage />} />
-                      <Route path="equivalence" element={<EquivalencePage />} />
-                      <Route
-                        path="outside-credits"
-                        element={<OutsideCreditsPage />}
-                      />
-                      <Route
-                        path="academic-terms"
-                        element={<AcademicTermsPage />}
-                      />
-                      <Route
-                        path="notifications"
-                        element={<NotificationsPage />}
-                      />
-                      <Route path="students" element={<StudentsPage />} />
-                      <Route
-                        path="adviser-assignments"
-                        element={<AdviserAssignmentsPage />}
-                      />
-                      <Route
-                        path="reports"
-                        element={<DepartmentReportsPage />}
-                      />
-                      <Route path="audit-log" element={<AuditLogPage />} />
-                      <Route path="settings" element={<SettingsPage />} />
-                      <Route path="*" element={<NotFoundPage />} />
+                    </Route>
+
+                    <Route element={<ProtectedRoute allowedRoles={["dean"]} />}>
+                      <Route path="/dean/*" element={<DeanPortal />} />
+                    </Route>
+
+                    <Route
+                      element={<ProtectedRoute allowedRoles={["admin"]} />}
+                    >
+                      <Route path="/admin/*" element={<AdminRoutes />} />
                     </Route>
                     <Route
-                      path="/dept-head/*"
-                      element={<Navigate to="/department-head" replace />}
-                    />
+                      element={
+                        <ProtectedRoute allowedRoles={["department_head"]} />
+                      }
+                    >
+                      <Route
+                        path="/department-head"
+                        element={<DepartmentHeadLayout />}
+                      >
+                        <Route
+                          index
+                          element={
+                            <Navigate to="curriculum-transfers" replace />
+                          }
+                        />
+                        <Route
+                          path="transfers"
+                          element={
+                            <Navigate to="../curriculum-transfers" replace />
+                          }
+                        />
+                        <Route
+                          path="curriculum-transfers"
+                          element={<CurriculumTransfersPage />}
+                        />
+                        <Route path="curricula" element={<CurriculaPage />} />
+                        <Route
+                          path="equivalence"
+                          element={<EquivalencePage />}
+                        />
+                        <Route
+                          path="outside-credits"
+                          element={<OutsideCreditsPage />}
+                        />
+                        <Route
+                          path="academic-terms"
+                          element={<AcademicTermsPage />}
+                        />
+                        <Route
+                          path="notifications"
+                          element={<NotificationsPage />}
+                        />
+                        <Route path="students" element={<StudentsPage />} />
+                        <Route
+                          path="adviser-assignments"
+                          element={<AdviserAssignmentsPage />}
+                        />
+                        <Route
+                          path="reports"
+                          element={<DepartmentReportsPage />}
+                        />
+                        <Route path="audit-log" element={<AuditLogPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                      </Route>
+                      <Route
+                        path="/dept-head/*"
+                        element={<Navigate to="/department-head" replace />}
+                      />
+                    </Route>
                   </Route>
                 </Route>
-              </Route>
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-          <DevRoleSwitcher />
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryProvider>
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
+            <DevRoleSwitcher />
+            <Toaster />
+          </BrowserRouter>
+        </AuthProvider>
+      </QueryProvider>
+    </SkulletProvider>
   );
 }
 

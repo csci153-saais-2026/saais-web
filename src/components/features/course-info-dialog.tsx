@@ -363,10 +363,14 @@ export function CourseInfoDialog({
                           </TableCell>
                           <TableCell
                             label="Instructor"
-                            title={attempt.instructor?.trim() || undefined}
-                            className="max-w-48 truncate px-3 py-row text-cell text-foreground"
+                            className="px-3 py-row text-cell text-foreground"
                           >
-                            {attempt.instructor?.trim() || "—"}
+                            <span
+                              className="block max-w-48 truncate"
+                              title={attempt.instructor?.trim() || undefined}
+                            >
+                              {attempt.instructor?.trim() || "—"}
+                            </span>
                           </TableCell>
                           <TableCell
                             label="Result"

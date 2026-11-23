@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import * as React from "react";
 import { Panel } from "@/components/features/panel";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,6 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = React.useState<string | null>(
-    null,
-  );
   const [visiblePasswords, setVisiblePasswords] = React.useState({
     currentPassword: false,
     newPassword: false,
@@ -68,7 +66,6 @@ export default function ChangePasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccessMessage(null);
 
     const validation = validatePasswordPolicy(newPassword, currentPassword);
     if (!validation.valid) {
@@ -89,7 +86,7 @@ export default function ChangePasswordPage() {
         newPassword,
       );
 
-      setSuccessMessage(
+      notify.success(
         result.simulated
           ? "Password change simulated in mock mode. In production, your password is updated and other active sessions are signed out."
           : "Your password has been changed successfully. Other active sessions have been signed out.",
@@ -137,16 +134,6 @@ export default function ChangePasswordPage() {
               </Alert>
             ) : (
               <>
-                {successMessage && (
-                  <Alert
-                    role="status"
-                    className="mb-4 border-primary/20 bg-primary/10 text-primary"
-                  >
-                    <CheckIcon className="w-4 h-4 text-primary" />
-                    <AlertDescription>{successMessage}</AlertDescription>
-                  </Alert>
-                )}
-
                 {error && (
                   <Alert role="alert" variant="destructive" className="mb-4">
                     <AlertIcon />

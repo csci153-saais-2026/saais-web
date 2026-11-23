@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +48,11 @@ export function CourseCatalogActions({
     requestStarted.current = true;
     try {
       await mutation.mutateAsync({ course, action });
+      notify.success(
+        action === "delete"
+          ? `${course.code} deleted.`
+          : `${course.code} discontinued.`,
+      );
       setAction(null);
     } catch {
       // Keep the confirmation open so the user can read the error and decide what to do.

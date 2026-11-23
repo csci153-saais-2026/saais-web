@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useRef, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -104,11 +105,13 @@ export function CourseDialog({
           course,
           values: editableCourseSchema.parse(values),
         });
+        notify.success("Course updated.");
         onUpdated?.(updated);
       } else {
         const created = await createMutation.mutateAsync(
           courseSchema.parse(values),
         );
+        notify.success("Course created.");
         onCreated(created);
       }
       setOpen(false);

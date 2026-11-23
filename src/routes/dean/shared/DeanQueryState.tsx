@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { Panel } from "@/components/features/panel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,7 @@ export function DeanQueryState({
         title={`Loading ${label}…`}
         description="Fetching records from the server."
       >
-        <p role="status" className="py-4 text-sm text-muted-foreground">
-          Loading {label}…
-        </p>
+        <TableSkeleton rows={4} columns={4} label={`Loading ${label}…`} />
       </Panel>
     );
   }

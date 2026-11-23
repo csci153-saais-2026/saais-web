@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -481,14 +482,7 @@ export default function AdminStudentsPage() {
         </div>
       )}
 
-      {loading ? (
-        <div
-          role="status"
-          className="rounded-md border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
-        >
-          Loading student roster…
-        </div>
-      ) : error ? (
+      {!loading && error ? (
         <div
           role="alert"
           className="rounded-md border border-destructive/30 bg-card px-5 py-6"
@@ -503,167 +497,180 @@ export default function AdminStudentsPage() {
             Try again
           </Button>
         </div>
-      ) : roster ? (
-        <Panel
-          title="All students"
-          action={
-            <span className="text-sm text-muted-foreground" aria-live="polite">
-              {roster.items.length} of {totalCount} shown
-            </span>
-          }
-          flush
+      ) : (
+        <AccountSkeleton
+          id="admin-students"
+          loading={loading}
+          label="Loading student roster…"
         >
-          <Table responsive className="table-fixed">
-            <colgroup>
-              <col className="w-[27%]" />
-              <col className="w-[14%]" />
-              <col className="w-[22%]" />
-              <col className="w-[8%]" />
-              <col className="w-[8%]" />
-              <col className="w-[11%]" />
-              <col className="w-[10%]" />
-            </colgroup>
-            <TableHeader className="bg-secondary">
-              <TableRow>
-                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading("Student", "full_name")}
-                </TableHead>
-                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading("Student no.", "student_number")}
-                </TableHead>
-                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  Curriculum
-                </TableHead>
-                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading("Year", "year_level")}
-                </TableHead>
-                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  {sortHeading("GWA", "gwa")}
-                </TableHead>
-                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  Open flags
-                </TableHead>
-                <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
-                  Deficiencies
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roster.items.map((student) => (
-                <TableRow key={student.student_id}>
-                  <TableCell
-                    label="Student"
-                    className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
+          {roster ? (
+            <Panel
+              title="All students"
+              action={
+                <span
+                  className="text-sm text-muted-foreground"
+                  aria-live="polite"
+                >
+                  {roster.items.length} of {totalCount} shown
+                </span>
+              }
+              flush
+            >
+              <Table responsive className="table-fixed">
+                <colgroup>
+                  <col className="w-[27%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[22%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[10%]" />
+                </colgroup>
+                <TableHeader className="bg-secondary">
+                  <TableRow>
+                    <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                      {sortHeading("Student", "full_name")}
+                    </TableHead>
+                    <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                      {sortHeading("Student no.", "student_number")}
+                    </TableHead>
+                    <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                      Curriculum
+                    </TableHead>
+                    <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                      {sortHeading("Year", "year_level")}
+                    </TableHead>
+                    <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                      {sortHeading("GWA", "gwa")}
+                    </TableHead>
+                    <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                      Open flags
+                    </TableHead>
+                    <TableHead className="h-auto whitespace-normal px-3.5 py-2.5 text-right text-[11.5px] leading-tight font-semibold tracking-[0.09em] text-muted-2 uppercase">
+                      Deficiencies
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {roster.items.map((student) => (
+                    <TableRow key={student.student_id}>
+                      <TableCell
+                        label="Student"
+                        className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
+                      >
+                        <div className="break-words font-semibold leading-tight">
+                          {student.full_name}
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        label="Student no."
+                        className="whitespace-normal break-words px-3.5 py-[11px] text-[13.5px] font-mono"
+                      >
+                        {student.student_number}
+                      </TableCell>
+                      <TableCell
+                        label="Curriculum"
+                        className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
+                      >
+                        <div className="break-words leading-tight">
+                          {student.curriculum_label}
+                        </div>
+                        <div className="break-words text-xs leading-tight text-muted-foreground">
+                          {student.program_code} ·{" "}
+                          {student.entry_year ?? "Entry year unavailable"}
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        label="Year"
+                        className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
+                      >
+                        {student.year_level}
+                      </TableCell>
+                      <TableCell
+                        label="GWA"
+                        className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px] font-mono"
+                      >
+                        {formatGwa(student.gwa)}
+                      </TableCell>
+                      <TableCell
+                        label="Open flags"
+                        className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]"
+                      >
+                        {student.open_flags_count > 0 ? (
+                          <StatusBadge status="flagged">
+                            {student.open_flags_count} open
+                          </StatusBadge>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        label="Deficiencies"
+                        className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]"
+                      >
+                        {student.deficiencies_count > 0 ? (
+                          <Badge variant="secondary">
+                            {student.deficiencies_count}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                        {student.open_inc_count > 0 && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            ({student.open_inc_count} INC)
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {roster.items.length === 0 && (
+                <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+                  {hasActiveFilters
+                    ? search.trim()
+                      ? "No students match that search."
+                      : "No students match the selected filters."
+                    : "No students are available in the roster."}
+                </p>
+              )}
+              <div className="flex flex-col gap-3 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  {totalCount === 0
+                    ? "0 students"
+                    : `Showing ${page * PAGE_SIZE + 1}–${Math.min(
+                        page * PAGE_SIZE + roster.items.length,
+                        totalCount,
+                      )} of ${totalCount} students`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 0}
+                    onClick={() =>
+                      setPage((current) => Math.max(0, current - 1))
+                    }
                   >
-                    <div className="break-words font-semibold leading-tight">
-                      {student.full_name}
-                    </div>
-                  </TableCell>
-                  <TableCell
-                    label="Student no."
-                    className="whitespace-normal break-words px-3.5 py-[11px] text-[13.5px] font-mono"
+                    Previous
+                  </Button>
+                  <span aria-live="polite">
+                    Page {pageCount === 0 ? 0 : page + 1} of {pageCount}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page + 1 >= pageCount}
+                    onClick={() => setPage((current) => current + 1)}
                   >
-                    {student.student_number}
-                  </TableCell>
-                  <TableCell
-                    label="Curriculum"
-                    className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
-                  >
-                    <div className="break-words leading-tight">
-                      {student.curriculum_label}
-                    </div>
-                    <div className="break-words text-xs leading-tight text-muted-foreground">
-                      {student.program_code} ·{" "}
-                      {student.entry_year ?? "Entry year unavailable"}
-                    </div>
-                  </TableCell>
-                  <TableCell
-                    label="Year"
-                    className="whitespace-normal px-3.5 py-[11px] text-[13.5px]"
-                  >
-                    {student.year_level}
-                  </TableCell>
-                  <TableCell
-                    label="GWA"
-                    className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px] font-mono"
-                  >
-                    {formatGwa(student.gwa)}
-                  </TableCell>
-                  <TableCell
-                    label="Open flags"
-                    className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]"
-                  >
-                    {student.open_flags_count > 0 ? (
-                      <StatusBadge status="flagged">
-                        {student.open_flags_count} open
-                      </StatusBadge>
-                    ) : (
-                      <span className="text-muted-foreground">0</span>
-                    )}
-                  </TableCell>
-                  <TableCell
-                    label="Deficiencies"
-                    className="whitespace-normal px-3.5 py-[11px] text-right text-[13.5px]"
-                  >
-                    {student.deficiencies_count > 0 ? (
-                      <Badge variant="secondary">
-                        {student.deficiencies_count}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">0</span>
-                    )}
-                    {student.open_inc_count > 0 && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({student.open_inc_count} INC)
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {roster.items.length === 0 && (
-            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-              {hasActiveFilters
-                ? search.trim()
-                  ? "No students match that search."
-                  : "No students match the selected filters."
-                : "No students are available in the roster."}
-            </p>
-          )}
-          <div className="flex flex-col gap-3 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>
-              {totalCount === 0
-                ? "0 students"
-                : `Showing ${page * PAGE_SIZE + 1}–${Math.min(
-                    page * PAGE_SIZE + roster.items.length,
-                    totalCount,
-                  )} of ${totalCount} students`}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((current) => Math.max(0, current - 1))}
-              >
-                Previous
-              </Button>
-              <span aria-live="polite">
-                Page {pageCount === 0 ? 0 : page + 1} of {pageCount}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page + 1 >= pageCount}
-                onClick={() => setPage((current) => current + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </Panel>
-      ) : null}
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </Panel>
+          ) : null}
+        </AccountSkeleton>
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { UploadIcon } from "@/components/icons";
@@ -199,6 +200,11 @@ export function StudentImportDialog({
       });
       if (generation === importGeneration.current) {
         setImportResult(result);
+        if (result.imported_count > 0) {
+          notify.success(
+            `Imported ${result.imported_count} student${result.imported_count === 1 ? "" : "s"}.`,
+          );
+        }
         if (result.imported_count > 0 && scope) {
           void queryClient.invalidateQueries({
             queryKey: staffQueryKeys.resource(

@@ -1,12 +1,6 @@
-import { createContext, useContext } from "react";
+import { notify } from "@/lib/notify";
 
-export const ToastContext = createContext<((message: string) => void) | null>(
-  null,
-);
-
-/** Shows a short confirmation toast. Must be used inside `DepartmentToastProvider`. */
+/** Shows a short confirmation toast. Kept as a hook so existing call sites are unchanged. */
 export function useNotify() {
-  const notify = useContext(ToastContext);
-  if (!notify) throw new Error("useNotify needs DepartmentToastProvider.");
   return notify;
 }

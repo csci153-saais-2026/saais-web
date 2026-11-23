@@ -103,7 +103,7 @@ describe("DeanAuditLogPage", () => {
     loginAsMockPersona("dean");
     renderAuditLogPage();
 
-    expect(screen.getByRole("status").textContent).toMatch(
+    expect(document.querySelector("[skullet-status]")?.textContent).toMatch(
       /Loading the audit log/i,
     );
     expect(await screen.findByText("Faculty of Computing")).toBeTruthy();

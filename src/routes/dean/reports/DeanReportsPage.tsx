@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { CohortStudentsDialog } from "@/routes/dean/reports/CohortStudentsDialog";
 import { DeanPdfViewerDialog } from "@/routes/dean/reports/DeanPdfViewerDialog";
@@ -69,7 +70,7 @@ export default function DeanReportsPage() {
         disabled={!report}
       />
 
-      {!report ? (
+      {!report && !isLoading ? (
         <DeanQueryState
           isLoading={isLoading}
           isError={isError}
@@ -80,14 +81,22 @@ export default function DeanReportsPage() {
           onRetry={refetch}
         />
       ) : (
-        <>
-          <FacultyReportStatsAndDistribution report={report} />
+        <AccountSkeleton
+          id="dean-reports"
+          data={report}
+          label="Loading faculty reports…"
+        >
+          {(report) => (
+            <>
+              <FacultyReportStatsAndDistribution report={report} />
 
-          <FacultyBatchGwaTable
-            rows={report.batchRows}
-            onSelectBatch={handleSelectBatch}
-          />
-        </>
+              <FacultyBatchGwaTable
+                rows={report.batchRows}
+                onSelectBatch={handleSelectBatch}
+              />
+            </>
+          )}
+        </AccountSkeleton>
       )}
 
       <CohortStudentsDialog

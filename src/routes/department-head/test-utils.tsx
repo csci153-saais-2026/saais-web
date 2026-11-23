@@ -9,7 +9,6 @@ import {
   resetMockDatabase,
 } from "@/mocks";
 import { saaisMockServer } from "@/mocks/node";
-import { DepartmentToastProvider } from "./shared/DepartmentToastProvider";
 
 /** Runs the department-head screens against the shared MSW mock API as the department head persona. */
 export function setupDepartmentHeadMockApi() {
@@ -39,9 +38,7 @@ export function renderDepartmentHead(
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[route]}>
-        <DepartmentToastProvider>{ui}</DepartmentToastProvider>
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }

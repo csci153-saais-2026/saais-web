@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import * as React from "react";
 import {
   AssignmentHistoryDialog,
@@ -178,8 +179,13 @@ export function StudentProfileView({
                           label="Adviser"
                           className="px-3.5 py-row text-cell font-medium text-foreground"
                         >
-                          {assignment.adviser_name?.trim() ||
-                            assignment.adviser_id}
+                          <span
+                            className="block max-w-56 truncate"
+                            title={assignment.adviser_name?.trim() || undefined}
+                          >
+                            {assignment.adviser_name?.trim() ||
+                              assignment.adviser_id}
+                          </span>
                         </TableCell>
                         <TableCell
                           label="Start"
@@ -304,11 +310,7 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
     }
   }
 
-  if (isPending) {
-    return <p role="status">Loading...</p>;
-  }
-
-  if (isError || !data) {
+  if (!isPending && (isError || !data)) {
     return (
       <Panel
         title="Unable to load profile"
@@ -322,19 +324,27 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
   }
 
   return (
-    <StudentProfileView
-      profile={data.profile}
-      programName={data.programName}
-      departmentName={data.departmentName}
-      collegeName={data.collegeName}
-      adviserAssignments={data.adviserAssignments}
-      curriculumAssignments={data.curriculumAssignments}
-      curriculumTransfers={data.curriculumTransfers}
-      curriculumLabels={data.curriculumLabels}
-      onUploadPhoto={handleUploadPhoto}
-      onRemovePhoto={handleRemovePhoto}
-      isPhotoBusy={isPhotoBusy}
-    />
+    <AccountSkeleton
+      id="student-profile"
+      data={isPending ? null : data}
+      label="Loading..."
+    >
+      {(data) => (
+        <StudentProfileView
+          profile={data.profile}
+          programName={data.programName}
+          departmentName={data.departmentName}
+          collegeName={data.collegeName}
+          adviserAssignments={data.adviserAssignments}
+          curriculumAssignments={data.curriculumAssignments}
+          curriculumTransfers={data.curriculumTransfers}
+          curriculumLabels={data.curriculumLabels}
+          onUploadPhoto={handleUploadPhoto}
+          onRemovePhoto={handleRemovePhoto}
+          isPhotoBusy={isPhotoBusy}
+        />
+      )}
+    </AccountSkeleton>
   );
 }
 

@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { useRef, useState } from "react";
 import { PlusIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -175,9 +176,11 @@ export default function InviteAccountDialog() {
           noValidate
         >
           {references.isPending && values.role === "student" && (
-            <p role="status" className="text-sm text-muted-foreground">
-              Loading active programs, curricula, and eligible advisers...
-            </p>
+            <TableSkeleton
+              rows={4}
+              columns={4}
+              label="Loading active programs, curricula, and eligible advisers..."
+            />
           )}
           {references.isError && values.role === "student" && (
             <div className="space-y-2">

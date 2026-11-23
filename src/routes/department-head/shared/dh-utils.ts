@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
 const MONTHS_SHORT = [
   "Jan",
   "Feb",
@@ -14,43 +12,6 @@ const MONTHS_SHORT = [
   "Nov",
   "Dec",
 ] as const;
-
-/**
- * Hook returning ephemeral toast state and a trigger helper matching the
- * mockup's non-blocking confirmation toast (`department-head.js`).
- */
-export function useDepartmentToast(durationMs = 3200) {
-  const [message, setMessage] = useState<string | null>(null);
-  const timerRef = useRef<number | null>(null);
-
-  const clearTimer = useCallback(() => {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  const showToast = useCallback(
-    (nextMessage: string) => {
-      clearTimer();
-      setMessage(nextMessage);
-      timerRef.current = window.setTimeout(() => {
-        setMessage(null);
-        timerRef.current = null;
-      }, durationMs);
-    },
-    [clearTimer, durationMs],
-  );
-
-  const dismissToast = useCallback(() => {
-    clearTimer();
-    setMessage(null);
-  }, [clearTimer]);
-
-  useEffect(() => clearTimer, [clearTimer]);
-
-  return { message, showToast, dismissToast };
-}
 
 /**
  * Format an ISO `YYYY-MM-DD` date string without local-timezone drift.

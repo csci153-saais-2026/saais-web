@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import * as React from "react";
 import { PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
@@ -510,7 +511,7 @@ export default function CurriculaPage() {
     }
   })();
 
-  if (!query.data) {
+  if (query.isError && !query.data) {
     return (
       <div className="space-y-6">
         <PageHeading
@@ -523,594 +524,621 @@ export default function CurriculaPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeading
-        title="Shape the path to graduation."
-        subtitle="Versioned requirements keep past and present curricula distinct."
-        actions={
-          <Button onClick={openAddVersion}>
-            <PlusIcon /> Add version
-          </Button>
-        }
-      />
-
-      {/* Version selector and curriculum builder toolbar */}
-      <div className="flex flex-wrap items-end gap-3">
-        <FormField
-          label="Curriculum version"
-          htmlFor="cu-version"
-          className="w-full sm:w-[280px] sm:min-w-[220px]"
-        >
-          <Select
-            value={currentVersion?.id ?? ""}
-            onValueChange={setSelectedVersionId}
-            disabled={!currentVersion}
-          >
-            <SelectTrigger id="cu-version" className="w-full bg-card">
-              <SelectValue placeholder="No versions" />
-            </SelectTrigger>
-            <SelectContent
-              position="popper"
-              side="bottom"
-              avoidCollisions={false}
-            >
-              {versions.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {versionLabel(v)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormField>
-
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!currentVersion}
-          onClick={openEditVersion}
-        >
-          Edit version
-        </Button>
-        <Button
-          type="button"
-          variant="destructive"
-          disabled={!currentVersion}
-          onClick={() =>
-            currentVersion &&
-            setDialog({ kind: "del-version", versionId: currentVersion.id })
-          }
-        >
-          Delete version
-        </Button>
-
-        <div className="hidden sm:block sm:flex-1" />
-
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!currentVersion}
-          onClick={openAddTerm}
-        >
-          Add term
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!currentVersion}
-          onClick={openNewCourse}
-        >
-          New course
-        </Button>
-      </div>
-
-      {!currentVersion ? (
-        <div className="rounded-md border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
-          No curriculum versions yet. Use Add version to create one.
-        </div>
-      ) : (
-        <>
-          <StatGrid
-            className="[&_.font-heading]:text-[30px]"
-            items={[
-              {
-                label: "Required units",
-                value: currentVersion.units,
-                note: "Full degree requirement",
-              },
-              {
-                label: "Enrolled students",
-                value: currentVersion.enrolled,
-                note: "Students on this curriculum",
-              },
-              {
-                label: "Effective from",
-                value: formatDisplayDate(currentVersion.from, {
-                  padDay: false,
-                }),
-                note: "Version effectivity",
-              },
-              {
-                label: "Status",
-                value: currentVersion.status,
-                note: "Curriculum lifecycle",
-              },
-            ]}
+    <AccountSkeleton
+      id="dh-curricula"
+      data={query.data}
+      label="Loading curricula…"
+    >
+      {() => (
+        <div className="space-y-6">
+          <PageHeading
+            title="Shape the path to graduation."
+            subtitle="Versioned requirements keep past and present curricula distinct."
+            actions={
+              <Button onClick={openAddVersion}>
+                <PlusIcon /> Add version
+              </Button>
+            }
           />
 
-          {currentVersion.terms.length === 0 ? (
+          {/* Version selector and curriculum builder toolbar */}
+          <div className="flex flex-wrap items-end gap-3">
+            <FormField
+              label="Curriculum version"
+              htmlFor="cu-version"
+              className="w-full sm:w-[280px] sm:min-w-[220px]"
+            >
+              <Select
+                value={currentVersion?.id ?? ""}
+                onValueChange={setSelectedVersionId}
+                disabled={!currentVersion}
+              >
+                <SelectTrigger id="cu-version" className="w-full bg-card">
+                  <SelectValue placeholder="No versions" />
+                </SelectTrigger>
+                <SelectContent
+                  position="popper"
+                  side="bottom"
+                  avoidCollisions={false}
+                >
+                  {versions.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {versionLabel(v)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!currentVersion}
+              onClick={openEditVersion}
+            >
+              Edit version
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!currentVersion}
+              onClick={() =>
+                currentVersion &&
+                setDialog({ kind: "del-version", versionId: currentVersion.id })
+              }
+            >
+              Delete version
+            </Button>
+
+            <div className="hidden sm:block sm:flex-1" />
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!currentVersion}
+              onClick={openAddTerm}
+            >
+              Add term
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!currentVersion}
+              onClick={openNewCourse}
+            >
+              New course
+            </Button>
+          </div>
+
+          {!currentVersion ? (
             <div className="rounded-md border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
-              This version has no terms yet. Use Add term to start.
+              No curriculum versions yet. Use Add version to create one.
             </div>
           ) : (
-            <div className="space-y-5">
-              {currentVersion.terms.map((term) => (
-                <Panel
-                  key={term.id}
-                  title={`Year ${term.year} · ${term.sem}`}
-                  description="Positional curriculum term; not a calendar school term."
-                  flush
-                  action={
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openAddSlot(term.id)}
-                      >
-                        Add course / slot
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditTerm(term)}
-                      >
-                        Edit term
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() =>
-                          setDialog({ kind: "del-term", termId: term.id })
-                        }
-                      >
-                        Delete term
-                      </Button>
-                    </div>
-                  }
-                >
-                  <Table responsive>
-                    <TableHeader className="bg-secondary">
-                      <TableRow>
-                        <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                          Course / slot
-                        </TableHead>
-                        <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                          Required units
-                        </TableHead>
-                        <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                          Type
-                        </TableHead>
-                        <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {term.rows.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={4}
-                            className="py-6 text-center text-muted-foreground"
+            <>
+              <StatGrid
+                className="[&_.font-heading]:text-[30px]"
+                items={[
+                  {
+                    label: "Required units",
+                    value: currentVersion.units,
+                    note: "Full degree requirement",
+                  },
+                  {
+                    label: "Enrolled students",
+                    value: currentVersion.enrolled,
+                    note: "Students on this curriculum",
+                  },
+                  {
+                    label: "Effective from",
+                    value: formatDisplayDate(currentVersion.from, {
+                      padDay: false,
+                    }),
+                    note: "Version effectivity",
+                  },
+                  {
+                    label: "Status",
+                    value: currentVersion.status,
+                    note: "Curriculum lifecycle",
+                  },
+                ]}
+              />
+
+              {currentVersion.terms.length === 0 ? (
+                <div className="rounded-md border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
+                  This version has no terms yet. Use Add term to start.
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {currentVersion.terms.map((term) => (
+                    <Panel
+                      key={term.id}
+                      title={`Year ${term.year} · ${term.sem}`}
+                      description="Positional curriculum term; not a calendar school term."
+                      flush
+                      action={
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAddSlot(term.id)}
                           >
-                            No courses in this term yet.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        term.rows.map((slot) => (
-                          <TableRow key={slot.id}>
-                            <TableCell
-                              label="Course / slot"
-                              className="font-medium text-foreground"
-                            >
-                              {slot.courseOrSlot}
-                            </TableCell>
-                            <TableCell
-                              label="Required units"
-                              className="font-mono text-sm"
-                            >
-                              {slot.requiredUnits}
-                            </TableCell>
-                            <TableCell
-                              label="Type"
-                              className="text-muted-foreground"
-                            >
-                              {slot.type}
-                            </TableCell>
-                            <TableCell label="Actions">
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openEditSlot(term.id, slot)}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() =>
-                                    setDialog({
-                                      kind: "del-slot",
-                                      termId: term.id,
-                                      slotId: slot.id,
-                                    })
-                                  }
-                                >
-                                  Delete
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </Panel>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Curriculum Builder Dialog */}
-      <Dialog open={!!dialog} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{dialogMeta.title}</DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleConfirm} className="space-y-4">
-            {(dialog?.kind === "add-version" ||
-              dialog?.kind === "edit-version") && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Program" htmlFor="cu-prog">
-                  <Select value={vProg} onValueChange={setVProg}>
-                    <SelectTrigger id="cu-prog" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
-                    >
-                      {programs.map((program) => (
-                        <SelectItem key={program.id} value={program.code}>
-                          {program.code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField label="Academic year" htmlFor="cu-year">
-                  <Input
-                    id="cu-year"
-                    value={vYear}
-                    placeholder="2023–2024"
-                    onChange={(e) => setVYear(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Required units" htmlFor="cu-units">
-                  <Input
-                    id="cu-units"
-                    value={vUnits}
-                    onChange={(e) => setVUnits(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Effective from" htmlFor="cu-from">
-                  <Input
-                    id="cu-from"
-                    type="date"
-                    value={vFrom}
-                    onChange={(e) => setVFrom(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Status" htmlFor="cu-status">
-                  <Select
-                    value={vStatus}
-                    onValueChange={(val) =>
-                      setVStatus(val as CurriculumVersionStatus)
-                    }
-                  >
-                    <SelectTrigger id="cu-status" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
-                    >
-                      <SelectItem value="active">active</SelectItem>
-                      <SelectItem value="draft">draft</SelectItem>
-                      <SelectItem value="retired">retired</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-                {dialog.kind === "add-version" && (
-                  <FormField
-                    label="Copy courses from (optional)"
-                    htmlFor="cu-clone"
-                  >
-                    <Select
-                      value={vCloneFrom || "blank"}
-                      onValueChange={(value) =>
-                        setVCloneFrom(value === "blank" ? "" : value)
+                            Add course / slot
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditTerm(term)}
+                          >
+                            Edit term
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() =>
+                              setDialog({ kind: "del-term", termId: term.id })
+                            }
+                          >
+                            Delete term
+                          </Button>
+                        </div>
                       }
                     >
-                      <SelectTrigger id="cu-clone" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="blank">
-                          Start with a blank version
-                        </SelectItem>
-                        {versions.map((source) => (
-                          <SelectItem key={source.id} value={source.id}>
-                            {versionLabel(source)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormField>
+                      <Table responsive>
+                        <TableHeader className="bg-secondary">
+                          <TableRow>
+                            <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
+                              Course / slot
+                            </TableHead>
+                            <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
+                              Required units
+                            </TableHead>
+                            <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
+                              Type
+                            </TableHead>
+                            <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
+                              Actions
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {term.rows.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={4}
+                                className="py-6 text-center text-muted-foreground"
+                              >
+                                No courses in this term yet.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            term.rows.map((slot) => (
+                              <TableRow key={slot.id}>
+                                <TableCell
+                                  label="Course / slot"
+                                  className="font-medium text-foreground"
+                                >
+                                  <span
+                                    className="block max-w-72 truncate"
+                                    title={slot.courseOrSlot}
+                                  >
+                                    {slot.courseOrSlot}
+                                  </span>
+                                </TableCell>
+                                <TableCell
+                                  label="Required units"
+                                  className="font-mono text-sm"
+                                >
+                                  {slot.requiredUnits}
+                                </TableCell>
+                                <TableCell
+                                  label="Type"
+                                  className="text-muted-foreground"
+                                >
+                                  {slot.type}
+                                </TableCell>
+                                <TableCell label="Actions">
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        openEditSlot(term.id, slot)
+                                      }
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() =>
+                                        setDialog({
+                                          kind: "del-slot",
+                                          termId: term.id,
+                                          slotId: slot.id,
+                                        })
+                                      }
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </Panel>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Curriculum Builder Dialog */}
+          <Dialog
+            open={!!dialog}
+            onOpenChange={(open) => !open && closeDialog()}
+          >
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{dialogMeta.title}</DialogTitle>
+              </DialogHeader>
+
+              <form onSubmit={handleConfirm} className="space-y-4">
+                {(dialog?.kind === "add-version" ||
+                  dialog?.kind === "edit-version") && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField label="Program" htmlFor="cu-prog">
+                      <Select value={vProg} onValueChange={setVProg}>
+                        <SelectTrigger id="cu-prog" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          {programs.map((program) => (
+                            <SelectItem key={program.id} value={program.code}>
+                              {program.code}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+
+                    <FormField label="Academic year" htmlFor="cu-year">
+                      <Input
+                        id="cu-year"
+                        value={vYear}
+                        placeholder="2023–2024"
+                        onChange={(e) => setVYear(e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Required units" htmlFor="cu-units">
+                      <Input
+                        id="cu-units"
+                        value={vUnits}
+                        onChange={(e) => setVUnits(e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Effective from" htmlFor="cu-from">
+                      <Input
+                        id="cu-from"
+                        type="date"
+                        value={vFrom}
+                        onChange={(e) => setVFrom(e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Status" htmlFor="cu-status">
+                      <Select
+                        value={vStatus}
+                        onValueChange={(val) =>
+                          setVStatus(val as CurriculumVersionStatus)
+                        }
+                      >
+                        <SelectTrigger id="cu-status" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          <SelectItem value="active">active</SelectItem>
+                          <SelectItem value="draft">draft</SelectItem>
+                          <SelectItem value="retired">retired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                    {dialog.kind === "add-version" && (
+                      <FormField
+                        label="Copy courses from (optional)"
+                        htmlFor="cu-clone"
+                      >
+                        <Select
+                          value={vCloneFrom || "blank"}
+                          onValueChange={(value) =>
+                            setVCloneFrom(value === "blank" ? "" : value)
+                          }
+                        >
+                          <SelectTrigger id="cu-clone" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="blank">
+                              Start with a blank version
+                            </SelectItem>
+                            {versions.map((source) => (
+                              <SelectItem key={source.id} value={source.id}>
+                                {versionLabel(source)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormField>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
 
-            {dialog?.kind === "del-version" &&
-              deleteTargetVersion &&
-              !deleteBlockReason && (
-                <p className="text-sm text-foreground">
-                  Delete{" "}
-                  <strong className="font-semibold">
-                    {versionLabel(deleteTargetVersion)}
-                  </strong>{" "}
-                  and all of its terms? This can’t be undone.
-                </p>
-              )}
+                {dialog?.kind === "del-version" &&
+                  deleteTargetVersion &&
+                  !deleteBlockReason && (
+                    <p className="text-sm text-foreground">
+                      Delete{" "}
+                      <strong className="font-semibold">
+                        {versionLabel(deleteTargetVersion)}
+                      </strong>{" "}
+                      and all of its terms? This can’t be undone.
+                    </p>
+                  )}
 
-            {(dialog?.kind === "add-term" || dialog?.kind === "edit-term") && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Year level" htmlFor="cu-tyear">
-                  <Select value={tYear} onValueChange={setTYear}>
-                    <SelectTrigger id="cu-tyear" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
+                {(dialog?.kind === "add-term" ||
+                  dialog?.kind === "edit-term") && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField label="Year level" htmlFor="cu-tyear">
+                      <Select value={tYear} onValueChange={setTYear}>
+                        <SelectTrigger id="cu-tyear" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          {YEAR_LEVELS.map((y) => (
+                            <SelectItem key={y} value={y}>
+                              {y}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+
+                    <FormField label="Term" htmlFor="cu-tsem">
+                      <Select
+                        value={tSem}
+                        onValueChange={(val) =>
+                          setTSem(val as CurriculumSemester)
+                        }
+                      >
+                        <SelectTrigger id="cu-tsem" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          {CURRICULUM_SEMESTERS.map((sem) => (
+                            <SelectItem key={sem} value={sem}>
+                              {sem}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                  </div>
+                )}
+
+                {dialog?.kind === "del-term" &&
+                  deleteTargetTerm &&
+                  !deleteBlockReason && (
+                    <p className="text-sm text-foreground">
+                      Delete{" "}
+                      <strong className="font-semibold">
+                        Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}
+                      </strong>{" "}
+                      and its {deleteTargetTerm.rows.length} course(s)?
+                    </p>
+                  )}
+
+                {dialog?.kind === "new-course" && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField label="Course code" htmlFor="nc-code">
+                      <Input
+                        id="nc-code"
+                        value={ncCode}
+                        onChange={(e) => setNcCode(e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Course title" htmlFor="nc-title">
+                      <Input
+                        id="nc-title"
+                        value={ncTitle}
+                        onChange={(e) => setNcTitle(e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Units" htmlFor="nc-units">
+                      <Input
+                        id="nc-units"
+                        value={ncUnits}
+                        onChange={(e) => setNcUnits(e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Curriculum" htmlFor="nc-cur">
+                      <Select value={ncCurId} onValueChange={setNcCurId}>
+                        <SelectTrigger id="nc-cur" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          {versions.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {versionLabel(v)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+
+                    <FormField label="Term" htmlFor="nc-term">
+                      <Select value={ncTerm} onValueChange={setNcTerm}>
+                        <SelectTrigger id="nc-term" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          {TERM_OPTIONS.map((tOpt) => (
+                            <SelectItem key={tOpt} value={tOpt}>
+                              {tOpt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+
+                    <FormField label="Course type" htmlFor="nc-kind">
+                      <Select
+                        value={ncKind}
+                        onValueChange={(val) =>
+                          setNcKind(val as "Non-Elective" | "Elective")
+                        }
+                      >
+                        <SelectTrigger id="nc-kind" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          <SelectItem value="Non-Elective">
+                            Non-Elective
+                          </SelectItem>
+                          <SelectItem value="Elective">Elective</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                  </div>
+                )}
+
+                {(dialog?.kind === "add-slot" ||
+                  dialog?.kind === "edit-slot") && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      label="Course / slot"
+                      htmlFor="cu-sname"
+                      className="sm:col-span-2"
                     >
-                      {YEAR_LEVELS.map((y) => (
-                        <SelectItem key={y} value={y}>
-                          {y}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
+                      <Input
+                        id="cu-sname"
+                        value={sName}
+                        onChange={(e) => setSName(e.target.value)}
+                      />
+                    </FormField>
 
-                <FormField label="Term" htmlFor="cu-tsem">
-                  <Select
-                    value={tSem}
-                    onValueChange={(val) => setTSem(val as CurriculumSemester)}
+                    <FormField label="Required units" htmlFor="cu-sunits">
+                      <Input
+                        id="cu-sunits"
+                        value={sUnits}
+                        onChange={(e) => setSUnits(e.target.value)}
+                      />
+                    </FormField>
+
+                    <FormField label="Type" htmlFor="cu-stype">
+                      <Select
+                        value={sType}
+                        onValueChange={(val) =>
+                          setSType(val as CurriculumSlotType)
+                        }
+                      >
+                        <SelectTrigger id="cu-stype" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          {SLOT_TYPES.map((st) => (
+                            <SelectItem key={st} value={st}>
+                              {st}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                  </div>
+                )}
+
+                {dialog?.kind === "del-slot" &&
+                  deleteTargetTerm &&
+                  deleteTargetSlot &&
+                  !deleteBlockReason && (
+                    <p className="text-sm text-foreground">
+                      Delete{" "}
+                      <strong className="font-semibold">
+                        {deleteTargetSlot.courseOrSlot}
+                      </strong>{" "}
+                      from Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}
+                      ?
+                    </p>
+                  )}
+
+                {(formError || deleteBlockReason) && (
+                  <Alert variant="destructive" role="alert">
+                    <AlertDescription>
+                      {deleteBlockReason ?? formError}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={closeDialog}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant={dialogMeta.isDelete ? "destructive" : "default"}
+                    disabled={!!deleteBlockReason}
                   >
-                    <SelectTrigger id="cu-tsem" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
-                    >
-                      {CURRICULUM_SEMESTERS.map((sem) => (
-                        <SelectItem key={sem} value={sem}>
-                          {sem}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
-            )}
-
-            {dialog?.kind === "del-term" &&
-              deleteTargetTerm &&
-              !deleteBlockReason && (
-                <p className="text-sm text-foreground">
-                  Delete{" "}
-                  <strong className="font-semibold">
-                    Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}
-                  </strong>{" "}
-                  and its {deleteTargetTerm.rows.length} course(s)?
-                </p>
-              )}
-
-            {dialog?.kind === "new-course" && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Course code" htmlFor="nc-code">
-                  <Input
-                    id="nc-code"
-                    value={ncCode}
-                    onChange={(e) => setNcCode(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Course title" htmlFor="nc-title">
-                  <Input
-                    id="nc-title"
-                    value={ncTitle}
-                    onChange={(e) => setNcTitle(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Units" htmlFor="nc-units">
-                  <Input
-                    id="nc-units"
-                    value={ncUnits}
-                    onChange={(e) => setNcUnits(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Curriculum" htmlFor="nc-cur">
-                  <Select value={ncCurId} onValueChange={setNcCurId}>
-                    <SelectTrigger id="nc-cur" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
-                    >
-                      {versions.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {versionLabel(v)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField label="Term" htmlFor="nc-term">
-                  <Select value={ncTerm} onValueChange={setNcTerm}>
-                    <SelectTrigger id="nc-term" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
-                    >
-                      {TERM_OPTIONS.map((tOpt) => (
-                        <SelectItem key={tOpt} value={tOpt}>
-                          {tOpt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField label="Course type" htmlFor="nc-kind">
-                  <Select
-                    value={ncKind}
-                    onValueChange={(val) =>
-                      setNcKind(val as "Non-Elective" | "Elective")
-                    }
-                  >
-                    <SelectTrigger id="nc-kind" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
-                    >
-                      <SelectItem value="Non-Elective">Non-Elective</SelectItem>
-                      <SelectItem value="Elective">Elective</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
-            )}
-
-            {(dialog?.kind === "add-slot" || dialog?.kind === "edit-slot") && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  label="Course / slot"
-                  htmlFor="cu-sname"
-                  className="sm:col-span-2"
-                >
-                  <Input
-                    id="cu-sname"
-                    value={sName}
-                    onChange={(e) => setSName(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Required units" htmlFor="cu-sunits">
-                  <Input
-                    id="cu-sunits"
-                    value={sUnits}
-                    onChange={(e) => setSUnits(e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Type" htmlFor="cu-stype">
-                  <Select
-                    value={sType}
-                    onValueChange={(val) => setSType(val as CurriculumSlotType)}
-                  >
-                    <SelectTrigger id="cu-stype" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      avoidCollisions={false}
-                    >
-                      {SLOT_TYPES.map((st) => (
-                        <SelectItem key={st} value={st}>
-                          {st}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
-            )}
-
-            {dialog?.kind === "del-slot" &&
-              deleteTargetTerm &&
-              deleteTargetSlot &&
-              !deleteBlockReason && (
-                <p className="text-sm text-foreground">
-                  Delete{" "}
-                  <strong className="font-semibold">
-                    {deleteTargetSlot.courseOrSlot}
-                  </strong>{" "}
-                  from Year {deleteTargetTerm.year} · {deleteTargetTerm.sem}?
-                </p>
-              )}
-
-            {(formError || deleteBlockReason) && (
-              <Alert variant="destructive" role="alert">
-                <AlertDescription>
-                  {deleteBlockReason ?? formError}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeDialog}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant={dialogMeta.isDelete ? "destructive" : "default"}
-                disabled={!!deleteBlockReason}
-              >
-                {dialogMeta.confirmLabel}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+                    {dialogMeta.confirmLabel}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+    </AccountSkeleton>
   );
 }

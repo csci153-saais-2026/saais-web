@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { incCompletionSchema } from "./inc-completion.schema";
 
 describe("incCompletionSchema", () => {
@@ -31,8 +32,14 @@ describe("incCompletionSchema", () => {
     expect(
       incCompletionSchema.safeParse({
         completionGrade: "2.00",
-        reason: "x".repeat(2001),
+        reason: "x".repeat(REASON_MAX_LENGTH + 1),
       }).success,
     ).toBe(false);
+    expect(
+      incCompletionSchema.safeParse({
+        completionGrade: "2.00",
+        reason: "x".repeat(REASON_MAX_LENGTH),
+      }).success,
+    ).toBe(true);
   });
 });

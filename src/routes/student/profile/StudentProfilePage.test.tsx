@@ -137,7 +137,7 @@ describe("StudentProfileView", () => {
     await waitFor(() => {
       expect(onUploadPhoto).toHaveBeenCalledWith(validFile);
     });
-    expect(screen.getByRole("status").textContent).toBe("Photo updated.");
+    expect(await screen.findByText("Photo updated.")).toBeTruthy();
 
     rerender(
       <MemoryRouter>
@@ -153,7 +153,7 @@ describe("StudentProfileView", () => {
     await waitFor(() => {
       expect(onRemovePhoto).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByRole("status").textContent).toBe("Photo removed.");
+    expect(await screen.findByText("Photo removed.")).toBeTruthy();
   });
 });
 
@@ -189,7 +189,9 @@ describe("StudentProfilePage", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByRole("status").textContent).toBe("Loading...");
+    expect(document.querySelector("[skullet-status]")?.textContent).toBe(
+      "Loading...",
+    );
 
     const retryBtn = await screen.findByRole("button", { name: "Try again" });
     fireEvent.click(retryBtn);

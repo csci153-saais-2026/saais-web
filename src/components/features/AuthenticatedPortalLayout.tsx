@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/features/loading-skeletons";
 import { matchPath, useLocation, useNavigate } from "react-router";
 import { AuthenticatedLayout } from "@/layouts/AuthenticatedLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -108,13 +109,8 @@ export function AuthenticatedPortalLayout() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-primary">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium text-muted-foreground">
-            Loading workspace…
-          </span>
-        </div>
+      <div className="min-h-screen bg-background">
+        <PageSkeleton label="Loading workspace…" />
       </div>
     );
   }

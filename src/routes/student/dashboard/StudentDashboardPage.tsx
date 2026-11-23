@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
@@ -331,11 +332,10 @@ export function StudentDashboardPage({ studentId }: { studentId: string }) {
     });
   }, [dashboard.data?.planItems, metaQuery.data]);
 
-  if (dashboard.isPending || metaQuery.isPending) {
-    return <p role="status">Loading...</p>;
-  }
-
-  if (dashboard.isError || !dashboard.data) {
+  if (
+    !(dashboard.isPending || metaQuery.isPending) &&
+    (dashboard.isError || !dashboard.data)
+  ) {
     return (
       <Panel
         title="Unable to load dashboard"
@@ -355,18 +355,26 @@ export function StudentDashboardPage({ studentId }: { studentId: string }) {
   }
 
   return (
-    <StudentDashboardView
-      summary={dashboard.data.summary}
-      studentName={metaQuery.data?.studentName ?? null}
-      programName={metaQuery.data?.programName ?? "Unassigned program"}
-      curriculumLabel={metaQuery.data?.curriculumLabel ?? "—"}
-      delinquencyThresholdUnits={
-        metaQuery.data?.delinquencyThresholdUnits ?? null
-      }
-      adviserAssignments={dashboard.data.adviserAssignments}
-      recommendations={recommendations}
-      notes={dashboard.data.notes}
-    />
+    <AccountSkeleton
+      id="student-dashboard"
+      data={dashboard.isPending || metaQuery.isPending ? null : dashboard.data}
+      label="Loading..."
+    >
+      {(dashboardData) => (
+        <StudentDashboardView
+          summary={dashboardData.summary}
+          studentName={metaQuery.data?.studentName ?? null}
+          programName={metaQuery.data?.programName ?? "Unassigned program"}
+          curriculumLabel={metaQuery.data?.curriculumLabel ?? "—"}
+          delinquencyThresholdUnits={
+            metaQuery.data?.delinquencyThresholdUnits ?? null
+          }
+          adviserAssignments={dashboardData.adviserAssignments}
+          recommendations={recommendations}
+          notes={dashboardData.notes}
+        />
+      )}
+    </AccountSkeleton>
   );
 }
 
