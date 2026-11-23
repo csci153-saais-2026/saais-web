@@ -9,6 +9,7 @@ import { StatGrid } from "@/components/features/stat-tile";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Dialog,
   DialogContent,
@@ -511,9 +512,9 @@ export default function OutsideCreditsPage() {
           {
             header: "Student",
             cell: (row) => (
-              <div>
+              <div className="min-w-0">
                 <strong className="block font-semibold">
-                  {row.studentName}
+                  <Truncate text={row.studentName} className="max-w-64" />
                 </strong>
                 <small className="block font-mono text-xs text-muted-2">
                   {row.studentId}
@@ -524,9 +525,12 @@ export default function OutsideCreditsPage() {
           {
             header: "Original course / units",
             cell: (row) => (
-              <div>
+              <div className="min-w-0">
                 <strong className="block font-semibold">
-                  {row.originalCode} · {row.originalTitle}
+                  <Truncate
+                    text={`${row.originalCode} · ${row.originalTitle}`}
+                    className="max-w-72"
+                  />
                 </strong>
                 <small className="block text-xs text-muted-2">
                   {row.originalUnits} units
@@ -534,17 +538,26 @@ export default function OutsideCreditsPage() {
               </div>
             ),
           },
-          { header: "School / origin", cell: (row) => row.originSchool },
+          {
+            header: "School / origin",
+            cell: (row) => <Truncate text={row.originSchool} />,
+          },
           { header: "Grade", cell: (row) => row.grade },
           {
             header: "Equivalent subject / units",
             cell: (row) => (
-              <div>
+              <div className="min-w-0">
                 <strong className="block font-semibold">
-                  {row.equivalentCode} · {row.equivalentTitle}
+                  <Truncate
+                    text={`${row.equivalentCode} · ${row.equivalentTitle}`}
+                    className="max-w-72"
+                  />
                 </strong>
                 <small className="block text-xs text-muted-2">
-                  {row.equivalentUnits} units · {row.targetCurriculum}
+                  <Truncate
+                    text={`${row.equivalentUnits} units · ${row.targetCurriculum}`}
+                    className="max-w-72"
+                  />
                 </small>
               </div>
             ),

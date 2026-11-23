@@ -155,7 +155,12 @@ function StudentImportModal({
                       >
                         <td className="px-4 py-3">{row.rowNumber}</td>
                         <td className="px-4 py-3">
-                          {row.studentNumber || "—"}
+                          <span
+                            className="block max-w-40 truncate"
+                            title={row.studentNumber || undefined}
+                          >
+                            {row.studentNumber || "—"}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           <span className={PILL[row.tone]}>

@@ -107,13 +107,32 @@ export default function DeanAuditLogPage() {
                       {row.timestamp}
                     </TableCell>
                     <TableCell label="Who" className="font-medium">
-                      {row.actor}
+                      <span
+                        className="block max-w-56 truncate"
+                        title={row.actor}
+                      >
+                        {row.actor}
+                      </span>
                     </TableCell>
                     <TableCell label="Action">
                       <DeanAuditActionPill action={row.action} />
                     </TableCell>
-                    <TableCell label="Student">{row.student}</TableCell>
-                    <TableCell label="Details">{row.details}</TableCell>
+                    <TableCell label="Student">
+                      <span
+                        className="block max-w-56 truncate"
+                        title={row.student}
+                      >
+                        {row.student}
+                      </span>
+                    </TableCell>
+                    <TableCell label="Details">
+                      <span
+                        className="block max-w-96 truncate"
+                        title={row.details}
+                      >
+                        {row.details}
+                      </span>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (

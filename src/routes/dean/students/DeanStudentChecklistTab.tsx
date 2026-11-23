@@ -283,7 +283,12 @@ export function DeanStudentChecklistTab({
                         {formatGrade(a.completion_grade) ?? "—"}
                       </TableCell>
                       <TableCell className="px-3.5 py-2.75">
-                        {a.instructor || "—"}
+                        <span
+                          className="block max-w-48 truncate"
+                          title={a.instructor || undefined}
+                        >
+                          {a.instructor || "—"}
+                        </span>
                       </TableCell>
                       <TableCell className="px-3.5 py-2.75">
                         <StatusBadge status={STATUS_MAP[a.effective_status]} />

@@ -63,20 +63,23 @@ export function CohortStudentsDialog({
               {students.length > 0 ? (
                 students.map((student) => (
                   <TableRow key={student.studentId}>
-                    <TableCell
-                      title={student.name}
-                      className="max-w-56 truncate"
-                    >
+                    <TableCell>
                       {onOpenStudent ? (
                         <button
                           type="button"
-                          className="max-w-full truncate text-left font-semibold text-primary underline"
+                          title={student.name}
+                          className="block max-w-56 truncate text-left font-semibold text-primary underline"
                           onClick={() => onOpenStudent(student.studentId)}
                         >
                           {student.name}
                         </button>
                       ) : (
-                        <span className="font-semibold">{student.name}</span>
+                        <span
+                          title={student.name}
+                          className="block max-w-56 truncate font-semibold"
+                        >
+                          {student.name}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-xs">

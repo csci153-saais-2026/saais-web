@@ -714,7 +714,12 @@ export default function CurriculaPage() {
                               label="Course / slot"
                               className="font-medium text-foreground"
                             >
-                              {slot.courseOrSlot}
+                              <span
+                                className="block max-w-72 truncate"
+                                title={slot.courseOrSlot}
+                              >
+                                {slot.courseOrSlot}
+                              </span>
                             </TableCell>
                             <TableCell
                               label="Required units"

@@ -76,7 +76,14 @@ export function DeanStudentAuditTab({
         },
         {
           header: "Who",
-          cell: (row) => <span className="font-medium">{row.actor}</span>,
+          cell: (row) => (
+            <span
+              className="block max-w-56 truncate font-medium"
+              title={row.actor}
+            >
+              {row.actor}
+            </span>
+          ),
         },
         {
           header: "Action",
@@ -84,7 +91,11 @@ export function DeanStudentAuditTab({
         },
         {
           header: "Details",
-          cell: (row) => row.details,
+          cell: (row) => (
+            <span className="block max-w-96 truncate" title={row.details}>
+              {row.details}
+            </span>
+          ),
         },
       ]}
     />
