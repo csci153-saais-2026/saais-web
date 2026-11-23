@@ -426,7 +426,7 @@ function AdvisingContent({
           )}
           <AccountSkeleton
             id="AdviseeAdvising-3"
-            loading={term && !data.data && !data.error}
+            loading={Boolean(term) && !data.data && !data.error}
             label="Loading advising plan…"
           >
             {data.error && (
