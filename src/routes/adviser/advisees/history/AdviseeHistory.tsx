@@ -6,6 +6,7 @@ import { useScopedRequest } from "../use-scoped-request";
 import { getStudentHistory } from "./history.api";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/features/filter-bar";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Table,
   TableBody,
@@ -152,16 +153,20 @@ export default function AdviseeHistory() {
                         </time>
                       </TableCell>
                       <TableCell>
-                        <div className="font-semibold">
-                          {row.actor_name ?? "System"}
-                        </div>
+                        <Truncate
+                          text={row.actor_name ?? "System"}
+                          className="font-semibold"
+                        />
                         <div className="mt-0.75">
                           <RolePill role={row.actor_role} />
                         </div>
                       </TableCell>
                       <TableCell>{humanizeAction(row.action)}</TableCell>
                       <TableCell className="text-[#3C4A2A]">
-                        {row.details_summary ?? "—"}
+                        <Truncate
+                          text={row.details_summary ?? "—"}
+                          className="max-w-96"
+                        />
                       </TableCell>
                     </TableRow>
                   );

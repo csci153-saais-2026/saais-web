@@ -265,6 +265,12 @@
       font-size: 26px;
     }
   }
+  /* Native selects never grow past their container; long options show an ellipsis. */
+  select {
+    min-width: 0;
+    max-width: 100%;
+    text-overflow: ellipsis;
+  }
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;

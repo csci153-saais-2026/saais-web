@@ -37,7 +37,7 @@ function Panel({
     >
       <CardHeader className="border-b border-border px-5 py-4">
         <CardTitle
-          className="min-w-0 truncate font-sans text-base font-semibold"
+          className="line-clamp-2 min-w-0 font-sans text-base font-semibold wrap-anywhere"
           title={title}
         >
           {title}

@@ -6,6 +6,7 @@ import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Truncate } from "@/components/ui/truncate";
 import { FormField } from "@/components/features/form-field";
 import { SearchInput } from "@/components/features/search-input";
 import {
@@ -292,16 +293,17 @@ export default function AccountsPage() {
       header: "Name",
       className: "w-[32%]",
       cell: (account) => (
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden="true"
             className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f2eddc] text-[11px] font-semibold tracking-wide text-[#2f4a12]"
           >
             {initialsForName(account.profile.full_name)}
           </span>
-          <span className="text-[13px] font-semibold text-foreground">
-            {account.profile.full_name || "Name unavailable"}
-          </span>
+          <Truncate
+            text={account.profile.full_name || "Name unavailable"}
+            className="text-[13px] font-semibold text-foreground"
+          />
         </div>
       ),
     },
@@ -309,9 +311,10 @@ export default function AccountsPage() {
       header: "VSU email",
       className: "w-[33%]",
       cell: (account) => (
-        <span className="font-mono text-[12px]">
-          {account.profile.email || "Email unavailable"}
-        </span>
+        <Truncate
+          text={account.profile.email || "Email unavailable"}
+          className="max-w-64 font-mono text-[12px]"
+        />
       ),
     },
     {

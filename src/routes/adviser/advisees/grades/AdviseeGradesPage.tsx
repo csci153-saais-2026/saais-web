@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Kicker } from "@/components/ui/kicker";
 import { StatusBadge, type Status } from "@/components/ui/status-badge";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Dialog,
   DialogTrigger,
@@ -437,9 +438,10 @@ export default function AdviseeGradesPage() {
                               <b className="block">
                                 {c?.code ?? "Course unavailable"}
                               </b>
-                              <span className="text-xs text-muted-foreground">
-                                {c?.title ?? r.course_offering_id}
-                              </span>
+                              <Truncate
+                                text={c?.title ?? r.course_offering_id}
+                                className="max-w-64 text-xs text-muted-foreground"
+                              />
                             </TableCell>
                             <TableCell label="Units">
                               {r.units_attempted}

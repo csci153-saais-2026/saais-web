@@ -209,7 +209,12 @@ export function AssignmentHistoryDialog({
                         label="Adviser"
                         className="px-3.5 py-row text-cell font-medium text-foreground"
                       >
-                        {adviserLabel}
+                        <span
+                          className="block max-w-56 truncate"
+                          title={adviserLabel}
+                        >
+                          {adviserLabel}
+                        </span>
                       </TableCell>
                       <TableCell
                         label="From"
@@ -225,7 +230,7 @@ export function AssignmentHistoryDialog({
                       </TableCell>
                       <TableCell
                         label="Note"
-                        className="px-3.5 py-row text-caption text-muted-foreground whitespace-normal"
+                        className="px-3.5 py-row text-caption text-muted-foreground whitespace-normal wrap-anywhere"
                       >
                         {noteLabel}
                       </TableCell>

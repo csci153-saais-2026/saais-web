@@ -7,6 +7,7 @@ import { RecordTabs } from "@/components/features/student-record-header";
 import { StatGrid } from "@/components/features/stat-tile";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Truncate } from "@/components/ui/truncate";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -155,9 +156,9 @@ export default function CurriculumTransfersPage() {
               {
                 header: "Student",
                 cell: (row) => (
-                  <div>
+                  <div className="min-w-0">
                     <strong className="block font-semibold">
-                      {row.studentName}
+                      <Truncate text={row.studentName} className="max-w-64" />
                     </strong>
                     <small className="block font-mono text-xs text-muted-2">
                       {row.studentId}
@@ -167,13 +168,16 @@ export default function CurriculumTransfersPage() {
               },
               {
                 header: "Current curriculum",
-                cell: (row) => row.currentCurriculum,
+                cell: (row) => <Truncate text={row.currentCurriculum} />,
               },
               {
                 header: "Requested curriculum",
-                cell: (row) => row.requestedCurriculum,
+                cell: (row) => <Truncate text={row.requestedCurriculum} />,
               },
-              { header: "Adviser", cell: (row) => row.adviser },
+              {
+                header: "Adviser",
+                cell: (row) => <Truncate text={row.adviser} />,
+              },
               { header: "Submitted", cell: (row) => row.submittedDate },
               {
                 header: "Actions",
@@ -221,9 +225,9 @@ export default function CurriculumTransfersPage() {
             {
               header: "Student",
               cell: (row) => (
-                <div>
+                <div className="min-w-0">
                   <strong className="block font-semibold">
-                    {row.studentName}
+                    <Truncate text={row.studentName} className="max-w-64" />
                   </strong>
                   <small className="block font-mono text-xs text-muted-2">
                     {row.studentId}
@@ -234,12 +238,16 @@ export default function CurriculumTransfersPage() {
             {
               header: "Curriculum transfer",
               cell: (row) => (
-                <>
-                  {row.currentCurriculum} → {row.requestedCurriculum}
-                </>
+                <Truncate
+                  text={`${row.currentCurriculum} → ${row.requestedCurriculum}`}
+                  className="max-w-72"
+                />
               ),
             },
-            { header: "Adviser", cell: (row) => row.adviser },
+            {
+              header: "Adviser",
+              cell: (row) => <Truncate text={row.adviser} />,
+            },
             {
               header: "Decision",
               cell: (row) => (
@@ -255,7 +263,7 @@ export default function CurriculumTransfersPage() {
             },
             {
               header: "Decision reason",
-              className: "max-w-xs whitespace-normal",
+              className: "max-w-xs whitespace-normal wrap-anywhere",
               cell: (row) => row.decisionReason || "—",
             },
           ]}

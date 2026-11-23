@@ -69,7 +69,7 @@ export function DeanStudentRecordDialog({
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
             <div className="min-w-0">
               <h2
-                className="truncate text-3xl leading-tight"
+                className="line-clamp-2 text-3xl leading-tight wrap-anywhere"
                 title={student.name}
               >
                 {student.name}

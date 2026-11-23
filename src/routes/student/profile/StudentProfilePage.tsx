@@ -178,8 +178,13 @@ export function StudentProfileView({
                           label="Adviser"
                           className="px-3.5 py-row text-cell font-medium text-foreground"
                         >
-                          {assignment.adviser_name?.trim() ||
-                            assignment.adviser_id}
+                          <span
+                            className="block max-w-56 truncate"
+                            title={assignment.adviser_name?.trim() || undefined}
+                          >
+                            {assignment.adviser_name?.trim() ||
+                              assignment.adviser_id}
+                          </span>
                         </TableCell>
                         <TableCell
                           label="Start"
