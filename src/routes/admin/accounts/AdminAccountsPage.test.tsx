@@ -314,9 +314,7 @@ describe("AdminAccountsPage", () => {
         }),
       );
     });
-    expect((await screen.findByRole("status")).textContent).toContain(
-      "Invitation dispatched.",
-    );
+    expect(await screen.findByText("Invitation dispatched.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

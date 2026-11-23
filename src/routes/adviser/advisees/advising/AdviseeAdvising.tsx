@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -19,13 +20,11 @@ function PlanEditor({
   data,
   id,
   term,
-  message,
   onSaved,
 }: {
   data: PlanData;
   id: string;
   term: string;
-  message: string;
   onSaved: () => void;
 }) {
   const [selected, setSelected] = useState(
@@ -198,14 +197,6 @@ function PlanEditor({
               )}
             </div>
           )}
-          {message && (
-            <p
-              role="status"
-              className="rounded border border-[#CBDDC2] bg-[#E7F0E2] px-4 py-3 text-sm text-[#2C6430]"
-            >
-              {message}
-            </p>
-          )}
         </div>
       </>
       {!data.canEdit && (
@@ -232,7 +223,6 @@ function RecentNotes({
   const [revision, setRevision] = useState(0);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const { data, error } = useScopedRequest(
     JSON.stringify([userId, id, revision]),
@@ -244,11 +234,10 @@ function RecentNotes({
     const submitted = text;
     setBusy(true);
     setSaveError("");
-    setMessage("");
     try {
       await addNote(id, submitted.trim());
       setText((current) => (current === submitted ? "" : current));
-      setMessage("Note added.");
+      notify.success("Note added.");
       setRevision((n) => n + 1);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Unable to add note.");
@@ -333,11 +322,6 @@ function RecentNotes({
                 Historical record: read-only.
               </p>
             )}
-            {message && (
-              <p role="status" className="text-sm">
-                {message}
-              </p>
-            )}
             {saveError && (
               <p role="alert" className="text-sm text-destructive">
                 {saveError}
@@ -370,7 +354,6 @@ function AdvisingContent({
   const [term, setTerm] = useState("");
   const termRef = useRef(term);
   const [revision, setRevision] = useState(0);
-  const [message, setMessage] = useState("");
   const terms = useScopedRequest(
     JSON.stringify([userId, "terms"]),
     true,
@@ -403,7 +386,6 @@ function AdvisingContent({
                 onChange={(e) => {
                   termRef.current = e.target.value;
                   setTerm(e.target.value);
-                  setMessage("");
                 }}
               >
                 <option value="">Select term</option>
@@ -455,14 +437,13 @@ function AdvisingContent({
         )}
         {data.data && (
           <PlanEditor
-            message={message}
             key={`${term}:${revision}`}
             data={data.data}
             id={id}
             term={term}
             onSaved={() => {
               if (termRef.current !== term) return;
-              setMessage("Plan saved.");
+              notify.success("Plan saved.");
               setRevision((n) => n + 1);
             }}
           />

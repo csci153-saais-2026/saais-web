@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { FilterBar } from "@/components/features/filter-bar";
@@ -207,6 +208,7 @@ export default function AdminProgramsPage() {
         );
       }
 
+      notify.success(program ? "Program updated." : "Program created.");
       setDialogProgram(undefined);
       retryPrograms();
     } finally {
@@ -222,6 +224,7 @@ export default function AdminProgramsPage() {
           params: { path: { id } },
         }),
       );
+      notify.success("Program deleted.");
       setDeleteProgram(null);
       retryPrograms();
     } finally {

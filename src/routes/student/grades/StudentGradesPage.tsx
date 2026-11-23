@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertIcon } from "@/components/icons";
@@ -184,6 +185,7 @@ export function StudentGradesView({
     payload: ApiSchema<"GradeFlagCreateRequest">,
   ) {
     await onCreateFlag?.(payload);
+    notify.success("Grade flag submitted.");
     setFlagTarget(null);
   }
 
