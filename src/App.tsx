@@ -207,7 +207,7 @@ function App() {
               </Routes>
             </Suspense>
             <DevRoleSwitcher />
-          <Toaster />
+            <Toaster />
           </BrowserRouter>
         </AuthProvider>
       </QueryProvider>
