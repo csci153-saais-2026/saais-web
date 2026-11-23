@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { QueryMessage } from "../shared/dh-ui";
 import { useNotify } from "../shared/notify-context";
 import type { DepartmentPdfDocument } from "../shared/department-pdf";
@@ -483,6 +484,7 @@ export default function AcademicTermsPage() {
             <FormField label="Closure note" htmlFor="closure-note">
               <Textarea
                 id="closure-note"
+                maxLength={REASON_MAX_LENGTH}
                 placeholder="Enter a reason for this decision"
                 value={closureNote}
                 onChange={(e) => setClosureNote(e.target.value)}

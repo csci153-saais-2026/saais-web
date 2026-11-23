@@ -12,6 +12,7 @@ import { useScopedRequest } from "../use-scoped-request";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { ChevronDownIcon, LockIcon, PencilIcon } from "@/components/icons";
 import {
   Collapsible,
@@ -216,7 +217,7 @@ function GradeAction({
                 className="min-h-20"
                 placeholder="Required. This is written to the audit log."
                 required
-                maxLength={2000}
+                maxLength={REASON_MAX_LENGTH}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />

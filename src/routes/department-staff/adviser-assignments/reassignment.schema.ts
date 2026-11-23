@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 
 export const reassignmentSchema = z
   .object({
@@ -8,7 +9,7 @@ export const reassignmentSchema = z
       .string()
       .trim()
       .min(1, "Add a non-whitespace reason for this reassignment.")
-      .max(2000, "Use at most 2,000 characters for the reason."),
+      .max(REASON_MAX_LENGTH, REASON_MAX_MESSAGE),
   })
   .strict();
 

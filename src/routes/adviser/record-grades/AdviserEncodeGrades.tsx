@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { AdviserPage } from "../Adviser";
 import { useAuth } from "@/hooks/use-auth";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { useScopedRequest } from "../advisees/use-scoped-request";
 import {
   getElectiveSlots,
@@ -334,6 +335,7 @@ function TermEditor({
                           Override reason
                           <input
                             disabled={busy}
+                            maxLength={REASON_MAX_LENGTH}
                             className="rounded-md border p-2"
                             value={row.reason}
                             onChange={(e) =>

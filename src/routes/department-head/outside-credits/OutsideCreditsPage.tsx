@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 import {
   Select,
   SelectContent,
@@ -74,7 +75,7 @@ const outsideCreditSchema = z.object({
     .string()
     .trim()
     .min(1, "Enter the reason for crediting the course.")
-    .max(2000, "Use at most 2,000 characters."),
+    .max(REASON_MAX_LENGTH, REASON_MAX_MESSAGE),
 });
 
 type CreditForm = z.infer<typeof outsideCreditSchema>;
@@ -388,6 +389,7 @@ function CreditCourseDialog({
             <Textarea
               id="cr-reason"
               rows={2}
+              maxLength={REASON_MAX_LENGTH}
               aria-invalid={Boolean(errors.reason)}
               {...register("reason")}
             />

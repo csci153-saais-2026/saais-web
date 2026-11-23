@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MOCK_IDS } from "@/mocks";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 import { gradeFlagSchema } from "./grade-flag-schema";
 
 describe("gradeFlagSchema", () => {
@@ -35,19 +36,25 @@ describe("gradeFlagSchema", () => {
     }
   });
 
-  it("rejects details exceeding 2,000 characters", () => {
+  it("rejects details exceeding the character limit", () => {
     const result = gradeFlagSchema.safeParse({
       attempt_id: MOCK_IDS.attemptCsci101Passed,
       issue_type: "other",
-      details: "a".repeat(2001),
+      details: "a".repeat(REASON_MAX_LENGTH + 1),
     });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0]?.message).toBe(
-        "Details must be 2,000 characters or fewer.",
-      );
+      expect(result.error.issues[0]?.message).toBe(REASON_MAX_MESSAGE);
     }
+
+    expect(
+      gradeFlagSchema.safeParse({
+        attempt_id: MOCK_IDS.attemptCsci101Passed,
+        issue_type: "other",
+        details: "a".repeat(REASON_MAX_LENGTH),
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects invalid issue_type, reported_stage, and empty attempt_id", () => {

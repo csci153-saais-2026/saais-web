@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 import { QueryMessage } from "../shared/dh-ui";
 import { useNotify } from "../shared/notify-context";
 import type { TransferRequest } from "./transfers-api";
@@ -62,8 +63,8 @@ export default function CurriculumTransfersPage() {
       setRejectionError(true);
       return;
     }
-    if (note.length > 2000) {
-      setDecisionError("Use at most 2,000 characters for the decision reason.");
+    if (note.length > REASON_MAX_LENGTH) {
+      setDecisionError(REASON_MAX_MESSAGE);
       return;
     }
     setDecisionError("");
@@ -359,7 +360,7 @@ export default function CurriculumTransfersPage() {
               >
                 <Textarea
                   id="decision-reason"
-                  maxLength={2000}
+                  maxLength={REASON_MAX_LENGTH}
                   disabled={decide.isPending}
                   placeholder="Enter a reason for this decision"
                   value={decisionReason}

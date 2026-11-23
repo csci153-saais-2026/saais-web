@@ -12,6 +12,7 @@ import { DataTablePanel } from "@/components/features/data-table-panel";
 import { Panel } from "@/components/features/panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import type { ApiSchema } from "@/lib/api";
 
 function CurriculumContent({ id, userId }: { id: string; userId: string }) {
@@ -125,6 +126,7 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
                   <label className="grid gap-1 text-sm font-medium">
                     Reason
                     <Textarea
+                      maxLength={REASON_MAX_LENGTH}
                       value={reason}
                       onChange={(event) => setReason(event.target.value)}
                     />

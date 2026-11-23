@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { ApiClientError } from "@/lib/api";
 import { reassignmentSchema } from "./reassignment.schema";
 
@@ -168,7 +169,7 @@ export function ReassignAdviserDialog({
               id="staff-reassignment-reason"
               value={reason}
               disabled={busy}
-              maxLength={2000}
+              maxLength={REASON_MAX_LENGTH}
               onChange={(event) => setReason(event.target.value)}
               placeholder="Explain the adviser change."
               rows={3}

@@ -1,11 +1,9 @@
 import { z } from "zod";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 
 export const encodingClosureFormSchema = z
   .object({
-    closure_note: z
-      .string()
-      .trim()
-      .max(2000, "Closure note must be 2000 characters or fewer."),
+    closure_note: z.string().trim().max(REASON_MAX_LENGTH, REASON_MAX_MESSAGE),
   })
   .strict();
 

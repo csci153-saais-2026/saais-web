@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { ApiClientError, normalizeApiError } from "@/lib/api";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import type { SchoolTerm } from "./academic-terms.api";
 import { encodingClosureFormSchema } from "./encoding-closure.schema";
 import { EncodingClosureDialog } from "./EncodingClosureDialog";
@@ -128,12 +129,17 @@ describe("EncodingClosureDialog", () => {
     await waitFor(() => expect(onComplete).toHaveBeenCalledOnce());
   });
 
-  it("converts an empty note to null and enforces the contract limit", async () => {
+  it("converts an empty note to null and enforces the character limit", async () => {
     expect(
       encodingClosureFormSchema.safeParse({
-        closure_note: "N".repeat(2001),
+        closure_note: "N".repeat(REASON_MAX_LENGTH + 1),
       }).success,
     ).toBe(false);
+    expect(
+      encodingClosureFormSchema.safeParse({
+        closure_note: "N".repeat(REASON_MAX_LENGTH),
+      }).success,
+    ).toBe(true);
 
     const { onComplete } = renderDialog();
     fireEvent.click(
