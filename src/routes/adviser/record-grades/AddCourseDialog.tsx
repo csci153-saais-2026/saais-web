@@ -137,8 +137,10 @@ export function AddCourseDialog({
                       setPick({ kind: "course", id: item.offering.id });
                     }}
                   />
-                  <strong>{item.code}</strong>
-                  <span>{item.title}</span>
+                  <strong className="shrink-0">{item.code}</strong>
+                  <span className="min-w-0 truncate" title={item.title}>
+                    {item.title}
+                  </span>
                   {unavailable.includes(item.offering.id) && (
                     <span className="text-muted-foreground">Already added</span>
                   )}
@@ -153,7 +155,7 @@ export function AddCourseDialog({
               </legend>
               {slots.map((slot) => (
                 <div key={slot.id} className={rowClass}>
-                  <label className="flex items-center gap-3">
+                  <label className="flex min-w-0 items-center gap-3">
                     <input
                       type="radio"
                       name="add-course"
@@ -168,8 +170,10 @@ export function AddCourseDialog({
                         );
                       }}
                     />
-                    <strong>{slot.name}</strong>
-                    {slot.used && <span>already added</span>}
+                    <strong className="min-w-0 truncate" title={slot.name}>
+                      {slot.name}
+                    </strong>
+                    {slot.used && <span className="shrink-0">already added</span>}
                   </label>
                   <select
                     aria-label={`Elective course for ${slot.name}`}

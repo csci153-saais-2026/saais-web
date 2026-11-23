@@ -188,7 +188,10 @@ export function CoursePrerequisitesDialog({
                 key={item.id}
                 className="rounded-sm border border-border p-3"
               >
-                <p>
+                <p
+                  className="truncate"
+                  title={`${item.course?.code ?? ""} ${item.course?.title ?? ""}`.trim()}
+                >
                   {item.course?.code} {item.course?.title}
                 </p>
                 <p>

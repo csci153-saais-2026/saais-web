@@ -504,13 +504,16 @@ export default function AdminAccountsPage() {
                   <TableRow key={profile.id}>
                     <TableCell label="Name" className="whitespace-normal">
                       <div className="flex min-w-48 items-center gap-3">
-                        <Avatar aria-hidden="true">
+                        <Avatar aria-hidden="true" className="shrink-0">
                           <AvatarFallback className="bg-[#F2EDDC] text-xs font-semibold text-[#2F4A12]">
                             {getInitials(profile.full_name)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <span className="block font-medium">
+                          <span
+                            className="block max-w-56 truncate font-medium"
+                            title={profile.full_name}
+                          >
                             {profile.full_name}
                           </span>
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -526,7 +529,12 @@ export default function AdminAccountsPage() {
                       </div>
                     </TableCell>
                     <TableCell label="VSU email" className="whitespace-normal">
-                      <span>{profile.email}</span>
+                      <span
+                        className="block max-w-64 truncate"
+                        title={profile.email}
+                      >
+                        {profile.email}
+                      </span>
                       {profile.student_number && (
                         <span className="block font-mono text-xs text-muted-foreground">
                           {profile.student_number}

@@ -174,15 +174,18 @@ export default function AdviserDashboard() {
                           className="flex justify-between gap-4 py-3 hover:bg-secondary/50"
                           to={`/adviser/advisee/${encodeURIComponent(student.student_id)}/checklist`}
                         >
-                          <span>
-                            <b className="block underline">
+                          <span className="min-w-0">
+                            <b
+                              className="block truncate underline"
+                              title={student.full_name}
+                            >
                               {student.full_name}
                             </b>
                             <span className="text-xs text-muted-foreground">
                               {student.student_number}
                             </span>
                           </span>
-                          <span className="text-right text-sm">
+                          <span className="line-clamp-2 max-w-[50%] shrink-0 text-right text-sm">
                             {student.deficiencies
                               .map((item) => item.course_code)
                               .join(", ") || "Subject details unavailable"}

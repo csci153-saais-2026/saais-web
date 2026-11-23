@@ -157,7 +157,9 @@ function NotesContent({
                     </Button>
                   )}
                 </div>
-                <p className="whitespace-pre-wrap text-sm">{note.body_text}</p>
+                <p className="whitespace-pre-wrap text-sm wrap-anywhere">
+                  {note.body_text}
+                </p>
               </article>
             ))}
           </Panel>

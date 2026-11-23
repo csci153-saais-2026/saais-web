@@ -24,18 +24,24 @@ function StudentRecordHeader({
 }) {
   return (
     <div className="mb-5 flex items-center gap-4">
-      <Avatar className="size-[52px]">
+      <Avatar className="size-[52px] shrink-0">
         <AvatarFallback className="bg-primary font-heading text-lg font-bold text-primary-foreground">
           {initials}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        <h1 className="text-3xl leading-tight">{name}</h1>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+        <h1 className="truncate text-3xl leading-tight" title={name}>
+          {name}
+        </h1>
+        <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
           <span className="font-mono text-[13px]">{studentNumber}</span>
-          <span>· {program}</span>
+          <span className="max-w-full truncate" title={program}>
+            · {program}
+          </span>
           <span>· {yearLabel}</span>
-          <span>· {email}</span>
+          <span className="max-w-full truncate" title={email}>
+            · {email}
+          </span>
           <StatusBadge status={standing}>{standingLabel}</StatusBadge>
         </p>
       </div>

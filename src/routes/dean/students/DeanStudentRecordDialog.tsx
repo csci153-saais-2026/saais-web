@@ -68,14 +68,23 @@ export function DeanStudentRecordDialog({
         {student && (
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
             <div className="min-w-0">
-              <h2 className="text-3xl leading-tight">{student.name}</h2>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              <h2
+                className="truncate text-3xl leading-tight"
+                title={student.name}
+              >
+                {student.name}
+              </h2>
+              <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                 <span className="font-mono text-[13px]">
                   {student.studentNumber}
                 </span>
-                <span>· {student.program}</span>
+                <span className="max-w-full truncate" title={student.program}>
+                  · {student.program}
+                </span>
                 <span>· {student.yearLabel}</span>
-                <span>· {student.email}</span>
+                <span className="max-w-full truncate" title={student.email}>
+                  · {student.email}
+                </span>
                 <StatusBadge status={student.standing} />
               </p>
             </div>

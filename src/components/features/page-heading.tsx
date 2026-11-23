@@ -21,8 +21,17 @@ function PageHeading({
       )}
     >
       <div className="min-w-0">
-        <h1 className="text-[26px] leading-[1.15] md:text-3xl">{title}</h1>
-        {subtitle && <p className="mt-2 text-muted-foreground">{subtitle}</p>}
+        <h1
+          className="truncate text-[26px] leading-[1.15] md:text-3xl"
+          title={title}
+        >
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="mt-2 line-clamp-3 text-muted-foreground" title={subtitle}>
+            {subtitle}
+          </p>
+        )}
       </div>
       {actions && (
         <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
