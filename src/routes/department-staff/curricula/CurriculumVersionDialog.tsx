@@ -261,40 +261,6 @@ export function CurriculumVersionDialog({
                 {...register("version_label")}
               />
             </FormField>
-            {!editing && (
-              <FormField
-                label="Copy courses from (optional)"
-                htmlFor="new-version-source"
-              >
-                <Controller
-                  name="clone_from_version_id"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || "blank"}
-                      onValueChange={(value) =>
-                        field.onChange(value === "blank" ? "" : value)
-                      }
-                      disabled={pending}
-                    >
-                      <SelectTrigger id="new-version-source" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="blank">
-                          Start with a blank version
-                        </SelectItem>
-                        {versions.map((source) => (
-                          <SelectItem key={source.id} value={source.id}>
-                            {source.version_label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </FormField>
-            )}
             <FormField
               label="Required units"
               htmlFor="new-version-units"
@@ -319,18 +285,6 @@ export function CurriculumVersionDialog({
                 type="date"
                 aria-invalid={!!errors.effective_start}
                 {...register("effective_start")}
-              />
-            </FormField>
-            <FormField
-              label="Effective until (optional)"
-              htmlFor="version-end"
-              error={errors.effective_end?.message}
-            >
-              <Input
-                id="version-end"
-                type="date"
-                aria-invalid={!!errors.effective_end}
-                {...register("effective_end")}
               />
             </FormField>
             <FormField
@@ -365,6 +319,40 @@ export function CurriculumVersionDialog({
                 )}
               />
             </FormField>
+            {!editing && (
+              <FormField
+                label="Copy courses from (optional)"
+                htmlFor="new-version-source"
+              >
+                <Controller
+                  name="clone_from_version_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "blank"}
+                      onValueChange={(value) =>
+                        field.onChange(value === "blank" ? "" : value)
+                      }
+                      disabled={pending}
+                    >
+                      <SelectTrigger id="new-version-source" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="blank">
+                          Start with a blank version
+                        </SelectItem>
+                        {versions.map((source) => (
+                          <SelectItem key={source.id} value={source.id}>
+                            {source.version_label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+            )}
           </fieldset>
           {mutation.isError && (
             <p role="alert" className="text-sm text-destructive">
