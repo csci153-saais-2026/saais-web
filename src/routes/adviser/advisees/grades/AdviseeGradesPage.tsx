@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+﻿import { notify } from "@/lib/notify";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
 import {
@@ -255,7 +256,6 @@ export default function AdviseeGradesPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [revision, setRevision] = useState(0);
-  const [saved, setSaved] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const key = JSON.stringify([user?.id, id, revision]);
   const { data, error } = useScopedRequest(key, !!user?.id && !!id, () =>
@@ -266,9 +266,6 @@ export default function AdviseeGradesPage() {
     data.terms.every((term) => collapsed.has(term.school_term_id));
   return (
     <AdviserPage title="Grades" tab="grades" sample={false}>
-      {saved === JSON.stringify([user?.id, id]) && (
-        <p role="status">Grade saved.</p>
-      )}
       {!data && !error && <p role="status">Loading grades…</p>}
       {error && (
         <div role="alert">
@@ -488,7 +485,7 @@ export default function AdviseeGradesPage() {
                                       : r.course_offering_id
                                   }
                                   onSaved={() => {
-                                    setSaved(JSON.stringify([user?.id, id]));
+                                    notify.success("Grade saved.");
                                     setRevision((n) => n + 1);
                                   }}
                                 />

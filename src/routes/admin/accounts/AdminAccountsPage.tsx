@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useMemo, useState } from "react";
 import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
@@ -146,16 +147,12 @@ export default function AdminAccountsPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<Account | null>(null);
   const [accountActionId, setAccountActionId] = useState<string | null>(null);
   const [accountActionError, setAccountActionError] = useState<string | null>(
     null,
   );
-  const [accountActionSuccess, setAccountActionSuccess] = useState<
-    string | null
-  >(null);
   const query = useMemo(
     () => buildAccountQuery({ search, role, facultyId, departmentId }, page),
     [search, role, facultyId, departmentId, page],
@@ -206,11 +203,10 @@ export default function AdminAccountsPage() {
   async function submitInvitation(request: ApiSchema<"InviteRequest">) {
     setInviteSubmitting(true);
     setInviteError(null);
-    setInviteSuccess(null);
 
     try {
       const response = await accountMutations.invite.mutateAsync(request);
-      setInviteSuccess(response.message || "Invitation sent successfully.");
+      notify.success(response.message || "Invitation sent successfully.");
       setInviteOpen(false);
     } catch (requestError: unknown) {
       setInviteError(
@@ -229,14 +225,13 @@ export default function AdminAccountsPage() {
   ) {
     setAccountActionId(account.profile.id);
     setAccountActionError(null);
-    setAccountActionSuccess(null);
 
     try {
       await accountMutations.update.mutateAsync({
         profileId: account.profile.id,
         body: request,
       });
-      setAccountActionSuccess(
+      notify.success(
         `Updated account details for ${account.profile.full_name}.`,
       );
       setEditingAccount((current) =>
@@ -259,21 +254,16 @@ export default function AdminAccountsPage() {
   ) {
     setAccountActionId(account.profile.id);
     setAccountActionError(null);
-    setAccountActionSuccess(null);
 
     try {
       if (action === "resend") {
         const response = await accountMutations.resend.mutateAsync(
           account.profile.id,
         );
-        setAccountActionSuccess(
-          response.message || "Invitation resent successfully.",
-        );
+        notify.success(response.message || "Invitation resent successfully.");
       } else {
         await accountMutations.revoke.mutateAsync(account.profile.id);
-        setAccountActionSuccess(
-          `Invitation revoked for ${account.profile.full_name}.`,
-        );
+        notify.success(`Invitation revoked for ${account.profile.full_name}.`);
         setRevokeTarget((current) =>
           current?.profile.id === account.profile.id ? null : current,
         );
@@ -301,7 +291,6 @@ export default function AdminAccountsPage() {
             disabled={inviteSubmitting}
             onClick={() => {
               setInviteError(null);
-              setInviteSuccess(null);
               setInviteOpen(true);
             }}
           >
@@ -311,22 +300,6 @@ export default function AdminAccountsPage() {
         }
       />
 
-      {inviteSuccess && (
-        <div
-          role="status"
-          className="mb-3 rounded-md border border-primary/30 bg-card px-4 py-3 text-sm"
-        >
-          {inviteSuccess}
-        </div>
-      )}
-      {accountActionSuccess && (
-        <div
-          role="status"
-          className="mb-3 rounded-md border border-primary/30 bg-card px-4 py-3 text-sm"
-        >
-          {accountActionSuccess}
-        </div>
-      )}
       {accountActionError && (
         <div
           role="alert"

@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -23,7 +24,6 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [preview, setPreview] =
     useState<ApiSchema<"ShiftPreviewResponse"> | null>(null);
   const result = useScopedRequest(
@@ -35,13 +35,12 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
   async function run(action: "preview" | "endorse") {
     setBusy(true);
     setError("");
-    setMessage("");
     try {
       if (action === "preview")
         setPreview(await previewShift(id, previewTarget));
       else {
         await endorseTransfer(id, transferTarget, reason.trim());
-        setMessage("Transfer endorsed for review.");
+        notify.success("Transfer endorsed for review.");
         setReason("");
       }
     } catch (e) {
@@ -72,7 +71,6 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
         </div>
       )}
       {error && <p role="alert">{error}</p>}
-      {message && <p role="status">{message}</p>}
       {data && (
         <>
           <DataTablePanel
@@ -127,7 +125,6 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
                       value={transferTarget}
                       onChange={(event) => {
                         setTransferTarget(event.target.value);
-                        setMessage("");
                       }}
                     >
                       <option value="">Select curriculum</option>

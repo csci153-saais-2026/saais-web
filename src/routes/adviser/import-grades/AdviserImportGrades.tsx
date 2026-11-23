@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { AdviserPage } from "../Adviser";
 import { useAuth } from "@/hooks/use-auth";
@@ -57,7 +58,6 @@ function ImportForm() {
   const [preview, setPreview] = useState<ImportResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const fileRevision = useRef(0);
   const [uploadKey, setUploadKey] = useState(0);
 
@@ -83,7 +83,6 @@ function ImportForm() {
     setInput(null);
     setPreview(null);
     setError("");
-    setMessage("");
     if (!file) return;
     setFileName(file.name);
     setBusy(true);
@@ -136,7 +135,7 @@ function ImportForm() {
     setError("");
     try {
       const result = await post(input, "commit");
-      setMessage(
+      notify.success(
         `Saved ${result.imported_count} grade ${plural(result.imported_count, "row", "rows")}. GWA is recomputed for the affected advisees and the import is in the audit log.`,
       );
       reset();
@@ -174,11 +173,6 @@ function ImportForm() {
         {error && (
           <Alert variant="destructive" className="mt-4">
             <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {message && (
-          <Alert variant="success" className="mt-4" role="status">
-            <AlertDescription>{message}</AlertDescription>
           </Alert>
         )}
       </Panel>

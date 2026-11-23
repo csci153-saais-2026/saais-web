@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useEffect, useState, type FormEvent } from "react";
 import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
@@ -73,14 +74,10 @@ function SettingsEditor({
     {},
   );
   const [emailErrors, setEmailErrors] = useState<SettingsFormErrors>({});
-  const [thresholdFeedback, setThresholdFeedback] = useState<{
-    readonly kind: "success" | "error";
-    readonly message: string;
-  } | null>(null);
-  const [emailFeedback, setEmailFeedback] = useState<{
-    readonly kind: "success" | "error";
-    readonly message: string;
-  } | null>(null);
+  const [thresholdFeedback, setThresholdFeedback] = useState<string | null>(
+    null,
+  );
+  const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
   const [savingThresholds, setSavingThresholds] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
 
@@ -105,15 +102,11 @@ function SettingsEditor({
     setSavingThresholds(true);
     try {
       await onSave(buildThresholdUpdate(values));
-      setThresholdFeedback({
-        kind: "success",
-        message: "Academic-standing thresholds saved.",
-      });
+      notify.success("Academic-standing thresholds saved.");
     } catch (error: unknown) {
-      setThresholdFeedback({
-        kind: "error",
-        message: getErrorMessage(error, "Thresholds could not be saved."),
-      });
+      setThresholdFeedback(
+        getErrorMessage(error, "Thresholds could not be saved."),
+      );
     } finally {
       setSavingThresholds(false);
     }
@@ -129,15 +122,11 @@ function SettingsEditor({
     setSavingEmail(true);
     try {
       await onSave(buildSenderEmailUpdate(values.senderEmail));
-      setEmailFeedback({
-        kind: "success",
-        message: "Notification sender email saved.",
-      });
+      notify.success("Notification sender email saved.");
     } catch (error: unknown) {
-      setEmailFeedback({
-        kind: "error",
-        message: getErrorMessage(error, "Sender email could not be saved."),
-      });
+      setEmailFeedback(
+        getErrorMessage(error, "Sender email could not be saved."),
+      );
     } finally {
       setSavingEmail(false);
     }
@@ -210,15 +199,8 @@ function SettingsEditor({
             </FormField>
           </div>
           {thresholdFeedback && (
-            <p
-              role={thresholdFeedback.kind === "error" ? "alert" : "status"}
-              className={
-                thresholdFeedback.kind === "error"
-                  ? "text-sm text-destructive"
-                  : "text-sm text-notice-success"
-              }
-            >
-              {thresholdFeedback.message}
+            <p role="alert" className="text-sm text-destructive">
+              {thresholdFeedback}
             </p>
           )}
           <div>
@@ -257,15 +239,8 @@ function SettingsEditor({
               />
             </FormField>
             {emailFeedback && (
-              <p
-                role={emailFeedback.kind === "error" ? "alert" : "status"}
-                className={
-                  emailFeedback.kind === "error"
-                    ? "text-sm text-destructive"
-                    : "text-sm text-notice-success"
-                }
-              >
-                {emailFeedback.message}
+              <p role="alert" className="text-sm text-destructive">
+                {emailFeedback}
               </p>
             )}
             <div>
@@ -294,29 +269,20 @@ function BackupMetadataPanel({
   onRecord: (request: BackupRecordRequest) => Promise<void>;
 }) {
   const [recording, setRecording] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    readonly kind: "success" | "error";
-    readonly message: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   async function recordBackup() {
     setRecording(true);
     setFeedback(null);
     try {
       await onRecord({ scope: "institution_wide" });
-      setFeedback({
-        kind: "success",
-        message:
-          "Completed backup metadata recorded. This action did not create or run a backup.",
-      });
+      notify.success(
+        "Completed backup metadata recorded. This action did not create or run a backup.",
+      );
     } catch (error: unknown) {
-      setFeedback({
-        kind: "error",
-        message: getErrorMessage(
-          error,
-          "Backup metadata could not be recorded.",
-        ),
-      });
+      setFeedback(
+        getErrorMessage(error, "Backup metadata could not be recorded."),
+      );
     } finally {
       setRecording(false);
     }
@@ -343,15 +309,8 @@ function BackupMetadataPanel({
         it here. Recording does not create or run a backup.
       </p>
       {feedback && (
-        <p
-          role={feedback.kind === "error" ? "alert" : "status"}
-          className={`mt-3 text-sm ${
-            feedback.kind === "error"
-              ? "text-destructive"
-              : "text-notice-success"
-          }`}
-        >
-          {feedback.message}
+        <p role="alert" className="mt-3 text-sm text-destructive">
+          {feedback}
         </p>
       )}
       <Button

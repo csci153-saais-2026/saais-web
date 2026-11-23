@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
@@ -157,7 +158,14 @@ function InvitationActions({
           type="button"
           variant="outline"
           disabled={targetBusy || resend.isSuccess}
-          onClick={() => resend.mutate(account.profile.id)}
+          onClick={() =>
+            resend.mutate(account.profile.id, {
+              onSuccess: (data) =>
+                notify.success(
+                  `${data.message} Expires ${new Date(data.invitation_expires_at).toLocaleString()}.`,
+                ),
+            })
+          }
         >
           {resend.isPending
             ? "Resendingâ€¦"
@@ -207,19 +215,20 @@ function InvitationActions({
                 type="button"
                 variant="destructive"
                 disabled={targetBusy}
-                onClick={() => revoke.mutate(account.profile.id)}
+                onClick={() =>
+                  revoke.mutate(account.profile.id, {
+                    onSuccess: (data) =>
+                      notify.success(
+                        `Invitation revoked for ${data.full_name}.`,
+                      ),
+                  })
+                }
               >
                 {revoke.isPending ? "Revokingâ€¦" : "Confirm revocation"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
-      {resend.isSuccess && (
-        <p role="status" className="max-w-56 text-xs text-muted-foreground">
-          {resend.data.message} Expires{" "}
-          {new Date(resend.data.invitation_expires_at).toLocaleString()}.
-        </p>
       )}
       {resend.isError && (
         <p role="alert" className="max-w-56 text-xs text-destructive">
@@ -229,11 +238,6 @@ function InvitationActions({
       {revoke.isError && (
         <p role="alert" className="max-w-56 text-xs text-destructive">
           {revokeFailureMessage(revoke.error)}
-        </p>
-      )}
-      {revoke.isSuccess && (
-        <p role="status" className="max-w-56 text-xs text-muted-foreground">
-          Invitation revoked for {revoke.data.full_name}.
         </p>
       )}
       {(canResend || canRevoke) && (

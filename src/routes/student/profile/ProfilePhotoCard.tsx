@@ -1,4 +1,5 @@
 import * as React from "react";
+import { notify } from "@/lib/notify";
 import { Panel } from "@/components/features/panel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,6 @@ export function ProfilePhotoCard({
   className,
 }: ProfilePhotoCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [statusMessage, setStatusMessage] = React.useState<string>("");
   const [errorMessage, setErrorMessage] = React.useState<string>("");
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -44,7 +44,6 @@ export function ProfilePhotoCard({
 
     if (!validation.success) {
       const firstIssue = validation.error.issues[0];
-      setStatusMessage("");
       setErrorMessage(firstIssue?.message ?? "Invalid image file.");
       return;
     }
@@ -52,9 +51,8 @@ export function ProfilePhotoCard({
     setErrorMessage("");
     try {
       await onUpload?.(file);
-      setStatusMessage("Photo updated.");
+      notify.success("Photo updated.");
     } catch (err) {
-      setStatusMessage("");
       setErrorMessage(
         err instanceof Error ? err.message : "Could not update photo.",
       );
@@ -66,9 +64,8 @@ export function ProfilePhotoCard({
     setErrorMessage("");
     try {
       await onRemove?.();
-      setStatusMessage("Photo removed.");
+      notify.success("Photo removed.");
     } catch (err) {
-      setStatusMessage("");
       setErrorMessage(
         err instanceof Error ? err.message : "Could not remove photo.",
       );
@@ -132,12 +129,6 @@ export function ProfilePhotoCard({
           {errorMessage && (
             <p role="alert" className="mt-2.5 text-cell text-destructive">
               {errorMessage}
-            </p>
-          )}
-
-          {!errorMessage && statusMessage && (
-            <p role="status" className="mt-2.5 text-cell text-muted-foreground">
-              {statusMessage}
             </p>
           )}
         </div>

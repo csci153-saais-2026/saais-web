@@ -349,7 +349,7 @@ describe("Department Staff course catalog", () => {
       fireEvent.click(
         within(dialog).getByRole("button", { name: "Save prerequisites" }),
       );
-      await within(dialog).findByText("Prerequisites saved.");
+      await screen.findByText("Prerequisites saved.");
       expect(getMockDatabase().prerequisites).toContainEqual(
         expect.objectContaining({
           course_id: MOCK_IDS.courseCsci198,
@@ -419,7 +419,7 @@ describe("Department Staff course catalog", () => {
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Save prerequisites" }),
     );
-    await within(dialog).findByText("Prerequisites saved.");
+    await screen.findByText("Prerequisites saved.");
     expect(
       getMockDatabase().prerequisites.some(
         (item) => item.id === MOCK_IDS.prereqCsci153Requires102,

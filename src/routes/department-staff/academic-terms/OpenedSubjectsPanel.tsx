@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { useMemo, useState } from "react";
 import {
   DataTablePanel,
@@ -63,7 +64,6 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
     mode: CourseOfferingDialogMode;
     item?: OpenedSubject;
   } | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const versions = curricula.data?.versions ?? [];
   const selectedVersion = versions.find((version) => version.id === versionId);
   const curriculum = useCurriculum(selectedVersion?.id);
@@ -345,11 +345,6 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
             </Button>
           </div>
         )}
-        {message && (
-          <p role="status" className="mt-4 text-sm text-muted-foreground">
-            {message}
-          </p>
-        )}
       </Panel>
 
       {!curriculumReady ? null : offerings.isPending ? (
@@ -405,7 +400,7 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
           onClose={() => setDialog(null)}
           onComplete={(action) => {
             setDialog(null);
-            setMessage(
+            notify.success(
               action === "created"
                 ? "Course offering added."
                 : action === "updated"
