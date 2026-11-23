@@ -1,3 +1,4 @@
+import { Truncate } from "@/components/ui/truncate";
 import type { StudentImportBatchResult } from "./student-import.api";
 
 const outcomeLabels: Record<
@@ -85,7 +86,9 @@ export function ImportPreviewTable({
               >
                 <td className="p-3">{rowResult.row_number}</td>
                 <td className="p-3">{rowResult.student_number}</td>
-                <td className="p-3">{rowResult.email}</td>
+                <td className="p-3">
+                  <Truncate text={rowResult.email} className="max-w-64" />
+                </td>
                 <td className="p-3">
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-1 font-semibold ${outcomeClasses[rowResult.outcome]}`}
@@ -97,7 +100,12 @@ export function ImportPreviewTable({
                     {outcomeLabels[rowResult.outcome]}
                   </span>
                 </td>
-                <td className="p-3">{rowResult.message || "—"}</td>
+                <td className="p-3">
+                  <Truncate
+                    text={rowResult.message || "—"}
+                    className="max-w-96"
+                  />
+                </td>
               </tr>
             ))}
           </tbody>

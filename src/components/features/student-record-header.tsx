@@ -30,7 +30,10 @@ function StudentRecordHeader({
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        <h1 className="truncate text-3xl leading-tight" title={name}>
+        <h1
+          className="line-clamp-2 text-3xl leading-tight wrap-anywhere"
+          title={name}
+        >
           {name}
         </h1>
         <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">

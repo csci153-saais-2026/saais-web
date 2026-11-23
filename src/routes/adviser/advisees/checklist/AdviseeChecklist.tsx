@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Kicker } from "@/components/ui/kicker";
 import { StatusBadge, type Status } from "@/components/ui/status-badge";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Dialog,
   DialogClose,
@@ -202,7 +203,10 @@ function AttemptDetails({
                       {grade(a.completion_grade) ?? "—"}
                     </TableCell>
                     <TableCell className="px-3.5 py-2.75">
-                      {a.instructor || "—"}
+                      <Truncate
+                        text={a.instructor || "—"}
+                        className="max-w-48"
+                      />
                     </TableCell>
                     <TableCell className="px-3.5 py-2.75">
                       <StatusBadge status={statusMap[a.effective_status]} />
@@ -479,12 +483,15 @@ export default function AdviseeChecklist() {
                                   slot?.slot_label ??
                                   "Requirement unavailable"}
                               </b>
-                              <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                                {course?.title ??
+                              <Truncate
+                                text={
+                                  course?.title ??
                                   (slot
                                     ? "Elective requirement"
-                                    : r.curriculum_term_course_id)}
-                              </span>
+                                    : r.curriculum_term_course_id)
+                                }
+                                className="mt-0.5 max-w-64 text-[12.5px] text-muted-foreground"
+                              />
                             </TableCell>
                             <TableCell
                               label="Units earned / required"
@@ -502,7 +509,10 @@ export default function AdviseeChecklist() {
                               label="Satisfaction source"
                               className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
                             >
-                              {r.satisfaction_source ?? "—"}
+                              <Truncate
+                                text={r.satisfaction_source ?? "—"}
+                                className="max-w-56"
+                              />
                               {(r.credited_course_code ||
                                 sourceGrade != null) && (
                                 <span className="mt-0.5 block text-[12.5px] text-muted-foreground">

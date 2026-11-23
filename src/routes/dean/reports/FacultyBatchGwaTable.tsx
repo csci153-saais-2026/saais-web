@@ -23,7 +23,11 @@ export function FacultyBatchGwaTable({
         },
         {
           header: "Curriculum",
-          cell: (row) => row.curriculum,
+          cell: (row) => (
+            <span className="block max-w-64 truncate" title={row.curriculum}>
+              {row.curriculum}
+            </span>
+          ),
         },
         {
           header: "Students",

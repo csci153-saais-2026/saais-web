@@ -22,7 +22,7 @@ function PageHeading({
     >
       <div className="min-w-0">
         <h1
-          className="truncate text-[26px] leading-[1.15] md:text-3xl"
+          className="line-clamp-2 text-[26px] leading-[1.15] wrap-anywhere md:text-3xl"
           title={title}
         >
           {title}

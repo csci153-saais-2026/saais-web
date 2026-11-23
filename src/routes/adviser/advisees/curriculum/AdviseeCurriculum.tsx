@@ -12,6 +12,7 @@ import { DataTablePanel } from "@/components/features/data-table-panel";
 import { Panel } from "@/components/features/panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Truncate } from "@/components/ui/truncate";
 import type { ApiSchema } from "@/lib/api";
 
 function CurriculumContent({ id, userId }: { id: string; userId: string }) {
@@ -81,14 +82,28 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
             columns={[
               {
                 header: "Curriculum version",
-                cell: (row) =>
-                  data.versions.find(
-                    (version) => version.id === row.curriculum_version_id,
-                  )?.version_label ?? row.curriculum_version_id,
+                cell: (row) => (
+                  <Truncate
+                    text={
+                      data.versions.find(
+                        (version) => version.id === row.curriculum_version_id,
+                      )?.version_label ?? row.curriculum_version_id
+                    }
+                    className="max-w-64"
+                  />
+                ),
               },
               { header: "From", cell: (row) => row.start_date },
               { header: "To", cell: (row) => row.end_date ?? "Current" },
-              { header: "Note", cell: (row) => row.change_note ?? "—" },
+              {
+                header: "Note",
+                cell: (row) => (
+                  <Truncate
+                    text={row.change_note ?? "—"}
+                    className="max-w-72"
+                  />
+                ),
+              },
             ]}
           />
           {!data.canEdit && (

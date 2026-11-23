@@ -67,36 +67,40 @@ export function StudentDirectoryTable({
                   }
                 }}
               >
-                <TableCell
-                  label="Student"
-                  title={student.name}
-                  className="max-w-56 truncate font-medium text-primary"
-                >
-                  {student.name}
+                <TableCell label="Student" className="font-medium text-primary">
+                  <span
+                    className="block max-w-56 truncate"
+                    title={student.name}
+                  >
+                    {student.name}
+                  </span>
                 </TableCell>
                 <TableCell label="Student no." className="font-mono text-xs">
                   {student.studentNumber}
                 </TableCell>
-                <TableCell
-                  label="Department"
-                  title={student.department}
-                  className="max-w-56 truncate"
-                >
-                  {student.department}
+                <TableCell label="Department">
+                  <span
+                    className="block max-w-56 truncate"
+                    title={student.department}
+                  >
+                    {student.department}
+                  </span>
                 </TableCell>
-                <TableCell
-                  label="Curriculum"
-                  title={student.curriculum}
-                  className="max-w-48 truncate"
-                >
-                  {student.curriculum}
+                <TableCell label="Curriculum">
+                  <span
+                    className="block max-w-48 truncate"
+                    title={student.curriculum}
+                  >
+                    {student.curriculum}
+                  </span>
                 </TableCell>
-                <TableCell
-                  label="Adviser"
-                  title={student.adviser}
-                  className="max-w-56 truncate"
-                >
-                  {student.adviser}
+                <TableCell label="Adviser">
+                  <span
+                    className="block max-w-56 truncate"
+                    title={student.adviser}
+                  >
+                    {student.adviser}
+                  </span>
                 </TableCell>
               </TableRow>
             ))
