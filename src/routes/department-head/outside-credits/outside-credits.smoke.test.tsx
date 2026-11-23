@@ -55,7 +55,7 @@ describe("Outside Credits", () => {
       }),
     );
     renderDepartmentHead(<OutsideCreditsPage />);
-    expect(screen.getByRole("status").textContent).toContain(
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
       "Loading outside credits",
     );
     expect(await screen.findByRole("alert")).toHaveProperty(

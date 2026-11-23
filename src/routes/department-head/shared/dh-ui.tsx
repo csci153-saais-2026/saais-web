@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 /** Loading and failure message for a page whose data comes from the API. */
 export function QueryMessage({
   query,
@@ -8,12 +9,12 @@ export function QueryMessage({
 }) {
   if (!query.isError)
     return (
-      <p
-        role="status"
-        className="py-10 text-center text-sm text-muted-foreground"
-      >
-        Loading {label}…
-      </p>
+      <TableSkeleton
+        rows={5}
+        columns={4}
+        label={`Loading ${label}…`}
+        className="py-6"
+      />
     );
   const message =
     query.error instanceof Error

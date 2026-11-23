@@ -200,7 +200,9 @@ describe("AdviserDashboard", () => {
       </MemoryRouter>,
     );
     expect(screen.queryByText("1.75")).toBeNull();
-    expect(screen.getByRole("status").textContent).toContain("Loading");
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
+      "Loading",
+    );
   });
 
   it("previews the selected adviser report and closes it on account switch", async () => {

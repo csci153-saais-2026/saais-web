@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { Button } from "@/components/ui/button";
@@ -54,11 +55,7 @@ export function StudentEnrollmentHistoryPage({
   const { data, isPending, isError, refetch } =
     useStudentEnrollmentHistory(studentId);
 
-  if (isPending) {
-    return <p role="status">Loading...</p>;
-  }
-
-  if (isError || !data) {
+  if (!isPending && (isError || !data)) {
     return (
       <Panel
         title="Unable to load enrollment history"
@@ -72,11 +69,19 @@ export function StudentEnrollmentHistoryPage({
   }
 
   return (
-    <StudentEnrollmentHistoryView
-      attempts={data.attempts}
-      offeringDetails={data.offeringDetails}
-      slotLabels={data.slotLabels}
-    />
+    <AccountSkeleton
+      id="student-enrollment-history"
+      data={isPending ? null : data}
+      label="Loading..."
+    >
+      {(data) => (
+        <StudentEnrollmentHistoryView
+          attempts={data.attempts}
+          offeringDetails={data.offeringDetails}
+          slotLabels={data.slotLabels}
+        />
+      )}
+    </AccountSkeleton>
   );
 }
 

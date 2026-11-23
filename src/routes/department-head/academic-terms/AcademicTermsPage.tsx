@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import * as React from "react";
 import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
@@ -202,7 +203,7 @@ export default function AcademicTermsPage() {
     }
   };
 
-  if (!termsQuery.data) {
+  if (termsQuery.isError && !termsQuery.data) {
     return (
       <div className="space-y-6">
         <PageHeading
@@ -218,338 +219,358 @@ export default function AcademicTermsPage() {
   const closedCount = terms.length - openCount;
 
   return (
-    <div className="space-y-6">
-      <PageHeading
-        title="Academic terms"
-        subtitle="Review semester dates and manage the grade encoding period."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleExportPdf}
-              className="gap-2 cursor-pointer"
-            >
-              <DownloadIcon className="size-4" />
-              Export PDF
-            </Button>
-            <Button
-              onClick={() => setIsAddTermOpen(true)}
-              className="gap-2 cursor-pointer"
-            >
-              <PlusIcon className="size-4" />
-              Add a term
-            </Button>
-          </div>
-        }
-      />
-
-      <Alert variant="advisory">
-        <AlertIcon />
-        <AlertDescription>
-          Closing encoding prevents further grade entry for the term. A backup
-          reminder is sent to the administrator; the Department Head can record
-          a completed backup in Settings.
-        </AlertDescription>
-      </Alert>
-
-      <Panel
-        title="Academic term history"
-        description="Encoding windows are tracked separately for each semester."
-        flush
-      >
-        <Table responsive className="text-[13.5px]">
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className={TH}>Academic year</TableHead>
-              <TableHead className={TH}>Semester</TableHead>
-              <TableHead className={TH}>Term dates</TableHead>
-              <TableHead className={TH}>Encoding deadline</TableHead>
-              <TableHead className={TH}>Status</TableHead>
-              <TableHead className={TH} aria-label="Actions" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {terms.map((t) => (
-              <TableRow
-                key={t.id}
-                className="border-line-soft hover:bg-line-soft"
-              >
-                <TableCell
-                  label="Academic year"
-                  className={`${TD} ${t.status === "Open" ? "font-semibold" : ""}`}
+    <AccountSkeleton
+      id="dh-academic-terms"
+      data={termsQuery.data}
+      label="Loading academic terms…"
+    >
+      {() => (
+        <div className="space-y-6">
+          <PageHeading
+            title="Academic terms"
+            subtitle="Review semester dates and manage the grade encoding period."
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportPdf}
+                  className="gap-2 cursor-pointer"
                 >
-                  {t.academicYear}
-                </TableCell>
-                <TableCell label="Semester" className={TD}>
-                  {t.semester}
-                </TableCell>
-                <TableCell label="Term dates" className={TD}>
-                  {t.termDates}
-                </TableCell>
-                <TableCell label="Encoding deadline" className={TD}>
-                  {t.encodingDeadline}
-                </TableCell>
-                <TableCell label="Status" className={TD}>
-                  <StatusBadge
-                    status={t.status === "Open" ? "current" : "archived"}
-                  >
-                    {t.status}
-                  </StatusBadge>
-                </TableCell>
-                <TableCell label="Actions" className={TD}>
-                  {t.status === "Open" ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => setTermToClose(t)}
-                      className="cursor-pointer"
-                    >
-                      Close encoding
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => setTermToView(t)}
-                      className="h-auto px-0 py-1 text-[13px] font-semibold no-underline hover:no-underline cursor-pointer"
-                    >
-                      View term
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  <DownloadIcon className="size-4" />
+                  Export PDF
+                </Button>
+                <Button
+                  onClick={() => setIsAddTermOpen(true)}
+                  className="gap-2 cursor-pointer"
+                >
+                  <PlusIcon className="size-4" />
+                  Add a term
+                </Button>
+              </div>
+            }
+          />
 
-        <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-2">
-          <span>
-            {openCount} open {openCount === 1 ? "term" : "terms"} ·{" "}
-            {closedCount} closed {closedCount === 1 ? "term" : "terms"}
-          </span>
-          <span>DCST department scope</span>
-        </div>
-      </Panel>
-
-      {/* Add Term Dialog */}
-      <TermDialog
-        open={isAddTermOpen}
-        onOpenChange={setIsAddTermOpen}
-        title="Add academic term"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setIsAddTermOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateTerm} disabled={createTerm.isPending}>
-              Add term
-            </Button>
-          </>
-        }
-      >
-        <div className="grid grid-cols-1 gap-4.5 sm:grid-cols-2">
-          <FormField
-            label="Academic year"
-            htmlFor="at-ay"
-            error={fieldErrors.academicYear}
-          >
-            <Input
-              id="at-ay"
-              value={newAY}
-              aria-invalid={!!fieldErrors.academicYear}
-              onChange={(e) => setNewAY(e.target.value)}
-            />
-          </FormField>
-          <FormField
-            label="Semester"
-            htmlFor="at-sem"
-            error={fieldErrors.semester}
-          >
-            <Select value={newSem} onValueChange={setNewSem}>
-              <SelectTrigger id="at-sem" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SEMESTER_OPTIONS.map((sem) => (
-                  <SelectItem key={sem} value={sem}>
-                    {sem}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <FormField
-            label="Start date"
-            htmlFor="at-start"
-            error={fieldErrors.startDate}
-          >
-            <Input
-              id="at-start"
-              type="date"
-              value={newStartDate}
-              onChange={(e) => setNewStartDate(e.target.value)}
-            />
-          </FormField>
-          <FormField
-            label="Actual end date"
-            htmlFor="at-end"
-            error={fieldErrors.endDate}
-          >
-            <Input
-              id="at-end"
-              type="date"
-              value={newEndDate}
-              onChange={(e) => setNewEndDate(e.target.value)}
-            />
-          </FormField>
-          <FormField
-            label="Encoding deadline"
-            htmlFor="at-deadline"
-            error={fieldErrors.deadline}
-          >
-            <Input
-              id="at-deadline"
-              type="date"
-              value={newDeadline}
-              onChange={(e) => setNewDeadline(e.target.value)}
-            />
-          </FormField>
-          <FormField label="Encoding status" htmlFor="at-status">
-            <Select
-              value={newStatus}
-              onValueChange={(val) => setNewStatus(val as "Open" | "Closed")}
-            >
-              <SelectTrigger id="at-status" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Open">Open</SelectItem>
-                <SelectItem value="Closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormField>
-        </div>
-        {formError && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertDescription>{formError}</AlertDescription>
+          <Alert variant="advisory">
+            <AlertIcon />
+            <AlertDescription>
+              Closing encoding prevents further grade entry for the term. A
+              backup reminder is sent to the administrator; the Department Head
+              can record a completed backup in Settings.
+            </AlertDescription>
           </Alert>
-        )}
-      </TermDialog>
 
-      {/* Close Encoding Dialog */}
-      <TermDialog
-        open={!!termToClose}
-        onOpenChange={(open) => {
-          if (!open) {
-            setTermToClose(null);
-            setClosureNote("");
-          }
-        }}
-        title="Close grade encoding"
-        footer={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => {
+          <Panel
+            title="Academic term history"
+            description="Encoding windows are tracked separately for each semester."
+            flush
+          >
+            <Table responsive className="text-[13.5px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className={TH}>Academic year</TableHead>
+                  <TableHead className={TH}>Semester</TableHead>
+                  <TableHead className={TH}>Term dates</TableHead>
+                  <TableHead className={TH}>Encoding deadline</TableHead>
+                  <TableHead className={TH}>Status</TableHead>
+                  <TableHead className={TH} aria-label="Actions" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {terms.map((t) => (
+                  <TableRow
+                    key={t.id}
+                    className="border-line-soft hover:bg-line-soft"
+                  >
+                    <TableCell
+                      label="Academic year"
+                      className={`${TD} ${t.status === "Open" ? "font-semibold" : ""}`}
+                    >
+                      {t.academicYear}
+                    </TableCell>
+                    <TableCell label="Semester" className={TD}>
+                      {t.semester}
+                    </TableCell>
+                    <TableCell label="Term dates" className={TD}>
+                      {t.termDates}
+                    </TableCell>
+                    <TableCell label="Encoding deadline" className={TD}>
+                      {t.encodingDeadline}
+                    </TableCell>
+                    <TableCell label="Status" className={TD}>
+                      <StatusBadge
+                        status={t.status === "Open" ? "current" : "archived"}
+                      >
+                        {t.status}
+                      </StatusBadge>
+                    </TableCell>
+                    <TableCell label="Actions" className={TD}>
+                      {t.status === "Open" ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => setTermToClose(t)}
+                          className="cursor-pointer"
+                        >
+                          Close encoding
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => setTermToView(t)}
+                          className="h-auto px-0 py-1 text-[13px] font-semibold no-underline hover:no-underline cursor-pointer"
+                        >
+                          View term
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-2">
+              <span>
+                {openCount} open {openCount === 1 ? "term" : "terms"} ·{" "}
+                {closedCount} closed {closedCount === 1 ? "term" : "terms"}
+              </span>
+              <span>DCST department scope</span>
+            </div>
+          </Panel>
+
+          {/* Add Term Dialog */}
+          <TermDialog
+            open={isAddTermOpen}
+            onOpenChange={setIsAddTermOpen}
+            title="Add academic term"
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddTermOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateTerm}
+                  disabled={createTerm.isPending}
+                >
+                  Add term
+                </Button>
+              </>
+            }
+          >
+            <div className="grid grid-cols-1 gap-4.5 sm:grid-cols-2">
+              <FormField
+                label="Academic year"
+                htmlFor="at-ay"
+                error={fieldErrors.academicYear}
+              >
+                <Input
+                  id="at-ay"
+                  value={newAY}
+                  aria-invalid={!!fieldErrors.academicYear}
+                  onChange={(e) => setNewAY(e.target.value)}
+                />
+              </FormField>
+              <FormField
+                label="Semester"
+                htmlFor="at-sem"
+                error={fieldErrors.semester}
+              >
+                <Select value={newSem} onValueChange={setNewSem}>
+                  <SelectTrigger id="at-sem" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEMESTER_OPTIONS.map((sem) => (
+                      <SelectItem key={sem} value={sem}>
+                        {sem}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField
+                label="Start date"
+                htmlFor="at-start"
+                error={fieldErrors.startDate}
+              >
+                <Input
+                  id="at-start"
+                  type="date"
+                  value={newStartDate}
+                  onChange={(e) => setNewStartDate(e.target.value)}
+                />
+              </FormField>
+              <FormField
+                label="Actual end date"
+                htmlFor="at-end"
+                error={fieldErrors.endDate}
+              >
+                <Input
+                  id="at-end"
+                  type="date"
+                  value={newEndDate}
+                  onChange={(e) => setNewEndDate(e.target.value)}
+                />
+              </FormField>
+              <FormField
+                label="Encoding deadline"
+                htmlFor="at-deadline"
+                error={fieldErrors.deadline}
+              >
+                <Input
+                  id="at-deadline"
+                  type="date"
+                  value={newDeadline}
+                  onChange={(e) => setNewDeadline(e.target.value)}
+                />
+              </FormField>
+              <FormField label="Encoding status" htmlFor="at-status">
+                <Select
+                  value={newStatus}
+                  onValueChange={(val) =>
+                    setNewStatus(val as "Open" | "Closed")
+                  }
+                >
+                  <SelectTrigger id="at-status" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+            {formError && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+          </TermDialog>
+
+          {/* Close Encoding Dialog */}
+          <TermDialog
+            open={!!termToClose}
+            onOpenChange={(open) => {
+              if (!open) {
                 setTermToClose(null);
                 setClosureNote("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCloseEncoding}
-              disabled={closeEncoding.isPending}
-            >
-              Close encoding
-            </Button>
-          </>
-        }
-      >
-        {termToClose && (
-          <div className="space-y-4.5">
-            <p className="text-foreground">
-              Close encoding for{" "}
-              <strong>
-                {termToClose.academicYear} · {termToClose.semester}
-              </strong>
-              ?
-            </p>
-            <Alert variant="advisory">
-              <AlertIcon />
-              <AlertDescription>
-                New grade entries will be closed for this term. A backup
-                reminder will be sent to the administrator.
-              </AlertDescription>
-            </Alert>
-            <FormField label="Closure note" htmlFor="closure-note">
-              <Textarea
-                id="closure-note"
-                maxLength={REASON_MAX_LENGTH}
-                placeholder="Enter a reason for this decision"
-                value={closureNote}
-                onChange={(e) => setClosureNote(e.target.value)}
-              />
-            </FormField>
-          </div>
-        )}
-      </TermDialog>
-
-      {/* Term Details Dialog */}
-      <TermDialog
-        open={!!termToView}
-        onOpenChange={(open) => !open && setTermToView(null)}
-        title="Academic term details"
-        footer={
-          <Button variant="outline" onClick={() => setTermToView(null)}>
-            Close
-          </Button>
-        }
-      >
-        {termToView && (
-          <dl className="grid grid-cols-2 gap-5">
-            <div>
-              <dt className={DETAIL_LABEL}>Academic year</dt>
-              <dd className={DETAIL_VALUE}>{termToView.academicYear}</dd>
-            </div>
-            <div>
-              <dt className={DETAIL_LABEL}>Semester</dt>
-              <dd className={DETAIL_VALUE}>{termToView.semester}</dd>
-            </div>
-            <div>
-              <dt className={DETAIL_LABEL}>Term dates</dt>
-              <dd className={DETAIL_VALUE}>{termToView.termDates}</dd>
-            </div>
-            <div>
-              <dt className={DETAIL_LABEL}>Encoding deadline</dt>
-              <dd className={DETAIL_VALUE}>{termToView.encodingDeadline}</dd>
-            </div>
-            <div>
-              <dt className={DETAIL_LABEL}>Status</dt>
-              <dd className="mt-1">
-                <StatusBadge
-                  status={termToView.status === "Open" ? "current" : "archived"}
+              }
+            }}
+            title="Close grade encoding"
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTermToClose(null);
+                    setClosureNote("");
+                  }}
                 >
-                  {termToView.status}
-                </StatusBadge>
-              </dd>
-            </div>
-            <div>
-              <dt className={DETAIL_LABEL}>Closed by</dt>
-              <dd className={DETAIL_VALUE}>
-                {termToView.closedBy ?? "Dr. Andrea Dela Cruz"}
-              </dd>
-            </div>
-            {termToView.closureNote && (
-              <div className="col-span-2">
-                <dt className={DETAIL_LABEL}>Closure note</dt>
-                <dd className={DETAIL_VALUE}>{termToView.closureNote}</dd>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCloseEncoding}
+                  disabled={closeEncoding.isPending}
+                >
+                  Close encoding
+                </Button>
+              </>
+            }
+          >
+            {termToClose && (
+              <div className="space-y-4.5">
+                <p className="text-foreground">
+                  Close encoding for{" "}
+                  <strong>
+                    {termToClose.academicYear} · {termToClose.semester}
+                  </strong>
+                  ?
+                </p>
+                <Alert variant="advisory">
+                  <AlertIcon />
+                  <AlertDescription>
+                    New grade entries will be closed for this term. A backup
+                    reminder will be sent to the administrator.
+                  </AlertDescription>
+                </Alert>
+                <FormField label="Closure note" htmlFor="closure-note">
+                  <Textarea
+                    id="closure-note"
+                    maxLength={REASON_MAX_LENGTH}
+                    placeholder="Enter a reason for this decision"
+                    value={closureNote}
+                    onChange={(e) => setClosureNote(e.target.value)}
+                  />
+                </FormField>
               </div>
             )}
-          </dl>
-        )}
-      </TermDialog>
+          </TermDialog>
 
-      <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
-    </div>
+          {/* Term Details Dialog */}
+          <TermDialog
+            open={!!termToView}
+            onOpenChange={(open) => !open && setTermToView(null)}
+            title="Academic term details"
+            footer={
+              <Button variant="outline" onClick={() => setTermToView(null)}>
+                Close
+              </Button>
+            }
+          >
+            {termToView && (
+              <dl className="grid grid-cols-2 gap-5">
+                <div>
+                  <dt className={DETAIL_LABEL}>Academic year</dt>
+                  <dd className={DETAIL_VALUE}>{termToView.academicYear}</dd>
+                </div>
+                <div>
+                  <dt className={DETAIL_LABEL}>Semester</dt>
+                  <dd className={DETAIL_VALUE}>{termToView.semester}</dd>
+                </div>
+                <div>
+                  <dt className={DETAIL_LABEL}>Term dates</dt>
+                  <dd className={DETAIL_VALUE}>{termToView.termDates}</dd>
+                </div>
+                <div>
+                  <dt className={DETAIL_LABEL}>Encoding deadline</dt>
+                  <dd className={DETAIL_VALUE}>
+                    {termToView.encodingDeadline}
+                  </dd>
+                </div>
+                <div>
+                  <dt className={DETAIL_LABEL}>Status</dt>
+                  <dd className="mt-1">
+                    <StatusBadge
+                      status={
+                        termToView.status === "Open" ? "current" : "archived"
+                      }
+                    >
+                      {termToView.status}
+                    </StatusBadge>
+                  </dd>
+                </div>
+                <div>
+                  <dt className={DETAIL_LABEL}>Closed by</dt>
+                  <dd className={DETAIL_VALUE}>
+                    {termToView.closedBy ?? "Dr. Andrea Dela Cruz"}
+                  </dd>
+                </div>
+                {termToView.closureNote && (
+                  <div className="col-span-2">
+                    <dt className={DETAIL_LABEL}>Closure note</dt>
+                    <dd className={DETAIL_VALUE}>{termToView.closureNote}</dd>
+                  </div>
+                )}
+              </dl>
+            )}
+          </TermDialog>
+
+          <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
+        </div>
+      )}
+    </AccountSkeleton>
   );
 }

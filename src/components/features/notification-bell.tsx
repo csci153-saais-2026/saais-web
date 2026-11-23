@@ -1,3 +1,4 @@
+import { LinesSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { BellIcon } from "@/components/icons";
 import { Link } from "react-router";
@@ -84,12 +85,11 @@ function NotificationBell({
           )}
         </div>
         {loading ? (
-          <p
-            role="status"
-            className="border-t border-line-soft px-4 py-4 text-sm text-muted-foreground"
-          >
-            Loading notifications…
-          </p>
+          <LinesSkeleton
+            lines={3}
+            label="Loading notifications…"
+            className="border-t border-line-soft px-4 py-4"
+          />
         ) : error ? (
           <p
             role="alert"

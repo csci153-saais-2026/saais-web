@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { notify } from "@/lib/notify";
 import { useMemo, useState } from "react";
 import { FormField } from "@/components/features/form-field";
@@ -431,11 +432,12 @@ export default function AdminAccountsPage() {
           <TableBody>
             {accountsLoading ? (
               <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="px-5 py-8 text-center text-muted-foreground"
-                >
-                  Loading accounts…
+                <TableCell colSpan={5} className="px-5 py-4">
+                  <TableSkeleton
+                    rows={5}
+                    columns={5}
+                    label="Loading accounts…"
+                  />
                 </TableCell>
               </TableRow>
             ) : accountsError ? (

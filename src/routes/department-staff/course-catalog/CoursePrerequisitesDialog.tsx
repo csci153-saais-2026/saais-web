@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -203,9 +204,11 @@ export function CoursePrerequisitesDialog({
               </div>
             ))}
           {isLoading && (
-            <p role="status" className="py-4 text-sm text-muted-foreground">
-              Loading department courses and prerequisites…
-            </p>
+            <TableSkeleton
+              rows={4}
+              columns={4}
+              label="Loading department courses and prerequisites…"
+            />
           )}
           {loadError && (
             <div className="space-y-2 py-3">

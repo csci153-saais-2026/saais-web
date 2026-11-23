@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { notify } from "@/lib/notify";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -510,11 +511,7 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
       : "Could not submit your grade flag. Please try again."
     : null;
 
-  if (isPending) {
-    return <p role="status">Loading...</p>;
-  }
-
-  if (isError || !data) {
+  if (!isPending && (isError || !data)) {
     return (
       <Panel
         title="Unable to load grades"
@@ -528,24 +525,32 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
   }
 
   return (
-    <StudentGradesView
-      terms={data.terms}
-      flags={data.flags}
-      courseDetails={data.courseDetails}
-      studentName={data.studentName}
-      studentNumber={data.studentNumber}
-      programLabel={data.programLabel}
-      curriculumLabel={data.curriculumLabel}
-      adviserName={data.adviserName}
-      department={data.department}
-      faculty={data.faculty}
-      onCreateFlag={handleCreateFlag}
-      isSubmittingFlag={createFlagMutation.isPending}
-      flagSubmitError={flagSubmitError}
-      onPrintReport={() => {
-        recordExportMutation.mutate(undefined);
-      }}
-    />
+    <AccountSkeleton
+      id="student-grades"
+      data={isPending ? null : data}
+      label="Loading..."
+    >
+      {(data) => (
+        <StudentGradesView
+          terms={data.terms}
+          flags={data.flags}
+          courseDetails={data.courseDetails}
+          studentName={data.studentName}
+          studentNumber={data.studentNumber}
+          programLabel={data.programLabel}
+          curriculumLabel={data.curriculumLabel}
+          adviserName={data.adviserName}
+          department={data.department}
+          faculty={data.faculty}
+          onCreateFlag={handleCreateFlag}
+          isSubmittingFlag={createFlagMutation.isPending}
+          flagSubmitError={flagSubmitError}
+          onPrintReport={() => {
+            recordExportMutation.mutate(undefined);
+          }}
+        />
+      )}
+    </AccountSkeleton>
   );
 }
 

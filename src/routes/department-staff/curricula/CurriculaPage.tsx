@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
@@ -237,201 +238,221 @@ export default function CurriculaPage() {
           }}
         />
       )}
-      {catalog.isPending && <p role="status">Loading curriculum versions...</p>}
-      {catalog.isError && (
-        <Panel title="Curriculum versions">
-          <p role="alert">{errorMessage(catalog.error)}</p>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={catalog.isFetching}
-            onClick={() => void catalog.refetch()}
-          >
-            Retry versions
-          </Button>
-        </Panel>
-      )}
-      {catalog.isSuccess && versions.length === 0 && (
-        <Panel title="Curriculum versions">
-          <p>No curriculum versions are available for your department.</p>
-        </Panel>
-      )}
-      {version && (
-        <>
-          <div className="staff-filter-controls department-filter-typography flex flex-wrap items-end gap-3 pb-1">
-            <FormField
-              label="Curriculum version"
-              htmlFor="curriculum-version"
-              className="min-w-[220px] flex-[0_1_280px]"
+      <AccountSkeleton
+        id="CurriculaPage-1"
+        loading={catalog.isPending}
+        label="Loading curriculum versions..."
+      >
+        {catalog.isError && (
+          <Panel title="Curriculum versions">
+            <p role="alert">{errorMessage(catalog.error)}</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={catalog.isFetching}
+              onClick={() => void catalog.refetch()}
             >
-              <select
-                id="curriculum-version"
-                className="min-h-10 w-full rounded-sm border border-input bg-card px-3 text-sm"
-                value={version.id}
-                onChange={(event) => setSelection(event.target.value)}
+              Retry versions
+            </Button>
+          </Panel>
+        )}
+        {catalog.isSuccess && versions.length === 0 && (
+          <Panel title="Curriculum versions">
+            <p>No curriculum versions are available for your department.</p>
+          </Panel>
+        )}
+        {version && (
+          <>
+            <div className="staff-filter-controls department-filter-typography flex flex-wrap items-end gap-3 pb-1">
+              <FormField
+                label="Curriculum version"
+                htmlFor="curriculum-version"
+                className="min-w-[220px] flex-[0_1_280px]"
               >
-                {versions.map((item) => {
-                  const code =
-                    catalog.data?.programs.find(
-                      (program) => program.id === item.program_id,
-                    )?.code ?? "Program unavailable";
-                  const label = item.version_label.startsWith(`${code} `)
-                    ? item.version_label.slice(code.length + 1)
-                    : item.version_label;
-                  return (
-                    <option key={item.id} value={item.id}>
-                      {code} · {label}
-                    </option>
-                  );
-                })}
-              </select>
-            </FormField>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!catalog.isSuccess || catalog.isFetching}
-              onClick={() => {
-                setEditing(version);
-              }}
-            >
-              Edit version
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!catalog.isSuccess || catalog.isFetching}
-              onClick={() => {
-                setLifecycle({ action: "delete", version });
-              }}
-            >
-              Delete version
-            </Button>
-            <div className="min-w-4 flex-1" aria-hidden="true" />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                !catalog.isSuccess ||
-                catalog.isFetching ||
-                !detail.isSuccess ||
-                detail.isFetching
-              }
-              onClick={() => {
-                setAddingTerm(version);
-              }}
-            >
-              Add term
-            </Button>
-          </div>
-          <StatGrid
-            items={[
-              {
-                label: "Required units",
-                value: (
-                  <span className="text-[30px]">
-                    {version.total_units ?? "Unavailable"}
-                  </span>
-                ),
-                note: "Full degree requirement",
-              },
-              {
-                label: "Enrolled students",
-                value: (
-                  <span className="text-[30px]">
-                    {version.enrolled_student_count ?? "Unavailable"}
-                  </span>
-                ),
-                note: "Students on this curriculum",
-              },
-              {
-                label: "Effective from",
-                value: (
-                  <span className="text-[30px]">
-                    {new Intl.DateTimeFormat("en-PH", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                      timeZone: "UTC",
-                    }).format(new Date(`${version.effective_start}T00:00:00Z`))}
-                  </span>
-                ),
-                note: "Version effectivity",
-              },
-              {
-                label: "Status",
-                value: (
-                  <span className="text-[30px]">
-                    {statuses[version.status]}
-                  </span>
-                ),
-                note: "Curriculum lifecycle",
-              },
-            ]}
-          />
-          {detail.isPending && (
-            <p role="status">Loading curriculum requirements...</p>
-          )}
-          {detail.isError && (
-            <Panel title="Curriculum requirements">
-              <p role="alert">{errorMessage(detail.error)}</p>
+                <select
+                  id="curriculum-version"
+                  className="min-h-10 w-full rounded-sm border border-input bg-card px-3 text-sm"
+                  value={version.id}
+                  onChange={(event) => setSelection(event.target.value)}
+                >
+                  {versions.map((item) => {
+                    const code =
+                      catalog.data?.programs.find(
+                        (program) => program.id === item.program_id,
+                      )?.code ?? "Program unavailable";
+                    const label = item.version_label.startsWith(`${code} `)
+                      ? item.version_label.slice(code.length + 1)
+                      : item.version_label;
+                    return (
+                      <option key={item.id} value={item.id}>
+                        {code} · {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </FormField>
               <Button
                 type="button"
                 variant="outline"
-                disabled={detail.isFetching}
-                onClick={() => void detail.refetch()}
+                disabled={!catalog.isSuccess || catalog.isFetching}
+                onClick={() => {
+                  setEditing(version);
+                }}
               >
-                Retry requirements
+                Edit version
               </Button>
-            </Panel>
-          )}
-          {detail.isSuccess && (
-            <>
-              {detail.data.terms.length === 0 && (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={!catalog.isSuccess || catalog.isFetching}
+                onClick={() => {
+                  setLifecycle({ action: "delete", version });
+                }}
+              >
+                Delete version
+              </Button>
+              <div className="min-w-4 flex-1" aria-hidden="true" />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={
+                  !catalog.isSuccess ||
+                  catalog.isFetching ||
+                  !detail.isSuccess ||
+                  detail.isFetching
+                }
+                onClick={() => {
+                  setAddingTerm(version);
+                }}
+              >
+                Add term
+              </Button>
+            </div>
+            <StatGrid
+              items={[
+                {
+                  label: "Required units",
+                  value: (
+                    <span className="text-[30px]">
+                      {version.total_units ?? "Unavailable"}
+                    </span>
+                  ),
+                  note: "Full degree requirement",
+                },
+                {
+                  label: "Enrolled students",
+                  value: (
+                    <span className="text-[30px]">
+                      {version.enrolled_student_count ?? "Unavailable"}
+                    </span>
+                  ),
+                  note: "Students on this curriculum",
+                },
+                {
+                  label: "Effective from",
+                  value: (
+                    <span className="text-[30px]">
+                      {new Intl.DateTimeFormat("en-PH", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        timeZone: "UTC",
+                      }).format(
+                        new Date(`${version.effective_start}T00:00:00Z`),
+                      )}
+                    </span>
+                  ),
+                  note: "Version effectivity",
+                },
+                {
+                  label: "Status",
+                  value: (
+                    <span className="text-[30px]">
+                      {statuses[version.status]}
+                    </span>
+                  ),
+                  note: "Curriculum lifecycle",
+                },
+              ]}
+            />
+            <AccountSkeleton
+              id="CurriculaPage-2"
+              loading={detail.isPending}
+              label="Loading curriculum requirements..."
+            >
+              {detail.isError && (
                 <Panel title="Curriculum requirements">
-                  <p>No terms are available for this curriculum version.</p>
+                  <p role="alert">{errorMessage(detail.error)}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={detail.isFetching}
+                    onClick={() => void detail.refetch()}
+                  >
+                    Retry requirements
+                  </Button>
                 </Panel>
               )}
-              {detail.data.terms.map((term) => {
-                const slots = detail.data.slots.filter(
-                  (slot) => slot.curriculum_term_id === term.id,
-                );
-                function openTermAction(action: "edit" | "delete") {
-                  setTermAction({
-                    action,
-                    term,
-                    version,
-                    requirementCount: slots.length,
-                  });
-                }
-                return (
-                  <CurriculumTermPanel
-                    key={term.id}
-                    term={term}
-                    slots={slots}
-                    courses={detail.data.courses}
-                    actionsDisabled={
-                      !catalog.isSuccess ||
-                      catalog.isFetching ||
-                      detail.isFetching
+              {detail.isSuccess && (
+                <>
+                  {detail.data.terms.length === 0 && (
+                    <Panel title="Curriculum requirements">
+                      <p>No terms are available for this curriculum version.</p>
+                    </Panel>
+                  )}
+                  {detail.data.terms.map((term) => {
+                    const slots = detail.data.slots.filter(
+                      (slot) => slot.curriculum_term_id === term.id,
+                    );
+                    function openTermAction(action: "edit" | "delete") {
+                      setTermAction({
+                        action,
+                        term,
+                        version,
+                        requirementCount: slots.length,
+                      });
                     }
-                    onAddRequirement={() => {
-                      setAddingRequirement({ term, version });
-                    }}
-                    onEditSlot={(slot) => {
-                      setSlotAction({ action: "edit", term, version, slot });
-                    }}
-                    onDeleteSlot={(slot) => {
-                      setSlotAction({ action: "delete", term, version, slot });
-                    }}
-                    onEdit={() => openTermAction("edit")}
-                    onDelete={() => openTermAction("delete")}
-                  />
-                );
-              })}
-            </>
-          )}
-        </>
-      )}
+                    return (
+                      <CurriculumTermPanel
+                        key={term.id}
+                        term={term}
+                        slots={slots}
+                        courses={detail.data.courses}
+                        actionsDisabled={
+                          !catalog.isSuccess ||
+                          catalog.isFetching ||
+                          detail.isFetching
+                        }
+                        onAddRequirement={() => {
+                          setAddingRequirement({ term, version });
+                        }}
+                        onEditSlot={(slot) => {
+                          setSlotAction({
+                            action: "edit",
+                            term,
+                            version,
+                            slot,
+                          });
+                        }}
+                        onDeleteSlot={(slot) => {
+                          setSlotAction({
+                            action: "delete",
+                            term,
+                            version,
+                            slot,
+                          });
+                        }}
+                        onEdit={() => openTermAction("edit")}
+                        onDelete={() => openTermAction("delete")}
+                      />
+                    );
+                  })}
+                </>
+              )}
+            </AccountSkeleton>
+          </>
+        )}
+      </AccountSkeleton>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { notify } from "@/lib/notify";
 import { useEffect, useMemo, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
@@ -245,37 +246,49 @@ export default function AdminFacultiesPage() {
         </div>
       )}
 
-      <DataTablePanel
-        spacious
-        title="Faculties"
-        description="Institutional colleges and divisions, with department totals."
-        columns={facultyColumns}
-        rows={!loading && !error ? faculties : []}
-        rowKey={(faculty) => faculty.id}
-        empty={
-          loading
-            ? "Loading faculties…"
-            : error
-              ? "Faculties are unavailable."
-              : "No faculties have been added to the catalog."
-        }
-      />
+      <AccountSkeleton
+        id="admin-faculties-1"
+        loading={loading}
+        label="Loading faculties…"
+      >
+        <DataTablePanel
+          spacious
+          title="Faculties"
+          description="Institutional colleges and divisions, with department totals."
+          columns={facultyColumns}
+          rows={!loading && !error ? faculties : []}
+          rowKey={(faculty) => faculty.id}
+          empty={
+            loading
+              ? "Loading faculties…"
+              : error
+                ? "Faculties are unavailable."
+                : "No faculties have been added to the catalog."
+          }
+        />
+      </AccountSkeleton>
 
-      <DataTablePanel
-        spacious
-        title="Departments"
-        description="Academic departments and their parent faculties."
-        columns={departmentColumns}
-        rows={!loading && !error ? departments : []}
-        rowKey={(department) => department.id}
-        empty={
-          loading
-            ? "Loading departments…"
-            : error
-              ? "Departments are unavailable."
-              : "No departments have been added to the catalog."
-        }
-      />
+      <AccountSkeleton
+        id="admin-faculties-2"
+        loading={loading}
+        label="Loading departments…"
+      >
+        <DataTablePanel
+          spacious
+          title="Departments"
+          description="Academic departments and their parent faculties."
+          columns={departmentColumns}
+          rows={!loading && !error ? departments : []}
+          rowKey={(department) => department.id}
+          empty={
+            loading
+              ? "Loading departments…"
+              : error
+                ? "Departments are unavailable."
+                : "No departments have been added to the catalog."
+          }
+        />
+      </AccountSkeleton>
 
       {deleteFaculty && (
         <AdminFacultyDeleteDialog

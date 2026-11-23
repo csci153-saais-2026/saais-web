@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
@@ -447,105 +448,102 @@ export default function AccountsPage() {
             </FormField>
           </div>
 
-          {accounts.isPending && (
-            <p
-              role="status"
-              className="border-b border-border p-6 text-sm text-muted-foreground"
-            >
-              Loading department accounts...
-            </p>
-          )}
+          <AccountSkeleton
+            id="AccountsPage-1"
+            loading={accounts.isPending}
+            label="Loading department accounts..."
+          >
+            {accounts.isError && (
+              <div className="space-y-4 border-b border-border p-6">
+                <p role="alert" className="text-sm text-destructive">
+                  {errorMessage(accounts.error)}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    void accounts.refetch();
+                  }}
+                  disabled={accounts.isFetching}
+                >
+                  {accounts.isFetching ? "Retrying..." : "Retry"}
+                </Button>
+              </div>
+            )}
 
-          {accounts.isError && (
-            <div className="space-y-4 border-b border-border p-6">
-              <p role="alert" className="text-sm text-destructive">
-                {errorMessage(accounts.error)}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void accounts.refetch();
-                }}
-                disabled={accounts.isFetching}
-              >
-                {accounts.isFetching ? "Retrying..." : "Retry"}
-              </Button>
-            </div>
-          )}
-
-          {accounts.isSuccess && (
-            <>
-              <Table responsive>
-                <TableHeader className="bg-secondary">
-                  <TableRow>
-                    {accountColumns.map((column) => (
-                      <TableHead
-                        key={column.header}
-                        className="px-4 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase"
-                      >
-                        {column.header}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {accounts.data.accounts.map((account) => (
-                    <TableRow key={account.profile.id}>
+            {accounts.isSuccess && (
+              <>
+                <Table responsive>
+                  <TableHeader className="bg-secondary">
+                    <TableRow>
                       {accountColumns.map((column) => (
-                        <TableCell
+                        <TableHead
                           key={column.header}
-                          label={column.header}
-                          className={`px-4 py-2 text-[13px] ${column.className ?? ""}`}
+                          className="px-4 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase"
                         >
-                          {column.cell(account)}
-                        </TableCell>
+                          {column.header}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {accounts.data.accounts.map((account) => (
+                      <TableRow key={account.profile.id}>
+                        {accountColumns.map((column) => (
+                          <TableCell
+                            key={column.header}
+                            label={column.header}
+                            className={`px-4 py-2 text-[13px] ${column.className ?? ""}`}
+                          >
+                            {column.cell(account)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
 
-              {accounts.data.accounts.length === 0 && (
-                <p className="border-b border-border px-5 py-8 text-center text-sm text-muted-foreground">
-                  {search || role
-                    ? "No accounts match the current search and role filters."
-                    : "No accounts are listed for this department."}
-                </p>
-              )}
-
-              <div className="border-t border-border px-5 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p
-                    className="text-sm text-muted-foreground"
-                    aria-live="polite"
-                  >
-                    {accounts.data.accounts.length
-                      ? `Showing ${offset + 1}-${offset + accounts.data.accounts.length}`
-                      : `No accounts on page ${offset / accountsPageSize + 1}`}
+                {accounts.data.accounts.length === 0 && (
+                  <p className="border-b border-border px-5 py-8 text-center text-sm text-muted-foreground">
+                    {search || role
+                      ? "No accounts match the current search and role filters."
+                      : "No accounts are listed for this department."}
                   </p>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => updateOffset(offset - accountsPageSize)}
-                      disabled={offset === 0 || accounts.isFetching}
+                )}
+
+                <div className="border-t border-border px-5 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p
+                      className="text-sm text-muted-foreground"
+                      aria-live="polite"
                     >
-                      Previous
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => updateOffset(offset + accountsPageSize)}
-                      disabled={!accounts.data.hasNext || accounts.isFetching}
-                    >
-                      Next
-                    </Button>
+                      {accounts.data.accounts.length
+                        ? `Showing ${offset + 1}-${offset + accounts.data.accounts.length}`
+                        : `No accounts on page ${offset / accountsPageSize + 1}`}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => updateOffset(offset - accountsPageSize)}
+                        disabled={offset === 0 || accounts.isFetching}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => updateOffset(offset + accountsPageSize)}
+                        disabled={!accounts.data.hasNext || accounts.isFetching}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </AccountSkeleton>
         </Panel>
       )}
     </div>

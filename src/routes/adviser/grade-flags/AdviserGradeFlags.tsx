@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { AdviserPage } from "../Adviser";
@@ -239,124 +240,131 @@ function FlagList({ userId }: { userId: string }) {
         title="Grade flags"
         subtitle="Grades your current advisees reported."
       />
-      {!data && !error && <p role="status">Loading flags…</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <Button onClick={() => setRevision((n) => n + 1)}>Try again</Button>
-        </div>
-      )}
-      {data && (
-        <DataTablePanel
-          title="Open flags"
-          action={
-            <span className="text-sm leading-6 text-muted-foreground">
-              {data.flags.length} open
-            </span>
-          }
-          rows={data.flags}
-          rowKey={(r) => r.id}
-          columns={[
-            {
-              header: "Student",
-              cell: (r) => {
-                const student = data.roster.find(
-                  (s) => s.student_id === r.student_id,
-                );
-                return (
-                  <>
-                    <span
-                      className="block max-w-56 truncate"
-                      title={student?.full_name}
-                    >
-                      {student?.full_name ?? "Unavailable"}
-                    </span>
-                    <span className="block text-xs">
-                      {student?.student_number}
-                    </span>
-                  </>
-                );
+      <AccountSkeleton
+        id="AdviserGradeFlags-1"
+        loading={!data && !error}
+        label="Loading flags…"
+      >
+        {error && (
+          <div role="alert">
+            <p>{error}</p>
+            <Button onClick={() => setRevision((n) => n + 1)}>Try again</Button>
+          </div>
+        )}
+        {data && (
+          <DataTablePanel
+            title="Open flags"
+            action={
+              <span className="text-sm leading-6 text-muted-foreground">
+                {data.flags.length} open
+              </span>
+            }
+            rows={data.flags}
+            rowKey={(r) => r.id}
+            columns={[
+              {
+                header: "Student",
+                cell: (r) => {
+                  const student = data.roster.find(
+                    (s) => s.student_id === r.student_id,
+                  );
+                  return (
+                    <>
+                      <span
+                        className="block max-w-56 truncate"
+                        title={student?.full_name}
+                      >
+                        {student?.full_name ?? "Unavailable"}
+                      </span>
+                      <span className="block text-xs">
+                        {student?.student_number}
+                      </span>
+                    </>
+                  );
+                },
               },
-            },
-            {
-              header: "Course",
-              cell: (r) => {
-                const a = data.attempts.find(
-                  (a) => a.id === r.attempt_id && a.student_id === r.student_id,
-                );
-                const o = data.offerings.find(
-                  (o) => o.id === a?.course_offering_id,
-                );
-                const c = data.courses.find((c) => c.id === o?.course_id);
-                const label = c
-                  ? `${c.code} · ${c.title}`
-                  : "Course unavailable";
-                return (
-                  <span className="block max-w-64 truncate" title={label}>
-                    {label}
+              {
+                header: "Course",
+                cell: (r) => {
+                  const a = data.attempts.find(
+                    (a) =>
+                      a.id === r.attempt_id && a.student_id === r.student_id,
+                  );
+                  const o = data.offerings.find(
+                    (o) => o.id === a?.course_offering_id,
+                  );
+                  const c = data.courses.find((c) => c.id === o?.course_id);
+                  const label = c
+                    ? `${c.code} · ${c.title}`
+                    : "Course unavailable";
+                  return (
+                    <span className="block max-w-64 truncate" title={label}>
+                      {label}
+                    </span>
+                  );
+                },
+              },
+              {
+                header: "Reported grade",
+                cell: (r) => r.reported_grade_text ?? "—",
+              },
+              {
+                header: "Comment",
+                cell: (r) => (
+                  <span className="block max-w-72 truncate" title={r.details}>
+                    {r.details}
                   </span>
-                );
+                ),
               },
-            },
-            {
-              header: "Reported grade",
-              cell: (r) => r.reported_grade_text ?? "—",
-            },
-            {
-              header: "Comment",
-              cell: (r) => (
-                <span className="block max-w-72 truncate" title={r.details}>
-                  {r.details}
-                </span>
-              ),
-            },
-            {
-              header: "Raised",
-              cell: (r) => new Date(r.created_at).toLocaleDateString(),
-            },
-            {
-              header: "Action",
-              cell: (r) => {
-                const a = data.attempts.find(
-                  (a) => a.id === r.attempt_id && a.student_id === r.student_id,
-                );
-                const student = data.roster.find(
-                  (s) => s.student_id === r.student_id,
-                );
-                const o = data.offerings.find(
-                  (o) => o.id === a?.course_offering_id,
-                );
-                const c = data.courses.find((c) => c.id === o?.course_id);
-                return a && student ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(["correct", "reject"] as const).map((action) => (
-                      <Resolve
-                        key={`${r.id}:${action}`}
-                        action={action}
-                        flag={r}
-                        attempt={a}
-                        student={student.full_name}
-                        course={
-                          c ? `${c.code} · ${c.title}` : "Course unavailable"
-                        }
-                        refreshing={key !== requestKey}
-                        refreshError={error}
-                        onStale={() => setRevision((n) => n + 1)}
-                        onSaved={() => {
-                          notify.success("Flag resolved.");
-                          setRevision((n) => n + 1);
-                        }}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  "Attempt unavailable"
-                );
+              {
+                header: "Raised",
+                cell: (r) => new Date(r.created_at).toLocaleDateString(),
               },
-            },
-          ]}
-        />
-      )}
+              {
+                header: "Action",
+                cell: (r) => {
+                  const a = data.attempts.find(
+                    (a) =>
+                      a.id === r.attempt_id && a.student_id === r.student_id,
+                  );
+                  const student = data.roster.find(
+                    (s) => s.student_id === r.student_id,
+                  );
+                  const o = data.offerings.find(
+                    (o) => o.id === a?.course_offering_id,
+                  );
+                  const c = data.courses.find((c) => c.id === o?.course_id);
+                  return a && student ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(["correct", "reject"] as const).map((action) => (
+                        <Resolve
+                          key={`${r.id}:${action}`}
+                          action={action}
+                          flag={r}
+                          attempt={a}
+                          student={student.full_name}
+                          course={
+                            c ? `${c.code} · ${c.title}` : "Course unavailable"
+                          }
+                          refreshing={key !== requestKey}
+                          refreshError={error}
+                          onStale={() => setRevision((n) => n + 1)}
+                          onSaved={() => {
+                            notify.success("Flag resolved.");
+                            setRevision((n) => n + 1);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    "Attempt unavailable"
+                  );
+                },
+              },
+            ]}
+          />
+        )}
+      </AccountSkeleton>
     </>
   );
 }

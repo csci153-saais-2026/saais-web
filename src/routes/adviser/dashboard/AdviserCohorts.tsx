@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { Link } from "react-router";
 import { apiClient, postgrestFilter, unwrapApiResult } from "@/lib/api";
@@ -62,55 +63,60 @@ function CohortStudents({
   );
   return (
     <>
-      {!data && !error && <p role="status">Loading advisees…</p>}
-      {error && (
-        <div role="alert" className="space-y-3">
-          <p>{error}</p>
-          <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {students &&
-        (students.length ? (
-          <div className="max-h-[55vh] overflow-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-3 pr-3">Student</th>
-                  <th className="py-3 pr-3">Student ID</th>
-                  <th className="py-3 pr-3">Curriculum</th>
-                  <th className="py-3 text-right">GWA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => (
-                  <tr
-                    key={student.student_id}
-                    className="border-b border-line-soft"
-                  >
-                    <td className="py-3 pr-3">
-                      <Link
-                        title={student.full_name}
-                        className="block max-w-64 truncate font-semibold text-primary underline"
-                        to={`/adviser/advisee/${encodeURIComponent(student.student_id)}/checklist`}
-                      >
-                        {student.full_name}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-3">{student.student_number}</td>
-                    <td className="py-3 pr-3">{student.curriculum_label}</td>
-                    <td className="py-3 text-right">
-                      {student.gwa == null ? "—" : student.gwa.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <AccountSkeleton
+        id="AdviserCohorts-1"
+        loading={!data && !error}
+        label="Loading advisees…"
+      >
+        {error && (
+          <div role="alert" className="space-y-3">
+            <p>{error}</p>
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              Try again
+            </Button>
           </div>
-        ) : (
-          <p>No current advisees match this cohort.</p>
-        ))}
+        )}
+        {students &&
+          (students.length ? (
+            <div className="max-h-[55vh] overflow-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="py-3 pr-3">Student</th>
+                    <th className="py-3 pr-3">Student ID</th>
+                    <th className="py-3 pr-3">Curriculum</th>
+                    <th className="py-3 text-right">GWA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student) => (
+                    <tr
+                      key={student.student_id}
+                      className="border-b border-line-soft"
+                    >
+                      <td className="py-3 pr-3">
+                        <Link
+                          title={student.full_name}
+                          className="block max-w-64 truncate font-semibold text-primary underline"
+                          to={`/adviser/advisee/${encodeURIComponent(student.student_id)}/checklist`}
+                        >
+                          {student.full_name}
+                        </Link>
+                      </td>
+                      <td className="py-3 pr-3">{student.student_number}</td>
+                      <td className="py-3 pr-3">{student.curriculum_label}</td>
+                      <td className="py-3 text-right">
+                        {student.gwa == null ? "—" : student.gwa.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>No current advisees match this cohort.</p>
+          ))}
+      </AccountSkeleton>
     </>
   );
 }

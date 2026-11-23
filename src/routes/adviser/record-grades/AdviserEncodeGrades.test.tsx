@@ -233,7 +233,9 @@ describe("encoding workspace identity", () => {
       target: { value: "student-two" },
     });
     expect(screen.queryByText("Completion grade")).toBeNull();
-    expect(screen.getByRole("status").textContent).toContain("Loading");
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
+      "Loading",
+    );
     auth.user = { id: "adviser-two" };
     view.rerender(
       <MemoryRouter>

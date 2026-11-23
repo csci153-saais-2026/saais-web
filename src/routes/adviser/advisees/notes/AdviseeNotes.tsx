@@ -1,4 +1,5 @@
-﻿import { notify } from "@/lib/notify";
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -73,162 +74,167 @@ function NotesContent({
   }
   return (
     <>
-      {!data && !error && <p role="status">Loading notes…</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {mutationError && !writing && <p role="alert">{mutationError}</p>}
-      {data && (
-        <>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div
-              className="flex gap-1 rounded-md bg-muted p-1"
-              role="group"
-              aria-label="Note archive"
-            >
-              <Button
-                variant={!archived ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={!archived}
-                onClick={() => setArchived(false)}
-              >
-                Active ({data.notes.filter((n) => !n.is_archived).length})
-              </Button>
-              <Button
-                variant={archived ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={archived}
-                onClick={() => setArchived(true)}
-              >
-                Archived ({data.notes.filter((n) => n.is_archived).length})
-              </Button>
-            </div>
-            {canEdit && (
-              <Button onClick={() => setWriting(true)}>
-                <img
-                  src={plusIcon}
-                  alt=""
-                  className="size-4 brightness-0 invert"
-                />
-                Write a note
-              </Button>
-            )}
+      <AccountSkeleton
+        id="AdviseeNotes-1"
+        loading={!data && !error}
+        label="Loading notes…"
+      >
+        {error && (
+          <div role="alert">
+            <p>{error}</p>
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              Try again
+            </Button>
           </div>
-          {!canEdit && <p className="mb-4">Historical record: read-only.</p>}
-          <Panel
-            title="Notes"
-            description={`${archived ? "Archived" : "Active"} notes`}
-            flush
-          >
-            {!notes.length && (
-              <p className="px-5 py-5">
-                No {archived ? "archived" : "active"} notes.
-              </p>
-            )}
-            {notes.map((note) => (
-              <article
-                key={note.id}
-                className="border-b border-line-soft px-5 py-5 last:border-0"
+        )}
+        {mutationError && !writing && <p role="alert">{mutationError}</p>}
+        {data && (
+          <>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div
+                className="flex gap-1 rounded-md bg-muted p-1"
+                role="group"
+                aria-label="Note archive"
               >
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-sm">
-                    <b>{note.author_name ?? "Adviser"}</b>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {new Date(note.created_at).toLocaleDateString()}
-                    </span>
-                  </p>
-                  {canEdit && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => void toggle(note.id, !note.is_archived)}
-                    >
-                      {note.is_archived ? "Restore" : "Archive"}
-                    </Button>
-                  )}
-                </div>
-                <p className="whitespace-pre-wrap text-sm wrap-anywhere">
-                  {note.body_text}
-                </p>
-              </article>
-            ))}
-          </Panel>
-          {canEdit && (
-            <Dialog
-              open={writing}
-              onOpenChange={(open) => {
-                if (!saving) {
-                  setWriting(open);
-                  if (!open) {
-                    setText("");
-                    setMutationError("");
-                  }
-                }
-              }}
-            >
-              <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[600px]">
-                <DialogHeader className="border-b border-line-soft px-5 pt-[18px] pb-4 pr-14">
-                  <DialogTitle className="text-[22px]">
-                    Write a note
-                  </DialogTitle>
-                  <DialogDescription>
-                    Write what the student and the next adviser should know.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-2 p-5">
-                  <label
-                    htmlFor="new-note"
-                    className="text-[12.5px] font-semibold text-muted-foreground"
-                  >
-                    Note
-                  </label>
-                  <Textarea
-                    disabled={saving}
-                    id="new-note"
-                    rows={4}
-                    maxLength={5000}
-                    className="min-h-24 resize-y"
-                    placeholder="What was discussed or decided?"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
+                <Button
+                  variant={!archived ? "default" : "ghost"}
+                  size="sm"
+                  aria-pressed={!archived}
+                  onClick={() => setArchived(false)}
+                >
+                  Active ({data.notes.filter((n) => !n.is_archived).length})
+                </Button>
+                <Button
+                  variant={archived ? "default" : "ghost"}
+                  size="sm"
+                  aria-pressed={archived}
+                  onClick={() => setArchived(true)}
+                >
+                  Archived ({data.notes.filter((n) => n.is_archived).length})
+                </Button>
+              </div>
+              {canEdit && (
+                <Button onClick={() => setWriting(true)}>
+                  <img
+                    src={plusIcon}
+                    alt=""
+                    className="size-4 brightness-0 invert"
                   />
-                  {mutationError && (
-                    <p role="alert" className="text-sm text-destructive">
-                      {mutationError}
+                  Write a note
+                </Button>
+              )}
+            </div>
+            {!canEdit && <p className="mb-4">Historical record: read-only.</p>}
+            <Panel
+              title="Notes"
+              description={`${archived ? "Archived" : "Active"} notes`}
+              flush
+            >
+              {!notes.length && (
+                <p className="px-5 py-5">
+                  No {archived ? "archived" : "active"} notes.
+                </p>
+              )}
+              {notes.map((note) => (
+                <article
+                  key={note.id}
+                  className="border-b border-line-soft px-5 py-5 last:border-0"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-sm">
+                      <b>{note.author_name ?? "Adviser"}</b>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {new Date(note.created_at).toLocaleDateString()}
+                      </span>
                     </p>
-                  )}
-                </div>
-                <div className="flex justify-end gap-2 border-t border-line-soft bg-background px-5 py-3.5">
-                  <Button
-                    variant="ghost"
-                    disabled={saving}
-                    onClick={() => {
-                      setWriting(false);
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={saving}
+                        onClick={() => void toggle(note.id, !note.is_archived)}
+                      >
+                        {note.is_archived ? "Restore" : "Archive"}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm wrap-anywhere">
+                    {note.body_text}
+                  </p>
+                </article>
+              ))}
+            </Panel>
+            {canEdit && (
+              <Dialog
+                open={writing}
+                onOpenChange={(open) => {
+                  if (!saving) {
+                    setWriting(open);
+                    if (!open) {
                       setText("");
                       setMutationError("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    disabled={saving || !text.trim()}
-                    onClick={() => void save()}
-                  >
-                    {saving ? "Saving…" : "Save note"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
-        </>
-      )}
+                    }
+                  }
+                }}
+              >
+                <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[600px]">
+                  <DialogHeader className="border-b border-line-soft px-5 pt-[18px] pb-4 pr-14">
+                    <DialogTitle className="text-[22px]">
+                      Write a note
+                    </DialogTitle>
+                    <DialogDescription>
+                      Write what the student and the next adviser should know.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-2 p-5">
+                    <label
+                      htmlFor="new-note"
+                      className="text-[12.5px] font-semibold text-muted-foreground"
+                    >
+                      Note
+                    </label>
+                    <Textarea
+                      disabled={saving}
+                      id="new-note"
+                      rows={4}
+                      maxLength={5000}
+                      className="min-h-24 resize-y"
+                      placeholder="What was discussed or decided?"
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                    />
+                    {mutationError && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {mutationError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 border-t border-line-soft bg-background px-5 py-3.5">
+                    <Button
+                      variant="ghost"
+                      disabled={saving}
+                      onClick={() => {
+                        setWriting(false);
+                        setText("");
+                        setMutationError("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={saving || !text.trim()}
+                      onClick={() => void save()}
+                    >
+                      {saving ? "Saving…" : "Save note"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </>
+        )}
+      </AccountSkeleton>
     </>
   );
 }

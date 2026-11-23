@@ -98,7 +98,7 @@ describe("DeanReportsPage", () => {
     loginAsMockPersona("dean");
     renderReportsPage();
 
-    expect(screen.getByRole("status").textContent).toMatch(
+    expect(document.querySelector("[skullet-status]")?.textContent).toMatch(
       /Loading faculty reports/i,
     );
     expect(await screen.findByText("Faculty of Computing")).toBeTruthy();
