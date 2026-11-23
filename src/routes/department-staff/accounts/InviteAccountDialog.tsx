@@ -473,17 +473,7 @@ export default function InviteAccountDialog() {
           <DialogFooter>
             <Button
               type="submit"
-              disabled={
-                !values.full_name.trim() ||
-                !values.email.trim() ||
-                (values.role === "student" &&
-                  (!values.student_number.trim() ||
-                    !values.program_id ||
-                    !values.curriculum_version_id ||
-                    !values.adviser_id)) ||
-                invitation.isPending ||
-                invitation.isSuccess
-              }
+              disabled={invitation.isPending || invitation.isSuccess}
             >
               {invitation.isPending
                 ? "Sending invitationâ€¦"
