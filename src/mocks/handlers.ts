@@ -271,6 +271,17 @@ function studentMetrics(studentId: string, departmentId: string) {
   };
 }
 
+function deficiencyCount(
+  deficiencies: ApiSchema<"AttemptResult">[],
+  flags: ApiSchema<"GradeFlag">[],
+): number {
+  const attemptIds = new Set(deficiencies.map((attempt) => attempt.id));
+  // F-02: a flag remains an active deficiency until it is resolved, even if
+  // the challenged grade has an effective status of passed.
+  for (const flag of flags) attemptIds.add(flag.attempt_id);
+  return attemptIds.size;
+}
+
 function studentDeficiencies(
   metrics: ReturnType<typeof studentMetrics>,
 ): ApiSchema<"StudentDeficiencyItem">[] {
@@ -3779,7 +3790,7 @@ export const saaisMswHandlers = [
         required_units: curriculum.total_units,
         standing,
         is_delinquent: isDelinquent,
-        deficiencies_count: deficiencies.length,
+        deficiencies_count: deficiencyCount(deficiencies, flags),
         open_inc_count: openInc.length,
         lapsed_inc_count: lapsed.length,
         open_flags_count: flags.length,
@@ -4023,7 +4034,11 @@ export const saaisMswHandlers = [
         open_inc_count: metrics.openInc.length,
         lapsed_inc_count: metrics.lapsed.length,
         open_flags_count: metrics.flags.length,
-        deficiencies_count: metrics.deficiencies.length,
+        deficiencies_count: deficiencyCount(
+          metrics.deficiencies,
+          metrics.flags,
+        ),
+        deficiencies: studentDeficiencies(metrics),
         is_delinquent: metrics.isDelinquent,
         computed_at: "2026-11-10T08:00:00Z",
       };

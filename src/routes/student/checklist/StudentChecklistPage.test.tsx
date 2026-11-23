@@ -192,6 +192,22 @@ describe("StudentChecklistView", () => {
     expect(screen.getByText("No matching requirements")).toBeTruthy();
   });
 
+  it("counts open grade flags as deficiencies even when no course is failing", () => {
+    render(
+      <StudentChecklistView
+        summary={{
+          ...mockSummary,
+          deficiencies_count: 0,
+          deficiencies: [],
+          open_flags_count: 2,
+        }}
+        terms={mockTerms}
+      />,
+    );
+
+    expect(screen.getByText("2 open grade flags")).toBeTruthy();
+  });
+
   it("keeps curriculum-position totals stable under the status filter and omits a misleading semester GWA", () => {
     Element.prototype.scrollIntoView = vi.fn();
     render(<StudentChecklistView summary={mockSummary} terms={mockTerms} />);

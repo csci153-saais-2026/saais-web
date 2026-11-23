@@ -122,6 +122,44 @@ describe("selected checklist", () => {
       await screen.findByText("Unresolved INC: CS 101 · Failed: CS 102"),
     ).toBeTruthy();
   });
+  it("shows an open grade flag as a deficiency in the checklist summary", async () => {
+    vi.mocked(getChecklist).mockResolvedValue({
+      ...data,
+      summary: {
+        ...data.summary,
+        deficiencies_count: 1,
+        deficiencies: [
+          {
+            kind: "open_flag",
+            course_code: "CS 101",
+            course_title: "First",
+            detail: "Review the midterm grade",
+          },
+        ],
+      },
+    });
+    render(page());
+    expect(await screen.findByText("Open grade flag: CS 101")).toBeTruthy();
+  });
+  it("counts open flags on passed attempts as deficiencies (ADV-22 / F-02)", async () => {
+    // Backend may return deficiencies_count: 0 when flagged attempts are passed,
+    // even though open_flags_count is > 0.  F-02 requires the tile to show the
+    // higher of the two counts and the note to surface the flags.
+    vi.mocked(getChecklist).mockResolvedValue({
+      ...data,
+      summary: {
+        ...data.summary,
+        deficiencies_count: 0,
+        open_flags_count: 2,
+        deficiencies: [],
+      },
+    });
+    render(page());
+    // The stat tile value must show 2, not 0.
+    expect(await screen.findByText("2")).toBeTruthy();
+    // The note must mention the open flags.
+    expect(screen.getByText("2 open grade flags")).toBeTruthy();
+  });
   it("uses checklist statuses when the shared summary omits deficiency details", async () => {
     vi.mocked(getChecklist).mockResolvedValue({
       ...data,

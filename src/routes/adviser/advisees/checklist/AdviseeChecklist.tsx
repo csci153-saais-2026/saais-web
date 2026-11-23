@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
 import { getChecklist } from "./record.api";
@@ -53,16 +53,24 @@ const deficiencyLabels: Record<
   unmet_prerequisite: "Unmet prerequisite",
 };
 function deficiencyNote(data: Awaited<ReturnType<typeof getChecklist>>) {
+  // When the API provides the full deficiencies array, use it directly. F-02
+  // treats every open grade flag as a deficiency, including flags on passed
+  // attempts, so open_flag entries must never be filtered out here.
   if (data.summary.deficiencies) {
     const details = data.summary.deficiencies.map(
       (item) => `${deficiencyLabels[item.kind]}: ${item.course_code}`,
     );
-    return details.length
-      ? details.join(" · ")
-      : data.summary.deficiencies_count
-        ? "Details unavailable"
-        : "No deficiencies";
+    if (details.length) return details.join(" · ");
+    // Array present but empty — fall back to the count for the note.
+    if (data.summary.deficiencies_count)
+      return `${data.summary.deficiencies_count} deficiencie${data.summary.deficiencies_count === 1 ? "" : "s"} (details unavailable)`;
+    // Also check open_flags_count: flags are deficiencies even when other
+    // counts are zero (F-02).
+    if (data.summary.open_flags_count)
+      return `${data.summary.open_flags_count} open grade flag${data.summary.open_flags_count === 1 ? "" : "s"}`;
+    return "No deficiencies";
   }
+  // Legacy path: reconstruct from checklist rows when deficiencies array is absent.
   const details = data.results.flatMap((row) => {
     if (row.status !== "inc" && row.status !== "failed") return [];
     const slot = data.slots.find(
@@ -75,6 +83,10 @@ function deficiencyNote(data: Awaited<ReturnType<typeof getChecklist>>) {
     ];
   });
   const unique = [...new Set(details)];
+  // Account for open flags that are not visible in checklist rows.
+  const flagCount = data.summary.open_flags_count ?? 0;
+  if (flagCount > 0 && !unique.some((d) => d.startsWith("Open grade flag")))
+    unique.push(`${flagCount} open grade flag${flagCount === 1 ? "" : "s"}`);
   if (data.summary.deficiencies_count == null)
     return unique.length ? unique.join(" · ") : "Details unavailable";
   if (data.summary.deficiencies_count > unique.length)
@@ -300,7 +312,17 @@ export default function AdviseeChecklist() {
               },
               {
                 label: "Deficiencies",
-                value: data.summary.deficiencies_count ?? "—",
+                // F-02: open grade flags count as deficiencies. Use the
+                // greater of deficiencies_count and open_flags_count so that
+                // a student with open flags on already-passed courses is never
+                // shown "0" here while the Grade Flags page shows open flags.
+                value:
+                  data.summary.deficiencies_count != null
+                    ? Math.max(
+                        data.summary.deficiencies_count,
+                        data.summary.open_flags_count ?? 0,
+                      )
+                    : "—",
                 note: deficiencyNote(data),
               },
             ]}

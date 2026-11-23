@@ -289,13 +289,23 @@ export function StudentChecklistView({
     summary.gwa === null ? "Not available" : summary.gwa.toFixed(2);
   const countedUnits = summary.counted_units ?? summary.earned_units;
   const deficiencies = summary.deficiencies ?? [];
-  const deficienciesCount = summary.deficiencies_count ?? deficiencies.length;
+  // F-02: an open grade flag remains a deficiency even when the associated
+  // grade is passing. Use the flag count as a safe client-side floor while a
+  // backend summary is being corrected.
+  const deficienciesCount =
+    summary.deficiencies_count == null
+      ? deficiencies.length
+      : Math.max(summary.deficiencies_count, summary.open_flags_count ?? 0);
   const deficiencyNote =
     deficienciesCount > 0
-      ? deficiencies
-          .slice(0, 2)
-          .map((d) => d.course_code)
-          .join(", ")
+      ? deficiencies.length
+        ? deficiencies
+            .slice(0, 2)
+            .map((d) => d.course_code)
+            .join(", ")
+        : summary.open_flags_count
+          ? `${summary.open_flags_count} open grade flag${summary.open_flags_count === 1 ? "" : "s"}`
+          : "Details unavailable"
       : "No open deficiencies";
 
   return (
