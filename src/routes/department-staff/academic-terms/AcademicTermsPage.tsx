@@ -161,7 +161,7 @@ export default function AcademicTermsPage() {
                 View term
               </Button>
             )}
-            {scope.status === "ready" && !term.is_locked && (
+            {scope.status === "ready" && !isTermClosed(term) && (
               <Button
                 type="button"
                 variant="outline"

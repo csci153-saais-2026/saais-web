@@ -23,6 +23,7 @@ import {
   loginAsMockPersona,
   logoutMockPersona,
   MOCK_PERSONAS,
+  MOCK_IDS,
   resetMockDatabase,
 } from "@/mocks";
 import { saaisMockServer } from "@/mocks/node";
@@ -298,6 +299,29 @@ describe("Department Staff academic terms", () => {
     expect(termRows[0]?.textContent).toContain("2026");
     expect(termRows[1]?.textContent).toContain("2025");
     expect(screen.queryByText(/Opened subjects|Team offerings/i)).toBeNull();
+  });
+
+  it("shows only View term when department encoding is closed", async () => {
+    const encoding = getMockDatabase().departmentTermEncodings.find(
+      (item) =>
+        item.school_term_id === MOCK_IDS.term2026Sem1Open &&
+        item.department_id === MOCK_IDS.deptDcst,
+    )!;
+    encoding.is_closed = true;
+    encoding.closure_note = "Department encoding closed";
+
+    renderPage();
+
+    const closedTerm = await screen.findByRole("row", {
+      name: /2026–2027.*1st semester/i,
+    });
+    expect(within(closedTerm).getByText("View term")).toBeTruthy();
+    expect(
+      within(closedTerm).queryByRole("button", {
+        name: "Close encoding for 2026 - 2027 1st Semester",
+      }),
+    ).toBeNull();
+    expect(within(closedTerm).queryByText("Edit term")).toBeNull();
   });
 
   it("closes and reopens department encoding through the MSW handlers", async () => {
