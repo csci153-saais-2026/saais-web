@@ -39,3 +39,19 @@ it("shows a startup error when application configuration prevents loading", asyn
   );
   vi.doUnmock("./App.tsx");
 }, 20_000);
+
+it("shows an error if rendering the application fails", async () => {
+  vi.stubEnv("DEV", false);
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.doMock("./App.tsx", () => ({
+    default: () => {
+      throw new Error("render failure");
+    },
+  }));
+  document.body.innerHTML = '<div id="root"></div>';
+  await import("./main");
+  expect((await screen.findByRole("alert")).textContent).toContain(
+    "encountered an error",
+  );
+  vi.doUnmock("./App.tsx");
+}, 20_000);

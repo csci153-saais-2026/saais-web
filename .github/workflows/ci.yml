@@ -83,6 +83,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Test changed-file formatting selection
+        run: node --test scripts/check-changed-format.test.js
+
       - name: Check Prettier Formatting for Changed Files
         run: npm run format:check
 
