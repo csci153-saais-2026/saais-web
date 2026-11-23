@@ -7,7 +7,14 @@ export async function getFlags() {
   for (let offset = 0; ; offset += 100) {
     const page = unwrapApiResult(
       await apiClient.GET("/rest/v1/grade_flag", {
-        params: { query: { status: "eq.open", limit: 100, offset } },
+        params: {
+          query: {
+            status: "eq.open",
+            order: "created_at.desc,id.desc",
+            limit: 100,
+            offset,
+          },
+        },
       }),
     );
     if (page.some((f) => flags.some((o) => o.id === f.id)))
