@@ -5,6 +5,7 @@ do $$
 declare
   student uuid := '00000005-0000-4000-8000-000000000000';
   path text := 'students/'||student||'/avatar.png';
+  verified text := 'students/'||student||'/validated-00000000-0000-4000-8000-000000000001.png';
   url text := 'https://supabase.test/storage/v1/object/sign/student-photos/'||path;
   params jsonb := jsonb_build_object('student_id',student);
   body jsonb := jsonb_build_object('avatar_url',url,'storage_object_path',path,'mime_type','image/png','file_size_bytes',11);
@@ -17,8 +18,21 @@ begin
     raise exception 'wrong size accepted';
   exception when sqlstate 'PT400' then null;
   end;
+  begin
+    perform public.matt_operation('uploadStudentPhoto',params,body);
+    raise exception 'unvalidated photo accepted';
+  exception when sqlstate 'PT400' then null;
+  end;
+  insert into storage.objects(bucket_id,name,metadata) values('student-photos',verified,'{"mimetype":"image/png","size":5242880}');
+  perform public.saais_register_verified_photo(student,student,verified);
+  body := jsonb_build_object('avatar_url','/student-photos/'||verified,'storage_object_path',verified,'mime_type','image/png','file_size_bytes',5242880);
   profile := public.matt_operation('uploadStudentPhoto',params,body);
-  perform test.assert(profile->>'avatar_url'='/storage/v1/object/authenticated/student-photos/'||path,'photo saved');
+  perform test.assert(profile->>'avatar_url'='/storage/v1/object/authenticated/student-photos/'||verified,'verified 5 MiB photo saved');
+  begin
+    perform public.matt_operation('uploadStudentPhoto',params,body);
+    raise exception 'validation was reused';
+  exception when sqlstate 'PT400' then null;
+  end;
   profile := public.matt_operation('deleteStudentPhoto',params);
   perform test.assert(profile->>'avatar_url' is null,'photo cleared');
   perform test.login(9);
@@ -43,12 +57,40 @@ $$;
 select test.login(5);
 set local role authenticated;
 do $$begin
+  if not public.saais_photo_upload_authorize(auth.uid(), 'students/' || auth.uid() || '/new.png') then
+    raise exception 'Student could not authorize their own staged photo';
+  end if;
+  begin
+    perform public.saais_photo_upload_authorize('00000009-0000-4000-8000-000000000000',
+      'students/00000009-0000-4000-8000-000000000000/new.png');
+    raise exception 'Student authorized another student photo';
+  exception when sqlstate 'PT403' then null;
+  end;
   if (select count(*) from storage.objects where bucket_id = 'student-photos' and name like '%/test.png') <> 1 then
     raise exception 'Student photo visibility must be limited to the student';
   end if;
   if not saais_private.can_use_student_photo('students/' || auth.uid() || '/new.png', true) then
     raise exception 'Student cannot upload their photo';
   end if;
+  if saais_private.can_use_student_photo('students/' || auth.uid() || '/validated-00000000-0000-4000-8000-000000000001.png', true) then
+    raise exception 'Student can overwrite a validated photo';
+  end if;
+  if has_function_privilege(current_user, 'public.saais_register_verified_photo(uuid,uuid,text)', 'EXECUTE') then
+    raise exception 'Student can forge photo validation';
+  end if;
+  begin
+    insert into storage.objects(bucket_id, name) values
+      ('student-photos', 'students/00000005-0000-4000-8000-000000000000/validated-00000000-0000-4000-8000-000000000002.png');
+    raise exception 'Student created a trusted photo directly';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.matt_operation('uploadStudentPhoto',
+      '{"student_id":"00000005-0000-4000-8000-000000000000"}'::jsonb,
+      '{"avatar_url":"/student-photos/students/00000005-0000-4000-8000-000000000000/avatar.png","storage_object_path":"students/00000005-0000-4000-8000-000000000000/avatar.png","mime_type":"image/png","file_size_bytes":11}'::jsonb);
+    raise exception 'Direct RPC accepted an unvalidated photo';
+  exception when sqlstate 'PT400' then null;
+  end;
   if saais_private.can_use_student_photo('students/not-a-uuid/a.png', false) then
     raise exception 'Malformed paths cannot grant access';
   end if;

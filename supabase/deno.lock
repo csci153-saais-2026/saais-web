@@ -1,0 +1,16 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:imagescript@3.20.5": "3.20.5"
+  },
+  "npm": {
+    "imagescript@3.20.5": {
+      "integrity": "sha512-w/+45j0CYBdsdzKc2hGKmC5OmpdXX/hVszGqVYvJes2OFwXwcrwzypchVBay8pCzJMs+oDjeMVnlTsxTWHL3bQ=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:imagescript@3.20.5"
+    ]
+  }
+}

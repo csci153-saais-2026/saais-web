@@ -1,4 +1,9 @@
-import { createHandler, type Environment, type RouteGroup } from "./http.ts";
+import {
+  createHandler,
+  type Environment,
+  type PhotoPreparer,
+  type RouteGroup,
+} from "./http.ts";
 import { readAssistantConfig } from "./matt-assistant.ts";
 
 export function environment(
@@ -31,7 +36,7 @@ export function environment(
   };
 }
 
-export function serve(group: RouteGroup) {
+export function serve(group: RouteGroup, photoUpload?: PhotoPreparer) {
   const runtime = (
     globalThis as unknown as {
       Deno: {
@@ -41,5 +46,5 @@ export function serve(group: RouteGroup) {
     }
   ).Deno;
   const env = environment((name) => runtime.env.get(name));
-  runtime.serve(createHandler(group, { env }));
+  runtime.serve(createHandler(group, { env, photoUpload }));
 }

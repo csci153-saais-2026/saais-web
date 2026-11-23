@@ -3,6 +3,53 @@ create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 select no_plan();
 
+select ok(
+  (select reloptions @> array['security_invoker=true', 'security_barrier=true']
+   from pg_class where oid = 'saais_api.attempt_result'::regclass),
+  'Attempt result uses caller privileges and retains its security barrier'
+);
+select is((select count(*) from pg_class where oid in (
+  'saais_api.program'::regclass, 'saais_api.course'::regclass,
+  'saais_api.prerequisite'::regclass, 'saais_api.course_offering'::regclass
+) and reloptions @> array['security_invoker=true', 'security_barrier=true']), 4::bigint,
+  'Catalog views use caller privileges and retain security barriers');
+select is((select count(*) from pg_class where oid in (
+  'saais_api.student_curriculum_assignment'::regclass, 'saais_api.attempt'::regclass,
+  'saais_api.inc_resolution'::regclass, 'saais_api.elective_mapping'::regclass,
+  'saais_api.equivalency_decision'::regclass, 'saais_api.outside_credit'::regclass,
+  'saais_api.advising_note'::regclass, 'saais_api.grade_flag'::regclass,
+  'saais_api.attempt_remark'::regclass
+) and reloptions @> array['security_invoker=true', 'security_barrier=true']), 9::bigint,
+  'Single-table student record views use caller privileges and retain security barriers');
+select is((select count(*) from pg_class where oid in (
+  'saais_api.curriculum_term'::regclass, 'saais_api.curriculum_pair_equivalence'::regclass,
+  'saais_api.advising_plan'::regclass, 'saais_api.advising_plan_item'::regclass,
+  'saais_api.notification'::regclass
+) and reloptions @> array['security_invoker=true', 'security_barrier=true']), 5::bigint,
+  'Curriculum, plan, and notification views use caller privileges and retain security barriers');
+select is((select count(*) from pg_class where oid in (
+  'saais_api.curriculum_term_course'::regclass, 'saais_api.role_assignment'::regclass
+) and reloptions @> array['security_invoker=true', 'security_barrier=true']), 2::bigint,
+  'Curriculum course and role assignment views use caller privileges and retain security barriers');
+select is((select count(*) from pg_class where oid in (
+  'saais_api.faculty'::regclass, 'saais_api.department'::regclass
+) and reloptions @> array['security_invoker=true', 'security_barrier=true']), 2::bigint,
+  'Faculty and department views use caller privileges and retain security barriers');
+select is((select count(*) from pg_class where oid in (
+  'saais_api.curriculum_version'::regclass, 'saais_api.student_organization'::regclass
+) and reloptions @> array['security_invoker=true', 'security_barrier=true']), 2::bigint,
+  'Curriculum version and student organization use caller privileges and retain security barriers');
+select ok((select reloptions @> array['security_invoker=true', 'security_barrier=true']
+  from pg_class where oid = 'saais_api.profile'::regclass),
+  'Profile uses caller privileges and retains its security barrier');
+select ok((select reloptions @> array['security_invoker=true', 'security_barrier=true']
+  from pg_class where oid = 'saais_api.adviser_assignment'::regclass),
+  'Adviser assignment uses caller privileges and retains its security barrier');
+select is((select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'saais_api' and c.relkind = 'v'
+    and not coalesce(c.reloptions @> array['security_invoker=true', 'security_barrier=true'], false)),
+  0::bigint, 'Every API view uses caller privileges and retains its security barrier');
+
 \ir ../tests/fixtures.sql
 \ir ../tests/10_catalog.sql
 \ir ../tests/15_people.sql
@@ -39,6 +86,12 @@ select student_id, created_by, 'Private attempt remark', id from public.attempt;
 insert into public.notification(recipient_id, kind, event_type, title, body)
 select id, 'person', 'adviser_assigned', 'Fixture notice', 'Fixture body'
 from public.profile where status = 'active';
+insert into public.curriculum_transfer_request(student_id, from_curriculum_version_id,
+  to_curriculum_version_id, endorsed_by, endorsement_note)
+select '00000005-0000-4000-8000-000000000000',
+  (select (value->>'id')::uuid from test.records where name = 'version'),
+  (select (value->>'id')::uuid from test.records where name = 'version_b'),
+  '00000004-0000-4000-8000-000000000000', 'Fixture transfer';
 
 insert into public.audit_log_entry (actor_name, student_id, action, entity_type, entity_id, old_value, new_value)
 select 'Correction fixture actor', student_id, 'correctGrades', 'attempt', id,
@@ -47,15 +100,42 @@ from public.attempt;
 select is((select jsonb_array_length(saais_private.matt_grade_fix_history(id)) from public.attempt), 1,
   'Fixture has actual correction history');
 
+select set_config('test.other_audit', (select id::text from public.audit_log_entry
+  where student_id = '00000005-0000-4000-8000-000000000000' and old_value is not null limit 1), true);
+select set_config('test.other_assignment', (select id::text from public.adviser_assignment
+  where student_id = '00000009-0000-4000-8000-000000000000' limit 1), true);
+select set_config('test.transfer', (select id::text from public.curriculum_transfer_request
+  where student_id = '00000005-0000-4000-8000-000000000000' limit 1), true);
 select test.login(5);
 set local role authenticated;
+select is((select count(*) from saais_api.course), (select count(*) from public.course),
+  'Active student sees the same catalog through the view and underlying table');
 select results_eq('select body_text from saais_api.advising_note order by body_text',
   array['Archived note', 'Current note'], 'Student can read both of their notes including the archived note');
 select is_empty('select id from saais_api.attempt_remark', 'Attempt remarks are staff-only');
+select is_empty('select id from public.attempt_remark', 'Direct table reads also keep remarks staff-only');
+select is_empty('select id from public.attempt where student_id <> auth.uid()', 'Direct attempt reads exclude other students');
+select is_empty('select id from public.advising_plan where student_id <> auth.uid()', 'Direct plan reads exclude other students');
+select is((select adviser_name from saais_api.adviser_assignment where end_date is null), 'Person 4',
+  'Student still receives their adviser name');
+select is_empty('select * from saais_private.assignment_display(current_setting(''test.other_assignment'')::uuid)',
+  'Assignment helper does not reveal an inaccessible assignment');
+select is(saais_private.organization_entry_year('00000009-0000-4000-8000-000000000000'::uuid), null::integer,
+  'Organization helper does not reveal another student entry year');
+select is_empty('select id from public.notification where recipient_id <> auth.uid()', 'Direct notification reads exclude other recipients');
+select is((select endorsed_by_name from saais_api.curriculum_transfer_request), 'Person 4',
+  'Student can read their transfer endorser');
+select is((select dean_name from saais_api.faculty where dean_name is not null limit 1),
+  'Person 7', 'Faculty projection retains the dean name');
+select throws_ok('select reason from public.inc_resolution', '42501', null, 'Direct INC reads cannot expose the hidden reason');
 select is_empty('select id from saais_api.profile where id <> auth.uid()', 'Student cannot read another profile');
+select is_empty('select id from public.profile where id <> auth.uid()', 'Student cannot bypass profile scope through the table');
+select is(saais_private.profile_role_list('00000009-0000-4000-8000-000000000000'::uuid), null::public.role_type[],
+  'Profile role helper does not reveal another student roles');
 select is((select count(*) from saais_api.student_organization), 1::bigint, 'Student can read own organization');
 select is((select count(*) from saais_api.attempt_result where recorded_status = 'passed'), 1::bigint,
   'Student can read the projected result for their own course');
+select is_empty('select id from saais_api.attempt_result where student_id <> auth.uid()', 'Student cannot read another student result');
 select is((select final_grade from saais_api.attempt_result), 2::numeric,
   'Student can read the approved grade');
 select ok((select not (to_jsonb(result) ? 'grade_fix_history')
@@ -69,6 +149,8 @@ select throws_ok('select saais_private.matt_grade_fix_history(auth.uid())', '425
 select throws_ok('select saais_private.matt_attempt_result(auth.uid())', '42501', null,
   'Student cannot execute the internal mutation response helper');
 select is_empty('select id from saais_api.audit_log_entry', 'Student cannot read audit data');
+select is_empty('select * from saais_private.audit_display(current_setting(''test.other_audit'')::uuid)',
+  'Student cannot read audit display data through the helper');
 select throws_ok('select reason from public.adviser_assignment', '42501', null,
   'Base assignment cannot reveal the internal reason');
 select throws_ok('select entry_year from public.profile', '42501', null,
@@ -80,6 +162,9 @@ reset role;
 
 select test.login(9);
 set local role authenticated;
+select is_empty('select id from saais_api.curriculum_transfer_request', 'Other student cannot read the transfer');
+select is_empty('select * from saais_private.transfer_names(current_setting(''test.transfer'')::uuid)',
+  'Other student cannot read transfer names through the helper');
 select is_empty($cmd$select * from saais_private.read_attempt_results('00000005-0000-4000-8000-000000000000')$cmd$,
   'A different student cannot call the direct helper for a known attempt');
 reset role;
@@ -95,10 +180,15 @@ reset role;
 select test.login(2);
 set local role authenticated;
 select is((select count(*) from saais_api.student_organization), 1::bigint, 'Head sees only department students');
+select is((select count(*) from saais_api.attempt_result), 1::bigint, 'Head can read in-scope results');
 select is((select count(*) from saais_api.advising_note), 2::bigint, 'Head can read in-scope notes');
 select is((select count(*) from saais_api.attempt_remark), 1::bigint, 'Head sees in-scope remarks');
 select is_empty('select id from saais_api.audit_log_entry where old_value is not null or new_value is not null',
   'Head sees audited action metadata without raw audit snapshots');
+select throws_ok('select old_value from public.audit_log_entry', '42501', null,
+  'Head cannot bypass the audit snapshot restriction through the base table');
+select is_empty('select * from saais_private.audit_display(current_setting(''test.other_audit'')::uuid) where old_value is not null or new_value is not null',
+  'Head cannot retrieve audit snapshots through the helper');
 reset role;
 
 select test.login(3);
@@ -106,13 +196,16 @@ set local role authenticated;
 select is((select count(*) from saais_api.student_organization), 1::bigint, 'Staff can read only department students');
 select is((select count(*) from saais_api.role_assignment where role = 'adviser'), 2::bigint,
   'Staff can populate adviser options within their department');
+select is((select count(*) from saais_api.attempt_result), 1::bigint, 'Staff can read in-scope results');
 select is_empty('select id from saais_api.advising_note', 'Staff has no advising-note read access');
+select is_empty('select id from public.advising_note', 'Staff cannot bypass the advising-note view');
 select is_empty('select id from saais_api.attempt_remark', 'Staff has no attempt-remark read access');
 reset role;
 
 select test.login(7);
 set local role authenticated;
 select is((select count(*) from saais_api.student_organization), 1::bigint, 'Dean can read only faculty students');
+select is((select count(*) from saais_api.attempt_result), 1::bigint, 'Dean can read in-scope results');
 select is_empty('select id from saais_api.advising_note', 'Dean cannot read advising notes');
 select is_empty('select id from saais_api.attempt_remark', 'Dean cannot read attempt remarks');
 reset role;
@@ -120,7 +213,10 @@ reset role;
 select test.login(1);
 set local role authenticated;
 select is((select count(*) from saais_api.student_organization), 2::bigint, 'Admin sees students from both departments');
+select is((select count(*) from saais_api.attempt_result), 1::bigint, 'Admin can read results');
 select is((select count(*) from saais_api.advising_note), 3::bigint, 'Admin can read both departments’ notes');
+select ok((select count(*) > 0 from saais_api.audit_log_entry where old_value is not null),
+  'Admin can still read scoped audit snapshots');
 select is_empty('select id from saais_api.notification where recipient_id <> auth.uid()', 'Admin notifications remain account-specific');
 reset role;
 
@@ -128,9 +224,13 @@ select test.login(10);
 set local role authenticated;
 select is_empty('select id from saais_api.profile', 'Disabled user sees no profiles');
 select is_empty('select id from saais_api.course', 'Disabled user sees no catalog');
+select is_empty('select id from public.course', 'Disabled user cannot bypass the catalog view');
+select is_empty('select id from public.faculty', 'Disabled user cannot read the faculty catalog');
+select is_empty('select id from saais_api.attempt_result', 'Disabled user sees no attempt results');
 reset role;
 set local role anon;
 select throws_ok('select id from saais_api.profile', '42501', null, 'Anonymous user has no projection access');
+select throws_ok('select id from saais_api.attempt_result', '42501', null, 'Anonymous user has no result access');
 reset role;
 
 select test.login(2);
