@@ -1,0 +1,6 @@
+type: string
+enum:
+  - strict
+  - co_requisite
+  - recommended
+description: Prerequisite linkage enforcement type

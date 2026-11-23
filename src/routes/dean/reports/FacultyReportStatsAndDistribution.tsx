@@ -1,12 +1,12 @@
-import { GradeDistribution } from "@/components/features/grade-distribution"
-import { Panel } from "@/components/features/panel"
-import { StatGrid } from "@/components/features/stat-tile"
-import type { FacultyDepartmentReport } from "@/routes/dean/types"
+import { GradeDistribution } from "@/components/features/grade-distribution";
+import { Panel } from "@/components/features/panel";
+import { StatGrid } from "@/components/features/stat-tile";
+import type { FacultyDepartmentReport } from "@/routes/dean/types";
 
 export function FacultyReportStatsAndDistribution({
   report,
 }: {
-  report: FacultyDepartmentReport
+  report: FacultyDepartmentReport;
 }) {
   return (
     <div className="space-y-6">
@@ -18,7 +18,8 @@ export function FacultyReportStatsAndDistribution({
             value: report.students,
             note:
               report.department === "All departments"
-                ? report.departmentSummaryLabel ?? "Across all faculty departments"
+                ? (report.departmentSummaryLabel ??
+                  "Across all faculty departments")
                 : `Enrolled in ${report.department}`,
           },
           {
@@ -41,5 +42,5 @@ export function FacultyReportStatsAndDistribution({
         <GradeDistribution inline bands={report.bands} />
       </Panel>
     </div>
-  )
+  );
 }

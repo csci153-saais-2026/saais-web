@@ -1,0 +1,32 @@
+type: object
+additionalProperties: false
+properties:
+  mode:
+    type: string
+    enum:
+      - preview
+      - commit
+  valid_count:
+    type: integer
+    minimum: 0
+  warning_count:
+    type: integer
+    minimum: 0
+  error_count:
+    type: integer
+    minimum: 0
+  imported_count:
+    type: integer
+    minimum: 0
+  results:
+    type: array
+    maxItems: 500
+    items:
+      $ref: "./StudentBatchImportRowResult.yaml"
+required:
+  - mode
+  - valid_count
+  - warning_count
+  - error_count
+  - imported_count
+  - results

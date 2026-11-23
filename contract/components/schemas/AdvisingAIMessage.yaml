@@ -1,0 +1,16 @@
+type: object
+additionalProperties: false
+required:
+  - role
+  - content
+properties:
+  role:
+    type: string
+    enum:
+      - user
+      - assistant
+  content:
+    type: string
+    minLength: 1
+    maxLength: 4000
+    pattern: \S

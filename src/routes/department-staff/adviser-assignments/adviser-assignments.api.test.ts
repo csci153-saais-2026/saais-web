@@ -1,51 +1,60 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { http, HttpResponse } from 'msw'
-import { setupServer } from 'msw/node'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
 import {
   bulkReassignAdvisers,
   listStudentAdviserAssignments,
   type BulkAdviserReassignmentRequest,
-} from './adviser-assignments.api'
-import { listStudentFilterOptions } from '../students/students.api'
+} from "./adviser-assignments.api";
+import { listStudentFilterOptions } from "../students/students.api";
 
-vi.mock('@/lib/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/api')>()
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api")>();
   return {
     ...actual,
     apiClient: actual.createSaaisApiClient({
-      baseUrl: 'http://localhost:3000',
-      mode: 'mock',
-      getAccessToken: async () => 'mock-adviser-assignment-test',
+      baseUrl: "http://localhost:3000",
+      mode: "mock",
+      getAccessToken: async () => "mock-adviser-assignment-test",
       fetch: (...args) => globalThis.fetch(...args),
     }),
-  }
-})
+  };
+});
 
-const server = setupServer()
+const server = setupServer();
 
-beforeAll(() => server.listen())
-afterEach(() => server.resetHandlers())
-afterAll(() => server.close())
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 const studentIds = [
-  '33333333-3333-4333-8333-333333333333',
-  '99999999-9999-4999-8999-999999999999',
-]
-const targetAdviserId = '88888888-8888-4888-8888-888888888888'
+  "33333333-3333-4333-8333-333333333333",
+  "99999999-9999-4999-8999-999999999999",
+];
+const targetAdviserId = "88888888-8888-4888-8888-888888888888";
 const requestBody: BulkAdviserReassignmentRequest = {
   student_ids: [studentIds[0]],
   adviser_id: targetAdviserId,
-  effective_since: '2026-11-10',
-  reason: 'Transfer to the new adviser',
-}
+  effective_since: "2026-11-10",
+  reason: "Transfer to the new adviser",
+};
 
 function reassignedRecord(studentId: string, index: number) {
   return {
-    id: index === 0
-      ? 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-      : 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    id:
+      index === 0
+        ? "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        : "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     adviser_id: targetAdviserId,
-    adviser_name: 'Target Adviser',
+    adviser_name: "Target Adviser",
     adviser_email: null,
     adviser_faculty_name: null,
     adviser_consultation_hours: null,
@@ -55,168 +64,263 @@ function reassignedRecord(studentId: string, index: number) {
     handed_over_to_adviser_id: null,
     handed_over_to_name: null,
     handover_label: null,
-    created_at: '2026-11-10T09:00:00Z',
-  }
+    created_at: "2026-11-10T09:00:00Z",
+  };
 }
 
-describe('Adviser assignment preparation reads', () => {
-  it('loads history for only the requested roster students', async () => {
-    const requestedId = '33333333-3333-4333-8333-333333333333'
-    const foreignId = '99999999-9999-4999-8999-999999999999'
+describe("Adviser assignment preparation reads", () => {
+  it("loads history for only the requested roster students", async () => {
+    const requestedId = "33333333-3333-4333-8333-333333333333";
+    const foreignId = "99999999-9999-4999-8999-999999999999";
     const activeAssignment = {
-      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      adviser_id: '88888888-8888-4888-8888-888888888888',
-      adviser_name: 'Current Adviser',
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      adviser_id: "88888888-8888-4888-8888-888888888888",
+      adviser_name: "Current Adviser",
       adviser_email: null,
       adviser_faculty_name: null,
       adviser_consultation_hours: null,
       student_id: requestedId,
-      start_date: '2026-04-01',
+      start_date: "2026-04-01",
       end_date: null,
       handed_over_to_adviser_id: null,
       handed_over_to_name: null,
       handover_label: null,
-      created_at: '2026-04-01T00:00:00Z',
-    }
+      created_at: "2026-04-01T00:00:00Z",
+    };
 
     server.use(
-      http.get('*/rest/v1/adviser_assignment', ({ request }) => {
-        const query = new URL(request.url).searchParams
-        expect(query.get('student_id')).toContain(requestedId)
-        expect(query.get('select')).toContain('adviser_name')
-        expect(query.get('select')).toContain('start_date')
-        expect(query.has('department_id')).toBe(false)
-        expect(query.get('order')).toBe('student_id.asc,start_date.asc,id.asc')
+      http.get("*/rest/v1/adviser_assignment", ({ request }) => {
+        const query = new URL(request.url).searchParams;
+        expect(query.get("student_id")).toContain(requestedId);
+        expect(query.get("select")).toContain("adviser_name");
+        expect(query.get("select")).toContain("start_date");
+        expect(query.has("department_id")).toBe(false);
+        expect(query.get("order")).toBe("student_id.asc,start_date.asc,id.asc");
         return HttpResponse.json([
           activeAssignment,
           {
             ...activeAssignment,
-            id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
             student_id: foreignId,
           },
-        ])
+        ]);
       }),
-    )
+    );
 
-    await expect(listStudentAdviserAssignments([requestedId])).resolves.toEqual([
-      activeAssignment,
-    ])
-  })
+    await expect(listStudentAdviserAssignments([requestedId])).resolves.toEqual(
+      [activeAssignment],
+    );
+  });
 
-  it('rejects partial adviser history instead of preparing from incomplete data', async () => {
+  it("consumes every history page and accepts an exactly full final page", async () => {
+    const offsets: number[] = [];
     server.use(
-      http.get('*/rest/v1/adviser_assignment', () =>
+      http.get("*/rest/v1/adviser_assignment", ({ request }) => {
+        const offset = Number(new URL(request.url).searchParams.get("offset"));
+        offsets.push(offset);
+        const count = offset === 0 ? 1000 : 1;
+        return HttpResponse.json(
+          Array.from({ length: count }, () =>
+            reassignedRecord(studentIds[0], 0),
+          ),
+          {
+            headers: {
+              "Content-Range": offset === 0 ? "0-999/1001" : "1000-1000/1001",
+            },
+          },
+        );
+      }),
+    );
+    expect(await listStudentAdviserAssignments([studentIds[0]])).toHaveLength(
+      1001,
+    );
+    expect(offsets).toEqual([0, 1000]);
+    server.use(
+      http.get("*/rest/v1/adviser_assignment", () =>
+        HttpResponse.json(
+          Array.from({ length: 1000 }, () =>
+            reassignedRecord(studentIds[0], 0),
+          ),
+          { headers: { "Content-Range": "0-999/1000" } },
+        ),
+      ),
+    );
+    expect(await listStudentAdviserAssignments([studentIds[0]])).toHaveLength(
+      1000,
+    );
+  });
+
+  it("rejects partial adviser history instead of preparing from incomplete data", async () => {
+    server.use(
+      http.get("*/rest/v1/adviser_assignment", () =>
         HttpResponse.json([], {
           status: 206,
-          headers: { 'Content-Range': '0-9/20' },
+          headers: { "Content-Range": "0-9/20" },
         }),
       ),
-    )
+    );
 
     await expect(
-      listStudentAdviserAssignments([
-        '33333333-3333-4333-8333-333333333333',
-      ]),
-    ).rejects.toThrow('Adviser assignment history is incomplete')
-  })
+      listStudentAdviserAssignments(["33333333-3333-4333-8333-333333333333"]),
+    ).rejects.toThrow("Adviser assignment history is incomplete");
+  });
 
-  it('rejects malformed assignment dates before exposing history to selection', async () => {
+  it("rejects malformed assignment dates before exposing history to selection", async () => {
     server.use(
-      http.get('*/rest/v1/adviser_assignment', () =>
+      http.get("*/rest/v1/adviser_assignment", () =>
         HttpResponse.json([
           {
-            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-            adviser_id: '88888888-8888-4888-8888-888888888888',
-            adviser_name: 'Current Adviser',
-            student_id: '33333333-3333-4333-8333-333333333333',
-            start_date: 'not-a-calendar-date',
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            adviser_id: "88888888-8888-4888-8888-888888888888",
+            adviser_name: "Current Adviser",
+            student_id: "33333333-3333-4333-8333-333333333333",
+            start_date: "not-a-calendar-date",
             end_date: null,
-            created_at: '2026-04-01T00:00:00Z',
+            created_at: "2026-04-01T00:00:00Z",
           },
         ]),
       ),
-    )
+    );
 
     await expect(
-      listStudentAdviserAssignments([
-        '33333333-3333-4333-8333-333333333333',
-      ]),
-    ).rejects.toThrow('returned invalid or incomplete history')
-  })
+      listStudentAdviserAssignments(["33333333-3333-4333-8333-333333333333"]),
+    ).rejects.toThrow("returned invalid or incomplete history");
+  });
 
-  it('offers only active profiles with an adviser role in the current department', async () => {
-    const departmentId = '22222222-2222-4222-8222-222222222222'
-    const eligibleId = '88888888-8888-4888-8888-888888888888'
-    const inactiveId = '77777777-7777-4777-8777-777777777777'
-    const otherDepartmentId = '66666666-6666-4666-8666-666666666666'
+  it("offers only active profiles with an adviser role in the current department", async () => {
+    const departmentId = "22222222-2222-4222-8222-222222222222";
+    const eligibleId = "88888888-8888-4888-8888-888888888888";
+    const inactiveId = "77777777-7777-4777-8777-777777777777";
+    const otherDepartmentId = "66666666-6666-4666-8666-666666666666";
+    const mismatchedPrimaryDepartmentId =
+      "44444444-4444-4444-8444-444444444444";
 
     server.use(
-      http.get('*/rest/v1/program', () => HttpResponse.json([])),
-      http.get('*/rest/v1/role_assignment', ({ request }) => {
-        const query = new URL(request.url).searchParams
-        expect(query.get('role')).toBe('eq.adviser')
-        expect(query.get('department_id')).toBe(`eq.${departmentId}`)
+      http.get("*/rest/v1/program", () => HttpResponse.json([])),
+      http.get("*/rest/v1/role_assignment", ({ request }) => {
+        const query = new URL(request.url).searchParams;
+        expect(query.get("role")).toBe("eq.adviser");
+        expect(query.get("department_id")).toBe(`eq.${departmentId}`);
         return HttpResponse.json([
           {
-            id: 'role-eligible',
+            id: "role-eligible",
             profile_id: eligibleId,
-            role: 'adviser',
+            role: "adviser",
             department_id: departmentId,
           },
           {
-            id: 'role-inactive',
+            id: "role-inactive",
             profile_id: inactiveId,
-            role: 'adviser',
+            role: "adviser",
             department_id: departmentId,
           },
           {
-            id: 'role-foreign',
+            id: "role-foreign",
             profile_id: otherDepartmentId,
-            role: 'adviser',
-            department_id: 'another-department',
+            role: "adviser",
+            department_id: "another-department",
           },
           {
-            id: 'role-not-adviser',
-            profile_id: '55555555-5555-4555-8555-555555555555',
-            role: 'department_staff',
+            id: "role-not-adviser",
+            profile_id: "55555555-5555-4555-8555-555555555555",
+            role: "department_staff",
             department_id: departmentId,
           },
-        ])
+        ]);
       }),
-      http.get('*/rest/v1/profile', ({ request }) => {
-        const query = new URL(request.url).searchParams
-        expect(query.get('status')).toBe('eq.active')
+      http.get("*/rest/v1/profile", ({ request }) => {
+        const query = new URL(request.url).searchParams;
+        expect(query.get("status")).toBe("eq.active");
+        expect(query.get("department_id")).toBe(`eq.${departmentId}`);
+        expect(query.get("select")).toBe("id,full_name,status,department_id");
         return HttpResponse.json([
-          { id: eligibleId, full_name: 'Active Adviser', status: 'active' },
-          { id: inactiveId, full_name: 'Inactive Adviser', status: 'inactive' },
-        ])
+          {
+            id: eligibleId,
+            full_name: "Active Adviser",
+            status: "active",
+            department_id: departmentId,
+          },
+          {
+            id: inactiveId,
+            full_name: "Inactive Adviser",
+            status: "inactive",
+            department_id: departmentId,
+          },
+          {
+            id: otherDepartmentId,
+            full_name: "Foreign Adviser",
+            status: "active",
+          },
+          {
+            id: "55555555-5555-4555-8555-555555555555",
+            full_name: "Not Adviser",
+            status: "active",
+          },
+          {
+            id: mismatchedPrimaryDepartmentId,
+            full_name: "Mismatched Adviser",
+            status: "active",
+            department_id: "another-department",
+          },
+        ]);
       }),
-    )
+    );
 
     await expect(listStudentFilterOptions(departmentId)).resolves.toEqual({
       curricula: [],
-      advisers: [{ id: eligibleId, label: 'Active Adviser' }],
-    })
-  })
+      advisers: [{ id: eligibleId, label: "Active Adviser" }],
+    });
+  });
 
-  describe('Bulk adviser reassignment requests', () => {
-    it.each([
-      { label: 'one student', ids: [studentIds[0]] },
-      { label: 'multiple students', ids: studentIds },
-    ])('submits one atomic request for $label', async ({ ids }) => {
-      let requestCount = 0
-      let sentBody: unknown
+  describe("Bulk adviser reassignment requests", () => {
+    it("surfaces the 403 response for a reassignment target in another primary department", async () => {
+      const mismatchedAdviserId = "44444444-4444-4444-8444-444444444444";
       server.use(
-        http.post('*/functions/v1/adviser-assignments/bulk-reassign', async ({ request }) => {
-          requestCount += 1
-          sentBody = await request.json()
-          return HttpResponse.json({
-            reassigned_count: ids.length,
-            assignments: ids.map(reassignedRecord),
-          })
+        http.post(
+          "*/functions/v1/adviser-assignments/bulk-reassign",
+          async ({ request }) => {
+            const body =
+              (await request.json()) as BulkAdviserReassignmentRequest;
+            expect(body.adviser_id).toBe(mismatchedAdviserId);
+            return HttpResponse.json(
+              {
+                code: "INSUFFICIENT_PRIVILEGE",
+                message: "Reassignment is limited to your department.",
+              },
+              { status: 403 },
+            );
+          },
+        ),
+      );
+
+      await expect(
+        bulkReassignAdvisers({
+          ...requestBody,
+          adviser_id: mismatchedAdviserId,
         }),
-      )
-      const body = { ...requestBody, student_ids: ids }
+      ).rejects.toMatchObject({ status: 403, isForbidden: true });
+    });
+
+    it.each([
+      { label: "one student", ids: [studentIds[0]] },
+      { label: "multiple students", ids: studentIds },
+    ])("submits one atomic request for $label", async ({ ids }) => {
+      let requestCount = 0;
+      let sentBody: unknown;
+      server.use(
+        http.post(
+          "*/functions/v1/adviser-assignments/bulk-reassign",
+          async ({ request }) => {
+            requestCount += 1;
+            sentBody = await request.json();
+            return HttpResponse.json({
+              reassigned_count: ids.length,
+              assignments: ids.map(reassignedRecord),
+            });
+          },
+        ),
+      );
+      const body = { ...requestBody, student_ids: ids };
 
       await expect(bulkReassignAdvisers(body)).resolves.toMatchObject({
         reassigned_count: ids.length,
@@ -227,81 +331,80 @@ describe('Adviser assignment preparation reads', () => {
             start_date: body.effective_since,
           }),
         ),
-      })
-      expect(requestCount).toBe(1)
-      expect(sentBody).toEqual(body)
-    })
+      });
+      expect(requestCount).toBe(1);
+      expect(sentBody).toEqual(body);
+    });
 
     it.each([
       { status: 403, isForbidden: true, isConflict: false },
       { status: 409, isForbidden: false, isConflict: true },
-    ])('surfaces HTTP $status without returning a success-shaped response', async ({
-      status,
-      isForbidden,
-      isConflict,
-    }) => {
-      let requestCount = 0
-      server.use(
-        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () => {
-          requestCount += 1
-          return HttpResponse.json(
-            { code: 'REASSIGNMENT_ERROR', message: 'Reassignment rejected.' },
-            { status },
-          )
-        }),
-      )
+    ])(
+      "surfaces HTTP $status without returning a success-shaped response",
+      async ({ status, isForbidden, isConflict }) => {
+        let requestCount = 0;
+        server.use(
+          http.post("*/functions/v1/adviser-assignments/bulk-reassign", () => {
+            requestCount += 1;
+            return HttpResponse.json(
+              { code: "REASSIGNMENT_ERROR", message: "Reassignment rejected." },
+              { status },
+            );
+          }),
+        );
 
-      await expect(bulkReassignAdvisers(requestBody)).rejects.toMatchObject({
-        status,
-        isForbidden,
-        isConflict,
-      })
-      expect(requestCount).toBe(1)
-    })
+        await expect(bulkReassignAdvisers(requestBody)).rejects.toMatchObject({
+          status,
+          isForbidden,
+          isConflict,
+        });
+        expect(requestCount).toBe(1);
+      },
+    );
 
-    it('surfaces network failures without reporting reassignment success', async () => {
-      let requestCount = 0
+    it("surfaces network failures without reporting reassignment success", async () => {
+      let requestCount = 0;
       server.use(
-        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () => {
-          requestCount += 1
-          return HttpResponse.error()
+        http.post("*/functions/v1/adviser-assignments/bulk-reassign", () => {
+          requestCount += 1;
+          return HttpResponse.error();
         }),
-      )
+      );
 
       await expect(bulkReassignAdvisers(requestBody)).rejects.toMatchObject({
         isNetworkError: true,
-      })
-      expect(requestCount).toBe(1)
-    })
+      });
+      expect(requestCount).toBe(1);
+    });
 
-    it('rejects a partial success-shaped response', async () => {
+    it("rejects a partial success-shaped response", async () => {
       server.use(
-        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () =>
+        http.post("*/functions/v1/adviser-assignments/bulk-reassign", () =>
           HttpResponse.json({ reassigned_count: 1, assignments: [] }),
         ),
-      )
+      );
 
       await expect(bulkReassignAdvisers(requestBody)).rejects.toThrow(
-        'did not confirm the complete atomic reassignment',
-      )
-    })
+        "did not confirm the complete atomic reassignment",
+      );
+    });
 
-    it('rejects duplicate student IDs before making a request', async () => {
-      let requestCount = 0
+    it("rejects duplicate student IDs before making a request", async () => {
+      let requestCount = 0;
       server.use(
-        http.post('*/functions/v1/adviser-assignments/bulk-reassign', () => {
-          requestCount += 1
-          return HttpResponse.json({})
+        http.post("*/functions/v1/adviser-assignments/bulk-reassign", () => {
+          requestCount += 1;
+          return HttpResponse.json({});
         }),
-      )
+      );
 
       await expect(
         bulkReassignAdvisers({
           ...requestBody,
           student_ids: [studentIds[0], studentIds[0]],
         }),
-      ).rejects.toThrow('between one and 500 unique students')
-      expect(requestCount).toBe(0)
-    })
-  })
-})
+      ).rejects.toThrow("between one and 500 unique students");
+      expect(requestCount).toBe(0);
+    });
+  });
+});

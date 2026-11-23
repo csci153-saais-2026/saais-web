@@ -1,0 +1,19 @@
+type: object
+additionalProperties: false
+properties:
+  reference_date:
+    type:
+      - string
+      - "null"
+    format: date
+    description: Optional Asia/Manila date used to evaluate deadline and reminder windows deterministically.
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    description: Optional department scope filter (defaults to caller department for Department Head or all departments for Admin).
+  dry_run:
+    type: boolean
+    default: false
+    description: When true, computes candidate notifications without inserting rows.

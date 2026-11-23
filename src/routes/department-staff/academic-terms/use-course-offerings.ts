@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { staffQueryKeys } from '@/routes/department-staff/shared/staff-query-keys'
-import { useStaffScope } from '@/routes/department-staff/shared/use-staff-scope'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { staffQueryKeys } from "@/routes/department-staff/shared/staff-query-keys";
+import { useStaffScope } from "@/routes/department-staff/shared/use-staff-scope";
 import {
   createCourseOffering,
   deleteCourseOffering,
@@ -10,16 +10,16 @@ import {
   type CourseOfferingInsert,
   type CourseOfferingUpdate,
   type OpenedSubject,
-} from './course-offerings.api'
+} from "./course-offerings.api";
 
 function courseOfferingsKey(
   profileId: string,
   departmentId: string,
   schoolTermId: string,
 ) {
-  return staffQueryKeys.resource(profileId, departmentId, 'course-offerings', {
+  return staffQueryKeys.resource(profileId, departmentId, "course-offerings", {
     schoolTermId,
-  })
+  });
 }
 
 function sameOffering(
@@ -34,7 +34,7 @@ function sameOffering(
     (current.schedule ?? null) === (original.schedule ?? null) &&
     (current.instructor ?? null) === (original.instructor ?? null) &&
     current.is_by_request === original.is_by_request
-  )
+  );
 }
 
 function matchesCreate(
@@ -49,7 +49,7 @@ function matchesCreate(
     (offering.schedule ?? null) === (body.schedule ?? null) &&
     (offering.instructor ?? null) === (body.instructor ?? null) &&
     offering.is_by_request === body.is_by_request
-  )
+  );
 }
 
 function matchesUpdate(
@@ -66,7 +66,7 @@ function matchesUpdate(
       (offering.instructor ?? null) === (body.instructor ?? null)) &&
     (body.is_by_request === undefined ||
       offering.is_by_request === body.is_by_request)
-  )
+  );
 }
 
 function cachedOffering(
@@ -78,19 +78,19 @@ function cachedOffering(
 ): OpenedSubject {
   const rows = queryClient.getQueryData<OpenedSubject[]>(
     courseOfferingsKey(profileId, departmentId, schoolTermId),
-  )
-  const current = rows?.find((row) => row.offering.id === original.id)
+  );
+  const current = rows?.find((row) => row.offering.id === original.id);
   if (!current || !sameOffering(current.offering, original)) {
     throw new Error(
-      'This course offering changed or is no longer available. Refresh the term offerings and try again.',
-    )
+      "This course offering changed or is no longer available. Refresh the term offerings and try again.",
+    );
   }
-  return current
+  return current;
 }
 
 function useCourseOfferingWrite() {
-  const scope = useStaffScope()
-  const queryClient = useQueryClient()
+  const scope = useStaffScope();
+  const queryClient = useQueryClient();
 
   async function refresh(
     profileId: string,
@@ -99,27 +99,29 @@ function useCourseOfferingWrite() {
   ) {
     await queryClient.invalidateQueries({
       queryKey: courseOfferingsKey(profileId, departmentId, schoolTermId),
-    })
+    });
   }
 
-  return { scope, queryClient, refresh }
+  return { scope, queryClient, refresh };
 }
 
-type CourseOfferingWriteContext = {
-  profileId: string
-  departmentId: string
-  schoolTermId: string
-} | undefined
+type CourseOfferingWriteContext =
+  | {
+      profileId: string;
+      departmentId: string;
+      schoolTermId: string;
+    }
+  | undefined;
 
 export function useCourseOfferings(schoolTermId: string | undefined) {
-  const scope = useStaffScope()
-  const activeScope = scope.status === 'ready' ? scope : null
+  const scope = useStaffScope();
+  const activeScope = scope.status === "ready" ? scope : null;
 
   return useQuery({
     queryKey: staffQueryKeys.resource(
-      activeScope?.profileId ?? '',
-      activeScope?.departmentId ?? '',
-      'course-offerings',
+      activeScope?.profileId ?? "",
+      activeScope?.departmentId ?? "",
+      "course-offerings",
       { schoolTermId },
     ),
     enabled: activeScope !== null && schoolTermId !== undefined,
@@ -127,24 +129,24 @@ export function useCourseOfferings(schoolTermId: string | undefined) {
     queryFn: ({ signal }) => {
       if (!activeScope || !schoolTermId) {
         throw new Error(
-          'Course offering requests require an authorized department and school term.',
-        )
+          "Course offering requests require an authorized department and school term.",
+        );
       }
 
-      return listCourseOfferings(schoolTermId, signal)
+      return listCourseOfferings(schoolTermId, signal);
     },
-  })
+  });
 }
 
 export function useCreateCourseOffering() {
-  const { scope, refresh } = useCourseOfferingWrite()
+  const { scope, refresh } = useCourseOfferingWrite();
 
   return useMutation<
     {
-      offering: CourseOffering
-      profileId: string
-      departmentId: string
-      schoolTermId: string
+      offering: CourseOffering;
+      profileId: string;
+      departmentId: string;
+      schoolTermId: string;
     },
     unknown,
     CourseOfferingInsert,
@@ -152,15 +154,17 @@ export function useCreateCourseOffering() {
   >({
     retry: false,
     mutationFn: async (body: CourseOfferingInsert) => {
-      if (scope.status !== 'ready') {
-        throw new Error('An authorized department is required to manage course offerings.')
+      if (scope.status !== "ready") {
+        throw new Error(
+          "An authorized department is required to manage course offerings.",
+        );
       }
 
-      const offering = await createCourseOffering(body)
+      const offering = await createCourseOffering(body);
       if (!matchesCreate(offering, body)) {
         throw new Error(
-          'The service returned an unexpected course offering. Refresh the selected term before continuing.',
-        )
+          "The service returned an unexpected course offering. Refresh the selected term before continuing.",
+        );
       }
 
       return {
@@ -168,38 +172,42 @@ export function useCreateCourseOffering() {
         profileId: scope.profileId,
         departmentId: scope.departmentId,
         schoolTermId: body.school_term_id,
-      }
+      };
     },
     onSuccess: async ({ profileId, departmentId, schoolTermId }) => {
-      await refresh(profileId, departmentId, schoolTermId)
+      await refresh(profileId, departmentId, schoolTermId);
     },
     onError: async (_error, body, context) => {
       if (context) {
-        await refresh(context.profileId, context.departmentId, context.schoolTermId)
-      } else if (scope.status === 'ready') {
-        await refresh(scope.profileId, scope.departmentId, body.school_term_id)
+        await refresh(
+          context.profileId,
+          context.departmentId,
+          context.schoolTermId,
+        );
+      } else if (scope.status === "ready") {
+        await refresh(scope.profileId, scope.departmentId, body.school_term_id);
       }
     },
     onMutate: (body) =>
-      scope.status === 'ready'
+      scope.status === "ready"
         ? {
             profileId: scope.profileId,
             departmentId: scope.departmentId,
             schoolTermId: body.school_term_id,
           }
         : undefined,
-  })
+  });
 }
 
 export function useUpdateCourseOffering() {
-  const { scope, queryClient, refresh } = useCourseOfferingWrite()
+  const { scope, queryClient, refresh } = useCourseOfferingWrite();
 
   return useMutation<
     {
-      offering: CourseOffering
-      profileId: string
-      departmentId: string
-      schoolTermId: string
+      offering: CourseOffering;
+      profileId: string;
+      departmentId: string;
+      schoolTermId: string;
     },
     unknown,
     { original: CourseOffering; body: CourseOfferingUpdate },
@@ -210,11 +218,13 @@ export function useUpdateCourseOffering() {
       original,
       body,
     }: {
-      original: CourseOffering
-      body: CourseOfferingUpdate
+      original: CourseOffering;
+      body: CourseOfferingUpdate;
     }) => {
-      if (scope.status !== 'ready') {
-        throw new Error('An authorized department is required to manage course offerings.')
+      if (scope.status !== "ready") {
+        throw new Error(
+          "An authorized department is required to manage course offerings.",
+        );
       }
 
       cachedOffering(
@@ -223,8 +233,8 @@ export function useUpdateCourseOffering() {
         scope.departmentId,
         original.school_term_id,
         original,
-      )
-      const offering = await updateCourseOffering(original.id, body)
+      );
+      const offering = await updateCourseOffering(original.id, body);
       if (
         offering.id !== original.id ||
         offering.school_term_id !== original.school_term_id ||
@@ -232,8 +242,8 @@ export function useUpdateCourseOffering() {
         !matchesUpdate(offering, body)
       ) {
         throw new Error(
-          'The service returned an unexpected course offering. Refresh the selected term before continuing.',
-        )
+          "The service returned an unexpected course offering. Refresh the selected term before continuing.",
+        );
       }
 
       return {
@@ -241,35 +251,39 @@ export function useUpdateCourseOffering() {
         profileId: scope.profileId,
         departmentId: scope.departmentId,
         schoolTermId: original.school_term_id,
-      }
+      };
     },
     onSuccess: async ({ profileId, departmentId, schoolTermId }) => {
-      await refresh(profileId, departmentId, schoolTermId)
+      await refresh(profileId, departmentId, schoolTermId);
     },
     onError: async (_error, change, context) => {
       if (context) {
-        await refresh(context.profileId, context.departmentId, context.schoolTermId)
-      } else if (scope.status === 'ready') {
+        await refresh(
+          context.profileId,
+          context.departmentId,
+          context.schoolTermId,
+        );
+      } else if (scope.status === "ready") {
         await refresh(
           scope.profileId,
           scope.departmentId,
           change.original.school_term_id,
-        )
+        );
       }
     },
     onMutate: (change) =>
-      scope.status === 'ready'
+      scope.status === "ready"
         ? {
             profileId: scope.profileId,
             departmentId: scope.departmentId,
             schoolTermId: change.original.school_term_id,
           }
         : undefined,
-  })
+  });
 }
 
 export function useDeleteCourseOffering() {
-  const { scope, queryClient, refresh } = useCourseOfferingWrite()
+  const { scope, queryClient, refresh } = useCourseOfferingWrite();
 
   return useMutation<
     { profileId: string; departmentId: string; schoolTermId: string },
@@ -279,8 +293,10 @@ export function useDeleteCourseOffering() {
   >({
     retry: false,
     mutationFn: async (original: CourseOffering) => {
-      if (scope.status !== 'ready') {
-        throw new Error('An authorized department is required to manage course offerings.')
+      if (scope.status !== "ready") {
+        throw new Error(
+          "An authorized department is required to manage course offerings.",
+        );
       }
 
       cachedOffering(
@@ -289,35 +305,39 @@ export function useDeleteCourseOffering() {
         scope.departmentId,
         original.school_term_id,
         original,
-      )
-      await deleteCourseOffering(original.id)
+      );
+      await deleteCourseOffering(original.id);
       return {
         profileId: scope.profileId,
         departmentId: scope.departmentId,
         schoolTermId: original.school_term_id,
-      }
+      };
     },
     onSuccess: async ({ profileId, departmentId, schoolTermId }) => {
-      await refresh(profileId, departmentId, schoolTermId)
+      await refresh(profileId, departmentId, schoolTermId);
     },
     onError: async (_error, original, context) => {
       if (context) {
-        await refresh(context.profileId, context.departmentId, context.schoolTermId)
-      } else if (scope.status === 'ready') {
+        await refresh(
+          context.profileId,
+          context.departmentId,
+          context.schoolTermId,
+        );
+      } else if (scope.status === "ready") {
         await refresh(
           scope.profileId,
           scope.departmentId,
           original.school_term_id,
-        )
+        );
       }
     },
     onMutate: (original) =>
-      scope.status === 'ready'
+      scope.status === "ready"
         ? {
             profileId: scope.profileId,
             departmentId: scope.departmentId,
             schoolTermId: original.school_term_id,
           }
         : undefined,
-  })
+  });
 }

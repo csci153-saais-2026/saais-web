@@ -1,0 +1,8 @@
+name: email
+in: query
+description: Filter by email equality (e.g. `eq.student@university.edu.ph`)
+required: false
+schema:
+  type: string
+  maxLength: 257
+  pattern: ^eq\.[^\s@]+@[^\s@]+\.[^\s@]+$

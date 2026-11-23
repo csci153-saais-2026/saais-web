@@ -74,7 +74,7 @@ This README is the main project description and documents the intended productio
 | Language                     | TypeScript                                                                                                                        |
 | Routing                      | React Router (data router)                                                                                                        |
 | Server state / data fetching | TanStack Query                                                                                                                    |
-| Client state                 | React Context + `useReducer` — session/role assignments, active advisee, and UI preferences; no third-party global store            |
+| Client state                 | React Context + `useReducer` — session/role assignments, active advisee, and UI preferences; no third-party global store          |
 | Forms                        | React Hook Form + Zod resolver                                                                                                    |
 | Styling                      | Tailwind CSS + shadcn/ui                                                                                                          |
 | Backend                      | Supabase — PostgreSQL with Row Level Security, Auth                                                                               |
@@ -169,7 +169,7 @@ npm run contract:check    # fails if generated output is stale, or if PostgREST 
 npm run contract:docs     # build the static Redoc bundle
 ```
 
-`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. Redoc is also served in-app at `/docs` while the dev server is running.
+`contract/generated/` is committed so that a fresh clone type-checks without network access; `contract:check` in CI is what keeps it honest. The [0.3.0 freeze record](contract/FREEZE-0.3.0.md) documents the historical baseline and change process; the [0.3.1 freeze record](contract/CANDIDATE-0.3.1.md) records the approved cloning change. Redoc is also served in-app at `/docs` while the dev server is running.
 
 ### Seed Data Specification
 
@@ -295,7 +295,7 @@ rules/                 # Vite React best practices and development rules
 ### Program & Curriculum
 
 - A program has 1+ curriculum versions, each with an effectivity period.
-- Each curriculum version belongs to exactly 1 program.
+- Each curriculum version belongs to exactly 1 program. Department Heads and Department Staff may clone a version when both source and target belong to their assigned department. Administrators may create blank versions but need an in-scope Head or Staff role to clone.
 - A student is assigned to exactly 1 curriculum at a time; changes are tracked as dated history (transfer/shift events), never overwritten.
 - An adviser endorses a curriculum transfer with a reason; a Department Head approves or rejects it. Approval updates the curriculum assignment without automatically changing the student's adviser. After a cross-department transfer, the existing adviser remains assigned to that student until the destination department's Head or Staff separately reassigns them to an eligible adviser there; this grants no broader department access. Reassignment retains zero-gap continuity.
 - A curriculum has 1+ terms (year level + term-within-year sequence); each term has 1+ courses.
@@ -354,7 +354,7 @@ rules/                 # Vite React best practices and development rules
 ### Advising & Documentation
 
 - Advisers record dated, append-only, free-text general notes per student.
-- Active and archived advising notes are visible to the student they concern and authorized staff. Attempt-level remarks remain staff-only.
+- Active and archived advising notes are visible to the student they concern and authorized staff. Only the current adviser or a System Administrator can archive or restore a note. Attempt-level remarks remain staff-only.
 - The checklist collates all remarks across every attempt of a course, ordered by term.
 - A remark can attach to a checklist slot with no attempt yet.
 - Outside-course credits require a reason, positive units, and a passing grade from 1.00 through 3.00. The same source course or an already satisfied destination slot cannot be credited twice; corrections retain an audited revocation history.
@@ -372,29 +372,29 @@ rules/                 # Vite React best practices and development rules
 
 This core schema sketch does not enumerate every workflow record, including grade flags, transfer approvals, outside credits, notifications, note-archival metadata and sensitive-view audit events. The proposed [SRS](https://github.com/csci153-saais-2026/saais-web/pull/52) and [OpenAPI revision](https://github.com/csci153-saais-2026/saais-web/pull/56) describe their intended behavior; the sketch does not establish that their database schema or enforcement has been implemented.
 
-| Entity                      | Purpose                                                                                                                                                           |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profile                     | Base identity (linked 1:1 to `auth.users.id`) and contact information                                                                                            |
-| RoleAssignment              | A role granted to a Profile, with its Faculty or Department scope                                                                                                |
-| Faculty                     | College/faculty organizational unit                                                                                                                              |
-| Department                  | Organizational unit within one Faculty                                                                                                                           |
-| AdviserAssignment           | Dated, gap-free history of adviser↔student pairing                                                                                                                |
-| Program                     | Degree program within one Department                                                                                                                             |
-| CurriculumVersion           | Versioned curriculum under a program, with effectivity period                                                                                                     |
-| CurriculumTerm              | Positional term slot within a curriculum version                                                                                                                  |
-| Course                      | Course catalog entry                                                                                                                                              |
-| Prerequisite                | Course-to-course relationship with type                                                                                                                           |
-| CurriculumTermCourse        | M:M link, term slots ↔ courses (the "checklist slot")                                                                                                             |
-| StudentCurriculumAssignment | Dated history, student ↔ curriculum                                                                                                                               |
-| ElectiveMapping             | Per-student mapping of an attempt to an elective slot                                                                                                             |
-| EquivalencyDecision         | Per-student decision that a passed course satisfies a destination slot                                                                                            |
-| SchoolTerm                  | Calendar instance (school year + term type), lock state                                                                                                           |
-| CourseOffering              | Course-in-a-term record, by-request flag                                                                                                                          |
-| Attempt                     | Enrollment attempt tied to a course-offering; optional FK to the checklist slot (CurriculumTermCourse) it directly fulfills |
-| INCResolution               | Completion grade record for a resolved INC (does not apply to lapsed/unresolved INCs, which are handled purely at GWA-calculation time)                           |
-| AdvisingNote                | Append-only general note (visible to the student it concerns and authorized staff)                                                                               |
-| AttemptRemark               | Note scoped to an attempt or empty slot (staff-only)                                                                                                              |
-| AuditLogEntry               | Immutable change record                                                                                                                                           |
+| Entity                      | Purpose                                                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Profile                     | Base identity (linked 1:1 to `auth.users.id`) and contact information                                                                   |
+| RoleAssignment              | A role granted to a Profile, with its Faculty or Department scope                                                                       |
+| Faculty                     | College/faculty organizational unit                                                                                                     |
+| Department                  | Organizational unit within one Faculty                                                                                                  |
+| AdviserAssignment           | Dated, gap-free history of adviser↔student pairing                                                                                      |
+| Program                     | Degree program within one Department                                                                                                    |
+| CurriculumVersion           | Versioned curriculum under a program, with effectivity period                                                                           |
+| CurriculumTerm              | Positional term slot within a curriculum version                                                                                        |
+| Course                      | Course catalog entry                                                                                                                    |
+| Prerequisite                | Course-to-course relationship with type                                                                                                 |
+| CurriculumTermCourse        | M:M link, term slots ↔ courses (the "checklist slot")                                                                                   |
+| StudentCurriculumAssignment | Dated history, student ↔ curriculum                                                                                                     |
+| ElectiveMapping             | Per-student mapping of an attempt to an elective slot                                                                                   |
+| EquivalencyDecision         | Per-student decision that a passed course satisfies a destination slot                                                                  |
+| SchoolTerm                  | Calendar instance (school year + term type), lock state                                                                                 |
+| CourseOffering              | Course-in-a-term record, by-request flag                                                                                                |
+| Attempt                     | Enrollment attempt tied to a course-offering; optional FK to the checklist slot (CurriculumTermCourse) it directly fulfills             |
+| INCResolution               | Completion grade record for a resolved INC (does not apply to lapsed/unresolved INCs, which are handled purely at GWA-calculation time) |
+| AdvisingNote                | Append-only general note (visible to the student it concerns and authorized staff)                                                      |
+| AttemptRemark               | Note scoped to an attempt or empty slot (staff-only)                                                                                    |
+| AuditLogEntry               | Immutable change record                                                                                                                 |
 
 ### Field-Level Schema Sketch
 
@@ -402,215 +402,216 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 
 **Profile**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | equals `auth.users.id` |
-| `email` | text, unique, not null | Google sign-in must match this provisioned institutional email exactly |
-| `full_name` | text, not null | |
-| `created_at`, `updated_at` | timestamptz | |
+| Field                      | Type                   | Notes                                                                  |
+| -------------------------- | ---------------------- | ---------------------------------------------------------------------- |
+| `id`                       | uuid, PK               | equals `auth.users.id`                                                 |
+| `email`                    | text, unique, not null | Google sign-in must match this provisioned institutional email exactly |
+| `full_name`                | text, not null         |                                                                        |
+| `created_at`, `updated_at` | timestamptz            |                                                                        |
 
 **RoleAssignment**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `profile_id` | uuid, FK → Profile, not null | one profile may hold multiple assignments |
-| `role` | enum(`student`,`adviser`,`department_head`,`department_staff`,`dean`,`admin`) | Admin grants any role; authorized Head/Staff provision permitted roles in their department; never self-assigned |
-| `faculty_id` | uuid, FK → Faculty, nullable | required for faculty-scoped assignments |
-| `department_id` | uuid, FK → Department, nullable | required for department-scoped assignments; must belong to the assigned Faculty where both are set |
-| `created_at` | timestamptz, not null | |
+| Field           | Type                                                                          | Notes                                                                                                           |
+| --------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `id`            | uuid, PK                                                                      |                                                                                                                 |
+| `profile_id`    | uuid, FK → Profile, not null                                                  | one profile may hold multiple assignments                                                                       |
+| `role`          | enum(`student`,`adviser`,`department_head`,`department_staff`,`dean`,`admin`) | Admin grants any role; authorized Head/Staff provision permitted roles in their department; never self-assigned |
+| `faculty_id`    | uuid, FK → Faculty, nullable                                                  | required for faculty-scoped assignments                                                                         |
+| `department_id` | uuid, FK → Department, nullable                                               | required for department-scoped assignments; must belong to the assigned Faculty where both are set              |
+| `created_at`    | timestamptz, not null                                                         |                                                                                                                 |
 
 **Faculty**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
+| Field  | Type           | Notes                              |
+| ------ | -------------- | ---------------------------------- |
+| `id`   | uuid, PK       |                                    |
 | `name` | text, not null | Institution's College/Faculty name |
 
 **Department**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
+| Field        | Type                         | Notes                                          |
+| ------------ | ---------------------------- | ---------------------------------------------- |
+| `id`         | uuid, PK                     |                                                |
 | `faculty_id` | uuid, FK → Faculty, not null | each Department belongs to exactly one Faculty |
-| `name` | text, not null | |
+| `name`       | text, not null               |                                                |
 
 **AdviserAssignment**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `adviser_id` | uuid, FK → Profile, not null | |
-| `student_id` | uuid, FK → Profile, not null | |
-| `start_date` | date, not null | must equal prior row's `end_date` for this student (gap-free constraint) |
-| `end_date` | date, nullable | null = currently active |
-| `created_at` | timestamptz | |
+| Field        | Type                         | Notes                                                                    |
+| ------------ | ---------------------------- | ------------------------------------------------------------------------ |
+| `id`         | uuid, PK                     |                                                                          |
+| `adviser_id` | uuid, FK → Profile, not null |                                                                          |
+| `student_id` | uuid, FK → Profile, not null |                                                                          |
+| `start_date` | date, not null               | must equal prior row's `end_date` for this student (gap-free constraint) |
+| `end_date`   | date, nullable               | null = currently active                                                  |
+| `created_at` | timestamptz                  |                                                                          |
 
 **Program**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
+| Field           | Type                            | Notes                                                                                  |
+| --------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
+| `id`            | uuid, PK                        |                                                                                        |
 | `department_id` | uuid, FK → Department, not null | each Program belongs to one Department; its Faculty is derived through that Department |
-| `code`, `name` | text, unique, not null | |
+| `code`, `name`  | text, unique, not null          |                                                                                        |
 
 **CurriculumVersion**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `program_id` | uuid, FK → Program, not null | |
-| `effective_start`, `effective_end` | date | `effective_end` nullable (open-ended) |
-| `delinquency_threshold` | numeric, not null | curriculum-specific failed-units threshold |
+| Field                              | Type                         | Notes                                      |
+| ---------------------------------- | ---------------------------- | ------------------------------------------ |
+| `id`                               | uuid, PK                     |                                            |
+| `program_id`                       | uuid, FK → Program, not null |                                            |
+| `effective_start`, `effective_end` | date                         | `effective_end` nullable (open-ended)      |
+| `delinquency_threshold`            | numeric, not null            | curriculum-specific failed-units threshold |
 
 **CurriculumTerm**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `curriculum_version_id` | uuid, FK → CurriculumVersion, not null | |
-| `year_level`, `term_sequence` | int, not null | positional ordering within the curriculum |
+| Field                         | Type                                   | Notes                                     |
+| ----------------------------- | -------------------------------------- | ----------------------------------------- |
+| `id`                          | uuid, PK                               |                                           |
+| `curriculum_version_id`       | uuid, FK → CurriculumVersion, not null |                                           |
+| `year_level`, `term_sequence` | int, not null                          | positional ordering within the curriculum |
 
 **Course**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `code` | text, unique, not null | never assumed equivalent across different codes |
-| `title` | text, not null | |
-| `units` | numeric, not null | |
-| `department_id` | uuid, FK → Department, not null | owning Department; Faculty is derived through Department |
-| `status` | enum(`active`,`discontinued`) | |
-| `repeatable_type` | legacy enum(`none`) | Compatibility field; passed courses cannot be retaken. |
+| Field             | Type                            | Notes                                                    |
+| ----------------- | ------------------------------- | -------------------------------------------------------- |
+| `id`              | uuid, PK                        |                                                          |
+| `code`            | text, unique, not null          | never assumed equivalent across different codes          |
+| `title`           | text, not null                  |                                                          |
+| `units`           | numeric, not null               |                                                          |
+| `department_id`   | uuid, FK → Department, not null | owning Department; Faculty is derived through Department |
+| `status`          | enum(`active`,`discontinued`)   |                                                          |
+| `repeatable_type` | legacy enum(`none`)             | Compatibility field; passed courses cannot be retaken.   |
 
 **Prerequisite**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `course_id` | uuid, FK → Course, not null | the course requiring the prerequisite |
-| `prerequisite_course_id` | uuid, FK → Course, not null | |
-| `type` | enum(`strict`,`co_requisite`,`recommended`) | only `strict` triggers the soft enrollment warning |
+| Field                    | Type                                        | Notes                                              |
+| ------------------------ | ------------------------------------------- | -------------------------------------------------- |
+| `id`                     | uuid, PK                                    |                                                    |
+| `course_id`              | uuid, FK → Course, not null                 | the course requiring the prerequisite              |
+| `prerequisite_course_id` | uuid, FK → Course, not null                 |                                                    |
+| `type`                   | enum(`strict`,`co_requisite`,`recommended`) | only `strict` triggers the soft enrollment warning |
 
 **CurriculumTermCourse** (the "checklist slot")
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `curriculum_term_id` | uuid, FK → CurriculumTerm, not null | |
-| `course_id` | uuid, FK → Course, nullable | null when `is_elective_slot` is true (slot not tied to one fixed code) |
-| `is_elective_slot` | boolean, not null | |
-| `nominal_units` | numeric, not null | used to detect a units mismatch against an ElectiveMapping's actual course |
+
+| Field                | Type                                | Notes                                                                      |
+| -------------------- | ----------------------------------- | -------------------------------------------------------------------------- |
+| `id`                 | uuid, PK                            |                                                                            |
+| `curriculum_term_id` | uuid, FK → CurriculumTerm, not null |                                                                            |
+| `course_id`          | uuid, FK → Course, nullable         | null when `is_elective_slot` is true (slot not tied to one fixed code)     |
+| `is_elective_slot`   | boolean, not null                   |                                                                            |
+| `nominal_units`      | numeric, not null                   | used to detect a units mismatch against an ElectiveMapping's actual course |
 
 **StudentCurriculumAssignment**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `student_id` | uuid, FK → Profile, not null | |
-| `curriculum_version_id` | uuid, FK → CurriculumVersion, not null | |
-| `start_date` | date, not null | |
-| `end_date` | date, nullable | null = current curriculum; a transfer/shift creates a new row rather than overwriting |
-| `reason` | text, nullable | e.g. "transfer", "shift" |
+| Field                   | Type                                   | Notes                                                                                 |
+| ----------------------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
+| `id`                    | uuid, PK                               |                                                                                       |
+| `student_id`            | uuid, FK → Profile, not null           |                                                                                       |
+| `curriculum_version_id` | uuid, FK → CurriculumVersion, not null |                                                                                       |
+| `start_date`            | date, not null                         |                                                                                       |
+| `end_date`              | date, nullable                         | null = current curriculum; a transfer/shift creates a new row rather than overwriting |
+| `reason`                | text, nullable                         | e.g. "transfer", "shift"                                                              |
 
 **ElectiveMapping**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `attempt_id` | uuid, FK → Attempt, not null | |
-| `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, not null | must be an elective slot |
-| `mapped_by` | uuid, FK → Profile (adviser), not null | |
-| `created_at`, `updated_at` | timestamptz | reversible/revisable; changes audited |
+| Field                       | Type                                      | Notes                                 |
+| --------------------------- | ----------------------------------------- | ------------------------------------- |
+| `id`                        | uuid, PK                                  |                                       |
+| `attempt_id`                | uuid, FK → Attempt, not null              |                                       |
+| `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, not null | must be an elective slot              |
+| `mapped_by`                 | uuid, FK → Profile (adviser), not null    |                                       |
+| `created_at`, `updated_at`  | timestamptz                               | reversible/revisable; changes audited |
 
 **EquivalencyDecision**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `attempt_id` | uuid, FK → Attempt, not null | the original passed attempt |
-| `destination_curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, not null | one-to-one |
-| `decision_type` | enum(`transfer_equivalency`,`discontinued_course_equivalency`) | |
-| `decided_by` | uuid, FK → Profile (adviser), not null | |
-| `decided_at` | timestamptz, not null | revocable/editable, audited |
+| Field                                   | Type                                                           | Notes                       |
+| --------------------------------------- | -------------------------------------------------------------- | --------------------------- |
+| `id`                                    | uuid, PK                                                       |                             |
+| `attempt_id`                            | uuid, FK → Attempt, not null                                   | the original passed attempt |
+| `destination_curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, not null                      | one-to-one                  |
+| `decision_type`                         | enum(`transfer_equivalency`,`discontinued_course_equivalency`) |                             |
+| `decided_by`                            | uuid, FK → Profile (adviser), not null                         |                             |
+| `decided_at`                            | timestamptz, not null                                          | revocable/editable, audited |
 
 **SchoolTerm**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `school_year`, `term_type` | text, not null | natural key together |
-| `is_locked` | boolean, not null, default false | set once grades finalize |
-| `override_flag` | boolean, not null, default false | true while a lock override is in effect |
-| `override_actor_id` | uuid, FK → Profile, nullable | who invoked the override |
-| `override_at` | timestamptz, nullable | time of the direct, audited administrator override |
+| Field                      | Type                             | Notes                                              |
+| -------------------------- | -------------------------------- | -------------------------------------------------- |
+| `id`                       | uuid, PK                         |                                                    |
+| `school_year`, `term_type` | text, not null                   | natural key together                               |
+| `is_locked`                | boolean, not null, default false | set once grades finalize                           |
+| `override_flag`            | boolean, not null, default false | true while a lock override is in effect            |
+| `override_actor_id`        | uuid, FK → Profile, nullable     | who invoked the override                           |
+| `override_at`              | timestamptz, nullable            | time of the direct, audited administrator override |
 
 **CourseOffering**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `school_term_id` | uuid, FK → SchoolTerm, not null | |
-| `course_id` | uuid, FK → Course, not null | |
-| `is_by_request` | boolean, not null, default false | for discontinued courses still needed under an older curriculum |
+| Field            | Type                             | Notes                                                           |
+| ---------------- | -------------------------------- | --------------------------------------------------------------- |
+| `id`             | uuid, PK                         |                                                                 |
+| `school_term_id` | uuid, FK → SchoolTerm, not null  |                                                                 |
+| `course_id`      | uuid, FK → Course, not null      |                                                                 |
+| `is_by_request`  | boolean, not null, default false | for discontinued courses still needed under an older curriculum |
 
 **Attempt**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `student_id` | uuid, FK → Profile, not null | |
-| `course_offering_id` | uuid, FK → CourseOffering, not null | natural key: (student, course_offering) |
-| `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, nullable | the checklist slot this attempt directly fulfills, if any |
-| `instructor` | text, nullable | instructor name recorded for this attempt; does not represent course-offering scheduling |
-| `status` | enum(`passed`,`failed`,`currently_enrolled`,`inc`,`dr`,`na`) | |
-| `midterm_grade`, `final_grade` | numeric, nullable | discrete 0.25 increments, 1.00–5.00 |
-| `inc_deadline` | date, nullable | set when `status = inc`; defaults to one calendar year after the term's actual end date |
-| `prerequisite_override` | boolean, not null, default false | true when the adviser continued after an unmet strict-prerequisite warning |
-| `prerequisite_grade_override` | boolean, not null, default false | identifies an audited correction to the original prerequisite attempt |
-| `created_at`, `updated_at` | timestamptz | |
+| Field                          | Type                                                         | Notes                                                                                    |
+| ------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `id`                           | uuid, PK                                                     |                                                                                          |
+| `student_id`                   | uuid, FK → Profile, not null                                 |                                                                                          |
+| `course_offering_id`           | uuid, FK → CourseOffering, not null                          | natural key: (student, course_offering)                                                  |
+| `curriculum_term_course_id`    | uuid, FK → CurriculumTermCourse, nullable                    | the checklist slot this attempt directly fulfills, if any                                |
+| `instructor`                   | text, nullable                                               | instructor name recorded for this attempt; does not represent course-offering scheduling |
+| `status`                       | enum(`passed`,`failed`,`currently_enrolled`,`inc`,`dr`,`na`) |                                                                                          |
+| `midterm_grade`, `final_grade` | numeric, nullable                                            | discrete 0.25 increments, 1.00–5.00                                                      |
+| `inc_deadline`                 | date, nullable                                               | set when `status = inc`; defaults to one calendar year after the term's actual end date  |
+| `prerequisite_override`        | boolean, not null, default false                             | true when the adviser continued after an unmet strict-prerequisite warning               |
+| `prerequisite_grade_override`  | boolean, not null, default false                             | identifies an audited correction to the original prerequisite attempt                    |
+| `created_at`, `updated_at`     | timestamptz                                                  |                                                                                          |
 
 **INCResolution**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `attempt_id` | uuid, FK → Attempt, unique, not null | 1:0-or-1 with Attempt; only for attempts resolved before their deadline |
-| `completion_grade` | numeric, not null | |
-| `resolved_at` | timestamptz, not null | |
+| Field              | Type                                 | Notes                                                                   |
+| ------------------ | ------------------------------------ | ----------------------------------------------------------------------- |
+| `id`               | uuid, PK                             |                                                                         |
+| `attempt_id`       | uuid, FK → Attempt, unique, not null | 1:0-or-1 with Attempt; only for attempts resolved before their deadline |
+| `completion_grade` | numeric, not null                    |                                                                         |
+| `resolved_at`      | timestamptz, not null                |                                                                         |
 
 **AdvisingNote**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `student_id` | uuid, FK → Profile, not null | |
-| `authored_by` | uuid, FK → Profile (adviser/admin), not null | |
-| `body_text` | text, not null | append-only; visible to the student it concerns and authorized staff, including when archived |
-| `created_at` | timestamptz, not null | |
+| Field         | Type                                         | Notes                                                                                         |
+| ------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `id`          | uuid, PK                                     |                                                                                               |
+| `student_id`  | uuid, FK → Profile, not null                 |                                                                                               |
+| `authored_by` | uuid, FK → Profile (adviser/admin), not null |                                                                                               |
+| `body_text`   | text, not null                               | append-only; visible to the student it concerns and authorized staff, including when archived |
+| `created_at`  | timestamptz, not null                        |                                                                                               |
 
 **AttemptRemark**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `attempt_id` | uuid, FK → Attempt, nullable | nullable to allow a remark on an empty checklist slot |
-| `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, nullable | used when `attempt_id` is null |
-| `authored_by` | uuid, FK → Profile (adviser/admin), not null | |
-| `body_text` | text, not null | append-only; staff-only (adviser and administrators; hidden from students) |
-| `created_at` | timestamptz, not null | |
+| Field                       | Type                                         | Notes                                                                      |
+| --------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| `id`                        | uuid, PK                                     |                                                                            |
+| `attempt_id`                | uuid, FK → Attempt, nullable                 | nullable to allow a remark on an empty checklist slot                      |
+| `curriculum_term_course_id` | uuid, FK → CurriculumTermCourse, nullable    | used when `attempt_id` is null                                             |
+| `authored_by`               | uuid, FK → Profile (adviser/admin), not null |                                                                            |
+| `body_text`                 | text, not null                               | append-only; staff-only (adviser and administrators; hidden from students) |
+| `created_at`                | timestamptz, not null                        |                                                                            |
 
 **AuditLogEntry**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid, PK | |
-| `actor_id` | uuid, FK → Profile, nullable | null for system-triggered events (e.g. scheduled INC-lapse recompute) |
-| `action` | text, not null | e.g. `prerequisite.grade_overridden`, `equivalency.revoked` |
-| `entity_type` | text, not null | |
-| `entity_id` | uuid, not null | |
-| `old_value`, `new_value` | jsonb, nullable | |
-| `reason` | text, nullable | |
-| `created_at` | timestamptz, not null | append-only/immutable at the DB level |
+| Field                    | Type                         | Notes                                                                 |
+| ------------------------ | ---------------------------- | --------------------------------------------------------------------- |
+| `id`                     | uuid, PK                     |                                                                       |
+| `actor_id`               | uuid, FK → Profile, nullable | null for system-triggered events (e.g. scheduled INC-lapse recompute) |
+| `action`                 | text, not null               | e.g. `prerequisite.grade_overridden`, `equivalency.revoked`           |
+| `entity_type`            | text, not null               |                                                                       |
+| `entity_id`              | uuid, not null               |                                                                       |
+| `old_value`, `new_value` | jsonb, nullable              |                                                                       |
+| `reason`                 | text, nullable               |                                                                       |
+| `created_at`             | timestamptz, not null        | append-only/immutable at the DB level                                 |
 
 ### Relationship / Cardinality Summary
 
@@ -621,7 +622,7 @@ This is a lightweight starting point for migration authoring, not final DDL — 
 | Department           | contains                     | Program                                              | 1 : many                                              |
 | Department           | owns                         | Course                                               | 1 : many                                              |
 | Profile              | has                          | RoleAssignment                                       | 1 : many                                              |
-| RoleAssignment       | scoped to                    | Faculty / Department                                 | many : 0 or 1 each                                   |
+| RoleAssignment       | scoped to                    | Faculty / Department                                 | many : 0 or 1 each                                    |
 | Program              | has                          | CurriculumVersion                                    | 1 : many                                              |
 | CurriculumVersion    | contains                     | CurriculumTerm                                       | 1 : many                                              |
 | CurriculumTerm       | contains                     | Course                                               | many : many                                           |
@@ -641,57 +642,57 @@ The production application will provide the following role-based workflows. Thes
 
 ### Public / Auth
 
-| Route                                  | Purpose                                                                                                  |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/login`                              | Email/password or Google sign-in for provisioned accounts; Google email must match the institutional profile |
+| Route                                 | Purpose                                                                                                                                |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `/login`                              | Email/password or Google sign-in for provisioned accounts; Google email must match the institutional profile                           |
 | `/invite#token=...`                   | Preview, accept, or decline an authorized invitation; the client sends the fragment token in a request body, not the URL path or query |
-| `/forgot-password`, `/reset-password` | Recover account access                                                                                    |
-| `/docs`                               | Browse the API contract, with access controlled by the deployment environment                             |
+| `/forgot-password`, `/reset-password` | Recover account access                                                                                                                 |
+| `/docs`                               | Browse the API contract, with access controlled by the deployment environment                                                          |
 
 ### Student Portal
 
-| Route                         | Features                                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `/student/dashboard`          | Current adviser, cumulative GWA, delinquency status, INC-deadline alerts, and links to academic records                   |
-| `/student/checklist`           | Required courses and elective slots by term; each slot shows direct, transfer-equivalency, discontinued-equivalency, or elective-mapping status |
-| `/student/grades`              | Term-by-term grades, term GWA, cumulative GWA, and grade status                                                           |
-| `/student/enrollment-history`  | All enrollment attempts across terms                                                                                      |
-| `/student/grade-flags`         | Submit and track questions about recorded grades                                                                          |
-| `/student/profile`             | Student account and contact details                                                                                       |
+| Route                         | Features                                                                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/student/dashboard`          | Current adviser, cumulative GWA, delinquency status, INC-deadline alerts, and links to academic records                                         |
+| `/student/checklist`          | Required courses and elective slots by term; each slot shows direct, transfer-equivalency, discontinued-equivalency, or elective-mapping status |
+| `/student/grades`             | Term-by-term grades, term GWA, cumulative GWA, and grade status                                                                                 |
+| `/student/enrollment-history` | All enrollment attempts across terms                                                                                                            |
+| `/student/grade-flags`        | Submit and track questions about recorded grades                                                                                                |
+| `/student/profile`            | Student account and contact details                                                                                                             |
 
 ### Adviser Portal
 
-| Route                             | Features                                                                                          |
-| --------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `/adviser/dashboard`              | Advisee roster summary, delinquency alerts, INC-deadline alerts, and quick actions               |
-| `/adviser/advisees`               | Search and filter current and past advisees by name, ID, and standing                              |
-| `/adviser/advisees/:id`           | Student 360 workspace: Overview, Advising, Checklist, Grades, Record grades, and History           |
-| `/adviser/advisees/:id/overview`  | Student summary profile, program assignment, academic standing, and contact info                  |
-| `/adviser/advisees/:id/advising`  | Dual-pane advising workspace: Course recommendations (with plan addition & retake prioritization), recent notes, and grounded AI assistant preview |
-| `/adviser/advisees/:id/checklist` | Interactive curriculum checklist with per-slot status, satisfaction sources, read-only Curriculum Shift simulator, and PDF export |
-| `/adviser/advisees/:id/grades`    | Term-by-term grade records, midterm & final grades, term GWAs, and cumulative GWA                 |
-| `/adviser/advisees/:id/record-grades` | Direct grade encoding with instructor per attempt and grade completion                        |
-| `/adviser/advisees/:id/history`   | Longitudinal enrollment attempts, gap-free adviser assignment history, and student audit trail    |
-| `/adviser/advisees/:id/notes`     | Full dated, append-only general advising notes (visible to student & staff) and attempt remarks (staff-only) |
-| `/adviser/enrollment/new`         | Record an attempt; an unmet strict prerequisite offers Continue with override or Cancel, with a reason required to continue |
-| `/adviser/import-grades`          | Validate and review grade imports from CSV before applying them                                   |
-| `/adviser/grade-flags`            | Review and resolve student-submitted grade questions                                              |
+| Route                                 | Features                                                                                                                                           |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/adviser/dashboard`                  | Advisee roster summary, delinquency alerts, INC-deadline alerts, and quick actions                                                                 |
+| `/adviser/advisees`                   | Search and filter current and past advisees by name, ID, and standing                                                                              |
+| `/adviser/advisees/:id`               | Student 360 workspace: Overview, Advising, Checklist, Grades, Record grades, and History                                                           |
+| `/adviser/advisees/:id/overview`      | Student summary profile, program assignment, academic standing, and contact info                                                                   |
+| `/adviser/advisees/:id/advising`      | Dual-pane advising workspace: Course recommendations (with plan addition & retake prioritization), recent notes, and grounded AI assistant preview |
+| `/adviser/advisees/:id/checklist`     | Interactive curriculum checklist with per-slot status, satisfaction sources, read-only Curriculum Shift simulator, and PDF export                  |
+| `/adviser/advisees/:id/grades`        | Term-by-term grade records, midterm & final grades, term GWAs, and cumulative GWA                                                                  |
+| `/adviser/advisees/:id/record-grades` | Direct grade encoding with instructor per attempt and grade completion                                                                             |
+| `/adviser/advisees/:id/history`       | Longitudinal enrollment attempts, gap-free adviser assignment history, and student audit trail                                                     |
+| `/adviser/advisees/:id/notes`         | Full dated, append-only general advising notes (visible to student & staff) and attempt remarks (staff-only)                                       |
+| `/adviser/enrollment/new`             | Record an attempt; an unmet strict prerequisite offers Continue with override or Cancel, with a reason required to continue                        |
+| `/adviser/import-grades`              | Validate and review grade imports from CSV before applying them                                                                                    |
+| `/adviser/grade-flags`                | Review and resolve student-submitted grade questions                                                                                               |
 
 ### Department, Dean, and Admin Portals
 
-| Route group                            | Features                                                                                                                   |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `/department-head/*`                   | Department students, adviser assignments, academic terms, curricula, transfers, equivalencies, outside credits, reports, and department audit log |
-| `/department-staff/*`                  | Department students, adviser assignments, terms, curricula, department course catalogue, and scoped account provisioning |
-| `/dean/*`                              | Read-only faculty-wide student directory, college statistics, and faculty audit log                                        |
-| `/admin/*`                             | System-wide Student directory, the System Administrator's landing page                                                   |
-| `/admin/accounts`                      | User account provisioning, institutional email verification, status toggling, and role assignments                        |
-| `/admin/faculties`                     | Faculty (College) and subordinate Department hierarchy management                                                          |
-| `/admin/programs`                      | Master degree programs with department/college associations and active status                                              |
-| `/department-staff/curricula`          | Department curriculum versions, terms, and slot mappings |
-| `/department-staff/course-catalog`     | Department course catalog: codes, units, and prerequisites |
-| `/department-staff/academic-terms`     | Department term management and course offerings, including by-request offerings |
-| `/admin/audit-log`                     | System-wide immutable audit trail with actor, action, date-range filtering, and export                                     |
+| Route group                        | Features                                                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/department-head/*`               | Department students, adviser assignments, academic terms, curricula, transfers, equivalencies, outside credits, reports, and department audit log |
+| `/department-staff/*`              | Department students, adviser assignments, terms, curricula, department course catalogue, and scoped account provisioning                          |
+| `/dean/*`                          | Read-only faculty-wide student directory, college statistics, and faculty audit log                                                               |
+| `/admin/*`                         | System-wide Student directory, the System Administrator's landing page                                                                            |
+| `/admin/accounts`                  | User account provisioning, institutional email verification, status toggling, and role assignments                                                |
+| `/admin/faculties`                 | Faculty (College) and subordinate Department hierarchy management                                                                                 |
+| `/admin/programs`                  | Master degree programs with department/college associations and active status                                                                     |
+| `/department-staff/curricula`      | Department curriculum versions, terms, and slot mappings                                                                                          |
+| `/department-staff/course-catalog` | Department course catalog: codes, units, and prerequisites                                                                                        |
+| `/department-staff/academic-terms` | Department term management and course offerings, including by-request offerings                                                                   |
+| `/admin/audit-log`                 | System-wide immutable audit trail with actor, action, date-range filtering, and export                                                            |
 
 ### Curriculum and Course Catalogue
 
@@ -724,12 +725,12 @@ There is no application server of our own. Anything that would previously have j
 
 **Edge Function operations for this system:**
 
-| Operation                  | Endpoint                                   | Why it can't be a plain PostgREST write                                                                                              |
-| -------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `recordGrades` | `POST /functions/v1/students/{student_id}/record-grades` | Records grades and any authorized prerequisite override with its reason and audit entry |
-| `correctPrerequisiteGrade` | `POST /functions/v1/students/{student_id}/attempts/{attempt_id}/prerequisite-grade` | Corrects the original prerequisite grade and records the audit entry atomically |
-| `reassignAdviser` | `PUT /functions/v1/students/{student_id}/adviser` | Closes the outgoing assignment and opens the incoming one atomically to preserve continuity |
-| `createEquivalencyDecision` | `POST /functions/v1/students/{student_id}/equivalencies` | Records the student-specific decision and affected checklist slot atomically |
+| Operation                   | Endpoint                                                                            | Why it can't be a plain PostgREST write                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `recordGrades`              | `POST /functions/v1/students/{student_id}/record-grades`                            | Records grades and any authorized prerequisite override with its reason and audit entry     |
+| `correctPrerequisiteGrade`  | `POST /functions/v1/students/{student_id}/attempts/{attempt_id}/prerequisite-grade` | Corrects the original prerequisite grade and records the audit entry atomically             |
+| `reassignAdviser`           | `PUT /functions/v1/students/{student_id}/adviser`                                   | Closes the outgoing assignment and opens the incoming one atomically to preserve continuity |
+| `createEquivalencyDecision` | `POST /functions/v1/students/{student_id}/equivalencies`                            | Records the student-specific decision and affected checklist slot atomically                |
 
 **Generated client.** `openapi-typescript` produces `contract/generated/schema.d.ts`; `openapi-fetch` wraps it into a typed client in `src/lib/api`, which attaches the current access token and normalizes errors. Query hooks in `src/hooks` are thin wrappers, one per operation. Nothing else in the app imports `supabase-js` for data access — the Supabase SDK is used only for auth.
 
@@ -956,14 +957,14 @@ _This is not legal advice. Independent legal review is recommended, particularly
 
 ## 16. Glossary
 
-| Term                                                                 | Meaning                                                                                                                                                                              |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Direct attempt**                                                   | An Attempt whose optional FK points to the specific checklist slot (CurriculumTermCourse) it fulfills.                                                                               |
-| **Elective Mapping**                                                 | A per-student, per-attempt mapping of an enrolled course to an elective slot, even if codes differ; distinct from curriculum equivalency.                                            |
-| **Equivalency Decision**                                             | A per-student, one-to-one decision that a passed old-curriculum (or discontinued-course) attempt satisfies a specific destination-curriculum slot.                                   |
-| **Lapsed INC**                                                       | An INC attempt past its compliance deadline (default 1 year); status stays `INC` permanently, but is treated as 5.00/failed-units for GWA and delinquency calculation purposes only. |
-| **Gap-free continuity**                                              | The rule that a student always has exactly one active adviser; a reassignment's start date must coincide with the prior assignment's end date, enforced at the DB level.             |
-| **Delinquency flag**                                                 | A per-student, per-term flag computed against the student's curriculum-specific failed-units threshold (explicit Failed status + lapsed INC).                                        |
+| Term                     | Meaning                                                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Direct attempt**       | An Attempt whose optional FK points to the specific checklist slot (CurriculumTermCourse) it fulfills.                                                                               |
+| **Elective Mapping**     | A per-student, per-attempt mapping of an enrolled course to an elective slot, even if codes differ; distinct from curriculum equivalency.                                            |
+| **Equivalency Decision** | A per-student, one-to-one decision that a passed old-curriculum (or discontinued-course) attempt satisfies a specific destination-curriculum slot.                                   |
+| **Lapsed INC**           | An INC attempt past its compliance deadline (default 1 year); status stays `INC` permanently, but is treated as 5.00/failed-units for GWA and delinquency calculation purposes only. |
+| **Gap-free continuity**  | The rule that a student always has exactly one active adviser; a reassignment's start date must coincide with the prior assignment's end date, enforced at the DB level.             |
+| **Delinquency flag**     | A per-student, per-term flag computed against the student's curriculum-specific failed-units threshold (explicit Failed status + lapsed INC).                                        |
 
 ## 17. Open Questions & Risks
 
@@ -973,6 +974,6 @@ Consolidated from flagged items across the document — resolve before or during
 2. **Term-lock override** (§6, §11) — the System Administrator directly sets the audited override; no separate approval queue is required.
 3. **Adviser advisee-capacity limits** (§11) — confirmed out of scope for v1; revisit if adviser workload becomes a practical issue.
 4. **Revoking an ElectiveMapping/EquivalencyDecision** (§6) — preserve historical report results as of their original time; exclude the revoked credit from the current checklist and future decision-dependent calculations, and refresh affected caches. Preserve the underlying attempt and any independent GWA contribution.
-6. **Data Privacy Act (RA 10173) compliance review** (§15.9) — required before any deployment involving real student data; not yet conducted.
-7. **PostgREST drift-check strictness** (§9) — the CI comparison between `contract/openapi.yaml` and the live auto-generated PostgREST description needs a decided policy on additive changes: a new column is harmless to the frontend but is still drift. Confirm whether the check fails on any difference or only on ones affecting documented operations.
-8. **Contract review in a small group** (§13) — the both-sides-approval rule for contract changes assumes the group is large enough that the frontend and backend halves are different people. Confirm how it degrades for a two-person group, where one member may own both sides and the rule becomes self-approval.
+5. **Data Privacy Act (RA 10173) compliance review** (§15.9) — required before any deployment involving real student data; not yet conducted.
+6. **PostgREST drift-check strictness** (§9) — the CI comparison between `contract/openapi.yaml` and the live auto-generated PostgREST description needs a decided policy on additive changes: a new column is harmless to the frontend but is still drift. Confirm whether the check fails on any difference or only on ones affecting documented operations.
+7. **Contract review in a small group** (§13) — the both-sides-approval rule for contract changes assumes the group is large enough that the frontend and backend halves are different people. Confirm how it degrades for a two-person group, where one member may own both sides and the rule becomes self-approval.

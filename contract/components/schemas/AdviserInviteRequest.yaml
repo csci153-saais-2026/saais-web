@@ -1,0 +1,43 @@
+type: object
+additionalProperties: false
+not:
+  required: [role_assignments]
+  properties:
+    role_assignments:
+      contains:
+        required: [role]
+        properties:
+          role:
+            const: student
+properties:
+  email:
+    type: string
+    format: email
+    maxLength: 254
+  full_name:
+    type: string
+    minLength: 1
+    maxLength: 150
+    pattern: \S
+  role:
+    type: string
+    const: adviser
+  faculty_id:
+    type: string
+    format: uuid
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  role_assignments:
+    type: array
+    minItems: 1
+    maxItems: 6
+    items:
+      $ref: "./RoleAssignmentInput.yaml"
+required:
+  - email
+  - full_name
+  - role
+  - faculty_id

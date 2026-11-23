@@ -1,15 +1,15 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { CohortStudentsDialog } from "@/routes/dean/reports/CohortStudentsDialog"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CohortStudentsDialog } from "@/routes/dean/reports/CohortStudentsDialog";
 
 describe("CohortStudentsDialog", () => {
   afterEach(() => {
-    cleanup()
-  })
+    cleanup();
+  });
 
   it("renders Adviser-style cohort table and passes studentId on click", () => {
-    const onOpenChange = vi.fn()
-    const onOpenStudent = vi.fn()
+    const onOpenChange = vi.fn();
+    const onOpenStudent = vi.fn();
 
     render(
       <CohortStudentsDialog
@@ -39,13 +39,13 @@ describe("CohortStudentsDialog", () => {
         onOpenChange={onOpenChange}
         onOpenStudent={onOpenStudent}
       />,
-    )
+    );
 
-    expect(screen.getByText("Batch 2023 · Student GWA")).toBeTruthy()
-    expect(screen.getByText("BSCS 2025–present · 96 students")).toBeTruthy()
-    expect(screen.getByText("Student ID")).toBeTruthy()
+    expect(screen.getByText("Batch 2023 · Student GWA")).toBeTruthy();
+    expect(screen.getByText("BSCS 2025–present · 96 students")).toBeTruthy();
+    expect(screen.getByText("Student ID")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Ana Reyes" }))
-    expect(onOpenStudent).toHaveBeenCalledWith("stu-1")
-  })
-})
+    fireEvent.click(screen.getByRole("button", { name: "Ana Reyes" }));
+    expect(onOpenStudent).toHaveBeenCalledWith("stu-1");
+  });
+});

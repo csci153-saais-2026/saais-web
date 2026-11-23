@@ -1,0 +1,108 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Query course equivalency decisions
+  operationId: listEquivalencyDecisions
+  description: >-
+    Retrieve one-to-one transfer or discontinued course substitution decisions. RLS-scoped:
+    students view their own approved substitutions; advisers view assigned advisees;
+    department/faculty roles view scoped students; admins view all. Flat columns are allowlisted
+    per x-projection-fields; role metadata documents checks, not automatic runtime
+    authorization. Inaccessible/missing collection rows return 200 [], while invalid role/column
+    requests may return 403.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/attemptIdQueryParam.yaml"
+    - $ref: "../../components/parameters/destinationCurriculumTermCourseIdQueryParam.yaml"
+    - name: select
+      in: query
+      required: true
+      description: >-
+        Only these flat safe columns. On private-column tables the client must explicitly send
+        this projection; PostgREST does not apply OpenAPI defaults.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)(?:,(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at))*$
+        default: >-
+          id,attempt_id,destination_curriculum_term_course_id,decision_type,decided_by,decided_at,units_credited,student_id,updated_at,revoked_at
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only; whitelist and enforce at runtime.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: id.asc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+    - $ref: "../../components/parameters/studentIdQueryParam.yaml"
+  responses:
+    "200":
+      description: Array of equivalency decisions.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../../components/schemas/EquivalencyDecision.yaml"
+            maxItems: 1000
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection if the gateway reports a partial range.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../../components/schemas/EquivalencyDecision.yaml"
+            maxItems: 1000
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    department_staff: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  x-projection-fields:
+    - id
+    - attempt_id
+    - destination_curriculum_term_course_id
+    - decision_type
+    - decided_by
+    - decided_at
+    - units_credited
+    - student_id
+    - updated_at
+    - revoked_at

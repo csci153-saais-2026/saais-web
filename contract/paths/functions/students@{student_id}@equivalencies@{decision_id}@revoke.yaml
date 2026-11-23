@@ -1,0 +1,60 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Revoke equivalency decision
+  operationId: revokeEquivalencyDecision
+  description: >-
+    Current adviser, reason, expected_updated_at and student ownership required. Soft revoke
+    atomically with audit; no physical deletion of source or decision history. Revocation takes
+    effect at the server-stamped revocation time: preserve historical report results as of their
+    original time, and exclude revoked credit from current checklist and future calculations
+    where they depend on the decision. The underlying attempt and any independently applicable
+    GWA contribution remain unchanged. Invalidate affected caches and retain effective-dated data or snapshots
+    needed to reproduce historical results.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-adviser-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/EquivalencyDecision.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: decision_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/RevokeCreditDecisionRequest.yaml"

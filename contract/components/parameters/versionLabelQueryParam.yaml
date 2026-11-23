@@ -1,0 +1,8 @@
+name: version_label
+in: query
+description: Filter by version label (e.g. `eq.2023-2024`)
+required: false
+schema:
+  type: string
+  maxLength: 106
+  pattern: ^eq\.[^\x00-\x1f]{1,100}$

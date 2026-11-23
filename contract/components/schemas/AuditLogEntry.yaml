@@ -1,0 +1,108 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  actor_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  actor_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Display name of the actor at the time of the audited action.
+  actor_role:
+    anyOf:
+      - $ref: "./RoleType.yaml"
+      - type: "null"
+    readOnly: true
+    description: Role of the actor for the audited action.
+  student_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  student_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Target student display name when the audit entry pertains to a student record.
+  student_number:
+    type:
+      - string
+      - "null"
+    maxLength: 64
+    readOnly: true
+    description: Target student number when the audit entry pertains to a student record.
+  target_label:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+    readOnly: true
+    description: >-
+      Human-readable target/record label displayed in the Audit Log `Student / record` column
+      (e.g. `24-1-00124 · Own record`, `BSCS · Batch 2024`, or `DCST · Adviser assignments`).
+  action:
+    type: string
+    minLength: 1
+    maxLength: 100
+    pattern: \S
+  action_category:
+    anyOf:
+      - $ref: "./AuditActionCategory.yaml"
+      - type: "null"
+    readOnly: true
+    description: >-
+      UI filter category (`view`, `change`, `sign_in`, `record_view`, `grade_update`,
+      `plan_save`, `note_change`, `override`, `export`, `auth_account`, `catalog_term`).
+  entity_type:
+    type: string
+    minLength: 1
+    maxLength: 100
+    pattern: \S
+  entity_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  details_summary:
+    type:
+      - string
+      - "null"
+    maxLength: 1000
+    readOnly: true
+    description: Human-readable summary line rendered in the Audit Log table and CSV export.
+  old_value:
+    type:
+      - object
+      - "null"
+  new_value:
+    type:
+      - object
+      - "null"
+  reason:
+    type:
+      - string
+      - "null"
+    maxLength: 8000
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - actor_id
+  - student_id
+  - action
+  - entity_type
+  - entity_id
+  - created_at

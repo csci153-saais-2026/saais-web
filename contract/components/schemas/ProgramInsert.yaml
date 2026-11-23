@@ -1,0 +1,35 @@
+type: object
+required:
+  - department_id
+  - code
+  - name
+  - nominal_duration
+properties:
+  code:
+    type: string
+    minLength: 2
+    maxLength: 250
+    pattern: \S
+  name:
+    type: string
+    minLength: 3
+    maxLength: 250
+    pattern: \S
+  nominal_duration:
+    type: number
+    minimum: 1
+  status:
+    $ref: "./ProgramStatus.yaml"
+    default: active
+  department_id:
+    type: string
+    format: uuid
+  initial_curriculum:
+    anyOf:
+      - $ref: "./CurriculumDefinition.yaml"
+      - type: "null"
+    description: >-
+      Optional initial curriculum version created in the same transaction. When omitted or
+      null, the degree program is created first and curriculum versions are added afterward
+      via `POST /functions/v1/catalog/curriculum_version`.
+additionalProperties: false

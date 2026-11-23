@@ -1,0 +1,57 @@
+type: object
+additionalProperties: false
+properties:
+  attempt_id:
+    type: string
+    format: uuid
+  school_term_id:
+    type: string
+    format: uuid
+  term_label:
+    type: string
+    maxLength: 100
+  midterm_status:
+    anyOf:
+      - $ref: "./MidtermStatus.yaml"
+      - type: "null"
+  midterm_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  final_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  recorded_status:
+    $ref: "./AttemptStatus.yaml"
+  completion_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  effective_status:
+    $ref: "./AttemptStatus.yaml"
+  inc_deadline:
+    type:
+      - string
+      - "null"
+    format: date
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+required:
+  - attempt_id
+  - school_term_id
+  - term_label
+  - recorded_status
+  - effective_status

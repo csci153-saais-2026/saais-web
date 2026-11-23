@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -7,13 +7,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { useAuth } from "@/hooks/use-auth"
+} from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
 import {
   buildFacultyReportFilename,
   createFacultyReportPdf,
-} from "@/routes/dean/reports/faculty-report-pdf"
-import type { FacultyDepartmentReport } from "@/routes/dean/types"
+} from "@/routes/dean/reports/faculty-report-pdf";
+import type { FacultyDepartmentReport } from "@/routes/dean/types";
 
 /** Opens faculty report export in an embedded viewer first; nothing downloads until the user chooses Download PDF. */
 export function DeanPdfViewerDialog({
@@ -22,61 +22,77 @@ export function DeanPdfViewerDialog({
   onClose,
   onDownloaded,
 }: {
-  report: FacultyDepartmentReport | null
-  facultyName?: string | null
-  onClose: () => void
-  onDownloaded?: (report: FacultyDepartmentReport) => void
+  report: FacultyDepartmentReport | null;
+  facultyName?: string | null;
+  onClose: () => void;
+  onDownloaded?: (report: FacultyDepartmentReport) => void;
 }) {
-  const { user } = useAuth()
+  const { user } = useAuth();
   const [preview, setPreview] = useState<{
-    source: FacultyDepartmentReport
-    facultyName?: string | null
-    url: string
-    error: boolean
-  } | null>(null)
+    source: FacultyDepartmentReport;
+    facultyName?: string | null;
+    url: string;
+    error: boolean;
+  } | null>(null);
 
   const current =
-    report !== null && preview?.source === report && preview.facultyName === facultyName
+    report !== null &&
+    preview?.source === report &&
+    preview.facultyName === facultyName
       ? preview
-      : null
-  const filename = report ? buildFacultyReportFilename(report.department) : ""
+      : null;
+  const filename = report ? buildFacultyReportFilename(report.department) : "";
 
   useEffect(() => {
-    if (!report) return
-    let active = true
-    let objectUrl = ""
+    if (!report) return;
+    let active = true;
+    let objectUrl = "";
 
     createFacultyReportPdf(report, {
       facultyName: facultyName ?? undefined,
       deanName: user?.fullName,
     })
       .then((blob) => {
-        if (!active) return
-        objectUrl = URL.createObjectURL(blob)
-        setPreview({ source: report, facultyName, url: objectUrl, error: false })
+        if (!active) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPreview({
+          source: report,
+          facultyName,
+          url: objectUrl,
+          error: false,
+        });
       })
       .catch(() => {
         if (active) {
-          setPreview({ source: report, facultyName, url: "", error: true })
+          setPreview({ source: report, facultyName, url: "", error: true });
         }
-      })
+      });
 
     return () => {
-      active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [report, facultyName, user?.fullName])
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [report, facultyName, user?.fullName]);
 
   return (
-    <Dialog open={report !== null} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      open={report !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent
         showCloseButton={false}
         className="flex h-[min(90dvh,900px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[1100px]"
       >
         <DialogHeader className="flex-row items-center justify-between gap-4 p-4">
           <div>
-            <DialogTitle className="text-base">Preview: Faculty reports</DialogTitle>
-            <DialogDescription className="mt-1 text-xs">{filename}</DialogDescription>
+            <DialogTitle className="text-base">
+              Preview: Faculty reports
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs">
+              {filename}
+            </DialogDescription>
           </div>
           <div className="flex gap-2">
             <DialogClose asChild>
@@ -90,7 +106,7 @@ export function DeanPdfViewerDialog({
                   href={current.url}
                   download={filename}
                   onClick={() => {
-                    if (report) onDownloaded?.(report)
+                    if (report) onDownloaded?.(report);
                   }}
                 >
                   Download PDF
@@ -113,7 +129,9 @@ export function DeanPdfViewerDialog({
         ) : (
           <div className="flex flex-1 items-center justify-center bg-muted p-4">
             {current?.error ? (
-              <p role="alert">Unable to create the PDF. Close the preview and try again.</p>
+              <p role="alert">
+                Unable to create the PDF. Close the preview and try again.
+              </p>
             ) : (
               <p role="status">Preparing PDF preview…</p>
             )}
@@ -121,5 +139,5 @@ export function DeanPdfViewerDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

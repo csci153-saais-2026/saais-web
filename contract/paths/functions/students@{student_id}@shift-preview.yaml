@@ -1,0 +1,52 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Preview curriculum shift
+  operationId: previewCurriculumShift
+  description: >-
+    Pure read-only projection using course identity, CurriculumPairEquivalence rules, and
+    effective passing sources. Never change assignments, attempts, credits, approvals or plans.
+    Unmatched candidates require manual equivalency/elective review.
+  x-required-roles:
+    - adviser
+    - department_head
+    - admin
+  x-access-scope: authorized-staff-read-only
+  x-atomic: false
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ShiftPreviewResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/ShiftPreviewRequest.yaml"

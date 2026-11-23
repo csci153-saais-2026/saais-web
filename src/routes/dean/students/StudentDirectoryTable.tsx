@@ -1,5 +1,5 @@
-import { Panel } from "@/components/features/panel"
-import { Button } from "@/components/ui/button"
+import { Panel } from "@/components/features/panel";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -7,8 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { DeanStudentSummary } from "@/routes/dean/types"
+} from "@/components/ui/table";
+import type { DeanStudentSummary } from "@/routes/dean/types";
 
 export function StudentDirectoryTable({
   students,
@@ -16,15 +16,15 @@ export function StudentDirectoryTable({
   onSelectStudent,
   onResetFilters,
 }: {
-  students: DeanStudentSummary[]
-  totalCount: number
-  onSelectStudent: (student: DeanStudentSummary) => void
-  onResetFilters?: () => void
+  students: DeanStudentSummary[];
+  totalCount: number;
+  onSelectStudent: (student: DeanStudentSummary) => void;
+  onResetFilters?: () => void;
 }) {
   const countLabel =
     students.length === totalCount
       ? `${students.length} ${students.length === 1 ? "student" : "students"}`
-      : `Showing ${students.length} of ${totalCount} students`
+      : `Showing ${students.length} of ${totalCount} students`;
 
   return (
     <Panel
@@ -62,8 +62,8 @@ export function StudentDirectoryTable({
                 onClick={() => onSelectStudent(student)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    onSelectStudent(student)
+                    event.preventDefault();
+                    onSelectStudent(student);
                   }
                 }}
               >
@@ -87,7 +87,12 @@ export function StudentDirectoryTable({
                 <div className="flex flex-col items-center gap-3">
                   <span>No students match these filters.</span>
                   {onResetFilters && (
-                    <Button type="button" variant="outline" size="sm" onClick={onResetFilters}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onResetFilters}
+                    >
                       Reset filters
                     </Button>
                   )}
@@ -98,5 +103,5 @@ export function StudentDirectoryTable({
         </TableBody>
       </Table>
     </Panel>
-  )
+  );
 }

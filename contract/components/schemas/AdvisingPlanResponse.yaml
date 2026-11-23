@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+properties:
+  plan:
+    $ref: "./AdvisingPlan.yaml"
+  items:
+    type: array
+    maxItems: 200
+    items:
+      $ref: "./AdvisingPlanItem.yaml"
+required:
+  - plan
+  - items
