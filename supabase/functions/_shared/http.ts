@@ -38,7 +38,7 @@ export type PhotoPreparer = (
   student: string,
   actor: string,
   body: unknown,
-) => Promise<{ body: unknown }>;
+) => Promise<{ body: unknown; cleanup?: () => Promise<void> }>;
 type Dependencies = {
   env: Environment;
   fetch?: typeof fetch;
@@ -296,6 +296,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           authorization: authorization!,
         });
       }
+      let photoCleanup: (() => Promise<void>) | undefined;
       if (operation.id === "uploadStudentPhoto") {
         try {
           if (!dependencies.photoUpload)
@@ -309,6 +310,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
             body,
           );
           body = validated.body;
+          photoCleanup = validated.cleanup;
         } catch (failure) {
           if (!(failure instanceof PhotoError)) throw failure;
           if (failure.status === 429) headers.set("Retry-After", "60");
@@ -361,6 +363,9 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           message?: string;
           details?: string;
         };
+        if (photoCleanup && (result.status < 500 || Boolean(upstream.code))) {
+          await photoCleanup();
+        }
         // Only controlled PT errors contain reviewed public messages. Database
         // constraint details and SQL row dumps never leave the function.
         const controlled = /^PT(400|401|403|404|409|429)$/.test(

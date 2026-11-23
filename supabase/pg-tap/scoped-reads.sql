@@ -99,6 +99,10 @@ select 'Correction fixture actor', student_id, 'correctGrades', 'attempt', id,
 from public.attempt;
 select is((select jsonb_array_length(saais_private.matt_grade_fix_history(id)) from public.attempt), 1,
   'Fixture has actual correction history');
+insert into public.attempt(student_id, course_offering_id, status, final_grade, units_attempted, created_by, updated_by)
+select '00000009-0000-4000-8000-000000000000',
+  (select (value->>'id')::uuid from test.records where name = 'source_offering'),
+  'passed', 1.75, 3, '00000008-0000-4000-8000-000000000000', '00000008-0000-4000-8000-000000000000';
 
 select set_config('test.other_audit', (select id::text from public.audit_log_entry
   where student_id = '00000005-0000-4000-8000-000000000000' and old_value is not null limit 1), true);
@@ -162,6 +166,8 @@ reset role;
 
 select test.login(9);
 set local role authenticated;
+select is((select count(*) from saais_api.attempt_result), 1::bigint, 'Second student reads only their own attempt result');
+select is_empty('select id from saais_api.attempt_result where student_id <> auth.uid()', 'Second student cannot read the first student result');
 select is_empty('select id from saais_api.curriculum_transfer_request', 'Other student cannot read the transfer');
 select is_empty('select * from saais_private.transfer_names(current_setting(''test.transfer'')::uuid)',
   'Other student cannot read transfer names through the helper');
@@ -213,7 +219,7 @@ reset role;
 select test.login(1);
 set local role authenticated;
 select is((select count(*) from saais_api.student_organization), 2::bigint, 'Admin sees students from both departments');
-select is((select count(*) from saais_api.attempt_result), 1::bigint, 'Admin can read results');
+select is((select count(*) from saais_api.attempt_result), 2::bigint, 'Admin can read results');
 select is((select count(*) from saais_api.advising_note), 3::bigint, 'Admin can read both departments’ notes');
 select ok((select count(*) > 0 from saais_api.audit_log_entry where old_value is not null),
   'Admin can still read scoped audit snapshots');

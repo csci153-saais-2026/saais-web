@@ -102,8 +102,14 @@ export async function preparePhoto(
   )
     throw new PhotoError(400, "Invalid photo request.");
   const raw = body.storage_object_path;
-  const pathPattern = new RegExp("^students/" + student + "/[a-zA-Z0-9._-]+$");
-  if (!pathPattern.test(raw) || raw.split("/")[2].startsWith("validated-"))
+  const parts = raw.split("/");
+  if (
+    parts.length !== 3 ||
+    parts[0] !== "students" ||
+    parts[1] !== student ||
+    !/^[a-zA-Z0-9._-]+$/.test(parts[2]) ||
+    parts[2].startsWith("validated-")
+  )
     throw new PhotoError(400, "Invalid staging photo path.");
 
   const authorization = await fetcher(

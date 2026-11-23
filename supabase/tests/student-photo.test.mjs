@@ -224,6 +224,42 @@ test("photo HTTP route sends only the validated object to the caller-scoped RPC"
   assert.match(forwarded.p_body.storage_object_path, /\/validated-/);
 });
 
+test("photo HTTP route cleans up the validated object when the profile RPC rejects the update", async () => {
+  const calls = [];
+  const handler = createHandler("students", {
+    env,
+    photoUpload: preparePhoto,
+    fetch: async (url, options) => {
+      calls.push({ url, options });
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_photo_upload_authorize"))
+        return Response.json(true);
+      if (url.includes("/object/authenticated/")) return new Response(image);
+      if (url.endsWith("/object/student-photos")) return Response.json({});
+      if (url.includes("/object/student-photos/"))
+        return Response.json({ Key: "ok" });
+      if (url.endsWith("/saais_register_verified_photo"))
+        return new Response(null, { status: 204 });
+      if (url.endsWith("/matt_operation"))
+        return Response.json(
+          { code: "PT403", message: "Access revoked." },
+          { status: 403 },
+        );
+      throw new Error(url);
+    },
+  });
+  const response = await handler(
+    new Request(env.url + `/students/${student}/photo`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(body),
+    }),
+  );
+  assert.equal(response.status, 403);
+  assert.equal(calls.at(-1).options.method, "DELETE");
+  assert.equal(JSON.parse(calls.at(-1).options.body).prefixes.length, 1);
+});
+
 test("a validation budget rejection returns 429 before retrieving the object", async () => {
   let calls = 0;
   const handler = createHandler("students", {
