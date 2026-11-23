@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { AdviserPage } from "../Adviser";
 import { useAuth } from "@/hooks/use-auth";
@@ -226,7 +227,6 @@ function Resolve({
 }
 function FlagList({ userId }: { userId: string }) {
   const [revision, setRevision] = useState(0);
-  const [message, setMessage] = useState("");
   const requestKey = JSON.stringify([userId, revision]);
   const { data, error, key } = useScopedRequest(
     requestKey,
@@ -251,7 +251,6 @@ function FlagList({ userId }: { userId: string }) {
             <Button onClick={() => setRevision((n) => n + 1)}>Try again</Button>
           </div>
         )}
-        {message && <p role="status">{message}</p>}
         {data && (
           <DataTablePanel
             title="Open flags"
@@ -351,7 +350,7 @@ function FlagList({ userId }: { userId: string }) {
                           refreshError={error}
                           onStale={() => setRevision((n) => n + 1)}
                           onSaved={() => {
-                            setMessage("Flag resolved.");
+                            notify.success("Flag resolved.");
                             setRevision((n) => n + 1);
                           }}
                         />

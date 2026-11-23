@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
 import { PlusIcon } from "@/components/icons";
@@ -44,16 +45,12 @@ export default function CurriculaPage() {
   const catalog = useCurricula();
   const [selection, setSelection] = useState("");
   const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState(false);
   const [editing, setEditing] = useState<CurriculumVersion | null>(null);
-  const [updated, setUpdated] = useState(false);
   const [lifecycle, setLifecycle] = useState<{
     action: VersionLifecycleAction;
     version: CurriculumVersion;
   } | null>(null);
-  const [lifecycleMessage, setLifecycleMessage] = useState("");
   const [addingTerm, setAddingTerm] = useState<CurriculumVersion | null>(null);
-  const [termMessage, setTermMessage] = useState("");
   const [termAction, setTermAction] = useState<{
     action: "edit" | "delete";
     term: CurriculumTerm;
@@ -90,9 +87,6 @@ export default function CurriculaPage() {
             type="button"
             disabled={!catalog.isSuccess || !catalog.data.programs.length}
             onClick={() => {
-              setCreated(false);
-              setUpdated(false);
-              setLifecycleMessage("");
               setCreating(true);
             }}
           >
@@ -101,10 +95,6 @@ export default function CurriculaPage() {
           </Button>
         }
       />
-      {created && <p role="status">Curriculum version created.</p>}
-      {updated && <p role="status">Curriculum version updated.</p>}
-      {lifecycleMessage && <p role="status">{lifecycleMessage}</p>}
-      {termMessage && <p role="status">{termMessage}</p>}
       {termAction?.action === "edit" && (
         <CurriculumTermDialog
           key={`edit:${termAction.term.id}`}
@@ -114,7 +104,7 @@ export default function CurriculaPage() {
           onUpdated={(id) => {
             setSelection(id);
             setTermAction(null);
-            setTermMessage("Curriculum term updated.");
+            notify.success("Curriculum term updated.");
           }}
         />
       )}
@@ -128,7 +118,7 @@ export default function CurriculaPage() {
           onDeleted={(id) => {
             setSelection(id);
             setTermAction(null);
-            setTermMessage("Curriculum term deleted.");
+            notify.success("Curriculum term deleted.");
           }}
         />
       )}
@@ -148,7 +138,7 @@ export default function CurriculaPage() {
           onUpdated={(id) => {
             setSelection(id);
             setSlotAction(null);
-            setTermMessage("Curriculum requirement updated.");
+            notify.success("Curriculum requirement updated.");
           }}
         />
       )}
@@ -168,7 +158,7 @@ export default function CurriculaPage() {
           onDeleted={(id) => {
             setSelection(id);
             setSlotAction(null);
-            setTermMessage("Curriculum requirement deleted.");
+            notify.success("Curriculum requirement deleted.");
           }}
         />
       )}
@@ -181,7 +171,7 @@ export default function CurriculaPage() {
           onCreated={(id) => {
             setSelection(id);
             setAddingRequirement(null);
-            setTermMessage("Curriculum requirement added.");
+            notify.success("Curriculum requirement added.");
           }}
         />
       )}
@@ -193,10 +183,7 @@ export default function CurriculaPage() {
           onAdded={(id) => {
             setSelection(id);
             setAddingTerm(null);
-            setTermMessage("Curriculum term added.");
-            setCreated(false);
-            setUpdated(false);
-            setLifecycleMessage("");
+            notify.success("Curriculum term added.");
           }}
         />
       )}
@@ -217,9 +204,7 @@ export default function CurriculaPage() {
           onCompleted={(action, id) => {
             setSelection(action === "delete" ? "" : id);
             setLifecycle(null);
-            setCreated(false);
-            setUpdated(false);
-            setLifecycleMessage(
+            notify.success(
               action === "delete"
                 ? "Curriculum version deleted."
                 : "Curriculum version retired.",
@@ -237,7 +222,7 @@ export default function CurriculaPage() {
           onUpdated={(id) => {
             setSelection(id);
             setEditing(null);
-            setUpdated(true);
+            notify.success("Curriculum version updated.");
           }}
         />
       )}
@@ -249,7 +234,7 @@ export default function CurriculaPage() {
           onCreated={(id) => {
             setSelection(id);
             setCreating(false);
-            setCreated(true);
+            notify.success("Curriculum version created.");
           }}
         />
       )}
@@ -311,9 +296,6 @@ export default function CurriculaPage() {
                 variant="outline"
                 disabled={!catalog.isSuccess || catalog.isFetching}
                 onClick={() => {
-                  setCreated(false);
-                  setUpdated(false);
-                  setLifecycleMessage("");
                   setEditing(version);
                 }}
               >
@@ -324,9 +306,6 @@ export default function CurriculaPage() {
                 variant="destructive"
                 disabled={!catalog.isSuccess || catalog.isFetching}
                 onClick={() => {
-                  setCreated(false);
-                  setUpdated(false);
-                  setLifecycleMessage("");
                   setLifecycle({ action: "delete", version });
                 }}
               >
@@ -343,7 +322,6 @@ export default function CurriculaPage() {
                   detail.isFetching
                 }
                 onClick={() => {
-                  setTermMessage("");
                   setAddingTerm(version);
                 }}
               >
@@ -427,10 +405,6 @@ export default function CurriculaPage() {
                       (slot) => slot.curriculum_term_id === term.id,
                     );
                     function openTermAction(action: "edit" | "delete") {
-                      setTermMessage("");
-                      setCreated(false);
-                      setUpdated(false);
-                      setLifecycleMessage("");
                       setTermAction({
                         action,
                         term,
@@ -450,11 +424,9 @@ export default function CurriculaPage() {
                           detail.isFetching
                         }
                         onAddRequirement={() => {
-                          setTermMessage("");
                           setAddingRequirement({ term, version });
                         }}
                         onEditSlot={(slot) => {
-                          setTermMessage("");
                           setSlotAction({
                             action: "edit",
                             term,
@@ -463,7 +435,6 @@ export default function CurriculaPage() {
                           });
                         }}
                         onDeleteSlot={(slot) => {
-                          setTermMessage("");
                           setSlotAction({
                             action: "delete",
                             term,

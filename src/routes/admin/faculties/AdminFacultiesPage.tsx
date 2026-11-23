@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useEffect, useMemo, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { PageHeading } from "@/components/features/page-heading";
@@ -308,6 +309,7 @@ export default function AdminFacultiesPage() {
               );
               setDeleteFaculty(null);
               setReloadCount((count) => count + 1);
+              notify.success("Faculty deleted.");
             } finally {
               setDeletingFacultyId(null);
             }
@@ -340,6 +342,7 @@ export default function AdminFacultiesPage() {
               );
               setDeleteDepartment(null);
               setReloadCount((count) => count + 1);
+              notify.success("Department deleted.");
             } finally {
               setDeletingDepartmentId(null);
             }
@@ -371,6 +374,9 @@ export default function AdminFacultiesPage() {
                   }),
                 );
               }
+              notify.success(
+                facultyDialog ? "Faculty updated." : "Faculty created.",
+              );
               setFacultyDialog(undefined);
               setReloadCount((count) => count + 1);
             } finally {
@@ -407,6 +413,11 @@ export default function AdminFacultiesPage() {
                   }),
                 );
               }
+              notify.success(
+                departmentDialog
+                  ? "Department updated."
+                  : "Department created.",
+              );
               setDepartmentDialog(undefined);
               setReloadCount((count) => count + 1);
             } finally {

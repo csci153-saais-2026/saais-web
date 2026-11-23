@@ -146,7 +146,9 @@ describe("encoding workspace identity", () => {
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Remove CS 2" }));
-    expect(screen.getByText("CS 2 removed from the draft.")).toBeTruthy();
+    expect(
+      await screen.findByText("CS 2 removed from the draft."),
+    ).toBeTruthy();
   });
   it("preselects only a student in the current adviser roster", async () => {
     vi.mocked(getEncodingChoices).mockResolvedValue(choices);

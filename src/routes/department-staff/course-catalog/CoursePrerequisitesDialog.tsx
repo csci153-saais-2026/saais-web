@@ -1,4 +1,5 @@
 import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,7 +64,6 @@ export function CoursePrerequisitesDialog({
     {},
   );
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const submitting = useRef(false);
   const pending = saving || create.isPending || remove.isPending;
 
@@ -93,7 +93,6 @@ export function CoursePrerequisitesDialog({
       return;
     submitting.current = true;
     setSaving(true);
-    setMessage("");
     create.reset();
     remove.reset();
     try {
@@ -128,9 +127,9 @@ export function CoursePrerequisitesDialog({
           });
         }
       }
-      setMessage("Prerequisites saved.");
+      notify.success("Prerequisites saved.");
     } catch {
-      setMessage(
+      notify.error(
         "Some changes could not be saved. The list will refresh with the server state.",
       );
       void prerequisites.refetch();
@@ -257,7 +256,6 @@ export function CoursePrerequisitesDialog({
                           ...previous,
                           [candidate.id]: value === true,
                         }));
-                        setMessage("");
                       }}
                     />
                     <label
@@ -278,7 +276,6 @@ export function CoursePrerequisitesDialog({
                           ...previous,
                           [candidate.id]: value as CatalogPrerequisiteType,
                         }));
-                        setMessage("");
                       }}
                     >
                       <SelectTrigger
@@ -310,11 +307,6 @@ export function CoursePrerequisitesDialog({
                 department list and will be preserved.
               </p>
             )}
-          {message && (
-            <p role="status" className="text-sm text-muted-foreground">
-              {message}
-            </p>
-          )}
           {(create.isError || remove.isError) && (
             <p role="alert" className="text-sm text-destructive">
               {coursePrerequisiteMutationError(create.error ?? remove.error)}

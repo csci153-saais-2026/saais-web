@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { GradeSelect } from "../GradeSelect";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -27,7 +28,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { Button } from "@/components/ui/button";
-import { ShieldIcon, UploadIcon } from "@/components/icons";
+import { UploadIcon } from "@/components/icons";
 
 type Row = {
   offering: string;
@@ -71,7 +72,6 @@ function TermEditor({
   const [drafts, setDrafts] = useState<Record<string, ExistingDraft>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [revision, setRevision] = useState(0);
   const { data, error: loadError } = useScopedRequest(
     JSON.stringify([userId, studentId, termId, revision, workspaceRevision]),
@@ -87,7 +87,6 @@ function TermEditor({
     setRows((old) =>
       old.map((row, i) => (i === index ? { ...row, ...patch } : row)),
     );
-    setMessage("");
   };
   const existingAttempts =
     gradeData.terms.find((t) => t.school_term_id === termId)?.attempts ?? [];
@@ -127,7 +126,7 @@ function TermEditor({
       ]);
       setRows([]);
       setDrafts({});
-      setMessage("Grades saved.");
+      notify.success("Grades saved.");
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to save grades.");
@@ -208,7 +207,6 @@ function TermEditor({
                 disabled={busy}
                 onDraft={(id, draft) => {
                   setDrafts((old) => ({ ...old, [id]: draft }));
-                  setMessage("");
                 }}
               />
               {!data.length && (
@@ -313,7 +311,7 @@ function TermEditor({
                       aria-label={`Remove ${option?.code ?? "course"}`}
                       onClick={() => {
                         setRows((old) => old.filter((_, n) => n !== i));
-                        setMessage(
+                        notify.info(
                           `${option?.code ?? "Course"} removed from the draft.`,
                         );
                       }}
@@ -379,18 +377,6 @@ function TermEditor({
                   />
                 </div>
                 {error && <p role="alert">{error}</p>}
-                {message && (
-                  <p
-                    role="status"
-                    className="flex items-center gap-2 rounded-sm border border-[#c4dabb] bg-status-pass-bg px-3 py-2.5 text-sm text-status-pass"
-                  >
-                    <ShieldIcon
-                      className="size-4 shrink-0"
-                      aria-hidden="true"
-                    />
-                    {message}
-                  </p>
-                )}
                 {rows.length > 0 && invalid && (
                   <p>
                     Choose unique courses and provide any required override
@@ -427,7 +413,6 @@ function SelectedWorkspace({
   userId: string;
 }) {
   const [revision, setRevision] = useState(0);
-  const [message, setMessage] = useState("");
   const { data, error } = useScopedRequest(
     JSON.stringify([userId, studentId, termId, revision]),
     true,
@@ -435,12 +420,10 @@ function SelectedWorkspace({
     true,
   );
   const saved = () => {
-    setMessage("");
     setRevision((n) => n + 1);
   };
   return (
     <>
-      {message && <p role="status">{message}</p>}
       <AccountSkeleton
         id="AdviserEncodeGrades-2"
         loading={!data && !error}
@@ -462,7 +445,7 @@ function SelectedWorkspace({
                 data={data}
                 studentId={studentId}
                 onSaved={() => {
-                  setMessage("Changes saved.");
+                  notify.success("Changes saved.");
                   setRevision((n) => n + 1);
                 }}
               />

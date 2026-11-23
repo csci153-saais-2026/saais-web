@@ -6,6 +6,7 @@ import { AuthenticatedPortalLayout } from "@/components/features/AuthenticatedPo
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { DepartmentHeadLayout } from "@/routes/department-head/DepartmentHeadLayout";
 import { NotFoundPage } from "@/routes/NotFoundPage";
+import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/context/QueryProvider";
 import { SkulletProvider } from "skullet/react";
 import { PageSkeleton } from "@/components/features/loading-skeletons";
@@ -206,6 +207,7 @@ function App() {
               </Routes>
             </Suspense>
             <DevRoleSwitcher />
+          <Toaster />
           </BrowserRouter>
         </AuthProvider>
       </QueryProvider>

@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -86,7 +87,6 @@ export default function AdviserAssignmentsPage() {
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [selected, setSelected] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [notice, setNotice] = useState("");
   const directory = useQuery({
     queryKey: staffQueryKeys.resource(
       active?.profileId ?? "",
@@ -272,7 +272,7 @@ export default function AdviserAssignmentsPage() {
       reason: input.reason,
     });
     setSelected([]);
-    setNotice(
+    notify.success(
       `${input.effectiveDate > todayInManila() ? "Scheduled reassignment for" : "Reassigned"} ${selectedVisible.length} student${selectedVisible.length === 1 ? "" : "s"}.`,
     );
   }
@@ -327,11 +327,6 @@ export default function AdviserAssignmentsPage() {
                 Retry assignments
               </Button>
             </div>
-          )}
-          {notice && (
-            <p role="status" className="text-sm text-primary">
-              {notice}
-            </p>
           )}
           <Panel
             title="Student–adviser assignments"

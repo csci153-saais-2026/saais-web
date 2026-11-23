@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -31,7 +32,6 @@ function NotesContent({
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState("");
-  const [message, setMessage] = useState("");
   const [writing, setWriting] = useState(false);
   const { data, error } = useScopedRequest(
     JSON.stringify([userId, id, revision]),
@@ -45,12 +45,11 @@ function NotesContent({
     if (!text.trim()) return;
     setSaving(true);
     setMutationError("");
-    setMessage("");
     try {
       await addNote(id, text.trim());
       setText("");
       setWriting(false);
-      setMessage("Note added.");
+      notify.success("Note added.");
       setRevision((n) => n + 1);
     } catch (e) {
       setMutationError(e instanceof Error ? e.message : "Unable to add note.");
@@ -61,10 +60,9 @@ function NotesContent({
   async function toggle(noteId: string, next: boolean) {
     setSaving(true);
     setMutationError("");
-    setMessage("");
     try {
       await setNoteArchived(id, noteId, next);
-      setMessage(next ? "Note archived." : "Note restored.");
+      notify.success(next ? "Note archived." : "Note restored.");
       setRevision((n) => n + 1);
     } catch (e) {
       setMutationError(
@@ -89,7 +87,6 @@ function NotesContent({
             </Button>
           </div>
         )}
-        {message && <p role="status">{message}</p>}
         {mutationError && !writing && <p role="alert">{mutationError}</p>}
         {data && (
           <>
