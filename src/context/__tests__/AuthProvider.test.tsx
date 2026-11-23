@@ -505,3 +505,206 @@ describe("AuthProvider, useAuth & Environment Config", () => {
     expect(result.current.user).toBeNull();
   });
 });
+
+describe("AuthProvider refocus / repeated auth events", () => {
+  type AuthCallback = (event: string, session: unknown) => void;
+
+  function makeSession(userId: string, accessToken: string) {
+    return {
+      access_token: accessToken,
+      user: {
+        id: userId,
+        email: `${userId}@vsu.edu.ph`,
+        app_metadata: { provider: "password" },
+      },
+    };
+  }
+
+  function boundaryFor(userId: string) {
+    return {
+      profile: {
+        id: userId,
+        email: `${userId}@vsu.edu.ph`,
+        full_name: `User ${userId}`,
+        role: "student",
+        roles: ["student"],
+        status: "active",
+      },
+      assignment: {
+        id: `ra-${userId}`,
+        profile_id: userId,
+        role: "student",
+        faculty_id: null,
+        department_id: null,
+      },
+    };
+  }
+
+  function setup(initialUserId: string | null) {
+    vi.stubEnv("VITE_API_MODE", "supabase");
+    vi.stubEnv("VITE_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "test-key");
+
+    const sdk = getSupabaseClient("supabase");
+    const initialSession = initialUserId
+      ? makeSession(initialUserId, "token-1")
+      : null;
+
+    vi.spyOn(sdk.auth, "getSession").mockResolvedValue({
+      data: { session: initialSession as never },
+      error: null,
+    });
+
+    let authCallback: AuthCallback | null = null;
+    vi.spyOn(sdk.auth, "onAuthStateChange").mockImplementation((handler) => {
+      authCallback = handler as never;
+      return {
+        data: {
+          subscription: {
+            id: "sub-1",
+            callback: handler,
+            unsubscribe: vi.fn(),
+          },
+        },
+      };
+    });
+
+    // Optional gate so a test can observe the loading state mid-hydration.
+    const gate: { promise: Promise<void> | null } = { promise: null };
+    const profileFetches: string[] = [];
+
+    vi.spyOn(apiClient, "GET").mockImplementation((async (
+      path: string,
+      init: { params: { query: Record<string, string> } },
+    ) => {
+      const query = init.params.query;
+      const userId = (query.id ?? query.profile_id).replace("eq.", "");
+      const boundary = boundaryFor(userId);
+      if (path === "/rest/v1/profile") {
+        profileFetches.push(userId);
+        if (gate.promise) await gate.promise;
+        return {
+          data: [boundary.profile],
+          error: undefined,
+          response: new Response(null, { status: 200 }),
+        };
+      }
+      return {
+        data: [boundary.assignment],
+        error: undefined,
+        response: new Response(null, { status: 200 }),
+      };
+    }) as never);
+
+    const queryClient = new QueryClient();
+    const clearSpy = vi.spyOn(queryClient, "clear");
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
+    );
+    const rendered = renderHook(() => useAuth(), { wrapper });
+
+    return {
+      ...rendered,
+      gate,
+      clearSpy,
+      profileFetches,
+      emit: (event: string, session: unknown) => {
+        act(() => {
+          authCallback?.(event, session);
+        });
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    resetSupabaseClientForTests();
+    localStorage.clear();
+    sessionStorage.clear();
+    clearMockPersonaSession();
+    resetMockDatabase();
+    setSupabaseSessionPersistence(true);
+  });
+
+  it("does not reload when SIGNED_IN is re-emitted for the same user", async () => {
+    const t = setup("user-a");
+    await waitFor(() => expect(t.result.current.user?.id).toBe("user-a"));
+    expect(t.result.current.isLoading).toBe(false);
+    t.clearSpy.mockClear();
+    const fetchesBefore = t.profileFetches.length;
+
+    t.emit("SIGNED_IN", makeSession("user-a", "token-1"));
+
+    expect(t.result.current.isLoading).toBe(false);
+    expect(t.clearSpy).not.toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(t.profileFetches.length).toBe(fetchesBefore);
+    expect(t.result.current.user?.id).toBe("user-a");
+  });
+
+  it("updates the session on TOKEN_REFRESHED without a loading flash", async () => {
+    const t = setup("user-a");
+    await waitFor(() => expect(t.result.current.user?.id).toBe("user-a"));
+    t.clearSpy.mockClear();
+    const fetchesBefore = t.profileFetches.length;
+
+    t.emit("TOKEN_REFRESHED", makeSession("user-a", "token-2"));
+
+    expect(t.result.current.isLoading).toBe(false);
+    expect(t.result.current.session?.access_token).toBe("token-2");
+    expect(t.clearSpy).not.toHaveBeenCalled();
+    expect(t.profileFetches.length).toBe(fetchesBefore);
+  });
+
+  it("fully re-hydrates when SIGNED_IN arrives for a different user", async () => {
+    const t = setup("user-a");
+    await waitFor(() => expect(t.result.current.user?.id).toBe("user-a"));
+    t.clearSpy.mockClear();
+
+    let release!: () => void;
+    t.gate.promise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    t.emit("SIGNED_IN", makeSession("user-b", "token-b"));
+
+    expect(t.result.current.isLoading).toBe(true);
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(t.result.current.user?.id).toBe("user-b"));
+    expect(t.result.current.isLoading).toBe(false);
+    expect(t.clearSpy).toHaveBeenCalled();
+    expect(t.profileFetches).toContain("user-b");
+  });
+
+  it("clears state on SIGNED_OUT", async () => {
+    const t = setup("user-a");
+    await waitFor(() => expect(t.result.current.user?.id).toBe("user-a"));
+
+    t.emit("SIGNED_OUT", null);
+
+    expect(t.result.current.user).toBeNull();
+    expect(t.result.current.session).toBeNull();
+    expect(t.result.current.isLoading).toBe(false);
+    expect(t.clearSpy).toHaveBeenCalled();
+  });
+
+  it("hydrates normally on the first SIGNED_IN when no user is hydrated yet", async () => {
+    const t = setup(null);
+    await waitFor(() => expect(t.result.current.isLoading).toBe(false));
+    expect(t.result.current.user).toBeNull();
+
+    t.emit("SIGNED_IN", makeSession("user-a", "token-1"));
+
+    expect(t.result.current.isLoading).toBe(true);
+    await waitFor(() => expect(t.result.current.user?.id).toBe("user-a"));
+    expect(t.result.current.isLoading).toBe(false);
+    expect(t.profileFetches).toEqual(["user-a"]);
+  });
+});
