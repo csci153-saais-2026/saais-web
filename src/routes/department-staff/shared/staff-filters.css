@@ -24,7 +24,8 @@
   font-size: 14px;
 }
 
-.staff-filter-controls :is(label, input, select, [role="combobox"], [data-slot="select-value"]),
+.staff-filter-controls
+  :is(label, input, select, [role="combobox"], [data-slot="select-value"]),
 .staff-filter-controls input::placeholder {
   font-weight: 600;
 }

@@ -180,7 +180,7 @@ endstream`);
       'DIT Alang-alang': { prefix: 'Department of', name: 'Information Technology, Alang-alang', faculty: 'FCOMP', head: '' },
       'DIT Isabel': { prefix: 'Department of', name: 'Information Technology, Isabel', faculty: 'FCOMP', head: '' }
     },
-    advisers: { '2023-04412': 'Prof. Ramon Reyes', '23-1-01234': 'Prof. Mara Reyes', '23-1-01301': 'Prof. Mara Reyes', '24-1-02011': 'Prof. Mara Reyes' }
+    advisers: { '23-1-04412': 'Prof. Ramon Reyes', '23-1-01234': 'Prof. Mara Reyes', '23-1-01301': 'Prof. Mara Reyes', '24-1-02011': 'Prof. Mara Reyes' }
   };
   const store = key => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (_) { return {}; } };
   const text1 = el => (el && el.textContent || '').trim().replace(/\s+/g, ' ');

@@ -1,68 +1,69 @@
-import * as React from 'react'
-import { Link } from 'react-router'
-import { AuthLayout } from '@/components/features/auth-layout'
-import { Panel } from '@/components/features/panel'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertIcon, CheckIcon } from '@/components/icons'
-import { useAuth } from '@/hooks/use-auth'
+import * as React from "react";
+import { Link } from "react-router";
+import { AuthLayout } from "@/components/features/auth-layout";
+import { Panel } from "@/components/features/panel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertIcon, CheckIcon } from "@/components/icons";
+import { useAuth } from "@/hooks/use-auth";
 import {
   completePasswordReset,
   validatePasswordPolicy,
-} from '@/lib/auth/auth-service'
+} from "@/lib/auth/auth-service";
 
 export default function ResetPasswordPage() {
-  const { isPasswordRecovery, isLoading, user } = useAuth()
-  const [password, setPassword] = React.useState('')
-  const [confirmPassword, setConfirmPassword] = React.useState('')
-  const [submitting, setSubmitting] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
-  const [success, setSuccess] = React.useState(false)
-  const [wasSimulated, setWasSimulated] = React.useState(false)
+  const { isPasswordRecovery, isLoading, user } = useAuth();
+  const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState(false);
+  const [wasSimulated, setWasSimulated] = React.useState(false);
 
   // A verified recovery session is strictly required:
   // - In real Supabase mode: isPasswordRecovery MUST be true (emitted by PASSWORD_RECOVERY event
   //   after code/token exchange has verified the user with Supabase Auth).
   // - In mock mode: requires an explicit valid recovery session or mock query indicator
   //   without an ordinary signed-in user session attempting password reset.
-  const isOrdinarySignedInUser = Boolean(user && !isPasswordRecovery)
-  const canResetPassword = isPasswordRecovery && !isOrdinarySignedInUser
+  const isOrdinarySignedInUser = Boolean(user && !isPasswordRecovery);
+  const canResetPassword = isPasswordRecovery && !isOrdinarySignedInUser;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
     if (!canResetPassword) {
-      setError('A verified password recovery session is required.')
-      return
+      setError("A verified password recovery session is required.");
+      return;
     }
 
-    const validation = validatePasswordPolicy(password)
+    const validation = validatePasswordPolicy(password);
     if (!validation.valid) {
-      setError(validation.error)
-      return
+      setError(validation.error);
+      return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.')
-      return
+      setError("Passwords do not match.");
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
 
     try {
-      const result = await completePasswordReset(password)
-      setWasSimulated(result.simulated)
-      setSuccess(true)
+      const result = await completePasswordReset(password);
+      setWasSimulated(result.simulated);
+      setSuccess(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unable to reset password.'
-      setError(msg)
+      const msg =
+        err instanceof Error ? err.message : "Unable to reset password.";
+      setError(msg);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <AuthLayout
@@ -71,29 +72,36 @@ export default function ResetPasswordPage() {
       bullets={[
         {
           icon: <CheckIcon className="w-4 h-4" />,
-          text: 'Establish a new institutional password',
+          text: "Establish a new institutional password",
         },
         {
           icon: <CheckIcon className="w-4 h-4" />,
-          text: 'Protect your academic account records',
+          text: "Protect your academic account records",
         },
       ]}
     >
-      <Panel title="Set Password" description="Create your new institutional login password.">
+      <Panel
+        title="Set Password"
+        description="Create your new institutional login password."
+      >
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-8 gap-3">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-muted-foreground">Verifying recovery session…</p>
+            <p className="text-sm text-muted-foreground">
+              Verifying recovery session…
+            </p>
           </div>
         ) : !canResetPassword && !success ? (
           <div className="grid gap-4">
-            <h2 className="text-2xl font-bold">Invalid or Expired Recovery Link</h2>
+            <h2 className="text-2xl font-bold">
+              Invalid or Expired Recovery Link
+            </h2>
             <Alert variant="destructive">
               <AlertIcon />
               <AlertDescription>
                 {isOrdinarySignedInUser
-                  ? 'You are currently signed in with an active institutional session. To change your password, use Account Settings.'
-                  : 'This page requires a verified password recovery session initiated from your institutional email link. If your link has expired or is invalid, please request a new recovery link.'}
+                  ? "You are currently signed in with an active institutional session. To change your password, use Account Settings."
+                  : "This page requires a verified password recovery session initiated from your institutional email link. If your link has expired or is invalid, please request a new recovery link."}
               </AlertDescription>
             </Alert>
             <div className="flex flex-col gap-2 mt-2">
@@ -116,8 +124,8 @@ export default function ResetPasswordPage() {
             <h2 className="text-2xl font-bold">Password Reset Complete</h2>
             <p className="text-sm text-muted-foreground">
               {wasSimulated
-                ? 'Password reset was simulated in mock mode. In production, your institutional password is updated and you can sign in with your new credentials.'
-                : 'Your password has been successfully updated. You may now sign in with your new password.'}
+                ? "Password reset was simulated in mock mode. In production, your institutional password is updated and you can sign in with your new credentials."
+                : "Your password has been successfully updated. You may now sign in with your new password."}
             </p>
             <Link to="/login" className="w-full mt-2">
               <Button className="w-full">Sign in to your account</Button>
@@ -144,7 +152,8 @@ export default function ResetPasswordPage() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  Must be 12–128 characters with uppercase, lowercase, and number.
+                  Must be 12–128 characters with uppercase, lowercase, and
+                  number.
                 </span>
               </div>
 
@@ -167,13 +176,17 @@ export default function ResetPasswordPage() {
                 </Alert>
               )}
 
-              <Button type="submit" disabled={submitting} className="w-full mt-2">
-                {submitting ? 'Updating password…' : 'Update Password'}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full mt-2"
+              >
+                {submitting ? "Updating password…" : "Update Password"}
               </Button>
             </form>
           </div>
         )}
       </Panel>
     </AuthLayout>
-  )
+  );
 }

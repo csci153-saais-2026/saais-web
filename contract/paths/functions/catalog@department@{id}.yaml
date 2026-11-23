@@ -1,0 +1,92 @@
+patch:
+  tags:
+    - Faculty & Department
+  summary: Update academic department
+  operationId: updateDepartment
+  description: >-
+    Admin-only, validated transactional catalog operation. Protect referenced history and
+    required last children; lock parents and commit audit with the mutation. Raw table writes
+    are not exposed by the frontend contract.
+  x-required-roles:
+    - admin
+  x-access-scope: admin-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/Department.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/DepartmentUpdate.yaml"
+delete:
+  tags:
+    - Faculty & Department
+  summary: Delete unreferenced academic department
+  operationId: deleteDepartment
+  description: >-
+    Admin-only, validated transactional catalog operation to delete an unreferenced academic
+    department that has no degree programs, courses, role assignments, or student records
+    referencing it. Avoids implicit cascade deletes; if dependent or historical records exist,
+    returns 409 Conflict. Locks parent/child references and commits an audit log entry with
+    server-derived actor and timestamp in the same transaction.
+  x-required-roles:
+    - admin
+  x-access-scope: admin-only
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and admin role at runtime; enforce transactional
+    dependency checks without cascade deletion; derive audit actor/time server-side.
+  responses:
+    "204":
+      description: Deleted unreferenced department. Referenced departments return 409 Conflict.
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

@@ -50,14 +50,6 @@ export async function getElectiveSlots(studentId: string) {
       a.label.localeCompare(b.label, undefined, { numeric: true }),
     );
 }
-export async function deleteTermAttempt(studentId: string, attemptId: string) {
-  return unwrapApiResult(
-    await apiClient.DELETE(
-      "/functions/v1/students/{student_id}/attempts/{attempt_id}",
-      { params: { path: { student_id: studentId, attempt_id: attemptId } } },
-    ),
-  );
-}
 export async function saveTermGrades(
   studentId: string,
   termId: string,

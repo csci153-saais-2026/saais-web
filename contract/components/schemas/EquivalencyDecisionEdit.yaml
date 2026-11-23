@@ -1,0 +1,25 @@
+type: object
+additionalProperties: false
+properties:
+  attempt_id:
+    type: string
+    format: uuid
+  destination_curriculum_term_course_id:
+    type: string
+    format: uuid
+  decision_type:
+    $ref: "./DecisionType.yaml"
+  justification:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+  expected_updated_at:
+    type: string
+    format: date-time
+required:
+  - attempt_id
+  - destination_curriculum_term_course_id
+  - decision_type
+  - justification
+  - expected_updated_at

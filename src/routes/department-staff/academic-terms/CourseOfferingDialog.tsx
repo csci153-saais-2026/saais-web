@@ -1,64 +1,74 @@
-import { useMemo, useRef } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm, useWatch } from 'react-hook-form'
-import { FormField } from '@/components/features/form-field'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { ApiClientError } from '@/lib/api'
-import { useCurriculumCourses } from '@/hooks/use-curricula'
-import type { Course, CourseOffering } from './course-offerings.api'
-import type { SchoolTerm } from './academic-terms.api'
+import { useMemo, useRef } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useWatch } from "react-hook-form";
+import { FormField } from "@/components/features/form-field";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ApiClientError } from "@/lib/api";
+import { useCurriculumCourses } from "@/hooks/use-curricula";
+import type { Course, CourseOffering } from "./course-offerings.api";
+import type { SchoolTerm } from "./academic-terms.api";
 import {
   courseOfferingFormSchema,
   courseOfferingInsertRequest,
   courseOfferingUpdateRequest,
   type CourseOfferingFormValues,
-} from './course-offering.schema'
+} from "./course-offering.schema";
 import {
   useCreateCourseOffering,
   useDeleteCourseOffering,
   useUpdateCourseOffering,
-} from './use-course-offerings'
+} from "./use-course-offerings";
 
-export type CourseOfferingDialogMode = 'create' | 'edit' | 'delete'
-const EMPTY_DISCONTINUED_COURSES: readonly Course[] = []
+export type CourseOfferingDialogMode = "create" | "edit" | "delete";
+const EMPTY_DISCONTINUED_COURSES: readonly Course[] = [];
 
-function termTypeLabel(termType: SchoolTerm['term_type']): string {
-  return termType === 'Summer' ? 'Summer/Midyear' : termType
+function termTypeLabel(termType: SchoolTerm["term_type"]): string {
+  return termType === "Summer" ? "Summer/Midyear" : termType;
 }
 
-function writeErrorMessage(error: unknown, mode: CourseOfferingDialogMode): string {
+function writeErrorMessage(
+  error: unknown,
+  mode: CourseOfferingDialogMode,
+): string {
   if (error instanceof ApiClientError) {
     if (error.isForbidden) {
-      return 'Your account is not permitted to manage offerings for this department.'
+      return "Your account is not permitted to manage offerings for this department.";
     }
     if (error.isAuthError) {
-      return 'Your session could not be verified. Sign in again and retry.'
+      return "Your session could not be verified. Sign in again and retry.";
     }
     if (error.isConflict) {
-      const action = mode === 'delete' ? 'removed' : 'saved'
+      const action = mode === "delete" ? "removed" : "saved";
       const reason =
-        mode === 'delete'
-          ? 'term locks, academic history, or dependent records may protect this offering.'
-          : 'the term or offering state may have changed.'
-      return `The offering could not be ${action} because ${reason} ${error.message}`
+        mode === "delete"
+          ? "term locks, academic history, or dependent records may protect this offering."
+          : "the term or offering state may have changed.";
+      return `The offering could not be ${action} because ${reason} ${error.message}`;
     }
     if (error.isNetworkError) {
-      return 'The write result could not be confirmed. Refresh the selected term before retrying.'
+      return "The write result could not be confirmed. Refresh the selected term before retrying.";
     }
     if (error.isRateLimited) {
-      return 'Too many requests. Wait before submitting again.'
+      return "Too many requests. Wait before submitting again.";
     }
-    return error.message
+    return error.message;
   }
 
-  if (error instanceof Error) return error.message
-  return `The course offering could not be ${mode === 'delete' ? 'removed' : 'saved'}.`
+  if (error instanceof Error) return error.message;
+  return `The course offering could not be ${mode === "delete" ? "removed" : "saved"}.`;
 }
 
 function courseLabel(course: Course): string {
-  return `${course.code} - ${course.title} (${course.units} units)`
+  return `${course.code} - ${course.title} (${course.units} units)`;
 }
 
 export function CourseOfferingDialog({
@@ -70,148 +80,147 @@ export function CourseOfferingDialog({
   onClose,
   onComplete,
 }: {
-  mode: CourseOfferingDialogMode
-  term: SchoolTerm
-  offering?: CourseOffering
-  course?: Course
-  discontinuedRequiredCourses?: readonly Course[]
-  onClose: () => void
-  onComplete: (action: 'created' | 'updated' | 'deleted') => void
+  mode: CourseOfferingDialogMode;
+  term: SchoolTerm;
+  offering?: CourseOffering;
+  course?: Course;
+  discontinuedRequiredCourses?: readonly Course[];
+  onClose: () => void;
+  onComplete: (action: "created" | "updated" | "deleted") => void;
 }) {
-  const create = useCreateCourseOffering()
-  const update = useUpdateCourseOffering()
-  const remove = useDeleteCourseOffering()
-  const activeCourses = useCurriculumCourses(mode === 'create')
-  const submitting = useRef(false)
-  const editing = mode === 'edit'
-  const deleting = mode === 'delete'
+  const create = useCreateCourseOffering();
+  const update = useUpdateCourseOffering();
+  const remove = useDeleteCourseOffering();
+  const activeCourses = useCurriculumCourses(mode === "create");
+  const submitting = useRef(false);
+  const editing = mode === "edit";
+  const deleting = mode === "delete";
   const form = useForm<CourseOfferingFormValues>({
     resolver: zodResolver(courseOfferingFormSchema),
     defaultValues: {
-      course_id: course?.id ?? '',
-      section: offering?.section ?? '',
-      schedule: offering?.schedule ?? '',
-      instructor: offering?.instructor ?? '',
+      course_id: course?.id ?? "",
+      section: offering?.section ?? "",
+      schedule: offering?.schedule ?? "",
+      instructor: offering?.instructor ?? "",
       is_by_request:
-        offering?.is_by_request === true || course?.status === 'discontinued',
+        offering?.is_by_request === true || course?.status === "discontinued",
     },
-  })
+  });
 
   const availableCourses = useMemo(() => {
-    const options = new Map<string, Course>()
-    for (const item of activeCourses.data ?? []) options.set(item.id, item)
-    for (const item of discontinuedRequiredCourses) options.set(item.id, item)
-    if (course) options.set(course.id, course)
+    const options = new Map<string, Course>();
+    for (const item of activeCourses.data ?? []) options.set(item.id, item);
+    for (const item of discontinuedRequiredCourses) options.set(item.id, item);
+    if (course) options.set(course.id, course);
     return [...options.values()].sort(
       (left, right) =>
         left.code.localeCompare(right.code) || left.id.localeCompare(right.id),
-    )
-  }, [activeCourses.data, course, discontinuedRequiredCourses])
+    );
+  }, [activeCourses.data, course, discontinuedRequiredCourses]);
   const selectedCourseId = useWatch({
     control: form.control,
-    name: 'course_id',
-  })
+    name: "course_id",
+  });
   const isByRequest = useWatch({
     control: form.control,
-    name: 'is_by_request',
-  })
-  const selectedCourse = availableCourses.find(
-    (item) => item.id === selectedCourseId,
-  ) ?? course
-  const requiresByRequest = selectedCourse?.status === 'discontinued'
+    name: "is_by_request",
+  });
+  const selectedCourse =
+    availableCourses.find((item) => item.id === selectedCourseId) ?? course;
+  const requiresByRequest = selectedCourse?.status === "discontinued";
   const pending =
     form.formState.isSubmitting ||
     create.isPending ||
     update.isPending ||
-    remove.isPending
+    remove.isPending;
   const mutation =
-    mode === 'create' ? create : mode === 'edit' ? update : remove
+    mode === "create" ? create : mode === "edit" ? update : remove;
 
   async function submit(values: CourseOfferingFormValues) {
-    if (submitting.current) return
-    submitting.current = true
+    if (submitting.current) return;
+    submitting.current = true;
     try {
-      if (mode === 'create') {
+      if (mode === "create") {
         const selected = availableCourses.find(
           (item) => item.id === values.course_id,
-        )
+        );
         if (!selected) {
-          form.setError('course_id', {
-            type: 'validate',
-            message: 'Choose a course available to your department.',
-          })
-          return
+          form.setError("course_id", {
+            type: "validate",
+            message: "Choose a course available to your department.",
+          });
+          return;
         }
         await create.mutateAsync(
           courseOfferingInsertRequest(
             term.id,
             values,
-            selected.status === 'discontinued',
+            selected.status === "discontinued",
           ),
-        )
-        onComplete('created')
-      } else if (mode === 'edit' && offering) {
+        );
+        onComplete("created");
+      } else if (mode === "edit" && offering) {
         await update.mutateAsync({
           original: offering,
           body: courseOfferingUpdateRequest(
             values,
-            course?.status === 'discontinued',
+            course?.status === "discontinued",
           ),
-        })
-        onComplete('updated')
+        });
+        onComplete("updated");
       }
     } catch {
       // Mutation errors remain visible below and preserve the entered values.
     } finally {
-      submitting.current = false
+      submitting.current = false;
     }
   }
 
   async function confirmRemoval() {
-    if (submitting.current || !offering) return
-    submitting.current = true
+    if (submitting.current || !offering) return;
+    submitting.current = true;
     try {
-      await remove.mutateAsync(offering)
-      onComplete('deleted')
+      await remove.mutateAsync(offering);
+      onComplete("deleted");
     } catch {
       // Mutation errors remain visible below until the user closes the dialog.
     } finally {
-      submitting.current = false
+      submitting.current = false;
     }
   }
 
   const canCreate =
-    mode !== 'create' ||
-    (activeCourses.isSuccess && availableCourses.length > 0)
+    mode !== "create" ||
+    (activeCourses.isSuccess && availableCourses.length > 0);
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !pending) onClose()
+        if (!open && !pending) onClose();
       }}
     >
       <DialogContent
         className="max-h-[90dvh] overflow-y-auto"
         showCloseButton={!pending}
         onEscapeKeyDown={(event) => {
-          if (pending) event.preventDefault()
+          if (pending) event.preventDefault();
         }}
         onInteractOutside={(event) => {
-          if (pending) event.preventDefault()
+          if (pending) event.preventDefault();
         }}
       >
         <DialogHeader>
           <DialogTitle>
-            {mode === 'create'
-              ? 'Add course offering'
-              : mode === 'edit'
-                ? 'Edit course offering'
-                : 'Remove course offering'}
+            {mode === "create"
+              ? "Add course offering"
+              : mode === "edit"
+                ? "Edit course offering"
+                : "Remove course offering"}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'delete'
-              ? `Remove ${course ? courseLabel(course) : 'this course'} from ${term.school_year}, ${termTypeLabel(term.term_type)}? Removal may be rejected when term locks, academic history, or dependent records protect the offering.`
+            {mode === "delete"
+              ? `Remove ${course ? courseLabel(course) : "this course"} from ${term.school_year}, ${termTypeLabel(term.term_type)}? Removal may be rejected when term locks, academic history, or dependent records protect the offering.`
               : editing
                 ? `Update offering details for ${term.school_year}, ${termTypeLabel(term.term_type)}. Course and term cannot be changed here.`
                 : `Add an explicit course offering for ${term.school_year}, ${termTypeLabel(term.term_type)}.`}
@@ -240,7 +249,7 @@ export function CourseOfferingDialog({
                 disabled={pending || !offering}
                 onClick={() => void confirmRemoval()}
               >
-                {pending ? 'Removing offering…' : 'Confirm removal'}
+                {pending ? "Removing offering…" : "Confirm removal"}
               </Button>
             </DialogFooter>
           </>
@@ -248,16 +257,13 @@ export function CourseOfferingDialog({
           <form
             noValidate
             onSubmit={(event) => {
-              void form.handleSubmit(submit)(event)
+              void form.handleSubmit(submit)(event);
             }}
             className="space-y-4"
             aria-busy={pending}
           >
             <fieldset disabled={pending} className="grid min-w-0 gap-4">
-              <FormField
-                label="Academic term"
-                htmlFor="course-offering-term"
-              >
+              <FormField label="Academic term" htmlFor="course-offering-term">
                 <Input
                   id="course-offering-term"
                   readOnly
@@ -267,12 +273,17 @@ export function CourseOfferingDialog({
 
               {editing ? (
                 <>
-                  <input type="hidden" {...form.register('course_id')} />
-                  <FormField label="Course" htmlFor="course-offering-course-readonly">
+                  <input type="hidden" {...form.register("course_id")} />
+                  <FormField
+                    label="Course"
+                    htmlFor="course-offering-course-readonly"
+                  >
                     <Input
                       id="course-offering-course-readonly"
                       readOnly
-                      value={course ? courseLabel(course) : 'Course unavailable'}
+                      value={
+                        course ? courseLabel(course) : "Course unavailable"
+                      }
                     />
                   </FormField>
                 </>
@@ -287,13 +298,13 @@ export function CourseOfferingDialog({
                     className="min-h-11 w-full rounded-sm border border-input bg-card px-3 text-sm"
                     aria-invalid={!!form.formState.errors.course_id}
                     disabled={activeCourses.isPending || activeCourses.isError}
-                    {...form.register('course_id', {
+                    {...form.register("course_id", {
                       onChange: (event) => {
                         const selected = availableCourses.find(
                           (item) => item.id === event.target.value,
-                        )
-                        if (selected?.status === 'discontinued') {
-                          form.setValue('is_by_request', true)
+                        );
+                        if (selected?.status === "discontinued") {
+                          form.setValue("is_by_request", true);
                         }
                       },
                     })}
@@ -302,21 +313,21 @@ export function CourseOfferingDialog({
                     {availableCourses.map((item) => (
                       <option key={item.id} value={item.id}>
                         {courseLabel(item)}
-                        {item.status === 'discontinued'
-                          ? ' — Discontinued; by request only'
-                          : ''}
+                        {item.status === "discontinued"
+                          ? " — Discontinued; by request only"
+                          : ""}
                       </option>
                     ))}
                   </select>
                 </FormField>
               )}
 
-              {mode === 'create' && activeCourses.isPending && (
+              {mode === "create" && activeCourses.isPending && (
                 <p role="status" className="text-sm text-muted-foreground">
                   Loading active courses for your department…
                 </p>
               )}
-              {mode === 'create' && activeCourses.isError && (
+              {mode === "create" && activeCourses.isError && (
                 <div className="space-y-2">
                   <p role="alert" className="text-sm text-destructive">
                     {writeErrorMessage(activeCourses.error, mode)}
@@ -327,20 +338,22 @@ export function CourseOfferingDialog({
                     disabled={activeCourses.isFetching}
                     onClick={() => void activeCourses.refetch()}
                   >
-                    {activeCourses.isFetching ? 'Retrying…' : 'Retry courses'}
+                    {activeCourses.isFetching ? "Retrying…" : "Retry courses"}
                   </Button>
                 </div>
               )}
-              {mode === 'create' && !selectedCourse && (
+              {mode === "create" && !selectedCourse && (
                 <p className="text-xs text-muted-foreground">
-                  To add a discontinued course by request, first select a curriculum version that lists it as a required course.
+                  To add a discontinued course by request, first select a
+                  curriculum version that lists it as a required course.
                 </p>
               )}
-              {mode === 'create' &&
+              {mode === "create" &&
                 activeCourses.isSuccess &&
                 availableCourses.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    No active courses or eligible discontinued required courses are available for this department.
+                    No active courses or eligible discontinued required courses
+                    are available for this department.
                   </p>
                 )}
 
@@ -353,7 +366,7 @@ export function CourseOfferingDialog({
                   id="course-offering-section"
                   maxLength={64}
                   aria-invalid={!!form.formState.errors.section}
-                  {...form.register('section')}
+                  {...form.register("section")}
                 />
               </FormField>
               <FormField
@@ -365,7 +378,7 @@ export function CourseOfferingDialog({
                   id="course-offering-schedule"
                   maxLength={150}
                   aria-invalid={!!form.formState.errors.schedule}
-                  {...form.register('schedule')}
+                  {...form.register("schedule")}
                 />
               </FormField>
               <FormField
@@ -377,7 +390,7 @@ export function CourseOfferingDialog({
                   id="course-offering-instructor"
                   maxLength={150}
                   aria-invalid={!!form.formState.errors.instructor}
-                  {...form.register('instructor')}
+                  {...form.register("instructor")}
                 />
               </FormField>
 
@@ -385,7 +398,7 @@ export function CourseOfferingDialog({
                 <input
                   type="checkbox"
                   disabled={requiresByRequest}
-                  {...form.register('is_by_request')}
+                  {...form.register("is_by_request")}
                   checked={requiresByRequest || isByRequest}
                 />
                 By-request offering
@@ -415,16 +428,16 @@ export function CourseOfferingDialog({
               <Button type="submit" disabled={pending || !canCreate}>
                 {pending
                   ? editing
-                    ? 'Saving offering…'
-                    : 'Adding offering…'
+                    ? "Saving offering…"
+                    : "Adding offering…"
                   : editing
-                    ? 'Save changes'
-                    : 'Add offering'}
+                    ? "Save changes"
+                    : "Add offering"}
               </Button>
             </DialogFooter>
           </form>
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

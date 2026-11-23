@@ -1,0 +1,14 @@
+type: object
+additionalProperties: false
+properties:
+  reason:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+  expected_updated_at:
+    type: string
+    format: date-time
+required:
+  - reason
+  - expected_updated_at

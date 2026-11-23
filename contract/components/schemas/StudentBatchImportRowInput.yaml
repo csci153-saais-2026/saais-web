@@ -1,0 +1,44 @@
+type: object
+additionalProperties: false
+properties:
+  row_number:
+    type: integer
+    minimum: 1
+  student_number:
+    type: string
+    minLength: 1
+    maxLength: 64
+    pattern: \S
+  full_name:
+    type: string
+    minLength: 1
+    maxLength: 150
+    pattern: \S
+  email:
+    type: string
+    format: email
+    maxLength: 254
+  program_id:
+    type: string
+    format: uuid
+  curriculum_version_id:
+    type: string
+    format: uuid
+  adviser_id:
+    type: string
+    format: uuid
+    description: Eligible active initial adviser for the imported student.
+  entry_year:
+    type:
+      - integer
+      - "null"
+    minimum: 1900
+    maximum: 3000
+required:
+  - row_number
+  - student_number
+  - full_name
+  - email
+  - program_id
+  - curriculum_version_id
+  - adviser_id

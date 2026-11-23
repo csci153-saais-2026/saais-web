@@ -1,0 +1,25 @@
+type: object
+additionalProperties: false
+properties:
+  from_curriculum_version_id:
+    type: string
+    format: uuid
+  to_curriculum_version_id:
+    type: string
+    format: uuid
+  source_course_id:
+    type: string
+    format: uuid
+  target_course_id:
+    type: string
+    format: uuid
+  note:
+    type:
+      - string
+      - "null"
+    maxLength: 1000
+required:
+  - from_curriculum_version_id
+  - to_curriculum_version_id
+  - source_course_id
+  - target_course_id

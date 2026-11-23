@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react"
-import { PageHeading } from "@/components/features/page-heading"
-import { Panel } from "@/components/features/panel"
+import { useMemo, useState } from "react";
+import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
 import {
   Table,
   TableBody,
@@ -8,17 +8,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { DeanAuditActionPill } from "@/routes/dean/audit-log/DeanAuditActionPill"
-import { FacultyAuditFilters } from "@/routes/dean/audit-log/FacultyAuditFilters"
-import { useDeanAuditLog } from "@/routes/dean/audit-log/use-dean-audit-log"
-import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState"
+} from "@/components/ui/table";
+import { DeanAuditActionPill } from "@/routes/dean/audit-log/DeanAuditActionPill";
+import { FacultyAuditFilters } from "@/routes/dean/audit-log/FacultyAuditFilters";
+import { useDeanAuditLog } from "@/routes/dean/audit-log/use-dean-audit-log";
+import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
 
 export default function DeanAuditLogPage() {
-  const [person, setPerson] = useState("")
-  const [student, setStudent] = useState("")
-  const [action, setAction] = useState("all")
-  const [fromDate, setFromDate] = useState("")
+  const [person, setPerson] = useState("");
+  const [student, setStudent] = useState("");
+  const [action, setAction] = useState("all");
+  const [fromDate, setFromDate] = useState("");
 
   const {
     entries,
@@ -28,30 +28,31 @@ export default function DeanAuditLogPage() {
     isError,
     isFacultyUnavailable,
     refetch,
-  } = useDeanAuditLog()
+  } = useDeanAuditLog();
 
   const filteredEntries = useMemo(() => {
-    const personQuery = person.trim().toLowerCase()
-    const studentQuery = student.trim().toLowerCase()
+    const personQuery = person.trim().toLowerCase();
+    const studentQuery = student.trim().toLowerCase();
 
     return entries.filter((entry) => {
       const matchesPerson =
-        personQuery === "" || entry.actor.toLowerCase().includes(personQuery)
+        personQuery === "" || entry.actor.toLowerCase().includes(personQuery);
       const matchesStudent =
-        studentQuery === "" || entry.student.toLowerCase().includes(studentQuery)
-      const matchesAction = action === "all" || entry.action === action
-      const matchesDate = fromDate === "" || entry.dayKey >= fromDate
+        studentQuery === "" ||
+        entry.student.toLowerCase().includes(studentQuery);
+      const matchesAction = action === "all" || entry.action === action;
+      const matchesDate = fromDate === "" || entry.dayKey >= fromDate;
 
-      return matchesPerson && matchesStudent && matchesAction && matchesDate
-    })
-  }, [entries, person, student, action, fromDate])
+      return matchesPerson && matchesStudent && matchesAction && matchesDate;
+    });
+  }, [entries, person, student, action, fromDate]);
 
   const handleReset = () => {
-    setPerson("")
-    setStudent("")
-    setAction("all")
-    setFromDate("")
-  }
+    setPerson("");
+    setStudent("");
+    setAction("all");
+    setFromDate("");
+  };
 
   return (
     <div className="space-y-6">
@@ -99,7 +100,10 @@ export default function DeanAuditLogPage() {
               {filteredEntries.length > 0 ? (
                 filteredEntries.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell label="When" className="font-mono text-xs text-muted-foreground">
+                    <TableCell
+                      label="When"
+                      className="font-mono text-xs text-muted-foreground"
+                    >
                       {row.timestamp}
                     </TableCell>
                     <TableCell label="Who" className="font-medium">
@@ -114,7 +118,10 @@ export default function DeanAuditLogPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={5}
+                    className="py-10 text-center text-muted-foreground"
+                  >
                     No audit records match these filters.
                   </TableCell>
                 </TableRow>
@@ -124,5 +131,5 @@ export default function DeanAuditLogPage() {
         </Panel>
       )}
     </div>
-  )
+  );
 }

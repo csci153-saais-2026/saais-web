@@ -1,0 +1,49 @@
+type: object
+additionalProperties: false
+properties:
+  full_name:
+    type: string
+    minLength: 1
+    maxLength: 150
+    pattern: \S
+  role:
+    $ref: "./RoleType.yaml"
+  role_assignments:
+    type: array
+    minItems: 1
+    maxItems: 6
+    items:
+      $ref: "./RoleAssignmentInput.yaml"
+  status:
+    $ref: "./ProfileStatus.yaml"
+  faculty_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  avatar_url:
+    type:
+      - string
+      - "null"
+    maxLength: 2048
+  consultation_hours:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+  student_number:
+    type:
+      - string
+      - "null"
+    minLength: 1
+    maxLength: 64
+minProperties: 1
+description: >-
+  Admin-only account fields; role-specific organization and retained-history checks apply
+  server-side. Student program changes use the curriculum-assignment transaction. Auth
+  identity and profile must remain consistent. Students have no profile mutation operation.

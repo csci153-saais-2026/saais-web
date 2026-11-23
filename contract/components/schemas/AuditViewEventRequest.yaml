@@ -1,0 +1,63 @@
+type: object
+additionalProperties: false
+properties:
+  event_type:
+    type: string
+    enum:
+      - student_record_viewed
+      - report_viewed
+      - pdf_exported
+      - csv_exported
+      - report_exported
+    description: >-
+      Authenticated client view/export audit event type. Auth-lifecycle events
+      (`login_rejected`, `sign_in_succeeded`, `password_changed`) are recorded exclusively by
+      server-side Supabase Auth hooks and Edge Functions.
+  student_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  report_type:
+    type:
+      - string
+      - "null"
+    enum:
+      - adviser_dashboard
+      - department
+      - faculty
+      - institution
+      - null
+  report_filters:
+    type:
+      - object
+      - "null"
+    additionalProperties: false
+    properties:
+      school_term_id:
+        type:
+          - string
+          - "null"
+        format: uuid
+      faculty_id:
+        type:
+          - string
+          - "null"
+        format: uuid
+      department_id:
+        type:
+          - string
+          - "null"
+        format: uuid
+      program_id:
+        type:
+          - string
+          - "null"
+        format: uuid
+  details:
+    type:
+      - string
+      - "null"
+    maxLength: 1000
+required:
+  - event_type

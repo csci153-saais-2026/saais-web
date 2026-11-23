@@ -1,6 +1,6 @@
-import * as React from "react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Panel } from "@/components/features/panel"
+import * as React from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Panel } from "@/components/features/panel";
 
 /** "Your academic adviser" panel: avatar, name, faculty, contact, and an action slot. */
 function AdviserCard({
@@ -11,18 +11,24 @@ function AdviserCard({
   assignedSince,
   action,
 }: {
-  name: string
-  initials: string
-  faculty: string
-  email: string
-  assignedSince: string
-  action?: React.ReactNode
+  name: string;
+  initials: string;
+  faculty: string;
+  email: string;
+  assignedSince: string;
+  action?: React.ReactNode;
 }) {
   return (
-    <Panel title="Your academic adviser" description="Here to help you plan your next step." flush>
+    <Panel
+      title="Your academic adviser"
+      description="Here to help you plan your next step."
+      flush
+    >
       <div className="flex items-center gap-4 px-5 py-5">
         <Avatar className="size-12">
-          <AvatarFallback className="bg-primary font-heading font-bold text-primary-foreground">{initials}</AvatarFallback>
+          <AvatarFallback className="bg-primary font-heading font-bold text-primary-foreground">
+            {initials}
+          </AvatarFallback>
         </Avatar>
         <div>
           <b className="block font-semibold">{name}</b>
@@ -35,7 +41,7 @@ function AdviserCard({
         {action && <div className="mt-2">{action}</div>}
       </div>
     </Panel>
-  )
+  );
 }
 
-export { AdviserCard }
+export { AdviserCard };

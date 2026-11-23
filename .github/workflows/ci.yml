@@ -2,21 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
   pull_request:
-    branches: [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
+    branches:
+      [main, staging, dev, feat/contract-mock, feat/backend, feat/frontend]
     paths-ignore:
-      - 'docs/**'
-      - 'mockup/**'
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE.md'
+      - "docs/**"
+      - "mockup/**"
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE.md"
 
 permissions:
   contents: read
@@ -28,10 +30,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
@@ -63,7 +67,7 @@ jobs:
           fi
 
       - name: Upload Static Redoc Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: openapi-redoc-bundle
           path: docs/openapi/index.html
@@ -79,8 +83,20 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Test changed-file formatting selection
+        run: node --test scripts/check-changed-format.test.js
+
+      - name: Check Prettier Formatting for Changed Files
+        run: npm run format:check
+
       - name: Build Production Bundle
         run: npm run build
+
+      - name: Install Chromium for prototype browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mockup prototype browser tests
+        run: npm run test:prototype:e2e
 
       - name: Check production documentation assets
         run: node --test scripts/docs-build.test.js
@@ -89,6 +105,6 @@ jobs:
         run: npx vitest run --coverage --passWithNoTests
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

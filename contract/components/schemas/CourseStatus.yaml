@@ -1,0 +1,6 @@
+type: string
+enum:
+  - active
+  - inactive
+  - discontinued
+description: Course catalog offering status

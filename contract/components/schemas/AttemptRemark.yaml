@@ -1,0 +1,40 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  authored_by:
+    type: string
+    format: uuid
+  body_text:
+    type: string
+    minLength: 1
+    maxLength: 8000
+    pattern: \S
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+  attempt_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+required:
+  - id
+  - student_id
+  - authored_by
+  - body_text
+  - created_at
+  - attempt_id
+  - curriculum_term_course_id

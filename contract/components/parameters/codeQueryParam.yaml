@@ -1,0 +1,8 @@
+name: code
+in: query
+description: Filter by code equality or pattern matching (e.g. `eq.BSCS`, `ilike.*CS*`)
+required: false
+schema:
+  type: string
+  maxLength: 106
+  pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,100}$

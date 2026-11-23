@@ -1,0 +1,26 @@
+type: object
+additionalProperties: false
+properties:
+  course_id:
+    type: "null"
+  is_elective_slot:
+    const: true
+  slot_type:
+    type: string
+    enum:
+      - elective
+      - ge
+    default: elective
+  slot_label:
+    type: string
+    minLength: 1
+    maxLength: 150
+    pattern: \S
+  nominal_units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+required:
+  - is_elective_slot
+  - nominal_units
+  - slot_label

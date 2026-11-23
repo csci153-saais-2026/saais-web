@@ -1,0 +1,18 @@
+type: object
+additionalProperties: false
+properties:
+  message:
+    type: string
+    minLength: 1
+    maxLength: 4000
+    pattern: \S
+  history:
+    type: array
+    maxItems: 20
+    items:
+      $ref: "./AdvisingAIMessage.yaml"
+    description: >-
+      Optional bounded prior chat turns in the active AI advising drawer session for multi-turn
+      follow-up questions.
+required:
+  - message

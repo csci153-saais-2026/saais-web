@@ -1,0 +1,39 @@
+type: object
+additionalProperties: false
+properties:
+  student_id:
+    type: string
+    format: uuid
+  student_curriculum_assignment_id:
+    type: string
+    format: uuid
+  curriculum_version_id:
+    type: string
+    format: uuid
+  program_id:
+    type: string
+    format: uuid
+  department_id:
+    type: string
+    format: uuid
+  faculty_id:
+    type: string
+    format: uuid
+  adviser_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  entry_year:
+    type:
+      - integer
+      - "null"
+    minimum: 1900
+    maximum: 3000
+required:
+  - student_id
+  - student_curriculum_assignment_id
+  - curriculum_version_id
+  - program_id
+  - department_id
+  - faculty_id

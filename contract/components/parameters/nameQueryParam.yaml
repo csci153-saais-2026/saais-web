@@ -1,0 +1,8 @@
+name: name
+in: query
+description: Filter by name equality or pattern matching
+required: false
+schema:
+  type: string
+  maxLength: 156
+  pattern: ^(?:eq|ilike|like)\.[^\x00-\x1f]{1,150}$

@@ -1,25 +1,30 @@
-import { useState } from "react"
-import { CohortStudentsDialog } from "@/routes/dean/reports/CohortStudentsDialog"
-import { DeanPdfViewerDialog } from "@/routes/dean/reports/DeanPdfViewerDialog"
-import { FacultyBatchGwaTable } from "@/routes/dean/reports/FacultyBatchGwaTable"
-import { FacultyReportHeader } from "@/routes/dean/reports/FacultyReportHeader"
-import { FacultyReportStatsAndDistribution } from "@/routes/dean/reports/FacultyReportStatsAndDistribution"
-import { useDeanReports } from "@/routes/dean/reports/use-dean-reports"
-import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState"
-import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog"
-import { toDeanStudentSummary } from "@/routes/dean/students/to-dean-student-summary"
+import { useState } from "react";
+import { CohortStudentsDialog } from "@/routes/dean/reports/CohortStudentsDialog";
+import { DeanPdfViewerDialog } from "@/routes/dean/reports/DeanPdfViewerDialog";
+import { FacultyBatchGwaTable } from "@/routes/dean/reports/FacultyBatchGwaTable";
+import { FacultyReportHeader } from "@/routes/dean/reports/FacultyReportHeader";
+import { FacultyReportStatsAndDistribution } from "@/routes/dean/reports/FacultyReportStatsAndDistribution";
+import { useDeanReports } from "@/routes/dean/reports/use-dean-reports";
+import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
+import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog";
+import { toDeanStudentSummary } from "@/routes/dean/students/to-dean-student-summary";
 import type {
   BatchCurriculumRow,
   DeanStudentSummary,
   DepartmentFilter,
   FacultyDepartmentReport,
-} from "@/routes/dean/types"
+} from "@/routes/dean/types";
 
 export default function DeanReportsPage() {
-  const [department, setDepartment] = useState<DepartmentFilter>("All departments")
-  const [selectedBatch, setSelectedBatch] = useState<BatchCurriculumRow | null>(null)
-  const [selectedStudent, setSelectedStudent] = useState<DeanStudentSummary | null>(null)
-  const [pdfPreviewReport, setPdfPreviewReport] = useState<FacultyDepartmentReport | null>(null)
+  const [department, setDepartment] =
+    useState<DepartmentFilter>("All departments");
+  const [selectedBatch, setSelectedBatch] = useState<BatchCurriculumRow | null>(
+    null,
+  );
+  const [selectedStudent, setSelectedStudent] =
+    useState<DeanStudentSummary | null>(null);
+  const [pdfPreviewReport, setPdfPreviewReport] =
+    useState<FacultyDepartmentReport | null>(null);
 
   const {
     report,
@@ -31,25 +36,27 @@ export default function DeanReportsPage() {
     isFacultyUnavailable,
     refetch,
     recordView,
-  } = useDeanReports(department)
+  } = useDeanReports(department);
 
   const handleOpenPdfPreview = () => {
-    if (!report) return
-    setPdfPreviewReport(report)
-  }
+    if (!report) return;
+    setPdfPreviewReport(report);
+  };
 
   const handleSelectBatch = (row: BatchCurriculumRow) => {
-    setSelectedBatch(row)
+    setSelectedBatch(row);
     recordView(
       "report_viewed",
       `Report drill-down: batch ${row.batch} (${row.students} students)`,
-    )
-  }
+    );
+  };
 
   const cohortStudents =
     report && selectedBatch
-      ? report.cohortSamples[`${selectedBatch.batch}::${selectedBatch.curriculum}`] ?? []
-      : []
+      ? (report.cohortSamples[
+          `${selectedBatch.batch}::${selectedBatch.curriculum}`
+        ] ?? [])
+      : [];
 
   return (
     <div className="space-y-6">
@@ -88,15 +95,15 @@ export default function DeanReportsPage() {
         students={cohortStudents}
         open={selectedBatch !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedBatch(null)
+          if (!open) setSelectedBatch(null);
         }}
         onOpenStudent={(studentId) => {
           const matched = rosterItems.find(
             (item) => item.student_id === studentId,
-          )
-          setSelectedBatch(null)
+          );
+          setSelectedBatch(null);
           if (matched) {
-            setSelectedStudent(toDeanStudentSummary(matched))
+            setSelectedStudent(toDeanStudentSummary(matched));
           }
         }}
       />
@@ -119,5 +126,5 @@ export default function DeanReportsPage() {
         }
       />
     </div>
-  )
+  );
 }

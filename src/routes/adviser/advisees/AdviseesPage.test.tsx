@@ -1,65 +1,253 @@
-﻿import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, useLocation } from 'react-router'
-import type { ApiSchema } from '@/lib/api'
-import AdviseesPage from './AdviseesPage'
-import { SelectedStudentHeader } from './SelectedStudentHeader'
-import { getRoster, getSelectedStudent } from './advisees.api'
+﻿import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router";
+import type { ApiSchema } from "@/lib/api";
+import AdviseesPage from "./AdviseesPage";
+import { SelectedStudentHeader } from "./SelectedStudentHeader";
+import { getRoster, getSelectedStudent } from "./advisees.api";
 
-const auth = vi.hoisted(() => ({ user: { id: 'adviser-one' } }))
-vi.mock('@/hooks/use-auth', () => ({ useAuth: () => auth }))
-vi.mock('./advisees.api', () => ({ getRoster: vi.fn(), getSelectedStudent: vi.fn() }))
-const student = (id: string, name: string) => ({ student_id: id, full_name: name, student_number: `number-${id}`, email: `${id}@example.test`, program_name: 'Computing', curriculum_label: '2023', year_level: 2, gwa: 1.5, open_flags_count: 0, deficiencies_count: 0, standing: 'good_standing', is_delinquent: false }) as ApiSchema<'StudentRosterItem'>
-const first = student('11111111-1111-4111-8111-111111111111', 'First Student')
-const second = student('22222222-2222-4222-8222-222222222222', 'Second Student')
-afterEach(() => { cleanup(); vi.resetAllMocks(); auth.user = { id: 'adviser-one' } })
+const auth = vi.hoisted(() => ({ user: { id: "adviser-one" } }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => auth }));
+vi.mock("./advisees.api", () => ({
+  getRoster: vi.fn(),
+  getSelectedStudent: vi.fn(),
+}));
+vi.mock("./DeficiencySubjects", () => ({
+  DeficiencySubjects: ({ count }: { count: number }) => (
+    <span>{count ? "CS 101" : "—"}</span>
+  ),
+}));
+const student = (id: string, name: string) =>
+  ({
+    student_id: id,
+    full_name: name,
+    student_number: `number-${id}`,
+    email: `${id}@example.test`,
+    program_name: "Computing",
+    curriculum_label: "2023",
+    year_level: 2,
+    gwa: 1.5,
+    open_flags_count: 0,
+    deficiencies_count: 0,
+    standing: "good_standing",
+    is_delinquent: false,
+  }) as ApiSchema<"StudentRosterItem">;
+const first = student("11111111-1111-4111-8111-111111111111", "First Student");
+const second = student(
+  "22222222-2222-4222-8222-222222222222",
+  "Second Student",
+);
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+  vi.unstubAllGlobals();
+  auth.user = { id: "adviser-one" };
+});
 
-describe('advisee identity', () => {
-  it('opens the selected row by mouse or keyboard', async () => {
-    vi.mocked(getRoster).mockResolvedValue([first, second])
-    function Location() { return <p data-testid="location">{useLocation().pathname}</p> }
-    render(<MemoryRouter><AdviseesPage /><Location /></MemoryRouter>)
-    fireEvent.click((await screen.findByText('Second Student')).closest('tr')!)
-    expect(screen.getByTestId('location').textContent).toBe(`/adviser/advisee/${second.student_id}/checklist`)
-    fireEvent.keyDown(screen.getByRole('row', { name: "Open First Student's record" }), { key: 'Enter' })
-    expect(screen.getByTestId('location').textContent).toBe(`/adviser/advisee/${first.student_id}/checklist`)
-  })
-  it('links each roster row to its own UUID and requests past scope', async () => {
-    vi.mocked(getRoster).mockResolvedValue([first, second])
-    render(<MemoryRouter><AdviseesPage /></MemoryRouter>)
-    expect((await screen.findByRole('link', { name: 'First Student' })).getAttribute('href')).toBe(`/adviser/advisee/${first.student_id}/checklist`)
-    expect(screen.getByRole('link', { name: 'Second Student' }).getAttribute('href')).toBe(`/adviser/advisee/${second.student_id}/checklist`)
-    fireEvent.click(screen.getByRole('button', { name: 'Past' }))
-    expect(await screen.findByText('Second Student')).toBeTruthy()
-    expect(getRoster).toHaveBeenCalledWith('past', '')
-  })
-  it('clears the previous identity on student and account changes', async () => {
-    vi.mocked(getSelectedStudent).mockResolvedValueOnce(first).mockImplementation(() => new Promise(() => {}))
-    const view = render(<SelectedStudentHeader id={first.student_id} />)
-    expect(await screen.findByText('First Student')).toBeTruthy()
-    view.rerender(<SelectedStudentHeader id={second.student_id} />)
-    expect(screen.queryByText('First Student')).toBeNull()
-    expect(screen.getByRole('status').textContent).toContain('Loading')
-    auth.user = { id: 'adviser-two' }
-    view.rerender(<SelectedStudentHeader id={first.student_id} />)
-    expect(screen.queryByText('First Student')).toBeNull()
-  })
-  it('shows loading, retry, search and empty states', async () => {
-    vi.mocked(getRoster).mockRejectedValueOnce(new Error('Roster unavailable')).mockResolvedValue([])
-    render(<MemoryRouter><AdviseesPage /></MemoryRouter>)
-    expect(screen.getByRole('status').textContent).toContain('Loading')
-    expect((await screen.findByRole('alert')).textContent).toContain('Roster unavailable')
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByText('No records match. Try another search or filter.')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Search advisees'), { target: { value: 'number-123' } })
-    await waitFor(() => expect(getRoster).toHaveBeenCalledWith('current', 'number-123'))
-  })
-  it('filters by the shared delinquency indicator', async () => {
-    vi.mocked(getRoster).mockResolvedValue([first, { ...second, is_delinquent: true }])
-    render(<MemoryRouter><AdviseesPage /></MemoryRouter>)
-    expect(await screen.findByText('First Student')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Standing'), { target: { value: 'flagged' } })
-    expect(screen.queryByText('First Student')).toBeNull()
-    expect(screen.getByText('Second Student')).toBeTruthy()
-  })
-})
+describe("advisee identity", () => {
+  it("shows up to ten students per page on mobile", async () => {
+    vi.stubGlobal("innerWidth", 375);
+    const students = Array.from({ length: 12 }, (_, i) =>
+      student(`mobile-${i}`, `Mobile Student ${i}`),
+    );
+    vi.mocked(getRoster).mockResolvedValue(students);
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Mobile Student 9")).toBeTruthy();
+    expect(screen.queryByText("Mobile Student 10")).toBeNull();
+    expect(screen.getByText("Page 1 of 2")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Mobile Student 10")).toBeTruthy();
+    expect(screen.queryByText("Mobile Student 9")).toBeNull();
+  });
+  it("paginates the matching roster and resets the page when the filter changes", async () => {
+    const students = Array.from(
+      { length: 18 },
+      (_, i): ApiSchema<"StudentRosterItem"> => ({
+        ...student(`id-${i}`, `Student ${i}`),
+        standing: i === 17 ? "warning" : "good_standing",
+      }),
+    );
+    vi.mocked(getRoster).mockResolvedValue(students);
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("18 matching records")).toBeTruthy();
+    expect(screen.getByText("Student 0")).toBeTruthy();
+    expect(screen.queryByText("Student 17")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.queryByText("Student 0")).toBeNull();
+    expect(screen.getByText(/Page 2 of/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Standing"), {
+      target: { value: "flagged" },
+    });
+    expect(screen.getByText("Student 17")).toBeTruthy();
+    expect(
+      screen.queryByRole("navigation", { name: "Advisee pages" }),
+    ).toBeNull();
+  });
+  it("opens the selected row by mouse or keyboard", async () => {
+    vi.mocked(getRoster).mockResolvedValue([first, second]);
+    function Location() {
+      return <p data-testid="location">{useLocation().pathname}</p>;
+    }
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+        <Location />
+      </MemoryRouter>,
+    );
+    fireEvent.click((await screen.findByText("Second Student")).closest("tr")!);
+    expect(screen.getByTestId("location").textContent).toBe(
+      `/adviser/advisee/${second.student_id}/checklist`,
+    );
+    fireEvent.keyDown(
+      screen.getByRole("row", { name: "Open First Student's record" }),
+      { key: "Enter" },
+    );
+    expect(screen.getByTestId("location").textContent).toBe(
+      `/adviser/advisee/${first.student_id}/checklist`,
+    );
+  });
+  it("links each roster row to its own UUID and requests past scope", async () => {
+    vi.mocked(getRoster).mockResolvedValue([first, second]);
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+      </MemoryRouter>,
+    );
+    expect(
+      (await screen.findByRole("link", { name: "First Student" })).getAttribute(
+        "href",
+      ),
+    ).toBe(`/adviser/advisee/${first.student_id}/checklist`);
+    expect(
+      screen.getByRole("link", { name: "Second Student" }).getAttribute("href"),
+    ).toBe(`/adviser/advisee/${second.student_id}/checklist`);
+    fireEvent.click(screen.getByRole("button", { name: "Past" }));
+    expect(await screen.findByText("Second Student")).toBeTruthy();
+    expect(getRoster).toHaveBeenCalledWith("past", "");
+  });
+  it("clears the previous identity on student and account changes", async () => {
+    vi.mocked(getSelectedStudent)
+      .mockResolvedValueOnce(first)
+      .mockImplementation(() => new Promise(() => {}));
+    const view = render(<SelectedStudentHeader id={first.student_id} />);
+    expect(await screen.findByText("First Student")).toBeTruthy();
+    view.rerender(<SelectedStudentHeader id={second.student_id} />);
+    expect(screen.queryByText("First Student")).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("Loading");
+    auth.user = { id: "adviser-two" };
+    view.rerender(<SelectedStudentHeader id={first.student_id} />);
+    expect(screen.queryByText("First Student")).toBeNull();
+  });
+  it("shows loading, retry, search and empty states", async () => {
+    vi.mocked(getRoster)
+      .mockRejectedValueOnce(new Error("Roster unavailable"))
+      .mockResolvedValue([]);
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("status").textContent).toContain("Loading");
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Roster unavailable",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByText(
+        "No records match. Try another search or filter.",
+      ),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Search advisees"), {
+      target: { value: "number-123" },
+    });
+    await waitFor(() =>
+      expect(getRoster).toHaveBeenCalledWith("current", "number-123"),
+    );
+  });
+  it("filters by academic standing even when delinquency is recorded separately", async () => {
+    vi.mocked(getRoster).mockResolvedValue([
+      { ...first, is_delinquent: true },
+      { ...second, standing: "probation" },
+    ]);
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("First Student")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Standing"), {
+      target: { value: "flagged" },
+    });
+    expect(screen.queryByText("First Student")).toBeNull();
+    expect(screen.getByText("Second Student")).toBeTruthy();
+  });
+  it("keeps a student with deficiencies in good standing when no flag condition applies", async () => {
+    vi.mocked(getRoster).mockResolvedValue([
+      { ...first, deficiencies_count: 1 },
+      { ...second, standing: "warning" },
+    ]);
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+      </MemoryRouter>,
+    );
+    const row = await screen.findByRole("row", {
+      name: "Open First Student's record",
+    });
+    expect(row.querySelector('[data-status="good"]')?.textContent).toBe(
+      "Good standing",
+    );
+    expect(row.textContent).toContain("CS 101");
+    fireEvent.change(screen.getByLabelText("Standing"), {
+      target: { value: "flagged" },
+    });
+    expect(screen.queryByText("First Student")).toBeNull();
+    expect(screen.getByText("Second Student")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Standing"), {
+      target: { value: "good" },
+    });
+    expect(screen.getByText("First Student")).toBeTruthy();
+    expect(screen.queryByText("Second Student")).toBeNull();
+  });
+  it("keeps a student with an open grade flag in good standing", async () => {
+    vi.mocked(getRoster).mockResolvedValue([
+      first,
+      { ...second, open_flags_count: 1, deficiencies_count: 1 },
+    ]);
+    render(
+      <MemoryRouter>
+        <AdviseesPage />
+      </MemoryRouter>,
+    );
+    const row = await screen.findByRole("row", {
+      name: "Open Second Student's record",
+    });
+    expect(row.querySelector('[data-status="good"]')?.textContent).toBe(
+      "Good standing",
+    );
+    expect(row.textContent).toContain("CS 101");
+    fireEvent.change(screen.getByLabelText("Standing"), {
+      target: { value: "flagged" },
+    });
+    expect(screen.queryByText("First Student")).toBeNull();
+    expect(screen.queryByText("Second Student")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Standing"), {
+      target: { value: "good" },
+    });
+    expect(screen.getByText("Second Student")).toBeTruthy();
+  });
+});
