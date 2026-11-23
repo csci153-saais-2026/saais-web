@@ -159,7 +159,7 @@ function InvitationActions({
           onClick={() => resend.mutate(account.profile.id)}
         >
           {resend.isPending
-            ? "Resendingâ€¦"
+            ? "Resending…"
             : resend.isSuccess
               ? "Invitation resent"
               : "Resend invitation"}
@@ -208,7 +208,7 @@ function InvitationActions({
                 disabled={targetBusy}
                 onClick={() => revoke.mutate(account.profile.id)}
               >
-                {revoke.isPending ? "Revokingâ€¦" : "Confirm revocation"}
+                {revoke.isPending ? "Revoking…" : "Confirm revocation"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -388,7 +388,7 @@ export default function AccountsPage() {
           departmentName.data ??
           (departmentName.isError
             ? "Department details unavailable."
-            : "Loading departmentâ€¦")
+            : "Loading department…")
         }
         actions={scope.status === "ready" ? <InviteAccountDialog /> : undefined}
       />
