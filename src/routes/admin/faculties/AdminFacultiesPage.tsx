@@ -134,7 +134,11 @@ export default function AdminFacultiesPage() {
   const facultyColumns = [
     {
       header: "Faculty",
-      cell: (faculty: Faculty) => faculty.name,
+      cell: (faculty: Faculty) => (
+        <span className="block max-w-72 truncate" title={faculty.name}>
+          {faculty.name}
+        </span>
+      ),
     },
     {
       header: "Code",
@@ -162,7 +166,11 @@ export default function AdminFacultiesPage() {
   const departmentColumns = [
     {
       header: "Department",
-      cell: (department: Department) => department.name,
+      cell: (department: Department) => (
+        <span className="block max-w-72 truncate" title={department.name}>
+          {department.name}
+        </span>
+      ),
     },
     {
       header: "Code",
@@ -171,8 +179,15 @@ export default function AdminFacultiesPage() {
     },
     {
       header: "Parent faculty",
-      cell: (department: Department) =>
-        facultiesById.get(department.faculty_id)?.name ?? "Unknown faculty",
+      cell: (department: Department) => {
+        const name =
+          facultiesById.get(department.faculty_id)?.name ?? "Unknown faculty";
+        return (
+          <span className="block max-w-72 truncate" title={name}>
+            {name}
+          </span>
+        );
+      },
     },
     {
       header: "Actions",

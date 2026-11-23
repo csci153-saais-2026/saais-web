@@ -157,7 +157,12 @@ export default function DepartmentReportsPage() {
                     className="py-3 first:pt-0 last:pb-0"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <strong>{curriculum.name}</strong>
+                      <strong
+                        className="min-w-0 max-w-full truncate"
+                        title={curriculum.name}
+                      >
+                        {curriculum.name}
+                      </strong>
                       <StatusBadge
                         status={
                           curriculum.status === "Current"

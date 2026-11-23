@@ -228,7 +228,10 @@ export default function AdviserAssignmentsPage() {
                   className={`${TD} whitespace-normal`}
                 >
                   <div className="min-w-0">
-                    <span className="block text-[13.5px] font-semibold">
+                    <span
+                      className="block max-w-64 truncate text-[13.5px] font-semibold"
+                      title={student.name}
+                    >
                       {student.name}
                     </span>
                     <span className="mt-0.5 block font-mono text-xs text-muted-foreground">

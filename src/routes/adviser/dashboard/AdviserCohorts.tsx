@@ -91,7 +91,8 @@ function CohortStudents({
                   >
                     <td className="py-3 pr-3">
                       <Link
-                        className="font-semibold text-primary underline"
+                        title={student.full_name}
+                        className="block max-w-64 truncate font-semibold text-primary underline"
                         to={`/adviser/advisee/${encodeURIComponent(student.student_id)}/checklist`}
                       >
                         {student.full_name}

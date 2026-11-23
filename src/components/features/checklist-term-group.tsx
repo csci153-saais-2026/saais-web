@@ -67,9 +67,14 @@ function ChecklistTermGroup({
     >
       <CollapsibleTrigger className="flex w-full items-center gap-4 bg-secondary px-5 py-4 text-left">
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold">{title}</span>
+          <span className="block truncate font-semibold" title={title}>
+            {title}
+          </span>
           {description && (
-            <span className="block text-sm text-muted-foreground">
+            <span
+              className="block truncate text-sm text-muted-foreground"
+              title={description}
+            >
               {description}
             </span>
           )}
@@ -105,7 +110,10 @@ function ChecklistTermGroup({
               <TableRow key={r.code}>
                 <TableCell>
                   <b className="block font-semibold">{r.code}</b>
-                  <span className="text-xs text-muted-foreground">
+                  <span
+                    className="block max-w-64 truncate text-xs text-muted-foreground"
+                    title={r.title}
+                  >
                     {r.title}
                   </span>
                 </TableCell>
@@ -116,9 +124,14 @@ function ChecklistTermGroup({
                   <StatusBadge status={r.status} />
                 </TableCell>
                 <TableCell>
-                  <span className="block">{r.source}</span>
+                  <span className="block max-w-56 truncate" title={r.source}>
+                    {r.source}
+                  </span>
                   {r.sourceDetail && (
-                    <span className="text-xs text-muted-foreground">
+                    <span
+                      className="block max-w-56 truncate text-xs text-muted-foreground"
+                      title={r.sourceDetail}
+                    >
                       {r.sourceDetail}
                     </span>
                   )}

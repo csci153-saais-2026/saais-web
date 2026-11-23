@@ -36,11 +36,14 @@ function Panel({
       )}
     >
       <CardHeader className="border-b border-border px-5 py-4">
-        <CardTitle className="font-sans text-base font-semibold">
+        <CardTitle
+          className="min-w-0 truncate font-sans text-base font-semibold"
+          title={title}
+        >
           {title}
         </CardTitle>
         {description && (
-          <CardDescription className="text-muted-foreground">
+          <CardDescription className="line-clamp-2 min-w-0 text-muted-foreground">
             {description}
           </CardDescription>
         )}

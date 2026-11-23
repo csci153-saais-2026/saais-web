@@ -246,7 +246,10 @@ export function TermGradesPanel({
                         {code}
                       </strong>
                       {title && (
-                        <span className="block text-caption text-muted-foreground">
+                        <span
+                          className="line-clamp-2 block text-caption text-muted-foreground"
+                          title={title}
+                        >
                           {title}
                         </span>
                       )}

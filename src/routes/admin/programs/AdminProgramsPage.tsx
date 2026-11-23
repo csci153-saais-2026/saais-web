@@ -265,8 +265,10 @@ export default function AdminProgramsPage() {
     {
       header: "Program",
       cell: (program: Program) => (
-        <div>
-          <p className="font-medium">{program.name}</p>
+        <div className="min-w-0">
+          <p className="max-w-72 truncate font-medium" title={program.name}>
+            {program.name}
+          </p>
           <p className="text-xs text-muted-foreground">
             {program.nominal_duration} years
           </p>
@@ -279,9 +281,11 @@ export default function AdminProgramsPage() {
         const department = departmentsById.get(program.department_id);
         if (!department) return "Unknown department";
         return (
-          <div>
-            <p>{department.name}</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <p className="max-w-64 truncate" title={department.name}>
+              {department.name}
+            </p>
+            <p className="max-w-64 truncate text-xs text-muted-foreground">
               {facultiesById.get(department.faculty_id)?.name ??
                 "Unknown faculty"}
             </p>

@@ -157,11 +157,13 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
     {
       header: "Course",
       cell: (item) => (
-        <div className="flex flex-col">
+        <div className="flex max-w-72 min-w-0 flex-col">
           <span className="font-medium text-foreground">
             {item.course.code}
           </span>
-          <span>{item.course.title}</span>
+          <span className="truncate" title={item.course.title}>
+            {item.course.title}
+          </span>
           {item.course.status === "discontinued" && (
             <span className="text-xs text-muted-foreground">Discontinued</span>
           )}
@@ -178,7 +180,14 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
     },
     {
       header: "Instructor",
-      cell: (item) => item.offering.instructor ?? "Not specified",
+      cell: (item) => (
+        <span
+          className="block max-w-56 truncate"
+          title={item.offering.instructor ?? undefined}
+        >
+          {item.offering.instructor ?? "Not specified"}
+        </span>
+      ),
     },
     {
       header: "Availability",

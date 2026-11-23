@@ -489,7 +489,10 @@ export default function AdviserAssignmentsPage() {
                   label="Student"
                   className={`${TD} whitespace-normal`}
                 >
-                  <span className="block font-semibold">
+                  <span
+                    className="block max-w-64 truncate font-semibold"
+                    title={item.student.full_name}
+                  >
                     {item.student.full_name}
                   </span>
                   <span className="block font-mono text-xs text-muted-foreground">

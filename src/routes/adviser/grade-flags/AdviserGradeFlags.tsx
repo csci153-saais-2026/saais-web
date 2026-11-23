@@ -265,7 +265,12 @@ function FlagList({ userId }: { userId: string }) {
                 );
                 return (
                   <>
-                    {student?.full_name ?? "Unavailable"}
+                    <span
+                      className="block max-w-56 truncate"
+                      title={student?.full_name}
+                    >
+                      {student?.full_name ?? "Unavailable"}
+                    </span>
                     <span className="block text-xs">
                       {student?.student_number}
                     </span>
@@ -283,14 +288,28 @@ function FlagList({ userId }: { userId: string }) {
                   (o) => o.id === a?.course_offering_id,
                 );
                 const c = data.courses.find((c) => c.id === o?.course_id);
-                return c ? `${c.code} · ${c.title}` : "Course unavailable";
+                const label = c
+                  ? `${c.code} · ${c.title}`
+                  : "Course unavailable";
+                return (
+                  <span className="block max-w-64 truncate" title={label}>
+                    {label}
+                  </span>
+                );
               },
             },
             {
               header: "Reported grade",
               cell: (r) => r.reported_grade_text ?? "—",
             },
-            { header: "Comment", cell: (r) => r.details },
+            {
+              header: "Comment",
+              cell: (r) => (
+                <span className="block max-w-72 truncate" title={r.details}>
+                  {r.details}
+                </span>
+              ),
+            },
             {
               header: "Raised",
               cell: (r) => new Date(r.created_at).toLocaleDateString(),

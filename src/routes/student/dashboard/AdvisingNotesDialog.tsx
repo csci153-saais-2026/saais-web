@@ -141,17 +141,25 @@ export function AdvisingNotesDialog({
                   data-slot="advising-note-row"
                   className="px-5 py-4"
                 >
-                  <p className="text-body whitespace-pre-wrap text-foreground">
+                  <p className="text-body whitespace-pre-wrap text-foreground wrap-anywhere">
                     {note.body_text}
                   </p>
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-caption text-muted-2">
-                    <strong className="font-semibold text-foreground">
+                    <strong
+                      className="max-w-full truncate font-semibold text-foreground"
+                      title={authorLabel}
+                    >
                       {authorLabel}
                     </strong>
                     {note.author_role_label && (
                       <>
                         <span aria-hidden="true">·</span>
-                        <span>{note.author_role_label}</span>
+                        <span
+                          className="max-w-full truncate"
+                          title={note.author_role_label}
+                        >
+                          {note.author_role_label}
+                        </span>
                       </>
                     )}
                     <span aria-hidden="true">·</span>

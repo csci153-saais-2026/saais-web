@@ -216,7 +216,10 @@ export default function InvitePage() {
         ) : preview ? (
           <div className="grid gap-5">
             <div>
-              <h2 className="text-2xl font-bold">
+              <h2
+                className="line-clamp-2 text-2xl font-bold wrap-anywhere"
+                title={preview.full_name}
+              >
                 Welcome, {preview.full_name}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -229,7 +232,7 @@ export default function InvitePage() {
             </div>
 
             <div className="p-3.5 bg-muted/50 rounded-md border text-xs grid gap-1.5">
-              <div>
+              <div className="min-w-0 wrap-anywhere">
                 <span className="text-muted-foreground">Email: </span>
                 <span className="font-medium">{preview.email}</span>
               </div>

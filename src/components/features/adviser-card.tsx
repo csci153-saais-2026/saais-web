@@ -25,18 +25,27 @@ function AdviserCard({
       flush
     >
       <div className="flex items-center gap-4 px-5 py-5">
-        <Avatar className="size-12">
+        <Avatar className="size-12 shrink-0">
           <AvatarFallback className="bg-primary font-heading font-bold text-primary-foreground">
             {initials}
           </AvatarFallback>
         </Avatar>
-        <div>
-          <b className="block font-semibold">{name}</b>
-          <span className="text-sm text-muted-foreground">{faculty}</span>
+        <div className="min-w-0">
+          <b className="block truncate font-semibold" title={name}>
+            {name}
+          </b>
+          <span
+            className="block truncate text-sm text-muted-foreground"
+            title={faculty}
+          >
+            {faculty}
+          </span>
         </div>
       </div>
       <div className="grid gap-1 border-t border-border bg-secondary px-5 py-4 text-sm">
-        <span>{email}</span>
+        <span className="truncate" title={email}>
+          {email}
+        </span>
         <span>Assigned since {assignedSince}</span>
         {action && <div className="mt-2">{action}</div>}
       </div>

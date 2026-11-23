@@ -155,10 +155,11 @@ function notificationContent(item: NotificationItem) {
           item.unread ? "bg-gold" : "bg-transparent",
         )}
       />
-      <span>
+      <span className="min-w-0 flex-1">
         <strong
+          title={item.title}
           className={cn(
-            "block text-[13.5px]",
+            "line-clamp-2 block text-[13.5px]",
             item.unread ? "font-semibold" : "font-medium",
           )}
         >
