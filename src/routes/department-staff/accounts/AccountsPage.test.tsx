@@ -167,29 +167,38 @@ describe("Department Staff accounts directory", () => {
     expect(within(row).getByText("Adviser")).toBeTruthy();
   });
 
-  it("offers only department-scoped roles in the primary role selector", async () => {
+  it("offers department-scoped role checkboxes with Student exclusivity", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
     });
     renderAccounts();
     fireEvent.click(await screen.findByRole("button", { name: "Add account" }));
-    fireEvent.click(screen.getByRole("combobox", { name: "Primary role" }));
-    for (const role of [
-      "Student",
-      "Adviser",
-      "Department Staff",
-      "Department Head",
-    ]) {
-      expect(await screen.findByRole("option", { name: role })).toBeTruthy();
-    }
-    expect(screen.queryByRole("option", { name: "Dean" })).toBeNull();
-    expect(screen.queryByRole("option", { name: "Admin" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Student" })).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Adviser" })).toBeTruthy();
+    expect(
+      screen.getByRole("checkbox", { name: "Department Staff" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("checkbox", { name: "Department Head" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: "Dean" })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Admin" })).toBeNull();
+
+    expect(screen.getByRole("checkbox", { name: "Student" }).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("checkbox", { name: "Adviser" }).getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Student" }));
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Adviser" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
   });
 
   it("shows validation messages when submitting an empty invitation", async () => {
     renderAccounts();
     fireEvent.click(await screen.findByRole("button", { name: "Add account" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Student" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
 
@@ -499,8 +508,9 @@ describe("Department Staff accounts directory", () => {
       screen.getByRole("textbox", { name: "Institutional email" }),
       { target: { value: "new.student@vsu.edu.ph" } },
     );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Student" }));
     fireEvent.change(
-      screen.getByRole("textbox", { name: "Canonical student number" }),
+      screen.getByRole("textbox", { name: "Student number" }),
       { target: { value: "26-1-00042" } },
     );
     expect(
@@ -514,13 +524,13 @@ describe("Department Staff accounts directory", () => {
       }),
     );
     fireEvent.click(
-      screen.getByRole("combobox", { name: "Active curriculum version" }),
+      screen.getByRole("combobox", { name: "Curriculum" }),
     );
     fireEvent.click(
       await screen.findByRole("option", { name: "BSCS 2024-2025 v1" }),
     );
     fireEvent.click(
-      screen.getByRole("combobox", { name: "Eligible initial adviser" }),
+      screen.getByRole("combobox", { name: "Initial adviser" }),
     );
     fireEvent.click(
       await screen.findByRole("option", {
@@ -580,8 +590,7 @@ describe("Department Staff accounts directory", () => {
       screen.getByRole("textbox", { name: "Institutional email" }),
       { target: { value: "duplicate.person@vsu.edu.ph" } },
     );
-    fireEvent.click(screen.getByRole("combobox", { name: "Primary role" }));
-    fireEvent.click(await screen.findByRole("option", { name: "Adviser" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Adviser" }));
     fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
 
     expect(
@@ -615,8 +624,8 @@ describe("Department Staff accounts directory", () => {
       screen.getByRole("textbox", { name: "Institutional email" }),
       { target: { value: MOCK_PERSONAS.department_staff.email } },
     );
-    fireEvent.click(screen.getByRole("combobox", { name: "Primary role" }));
-    fireEvent.click(await screen.findByRole("option", { name: "Adviser" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Student" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Adviser" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
     expect((await screen.findByRole("alert")).textContent).toContain(
