@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -60,74 +61,123 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
     ) ?? [];
   return (
     <>
-      {!data && !result.error && (
-        <p role="status">Loading curriculum history…</p>
-      )}
-      {result.error && (
-        <div role="alert">
-          <p>{result.error}</p>
-          <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {error && <p role="alert">{error}</p>}
-      {message && <p role="status">{message}</p>}
-      {data && (
-        <>
-          <DataTablePanel
-            title="Curriculum history"
-            description="Every curriculum this student has followed, with the transfer that moved them."
-            rows={data.assignments}
-            rowKey={(row) => row.id}
-            columns={[
-              {
-                header: "Curriculum version",
-                cell: (row) => (
-                  <Truncate
-                    text={
-                      data.versions.find(
-                        (version) => version.id === row.curriculum_version_id,
-                      )?.version_label ?? row.curriculum_version_id
-                    }
-                    className="max-w-64"
-                  />
-                ),
-              },
-              { header: "From", cell: (row) => row.start_date },
-              { header: "To", cell: (row) => row.end_date ?? "Current" },
-              {
-                header: "Note",
-                cell: (row) => (
-                  <Truncate
-                    text={row.change_note ?? "—"}
-                    className="max-w-72"
-                  />
-                ),
-              },
-            ]}
-          />
-          {!data.canEdit && (
-            <p className="mb-4 text-sm">
-              Historical record: read-only. Preview remains available when
-              authorized.
-            </p>
-          )}
-          <div className="grid items-stretch gap-x-4 lg:grid-cols-2 [&>div]:h-[calc(100%-1rem)]">
-            {data.canEdit && (
+      <AccountSkeleton
+        id="AdviseeCurriculum-1"
+        loading={!data && !result.error}
+        label="Loading curriculum history…"
+      >
+        {result.error && (
+          <div role="alert">
+            <p>{result.error}</p>
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              Try again
+            </Button>
+          </div>
+        )}
+        {error && <p role="alert">{error}</p>}
+        {message && <p role="status">{message}</p>}
+        {data && (
+          <>
+            <DataTablePanel
+              title="Curriculum history"
+              description="Every curriculum this student has followed, with the transfer that moved them."
+              rows={data.assignments}
+              rowKey={(row) => row.id}
+              columns={[
+                {
+                  header: "Curriculum version",
+                  cell: (row) => (
+                    <Truncate
+                      text={
+                        data.versions.find(
+                          (version) => version.id === row.curriculum_version_id,
+                        )?.version_label ?? row.curriculum_version_id
+                      }
+                      className="max-w-64"
+                    />
+                  ),
+                },
+                { header: "From", cell: (row) => row.start_date },
+                { header: "To", cell: (row) => row.end_date ?? "Current" },
+                {
+                  header: "Note",
+                  cell: (row) => (
+                    <Truncate
+                      text={row.change_note ?? "—"}
+                      className="max-w-72"
+                    />
+                  ),
+                },
+              ]}
+            />
+            {!data.canEdit && (
+              <p className="mb-4 text-sm">
+                Historical record: read-only. Preview remains available when
+                authorized.
+              </p>
+            )}
+            <div className="grid items-stretch gap-x-4 lg:grid-cols-2 [&>div]:h-[calc(100%-1rem)]">
+              {data.canEdit && (
+                <Panel
+                  title="Endorse a curriculum transfer"
+                  description="The Department Head approves the transfer. Nothing changes until then."
+                >
+                  <div className="grid gap-4">
+                    <label className="grid gap-1 text-sm font-medium">
+                      Transfer to
+                      <select
+                        className="rounded-md border border-border bg-background px-3 py-2"
+                        value={transferTarget}
+                        onChange={(event) => {
+                          setTransferTarget(event.target.value);
+                          setMessage("");
+                        }}
+                      >
+                        <option value="">Select curriculum</option>
+                        {choices.map((version) => (
+                          <option key={version.id} value={version.id}>
+                            {version.version_label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-sm font-medium">
+                      Reason
+                      <Textarea
+                        maxLength={REASON_MAX_LENGTH}
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                      />
+                    </label>
+                    <div>
+                      <Button
+                        disabled={!transferTarget || !reason.trim() || busy}
+                        onClick={() => void run("endorse")}
+                      >
+                        Endorse transfer
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Courses with matching identities and approved
+                      equivalencies are reviewed as part of the transfer.
+                    </p>
+                  </div>
+                </Panel>
+              )}
               <Panel
-                title="Endorse a curriculum transfer"
-                description="The Department Head approves the transfer. Nothing changes until then."
+                title="Curriculum shift preview"
+                description="Explore another curriculum without changing the record."
               >
                 <div className="grid gap-4">
                   <label className="grid gap-1 text-sm font-medium">
-                    Transfer to
+                    Target curriculum
                     <select
                       className="rounded-md border border-border bg-background px-3 py-2"
-                      value={transferTarget}
+                      value={previewTarget}
+                      disabled={busy}
                       onChange={(event) => {
-                        setTransferTarget(event.target.value);
-                        setMessage("");
+                        setPreviewTarget(event.target.value);
+                        setPreview(null);
                       }}
                     >
                       <option value="">Select curriculum</option>
@@ -138,94 +188,48 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
                       ))}
                     </select>
                   </label>
-                  <label className="grid gap-1 text-sm font-medium">
-                    Reason
-                    <Textarea
-                      maxLength={REASON_MAX_LENGTH}
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                    />
-                  </label>
                   <div>
                     <Button
-                      disabled={!transferTarget || !reason.trim() || busy}
-                      onClick={() => void run("endorse")}
+                      variant="outline"
+                      disabled={!previewTarget || busy}
+                      onClick={() => void run("preview")}
                     >
-                      Endorse transfer
+                      Preview shift
                     </Button>
                   </div>
+                  {preview && (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {[
+                        ["Carried units", preview.carried_units],
+                        ["Lost units", preview.lost_units],
+                        [
+                          "Projected GWA",
+                          preview.projected_gwa?.toFixed(2) ?? "—",
+                        ],
+                      ].map(([label, value]) => (
+                        <div
+                          key={label}
+                          className="rounded-md border border-border bg-background p-4"
+                        >
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                            {label}
+                          </p>
+                          <p className="mt-2 text-xl font-semibold text-primary">
+                            {value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
-                    Courses with matching identities and approved equivalencies
-                    are reviewed as part of the transfer.
+                    Read-only simulation. No curriculum assignment is changed.
                   </p>
                 </div>
               </Panel>
-            )}
-            <Panel
-              title="Curriculum shift preview"
-              description="Explore another curriculum without changing the record."
-            >
-              <div className="grid gap-4">
-                <label className="grid gap-1 text-sm font-medium">
-                  Target curriculum
-                  <select
-                    className="rounded-md border border-border bg-background px-3 py-2"
-                    value={previewTarget}
-                    disabled={busy}
-                    onChange={(event) => {
-                      setPreviewTarget(event.target.value);
-                      setPreview(null);
-                    }}
-                  >
-                    <option value="">Select curriculum</option>
-                    {choices.map((version) => (
-                      <option key={version.id} value={version.id}>
-                        {version.version_label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div>
-                  <Button
-                    variant="outline"
-                    disabled={!previewTarget || busy}
-                    onClick={() => void run("preview")}
-                  >
-                    Preview shift
-                  </Button>
-                </div>
-                {preview && (
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {[
-                      ["Carried units", preview.carried_units],
-                      ["Lost units", preview.lost_units],
-                      [
-                        "Projected GWA",
-                        preview.projected_gwa?.toFixed(2) ?? "—",
-                      ],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="rounded-md border border-border bg-background p-4"
-                      >
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                          {label}
-                        </p>
-                        <p className="mt-2 text-xl font-semibold text-primary">
-                          {value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  Read-only simulation. No curriculum assignment is changed.
-                </p>
-              </div>
-            </Panel>
-          </div>
-        </>
-      )}
+            </div>
+          </>
+        )}
+      </AccountSkeleton>
     </>
   );
 }

@@ -1,4 +1,5 @@
-﻿import { useState, type FormEvent } from "react";
+import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { useState, type FormEvent } from "react";
 import { FormField } from "@/components/features/form-field";
 import { AlertIcon } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -135,7 +136,9 @@ export function ReassignAdviserDialog({
               </SelectContent>
             </Select>
           </FormField>
-          {advisersLoading && <p role="status">Loading advisers…</p>}
+          {advisersLoading && (
+            <TableSkeleton rows={4} columns={4} label="Loading advisers…" />
+          )}
           {advisersError && (
             <div role="alert">
               Could not load advisers.{" "}

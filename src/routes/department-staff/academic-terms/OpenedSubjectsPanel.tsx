@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useState } from "react";
 import {
   DataTablePanel,
@@ -303,53 +304,57 @@ function OpenedSubjectsForTerm({ term }: { term: SchoolTerm }) {
             </select>
           </div>
         </div>
-        {curricula.isPending && (
-          <p role="status" className="mt-4 text-sm text-muted-foreground">
-            Loading curriculum filters…
-          </p>
-        )}
-        {curricula.isError && (
-          <div className="mt-4 space-y-3">
-            <p role="alert" className="text-sm text-destructive">
-              {errorMessage(curricula.error, "curriculum versions")}
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={curricula.isFetching}
-              onClick={() => void curricula.refetch()}
-            >
-              {curricula.isFetching ? "Retrying…" : "Retry curriculum versions"}
-            </Button>
-          </div>
-        )}
-        {selectedVersion && curriculum.isPending && (
-          <p role="status" className="mt-4 text-sm text-muted-foreground">
-            Loading curriculum year standings…
-          </p>
-        )}
-        {selectedVersion && curriculum.isError && (
-          <div className="mt-4 space-y-3">
-            <p role="alert" className="text-sm text-destructive">
-              {errorMessage(curriculum.error, "curriculum requirements")}
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={curriculum.isFetching}
-              onClick={() => void curriculum.refetch()}
-            >
-              {curriculum.isFetching
-                ? "Retrying…"
-                : "Retry curriculum requirements"}
-            </Button>
-          </div>
-        )}
-        {message && (
-          <p role="status" className="mt-4 text-sm text-muted-foreground">
-            {message}
-          </p>
-        )}
+        <AccountSkeleton
+          id="OpenedSubjectsPanel-1"
+          loading={curricula.isPending}
+          label="Loading curriculum filters…"
+        >
+          {curricula.isError && (
+            <div className="mt-4 space-y-3">
+              <p role="alert" className="text-sm text-destructive">
+                {errorMessage(curricula.error, "curriculum versions")}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={curricula.isFetching}
+                onClick={() => void curricula.refetch()}
+              >
+                {curricula.isFetching
+                  ? "Retrying…"
+                  : "Retry curriculum versions"}
+              </Button>
+            </div>
+          )}
+          <AccountSkeleton
+            id="OpenedSubjectsPanel-2"
+            loading={selectedVersion && curriculum.isPending}
+            label="Loading curriculum year standings…"
+          >
+            {selectedVersion && curriculum.isError && (
+              <div className="mt-4 space-y-3">
+                <p role="alert" className="text-sm text-destructive">
+                  {errorMessage(curriculum.error, "curriculum requirements")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={curriculum.isFetching}
+                  onClick={() => void curriculum.refetch()}
+                >
+                  {curriculum.isFetching
+                    ? "Retrying…"
+                    : "Retry curriculum requirements"}
+                </Button>
+              </div>
+            )}
+            {message && (
+              <p role="status" className="mt-4 text-sm text-muted-foreground">
+                {message}
+              </p>
+            )}
+          </AccountSkeleton>
+        </AccountSkeleton>
       </Panel>
 
       {!curriculumReady ? null : offerings.isPending ? (

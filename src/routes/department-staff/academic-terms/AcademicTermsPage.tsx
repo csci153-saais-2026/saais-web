@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { AlertIcon, PlusIcon } from "@/components/icons";
 import {
@@ -217,9 +218,11 @@ export default function AcademicTermsPage() {
 
       {academicTerms.isPending && (
         <Panel title="Academic term history">
-          <p role="status" className="p-6 text-sm text-muted-foreground">
-            Loading academic terms and department encoding status…
-          </p>
+          <TableSkeleton
+            rows={4}
+            columns={4}
+            label="Loading academic terms and department encoding status…"
+          />
         </Panel>
       )}
 

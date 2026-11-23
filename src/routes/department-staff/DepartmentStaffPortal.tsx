@@ -1,3 +1,7 @@
+import {
+  PageSkeleton,
+  LinesSkeleton,
+} from "@/components/features/loading-skeletons";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import { Panel } from "@/components/features/panel";
@@ -33,7 +37,10 @@ function DepartmentStaffContent() {
         >
           <div className="border rounded-md bg-muted/20 p-6 text-sm text-muted-foreground">
             {scope.status === "loading" && (
-              <p role="status">Loading your authorized department scope…</p>
+              <LinesSkeleton
+                lines={2}
+                label="Loading your authorized department scope…"
+              />
             )}
             {scope.status === "clearing" && (
               <p role="status">Switching department scope…</p>
@@ -93,7 +100,7 @@ function DepartmentStaffContent() {
             )}
           </div>
           <Suspense
-            fallback={<p role="status">Loading Department Staff page…</p>}
+            fallback={<PageSkeleton label="Loading Department Staff page…" />}
           >
             {isPortalIndex ? (
               <Navigate to="/department-staff/students" replace />

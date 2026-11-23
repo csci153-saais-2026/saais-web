@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -626,15 +627,12 @@ export function StudentChecklistPage({ studentId }: { studentId: string }) {
     return buildChecklistTermSections(checklistQuery.data, metaQuery.data);
   }, [checklistQuery.data, metaQuery.data]);
 
-  if (checklistQuery.isPending || metaQuery.isPending) {
-    return <p role="status">Loading...</p>;
-  }
-
   if (
-    checklistQuery.isError ||
-    metaQuery.isError ||
-    !checklistQuery.data ||
-    !metaQuery.data
+    !(checklistQuery.isPending || metaQuery.isPending) &&
+    (checklistQuery.isError ||
+      metaQuery.isError ||
+      !checklistQuery.data ||
+      !metaQuery.data)
   ) {
     return (
       <Panel
@@ -655,20 +653,30 @@ export function StudentChecklistPage({ studentId }: { studentId: string }) {
   }
 
   return (
-    <StudentChecklistView
-      summary={metaQuery.data.summary}
-      terms={terms}
-      studentName={metaQuery.data.studentName}
-      studentNumber={metaQuery.data.studentNumber}
-      programLabel={metaQuery.data.programLabel}
-      curriculumLabel={metaQuery.data.curriculumLabel}
-      adviserName={metaQuery.data.adviserName}
-      department={metaQuery.data.department}
-      faculty={metaQuery.data.faculty}
-      onPrintReport={() => {
-        void exportMutation.mutateAsync(undefined).catch(() => undefined);
-      }}
-    />
+    <AccountSkeleton
+      id="student-checklist"
+      data={
+        checklistQuery.isPending || metaQuery.isPending ? null : metaQuery.data
+      }
+      label="Loading..."
+    >
+      {(meta) => (
+        <StudentChecklistView
+          summary={meta.summary}
+          terms={terms}
+          studentName={meta.studentName}
+          studentNumber={meta.studentNumber}
+          programLabel={meta.programLabel}
+          curriculumLabel={meta.curriculumLabel}
+          adviserName={meta.adviserName}
+          department={meta.department}
+          faculty={meta.faculty}
+          onPrintReport={() => {
+            void exportMutation.mutateAsync(undefined).catch(() => undefined);
+          }}
+        />
+      )}
+    </AccountSkeleton>
   );
 }
 

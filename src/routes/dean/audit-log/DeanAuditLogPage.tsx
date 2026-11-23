@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
@@ -58,7 +59,7 @@ export default function DeanAuditLogPage() {
     <div className="space-y-6">
       <PageHeading title="Audit log" subtitle={facultyName ?? undefined} />
 
-      {!hasData || isLoading || isError || isFacultyUnavailable ? (
+      {(!hasData && !isLoading) || isError || isFacultyUnavailable ? (
         <DeanQueryState
           isLoading={isLoading}
           isError={isError}
@@ -69,85 +70,91 @@ export default function DeanAuditLogPage() {
           onRetry={refetch}
         />
       ) : (
-        <Panel
-          title="Audit events"
-          description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
-          flush
+        <AccountSkeleton
+          id="dean-audit-log"
+          loading={isLoading}
+          label="Loading the audit log…"
         >
-          <FacultyAuditFilters
-            person={person}
-            onPersonChange={setPerson}
-            student={student}
-            onStudentChange={setStudent}
-            action={action}
-            onActionChange={setAction}
-            fromDate={fromDate}
-            onFromDateChange={setFromDate}
-            onReset={handleReset}
-          />
+          <Panel
+            title="Audit events"
+            description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
+            flush
+          >
+            <FacultyAuditFilters
+              person={person}
+              onPersonChange={setPerson}
+              student={student}
+              onStudentChange={setStudent}
+              action={action}
+              onActionChange={setAction}
+              fromDate={fromDate}
+              onFromDateChange={setFromDate}
+              onReset={handleReset}
+            />
 
-          <Table responsive>
-            <TableHeader>
-              <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>Who</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEntries.length > 0 ? (
-                filteredEntries.map((row) => (
-                  <TableRow key={row.id}>
+            <Table responsive>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>When</TableHead>
+                  <TableHead>Who</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEntries.length > 0 ? (
+                  filteredEntries.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell
+                        label="When"
+                        className="font-mono text-xs text-muted-foreground"
+                      >
+                        {row.timestamp}
+                      </TableCell>
+                      <TableCell label="Who" className="font-medium">
+                        <span
+                          className="block max-w-56 truncate"
+                          title={row.actor}
+                        >
+                          {row.actor}
+                        </span>
+                      </TableCell>
+                      <TableCell label="Action">
+                        <DeanAuditActionPill action={row.action} />
+                      </TableCell>
+                      <TableCell label="Student">
+                        <span
+                          className="block max-w-56 truncate"
+                          title={row.student}
+                        >
+                          {row.student}
+                        </span>
+                      </TableCell>
+                      <TableCell label="Details">
+                        <span
+                          className="block max-w-96 truncate"
+                          title={row.details}
+                        >
+                          {row.details}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
                     <TableCell
-                      label="When"
-                      className="font-mono text-xs text-muted-foreground"
+                      colSpan={5}
+                      className="py-10 text-center text-muted-foreground"
                     >
-                      {row.timestamp}
-                    </TableCell>
-                    <TableCell label="Who" className="font-medium">
-                      <span
-                        className="block max-w-56 truncate"
-                        title={row.actor}
-                      >
-                        {row.actor}
-                      </span>
-                    </TableCell>
-                    <TableCell label="Action">
-                      <DeanAuditActionPill action={row.action} />
-                    </TableCell>
-                    <TableCell label="Student">
-                      <span
-                        className="block max-w-56 truncate"
-                        title={row.student}
-                      >
-                        {row.student}
-                      </span>
-                    </TableCell>
-                    <TableCell label="Details">
-                      <span
-                        className="block max-w-96 truncate"
-                        title={row.details}
-                      >
-                        {row.details}
-                      </span>
+                      No audit records match these filters.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="py-10 text-center text-muted-foreground"
-                  >
-                    No audit records match these filters.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Panel>
+                )}
+              </TableBody>
+            </Table>
+          </Panel>
+        </AccountSkeleton>
       )}
     </div>
   );

@@ -367,6 +367,8 @@ describe("selected grade actions", () => {
     auth.user = { id: "adviser-two" };
     view.rerender(page());
     expect(screen.queryByText("CS 1")).toBeNull();
-    expect(screen.getByRole("status").textContent).toContain("Loading");
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
+      "Loading",
+    );
   });
 });

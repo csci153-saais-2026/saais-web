@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/features/loading-skeletons";
 import { Suspense } from "react";
 import { Outlet } from "react-router";
 
@@ -5,13 +6,7 @@ import { Outlet } from "react-router";
 export function AdviserLayout() {
   return (
     <div className="min-w-0 w-full wrap-anywhere">
-      <Suspense
-        fallback={
-          <p role="status" className="text-muted-foreground">
-            Loading adviser page…
-          </p>
-        }
-      >
+      <Suspense fallback={<PageSkeleton label="Loading adviser page…" />}>
         <Outlet />
       </Suspense>
     </div>

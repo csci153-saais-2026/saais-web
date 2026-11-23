@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -297,9 +298,11 @@ export function CurriculumSlotDialog({
                     ))}
                   </select>
                   {courseOptions.isPending && (
-                    <p role="status" className="text-xs text-muted-foreground">
-                      Loading active department courses...
-                    </p>
+                    <TableSkeleton
+                      rows={4}
+                      columns={4}
+                      label="Loading active department courses..."
+                    />
                   )}
                   {courseOptions.isError && (
                     <div className="text-xs text-destructive">

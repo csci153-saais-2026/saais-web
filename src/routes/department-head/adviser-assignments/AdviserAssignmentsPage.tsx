@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
@@ -125,7 +126,7 @@ export default function AdviserAssignmentsPage() {
       subtitle="Keep every student connected to an adviser in your department."
     />
   );
-  if (!directory.data)
+  if (directory.isError && !directory.data)
     return (
       <>
         {heading}
@@ -134,173 +135,189 @@ export default function AdviserAssignmentsPage() {
     );
 
   return (
-    <>
-      {heading}
-      <Alert variant="advisory">
-        <AlertIcon />
-        <AlertDescription>
-          Reassignment takes effect on the selected date. The previous adviser
-          and assignment history remain visible.
-        </AlertDescription>
-      </Alert>
-      <Panel
-        title="Student–adviser assignments"
-        description="Select one or more students to reassign together."
-        flush
-      >
-        <StudentDirectoryFilters
-          students={students}
-          {...filters}
-          onSearchChange={(search) => changeFilters({ ...filters, search })}
-          onCurriculumChange={(curriculum) =>
-            changeFilters({ ...filters, curriculum })
-          }
-          onAdviserChange={(adviser) => changeFilters({ ...filters, adviser })}
-          onReset={() =>
-            changeFilters({ search: "", curriculum: "all", adviser: "all" })
-          }
-        />
-        <div className="flex flex-wrap items-center justify-end gap-4 border-b border-border px-5 py-4">
-          <span aria-live="polite" className="text-sm text-muted-foreground">
-            {selectedVisible.length} student
-            {selectedVisible.length === 1 ? "" : "s"} selected
-          </span>
-          <Button
-            type="button"
-            disabled={selectedVisible.length === 0}
-            onClick={openReassignment}
+    <AccountSkeleton
+      id="dh-adviser-assignments"
+      data={directory.data}
+      label="Loading adviser assignments…"
+    >
+      {() => (
+        <>
+          {heading}
+          <Alert variant="advisory">
+            <AlertIcon />
+            <AlertDescription>
+              Reassignment takes effect on the selected date. The previous
+              adviser and assignment history remain visible.
+            </AlertDescription>
+          </Alert>
+          <Panel
+            title="Student–adviser assignments"
+            description="Select one or more students to reassign together."
+            flush
           >
-            <SwapIcon aria-hidden="true" />
-            Reassign selected
-          </Button>
-        </div>
-        <Table responsive aria-label="Student adviser assignments">
-          <TableHeader>
-            <TableRow>
-              <TableHead className={`${TH} w-20`}>
-                <Checkbox
-                  aria-label="Select all visible students"
-                  disabled={visible.length === 0}
-                  checked={partiallySelected ? "indeterminate" : allSelected}
-                  onCheckedChange={(checked) =>
-                    setSelected(
-                      checked === true
-                        ? visible.map((student) => student.id)
-                        : [],
-                    )
-                  }
-                  className="data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden"
-                />
-              </TableHead>
-              <TableHead className={TH}>Student</TableHead>
-              <TableHead className={TH}>Current adviser</TableHead>
-              <TableHead className={TH}>Since</TableHead>
-              <TableHead className={TH}>Previous adviser</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visible.map((student) => (
-              <TableRow
-                key={student.id}
-                className="cursor-pointer border-line-soft hover:bg-line-soft"
-                onClick={() =>
-                  toggleStudent(student.id, !selected.includes(student.id))
-                }
-                data-state={
-                  selected.includes(student.id) ? "selected" : undefined
-                }
+            <StudentDirectoryFilters
+              students={students}
+              {...filters}
+              onSearchChange={(search) => changeFilters({ ...filters, search })}
+              onCurriculumChange={(curriculum) =>
+                changeFilters({ ...filters, curriculum })
+              }
+              onAdviserChange={(adviser) =>
+                changeFilters({ ...filters, adviser })
+              }
+              onReset={() =>
+                changeFilters({ search: "", curriculum: "all", adviser: "all" })
+              }
+            />
+            <div className="flex flex-wrap items-center justify-end gap-4 border-b border-border px-5 py-4">
+              <span
+                aria-live="polite"
+                className="text-sm text-muted-foreground"
               >
-                <TableCell
-                  label="Select"
-                  className={`${TD} w-20`}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Checkbox
-                    aria-label={`Select ${student.name}`}
-                    checked={selected.includes(student.id)}
-                    onCheckedChange={(checked) =>
-                      toggleStudent(student.id, checked === true)
+                {selectedVisible.length} student
+                {selectedVisible.length === 1 ? "" : "s"} selected
+              </span>
+              <Button
+                type="button"
+                disabled={selectedVisible.length === 0}
+                onClick={openReassignment}
+              >
+                <SwapIcon aria-hidden="true" />
+                Reassign selected
+              </Button>
+            </div>
+            <Table responsive aria-label="Student adviser assignments">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={`${TH} w-20`}>
+                    <Checkbox
+                      aria-label="Select all visible students"
+                      disabled={visible.length === 0}
+                      checked={
+                        partiallySelected ? "indeterminate" : allSelected
+                      }
+                      onCheckedChange={(checked) =>
+                        setSelected(
+                          checked === true
+                            ? visible.map((student) => student.id)
+                            : [],
+                        )
+                      }
+                      className="data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden"
+                    />
+                  </TableHead>
+                  <TableHead className={TH}>Student</TableHead>
+                  <TableHead className={TH}>Current adviser</TableHead>
+                  <TableHead className={TH}>Since</TableHead>
+                  <TableHead className={TH}>Previous adviser</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((student) => (
+                  <TableRow
+                    key={student.id}
+                    className="cursor-pointer border-line-soft hover:bg-line-soft"
+                    onClick={() =>
+                      toggleStudent(student.id, !selected.includes(student.id))
                     }
-                  />
-                </TableCell>
-                <TableCell
-                  label="Student"
-                  className={`${TD} whitespace-normal`}
-                >
-                  <div className="min-w-0">
-                    <span
-                      className="block max-w-64 truncate text-[13.5px] font-semibold"
-                      title={student.name}
+                    data-state={
+                      selected.includes(student.id) ? "selected" : undefined
+                    }
+                  >
+                    <TableCell
+                      label="Select"
+                      className={`${TD} w-20`}
+                      onClick={(event) => event.stopPropagation()}
                     >
-                      {student.name}
-                    </span>
-                    <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
-                      {student.studentNumber}
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className="mt-1 gap-1.5 rounded-sm"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="size-1.5 rounded-full bg-current"
+                      <Checkbox
+                        aria-label={`Select ${student.name}`}
+                        checked={selected.includes(student.id)}
+                        onCheckedChange={(checked) =>
+                          toggleStudent(student.id, checked === true)
+                        }
                       />
-                      {student.curriculum}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell
-                  label="Current adviser"
-                  className={`${TD} whitespace-normal`}
-                >
-                  <div className="min-w-0">
-                    <span>{student.adviser}</span>
-                    {student.scheduledAssignment && (
-                      <p className="mt-1 max-w-64 text-xs text-muted-foreground">
-                        Scheduled: {student.scheduledAssignment.adviser} from{" "}
-                        {assignmentDateLabel(
-                          student.scheduledAssignment.effectiveDate,
+                    </TableCell>
+                    <TableCell
+                      label="Student"
+                      className={`${TD} whitespace-normal`}
+                    >
+                      <div className="min-w-0">
+                        <span
+                          className="block max-w-64 truncate text-[13.5px] font-semibold"
+                          title={student.name}
+                        >
+                          {student.name}
+                        </span>
+                        <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
+                          {student.studentNumber}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="mt-1 gap-1.5 rounded-sm"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="size-1.5 rounded-full bg-current"
+                          />
+                          {student.curriculum}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell
+                      label="Current adviser"
+                      className={`${TD} whitespace-normal`}
+                    >
+                      <div className="min-w-0">
+                        <span>{student.adviser}</span>
+                        {student.scheduledAssignment && (
+                          <p className="mt-1 max-w-64 text-xs text-muted-foreground">
+                            Scheduled: {student.scheduledAssignment.adviser}{" "}
+                            from{" "}
+                            {assignmentDateLabel(
+                              student.scheduledAssignment.effectiveDate,
+                            )}
+                          </p>
                         )}
-                      </p>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell label="Since" className={TD}>
-                  {assignmentDateLabel(student.adviserSince)}
-                </TableCell>
-                <TableCell
-                  label="Previous adviser"
-                  className={`${TD} whitespace-normal`}
-                >
-                  <span className="min-w-0">
-                    {student.previousAdviser || "—"}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {visible.length === 0 && (
-          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-            No students match these filters.
-          </p>
-        )}
-        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          <span role="status">
-            Showing {visible.length} of {students.length} assignments
-          </span>
-          <span>DCST department scope</span>
-        </div>
-      </Panel>
-      {dialogOpen && (
-        <ReassignAdviserDialog
-          studentIds={selectedVisible}
-          advisers={assignableAdvisers}
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          onConfirm={apply}
-        />
+                      </div>
+                    </TableCell>
+                    <TableCell label="Since" className={TD}>
+                      {assignmentDateLabel(student.adviserSince)}
+                    </TableCell>
+                    <TableCell
+                      label="Previous adviser"
+                      className={`${TD} whitespace-normal`}
+                    >
+                      <span className="min-w-0">
+                        {student.previousAdviser || "—"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {visible.length === 0 && (
+              <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+                No students match these filters.
+              </p>
+            )}
+            <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+              <span role="status">
+                Showing {visible.length} of {students.length} assignments
+              </span>
+              <span>DCST department scope</span>
+            </div>
+          </Panel>
+          {dialogOpen && (
+            <ReassignAdviserDialog
+              studentIds={selectedVisible}
+              advisers={assignableAdvisers}
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              onConfirm={apply}
+            />
+          )}
+        </>
       )}
-    </>
+    </AccountSkeleton>
   );
 }
