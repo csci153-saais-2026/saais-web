@@ -187,6 +187,29 @@ describe("Department Staff accounts directory", () => {
     expect(screen.queryByRole("option", { name: "Admin" })).toBeNull();
   });
 
+  it("shows validation messages when submitting an empty invitation", async () => {
+    renderAccounts();
+    fireEvent.click(await screen.findByRole("button", { name: "Add account" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
+
+    expect(
+      await screen.findByText(
+        "Enter a valid institutional email ending exactly in @vsu.edu.ph.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Full name is required and must be 150 characters or fewer.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "Send invitation" })
+        .hasAttribute("disabled"),
+    ).toBe(false);
+  });
+
   it("uses the assigned department scope and paginates without exposing another department", async () => {
     renderAccounts();
 
