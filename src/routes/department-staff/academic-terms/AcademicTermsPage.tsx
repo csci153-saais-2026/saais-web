@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertIcon, PlusIcon } from "@/components/icons";
+import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons";
 import {
   DataTablePanel,
   type Column,
@@ -27,6 +27,9 @@ import {
   EncodingClosureDialog,
   type EncodingClosureDialogMode,
 } from "./EncodingClosureDialog";
+import type { DepartmentPdfDocument } from "@/routes/department-head/shared/department-pdf";
+import { PdfViewerDialog } from "@/routes/department-head/shared/PdfViewerDialog";
+import { buildAcademicTermsPdf } from "./academic-terms-pdf";
 
 function termTypeLabel(termType: SchoolTerm["term_type"]): string {
   return termType === "Summer" ? "Summer/Midyear" : termType;
@@ -90,6 +93,7 @@ export default function AcademicTermsPage() {
     mode: EncodingClosureDialogMode;
     term: SchoolTerm;
   } | null>(null);
+  const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const closures = academicTerms.data?.departmentClosures ?? [];
   const closureByTermId = new Map(
@@ -186,17 +190,31 @@ export default function AcademicTermsPage() {
         title="Academic terms"
         subtitle="Review semester dates and manage the grade encoding period."
         actions={
-          <Button
-            type="button"
-            onClick={() => {
-              setDialogTerm(null);
-              setSaveMessage(null);
-              setDialogOpen(true);
-            }}
-          >
-            <PlusIcon className="size-4" />
-            Add a term
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setPdf(buildAcademicTermsPdf(academicTerms.data?.terms ?? [], closureByTermId))
+              }
+              disabled={!academicTerms.isSuccess}
+              className="gap-2"
+            >
+              <DownloadIcon className="size-4" />
+              Export PDF
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setDialogTerm(null);
+                setSaveMessage(null);
+                setDialogOpen(true);
+              }}
+            >
+              <PlusIcon className="size-4" />
+              Add a term
+            </Button>
+          </div>
         }
       />
 
@@ -402,6 +420,7 @@ export default function AcademicTermsPage() {
           }}
         />
       )}
+      <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
     </div>
   );
 }

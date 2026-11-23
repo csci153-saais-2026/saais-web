@@ -6,6 +6,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 import {
   cleanup,
@@ -322,6 +323,20 @@ describe("Department Staff academic terms", () => {
       }),
     ).toBeNull();
     expect(within(closedTerm).queryByText("Edit term")).toBeNull();
+  });
+
+  it("exports the academic term history as a PDF", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:academic-terms");
+    URL.revokeObjectURL = vi.fn();
+
+    renderPage();
+
+    await screen.findByText("2026–2027");
+    fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Preview: Academic terms" }),
+    ).toBeTruthy();
   });
 
   it("closes and reopens department encoding through the MSW handlers", async () => {
