@@ -28,7 +28,10 @@ function PageHeading({
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-2 line-clamp-3 text-muted-foreground" title={subtitle}>
+          <p
+            className="mt-2 line-clamp-3 text-muted-foreground"
+            title={subtitle}
+          >
             {subtitle}
           </p>
         )}

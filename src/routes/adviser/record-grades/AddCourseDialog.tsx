@@ -173,7 +173,9 @@ export function AddCourseDialog({
                     <strong className="min-w-0 truncate" title={slot.name}>
                       {slot.name}
                     </strong>
-                    {slot.used && <span className="shrink-0">already added</span>}
+                    {slot.used && (
+                      <span className="shrink-0">already added</span>
+                    )}
                   </label>
                   <select
                     aria-label={`Elective course for ${slot.name}`}
