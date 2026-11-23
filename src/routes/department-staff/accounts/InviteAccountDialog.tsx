@@ -62,6 +62,11 @@ export default function InviteAccountDialog() {
   const scope = useStaffScope();
   const references = useDepartmentInvitationOptions();
   const invitation = useSendDepartmentInvitation();
+  const canInvitePrivilegedRoles = auth.roles.includes("admin");
+  const primaryInviteRoles = departmentInviteRoles.filter(
+    (role) =>
+      canInvitePrivilegedRoles || (role !== "dean" && role !== "admin"),
+  );
   const departmentId = scope.status === "ready" ? scope.departmentId : null;
   const facultyId = departmentId
     ? (auth.roleAssignments.find(
@@ -120,7 +125,7 @@ export default function InviteAccountDialog() {
     if (sendLock.current || invitation.isPending || invitation.isSuccess)
       return;
     const result = buildDepartmentInvitePreview(values, {
-      canInvitePrivilegedRoles: auth.roles.includes("admin"),
+      canInvitePrivilegedRoles,
       ownEmail: auth.user?.email ?? "",
       departmentId,
       facultyId,
@@ -237,7 +242,7 @@ export default function InviteAccountDialog() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {departmentInviteRoles.map((role) => (
+                {primaryInviteRoles.map((role) => (
                   <SelectItem key={role} value={role}>
                     {roleLabels[role]}
                   </SelectItem>
@@ -257,7 +262,7 @@ export default function InviteAccountDialog() {
                     (role) =>
                       role !== values.role &&
                       role !== "student" &&
-                      (auth.roles.includes("admin") ||
+                      (canInvitePrivilegedRoles ||
                         (role !== "dean" && role !== "admin")),
                   )
                   .map((role) => {
