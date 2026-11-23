@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHandler } from "../functions/_shared/http.ts";
+import { readAssistantConfig } from "../functions/_shared/matt-assistant.ts";
 
 test("checks record scope before contacting the assistant provider", async () => {
   const endpoint = "https://assistant.example.test/chat/completions";
@@ -200,4 +201,171 @@ test("malformed context is rejected before sending any facts to the provider", a
   )(ask());
   assert.equal(result.status, 500);
   assert.equal(called, false);
+});
+
+test("supports native Google Gemini generateContent requests and filters internal thought parts", async () => {
+  const vars = {
+    SAAIS_ASSISTANT_GEMINI_API_KEY: "gemini-secret-key",
+    SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-2.5-flash",
+  };
+  const assistant = readAssistantConfig((name) => vars[name]);
+  assert.ok(assistant);
+  assert.equal(assistant.provider, "gemini");
+  assert.equal(assistant.protocol, "gemini");
+  assert.equal(
+    assistant.endpoint,
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+  );
+
+  let capturedUrl = "";
+  let capturedHeaders;
+  let capturedBody;
+  const handler = createHandler("students", {
+    env: { ...settings, assistant },
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_assistant_context"))
+        return Response.json({
+          grounded_at: "2026-11-21T12:00:00Z",
+          request: {
+            message: "What is recorded?",
+            history: [
+              { role: "user", content: "Prior question" },
+              { role: "assistant", content: "Prior answer" },
+            ],
+          },
+          record: { gwa: 1.75 },
+        });
+      capturedUrl = url;
+      capturedHeaders = options.headers;
+      capturedBody = JSON.parse(options.body);
+      return Response.json({
+        candidates: [
+          {
+            content: {
+              parts: [
+                { text: "Internal reasoning", thought: true },
+                { text: "The student record shows a GWA of 1.75." },
+              ],
+            },
+          },
+        ],
+      });
+    },
+  });
+
+  const response = await handler(ask());
+  assert.equal(response.status, 200);
+  assert.equal(capturedUrl, assistant.endpoint);
+  assert.equal(capturedHeaders["x-goog-api-key"], "gemini-secret-key");
+  assert.equal(capturedHeaders.Authorization, undefined);
+  assert.equal(capturedBody.generationConfig.maxOutputTokens, 800);
+  assert.equal(capturedBody.contents.length, 3);
+  assert.equal(capturedBody.contents[0].role, "user");
+  assert.equal(capturedBody.contents[1].role, "model");
+  assert.equal(capturedBody.contents[2].role, "user");
+  const data = await response.json();
+  assert.equal(data.answer, "The student record shows a GWA of 1.75.");
+  assert.equal(data.mutates_records, false);
+});
+
+test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and falls back on upstream failure", async () => {
+  const vars = {
+    SAAIS_ASSISTANT_PROVIDERS: "gemini,nvidia,openai",
+    SAAIS_ASSISTANT_GEMINI_API_KEY: "gemini-key",
+    SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-2.5-flash",
+    SAAIS_ASSISTANT_NVIDIA_API_KEY: "nvidia-key",
+    SAAIS_ASSISTANT_NVIDIA_MODEL: "meta/llama-3.3-70b-instruct",
+    SAAIS_ASSISTANT_OPENAI_ENDPOINT:
+      "https://openai-compatible.example.test/v1/chat/completions",
+    SAAIS_ASSISTANT_OPENAI_API_KEY: "openai-key",
+    SAAIS_ASSISTANT_OPENAI_MODEL: "gpt-4o-mini",
+  };
+  const assistant = readAssistantConfig((name) => vars[name]);
+  assert.ok(assistant);
+  assert.equal(assistant.providers?.length, 3);
+  assert.deepEqual(
+    assistant.providers.map((item) => item.provider),
+    ["gemini", "nvidia", "openai"],
+  );
+
+  const attempted = [];
+  const handler = createHandler("students", {
+    env: { ...settings, assistant },
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_assistant_context"))
+        return Response.json(context);
+      attempted.push({ url, options });
+      if (url.includes("generativelanguage.googleapis.com")) {
+        return Response.json(
+          { error: { message: "Quota exceeded" } },
+          { status: 429 },
+        );
+      }
+      if (url === "https://integrate.api.nvidia.com/v1/chat/completions") {
+        const body = JSON.parse(options.body);
+        assert.equal(body.model, "meta/llama-3.3-70b-instruct");
+        assert.equal(body.max_tokens, 800);
+        assert.equal(options.headers.Authorization, "Bearer nvidia-key");
+        return Response.json({
+          choices: [
+            {
+              message: {
+                content: [
+                  {
+                    type: "text",
+                    text: "NVIDIA NIM fallback answer from academic facts.",
+                  },
+                ],
+              },
+            },
+          ],
+        });
+      }
+      throw new Error("Should not reach third provider when second succeeds");
+    },
+  });
+
+  const response = await handler(ask());
+  assert.equal(response.status, 200);
+  assert.equal(attempted.length, 2);
+  const data = await response.json();
+  assert.equal(data.answer, "NVIDIA NIM fallback answer from academic facts.");
+});
+
+test("rejects non-HTTPS, credential-bearing, or path-injecting provider configs", () => {
+  assert.equal(
+    readAssistantConfig(
+      (name) =>
+        ({
+          SAAIS_ASSISTANT_ENDPOINT: "http://insecure.example.test/v1/chat",
+          SAAIS_ASSISTANT_API_KEY: "key",
+          SAAIS_ASSISTANT_MODEL: "model",
+        })[name],
+    ),
+    undefined,
+  );
+  assert.equal(
+    readAssistantConfig(
+      (name) =>
+        ({
+          SAAIS_ASSISTANT_ENDPOINT:
+            "https://user:pass@assistant.example.test/v1/chat",
+          SAAIS_ASSISTANT_API_KEY: "key",
+          SAAIS_ASSISTANT_MODEL: "model",
+        })[name],
+    ),
+    undefined,
+  );
+  assert.equal(
+    readAssistantConfig(
+      (name) =>
+        ({
+          SAAIS_ASSISTANT_GEMINI_API_KEY: "key",
+          SAAIS_ASSISTANT_GEMINI_MODEL: "../malicious-path",
+        })[name],
+    ),
+    undefined,
+  );
 });
