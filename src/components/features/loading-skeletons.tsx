@@ -11,12 +11,22 @@ import { cn } from "@/lib/utils";
 function Status({
   label,
   className,
+  bare,
   children,
 }: {
   label: string;
   className?: string;
+  /** Skip the status wrapper (Skullet already announces its own label). */
+  bare?: boolean;
   children: React.ReactNode;
 }) {
+  if (bare) {
+    return (
+      <div className={className} aria-hidden="true">
+        {children}
+      </div>
+    );
+  }
   return (
     <div role="status" aria-busy="true" className={className}>
       <span className="sr-only">{label}</span>
@@ -29,14 +39,16 @@ function Status({
 export function LinesSkeleton({
   lines = 3,
   label = "Loading…",
+  bare,
   className,
 }: {
   lines?: number;
   label?: string;
   className?: string;
+  bare?: boolean;
 }) {
   return (
-    <Status label={label} className={className}>
+    <Status label={label} className={className} bare={bare}>
       <div className="flex flex-col gap-2.5">
         {Array.from({ length: lines }, (_, i) => (
           <SkeletonBox
@@ -55,15 +67,17 @@ export function TableSkeleton({
   rows = 6,
   columns = 4,
   label = "Loading…",
+  bare,
   className,
 }: {
   rows?: number;
   columns?: number;
   label?: string;
   className?: string;
+  bare?: boolean;
 }) {
   return (
-    <Status label={label} className={className}>
+    <Status label={label} className={className} bare={bare}>
       <div className="flex flex-col gap-3">
         <div
           className="grid gap-4"
@@ -99,14 +113,16 @@ export function TableSkeleton({
 export function CardsSkeleton({
   count = 4,
   label = "Loading…",
+  bare,
   className,
 }: {
   count?: number;
   label?: string;
   className?: string;
+  bare?: boolean;
 }) {
   return (
-    <Status label={label} className={className}>
+    <Status label={label} className={className} bare={bare}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: count }, (_, i) => (
           <div
@@ -126,13 +142,15 @@ export function CardsSkeleton({
 /** Whole-page placeholder: heading, a row of tiles and a table. */
 export function PageSkeleton({
   label = "Loading…",
+  bare,
   className,
 }: {
   label?: string;
   className?: string;
+  bare?: boolean;
 }) {
   return (
-    <Status label={label} className={cn("p-6", className)}>
+    <Status label={label} className={cn("p-6", className)} bare={bare}>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <SkeletonBox height={28} width="30%" />
@@ -145,13 +163,30 @@ export function PageSkeleton({
   );
 }
 
+/** True when Skullet already remembers a measured layout for this id. */
+function hasRememberedShape(id: string | undefined): boolean {
+  if (!id || typeof localStorage === "undefined") return false;
+  try {
+    const stored = JSON.parse(localStorage.getItem("skullet:shapes") ?? "null");
+    return Boolean(stored?.shapes?.[id]);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Skullet <Skeleton> keyed by the signed-in account. Skullet keeps the content
  * it last showed under an id so reloads fit exactly; keying by account makes a
  * switch remount it, so one account's records never linger in the DOM for the
  * next.
+ *
+ * Until a layout has been remembered (first visit on a device) the measured
+ * skeleton would be empty boxes, so `fallback` bars are shown instead.
  */
-export function AccountSkeleton<T>(props: SkeletonProps<T>) {
+export function AccountSkeleton<T>({
+  fallback,
+  ...props
+}: SkeletonProps<T> & { fallback?: React.ReactNode }) {
   let accountId = "anonymous";
   try {
     // useAuth only throws when no provider exists, which is stable per tree.
@@ -160,5 +195,29 @@ export function AccountSkeleton<T>(props: SkeletonProps<T>) {
   } catch {
     // Rendered outside an AuthProvider (public pages, isolated tests).
   }
-  return <Skeleton key={accountId} {...props} />;
+  const useFallback = !props.skeleton && !hasRememberedShape(props.id);
+  const bars =
+    fallback ??
+    ("data" in props ? (
+      <PageSkeleton bare />
+    ) : (
+      <TableSkeleton rows={6} columns={4} bare />
+    ));
+  const placeholder = useFallback ? (
+    <>
+      {props.label ? (
+        <span {...{ "skullet-status": "" }}>{props.label}</span>
+      ) : null}
+      {bars}
+    </>
+  ) : (
+    props.skeleton
+  );
+  return (
+    <Skeleton
+      key={accountId}
+      {...(props as SkeletonProps<T>)}
+      skeleton={placeholder}
+    />
+  );
 }
