@@ -72,7 +72,11 @@ const NotificationsPage = lazy(
 
 function App() {
   return (
-    <SkulletProvider mode="system" theme={{ animation: "shimmer" }}>
+    <SkulletProvider
+      mode="system"
+      reveal="together"
+      theme={{ animation: "shimmer" }}
+    >
       <QueryProvider>
         <AuthProvider>
           <BrowserRouter>
