@@ -148,10 +148,10 @@ export async function getGrades(id: string) {
 export async function correctGrade(
   studentId: string,
   attempt: ApiSchema<"AttemptResult">,
-  grade: number,
+  grade: number | "inc" | "dr",
   reason: string,
   stage: "midterm" | "final",
-  finalGrade?: number,
+  finalGrade?: number | "inc" | "dr",
 ) {
   return unwrapApiResult(
     await apiClient.PATCH(
@@ -161,12 +161,24 @@ export async function correctGrade(
         body: {
           expected_revision: attempt.revision,
           ...(stage === "midterm"
-            ? {
-                midterm_grade: grade,
-                midterm_status: "graded",
-                ...(finalGrade != null ? { final_grade: finalGrade } : {}),
-              }
-            : { final_grade: grade }),
+            ? grade === "dr"
+              ? { midterm_status: "dr" as const, status: "dr" as const }
+              : {
+                  midterm_grade: grade,
+                  midterm_status: "graded" as const,
+                  ...(finalGrade != null
+                    ? finalGrade === "dr"
+                      ? { status: "dr" as const }
+                      : finalGrade === "inc"
+                        ? { status: "inc" as const }
+                        : { final_grade: finalGrade }
+                    : {}),
+                }
+            : grade === "dr"
+              ? { status: "dr" as const }
+              : grade === "inc"
+                ? { status: "inc" as const }
+                : { final_grade: grade }),
           reason,
         },
       },

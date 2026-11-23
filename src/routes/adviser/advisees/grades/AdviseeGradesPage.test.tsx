@@ -1,4 +1,4 @@
-﻿import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -210,7 +210,11 @@ describe("selected grade actions", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Correct grade" }),
     );
-    expect(screen.queryByRole("option", { name: "4.75" })).toBeNull();
+    expect(screen.getAllByRole("option", { name: "4.75" })).toHaveLength(1);
+    expect(screen.getAllByRole("option", { name: "DR" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByRole("option", { name: "INC" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Midterm grade"), {
       target: { value: "1.75" },
     });
@@ -227,6 +231,66 @@ describe("selected grade actions", () => {
       1.75,
       "Correction",
       "midterm",
+    );
+  });
+  it("sets the final grade to DR when the midterm grade is DR", async () => {
+    const ordinary = {
+      ...attempt,
+      recorded_status: "currently_enrolled",
+      effective_status: "currently_enrolled",
+    } as ApiSchema<"AttemptResult">;
+    vi.mocked(getGrades).mockResolvedValue({
+      ...response,
+      terms: response.terms.map((term) => ({ ...term, attempts: [ordinary] })),
+    });
+    vi.mocked(correctGrade).mockResolvedValue({} as ApiSchema<"AttemptResult">);
+    render(page());
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Correct grade" }),
+    );
+    fireEvent.change(screen.getByLabelText("Midterm grade"), {
+      target: { value: "dr" },
+    });
+    const finalGrade = screen.getByLabelText(
+      "Final grade",
+    ) as HTMLSelectElement;
+    expect(finalGrade.value).toBe("dr");
+    expect(finalGrade.disabled).toBe(true);
+  });
+  it("allows INC in the final grade dropdown", async () => {
+    const ordinary = {
+      ...attempt,
+      recorded_status: "currently_enrolled",
+      effective_status: "currently_enrolled",
+    } as ApiSchema<"AttemptResult">;
+    vi.mocked(getGrades).mockResolvedValue({
+      ...response,
+      terms: response.terms.map((term) => ({ ...term, attempts: [ordinary] })),
+    });
+    vi.mocked(correctGrade).mockResolvedValue({} as ApiSchema<"AttemptResult">);
+    render(page());
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Correct grade" }),
+    );
+    fireEvent.change(screen.getByLabelText("Midterm grade"), {
+      target: { value: "1.75" },
+    });
+    fireEvent.change(screen.getByLabelText("Final grade"), {
+      target: { value: "inc" },
+    });
+    fireEvent.change(screen.getByLabelText("Reason for change"), {
+      target: { value: "Requirements incomplete" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save grade" }));
+    await waitFor(() =>
+      expect(correctGrade).toHaveBeenCalledWith(
+        "student-one",
+        ordinary,
+        1.75,
+        "Requirements incomplete",
+        "midterm",
+        "inc",
+      ),
     );
   });
   it("submits midterm and final changes together for the selected attempt", async () => {

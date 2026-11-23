@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
 import {
@@ -88,10 +88,19 @@ function GradeAction({
       setError(parsedReason.error.issues[0]?.message ?? "Enter a reason.");
       return;
     }
-    const gradeValues = inc || completedInc ? [grade] : [midterm, finalGrade];
-    const parsedGrades = gradeValues.map((value) =>
-      value ? gradeInputSchema.safeParse(value) : null,
-    );
+    const parseCorrectionGrade = (value: string) =>
+      value === "inc" || value === "dr"
+        ? { success: true as const, data: value }
+        : value
+          ? gradeInputSchema.safeParse(value)
+          : null;
+    const parsedGrades =
+      inc || completedInc
+        ? [grade ? gradeInputSchema.safeParse(grade) : null]
+        : [
+            midterm ? parseCorrectionGrade(midterm) : null,
+            finalGrade ? parseCorrectionGrade(finalGrade) : null,
+          ];
     const invalidGrade = parsedGrades.find(
       (result) => result && !result.success,
     );
@@ -183,16 +192,25 @@ function GradeAction({
                   <label className="grid gap-1">
                     Midterm grade
                     <GradeSelect
-                      vsuScale
+                      allowDrop
+                      maxGrade={4.75}
                       disabled={completedInc}
                       value={midterm}
-                      onChange={(e) => setMidterm(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setMidterm(value);
+                        if (value === "dr") setFinalGrade("dr");
+                        else if (midterm === "dr") setFinalGrade("");
+                      }}
                     />
                   </label>
                   <label className="grid gap-1">
                     Final grade
                     <GradeSelect
                       vsuScale
+                      includeStatuses={!completedInc}
+                      disableDrop={midterm !== "dr"}
+                      disabled={midterm === "dr"}
                       value={completedInc ? grade : finalGrade}
                       onChange={(e) =>
                         completedInc
