@@ -90,11 +90,17 @@ export function IncRadarPanel({ deficiencies, className }: IncRadarPanelProps) {
                 className="flex items-start justify-between gap-3 px-5 py-3.5 text-cell"
               >
                 <div className="min-w-0">
-                  <strong className="block font-semibold text-foreground">
+                  <strong
+                    className="line-clamp-2 block font-semibold text-foreground"
+                    title={title ? `${code} (${title})` : code}
+                  >
                     <span className="font-mono tabular-nums">{code}</span>
                     {title ? ` (${title})` : ""} · Completion due
                   </strong>
-                  <p className="mt-1 text-caption text-muted-foreground">
+                  <p
+                    className="mt-1 line-clamp-3 text-caption text-muted-foreground"
+                    title={noteText}
+                  >
                     <span className="font-mono tabular-nums">
                       Due {deadlineLabel}
                     </span>

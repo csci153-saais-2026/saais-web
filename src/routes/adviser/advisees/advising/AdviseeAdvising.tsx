@@ -144,7 +144,10 @@ function PlanEditor({
                     </td>
                     <td className="px-3 py-4">
                       <strong className="block">{r.code}</strong>
-                      <span className="text-xs text-muted-foreground">
+                      <span
+                        className="block max-w-72 truncate text-xs text-muted-foreground"
+                        title={r.title}
+                      >
                         {r.title}
                       </span>
                     </td>
@@ -285,7 +288,7 @@ function RecentNotes({
                   {new Date(note.created_at).toLocaleDateString()}
                 </time>
               </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed wrap-anywhere">
                 {note.body_text}
               </p>
             </article>

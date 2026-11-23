@@ -244,7 +244,10 @@ export default function EquivalencePage() {
                 <strong className="block font-semibold">
                   {row.sourceCourse.code}
                 </strong>
-                <small className="block text-xs text-muted-2">
+                <small
+                  className="block max-w-64 truncate text-xs text-muted-2"
+                  title={row.sourceCourse.title}
+                >
                   {row.sourceCourse.title}
                 </small>
               </div>
@@ -262,7 +265,10 @@ export default function EquivalencePage() {
                 <strong className="block font-semibold">
                   {row.targetCourse.code}
                 </strong>
-                <small className="block text-xs text-muted-2">
+                <small
+                  className="block max-w-64 truncate text-xs text-muted-2"
+                  title={row.targetCourse.title}
+                >
                   {row.targetCourse.title}
                 </small>
               </div>

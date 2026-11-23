@@ -122,18 +122,27 @@ export function CourseRecommendationsPanel({
                         <span aria-hidden="true" className="text-muted-2">
                           ·
                         </span>
-                        <span className="font-semibold">{title}</span>
+                        <span
+                          className="max-w-full truncate font-semibold"
+                          title={title}
+                        >
+                          {title}
+                        </span>
                       </>
                     )}
                   </div>
                   {metaParts.length > 0 && (
-                    <p className="mt-1 font-mono text-caption tabular-nums text-muted-foreground">
+                    <p
+                      className="mt-1 line-clamp-2 font-mono text-caption tabular-nums text-muted-foreground"
+                      title={metaParts.join(" · ")}
+                    >
                       {metaParts.join(" · ")}
                     </p>
                   )}
                 </div>
 
                 <StatusBadge
+                  className="shrink-0"
                   status={"enrolled" as never}
                   data-recommended-status="currently_enrolled"
                   {...statusBadgeExtraProps}

@@ -91,10 +91,13 @@ function PendingInc({
   const [code, ...courseName] = title.split(" · ");
   return (
     <div className="flex items-start justify-between gap-4 rounded-md border border-border p-4">
-      <p>
+      <p className="min-w-0">
         <strong>{code}</strong>
         {courseName.length > 0 && (
-          <span className="mt-1 block text-xs text-muted-foreground">
+          <span
+            className="mt-1 block truncate text-xs text-muted-foreground"
+            title={courseName.join(" · ")}
+          >
             {courseName.join(" · ")}
           </span>
         )}
@@ -118,7 +121,9 @@ function PendingInc({
       </p>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button size="sm">Resolve INC</Button>
+          <Button size="sm" className="shrink-0">
+            Resolve INC
+          </Button>
         </DialogTrigger>
         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-140">
           <DialogHeader className="border-b px-6 pb-4 pt-5">

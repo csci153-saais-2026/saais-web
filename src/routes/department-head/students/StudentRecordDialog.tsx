@@ -245,7 +245,10 @@ function GradesTab({ student }: { student: DirectoryStudent }) {
                       <b className="block font-semibold">
                         {course?.code ?? "Course"}
                       </b>
-                      <span className="block text-xs text-muted-foreground">
+                      <span
+                        className="block max-w-64 truncate text-xs text-muted-foreground"
+                        title={course?.title}
+                      >
                         {course?.title}
                       </span>
                     </TableCell>

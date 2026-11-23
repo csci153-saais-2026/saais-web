@@ -69,7 +69,11 @@ export function ReportCohortDialog({
             <TableBody>
               {students.map((student) => (
                 <TableRow key={student.id}>
-                  <TableCell label="Student" className="whitespace-normal">
+                  <TableCell
+                    label="Student"
+                    title={student.name}
+                    className="max-w-56 truncate"
+                  >
                     {student.name}
                   </TableCell>
                   <TableCell label="Student ID">

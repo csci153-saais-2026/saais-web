@@ -132,12 +132,16 @@ export default function NotificationsPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <strong
-                        className={`block text-sm ${!item.is_read ? "font-semibold" : "font-medium"}`}
+                        title={item.title}
+                        className={`line-clamp-2 block text-sm ${!item.is_read ? "font-semibold" : "font-medium"}`}
                       >
                         {item.title}
                       </strong>
                       {!item.is_read && <span className="sr-only">Unread</span>}
-                      <span className="mt-1 block text-sm text-muted-foreground">
+                      <span
+                        title={item.body}
+                        className="mt-1 line-clamp-3 block text-sm text-muted-foreground"
+                      >
                         {item.body}
                       </span>
                       {destination ? (

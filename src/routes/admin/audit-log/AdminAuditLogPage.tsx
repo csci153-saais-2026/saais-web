@@ -166,8 +166,13 @@ export default function AdminAuditLogPage() {
     {
       header: "Person",
       cell: (entry) => (
-        <div>
-          <p className="font-medium">{entry.actor_name || "System"}</p>
+        <div className="max-w-56 min-w-0">
+          <p
+            className="truncate font-medium"
+            title={entry.actor_name || undefined}
+          >
+            {entry.actor_name || "System"}
+          </p>
           {entry.actor_role && (
             <p className="text-xs text-muted-foreground">
               {humanize(entry.actor_role)}
@@ -194,18 +199,28 @@ export default function AdminAuditLogPage() {
     {
       header: "Student / record",
       cell: (entry) => (
-        <div>
+        <div className="max-w-64 min-w-0">
           {entry.student_name && (
-            <p className="font-medium">{entry.student_name}</p>
+            <p className="truncate font-medium" title={entry.student_name}>
+              {entry.student_name}
+            </p>
           )}
           {entry.student_number && (
             <p className="font-mono text-xs">{entry.student_number}</p>
           )}
           {!entry.student_name && !entry.student_number && (
-            <p>{entry.target_label || humanize(entry.entity_type)}</p>
+            <p
+              className="truncate"
+              title={entry.target_label || humanize(entry.entity_type)}
+            >
+              {entry.target_label || humanize(entry.entity_type)}
+            </p>
           )}
           {entry.student_name && entry.target_label && (
-            <p className="text-xs text-muted-foreground">
+            <p
+              className="truncate text-xs text-muted-foreground"
+              title={entry.target_label}
+            >
               {entry.target_label}
             </p>
           )}
@@ -214,7 +229,14 @@ export default function AdminAuditLogPage() {
     },
     {
       header: "Details",
-      cell: (entry) => entry.details_summary || "No details provided.",
+      cell: (entry) => (
+        <span
+          className="block max-w-96 truncate"
+          title={entry.details_summary || undefined}
+        >
+          {entry.details_summary || "No details provided."}
+        </span>
+      ),
     },
   ];
 
