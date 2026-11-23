@@ -167,7 +167,7 @@ describe("Department Staff accounts directory", () => {
     expect(within(row).getByText("Adviser")).toBeTruthy();
   });
 
-  it("offers all six roles in the primary role selector", async () => {
+  it("offers only department-scoped roles in the primary role selector", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -180,11 +180,11 @@ describe("Department Staff accounts directory", () => {
       "Adviser",
       "Department Staff",
       "Department Head",
-      "Dean",
-      "Admin",
     ]) {
       expect(await screen.findByRole("option", { name: role })).toBeTruthy();
     }
+    expect(screen.queryByRole("option", { name: "Dean" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Admin" })).toBeNull();
   });
 
   it("uses the assigned department scope and paginates without exposing another department", async () => {
