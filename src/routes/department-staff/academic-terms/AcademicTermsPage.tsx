@@ -140,7 +140,7 @@ export default function AcademicTermsPage() {
             {scope.status === "ready" && !isTermClosed(term) ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="destructive"
                 size="sm"
                 aria-label={`Close encoding for ${term.school_year} ${termTypeLabel(term.term_type)}`}
                 onClick={() => {
