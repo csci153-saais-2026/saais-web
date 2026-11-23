@@ -476,7 +476,7 @@ export default function InviteAccountDialog() {
               disabled={invitation.isPending || invitation.isSuccess}
             >
               {invitation.isPending
-                ? "Sending invitationâ€¦"
+                ? "Sending invitation…"
                 : invitation.isSuccess
                   ? "Invitation sent"
                   : "Send invitation"}
