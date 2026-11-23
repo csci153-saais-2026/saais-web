@@ -1,0 +1,8 @@
+type: string
+enum:
+  - required
+  - elective
+  - ge
+  - pe
+  - nstp
+description: Curriculum slot classification (required/major course, departmental/technical elective, GE, PE, or NSTP)

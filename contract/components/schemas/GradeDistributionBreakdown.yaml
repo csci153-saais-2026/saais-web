@@ -1,0 +1,30 @@
+type: object
+additionalProperties: false
+properties:
+  total_graded:
+    type: integer
+    minimum: 0
+  inc_count:
+    type: integer
+    minimum: 0
+  dr_count:
+    type: integer
+    minimum: 0
+  na_count:
+    type: integer
+    minimum: 0
+  currently_enrolled_count:
+    type: integer
+    minimum: 0
+  buckets:
+    type: array
+    maxItems: 30
+    items:
+      $ref: "./GradeDistributionBucket.yaml"
+required:
+  - total_graded
+  - inc_count
+  - dr_count
+  - na_count
+  - currently_enrolled_count
+  - buckets

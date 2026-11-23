@@ -1,0 +1,38 @@
+type: object
+additionalProperties: false
+required:
+  - prerequisite_course_id
+  - code
+  - title
+  - type
+  - current_status
+properties:
+  prerequisite_course_id:
+    type: string
+    format: uuid
+  code:
+    type: string
+    maxLength: 100
+  title:
+    type: string
+    maxLength: 250
+  type:
+    $ref: "./PrerequisiteType.yaml"
+  current_status:
+    type: string
+    enum:
+      - not_taken
+      - failed
+      - inc
+      - lapsed_inc
+      - dr
+      - currently_enrolled
+  latest_attempt_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  latest_final_grade:
+    type:
+      - number
+      - "null"

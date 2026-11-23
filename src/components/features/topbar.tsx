@@ -1,6 +1,6 @@
-import * as React from "react"
-import { MenuIcon } from "@/components/icons"
-import { Link } from "react-router"
+import * as React from "react";
+import { MenuIcon } from "@/components/icons";
+import { Link } from "react-router";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,9 +8,9 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+} from "@/components/ui/breadcrumb";
 
-export type Crumb = { label: string; to?: string }
+export type Crumb = { label: string; to?: string };
 
 /** 62px white bar: mobile menu button, breadcrumb trail, notification slot on the right. */
 function Topbar({
@@ -18,9 +18,9 @@ function Topbar({
   onMenuClick,
   trailing,
 }: {
-  crumbs: Crumb[]
-  onMenuClick?: () => void
-  trailing?: React.ReactNode
+  crumbs: Crumb[];
+  onMenuClick?: () => void;
+  trailing?: React.ReactNode;
 }) {
   return (
     <header className="flex h-topbar shrink-0 items-center border-b border-border bg-card px-gutter-sm md:px-gutter">
@@ -35,12 +35,14 @@ function Topbar({
       <Breadcrumb className="min-w-0">
         <BreadcrumbList>
           {crumbs.map((c, i) => {
-            const last = i === crumbs.length - 1
+            const last = i === crumbs.length - 1;
             return (
               <React.Fragment key={c.label}>
                 <BreadcrumbItem>
                   {last || !c.to ? (
-                    <BreadcrumbPage className="font-semibold">{c.label}</BreadcrumbPage>
+                    <BreadcrumbPage className="font-semibold">
+                      {c.label}
+                    </BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink asChild>
                       <Link to={c.to}>{c.label}</Link>
@@ -49,13 +51,13 @@ function Topbar({
                 </BreadcrumbItem>
                 {!last && <BreadcrumbSeparator />}
               </React.Fragment>
-            )
+            );
           })}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto flex shrink-0 items-center">{trailing}</div>
     </header>
-  )
+  );
 }
 
-export { Topbar }
+export { Topbar };

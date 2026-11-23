@@ -29,15 +29,15 @@ def person(name, meta, ini, bg=CREAM_DP, fg=FOREST):
 # ------------------------------------------------------------------ dashboard
 def attention_list():
     items = [
-        ("alert", FAIL_FG, "Cruz, Angelo P.", "2022-01188",
+        ("alert", FAIL_FG, "Cruz, Angelo P.", "22-1-01188",
          "Delinquency threshold reached — 12 failed units", "Review before enlistment"),
-        ("clock", INC_FG, "Bautista, Maria Isabel L.", "2023-04412",
+        ("clock", INC_FG, "Bautista, Maria Isabel L.", "23-1-04412",
          "INC in STAT 101 lapses in 47 days", "26 October 2026"),
-        ("clock", INC_FG, "Lim, Joshua T.", "2023-02940",
+        ("clock", INC_FG, "Lim, Joshua T.", "23-1-02940",
          "INC in CS 111 lapses in 12 days", "21 September 2026"),
-        ("flag", FAIL_FG, "Santos, Kier B.", "2021-03310",
+        ("flag", FAIL_FG, "Santos, Kier B.", "21-1-03310",
          "Second failure in MATH 22 — retake requires chair approval", "Awaiting your note"),
-        ("swap", FOREST, "Villanueva, Andrea M.", "2024-00871",
+        ("swap", FOREST, "Villanueva, Andrea M.", "24-1-00871",
          "Curriculum shift request from BSIT to BSCS", "Equivalency review pending"),
     ]
     out = ""
@@ -154,18 +154,18 @@ ROSTER = shell("adviser", "Advisees", ["Adviser portal", "Advisees"], USER, INI,
                    gap="4px", extra="margin-bottom: 16px")
                + panel("Active advisees · AY 2025–2026",
                        table(["Student", "Program", "Year", "GWA", "Units", "Standing", "Open INC", "Assigned since"], [
-                           adv_row("Bautista, Maria Isabel L.", "MB", "2023-04412", "BS Computer Science", "2nd", "1.68", "61", "good", "1", "12 Jun 2024"),
-                           adv_row("Cruz, Angelo P.", "AC", "2022-01188", "BS Computer Science", "3rd", "3.42", "78", "delinquent", "", "05 Aug 2023"),
-                           adv_row("Lim, Joshua T.", "JL", "2023-02940", "BS Computer Science", "2nd", "2.14", "58", "watch", "1", "12 Jun 2024"),
-                           adv_row("Santos, Kier B.", "KS", "2021-03310", "BS Computer Science", "4th", "2.88", "112", "watch", "", "18 Jan 2023"),
-                           adv_row("Villanueva, Andrea M.", "AV", "2024-00871", "BS Info. Technology", "1st", "1.92", "24", "good", "", "03 Jun 2025"),
-                           adv_row("Reyes, Paolo M.", "PR", "2022-04120", "BS Computer Science", "3rd", "2.05", "84", "good", "", "05 Aug 2023"),
-                           adv_row("Domingo, Grace A.", "GD", "2023-01553", "BS Computer Science", "2nd", "1.44", "63", "good", "", "12 Jun 2024"),
-                           adv_row("Ocampo, Liza R.", "LO", "2021-02277", "BS Computer Science", "4th", "1.71", "126", "good", "", "18 Jan 2023"),
-                           adv_row("Mendoza, Carl John S.", "CM", "2022-03901", "BS Computer Science", "3rd", "2.63", "71", "watch", "2", "05 Aug 2023"),
-                           adv_row("Tolentino, Bea F.", "BT", "2024-00214", "BS Computer Science", "1st", "1.58", "21", "good", "", "03 Jun 2025"),
-                           adv_row("Aquino, Miguel D.", "MA", "2021-04408", "BS Computer Science", "4th", "3.11", "104", "delinquent", "1", "18 Jan 2023"),
-                           adv_row("Garcia, Nicole P.", "NG", "2023-03017", "BS Computer Science", "2nd", "1.83", "60", "good", "", "12 Jun 2024"),
+                           adv_row("Bautista, Maria Isabel L.", "MB", "23-1-04412", "BS Computer Science", "2nd", "1.68", "61", "good", "1", "12 Jun 2024"),
+                           adv_row("Cruz, Angelo P.", "AC", "22-1-01188", "BS Computer Science", "3rd", "3.42", "78", "delinquent", "", "05 Aug 2023"),
+                           adv_row("Lim, Joshua T.", "JL", "23-1-02940", "BS Computer Science", "2nd", "2.14", "58", "watch", "1", "12 Jun 2024"),
+                           adv_row("Santos, Kier B.", "KS", "21-1-03310", "BS Computer Science", "4th", "2.88", "112", "watch", "", "18 Jan 2023"),
+                           adv_row("Villanueva, Andrea M.", "AV", "24-1-00871", "BS Info. Technology", "1st", "1.92", "24", "good", "", "03 Jun 2025"),
+                           adv_row("Reyes, Paolo M.", "PR", "22-1-04120", "BS Computer Science", "3rd", "2.05", "84", "good", "", "05 Aug 2023"),
+                           adv_row("Domingo, Grace A.", "GD", "23-1-01553", "BS Computer Science", "2nd", "1.44", "63", "good", "", "12 Jun 2024"),
+                           adv_row("Ocampo, Liza R.", "LO", "21-1-02277", "BS Computer Science", "4th", "1.71", "126", "good", "", "18 Jan 2023"),
+                           adv_row("Mendoza, Carl John S.", "CM", "22-1-03901", "BS Computer Science", "3rd", "2.63", "71", "watch", "2", "05 Aug 2023"),
+                           adv_row("Tolentino, Bea F.", "BT", "24-1-00214", "BS Computer Science", "1st", "1.58", "21", "good", "", "03 Jun 2025"),
+                           adv_row("Aquino, Miguel D.", "MA", "21-1-04408", "BS Computer Science", "4th", "3.11", "104", "delinquent", "1", "18 Jan 2023"),
+                           adv_row("Garcia, Nicole P.", "NG", "23-1-03017", "BS Computer Science", "2nd", "1.83", "60", "good", "", "12 Jun 2024"),
                        ], widths=["auto", "180px", "70px", "76px", "76px", "142px", "104px", "128px"],
                           align=["left", "left", "left", "right", "right", "left", "left", "left"]),
                        actions=badge("12 of 48 shown", MUTED, CREAM_DP, dot=False))
@@ -193,7 +193,7 @@ def student_header(active_tab):
             f'{status("passed", "Good standing")}</div>'
             f'<div style="display: flex; gap: 20px; margin-top: 8px; font-size: 13px; color: {MUTED}; '
             f'flex-wrap: wrap">'
-            f'<span class="mono">2023-04412</span><span>BS Computer Science</span>'
+            f'<span class="mono">23-1-04412</span><span>BS Computer Science</span>'
             f'<span>Curriculum 2023–2024</span><span>2nd year</span>'
             f'<span>maria.bautista@[university].edu.ph</span></div></div>'
             f'<div style="display: flex; gap: 26px; flex-shrink: 0; text-align: right">'
@@ -578,7 +578,7 @@ RECORD_BODY = (page_head("Record enrollment",
                + f'<div style="display: flex; flex-direction: column; gap: 18px">'
                + panel("1 · Student and offering",
                        f'<div style="padding: 20px; display: flex; flex-direction: column; gap: 16px">'
-                       f'{select("Advisee", "Bautista, Maria Isabel L. · 2023-04412")}'
+                       f'{select("Advisee", "Bautista, Maria Isabel L. · 23-1-04412")}'
                        f'<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">'
                        f'{select("School term", "AY 2025–2026 · 1st Semester")}'
                        f'{select("Course", "CS 132 — Design and Analysis of Algorithms")}</div>'
@@ -673,11 +673,11 @@ REASSIGN = shell("adviser", "Reassignment", ["Adviser portal", "Adviser reassign
                               person(n, sn, i), p, y, f'<span class="mono">{gw}</span>', st,
                               f'<span style="color: {MUTED_2}; font-size: 12.5px">{d}</span>']
                              for n, sn, i, p, y, gw, st, d in [
-                                 ("Villanueva, Andrea M.", "2024-00871", "AV", "BS Info. Technology", "1st", "1.92",
+                                 ("Villanueva, Andrea M.", "24-1-00871", "AV", "BS Info. Technology", "1st", "1.92",
                                   status("passed", "Good standing"), "03 Jun 2025"),
-                                 ("Tolentino, Bea F.", "2024-00214", "BT", "BS Computer Science", "1st", "1.58",
+                                 ("Tolentino, Bea F.", "24-1-00214", "BT", "BS Computer Science", "1st", "1.58",
                                   status("passed", "Good standing"), "03 Jun 2025"),
-                                 ("Garcia, Nicole P.", "2023-03017", "NG", "BS Computer Science", "2nd", "1.83",
+                                 ("Garcia, Nicole P.", "23-1-03017", "NG", "BS Computer Science", "2nd", "1.83",
                                   status("passed", "Good standing"), "12 Jun 2024")]
                          ] + [
                              [f'<div style="width: 15px; height: 15px; border: 1px solid {LINE}; border-radius: 3px; '
@@ -685,11 +685,11 @@ REASSIGN = shell("adviser", "Reassignment", ["Adviser portal", "Adviser reassign
                               person(n, sn, i), p, y, f'<span class="mono">{gw}</span>', st,
                               f'<span style="color: {MUTED_2}; font-size: 12.5px">{d}</span>']
                              for n, sn, i, p, y, gw, st, d in [
-                                 ("Bautista, Maria Isabel L.", "2023-04412", "MB", "BS Computer Science", "2nd", "1.68",
+                                 ("Bautista, Maria Isabel L.", "23-1-04412", "MB", "BS Computer Science", "2nd", "1.68",
                                   status("passed", "Good standing"), "12 Jun 2024"),
-                                 ("Cruz, Angelo P.", "2022-01188", "AC", "BS Computer Science", "3rd", "3.42",
+                                 ("Cruz, Angelo P.", "22-1-01188", "AC", "BS Computer Science", "3rd", "3.42",
                                   status("failed", "Delinquent"), "05 Aug 2023"),
-                                 ("Lim, Joshua T.", "2023-02940", "JL", "BS Computer Science", "2nd", "2.14",
+                                 ("Lim, Joshua T.", "23-1-02940", "JL", "BS Computer Science", "2nd", "2.14",
                                   badge("Watchlist", INC_FG, INC_BG), "12 Jun 2024")]
                          ], widths=["40px", "auto", "170px", "62px", "70px", "150px", "126px"]),
                          actions=searchbar("Search advisees", "260px"))

@@ -1,0 +1,36 @@
+type: object
+additionalProperties: false
+properties:
+  resolution_action:
+    type: string
+    enum:
+      - correct
+      - reject
+  corrected_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  corrected_status:
+    anyOf:
+      - $ref: "./AttemptStatus.yaml"
+      - type: "null"
+  corrected_midterm_status:
+    anyOf:
+      - $ref: "./MidtermStatus.yaml"
+      - type: "null"
+  resolution_note:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+  expected_revision:
+    type:
+      - integer
+      - "null"
+    minimum: 0
+required:
+  - resolution_action
+  - resolution_note

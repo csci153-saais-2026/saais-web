@@ -1,0 +1,59 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Read interactive degree checklist
+  operationId: getChecklist
+  description: >-
+    Scoped interactive checklist with effective source provenance/actual units and student-safe
+    grade fix history; student-safe response has no staff remarks or internal justifications.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: department-scoped-read-only
+    department_staff: department-scoped-read-only
+    dean: faculty-scoped-read-only
+    admin: institution-wide
+  x-atomic: false
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: "../../components/schemas/ChecklistSlotResult.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"

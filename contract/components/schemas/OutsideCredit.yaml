@@ -1,0 +1,74 @@
+type: object
+additionalProperties: false
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  student_id:
+    type: string
+    format: uuid
+  entry_type:
+    type: string
+    enum:
+      - transferee
+      - shiftee
+  origin_school:
+    type: string
+    minLength: 1
+    maxLength: 250
+  original_course_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  original_course_title:
+    type: string
+    minLength: 1
+    maxLength: 250
+  units:
+    type: number
+    minimum: 0
+    multipleOf: 0.25
+  grade:
+    type: string
+    minLength: 1
+    maxLength: 32
+  destination_curriculum_term_course_id:
+    type: string
+    format: uuid
+  units_credited:
+    type: number
+    minimum: 0
+    readOnly: true
+  decided_by:
+    type: string
+    format: uuid
+    readOnly: true
+  decided_at:
+    type: string
+    format: date-time
+    readOnly: true
+  revoked_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - id
+  - student_id
+  - entry_type
+  - origin_school
+  - original_course_code
+  - original_course_title
+  - units
+  - grade
+  - destination_curriculum_term_course_id
+  - units_credited
+  - decided_by
+  - decided_at
+  - revoked_at
+  - updated_at

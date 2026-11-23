@@ -1,0 +1,27 @@
+type: object
+required:
+  - id
+  - department_id
+  - code
+  - name
+  - nominal_duration
+  - status
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  code:
+    type: string
+    example: BSCS
+  name:
+    type: string
+    example: Bachelor of Science in Computer Science
+  nominal_duration:
+    type: number
+    example: 4
+  status:
+    $ref: "./ProgramStatus.yaml"
+  department_id:
+    type: string
+    format: uuid

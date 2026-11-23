@@ -1,0 +1,54 @@
+post:
+  tags:
+    - Profile
+  summary: Resend or regenerate an account invitation
+  operationId: resendAccountInvite
+  description: >-
+    Department Head, Department Staff, or Admin regenerates and resends an expiring invitation
+    email for an account whose invitation is still pending (`invited`), expired, or previously
+    revoked/declined, without exposing the raw token in API responses. Department Head and
+    Department Staff may only resend invitations for Students, Advisers, Department Staff, and Department Heads
+    within their own department (`admin` and `dean` accounts are Admin-only).
+    Invalidates any prior unused token hash, updates `invitation_status` to `pending`, stamps
+    `invitation_sent_at` and `invitation_expires_at` server-side, and writes an audit log entry.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped-student-adviser-staff-and-head-invites-only
+    department_staff: department-scoped-student-adviser-staff-and-head-invites-only
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/department scope at runtime; reject already
+    active accounts with 409 Conflict; never return raw invite tokens in response payloads;
+    derive audit actor/time server-side.
+  parameters:
+    - name: profile_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "200":
+      description: Invitation regenerated and resent atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ResendInviteResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"

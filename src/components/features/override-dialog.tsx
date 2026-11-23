@@ -1,5 +1,5 @@
-import * as React from "react"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { FormField } from "@/components/features/form-field"
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { FormField } from "@/components/features/form-field";
 
 /**
  * Soft-check dialog (e.g. "Prerequisite not met"). The adviser must give a reason, which is
@@ -23,21 +23,21 @@ function OverrideDialog({
   description,
   onConfirm,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  title: string
-  description: React.ReactNode
-  onConfirm: (reason: string) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: React.ReactNode;
+  onConfirm: (reason: string) => void;
 }) {
-  const [reason, setReason] = React.useState("")
-  const [error, setError] = React.useState<string>()
+  const [reason, setReason] = React.useState("");
+  const [error, setError] = React.useState<string>();
 
   function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!reason.trim()) return setError("A reason is required.")
-    onConfirm(reason.trim())
-    setReason("")
-    setError(undefined)
+    e.preventDefault();
+    if (!reason.trim()) return setError("A reason is required.");
+    onConfirm(reason.trim());
+    setReason("");
+    setError(undefined);
   }
 
   return (
@@ -50,7 +50,11 @@ function OverrideDialog({
               <div className="text-foreground">{description}</div>
             </DialogDescription>
           </DialogHeader>
-          <FormField label="Reason for the override" htmlFor="override-reason" error={error}>
+          <FormField
+            label="Reason for the override"
+            htmlFor="override-reason"
+            error={error}
+          >
             <Textarea
               id="override-reason"
               value={reason}
@@ -60,17 +64,24 @@ function OverrideDialog({
             />
           </FormField>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" className="bg-gold text-gold-foreground hover:bg-gold/90">
+            <Button
+              type="submit"
+              className="bg-gold text-gold-foreground hover:bg-gold/90"
+            >
               Continue with override
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
-export { OverrideDialog }
+export { OverrideDialog };

@@ -1,0 +1,41 @@
+post:
+  tags:
+    - Auth
+  summary: Decline an active account invitation token
+  operationId: declineInviteToken
+  description: >-
+    Pre-session invitation decline action from the Invite landing card (Invite.dc.html). Accepts
+    the single-use expiring invitation token in the POST body, atomically invalidates the token,
+    transitions invitation_status to declined in a race-safe compare-and-set against concurrent
+    redemption or revocation, and writes an audit log entry. Requires the public project apikey
+    without a user session JWT. Returns 409 Conflict if the invitation was already accepted,
+    revoked, expired, or declined.
+  x-required-roles: []
+  security:
+    - supabaseProjectKey: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/DeclineInviteRequest.yaml"
+  responses:
+    "200":
+      description: Invitation token declined and invalidated atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/DeclineInviteResponse.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-access-scope: single-use-expiring-invitation-token

@@ -1,0 +1,9 @@
+type: string
+enum:
+  - student
+  - adviser
+  - department_head
+  - department_staff
+  - dean
+  - admin
+description: User role within SAAIS

@@ -1,0 +1,89 @@
+provider: Supabase Auth
+client_sdk: "@supabase/supabase-js"
+ownership: >-
+  Supabase-managed /auth/v1/* endpoints are consumed through the SDK; not duplicated as
+  application operations.
+email_password:
+  sdk_method: auth.signInWithPassword
+  signup_policy: Admin or authorized Department Staff/Head provisioned accounts only; no public self-registration.
+  password_policy:
+    min_length: 12
+    max_length: 128
+    require_uppercase: true
+    require_lowercase: true
+    require_number: true
+    disallow_reuse_of_current_password: true
+    description: >-
+      All password setup (`POST /functions/v1/auth/verify-invite`), password recovery, and
+      authenticated password changes (`supabase.auth.updateUser({ password })`) must enforce 12 to
+      128 characters with at least one uppercase letter, one lowercase letter, and one digit, and
+      must reject reusing the current password on change.
+  change_password:
+    verify_current_password_method: auth.updateUser.current_password
+    update_password_method: auth.updateUser
+    sign_out_other_devices_method: "auth.signOut({ scope: 'others' })"
+    audit_event: password_changed
+    description: >-
+      Enable the Supabase Auth current-password requirement. Authenticated Change Password routes
+      enforce the 12–128 character complexity and non-reuse policy and call `auth.updateUser`
+      with both `current_password` and `password`, without replacing the current session. Revoke
+      other sessions via `auth.signOut({ scope: 'others' })` and emit a server-side
+      `password_changed` audit entry without recording password material. Revoked sessions' access
+      JWTs may remain usable until expiry unless protected requests also check session validity.
+google_oauth:
+  sdk_method: auth.signInWithOAuth
+  provider: google
+  flow_type: pkce
+  callback_route: /auth/callback
+  callback_handling: >-
+    Configure flowType=pkce explicitly. Exchange the returned code using
+    auth.exchangeCodeForSession (or configured SDK URL detection), exactly once; do not run both.
+    No browser client secret. Provider and redirect allowlist setup is future work.
+  provider_callback: >-
+    https://<project-ref>.supabase.co/auth/v1/callback (registered with Google); distinct from the
+    SPA redirect target.
+  email_policy: >-
+    Verified Google email must be an institutional `@vsu.edu.ph` address that exactly matches a
+    pre-provisioned `Profile` row (`status: invited` or `active`); enforce eligibility/linking
+    server-side, including already-existing identities.
+audit_events:
+  sign_in_succeeded: >-
+    Recorded server-side by the Supabase Auth post-authentication hook / session bootstrap
+    whenever a user completes password or Google OAuth sign-in.
+  login_rejected: >-
+    Recorded server-side by the Supabase Auth `before-user-created` / sign-in rejection hook
+    when an unprovisioned email, non-`@vsu.edu.ph` domain, or disabled account attempts sign-in.
+  password_changed: >-
+    Recorded server-side when an authenticated user updates their password via `auth.updateUser`
+    or completes password recovery.
+sessions:
+  owner: Supabase SDK
+  refresh: >-
+    Use the current refreshed user access token per application request; never cache one JWT
+    forever.
+  state: >-
+    Use auth.onAuthStateChange for browser session updates; server independently
+    authenticates/authorizes.
+  logout: auth.signOut
+  password_recovery: >-
+    auth.resetPasswordForEmail and auth.updateUser after a valid recovery session; not custom
+    application endpoints.
+headers:
+  apikey: Public project publishable key (legacy anon key where supported).
+  Authorization: Bearer <current Supabase user access_token> for protected application operations only.
+authorization:
+  identity: >-
+    Verified Supabase JWT subject maps to the provisioned profile ID; never trust client-supplied
+    email/role or user-editable user_metadata.
+  active_account: >-
+    Require active provisioned profile on protected requests, including existing users after
+    role/status changes.
+  creation_hook: >-
+    A before-user-created hook can restrict new identity creation; it does not govern subsequent
+    logins or replace account-status/RLS checks.
+  organization: >-
+    Application role and current/historical assignment remain server-enforced separately from
+    PostgreSQL authenticated role.
+deployment_boundary: >-
+  Specification only: no Supabase project/provider/hook/grant/Edge Function configuration or
+  implementation is changed.

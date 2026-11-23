@@ -1,10 +1,65 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from "react";
+import { StartupErrorBoundary } from "./StartupErrorBoundary";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import { resolveSaaisEnvConfig } from "@/lib/supabase/client";
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+async function enableMockingIfConfigured(): Promise<void> {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+  const envConfig = resolveSaaisEnvConfig();
+  const explicitExternalPrism = Boolean(
+    import.meta.env.VITE_API_BASE_URL?.trim(),
+  );
+  if (envConfig.mode === "mock" && !explicitExternalPrism) {
+    const { startBrowserMockWorker } = await import("@/mocks/browser");
+    await startBrowserMockWorker();
+  }
+}
+
+async function start(): Promise<void> {
+  const root = createRoot(document.getElementById("root")!);
+  try {
+    resolveSaaisEnvConfig();
+  } catch (error) {
+    console.error("Invalid API configuration:", error);
+    root.render(
+      <main role="alert">
+        The application could not start. Check the API configuration and reload.
+      </main>,
+    );
+    return;
+  }
+  let mockFailure = false;
+  try {
+    await enableMockingIfConfigured();
+  } catch (error) {
+    console.error("Could not start the mock API:", error);
+    mockFailure = true;
+  }
+  try {
+    const { default: App } = await import("./App.tsx");
+    root.render(
+      <StrictMode>
+        {mockFailure && (
+          <div role="alert">
+            The mock API could not start. API requests may fail.
+          </div>
+        )}
+        <StartupErrorBoundary>
+          <App />
+        </StartupErrorBoundary>
+      </StrictMode>,
+    );
+  } catch (error) {
+    console.error("Could not start the application:", error);
+    root.render(
+      <main role="alert">
+        The application could not start. Check the API configuration and reload.
+      </main>,
+    );
+  }
+}
+
+void start();

@@ -1,0 +1,19 @@
+type: object
+additionalProperties: false
+required:
+  - token
+properties:
+  token:
+    type: string
+    minLength: 1
+    maxLength: 2048
+    writeOnly: true
+    pattern: \S
+    description: >-
+      Opaque application invitation token passed in the JSON request body to decline a pending
+      invitation without creating a session.
+  reason:
+    type:
+      - string
+      - "null"
+    maxLength: 500

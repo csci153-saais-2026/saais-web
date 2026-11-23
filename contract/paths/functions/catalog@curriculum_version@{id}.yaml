@@ -1,0 +1,101 @@
+patch:
+  tags:
+    - Program & Curriculum
+  summary: Update curriculum version
+  operationId: updateCurriculumVersion
+  description: >-
+    Department Head, Department Staff, or Admin validated transactional catalog operation.
+    Protect referenced history and required last children; lock parents and commit audit with
+    the mutation. Raw table writes are not exposed by the frontend contract.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/CurriculumVersion.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/CurriculumVersionUpdate.yaml"
+delete:
+  tags:
+    - Program & Curriculum
+  summary: Delete unreferenced curriculum version
+  operationId: deleteCurriculumVersion
+  description: >-
+    Department Head, Department Staff, or Admin validated transactional catalog operation to
+    delete a draft or unreferenced curriculum version that has no student assignments,
+    curriculum transfer requests, or pair-equivalence rules referencing it. Referenced versions
+    return 409 Conflict and must be retired/closed instead.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "204":
+      description: Deleted unreferenced curriculum version. Referenced versions return 409 Conflict.
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

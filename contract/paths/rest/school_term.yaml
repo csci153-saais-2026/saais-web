@@ -1,0 +1,113 @@
+get:
+  tags:
+    - Terms & Offerings
+  summary: Query calendar school terms
+  operationId: listSchoolTerms
+  description: >-
+    Retrieve academic school terms with lock states, encoding deadlines, closure notes, and
+    override flags. Flat columns are allowlisted per x-projection-fields; role metadata
+    documents checks, not automatic runtime authorization. Inaccessible/missing collection rows
+    return 200 [], while invalid role/column requests may return 403.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  parameters:
+    - $ref: "../../components/parameters/idQueryParam.yaml"
+    - $ref: "../../components/parameters/schoolYearQueryParam.yaml"
+    - $ref: "../../components/parameters/isLockedQueryParam.yaml"
+    - name: select
+      in: query
+      required: false
+      description: >-
+        Only these flat safe columns. On private-column tables the client must explicitly send
+        this projection; PostgREST does not apply OpenAPI defaults.
+      schema:
+        type: string
+        maxLength: 2000
+        pattern: >-
+          ^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key))*$
+        default: >-
+          id,start_year,end_year,term_type,school_year,is_locked,override_flag,override_actor_id,override_at,starts_on,ends_on,encoding_deadline,default_inc_deadline,closed_by,closed_by_name,closed_at,closure_note,chronological_key
+    - name: order
+      in: query
+      required: false
+      description: Stable ordering on published columns only; whitelist and enforce at runtime.
+      schema:
+        type: string
+        maxLength: 1000
+        pattern: >-
+          ^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\.(?:asc|desc)(?:\.nulls(?:first|last))?(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\.(?:asc|desc)(?:\.nulls(?:first|last))?)*$
+        default: id.asc
+    - $ref: "../../components/parameters/limitQueryParam.yaml"
+    - $ref: "../../components/parameters/offsetQueryParam.yaml"
+  responses:
+    "200":
+      description: Array of school terms.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../../components/schemas/SchoolTerm.yaml"
+            maxItems: 1000
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "206":
+      description: Partial visible collection if the gateway reports a partial range.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../../components/schemas/SchoolTerm.yaml"
+            maxItems: 1000
+      headers:
+        Content-Range:
+          description: PostgREST visible item range; total may be * when exact counts are not requested.
+          schema:
+            type: string
+            maxLength: 100
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  x-access-scope:
+    student: own-records
+    adviser: current-or-historic-assigned-students-read-only
+    department_head: institution-reference-read-only
+    department_staff: institution-reference-read-only
+    dean: institution-reference-read-only
+    admin: institution-wide
+  x-projection-fields:
+    - id
+    - start_year
+    - end_year
+    - term_type
+    - school_year
+    - is_locked
+    - override_flag
+    - override_actor_id
+    - override_at
+    - starts_on
+    - ends_on
+    - encoding_deadline
+    - default_inc_deadline
+    - closed_by
+    - closed_by_name
+    - closed_at
+    - closure_note
+    - chronological_key

@@ -1,0 +1,66 @@
+type: object
+additionalProperties: false
+properties:
+  row_number:
+    type: integer
+    minimum: 1
+  student_number:
+    type: string
+    minLength: 1
+    maxLength: 64
+    pattern: \S
+  course_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+    pattern: \S
+  curriculum_term_course_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    description: >-
+      Optional target curriculum slot UUID when importing an elective course directly into an
+      elective curriculum slot (`is_elective_slot=true`).
+  elective_mapping_justification:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+    description: >-
+      Optional justification recorded when `curriculum_term_course_id` maps an imported
+      elective attempt to an elective curriculum slot.
+  midterm_status:
+    anyOf:
+      - $ref: "./MidtermStatus.yaml"
+      - type: "null"
+  midterm_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  final_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  status:
+    $ref: "./AttemptStatus.yaml"
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  remark:
+    type:
+      - string
+      - "null"
+    maxLength: 2000
+required:
+  - row_number
+  - student_number
+  - course_code
