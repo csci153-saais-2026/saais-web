@@ -244,7 +244,7 @@ describe("Department Staff academic terms", () => {
         /Closing encoding prevents further grade entry for the term/,
       ),
     ).toBeTruthy();
-    expect(screen.getByText("Academic term history")).toBeTruthy();
+    expect(await screen.findByText("Academic term history")).toBeTruthy();
     expect(
       await screen.findByText(
         "Encoding windows are tracked separately for each semester.",

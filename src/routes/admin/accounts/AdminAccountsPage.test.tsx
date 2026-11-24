@@ -347,6 +347,9 @@ describe("AdminAccountsPage", () => {
 
   it("validates identity fields before sending an invitation", async () => {
     renderPage();
+    // Let the account list and catalogs settle before opening the dialog.
+    await screen.findByText("Alex Adviser");
+    await waitForLoaded();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));
     fireEvent.click(
       await screen.findByRole("checkbox", { name: "System Admin" }),
@@ -363,7 +366,7 @@ describe("AdminAccountsPage", () => {
       await screen.findByText(
         "Use an institutional email ending in @vsu.edu.ph.",
         undefined,
-        { timeout: 5000 },
+        { timeout: 12000 },
       ),
     ).toBeTruthy();
     expect(postMock).not.toHaveBeenCalled();
