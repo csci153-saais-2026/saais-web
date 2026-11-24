@@ -168,9 +168,7 @@ describe("term advising identity", () => {
         [],
       ),
     );
-    await waitFor(() =>
-      expect(getAdvisingData).toHaveBeenCalledTimes(2),
-    );
+    await waitFor(() => expect(getAdvisingData).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(
         (screen.getByRole("checkbox", { name: /CS 2/ }) as HTMLInputElement)
