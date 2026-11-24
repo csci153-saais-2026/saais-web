@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -451,7 +452,9 @@ describe("term advising identity", () => {
         })) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
-    fireEvent.change(await screen.findByLabelText("Write an advising note"), {
+    await screen.findByLabelText("Write an advising note");
+    await waitForLoaded();
+    fireEvent.change(screen.getByLabelText("Write an advising note"), {
       target: { value: "Draft note" },
     });
     expect(
