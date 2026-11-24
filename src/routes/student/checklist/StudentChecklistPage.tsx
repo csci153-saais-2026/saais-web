@@ -6,7 +6,7 @@ import {
   ChecklistView,
   type ChecklistViewTerm,
 } from "@/components/features/checklist-view";
-import { type ChecklistRow } from "@/components/features/checklist-term-group";
+import { type ChecklistRow } from "@/components/features/checklist-term-table";
 import {
   CourseInfoDialog,
   type CourseInfoSlotRecord,
