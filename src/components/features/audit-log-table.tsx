@@ -1,3 +1,4 @@
+import type { Column } from "@/components/features/data-table-panel";
 import {
   Table,
   TableBody,
@@ -6,68 +7,66 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { DeanAuditEntry } from "@/routes/dean/types";
-import { DeanAuditActionPill } from "@/routes/dean/audit-log/DeanAuditActionPill";
+import { cn } from "@/lib/utils";
 
-export function AuditLogTable({
-  entries,
-  emptyMessage = "No audit records match these filters.",
+export function AuditLogTable<T>({
+  columns,
+  rows,
+  rowKey,
+  empty = "No audit records match these filters.",
+  spacious = false,
 }: {
-  entries: DeanAuditEntry[];
-  emptyMessage?: string;
+  columns: Column<T>[];
+  rows: T[];
+  rowKey: (row: T) => string;
+  empty?: string;
+  spacious?: boolean;
 }) {
   return (
-    <Table responsive aria-label="Audit log">
-      <TableHeader>
-        <TableRow>
-          <TableHead>When</TableHead>
-          <TableHead>Who</TableHead>
-          <TableHead>Action</TableHead>
-          <TableHead>Student</TableHead>
-          <TableHead>Details</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {entries.length ? (
-          entries.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell
-                label="When"
-                className="font-mono text-xs text-muted-foreground"
-              >
-                {row.timestamp}
-              </TableCell>
-              <TableCell label="Who" className="font-medium">
-                <span className="block max-w-56 truncate" title={row.actor}>
-                  {row.actor}
-                </span>
-              </TableCell>
-              <TableCell label="Action">
-                <DeanAuditActionPill action={row.action} />
-              </TableCell>
-              <TableCell label="Student">
-                <span className="block max-w-56 truncate" title={row.student}>
-                  {row.student}
-                </span>
-              </TableCell>
-              <TableCell label="Details">
-                <span className="block max-w-96 truncate" title={row.details}>
-                  {row.details}
-                </span>
-              </TableCell>
-            </TableRow>
-          ))
-        ) : (
+    <>
+      <Table responsive aria-label="Audit log">
+        <TableHeader className="bg-secondary">
           <TableRow>
-            <TableCell
-              colSpan={5}
-              className="py-10 text-center text-muted-foreground"
-            >
-              {emptyMessage}
-            </TableCell>
+            {columns.map((column) => (
+              <TableHead
+                key={column.header}
+                className={cn(
+                  "text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase",
+                  spacious && "h-auto px-3.5 py-2.5",
+                  column.numeric && "text-right",
+                )}
+              >
+                {column.headerContent ?? column.header}
+              </TableHead>
+            ))}
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={rowKey(row)}>
+              {columns.map((column) => (
+                <TableCell
+                  key={column.header}
+                  label={column.header}
+                  className={cn(
+                    "py-2.5 text-[13.5px]",
+                    spacious && "px-3.5 py-[11px]",
+                    column.numeric && "text-right font-mono",
+                    column.className,
+                  )}
+                >
+                  {column.cell(row)}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {rows.length === 0 && (
+        <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+          {empty}
+        </p>
+      )}
+    </>
   );
 }
