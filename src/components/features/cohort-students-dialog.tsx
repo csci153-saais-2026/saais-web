@@ -60,7 +60,9 @@ function CohortStudentsDialog({
   /** When set, student names render as links that open that student's record. */
   onOpenStudent?: (studentId: string) => void;
   /** Restore focus to the caller's opener when there is no DialogTrigger. */
-  onCloseAutoFocus?: React.ComponentProps<typeof DialogContent>["onCloseAutoFocus"];
+  onCloseAutoFocus?: React.ComponentProps<
+    typeof DialogContent
+  >["onCloseAutoFocus"];
   emptyMessage?: React.ReactNode;
   /** Small caption under the table, e.g. "All students in this cohort are shown." */
   footnote?: React.ReactNode;

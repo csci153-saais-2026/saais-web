@@ -29,7 +29,9 @@ export function reportDistributionFootnote(report: DepartmentReport): string {
   return `${report.gwaStudents.toLocaleString("en-US")} of ${report.enrolled.toLocaleString("en-US")} students have a cumulative GWA · Percentages sum to 100%.`;
 }
 
-export function toCohortRows(cohorts: readonly CohortSummary[]): CohortGwaRow[] {
+export function toCohortRows(
+  cohorts: readonly CohortSummary[],
+): CohortGwaRow[] {
   return cohorts.map((cohort) => ({
     id: cohort.id,
     entryYear: cohort.entryYear,

@@ -19,7 +19,11 @@ import type { DepartmentPdfDocument } from "../shared/department-pdf";
 import { PdfViewerDialog } from "../shared/PdfViewerDialog";
 import { buildReportPdf } from "./report-pdf";
 import { useReportSource } from "./reports-api";
-import { reportDistributionFootnote, toCohortRows, toReportStats } from "./report-presentation";
+import {
+  reportDistributionFootnote,
+  toCohortRows,
+  toReportStats,
+} from "./report-presentation";
 
 export default function DepartmentReportsPage() {
   const source = useReportSource();
@@ -165,7 +169,9 @@ export default function DepartmentReportsPage() {
                 rows={toCohortRows(report.cohorts)}
                 onViewStudents={(row, event) => {
                   cohortOpener.current = event.currentTarget;
-                  const original = report.cohorts.find((item) => item.id === row.id);
+                  const original = report.cohorts.find(
+                    (item) => item.id === row.id,
+                  );
                   if (original) setCohortId(original.id);
                 }}
                 footer={`${report.cohorts.length} cohorts · ${report.programLabel}`}
@@ -178,8 +184,14 @@ export default function DepartmentReportsPage() {
             onOpenChange={(open) => {
               if (!open) setCohortId(null);
             }}
-            title={cohort ? `Batch ${cohort.entryYear} · Student GWA` : "Student GWA"}
-            summary={cohort ? `${cohortStudents.length} students · ${cohort.program.toUpperCase()} · Study range ${cohort.entryYear}–${cohort.entryYear + 4}` : undefined}
+            title={
+              cohort ? `Batch ${cohort.entryYear} · Student GWA` : "Student GWA"
+            }
+            summary={
+              cohort
+                ? `${cohortStudents.length} students · ${cohort.program.toUpperCase()} · Study range ${cohort.entryYear}–${cohort.entryYear + 4}`
+                : undefined
+            }
             students={cohortStudents}
             footnote="All students in this cohort are shown."
             onCloseAutoFocus={(event) => {
