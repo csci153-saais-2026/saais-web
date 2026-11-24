@@ -37,11 +37,7 @@ import {
 } from "./use-student-checklist";
 
 type ChecklistFilterValue =
-  | "all"
-  | "open"
-  | "passed"
-  | "inc"
-  | "currently_enrolled";
+  "all" | "open" | "passed" | "inc" | "currently_enrolled";
 
 const STUDENT_CHECKLIST_FILTER_OPTIONS: ChecklistFilterOption[] = [
   { value: "all", label: "All statuses" },
