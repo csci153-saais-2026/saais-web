@@ -96,7 +96,7 @@ export default function AcademicTermsPage() {
     term: SchoolTerm;
   } | null>(null);
   const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [, setSaveMessage] = useState<string | null>(null);
   const closures = academicTerms.data?.departmentClosures ?? [];
   const closureByTermId = new Map(
     closures.map((closure) => [closure.school_term_id, closure]),
