@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import "../shared/staff-filters.css";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -322,103 +323,105 @@ export default function CourseCatalogPage() {
             </FormField>
           </div>
 
-          {!searchError && (references.isPending || catalog.isPending) && (
-            <p
-              role="status"
-              className="border-t border-border px-5 py-6 text-sm text-muted-foreground"
-            >
-              Loading courses and department references...
-            </p>
-          )}
+          <AccountSkeleton
+            id="CourseCatalogPage-1"
+            loading={
+              !searchError &&
+              !references.isError &&
+              !catalog.isError &&
+              (references.isPending || catalog.isPending)
+            }
+            label="Loading courses and department references..."
+          >
+            {(references.isError || catalog.isError) && (
+              <div className="space-y-4 border-t border-border p-5">
+                <p role="alert" className="text-sm text-destructive">
+                  {errorMessage(references.error ?? catalog.error)}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    void references.refetch();
+                    void catalog.refetch();
+                  }}
+                  disabled={references.isFetching || catalog.isFetching}
+                >
+                  {references.isFetching || catalog.isFetching
+                    ? "Retrying..."
+                    : "Retry"}
+                </Button>
+              </div>
+            )}
 
-          {(references.isError || catalog.isError) && (
-            <div className="space-y-4 border-t border-border p-5">
-              <p role="alert" className="text-sm text-destructive">
-                {errorMessage(references.error ?? catalog.error)}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void references.refetch();
-                  void catalog.refetch();
-                }}
-                disabled={references.isFetching || catalog.isFetching}
-              >
-                {references.isFetching || catalog.isFetching
-                  ? "Retrying..."
-                  : "Retry"}
-              </Button>
-            </div>
-          )}
-
-          {references.isSuccess && catalog.isSuccess && !searchError && (
-            <>
-              <Table responsive>
-                <TableHeader className="bg-secondary">
-                  <TableRow>
-                    {columns.map((column) => (
-                      <TableHead
-                        key={column.header}
-                        className={`h-auto px-3.5 py-2.5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase${column.header === "Units" ? " text-center" : ""}`}
-                      >
-                        {column.header}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.courses.map((course) => (
-                    <TableRow key={course.id}>
+            {references.isSuccess && catalog.isSuccess && !searchError && (
+              <>
+                <Table responsive>
+                  <TableHeader className="bg-secondary">
+                    <TableRow>
                       {columns.map((column) => (
-                        <TableCell
+                        <TableHead
                           key={column.header}
-                          label={column.header}
-                          className={`px-3.5 py-[11px] text-[13.5px] ${column.className ?? ""}`}
+                          className={`h-auto px-3.5 py-2.5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase${column.header === "Units" ? " text-center" : ""}`}
                         >
-                          {column.cell(course)}
-                        </TableCell>
+                          {column.header}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {data.courses.length === 0 && (
-                <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-                  No courses match these filters.
-                </p>
-              )}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-                <p className="text-sm" aria-live="polite">
-                  {data.total != null
-                    ? `${start} - ${end} of ${data.total}`
-                    : `Page ${filters.page + 1}`}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      updateFilters({ page: String(filters.page - 1) }, false)
-                    }
-                    disabled={filters.page === 0 || catalog.isFetching}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      updateFilters({ page: String(filters.page + 1) }, false)
-                    }
-                    disabled={!hasNext || catalog.isFetching}
-                  >
-                    Next
-                  </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {data.courses.map((course) => (
+                      <TableRow key={course.id}>
+                        {columns.map((column) => (
+                          <TableCell
+                            key={column.header}
+                            label={column.header}
+                            className={`px-3.5 py-[11px] text-[13.5px] ${column.className ?? ""}`}
+                          >
+                            {column.cell(course)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {data.courses.length === 0 && (
+                  <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+                    No courses match these filters.
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+                  <p className="text-sm" aria-live="polite">
+                    {data.total != null
+                      ? `${start} - ${end} of ${data.total}`
+                      : `Page ${filters.page + 1}`}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        updateFilters({ page: String(filters.page - 1) }, false)
+                      }
+                      disabled={filters.page === 0 || catalog.isFetching}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        updateFilters({ page: String(filters.page + 1) }, false)
+                      }
+                      disabled={!hasNext || catalog.isFetching}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </AccountSkeleton>
         </Panel>
         <CoursePrerequisitesDialog
           key={

@@ -1,9 +1,11 @@
-﻿import { useState } from "react";
+import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { StudentRecordHeader } from "@/components/features/student-record-header";
 import { Button } from "@/components/ui/button";
 import { getSelectedStudent } from "./advisees.api";
 import { useScopedRequest } from "./use-scoped-request";
+import { useStudentPhotoUrl } from "@/hooks/use-student-photo-url";
 
 export function SelectedStudentHeader({ id }: { id: string }) {
   const { user } = useAuth();
@@ -12,6 +14,7 @@ export function SelectedStudentHeader({ id }: { id: string }) {
   const { data, error } = useScopedRequest(key, !!user?.id, () =>
     getSelectedStudent(id),
   );
+  const photoUrl = useStudentPhotoUrl(data?.avatar_url, user?.id);
   if (error)
     return (
       <div role="alert" className="mb-5">
@@ -23,13 +26,12 @@ export function SelectedStudentHeader({ id }: { id: string }) {
     );
   if (!data)
     return (
-      <p role="status" className="mb-5">
-        Loading student record…
-      </p>
+      <TableSkeleton rows={4} columns={4} label="Loading student record…" />
     );
   return (
     <StudentRecordHeader
       name={data.full_name}
+      avatarUrl={photoUrl}
       initials={data.full_name
         .split(/\s+/)
         .filter(Boolean)

@@ -1,4 +1,5 @@
-﻿import { useState, type FormEvent } from "react";
+import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { useState, type FormEvent } from "react";
 import { FormField } from "@/components/features/form-field";
 import { AlertIcon } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { ApiClientError } from "@/lib/api";
 import { reassignmentSchema } from "./reassignment.schema";
 
@@ -134,7 +136,9 @@ export function ReassignAdviserDialog({
               </SelectContent>
             </Select>
           </FormField>
-          {advisersLoading && <p role="status">Loading advisers…</p>}
+          {advisersLoading && (
+            <TableSkeleton rows={4} columns={4} label="Loading advisers…" />
+          )}
           {advisersError && (
             <div role="alert">
               Could not load advisers.{" "}
@@ -168,7 +172,7 @@ export function ReassignAdviserDialog({
               id="staff-reassignment-reason"
               value={reason}
               disabled={busy}
-              maxLength={2000}
+              maxLength={REASON_MAX_LENGTH}
               onChange={(event) => setReason(event.target.value)}
               placeholder="Explain the adviser change."
               rows={3}

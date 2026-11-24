@@ -77,11 +77,13 @@ export function DeanStudentGradesTab({
         {
           header: "Course",
           cell: (row) => (
-            <div>
-              <span className="font-mono text-xs font-medium text-primary">
+            <div className="flex max-w-80 min-w-0 items-baseline gap-2">
+              <span className="shrink-0 font-mono text-xs font-medium text-primary">
                 {row.code}
               </span>
-              <span className="ml-2">{row.title}</span>
+              <span className="min-w-0 truncate" title={row.title}>
+                {row.title}
+              </span>
             </div>
           ),
         },

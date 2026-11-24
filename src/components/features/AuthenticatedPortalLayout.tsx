@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/features/loading-skeletons";
 import { matchPath, useLocation, useNavigate } from "react-router";
 import { AuthenticatedLayout } from "@/layouts/AuthenticatedLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,6 +7,7 @@ import { getPortalBreadcrumbs } from "@/navigation/portal-breadcrumbs";
 import { ROLE_DEFAULT_ROUTE } from "@/lib/auth/auth-service";
 import type { SaaisRole } from "@/mocks/personas";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useSidebarStudentPhoto } from "@/hooks/use-sidebar-student-photo";
 import { NotificationBell } from "@/components/features/notification-bell";
 
 const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
@@ -91,6 +93,11 @@ export function AuthenticatedPortalLayout() {
     roles,
     activeRole ?? roles[0] ?? user?.primaryRole ?? "student",
   );
+  const sidebarPhoto = useSidebarStudentPhoto(
+    !isLoading && isAllowedToEnter !== false && currentRole === "student"
+      ? user?.id
+      : undefined,
+  );
   const notificationRoute = "/notifications";
   const notifications = useNotifications(
     user?.id,
@@ -108,13 +115,8 @@ export function AuthenticatedPortalLayout() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-primary">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium text-muted-foreground">
-            Loading workspace…
-          </span>
-        </div>
+      <div className="min-h-screen bg-background">
+        <PageSkeleton label="Loading workspace…" />
       </div>
     );
   }
@@ -165,6 +167,7 @@ export function AuthenticatedPortalLayout() {
           name: user.fullName,
           subtitle: user.email,
           initials: getInitials(user.fullName),
+          avatarUrl: sidebarPhoto,
         },
         profileHref: "/settings",
         onSignOut: () => void handleSignOut(),

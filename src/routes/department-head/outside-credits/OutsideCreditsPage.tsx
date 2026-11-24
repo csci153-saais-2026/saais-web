@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,6 +10,7 @@ import { StatGrid } from "@/components/features/stat-tile";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 import {
   Select,
   SelectContent,
@@ -74,7 +77,7 @@ const outsideCreditSchema = z.object({
     .string()
     .trim()
     .min(1, "Enter the reason for crediting the course.")
-    .max(2000, "Use at most 2,000 characters."),
+    .max(REASON_MAX_LENGTH, REASON_MAX_MESSAGE),
 });
 
 type CreditForm = z.infer<typeof outsideCreditSchema>;
@@ -388,6 +391,7 @@ function CreditCourseDialog({
             <Textarea
               id="cr-reason"
               rows={2}
+              maxLength={REASON_MAX_LENGTH}
               aria-invalid={Boolean(errors.reason)}
               {...register("reason")}
             />
@@ -450,7 +454,7 @@ export default function OutsideCreditsPage() {
     0,
   );
 
-  if (!query.data) {
+  if (query.isError && !query.data) {
     return (
       <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
         <PageHeading
@@ -463,128 +467,150 @@ export default function OutsideCreditsPage() {
   }
 
   return (
-    <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
-      <PageHeading
-        title="Outside credits"
-        subtitle="Review credited subjects for shiftees and transferees in your department."
-        actions={
-          <Button
-            onClick={() => setIsAddOpen(true)}
-            className="gap-2 cursor-pointer"
-          >
-            <PlusIcon className="size-4" />
-            Credit a course
-          </Button>
-        }
-      />
-
-      <StatGrid
-        className="lg:grid-cols-3"
-        items={[
-          {
-            label: "Credited subjects",
-            value: totalCreditedSubjects,
-            note: "Active outside credits",
-          },
-          {
-            label: "Students with outside credits",
-            value: studentCount,
-            note: `${transferees} transferee${transferees === 1 ? "" : "s"} · ${shiftees} shiftee${shiftees === 1 ? "" : "s"}`,
-          },
-          {
-            label: "Units recognized",
-            value: recognizedUnits,
-            note: `Across ${curriculumCount} curricul${curriculumCount === 1 ? "um" : "a"}`,
-          },
-        ]}
-      />
-
-      <DataTablePanel
-        title="Outside credit records"
-        description="Recognized subjects from another school or degree program."
-        rows={credits}
-        rowKey={(row) => row.id}
-        empty="No outside credits have been recorded."
-        columns={[
-          {
-            header: "Student",
-            cell: (row) => (
-              <div>
-                <strong className="block font-semibold">
-                  {row.studentName}
-                </strong>
-                <small className="block font-mono text-xs text-muted-2">
-                  {row.studentId}
-                </small>
-              </div>
-            ),
-          },
-          {
-            header: "Original course / units",
-            cell: (row) => (
-              <div>
-                <strong className="block font-semibold">
-                  {row.originalCode} · {row.originalTitle}
-                </strong>
-                <small className="block text-xs text-muted-2">
-                  {row.originalUnits} units
-                </small>
-              </div>
-            ),
-          },
-          { header: "School / origin", cell: (row) => row.originSchool },
-          { header: "Grade", cell: (row) => row.grade },
-          {
-            header: "Equivalent subject / units",
-            cell: (row) => (
-              <div>
-                <strong className="block font-semibold">
-                  {row.equivalentCode} · {row.equivalentTitle}
-                </strong>
-                <small className="block text-xs text-muted-2">
-                  {row.equivalentUnits} units · {row.targetCurriculum}
-                </small>
-              </div>
-            ),
-          },
-          {
-            header: "Type",
-            cell: (row) => (
-              <StatusBadge
-                status={
-                  row.entryType === "Transferee" ? "enrolled" : "not-taken"
-                }
+    <AccountSkeleton
+      id="dh-outside-credits"
+      data={query.data}
+      label="Loading outside credits…"
+    >
+      {(queryData) => (
+        <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
+          <PageHeading
+            title="Outside credits"
+            subtitle="Review credited subjects for shiftees and transferees in your department."
+            actions={
+              <Button
+                onClick={() => setIsAddOpen(true)}
+                className="gap-2 cursor-pointer"
               >
-                {row.entryType}
-              </StatusBadge>
-            ),
-          },
-        ]}
-        footer={
-          <div className="flex flex-wrap justify-between gap-2">
-            <span>
-              {credits.length} credited{" "}
-              {credits.length === 1 ? "subject" : "subjects"}
-            </span>
-            <span>DCST department scope</span>
-          </div>
-        }
-      />
-
-      <Dialog
-        open={isAddOpen}
-        onOpenChange={(open) => !creditCourse.isPending && setIsAddOpen(open)}
-      >
-        {isAddOpen && (
-          <CreditCourseDialog
-            credits={credits}
-            students={query.data.students}
-            slots={query.data.slots}
-            onCredit={addCredit}
-            onClose={() => setIsAddOpen(false)}
+                <PlusIcon className="size-4" />
+                Credit a course
+              </Button>
+            }
           />
-        )}
-      </Dialog>
-    </div>
+
+          <StatGrid
+            className="lg:grid-cols-3"
+            items={[
+              {
+                label: "Credited subjects",
+                value: totalCreditedSubjects,
+                note: "Active outside credits",
+              },
+              {
+                label: "Students with outside credits",
+                value: studentCount,
+                note: `${transferees} transferee${transferees === 1 ? "" : "s"} · ${shiftees} shiftee${shiftees === 1 ? "" : "s"}`,
+              },
+              {
+                label: "Units recognized",
+                value: recognizedUnits,
+                note: `Across ${curriculumCount} curricul${curriculumCount === 1 ? "um" : "a"}`,
+              },
+            ]}
+          />
+
+          <DataTablePanel
+            title="Outside credit records"
+            description="Recognized subjects from another school or degree program."
+            rows={credits}
+            rowKey={(row) => row.id}
+            empty="No outside credits have been recorded."
+            columns={[
+              {
+                header: "Student",
+                cell: (row) => (
+                  <div className="min-w-0">
+                    <strong className="block font-semibold">
+                      <Truncate text={row.studentName} className="max-w-64" />
+                    </strong>
+                    <small className="block font-mono text-xs text-muted-2">
+                      {row.studentId}
+                    </small>
+                  </div>
+                ),
+              },
+              {
+                header: "Original course / units",
+                cell: (row) => (
+                  <div className="min-w-0">
+                    <strong className="block font-semibold">
+                      <Truncate
+                        text={`${row.originalCode} · ${row.originalTitle}`}
+                        className="max-w-72"
+                      />
+                    </strong>
+                    <small className="block text-xs text-muted-2">
+                      {row.originalUnits} units
+                    </small>
+                  </div>
+                ),
+              },
+              {
+                header: "School / origin",
+                cell: (row) => <Truncate text={row.originSchool} />,
+              },
+              { header: "Grade", cell: (row) => row.grade },
+              {
+                header: "Equivalent subject / units",
+                cell: (row) => (
+                  <div className="min-w-0">
+                    <strong className="block font-semibold">
+                      <Truncate
+                        text={`${row.equivalentCode} · ${row.equivalentTitle}`}
+                        className="max-w-72"
+                      />
+                    </strong>
+                    <small className="block text-xs text-muted-2">
+                      <Truncate
+                        text={`${row.equivalentUnits} units · ${row.targetCurriculum}`}
+                        className="max-w-72"
+                      />
+                    </small>
+                  </div>
+                ),
+              },
+              {
+                header: "Type",
+                cell: (row) => (
+                  <StatusBadge
+                    status={
+                      row.entryType === "Transferee" ? "enrolled" : "not-taken"
+                    }
+                  >
+                    {row.entryType}
+                  </StatusBadge>
+                ),
+              },
+            ]}
+            footer={
+              <div className="flex flex-wrap justify-between gap-2">
+                <span>
+                  {credits.length} credited{" "}
+                  {credits.length === 1 ? "subject" : "subjects"}
+                </span>
+                <span>DCST department scope</span>
+              </div>
+            }
+          />
+
+          <Dialog
+            open={isAddOpen}
+            onOpenChange={(open) =>
+              !creditCourse.isPending && setIsAddOpen(open)
+            }
+          >
+            {isAddOpen && (
+              <CreditCourseDialog
+                credits={credits}
+                students={queryData.students}
+                slots={queryData.slots}
+                onCredit={addCredit}
+                onClose={() => setIsAddOpen(false)}
+              />
+            )}
+          </Dialog>
+        </div>
+      )}
+    </AccountSkeleton>
   );
 }

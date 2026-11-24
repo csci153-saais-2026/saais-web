@@ -82,15 +82,18 @@ export function PdfViewerDialog({
         className="flex h-[min(90dvh,900px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[1100px]"
       >
         <DialogHeader className="flex-row items-center justify-between gap-4 p-4">
-          <div>
-            <DialogTitle className="text-base">
+          <div className="min-w-0">
+            <DialogTitle className="text-base" title={report?.title}>
               Preview: {report?.title}
             </DialogTitle>
-            <DialogDescription className="mt-1 text-xs">
+            <DialogDescription
+              className="mt-1 truncate text-xs"
+              title={report?.filename}
+            >
               {report?.filename}
             </DialogDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <DialogClose asChild>
               <Button type="button" variant="outline" size="sm">
                 Close

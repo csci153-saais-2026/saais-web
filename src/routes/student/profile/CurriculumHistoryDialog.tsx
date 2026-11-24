@@ -196,7 +196,12 @@ export function CurriculumHistoryDialog({
                       label="Curriculum"
                       className="px-3.5 py-row text-cell font-medium text-foreground"
                     >
-                      {row.curriculum}
+                      <span
+                        className="block max-w-64 truncate"
+                        title={row.curriculum}
+                      >
+                        {row.curriculum}
+                      </span>
                     </TableCell>
                     <TableCell
                       label="From"
@@ -220,7 +225,7 @@ export function CurriculumHistoryDialog({
                     </TableCell>
                     <TableCell
                       label="Note"
-                      className="px-3.5 py-row text-caption whitespace-normal text-muted-foreground"
+                      className="px-3.5 py-row text-caption whitespace-normal wrap-anywhere text-muted-foreground"
                     >
                       {row.note}
                     </TableCell>

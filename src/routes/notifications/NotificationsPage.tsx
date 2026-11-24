@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -88,93 +89,103 @@ export default function NotificationsPage() {
           Unread ({unreadCount})
         </Button>
       </div>
-      {loading ? (
-        <p role="status">Loading notifications…</p>
-      ) : error ? (
+      {!loading && error ? (
         <p role="alert">{error}</p>
       ) : (
-        <Panel
-          title={unreadOnly ? "Unread notifications" : "All notifications"}
-          flush
+        <AccountSkeleton
+          id="notifications"
+          loading={loading}
+          label="Loading notifications…"
         >
-          {visibleItems.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-muted-foreground">
-              You are all caught up.
-            </p>
-          ) : (
-            <ul className="divide-y divide-line-soft">
-              {visibleItems.map((item) => {
-                const Icon = ICONS[item.kind] ?? AlertIcon;
-                const destination = isAuthorizedNotificationRoute(
-                  item.target_route,
-                  role,
-                )
-                  ? item.target_route
-                  : undefined;
-                const createdAt = new Date(item.created_at);
-                const time = Number.isNaN(createdAt.getTime())
-                  ? "Date unavailable"
-                  : new Intl.DateTimeFormat(undefined, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    }).format(createdAt);
-                return (
-                  <li
-                    key={item.id}
-                    className="flex flex-wrap items-start gap-3 px-5 py-4"
-                  >
-                    <span
-                      aria-hidden
-                      className={`mt-2 size-2 shrink-0 rounded-full ${!item.is_read ? "bg-gold" : "bg-transparent"}`}
-                    />
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-status-neutral-bg text-status-neutral">
-                      <Icon className="size-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <strong
-                        className={`block text-sm ${!item.is_read ? "font-semibold" : "font-medium"}`}
-                      >
-                        {item.title}
-                      </strong>
-                      {!item.is_read && <span className="sr-only">Unread</span>}
-                      <span className="mt-1 block text-sm text-muted-foreground">
-                        {item.body}
+          <Panel
+            title={unreadOnly ? "Unread notifications" : "All notifications"}
+            flush
+          >
+            {visibleItems.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-muted-foreground">
+                You are all caught up.
+              </p>
+            ) : (
+              <ul className="divide-y divide-line-soft">
+                {visibleItems.map((item) => {
+                  const Icon = ICONS[item.kind] ?? AlertIcon;
+                  const destination = isAuthorizedNotificationRoute(
+                    item.target_route,
+                    role,
+                  )
+                    ? item.target_route
+                    : undefined;
+                  const createdAt = new Date(item.created_at);
+                  const time = Number.isNaN(createdAt.getTime())
+                    ? "Date unavailable"
+                    : new Intl.DateTimeFormat(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      }).format(createdAt);
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-start gap-3 px-5 py-4"
+                    >
+                      <span
+                        aria-hidden
+                        className={`mt-2 size-2 shrink-0 rounded-full ${!item.is_read ? "bg-gold" : "bg-transparent"}`}
+                      />
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-status-neutral-bg text-status-neutral">
+                        <Icon className="size-4" />
                       </span>
-                      {destination ? (
-                        <Link
-                          to={destination}
-                          className="mt-1 block text-sm font-semibold text-primary"
+                      <span className="min-w-0 flex-1">
+                        <strong
+                          title={item.title}
+                          className={`line-clamp-2 block text-sm ${!item.is_read ? "font-semibold" : "font-medium"}`}
                         >
-                          Open
-                        </Link>
-                      ) : (
-                        <span className="mt-1 block text-sm text-muted-foreground">
-                          No available destination
+                          {item.title}
+                        </strong>
+                        {!item.is_read && (
+                          <span className="sr-only">Unread</span>
+                        )}
+                        <span
+                          title={item.body}
+                          className="mt-1 line-clamp-3 block text-sm text-muted-foreground"
+                        >
+                          {item.body}
                         </span>
+                        {destination ? (
+                          <Link
+                            to={destination}
+                            className="mt-1 block text-sm font-semibold text-primary"
+                          >
+                            Open
+                          </Link>
+                        ) : (
+                          <span className="mt-1 block text-sm text-muted-foreground">
+                            No available destination
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {time}
+                      </span>
+                      {!item.is_read && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={markingRead}
+                          onClick={() => {
+                            if (unreadOnly) unreadFilter.current?.focus();
+                            void markRead(item.id).catch(() => undefined);
+                          }}
+                        >
+                          Mark read
+                        </Button>
                       )}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {time}
-                    </span>
-                    {!item.is_read && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={markingRead}
-                        onClick={() => {
-                          if (unreadOnly) unreadFilter.current?.focus();
-                          void markRead(item.id).catch(() => undefined);
-                        }}
-                      >
-                        Mark read
-                      </Button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Panel>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Panel>
+        </AccountSkeleton>
       )}
       {markError && (
         <p role="alert" className="mt-3 text-sm text-destructive">

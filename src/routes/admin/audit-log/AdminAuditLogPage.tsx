@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { FormField } from "@/components/features/form-field";
@@ -166,8 +167,13 @@ export default function AdminAuditLogPage() {
     {
       header: "Person",
       cell: (entry) => (
-        <div>
-          <p className="font-medium">{entry.actor_name || "System"}</p>
+        <div className="max-w-56 min-w-0">
+          <p
+            className="truncate font-medium"
+            title={entry.actor_name || undefined}
+          >
+            {entry.actor_name || "System"}
+          </p>
           {entry.actor_role && (
             <p className="text-xs text-muted-foreground">
               {humanize(entry.actor_role)}
@@ -194,18 +200,28 @@ export default function AdminAuditLogPage() {
     {
       header: "Student / record",
       cell: (entry) => (
-        <div>
+        <div className="max-w-64 min-w-0">
           {entry.student_name && (
-            <p className="font-medium">{entry.student_name}</p>
+            <p className="truncate font-medium" title={entry.student_name}>
+              {entry.student_name}
+            </p>
           )}
           {entry.student_number && (
             <p className="font-mono text-xs">{entry.student_number}</p>
           )}
           {!entry.student_name && !entry.student_number && (
-            <p>{entry.target_label || humanize(entry.entity_type)}</p>
+            <p
+              className="truncate"
+              title={entry.target_label || humanize(entry.entity_type)}
+            >
+              {entry.target_label || humanize(entry.entity_type)}
+            </p>
           )}
           {entry.student_name && entry.target_label && (
-            <p className="text-xs text-muted-foreground">
+            <p
+              className="truncate text-xs text-muted-foreground"
+              title={entry.target_label}
+            >
               {entry.target_label}
             </p>
           )}
@@ -214,7 +230,14 @@ export default function AdminAuditLogPage() {
     },
     {
       header: "Details",
-      cell: (entry) => entry.details_summary || "No details provided.",
+      cell: (entry) => (
+        <span
+          className="block max-w-96 truncate"
+          title={entry.details_summary || undefined}
+        >
+          {entry.details_summary || "No details provided."}
+        </span>
+      ),
     },
   ];
 
@@ -245,122 +268,126 @@ export default function AdminAuditLogPage() {
           </Button>
         </div>
       )}
-      {loading && (
-        <p role="status" className="text-sm text-muted-foreground">
-          Loading audit history…
-        </p>
-      )}
-
-      <DataTablePanel
-        spacious
-        title="System activity"
-        description="Record views are logged alongside changes and sign-ins."
-        toolbar={
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <FormField label="Person" htmlFor="audit-person">
-              <SearchInput
-                id="audit-person"
-                value={filters.person}
-                maxLength={100}
-                placeholder="Search person name"
-                onChange={(event) => updateFilter("person", event.target.value)}
-              />
-            </FormField>
-            <FormField label="Student" htmlFor="audit-student">
-              <SearchInput
-                id="audit-student"
-                value={filters.student}
-                maxLength={100}
-                placeholder="Search student name or ID"
-                onChange={(event) =>
-                  updateFilter("student", event.target.value)
-                }
-              />
-            </FormField>
-            <FormField label="Action" htmlFor="audit-category">
-              <Select
-                value={filters.category || "all"}
-                onValueChange={(value) =>
-                  updateFilter("category", value === "all" ? "" : value)
-                }
-              >
-                <SelectTrigger id="audit-category" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All actions</SelectItem>
-                  {AUDIT_ACTION_FILTER_OPTIONS.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label="From date" htmlFor="audit-date-from">
-              <Input
-                id="audit-date-from"
-                type="date"
-                value={filters.from}
-                onChange={(event) => updateFilter("from", event.target.value)}
-              />
-            </FormField>
-            <FormField label="To date" htmlFor="audit-date-to">
-              <Input
-                id="audit-date-to"
-                type="date"
-                value={filters.to}
-                onChange={(event) => updateFilter("to", event.target.value)}
-              />
-            </FormField>
-          </div>
-        }
-        columns={columns}
-        rows={visibleEntries}
-        rowKey={(entry) => entry.id}
-        empty={
-          loading
-            ? "Loading audit history…"
-            : filterError
-              ? "Correct the filters to view audit history."
-              : error
-                ? "Audit history is unavailable."
-                : entries.length === 0
-                  ? "No entries match these filters."
-                  : "No audit entries are available on this page."
-        }
-        footer={
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span>
-              {rangeTotal === null
-                ? `Page ${pageNumber}`
-                : `Page ${pageNumber} · ${rangeTotal.toLocaleString()} entries`}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={offset === 0 || loading || Boolean(error)}
-                onClick={() =>
-                  setOffset((current) => Math.max(0, current - AUDIT_PAGE_SIZE))
-                }
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!hasNextPage || loading || Boolean(error)}
-                onClick={() =>
-                  setOffset((current) => current + AUDIT_PAGE_SIZE)
-                }
-              >
-                Next
-              </Button>
+      <AccountSkeleton
+        id="AdminAuditLogPage-1"
+        loading={loading}
+        label="Loading audit history…"
+      >
+        <DataTablePanel
+          spacious
+          title="System activity"
+          description="Record views are logged alongside changes and sign-ins."
+          toolbar={
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <FormField label="Person" htmlFor="audit-person">
+                <SearchInput
+                  id="audit-person"
+                  value={filters.person}
+                  maxLength={100}
+                  placeholder="Search person name"
+                  onChange={(event) =>
+                    updateFilter("person", event.target.value)
+                  }
+                />
+              </FormField>
+              <FormField label="Student" htmlFor="audit-student">
+                <SearchInput
+                  id="audit-student"
+                  value={filters.student}
+                  maxLength={100}
+                  placeholder="Search student name or ID"
+                  onChange={(event) =>
+                    updateFilter("student", event.target.value)
+                  }
+                />
+              </FormField>
+              <FormField label="Action" htmlFor="audit-category">
+                <Select
+                  value={filters.category || "all"}
+                  onValueChange={(value) =>
+                    updateFilter("category", value === "all" ? "" : value)
+                  }
+                >
+                  <SelectTrigger id="audit-category" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All actions</SelectItem>
+                    {AUDIT_ACTION_FILTER_OPTIONS.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="From date" htmlFor="audit-date-from">
+                <Input
+                  id="audit-date-from"
+                  type="date"
+                  value={filters.from}
+                  onChange={(event) => updateFilter("from", event.target.value)}
+                />
+              </FormField>
+              <FormField label="To date" htmlFor="audit-date-to">
+                <Input
+                  id="audit-date-to"
+                  type="date"
+                  value={filters.to}
+                  onChange={(event) => updateFilter("to", event.target.value)}
+                />
+              </FormField>
             </div>
-          </div>
-        }
-      />
+          }
+          columns={columns}
+          rows={visibleEntries}
+          rowKey={(entry) => entry.id}
+          empty={
+            loading
+              ? "Loading audit history…"
+              : filterError
+                ? "Correct the filters to view audit history."
+                : error
+                  ? "Audit history is unavailable."
+                  : entries.length === 0
+                    ? "No entries match these filters."
+                    : "No audit entries are available on this page."
+          }
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>
+                {rangeTotal === null
+                  ? `Page ${pageNumber}`
+                  : `Page ${pageNumber} · ${rangeTotal.toLocaleString()} entries`}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={offset === 0 || loading || Boolean(error)}
+                  onClick={() =>
+                    setOffset((current) =>
+                      Math.max(0, current - AUDIT_PAGE_SIZE),
+                    )
+                  }
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!hasNextPage || loading || Boolean(error)}
+                  onClick={() =>
+                    setOffset((current) => current + AUDIT_PAGE_SIZE)
+                  }
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          }
+        />
+      </AccountSkeleton>
     </div>
   );
 }

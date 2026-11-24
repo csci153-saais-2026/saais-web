@@ -128,7 +128,7 @@ describe("Curriculum Transfers", () => {
     );
     saaisMockServer.use(handler);
     renderDepartmentHead(<CurriculumTransfersPage />, route);
-    expect(screen.getByRole("status").textContent).toContain(
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
       "Loading curriculum transfers",
     );
     expect(await screen.findByRole("alert")).toHaveProperty(

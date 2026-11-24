@@ -172,7 +172,12 @@ export function GradeFlagsListDialog({
                           <span aria-hidden="true" className="text-muted-2">
                             ·
                           </span>
-                          <span className="font-semibold">{title}</span>
+                          <span
+                            className="max-w-full truncate font-semibold"
+                            title={title}
+                          >
+                            {title}
+                          </span>
                         </>
                       )}
                     </div>
@@ -208,13 +213,13 @@ export function GradeFlagsListDialog({
                       </span>
                     </p>
 
-                    <p className="mt-2 text-cell whitespace-pre-wrap text-foreground">
+                    <p className="mt-2 text-cell whitespace-pre-wrap text-foreground wrap-anywhere">
                       {flag.details}
                     </p>
 
                     {(flag.status === "corrected" ||
                       flag.status === "rejected") && (
-                      <p className="mt-2 text-cell text-muted-foreground">
+                      <p className="mt-2 text-cell text-muted-foreground wrap-anywhere">
                         <strong className="font-semibold text-foreground">
                           Adviser:
                         </strong>{" "}

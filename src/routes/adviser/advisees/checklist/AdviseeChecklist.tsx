@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Kicker } from "@/components/ui/kicker";
 import { StatusBadge, type Status } from "@/components/ui/status-badge";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Dialog,
   DialogClose,
@@ -214,7 +216,10 @@ function AttemptDetails({
                       {grade(a.completion_grade) ?? "—"}
                     </TableCell>
                     <TableCell className="px-3.5 py-2.75">
-                      {a.instructor || "—"}
+                      <Truncate
+                        text={a.instructor || "—"}
+                        className="max-w-48"
+                      />
                     </TableCell>
                     <TableCell className="px-3.5 py-2.75">
                       <StatusBadge status={statusMap[a.effective_status]} />
@@ -281,292 +286,296 @@ export default function AdviseeChecklist() {
     visibleGroups.every(([label]) => !expanded.has(label));
   return (
     <AdviserPage title="Checklist" tab="checklist" sample={false}>
-      {!data && !error && <p role="status">Loading checklist…</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {data && (
-        <>
-          <StatGrid
-            items={[
-              {
-                label: "Cumulative GWA",
-                value: data.summary.gwa?.toFixed(2) ?? "—",
-                note: "Unit-weighted counted attempts",
-              },
-              {
-                label: "Counted units",
-                value: data.summary.counted_units ?? "—",
-                valueSuffix: `/ ${data.summary.required_units}`,
-                note: `Of ${data.summary.required_units} total units. Excludes unresolved, unexpired INC`,
-              },
-              {
-                label: "Year Standing",
-                value: yearStanding(data.summary.year_level),
-                note: `${data.summary.earned_units} of ${data.summary.required_units} units earned`,
-              },
-              {
-                label: "Deficiencies",
-                // F-02: open grade flags count as deficiencies. Use the
-                // greater of deficiencies_count and open_flags_count so that
-                // a student with open flags on already-passed courses is never
-                // shown "0" here while the Grade Flags page shows open flags.
-                value:
-                  data.summary.deficiencies_count != null
-                    ? Math.max(
-                        data.summary.deficiencies_count,
-                        data.summary.open_flags_count ?? 0,
-                      )
-                    : "—",
-                note: deficiencyNote(data),
-              },
-            ]}
-          />
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-            <label className="grid w-56 gap-1 text-sm">
-              Show requirements
-              <select
-                className="rounded-md border border-input bg-card px-3 py-2"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option value="all">All statuses</option>
-                <option value="not_taken">Not yet taken</option>
-                <option value="passed">Passed / credited</option>
-                <option value="inc">INC</option>
-                <option value="currently_enrolled">Currently enrolled</option>
-                <option value="failed">Failed</option>
-              </select>
-            </label>
-            <Button
-              variant="outline"
-              className="ml-auto"
-              disabled={visibleGroups.length === 0}
-              onClick={() =>
-                setExpanded((previous) => {
-                  const next = new Set(previous);
-                  for (const [label] of visibleGroups) {
-                    if (allCollapsed) next.add(label);
-                    else next.delete(label);
-                  }
-                  return next;
-                })
-              }
-            >
-              {allCollapsed ? "Expand All" : "Collapse All"}
+      <AccountSkeleton
+        id="AdviseeChecklist-1"
+        loading={!data && !error}
+        label="Loading checklist…"
+      >
+        {error && (
+          <div role="alert">
+            <p>{error}</p>
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              Try again
             </Button>
           </div>
-          {!visibleGroups.length && <p>No requirements match this filter.</p>}
-          {visibleGroups.map(([label, items]) => {
-            const passedUnits = items.reduce(
-              (sum, item) => sum + item.earned_units,
-              0,
-            );
-            const totalUnits = items.reduce(
-              (sum, item) => sum + item.required_units,
-              0,
-            );
-            return (
-              <Collapsible
-                key={label}
-                open={expanded.has(label)}
-                onOpenChange={(open) =>
+        )}
+        {data && (
+          <>
+            <StatGrid
+              items={[
+                {
+                  label: "Cumulative GWA",
+                  value: data.summary.gwa?.toFixed(2) ?? "—",
+                  note: "Unit-weighted counted attempts",
+                },
+                {
+                  label: "Counted units",
+                  value: data.summary.counted_units ?? "—",
+                  valueSuffix: `/ ${data.summary.required_units}`,
+                  note: `Of ${data.summary.required_units} total units. Excludes unresolved, unexpired INC`,
+                },
+                {
+                  label: "Year Standing",
+                  value: yearStanding(data.summary.year_level),
+                  note: `${data.summary.earned_units} of ${data.summary.required_units} units earned`,
+                },
+                {
+                  label: "Deficiencies",
+                  value: data.summary.deficiencies_count ?? "—",
+                  note: deficiencyNote(data),
+                },
+              ]}
+            />
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <label className="grid w-56 gap-1 text-sm">
+                Show requirements
+                <select
+                  className="rounded-md border border-input bg-card px-3 py-2"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="not_taken">Not yet taken</option>
+                  <option value="passed">Passed / credited</option>
+                  <option value="inc">INC</option>
+                  <option value="currently_enrolled">Currently enrolled</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </label>
+              <Button
+                variant="outline"
+                className="ml-auto"
+                disabled={visibleGroups.length === 0}
+                onClick={() =>
                   setExpanded((previous) => {
                     const next = new Set(previous);
-                    if (open) next.add(label);
-                    else next.delete(label);
+                    for (const [label] of visibleGroups) {
+                      if (allCollapsed) next.add(label);
+                      else next.delete(label);
+                    }
                     return next;
                   })
                 }
-                className="mb-4 min-w-0 overflow-hidden rounded-md border border-border bg-card"
               >
-                <CollapsibleTrigger
-                  className={`flex w-full flex-wrap items-start justify-between gap-4 px-5 py-4 text-left hover:bg-secondary/40 ${expanded.has(label) ? "border-b border-line-soft" : ""}`}
+                {allCollapsed ? "Expand All" : "Collapse All"}
+              </Button>
+            </div>
+            {!visibleGroups.length && <p>No requirements match this filter.</p>}
+            {visibleGroups.map(([label, items]) => {
+              const passedUnits = items.reduce(
+                (sum, item) => sum + item.earned_units,
+                0,
+              );
+              const totalUnits = items.reduce(
+                (sum, item) => sum + item.required_units,
+                0,
+              );
+              return (
+                <Collapsible
+                  key={label}
+                  open={expanded.has(label)}
+                  onOpenChange={(open) =>
+                    setExpanded((previous) => {
+                      const next = new Set(previous);
+                      if (open) next.add(label);
+                      else next.delete(label);
+                      return next;
+                    })
+                  }
+                  className="mb-4 min-w-0 overflow-hidden rounded-md border border-border bg-card"
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[15.5px] font-semibold">
-                      {label}
-                    </span>
-                    <span className="mt-0.75 block text-[13px] text-muted-foreground">
-                      Curriculum position · course availability depends on the
-                      school term.
-                    </span>
-                  </span>
-                  <span className="flex items-center gap-5 text-right sm:gap-7">
-                    <span>
-                      <Kicker className="block text-[10px]">
-                        Passed units
-                      </Kicker>
-                      <span className="font-heading font-bold text-primary">
-                        {passedUnits}/{totalUnits}
+                  <CollapsibleTrigger
+                    className={`flex w-full flex-wrap items-start justify-between gap-4 px-5 py-4 text-left hover:bg-secondary/40 ${expanded.has(label) ? "border-b border-line-soft" : ""}`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15.5px] font-semibold">
+                        {label}
+                      </span>
+                      <span className="mt-0.75 block text-[13px] text-muted-foreground">
+                        Curriculum position · course availability depends on the
+                        school term.
                       </span>
                     </span>
-                    <span>
-                      <Kicker className="block text-[10px]">Total units</Kicker>
-                      <span className="font-heading font-bold text-primary">
-                        {totalUnits}
+                    <span className="flex items-center gap-5 text-right sm:gap-7">
+                      <span>
+                        <Kicker className="block text-[10px]">
+                          Passed units
+                        </Kicker>
+                        <span className="font-heading font-bold text-primary">
+                          {passedUnits}/{totalUnits}
+                        </span>
                       </span>
-                    </span>
-                    <span>
-                      <Kicker className="block text-[10px]">
-                        Semester GWA
-                      </Kicker>
-                      <span
-                        className="font-heading font-bold text-primary"
-                        aria-label="Semester GWA unavailable"
-                      >
-                        —
+                      <span>
+                        <Kicker className="block text-[10px]">
+                          Total units
+                        </Kicker>
+                        <span className="font-heading font-bold text-primary">
+                          {totalUnits}
+                        </span>
                       </span>
+                      <span>
+                        <Kicker className="block text-[10px]">
+                          Semester GWA
+                        </Kicker>
+                        <span
+                          className="font-heading font-bold text-primary"
+                          aria-label="Semester GWA unavailable"
+                        >
+                          —
+                        </span>
+                      </span>
+                      <ChevronDownIcon
+                        className={`size-4 text-muted-foreground transition-transform ${expanded.has(label) ? "" : "-rotate-90"}`}
+                        aria-hidden
+                      />
                     </span>
-                    <ChevronDownIcon
-                      className={`size-4 text-muted-foreground transition-transform ${expanded.has(label) ? "" : "-rotate-90"}`}
-                      aria-hidden
-                    />
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <Table responsive className="table-auto">
-                    <colgroup>
-                      {[27, 15, 13, 21, 11, 13].map((w, i) => (
-                        <col key={i} style={{ width: `${w}%` }} />
-                      ))}
-                    </colgroup>
-                    <TableHeader>
-                      <TableRow className="border-b border-border hover:bg-secondary">
-                        {[
-                          "Requirement",
-                          "Units earned / required",
-                          "Status",
-                          "Satisfaction source",
-                          "Attempts",
-                          "Course info",
-                        ].map((header) => (
-                          <TableHead
-                            key={header}
-                            className="h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase"
-                          >
-                            {header}
-                          </TableHead>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <Table responsive className="table-auto">
+                      <colgroup>
+                        {[27, 15, 13, 21, 11, 13].map((w, i) => (
+                          <col key={i} style={{ width: `${w}%` }} />
                         ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.filter(matchesFilter).map((r) => {
-                        const slot = data.slots.find(
-                          (s) => s.id === r.curriculum_term_course_id,
-                        );
-                        const course = data.courses.find(
-                          (c) => c.id === slot?.course_id,
-                        );
-                        const title = course
-                          ? `${course.code} · ${course.title}`
-                          : (slot?.slot_label ?? "Requirement");
-                        const term = data.terms.find(
-                          (t) => t.id === slot?.curriculum_term_id,
-                        );
-                        const meta = [
-                          `${r.required_units} ${r.required_units === 1 ? "unit" : "units"}`,
-                          course?.category
-                            ? categoryLabels[course.category]
-                            : null,
-                          term
-                            ? `${ordinal(term.year_level)} Year, ${ordinal(term.term_sequence)} Semester`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ");
-                        const sourceAttempt = r.attempts?.find(
-                          (attempt) =>
-                            attempt.attempt_id === r.source_attempt_id,
-                        );
-                        const sourceGrade =
-                          sourceAttempt?.completion_grade ??
-                          sourceAttempt?.final_grade;
-                        return (
-                          <TableRow
-                            key={r.curriculum_term_course_id}
-                            className="border-line-soft"
-                          >
-                            <TableCell
-                              label="Requirement"
-                              className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                      </colgroup>
+                      <TableHeader>
+                        <TableRow className="border-b border-border hover:bg-secondary">
+                          {[
+                            "Requirement",
+                            "Units earned / required",
+                            "Status",
+                            "Satisfaction source",
+                            "Attempts",
+                            "Course info",
+                          ].map((header) => (
+                            <TableHead
+                              key={header}
+                              className="h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase"
                             >
-                              <b className="block font-semibold">
-                                {course?.code ??
-                                  slot?.slot_label ??
-                                  "Requirement unavailable"}
-                              </b>
-                              <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                                {course?.title ??
-                                  (slot
-                                    ? "Elective requirement"
-                                    : r.curriculum_term_course_id)}
-                              </span>
-                            </TableCell>
-                            <TableCell
-                              label="Units earned / required"
-                              className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                              {header}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {items.filter(matchesFilter).map((r) => {
+                          const slot = data.slots.find(
+                            (s) => s.id === r.curriculum_term_course_id,
+                          );
+                          const course = data.courses.find(
+                            (c) => c.id === slot?.course_id,
+                          );
+                          const title = course
+                            ? `${course.code} · ${course.title}`
+                            : (slot?.slot_label ?? "Requirement");
+                          const term = data.terms.find(
+                            (t) => t.id === slot?.curriculum_term_id,
+                          );
+                          const meta = [
+                            `${r.required_units} ${r.required_units === 1 ? "unit" : "units"}`,
+                            course?.category
+                              ? categoryLabels[course.category]
+                              : null,
+                            term
+                              ? `${ordinal(term.year_level)} Year, ${ordinal(term.term_sequence)} Semester`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ");
+                          const sourceAttempt = r.attempts?.find(
+                            (attempt) =>
+                              attempt.attempt_id === r.source_attempt_id,
+                          );
+                          const sourceGrade =
+                            sourceAttempt?.completion_grade ??
+                            sourceAttempt?.final_grade;
+                          return (
+                            <TableRow
+                              key={r.curriculum_term_course_id}
+                              className="border-line-soft"
                             >
-                              {r.earned_units} / {r.required_units}
-                            </TableCell>
-                            <TableCell
-                              label="Status"
-                              className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                            >
-                              <StatusBadge status={statusMap[r.status]} />
-                            </TableCell>
-                            <TableCell
-                              label="Satisfaction source"
-                              className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                            >
-                              {r.satisfaction_source ?? "—"}
-                              {(r.credited_course_code ||
-                                sourceGrade != null) && (
-                                <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                                  {r.credited_course_code}
-                                  {r.credited_course_code && sourceGrade != null
-                                    ? " · "
-                                    : ""}
-                                  {sourceGrade != null
-                                    ? `grade ${sourceGrade.toFixed(2)}`
-                                    : ""}
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell
-                              label="Attempts"
-                              className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                            >
-                              {r.attempts?.length
-                                ? `${r.attempts.length} ${r.attempts.length === 1 ? "attempt" : "attempts"}`
-                                : "—"}
-                            </TableCell>
-                            <TableCell
-                              label="Course info"
-                              className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                            >
-                              <AttemptDetails
-                                row={r}
-                                title={title}
-                                meta={meta}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
-        </>
-      )}
+                              <TableCell
+                                label="Requirement"
+                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                              >
+                                <b className="block font-semibold">
+                                  {course?.code ??
+                                    slot?.slot_label ??
+                                    "Requirement unavailable"}
+                                </b>
+                                <Truncate
+                                  text={
+                                    course?.title ??
+                                    (slot
+                                      ? "Elective requirement"
+                                      : r.curriculum_term_course_id)
+                                  }
+                                  className="mt-0.5 max-w-64 text-[12.5px] text-muted-foreground"
+                                />
+                              </TableCell>
+                              <TableCell
+                                label="Units earned / required"
+                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                              >
+                                {r.earned_units} / {r.required_units}
+                              </TableCell>
+                              <TableCell
+                                label="Status"
+                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                              >
+                                <StatusBadge status={statusMap[r.status]} />
+                              </TableCell>
+                              <TableCell
+                                label="Satisfaction source"
+                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                              >
+                                <Truncate
+                                  text={r.satisfaction_source ?? "—"}
+                                  className="max-w-56"
+                                />
+                                {(r.credited_course_code ||
+                                  sourceGrade != null) && (
+                                  <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+                                    {r.credited_course_code}
+                                    {r.credited_course_code &&
+                                    sourceGrade != null
+                                      ? " · "
+                                      : ""}
+                                    {sourceGrade != null
+                                      ? `grade ${sourceGrade.toFixed(2)}`
+                                      : ""}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell
+                                label="Attempts"
+                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                              >
+                                {r.attempts?.length
+                                  ? `${r.attempts.length} ${r.attempts.length === 1 ? "attempt" : "attempts"}`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell
+                                label="Course info"
+                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
+                              >
+                                <AttemptDetails
+                                  row={r}
+                                  title={title}
+                                  meta={meta}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </>
+        )}
+      </AccountSkeleton>
     </AdviserPage>
   );
 }

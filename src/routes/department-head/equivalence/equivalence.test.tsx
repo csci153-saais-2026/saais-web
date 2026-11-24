@@ -94,7 +94,7 @@ describe("Curriculum-pair equivalence", () => {
       }),
     );
     renderDepartmentHead(<EquivalencePage />);
-    expect(screen.getByRole("status").textContent).toContain(
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
       "Loading equivalencies",
     );
     expect(await screen.findByRole("alert")).toHaveProperty(

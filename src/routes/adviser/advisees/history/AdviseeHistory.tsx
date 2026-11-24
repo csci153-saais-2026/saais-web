@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,6 +7,7 @@ import { useScopedRequest } from "../use-scoped-request";
 import { getStudentHistory } from "./history.api";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/features/filter-bar";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Table,
   TableBody,
@@ -85,100 +87,109 @@ export default function AdviseeHistory() {
     "the advisee";
   return (
     <AdviserPage title="Audit log" tab="history" sample={false}>
-      {!data && !error && <p role="status">Loading history…</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {rows && (
-        <section
-          aria-label="Audit log"
-          className="min-w-0 overflow-hidden rounded-md border border-border bg-white leading-[1.55]"
-        >
-          <header className="flex flex-wrap items-start justify-between gap-4 border-b border-line-soft px-5 py-4">
-            <div>
-              <h3 className="text-[15.5px] font-semibold tracking-[-0.011em]">
-                Audit log
-              </h3>
-              <p className="mt-0.75 text-[13px] text-muted-foreground">
-                Actions taken by {studentName} and by you on this advisee’s
-                record. Entries cannot be edited.
-              </p>
-            </div>
-            <div className="w-full max-w-xl">
-              <FilterBar
-                searchLabel="Search the audit log"
-                searchPlaceholder="Search the log"
-                search={search}
-                onSearchChange={setSearch}
-                filterLabel="Filter by actor"
-                filter={filter}
-                onFilterChange={(value) => setFilter(value as typeof filter)}
-                filterOptions={[
-                  { value: "all", label: "All actions" },
-                  { value: "student", label: "Advisee actions" },
-                  { value: "adviser", label: "Adviser actions" },
-                ]}
-              />
-            </div>
-          </header>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date and time</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => {
-                  const d = new Date(row.created_at);
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <time dateTime={row.created_at}>
-                          <div className="font-mono text-[13px]">
-                            {formatDate(d)}
-                          </div>
-                          <div className="font-mono text-[12px] text-muted-2">
-                            {formatTime(d)}
-                          </div>
-                        </time>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold">
-                          {row.actor_name ?? "System"}
-                        </div>
-                        <div className="mt-0.75">
-                          <RolePill role={row.actor_role} />
-                        </div>
-                      </TableCell>
-                      <TableCell>{humanizeAction(row.action)}</TableCell>
-                      <TableCell className="text-[#3C4A2A]">
-                        {row.details_summary ?? "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            {rows.length === 0 && (
-              <p className="px-5 py-8 text-center text-[13.5px] text-muted-foreground">
-                No entries match. Try another search or filter.
-              </p>
-            )}
+      <AccountSkeleton
+        id="AdviseeHistory-1"
+        loading={!data && !error}
+        label="Loading history…"
+      >
+        {error && (
+          <div role="alert">
+            <p>{error}</p>
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              Try again
+            </Button>
           </div>
-          <footer className="border-t border-line-soft px-2.75 text-[12.5px] text-muted-foreground">
-            {rows.length} {rows.length === 1 ? "entry" : "entries"}
-          </footer>
-        </section>
-      )}
+        )}
+        {rows && (
+          <section
+            aria-label="Audit log"
+            className="min-w-0 overflow-hidden rounded-md border border-border bg-white leading-[1.55]"
+          >
+            <header className="flex flex-wrap items-start justify-between gap-4 border-b border-line-soft px-5 py-4">
+              <div>
+                <h3 className="text-[15.5px] font-semibold tracking-[-0.011em]">
+                  Audit log
+                </h3>
+                <p className="mt-0.75 text-[13px] text-muted-foreground">
+                  Actions taken by {studentName} and by you on this advisee’s
+                  record. Entries cannot be edited.
+                </p>
+              </div>
+              <div className="w-full max-w-xl">
+                <FilterBar
+                  searchLabel="Search the audit log"
+                  searchPlaceholder="Search the log"
+                  search={search}
+                  onSearchChange={setSearch}
+                  filterLabel="Filter by actor"
+                  filter={filter}
+                  onFilterChange={(value) => setFilter(value as typeof filter)}
+                  filterOptions={[
+                    { value: "all", label: "All actions" },
+                    { value: "student", label: "Advisee actions" },
+                    { value: "adviser", label: "Adviser actions" },
+                  ]}
+                />
+              </div>
+            </header>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date and time</TableHead>
+                    <TableHead>Actor</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Details</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => {
+                    const d = new Date(row.created_at);
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell>
+                          <time dateTime={row.created_at}>
+                            <div className="font-mono text-[13px]">
+                              {formatDate(d)}
+                            </div>
+                            <div className="font-mono text-[12px] text-muted-2">
+                              {formatTime(d)}
+                            </div>
+                          </time>
+                        </TableCell>
+                        <TableCell>
+                          <Truncate
+                            text={row.actor_name ?? "System"}
+                            className="font-semibold"
+                          />
+                          <div className="mt-0.75">
+                            <RolePill role={row.actor_role} />
+                          </div>
+                        </TableCell>
+                        <TableCell>{humanizeAction(row.action)}</TableCell>
+                        <TableCell className="text-[#3C4A2A]">
+                          <Truncate
+                            text={row.details_summary ?? "—"}
+                            className="max-w-96"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              {rows.length === 0 && (
+                <p className="px-5 py-8 text-center text-[13.5px] text-muted-foreground">
+                  No entries match. Try another search or filter.
+                </p>
+              )}
+            </div>
+            <footer className="border-t border-line-soft px-2.75 text-[12.5px] text-muted-foreground">
+              {rows.length} {rows.length === 1 ? "entry" : "entries"}
+            </footer>
+          </section>
+        )}
+      </AccountSkeleton>
     </AdviserPage>
   );
 }

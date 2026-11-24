@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ApiSchema } from "@/lib/api/types";
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 
 export const gradeFlagIssueTypes = [
   "incorrect_grade",
@@ -26,7 +27,7 @@ export const gradeFlagSchema = z.object({
     .string()
     .trim()
     .min(1, "Please describe the grade issue before submitting.")
-    .max(2000, "Details must be 2,000 characters or fewer."),
+    .max(REASON_MAX_LENGTH, REASON_MAX_MESSAGE),
 }) satisfies z.ZodType<ApiSchema<"GradeFlagCreateRequest">>;
 
 export type GradeFlagValues = z.infer<typeof gradeFlagSchema>;

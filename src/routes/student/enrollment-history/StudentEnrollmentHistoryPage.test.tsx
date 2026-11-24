@@ -157,7 +157,9 @@ describe("StudentEnrollmentHistoryPage", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByRole("status").textContent).toBe("Loading...");
+    expect(document.querySelector("[skullet-status]")?.textContent).toBe(
+      "Loading...",
+    );
 
     const retryBtn = await screen.findByRole("button", { name: "Try again" });
     fireEvent.click(retryBtn);

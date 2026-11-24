@@ -1,3 +1,5 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { FilterBar } from "@/components/features/filter-bar";
@@ -207,6 +209,7 @@ export default function AdminProgramsPage() {
         );
       }
 
+      notify.success(program ? "Program updated." : "Program created.");
       setDialogProgram(undefined);
       retryPrograms();
     } finally {
@@ -222,6 +225,7 @@ export default function AdminProgramsPage() {
           params: { path: { id } },
         }),
       );
+      notify.success("Program deleted.");
       setDeleteProgram(null);
       retryPrograms();
     } finally {
@@ -265,8 +269,10 @@ export default function AdminProgramsPage() {
     {
       header: "Program",
       cell: (program: Program) => (
-        <div>
-          <p className="font-medium">{program.name}</p>
+        <div className="min-w-0">
+          <p className="max-w-72 truncate font-medium" title={program.name}>
+            {program.name}
+          </p>
           <p className="text-xs text-muted-foreground">
             {program.nominal_duration} years
           </p>
@@ -279,9 +285,11 @@ export default function AdminProgramsPage() {
         const department = departmentsById.get(program.department_id);
         if (!department) return "Unknown department";
         return (
-          <div>
-            <p>{department.name}</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <p className="max-w-64 truncate" title={department.name}>
+              {department.name}
+            </p>
+            <p className="max-w-64 truncate text-xs text-muted-foreground">
               {facultiesById.get(department.faculty_id)?.name ??
                 "Unknown faculty"}
             </p>
@@ -380,32 +388,38 @@ export default function AdminProgramsPage() {
         </div>
       )}
 
-      <DataTablePanel
-        spacious
-        title="Degree programs"
-        description="Codes and names must be unique."
-        columns={columns}
-        rows={loading || error || searchError ? [] : programs}
-        rowKey={(program) => program.id}
-        empty={
-          loading
-            ? "Loading programs…"
-            : searchError
-              ? "Enter a valid search to view programs."
-              : error
-                ? "Programs are unavailable."
-                : search.trim() || status !== "all"
-                  ? "No programs match your search."
-                  : "No programs have been added to the catalog."
-        }
-        footer={
-          loading
-            ? undefined
-            : `Page ${Math.floor(offset / PROGRAM_PAGE_SIZE) + 1}${
-                rangeTotal === null ? "" : ` · ${rangeTotal} programs`
-              }`
-        }
-      />
+      <AccountSkeleton
+        id="admin-programs-1"
+        loading={loading}
+        label="Loading programs…"
+      >
+        <DataTablePanel
+          spacious
+          title="Degree programs"
+          description="Codes and names must be unique."
+          columns={columns}
+          rows={loading || error || searchError ? [] : programs}
+          rowKey={(program) => program.id}
+          empty={
+            loading
+              ? "Loading programs…"
+              : searchError
+                ? "Enter a valid search to view programs."
+                : error
+                  ? "Programs are unavailable."
+                  : search.trim() || status !== "all"
+                    ? "No programs match your search."
+                    : "No programs have been added to the catalog."
+          }
+          footer={
+            loading
+              ? undefined
+              : `Page ${Math.floor(offset / PROGRAM_PAGE_SIZE) + 1}${
+                  rangeTotal === null ? "" : ` · ${rangeTotal} programs`
+                }`
+          }
+        />
+      </AccountSkeleton>
 
       <nav
         aria-label="Program catalog pages"

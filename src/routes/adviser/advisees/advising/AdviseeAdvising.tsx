@@ -1,3 +1,5 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -25,13 +27,11 @@ function PlanEditor({
   data,
   id,
   term,
-  message,
   onSaved,
 }: {
   data: PlanData;
   id: string;
   term: string;
-  message: string;
   onSaved: () => void;
 }) {
   const [selected, setSelected] = useState(
@@ -150,7 +150,10 @@ function PlanEditor({
                     </td>
                     <td className="px-3 py-4">
                       <strong className="block">{r.code}</strong>
-                      <span className="text-xs text-muted-foreground">
+                      <span
+                        className="block max-w-72 truncate text-xs text-muted-foreground"
+                        title={r.title}
+                      >
                         {r.title}
                       </span>
                     </td>
@@ -201,14 +204,6 @@ function PlanEditor({
               )}
             </div>
           )}
-          {message && (
-            <p
-              role="status"
-              className="rounded border border-[#CBDDC2] bg-[#E7F0E2] px-4 py-3 text-sm text-[#2C6430]"
-            >
-              {message}
-            </p>
-          )}
         </div>
       </>
       {!data.canEdit && (
@@ -235,7 +230,6 @@ function RecentNotes({
   const [revision, setRevision] = useState(0);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const { data, error } = useScopedRequest(
     JSON.stringify([userId, id, revision]),
@@ -247,11 +241,10 @@ function RecentNotes({
     const submitted = text;
     setBusy(true);
     setSaveError("");
-    setMessage("");
     try {
       await addNote(id, submitted.trim());
       setText((current) => (current === submitted ? "" : current));
-      setMessage("Note added.");
+      notify.success("Note added.");
       setRevision((n) => n + 1);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Unable to add note.");
@@ -262,99 +255,95 @@ function RecentNotes({
   const active = data?.notes.filter((note) => !note.is_archived) ?? [];
   return (
     <Panel title="Advising notes" description="Recent notes" flush>
-      {!data && !error && (
-        <p role="status" className="p-5 text-sm">
-          Loading notes…
-        </p>
-      )}
-      {error && (
-        <div role="alert" className="space-y-3 p-5">
-          <p>{error}</p>
-          <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {data && (
-        <>
-          {active.slice(0, 3).map((note) => (
-            <article
-              key={note.id}
-              className="border-b border-line-soft px-5 py-4"
-            >
-              <div className="flex flex-wrap justify-between gap-2 text-xs">
-                <strong>{note.author_name ?? "Adviser"}</strong>
-                <time
-                  className="text-muted-foreground"
-                  dateTime={note.created_at}
-                >
-                  {new Date(note.created_at).toLocaleDateString()}
-                </time>
-              </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-                {note.body_text}
-              </p>
-            </article>
-          ))}
-          {!active.length && (
-            <p className="px-5 py-4 text-sm text-muted-foreground">
-              No active notes yet.
-            </p>
-          )}
-          <div className="space-y-3 p-5">
-            {(data.isCurrent || isAdmin) && (
-              <>
-                <label
-                  htmlFor="advising-note"
-                  className="block text-sm font-medium"
-                >
-                  Write an advising note
-                </label>
-                <Textarea
-                  id="advising-note"
-                  rows={4}
-                  maxLength={5000}
-                  placeholder="Write what the student and the next adviser should know."
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setText("")}>
-                    Cancel
-                  </Button>
-                  <Button
-                    disabled={busy || !text.trim()}
-                    onClick={() => void save()}
-                  >
-                    {busy ? "Saving…" : "Save note"}
-                  </Button>
-                </div>
-              </>
-            )}
-            {!data.isCurrent && !isAdmin && (
-              <p className="text-sm text-muted-foreground">
-                Historical record: read-only.
-              </p>
-            )}
-            {message && (
-              <p role="status" className="text-sm">
-                {message}
-              </p>
-            )}
-            {saveError && (
-              <p role="alert" className="text-sm text-destructive">
-                {saveError}
-              </p>
-            )}
-            <Link
-              className="inline-block text-sm font-semibold text-primary underline"
-              to={`/adviser/advisee/${encodeURIComponent(id)}/notes`}
-            >
-              View all notes
-            </Link>
+      <AccountSkeleton
+        id="AdviseeAdvising-1"
+        loading={!data && !error}
+        label="Loading notes…"
+      >
+        {error && (
+          <div role="alert" className="space-y-3 p-5">
+            <p>{error}</p>
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              Try again
+            </Button>
           </div>
-        </>
-      )}
+        )}
+        {data && (
+          <>
+            {active.slice(0, 3).map((note) => (
+              <article
+                key={note.id}
+                className="border-b border-line-soft px-5 py-4"
+              >
+                <div className="flex flex-wrap justify-between gap-2 text-xs">
+                  <strong>{note.author_name ?? "Adviser"}</strong>
+                  <time
+                    className="text-muted-foreground"
+                    dateTime={note.created_at}
+                  >
+                    {new Date(note.created_at).toLocaleDateString()}
+                  </time>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed wrap-anywhere">
+                  {note.body_text}
+                </p>
+              </article>
+            ))}
+            {!active.length && (
+              <p className="px-5 py-4 text-sm text-muted-foreground">
+                No active notes yet.
+              </p>
+            )}
+            <div className="space-y-3 p-5">
+              {(data.isCurrent || isAdmin) && (
+                <>
+                  <label
+                    htmlFor="advising-note"
+                    className="block text-sm font-medium"
+                  >
+                    Write an advising note
+                  </label>
+                  <Textarea
+                    id="advising-note"
+                    rows={4}
+                    maxLength={5000}
+                    placeholder="Write what the student and the next adviser should know."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setText("")}>
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={busy || !text.trim()}
+                      onClick={() => void save()}
+                    >
+                      {busy ? "Saving…" : "Save note"}
+                    </Button>
+                  </div>
+                </>
+              )}
+              {!data.isCurrent && !isAdmin && (
+                <p className="text-sm text-muted-foreground">
+                  Historical record: read-only.
+                </p>
+              )}
+              {saveError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {saveError}
+                </p>
+              )}
+              <Link
+                className="inline-block text-sm font-semibold text-primary underline"
+                to={`/adviser/advisee/${encodeURIComponent(id)}/notes`}
+              >
+                View all notes
+              </Link>
+            </div>
+          </>
+        )}
+      </AccountSkeleton>
     </Panel>
   );
 }
@@ -373,7 +362,6 @@ function AdvisingContent({
   const [term, setTerm] = useState("");
   const termRef = useRef(term);
   const [revision, setRevision] = useState(0);
-  const [message, setMessage] = useState("");
   const terms = useScopedRequest(
     JSON.stringify([userId, "terms"]),
     true,
@@ -422,7 +410,6 @@ function AdvisingContent({
                 onChange={(e) => {
                   termRef.current = e.target.value;
                   setTerm(e.target.value);
-                  setMessage("");
                 }}
               >
                 <option value="">Select term</option>
@@ -450,51 +437,55 @@ function AdvisingContent({
             {terms.error}
           </p>
         )}
-        {!terms.data && !terms.error && (
-          <p role="status" className="p-5">
-            Loading terms…
-          </p>
-        )}
-        {terms.data && terms.data.length === 0 && (
-          <p className="p-5 text-sm text-muted-foreground">
-            No school terms available.
-          </p>
-        )}
-        {!term && terms.data && terms.data.length > 0 && (
-          <div className="flex flex-wrap items-center gap-3 p-5">
-            <span className="text-sm">0 selected</span>
-            <Button className="ml-auto" disabled>
-              Add selected to plan
-            </Button>
-          </div>
-        )}
-        {term && !data.data && !data.error && (
-          <p role="status" className="p-5">
-            Loading advising plan…
-          </p>
-        )}
-        {data.error && (
-          <div role="alert" className="space-y-3 p-5">
-            <p>{data.error}</p>
-            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-              Try again
-            </Button>
-          </div>
-        )}
-        {data.data && (
-          <PlanEditor
-            message={message}
-            key={`${term}:${revision}`}
-            data={data.data}
-            id={id}
-            term={term}
-            onSaved={() => {
-              if (termRef.current !== term) return;
-              setMessage("Plan saved.");
-              setRevision((n) => n + 1);
-            }}
-          />
-        )}
+        <AccountSkeleton
+          id="AdviseeAdvising-2"
+          loading={!terms.data && !terms.error}
+          label="Loading terms…"
+        >
+          {terms.data && terms.data.length === 0 && (
+            <p className="p-5 text-sm text-muted-foreground">
+              No school terms available.
+            </p>
+          )}
+          {!term && terms.data && terms.data.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 p-5">
+              <span className="text-sm">0 selected</span>
+              <Button className="ml-auto" disabled>
+                Add selected to plan
+              </Button>
+            </div>
+          )}
+          <AccountSkeleton
+            id="AdviseeAdvising-3"
+            loading={Boolean(term) && !data.data && !data.error}
+            label="Loading advising plan…"
+          >
+            {data.error && (
+              <div role="alert" className="space-y-3 p-5">
+                <p>{data.error}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => setRevision((n) => n + 1)}
+                >
+                  Try again
+                </Button>
+              </div>
+            )}
+            {data.data && (
+              <PlanEditor
+                key={`${term}:${revision}`}
+                data={data.data}
+                id={id}
+                term={term}
+                onSaved={() => {
+                  if (termRef.current !== term) return;
+                  notify.success("Plan saved.");
+                  setRevision((n) => n + 1);
+                }}
+              />
+            )}
+          </AccountSkeleton>
+        </AccountSkeleton>
       </Panel>
       <div className="min-w-0">
         <RecentNotes id={id} userId={userId} isAdmin={isAdmin} />

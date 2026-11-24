@@ -1,4 +1,9 @@
-import { configure } from "@testing-library/react";
+import { createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { act, configure } from "@testing-library/react";
+import { afterEach, beforeEach } from "vitest";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 // Lazy route modules and MSW-backed requests can take longer under coverage
 // instrumentation, especially on CI. Keep async queries patient without
@@ -42,3 +47,31 @@ if (typeof Element !== "undefined") {
     return nativeMatches.call(this, selector);
   };
 }
+
+// Success/error confirmations render through the app-wide Sonner `<Toaster />`
+// (mounted in `App`). Mount a fresh one around every test so page tests can
+// assert on them; remounting also drops toasts still animating out, so a
+// message from one test can never satisfy a lookup in the next.
+let toasterHost: HTMLDivElement | null = null;
+let toasterRoot: Root | null = null;
+
+beforeEach(async () => {
+  if (typeof document === "undefined") return;
+  toasterHost = document.createElement("div");
+  document.body.append(toasterHost);
+  toasterRoot = createRoot(toasterHost);
+  await act(async () => {
+    toasterRoot?.render(createElement(Toaster));
+  });
+});
+
+afterEach(async () => {
+  if (typeof document === "undefined") return;
+  await act(async () => {
+    toast.dismiss();
+    toasterRoot?.unmount();
+  });
+  toasterHost?.remove();
+  toasterHost = null;
+  toasterRoot = null;
+});

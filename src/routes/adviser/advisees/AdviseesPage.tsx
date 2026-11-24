@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AdviserPage } from "../Adviser";
@@ -115,145 +116,153 @@ export default function AdviseesPage() {
           ))}
         </div>
       </div>
-      {!data && !error && <p role="status">Loading advisees…</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {rows && pageRows && (
-        <div className="advisees-roster">
-          <DataTablePanel
-            title="Advisees"
-            description={`${rows.length} matching records`}
-            rows={pageRows}
-            rowKey={(r) => r.student_id}
-            rowProps={(r) => ({
-              tabIndex: 0,
-              "aria-label": `Open ${r.full_name}'s record`,
-              className:
-                "cursor-pointer hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-2px]",
-              onClick: (event) => {
-                if (
-                  !(event.target as HTMLElement).closest(
-                    "a,button,input,select,textarea",
+      <AccountSkeleton
+        id="AdviseesPage-1"
+        loading={!data && !error}
+        label="Loading advisees…"
+      >
+        {error && (
+          <div role="alert">
+            <p>{error}</p>
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              Try again
+            </Button>
+          </div>
+        )}
+        {rows && pageRows && (
+          <div className="advisees-roster">
+            <DataTablePanel
+              title="Advisees"
+              description={`${rows.length} matching records`}
+              rows={pageRows}
+              rowKey={(r) => r.student_id}
+              rowProps={(r) => ({
+                tabIndex: 0,
+                "aria-label": `Open ${r.full_name}'s record`,
+                className:
+                  "cursor-pointer hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-2px]",
+                onClick: (event) => {
+                  if (
+                    !(event.target as HTMLElement).closest(
+                      "a,button,input,select,textarea",
+                    )
                   )
-                )
-                  navigate(
-                    `/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`,
-                  );
-              },
-              onKeyDown: (event) => {
-                if (
-                  event.target === event.currentTarget &&
-                  (event.key === "Enter" || event.key === " ")
-                ) {
-                  event.preventDefault();
-                  navigate(
-                    `/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`,
-                  );
-                }
-              },
-            })}
-            columns={[
-              {
-                header: "Student",
-                cell: (r) => (
-                  <div className="min-w-0 max-w-full">
-                    <Link
-                      to={`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`}
-                      title={r.full_name}
-                      className="block truncate font-semibold underline"
+                    navigate(
+                      `/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`,
+                    );
+                },
+                onKeyDown: (event) => {
+                  if (
+                    event.target === event.currentTarget &&
+                    (event.key === "Enter" || event.key === " ")
+                  ) {
+                    event.preventDefault();
+                    navigate(
+                      `/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`,
+                    );
+                  }
+                },
+              })}
+              columns={[
+                {
+                  header: "Student",
+                  cell: (r) => (
+                    <div className="min-w-0 max-w-full">
+                      <Link
+                        to={`/adviser/advisee/${encodeURIComponent(r.student_id)}/checklist`}
+                        title={r.full_name}
+                        className="block truncate font-semibold underline"
+                      >
+                        {r.full_name}
+                      </Link>
+                      <span className="block font-mono text-xs text-muted-foreground">
+                        {r.student_number}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  header: "Program",
+                  cell: (r) => (
+                    <div className="min-w-0 max-w-full">
+                      <span className="block truncate" title={r.program_name}>
+                        {r.program_name}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        Curriculum {r.curriculum_label}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  header: "Year standing",
+                  cell: (r) => `Year ${r.year_level}`,
+                },
+                {
+                  header: "GWA",
+                  numeric: true,
+                  cell: (r) => (r.gwa == null ? "—" : r.gwa.toFixed(2)),
+                },
+                {
+                  header: "Open flags",
+                  className: "text-center font-mono",
+                  cell: (r) => r.open_flags_count,
+                },
+                {
+                  header: "Standing",
+                  cell: (r) => (
+                    <StatusBadge status={isFlagged(r) ? "flagged" : "good"} />
+                  ),
+                },
+                {
+                  header: "Deficiencies",
+                  cell: (r) => (
+                    <DeficiencySubjects
+                      userId={user!.id}
+                      studentId={r.student_id}
+                      count={r.deficiencies_count}
+                    />
+                  ),
+                },
+              ]}
+              footer={
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    Past advisees are read-only. Their records stay with their
+                    current adviser.
+                  </span>
+                  {pageCount > 1 && (
+                    <nav
+                      aria-label="Advisee pages"
+                      className="flex items-center gap-2"
                     >
-                      {r.full_name}
-                    </Link>
-                    <span className="block font-mono text-xs text-muted-foreground">
-                      {r.student_number}
-                    </span>
-                  </div>
-                ),
-              },
-              {
-                header: "Program",
-                cell: (r) => (
-                  <div className="min-w-0 max-w-full">
-                    <span className="block truncate" title={r.program_name}>
-                      {r.program_name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      Curriculum {r.curriculum_label}
-                    </span>
-                  </div>
-                ),
-              },
-              { header: "Year standing", cell: (r) => `Year ${r.year_level}` },
-              {
-                header: "GWA",
-                numeric: true,
-                cell: (r) => (r.gwa == null ? "—" : r.gwa.toFixed(2)),
-              },
-              {
-                header: "Open flags",
-                className: "text-center font-mono",
-                cell: (r) => r.open_flags_count,
-              },
-              {
-                header: "Standing",
-                cell: (r) => (
-                  <StatusBadge status={displayStanding(r)} />
-                ),
-              },
-              {
-                header: "Deficiencies",
-                cell: (r) => (
-                  <DeficiencySubjects
-                    userId={user!.id}
-                    studentId={r.student_id}
-                    count={r.deficiencies_count}
-                  />
-                ),
-              },
-            ]}
-            footer={
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  Past advisees are read-only. Their records stay with their
-                  current adviser.
-                </span>
-                {pageCount > 1 && (
-                  <nav
-                    aria-label="Advisee pages"
-                    className="flex items-center gap-2"
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={currentPage === 1}
-                      onClick={() => setPage(currentPage - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <span>
-                      Page {currentPage} of {pageCount}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={currentPage === pageCount}
-                      onClick={() => setPage(currentPage + 1)}
-                    >
-                      Next
-                    </Button>
-                  </nav>
-                )}
-              </div>
-            }
-          />
-        </div>
-      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={currentPage === 1}
+                        onClick={() => setPage(currentPage - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <span>
+                        Page {currentPage} of {pageCount}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={currentPage === pageCount}
+                        onClick={() => setPage(currentPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </nav>
+                  )}
+                </div>
+              }
+            />
+          </div>
+        )}
+      </AccountSkeleton>
     </AdviserPage>
   );
 }

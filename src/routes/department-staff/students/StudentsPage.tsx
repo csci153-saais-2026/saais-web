@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import "../shared/staff-filters.css";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -162,11 +163,11 @@ export default function StudentsPage() {
       }
     />
   );
-  if (!directory.data)
+  if (!directory.data && directory.isError)
     return (
       <>
         {heading}
-        {directory.isError ? (
+        {
           <div
             role="alert"
             className="rounded-md border border-border bg-card p-5"
@@ -181,184 +182,193 @@ export default function StudentsPage() {
               Try again
             </Button>
           </div>
-        ) : (
-          <p
-            role="status"
-            className="py-10 text-center text-sm text-muted-foreground"
-          >
-            Loading students…
-          </p>
-        )}
+        }
       </>
     );
   return (
-    <>
-      {heading}
-      <Panel title="Department directory" description={description} flush>
-        <div className="staff-filter-controls grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
-          <FormField label="Search students" htmlFor="staff-student-search">
-            <SearchInput
-              id="staff-student-search"
-              placeholder="Search by student name or ID"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </FormField>
-          <FormField label="Curriculum" htmlFor="staff-student-curriculum">
-            <Select value={curriculum} onValueChange={setCurriculum}>
-              <SelectTrigger id="staff-student-curriculum" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All curricula</SelectItem>
-                {curricula.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <FormField label="Adviser" htmlFor="staff-student-adviser">
-            <Select value={adviser} onValueChange={setAdviser}>
-              <SelectTrigger id="staff-student-adviser" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All advisers</SelectItem>
-                {advisers.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <Button
-            variant="outline"
-            disabled={!search && curriculum === "all" && adviser === "all"}
-            onClick={() => {
-              setSearch("");
-              setCurriculum("all");
-              setAdviser("all");
-            }}
-          >
-            Reset filters
-          </Button>
-        </div>
-        <Table
-          responsive
-          className="table-fixed"
-          aria-label="Department students"
-        >
-          <colgroup>
-            <col className="w-[24%]" />
-            <col className="w-[25%]" />
-            <col className="w-[20%]" />
-            <col className="w-[13%]" />
-            <col className="w-[18%]" />
-          </colgroup>
-          <TableHeader className="bg-secondary">
-            <TableRow>
-              {[
-                "Student",
-                "School email",
-                "Curriculum",
-                "Year standing",
-                "Adviser",
-              ].map((label) => (
-                <TableHead
-                  key={label}
-                  className="px-5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase"
-                >
-                  {label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((student) => (
-              <TableRow key={student.student_id}>
-                <TableCell label="Student" className="px-5 py-3">
-                  <div className="min-w-0">
-                    <span
-                      className="block truncate font-semibold"
-                      title={student.full_name}
+    <AccountSkeleton
+      id="staff-students"
+      data={directory.data}
+      label="Loading students…"
+    >
+      {() => (
+        <>
+          {heading}
+          <Panel title="Department directory" description={description} flush>
+            <div className="staff-filter-controls grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
+              <FormField label="Search students" htmlFor="staff-student-search">
+                <SearchInput
+                  id="staff-student-search"
+                  placeholder="Search by student name or ID"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </FormField>
+              <FormField label="Curriculum" htmlFor="staff-student-curriculum">
+                <Select value={curriculum} onValueChange={setCurriculum}>
+                  <SelectTrigger
+                    id="staff-student-curriculum"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All curricula</SelectItem>
+                    {curricula.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Adviser" htmlFor="staff-student-adviser">
+                <Select value={adviser} onValueChange={setAdviser}>
+                  <SelectTrigger id="staff-student-adviser" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All advisers</SelectItem>
+                    {advisers.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <Button
+                variant="outline"
+                disabled={!search && curriculum === "all" && adviser === "all"}
+                onClick={() => {
+                  setSearch("");
+                  setCurriculum("all");
+                  setAdviser("all");
+                }}
+              >
+                Reset filters
+              </Button>
+            </div>
+            <Table
+              responsive
+              className="table-fixed"
+              aria-label="Department students"
+            >
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[25%]" />
+                <col className="w-[20%]" />
+                <col className="w-[13%]" />
+                <col className="w-[18%]" />
+              </colgroup>
+              <TableHeader className="bg-secondary">
+                <TableRow>
+                  {[
+                    "Student",
+                    "School email",
+                    "Curriculum",
+                    "Year standing",
+                    "Adviser",
+                  ].map((label) => (
+                    <TableHead
+                      key={label}
+                      className="px-5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase"
                     >
-                      {student.full_name}
-                    </span>
-                    <span
-                      className="block truncate font-mono text-xs text-muted-foreground"
-                      title={student.student_number}
-                    >
-                      {student.student_number}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell label="School email" className="px-5 py-3">
-                  <span
-                    className="block min-w-0 truncate"
-                    title={student.email ?? ""}
-                  >
-                    {student.email}
-                  </span>
-                </TableCell>
-                <TableCell label="Curriculum" className="px-5 py-3">
-                  <Badge
-                    variant="secondary"
-                    className="max-w-full min-w-0 rounded-sm"
-                  >
-                    <span className="truncate" title={student.curriculum_label}>
-                      {student.curriculum_label}
-                    </span>
-                  </Badge>
-                </TableCell>
-                <TableCell label="Year standing" className="px-5 py-3">
-                  <span className="block min-w-0 truncate">
-                    {new Intl.PluralRules("en", { type: "ordinal" }).select(
-                      student.year_level,
-                    ) === "one"
-                      ? `${student.year_level}st`
-                      : new Intl.PluralRules("en", { type: "ordinal" }).select(
-                            student.year_level,
-                          ) === "two"
-                        ? `${student.year_level}nd`
-                        : new Intl.PluralRules("en", {
-                              type: "ordinal",
-                            }).select(student.year_level) === "few"
-                          ? `${student.year_level}rd`
-                          : `${student.year_level}th`}{" "}
-                    year
-                  </span>
-                </TableCell>
-                <TableCell label="Adviser" className="px-5 py-3">
-                  <span
-                    className="block min-w-0 truncate"
-                    title={student.adviser_name ?? "Unassigned"}
-                  >
-                    {student.adviser_name ?? "Unassigned"}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {filtered.length === 0 && (
-          <div className="px-5 py-10 text-center">
-            <p className="font-semibold">No students match these filters.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Change your search or reset the filters.
+                      {label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((student) => (
+                  <TableRow key={student.student_id}>
+                    <TableCell label="Student" className="px-5 py-3">
+                      <div className="min-w-0">
+                        <span
+                          className="block truncate font-semibold"
+                          title={student.full_name}
+                        >
+                          {student.full_name}
+                        </span>
+                        <span
+                          className="block truncate font-mono text-xs text-muted-foreground"
+                          title={student.student_number}
+                        >
+                          {student.student_number}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell label="School email" className="px-5 py-3">
+                      <span
+                        className="block min-w-0 truncate"
+                        title={student.email ?? ""}
+                      >
+                        {student.email}
+                      </span>
+                    </TableCell>
+                    <TableCell label="Curriculum" className="px-5 py-3">
+                      <Badge
+                        variant="secondary"
+                        className="max-w-full min-w-0 rounded-sm"
+                      >
+                        <span
+                          className="truncate"
+                          title={student.curriculum_label}
+                        >
+                          {student.curriculum_label}
+                        </span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell label="Year standing" className="px-5 py-3">
+                      <span className="block min-w-0 truncate">
+                        {new Intl.PluralRules("en", { type: "ordinal" }).select(
+                          student.year_level,
+                        ) === "one"
+                          ? `${student.year_level}st`
+                          : new Intl.PluralRules("en", {
+                                type: "ordinal",
+                              }).select(student.year_level) === "two"
+                            ? `${student.year_level}nd`
+                            : new Intl.PluralRules("en", {
+                                  type: "ordinal",
+                                }).select(student.year_level) === "few"
+                              ? `${student.year_level}rd`
+                              : `${student.year_level}th`}{" "}
+                        year
+                      </span>
+                    </TableCell>
+                    <TableCell label="Adviser" className="px-5 py-3">
+                      <span
+                        className="block min-w-0 truncate"
+                        title={student.adviser_name ?? "Unassigned"}
+                      >
+                        {student.adviser_name ?? "Unassigned"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {filtered.length === 0 && (
+              <div className="px-5 py-10 text-center">
+                <p className="font-semibold">
+                  No students match these filters.
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Change your search or reset the filters.
+                </p>
+              </div>
+            )}
+            <p
+              role="status"
+              aria-live="polite"
+              className="border-t border-border px-5 py-3 text-xs text-muted-foreground"
+            >
+              Showing {filtered.length} of {students.length} students
             </p>
-          </div>
-        )}
-        <p
-          role="status"
-          aria-live="polite"
-          className="border-t border-border px-5 py-3 text-xs text-muted-foreground"
-        >
-          Showing {filtered.length} of {students.length} students
-        </p>
-      </Panel>
-    </>
+          </Panel>
+        </>
+      )}
+    </AccountSkeleton>
   );
 }
