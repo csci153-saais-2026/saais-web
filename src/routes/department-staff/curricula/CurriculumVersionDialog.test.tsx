@@ -102,6 +102,13 @@ function fillForm() {
     target: { value: "2027-08-01" },
   });
 }
+async function chooseOption(label: string, option: string) {
+  Element.prototype.scrollIntoView = () => {};
+  fireEvent.keyDown(screen.getByRole("combobox", { name: label }), {
+    key: "ArrowDown",
+  });
+  fireEvent.click(await screen.findByRole("option", { name: option }));
+}
 beforeEach(() => {
   Element.prototype.scrollIntoView = () => {};
   vi.mocked(listCurricula).mockResolvedValue({
@@ -227,9 +234,7 @@ describe("Edit curriculum version", () => {
     });
     const client = mount();
     await screen.findByLabelText("Curriculum version");
-    fireEvent.change(screen.getByLabelText("Curriculum version"), {
-      target: { value: saved.id },
-    });
+    await chooseOption("Curriculum version", "BSCS 2027");
     await openEditForm();
     expect(
       (screen.getByLabelText("Academic year") as HTMLInputElement).value,
@@ -276,8 +281,8 @@ describe("Edit curriculum version", () => {
       status: "active",
     });
     expect(
-      (screen.getByLabelText("Curriculum version") as HTMLSelectElement).value,
-    ).toBe(saved.id);
+      screen.getByRole("combobox", { name: "Curriculum version" }).textContent,
+    ).toContain("BSCS Revised 2027");
     expect(screen.getByText("162.25")).toBeTruthy();
     expect(screen.getByText("active")).toBeTruthy();
     expect(createCurriculumVersion).not.toHaveBeenCalled();
@@ -422,8 +427,8 @@ describe("Create curriculum version", () => {
     });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(
-      (screen.getByLabelText("Curriculum version") as HTMLSelectElement).value,
-    ).toBe(saved.id);
+      screen.getByRole("combobox", { name: "Curriculum version" }).textContent,
+    ).toContain("BSCS 2027");
     expect(screen.getByText("Enrolled students")).toBeTruthy();
     expect(vi.mocked(listCurricula).mock.calls.length).toBeGreaterThanOrEqual(
       2,

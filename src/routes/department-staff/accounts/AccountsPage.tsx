@@ -3,7 +3,10 @@ import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import type { Column } from "@/components/features/data-table-panel";
+import {
+  DataTablePanel,
+  type Column,
+} from "@/components/features/data-table-panel";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -472,46 +467,18 @@ export default function AccountsPage() {
             )}
 
             {accounts.isSuccess && (
-              <>
-                <Table responsive>
-                  <TableHeader className="bg-secondary">
-                    <TableRow>
-                      {accountColumns.map((column) => (
-                        <TableHead
-                          key={column.header}
-                          className="px-4 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase"
-                        >
-                          {column.header}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {accounts.data.accounts.map((account) => (
-                      <TableRow key={account.profile.id}>
-                        {accountColumns.map((column) => (
-                          <TableCell
-                            key={column.header}
-                            label={column.header}
-                            className={`px-4 py-2 text-[13px] ${column.className ?? ""}`}
-                          >
-                            {column.cell(account)}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {accounts.data.accounts.length === 0 && (
-                  <p className="border-b border-border px-5 py-8 text-center text-sm text-muted-foreground">
-                    {search || role
-                      ? "No accounts match the current search and role filters."
-                      : "No accounts are listed for this department."}
-                  </p>
-                )}
-
-                <div className="border-t border-border px-5 py-3">
+              <DataTablePanel
+                title="People"
+                columns={accountColumns}
+                rows={accounts.data.accounts}
+                rowKey={(account) => account.profile.id}
+                spacious
+                empty={
+                  search || role
+                    ? "No accounts match the current search and role filters."
+                    : "No accounts are listed for this department."
+                }
+                footer={
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p
                       className="text-sm text-muted-foreground"
@@ -540,8 +507,8 @@ export default function AccountsPage() {
                       </Button>
                     </div>
                   </div>
-                </div>
-              </>
+                }
+              />
             )}
           </AccountSkeleton>
         </Panel>

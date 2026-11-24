@@ -170,8 +170,8 @@ describe("Add curriculum term", () => {
       slots: [],
     });
     expect(
-      (screen.getByLabelText("Curriculum version") as HTMLSelectElement).value,
-    ).toBe("v1");
+      screen.getByRole("combobox", { name: "Curriculum version" }).textContent,
+    ).toContain("2027");
     const headings = screen
       .getAllByText(/^Year \d · Semester \d$/)
       .map((node) => node.textContent);

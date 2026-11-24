@@ -190,42 +190,41 @@ describe("Manage curriculum requirements", () => {
     ).toBe(3.5);
   });
 
-  it("converts a flexible elective into a named GE requirement without a course reference", async () => {
+  it("converts a flexible elective into a GE requirement while retaining its course", async () => {
     const flexible: CurriculumSlot = {
       id: "slot",
       curriculum_term_id: "term",
-      course_id: null,
+      course_id: course.id,
       is_elective_slot: true,
       slot_type: "elective",
-      slot_label: "Open elective",
+      slot_label: null,
       nominal_units: 3,
     };
     mount({ original: flexible });
     await chooseOption("Type", "GE slot");
-    fireEvent.change(screen.getByLabelText("Course / slot"), {
-      target: { value: "Humanities GE" },
-    });
     fireEvent.change(screen.getByLabelText("Required units"), {
       target: { value: "2.5" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await vi.waitFor(() => expect(updateCurriculumSlot).toHaveBeenCalledOnce());
     expect(updateCurriculumSlot).toHaveBeenCalledWith("slot", {
-      course_id: null,
+      course_id: course.id,
       is_elective_slot: false,
       slot_type: "ge",
-      slot_label: "Humanities GE",
+      slot_label: null,
       nominal_units: 2.5,
     });
   });
 
   it("allows retaining an existing course reference when it is absent from active choices", async () => {
     mount({ courseChoices: [] });
+    await chooseOption(
+      "Active course",
+      "Current course reference unavailable or inactive",
+    );
     expect(
-      screen.getByRole("option", {
-        name: "Current course reference unavailable or inactive",
-      }),
-    ).toBeTruthy();
+      screen.getByRole("combobox", { name: "Active course" }).textContent,
+    ).toContain("Current course reference unavailable or inactive");
     fireEvent.change(screen.getByLabelText("Required units"), {
       target: { value: "3.25" },
     });

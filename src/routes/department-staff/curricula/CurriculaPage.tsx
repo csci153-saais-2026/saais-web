@@ -3,10 +3,18 @@ import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
 import { PlusIcon } from "@/components/icons";
+import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { StatGrid } from "@/components/features/stat-tile";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ApiClientError } from "@/lib/api";
 import { CurriculumTermPanel } from "./CurriculumTermPanel";
 import {
@@ -25,6 +33,7 @@ import { CurriculumTermDialog } from "./CurriculumTermDialog";
 import { CurriculumTermDeleteDialog } from "./CurriculumTermDeleteDialog";
 import { CurriculumSlotDialog } from "./CurriculumSlotDialog";
 import { CurriculumSlotDeleteDialog } from "./CurriculumSlotDeleteDialog";
+import { CurriculumNewCourseDialog } from "./CurriculumNewCourseDialog";
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -44,6 +53,7 @@ export default function CurriculaPage() {
   const catalog = useCurricula();
   const [selection, setSelection] = useState("");
   const [creating, setCreating] = useState(false);
+  const [creatingCourse, setCreatingCourse] = useState(false);
   const [editing, setEditing] = useState<CurriculumVersion | null>(null);
   const [lifecycle, setLifecycle] = useState<{
     action: VersionLifecycleAction;
@@ -128,12 +138,6 @@ export default function CurriculaPage() {
           slot={slotAction.slot}
           term={slotAction.term}
           version={slotAction.version}
-          courseLabel={(() => {
-            const course = detail.data?.courses.find(
-              (item) => item.id === slotAction.slot.course_id,
-            );
-            return course ? `${course.code} — ${course.title}` : undefined;
-          })()}
           onClose={() => setSlotAction(null)}
           onUpdated={(id) => {
             setSelection(id);
@@ -238,6 +242,17 @@ export default function CurriculaPage() {
           }}
         />
       )}
+      {creatingCourse && version && (
+        <CurriculumNewCourseDialog
+          selectedVersion={version}
+          onClose={() => setCreatingCourse(false)}
+          onCreated={(id) => {
+            setSelection(id);
+            setCreatingCourse(false);
+            notify.success("Course added to the curriculum.");
+          }}
+        />
+      )}
       <AccountSkeleton
         id="CurriculaPage-1"
         loading={catalog.isPending}
@@ -263,55 +278,72 @@ export default function CurriculaPage() {
         )}
         {catalog.isSuccess && version && (
           <>
-            <Panel title="Curriculum versions">
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="sr-only" htmlFor="curriculum-version">
-                  Curriculum version
-                </label>
-                <select
-                  id="curriculum-version"
-                  className="min-w-0 flex-1 rounded-sm border border-input bg-card px-3 py-2 text-sm"
-                  value={version.id}
-                  onChange={(event) => setSelection(event.currentTarget.value)}
-                >
-                  {versions.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.version_label}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={catalog.isFetching}
-                  onClick={() => setEditing(version)}
-                >
-                  Edit version
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={catalog.isFetching}
-                  onClick={() => setLifecycle({ action: "delete", version })}
-                >
-                  Delete version
-                </Button>
-                <div className="min-w-4 flex-1" aria-hidden="true" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!detail.isSuccess || detail.isFetching}
-                  onClick={() => {
-                    setTermMessage("");
-                    setAddingTerm(version);
-                  }}
-                >
-                  Add term
-                </Button>
-              </div>
-            </Panel>
+            <div className="mb-6 flex flex-wrap items-end gap-3">
+              <FormField
+                label="Curriculum version"
+                htmlFor="curriculum-version"
+                className="w-full sm:w-[350px] sm:min-w-[280px]"
+              >
+                <Select value={version.id} onValueChange={setSelection}>
+                  <SelectTrigger
+                    id="curriculum-version"
+                    className="w-full bg-card"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    avoidCollisions={false}
+                  >
+                    {versions.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.version_label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={catalog.isFetching}
+                onClick={() => setEditing(version)}
+              >
+                Edit version
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={catalog.isFetching}
+                onClick={() => setLifecycle({ action: "delete", version })}
+              >
+                Delete version
+              </Button>
+              <div className="hidden sm:block sm:flex-1" aria-hidden="true" />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!detail.isSuccess || detail.isFetching}
+                onClick={() => {
+                  setTermMessage("");
+                  setAddingTerm(version);
+                }}
+              >
+                Add term
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!detail.isSuccess || detail.isFetching}
+                onClick={() => setCreatingCourse(true)}
+              >
+                New course
+              </Button>
+            </div>
             {termMessage && <p role="status">{termMessage}</p>}
             <StatGrid
+              className="[&_.font-heading]:text-[30px]"
               items={[
                 {
                   label: "Required units",
@@ -383,44 +415,51 @@ export default function CurriculaPage() {
                       <p>No terms are available for this curriculum version.</p>
                     </Panel>
                   )}
-                  {detail.data.terms.map((term) => {
-                    const slots = detail.data.slots.filter(
-                      (slot) => slot.curriculum_term_id === term.id,
-                    );
-                    function openTermAction(action: "edit" | "delete") {
-                      setTermAction({
-                        action,
-                        term,
-                        version,
-                        requirementCount: slots.length,
-                      });
-                    }
-                    return (
-                      <CurriculumTermPanel
-                        key={term.id}
-                        term={term}
-                        slots={slots}
-                        courses={detail.data.courses}
-                        actionsDisabled={detail.isFetching}
-                        onAddRequirement={() =>
-                          setAddingRequirement({ term, version })
-                        }
-                        onEditSlot={(slot) =>
-                          setSlotAction({ action: "edit", term, version, slot })
-                        }
-                        onDeleteSlot={(slot) =>
-                          setSlotAction({
-                            action: "delete",
-                            term,
-                            version,
-                            slot,
-                          })
-                        }
-                        onEdit={() => openTermAction("edit")}
-                        onDelete={() => openTermAction("delete")}
-                      />
-                    );
-                  })}
+                  <div className="space-y-5">
+                    {detail.data.terms.map((term) => {
+                      const slots = detail.data.slots.filter(
+                        (slot) => slot.curriculum_term_id === term.id,
+                      );
+                      function openTermAction(action: "edit" | "delete") {
+                        setTermAction({
+                          action,
+                          term,
+                          version,
+                          requirementCount: slots.length,
+                        });
+                      }
+                      return (
+                        <CurriculumTermPanel
+                          key={term.id}
+                          term={term}
+                          slots={slots}
+                          courses={detail.data.courses}
+                          actionsDisabled={detail.isFetching}
+                          onAddRequirement={() =>
+                            setAddingRequirement({ term, version })
+                          }
+                          onEditSlot={(slot) =>
+                            setSlotAction({
+                              action: "edit",
+                              term,
+                              version,
+                              slot,
+                            })
+                          }
+                          onDeleteSlot={(slot) =>
+                            setSlotAction({
+                              action: "delete",
+                              term,
+                              version,
+                              slot,
+                            })
+                          }
+                          onEdit={() => openTermAction("edit")}
+                          onDelete={() => openTermAction("delete")}
+                        />
+                      );
+                    })}
+                  </div>
                 </>
               )}
             </AccountSkeleton>

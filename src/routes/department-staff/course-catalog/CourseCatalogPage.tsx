@@ -2,7 +2,10 @@ import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import "../shared/staff-filters.css";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import type { Column } from "@/components/features/data-table-panel";
+import {
+  DataTablePanel,
+  type Column,
+} from "@/components/features/data-table-panel";
 import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
@@ -31,14 +34,6 @@ import { useStaffScope } from "@/routes/department-staff/shared/use-staff-scope"
 import { CourseDialog } from "./CourseDialog";
 import { CourseCatalogActions } from "./CourseCatalogActions";
 import { CoursePrerequisitesDialog } from "./CoursePrerequisitesDialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 function displayValue(value: unknown): string {
@@ -355,71 +350,51 @@ export default function CourseCatalogPage() {
             )}
 
             {references.isSuccess && catalog.isSuccess && !searchError && (
-              <>
-                <Table responsive>
-                  <TableHeader className="bg-secondary">
-                    <TableRow>
-                      {columns.map((column) => (
-                        <TableHead
-                          key={column.header}
-                          className={`h-auto px-3.5 py-2.5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase${column.header === "Units" ? " text-center" : ""}`}
-                        >
-                          {column.header}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.courses.map((course) => (
-                      <TableRow key={course.id}>
-                        {columns.map((column) => (
-                          <TableCell
-                            key={column.header}
-                            label={column.header}
-                            className={`px-3.5 py-[11px] text-[13.5px] ${column.className ?? ""}`}
-                          >
-                            {column.cell(course)}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {data.courses.length === 0 && (
-                  <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-                    No courses match these filters.
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-                  <p className="text-sm" aria-live="polite">
-                    {data.total != null
-                      ? `${start} - ${end} of ${data.total}`
-                      : `Page ${filters.page + 1}`}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        updateFilters({ page: String(filters.page - 1) }, false)
-                      }
-                      disabled={filters.page === 0 || catalog.isFetching}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        updateFilters({ page: String(filters.page + 1) }, false)
-                      }
-                      disabled={!hasNext || catalog.isFetching}
-                    >
-                      Next
-                    </Button>
+              <DataTablePanel
+                title="Course records"
+                columns={columns}
+                rows={data.courses}
+                rowKey={(course) => course.id}
+                spacious
+                empty="No courses match these filters."
+                footer={
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm" aria-live="polite">
+                      {data.total != null
+                        ? `${start} - ${end} of ${data.total}`
+                        : `Page ${filters.page + 1}`}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          updateFilters(
+                            { page: String(filters.page - 1) },
+                            false,
+                          )
+                        }
+                        disabled={filters.page === 0 || catalog.isFetching}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          updateFilters(
+                            { page: String(filters.page + 1) },
+                            false,
+                          )
+                        }
+                        disabled={!hasNext || catalog.isFetching}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </>
+                }
+              />
             )}
           </AccountSkeleton>
         </Panel>

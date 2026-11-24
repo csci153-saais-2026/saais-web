@@ -34,7 +34,7 @@ import {
   listCourseCatalogReferences,
 } from "@/routes/department-staff/course-catalog/course-catalog.api";
 import { readCurriculum } from "./curricula.api";
-import { CurriculumSlotDialog } from "./CurriculumSlotDialog";
+import { CurriculumNewCourseDialog } from "./CurriculumNewCourseDialog";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
@@ -134,9 +134,8 @@ function renderSlotDialog() {
   render(
     <QueryClientProvider client={client}>
       <StaffScopeContext.Provider value={scope}>
-        <CurriculumSlotDialog
-          term={fixture.term}
-          version={fixture.version}
+        <CurriculumNewCourseDialog
+          selectedVersion={fixture.version}
           onClose={vi.fn()}
           onCreated={onCreated}
         />
@@ -168,12 +167,13 @@ afterEach(() => {
 });
 afterAll(() => saaisMockServer.close());
 
-describe("Create catalog course from a curriculum requirement", () => {
-  it("creates through the catalog operation, attaches the returned ID, and invalidates both resource families", async () => {
+describe("Create a course from a curriculum", () => {
+  it("creates through the catalog operation, attaches it to the selected term, and invalidates both resource families", async () => {
     const state = renderSlotDialog();
     const invalidation = vi.spyOn(state.client, "invalidateQueries");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create catalog course" }),
+    const addCourseButton = screen.getByRole("button", { name: "Add course" });
+    await waitFor(() =>
+      expect(addCourseButton.hasAttribute("disabled")).toBe(false),
     );
     fireEvent.change(screen.getByLabelText("Course code"), {
       target: { value: "STEP26 CS 101" },
@@ -184,21 +184,14 @@ describe("Create catalog course from a curriculum requirement", () => {
     fireEvent.change(screen.getByLabelText("Units"), {
       target: { value: "3.25" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create course" }));
-    await screen.findByText(
-      "Course STEP26 CS 101 created. Save this requirement to attach it.",
+    fireEvent.click(addCourseButton);
+    await waitFor(() =>
+      expect(state.onCreated).toHaveBeenCalledWith(state.version.id),
     );
 
     const createdCourse = getMockDatabase().courses.find(
       (course) => course.code === "STEP26 CS 101",
     )!;
-    fireEvent.change(screen.getByLabelText("Required units"), {
-      target: { value: "3.25" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await waitFor(() =>
-      expect(state.onCreated).toHaveBeenCalledWith(state.version.id),
-    );
 
     expect(
       getMockDatabase().curriculumTermCourses.some(
@@ -289,8 +282,9 @@ describe("Create catalog course from a curriculum requirement", () => {
       ),
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create catalog course" }),
+    const addCourseButton = screen.getByRole("button", { name: "Add course" });
+    await waitFor(() =>
+      expect(addCourseButton.hasAttribute("disabled")).toBe(false),
     );
     fireEvent.change(screen.getByLabelText("Course code"), {
       target: { value: "STEP26 RETRY 101" },
@@ -301,46 +295,25 @@ describe("Create catalog course from a curriculum requirement", () => {
     fireEvent.change(screen.getByLabelText("Units"), {
       target: { value: "3" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create course" }));
-    await screen.findByText(
-      "Course STEP26 RETRY 101 created. Save this requirement to attach it.",
-    );
+    fireEvent.click(addCourseButton);
+    await waitFor(() => expect(attachmentAttempts).toBe(1), {
+      timeout: 10_000,
+    });
+    await screen.findByRole("alert");
     const created = db.courses.find(
       (course) => course.code === "STEP26 RETRY 101",
     )!;
 
-    const addButton = screen.getByRole("button", { name: "Add" });
-    await waitFor(() => expect(addButton.hasAttribute("disabled")).toBe(false));
-    expect(
-      (screen.getByLabelText("Active course (optional)") as HTMLSelectElement)
-        .value,
-    ).toBe(created.id);
-    fireEvent.click(addButton);
-    await waitFor(() => expect(attachmentAttempts).toBe(1), {
-      timeout: 10_000,
-    });
-    const attachmentError = await screen.findByRole(
-      "alert",
-      {},
-      { timeout: 10_000 },
-    );
+    const attachmentError = screen.getByRole("alert");
     expect(attachmentError.textContent).toContain(
       "Temporary attachment failure",
     );
-    expect(
-      screen.getByRole("option", { name: /STEP26 RETRY 101/ }),
-    ).toBeTruthy();
-    expect(
-      (screen.getByLabelText("Active course (optional)") as HTMLSelectElement)
-        .value,
-    ).toBe(created.id);
     expect(courseCreates).toBe(1);
     expect(
       db.curriculumTermCourses.some((slot) => slot.course_id === created.id),
     ).toBe(false);
 
-    await waitFor(() => expect(addButton.hasAttribute("disabled")).toBe(false));
-    fireEvent.click(addButton);
+    fireEvent.click(addCourseButton);
     await waitFor(() =>
       expect(state.onCreated).toHaveBeenCalledWith(state.version.id),
     );
