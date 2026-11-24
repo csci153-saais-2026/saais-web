@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { expect, it } from "vitest";
 import { saaisMockServer } from "@/mocks/node";
@@ -54,7 +54,9 @@ it("shows the selected checklist result's attempt and grade-correction history",
     name: `${student.name} · Student record`,
   });
   const row = (await within(record).findByText(course.code)).closest("tr")!;
-  fireEvent.click(within(row).getByRole("button", { name: "Course info" }));
+  const trigger = within(row).getByRole("button", { name: "Course info" });
+  trigger.focus();
+  fireEvent.click(trigger);
   const dialog = within(
     await screen.findByRole("dialog", {
       name: `${course.code} · ${course.title}`,
@@ -68,4 +70,7 @@ it("shows the selected checklist result's attempt and grade-correction history",
   expect(
     dialog.getByText(/03 Mar 2026.*Prof\. Test.*2\.25 → 1\.75/),
   ).toBeTruthy();
+  fireEvent.click(dialog.getByRole("button", { name: "Close" }));
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  expect(screen.getByRole("dialog")).toBe(record);
 });

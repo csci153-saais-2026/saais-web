@@ -50,6 +50,7 @@ export interface CourseInfoDialogProps {
   /** Optional subtitle metadata override (defaults to `slot.meta` or required units summary). */
   readonly meta?: string;
   readonly className?: string;
+  readonly returnFocusTo?: HTMLElement | null;
 }
 
 const EXCEPTION_SOURCES: ReadonlySet<string> = new Set([
@@ -195,6 +196,7 @@ export function CourseInfoDialog({
   title,
   meta,
   className,
+  returnFocusTo,
 }: CourseInfoDialogProps) {
   const attempts = slot?.attempts ?? [];
   const gradeFixes = slot?.grade_fix_history ?? [];
@@ -245,6 +247,12 @@ export function CourseInfoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusTo?.isConnected) {
+            event.preventDefault();
+            returnFocusTo.focus();
+          }
+        }}
         className={cn(
           "max-h-[90dvh] overflow-y-auto sm:max-w-[800px]",
           className,

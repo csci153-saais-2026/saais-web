@@ -104,7 +104,10 @@ function toTerms(data: Checklist): TermGroup[] {
 }
 
 export function ChecklistTab({ student }: { student: DirectoryStudent }) {
-  const [selected, setSelected] = useState<ChecklistCourse | null>(null);
+  const [selected, setSelected] = useState<{
+    course: ChecklistCourse;
+    trigger: HTMLElement | null;
+  } | null>(null);
   const checklist = useQuery({
     queryKey: [
       ...useDepartmentHeadQueryKey(["department-head", "checklist"]),
@@ -130,11 +133,16 @@ export function ChecklistTab({ student }: { student: DirectoryStudent }) {
             (total, row) => total + row.unitsRequired,
             0,
           )}
-          onCourseInfo={(code) =>
-            setSelected(
-              term.rows.find((row) => row.code === code)?.course ?? null,
-            )
-          }
+          onCourseInfo={(code) => {
+            const course = term.rows.find((row) => row.code === code)?.course;
+            if (course) {
+              const focused = document.activeElement;
+              setSelected({
+                course,
+                trigger: focused instanceof HTMLButtonElement ? focused : null,
+              });
+            }
+          }}
         />
       ))}
       {terms.length === 0 && (
@@ -146,9 +154,10 @@ export function ChecklistTab({ student }: { student: DirectoryStudent }) {
           onOpenChange={(open) => {
             if (!open) setSelected(null);
           }}
-          slot={selected.result}
-          title={selected.title}
-          meta={selected.meta}
+          slot={selected.course.result}
+          title={selected.course.title}
+          meta={selected.course.meta}
+          returnFocusTo={selected.trigger}
         />
       )}
     </div>
