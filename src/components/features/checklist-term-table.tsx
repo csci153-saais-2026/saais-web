@@ -94,7 +94,7 @@ function ChecklistTermGroup({
         <ChevronDownIcon className="size-4 text-muted-foreground" aria-hidden />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <Table className="min-w-[920px]">
+        <Table className="min-w-[920px] table-fixed">
           <TableHeader className="bg-secondary">
             <TableRow>
               {CHECKLIST_COLUMNS.map(({ label, className }) => (

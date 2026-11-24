@@ -2,7 +2,7 @@ import * as React from "react";
 import {
   ChecklistTermGroup,
   type ChecklistRow,
-} from "@/components/features/checklist-term-group";
+} from "@/components/features/checklist-term-table";
 import { FormField } from "@/components/features/form-field";
 import { Panel } from "@/components/features/panel";
 import { StatGrid } from "@/components/features/stat-tile";
