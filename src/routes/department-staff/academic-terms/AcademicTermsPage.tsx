@@ -196,7 +196,12 @@ export default function AcademicTermsPage() {
               type="button"
               variant="outline"
               onClick={() =>
-                setPdf(buildAcademicTermsPdf(academicTerms.data?.terms ?? [], closureByTermId))
+                setPdf(
+                  buildAcademicTermsPdf(
+                    academicTerms.data?.terms ?? [],
+                    closureByTermId,
+                  ),
+                )
               }
               disabled={!academicTerms.isSuccess}
               className="gap-2"
@@ -382,7 +387,7 @@ export default function AcademicTermsPage() {
             </Dialog>
           );
         })()}
-      {dialogOpen && dialogTerm && (
+      {dialogOpen && dialogTerm && !isTermClosed(dialogTerm) && (
         <SchoolTermDialog
           term={dialogTerm}
           onClose={() => setDialogOpen(false)}

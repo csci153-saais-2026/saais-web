@@ -13,6 +13,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -334,9 +335,17 @@ describe("Department Staff academic terms", () => {
     await screen.findByText("2026–2027");
     fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
 
-    expect(
-      await screen.findByRole("dialog", { name: "Preview: Academic terms" }),
-    ).toBeTruthy();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Preview: Academic terms",
+    });
+    expect(dialog).toBeTruthy();
+    const downloadLink = await waitFor(() => {
+      const link = within(dialog).getByRole("link", { name: "Download PDF" });
+      expect(link.hasAttribute("disabled")).toBe(false);
+      expect(link.getAttribute("href")).toMatch(/^blob:/);
+      return link;
+    });
+    expect(downloadLink).toBeTruthy();
   });
 
   it("closes and reopens department encoding through the MSW handlers", async () => {

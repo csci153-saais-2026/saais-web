@@ -185,8 +185,16 @@ describe("Department Staff accounts directory", () => {
     expect(screen.queryByRole("checkbox", { name: "Dean" })).toBeNull();
     expect(screen.queryByRole("checkbox", { name: "Admin" })).toBeNull();
 
-    expect(screen.getByRole("checkbox", { name: "Student" }).getAttribute("aria-checked")).toBe("false");
-    expect(screen.getByRole("checkbox", { name: "Adviser" }).getAttribute("aria-checked")).toBe("false");
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Student" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Adviser" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
     fireEvent.click(screen.getByRole("checkbox", { name: "Student" }));
     expect(
       screen
@@ -509,10 +517,9 @@ describe("Department Staff accounts directory", () => {
       { target: { value: "new.student@vsu.edu.ph" } },
     );
     fireEvent.click(screen.getByRole("checkbox", { name: "Student" }));
-    fireEvent.change(
-      screen.getByRole("textbox", { name: "Student number" }),
-      { target: { value: "26-1-00042" } },
-    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Student number" }), {
+      target: { value: "26-1-00042" },
+    });
     expect(
       screen.queryByRole("checkbox", { name: "Additional role Adviser" }),
     ).toBeNull();
@@ -523,15 +530,11 @@ describe("Department Staff accounts directory", () => {
         name: /BSCS - Bachelor of Science in Computer Science/,
       }),
     );
-    fireEvent.click(
-      screen.getByRole("combobox", { name: "Curriculum" }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Curriculum" }));
     fireEvent.click(
       await screen.findByRole("option", { name: "BSCS 2024-2025 v1" }),
     );
-    fireEvent.click(
-      screen.getByRole("combobox", { name: "Initial adviser" }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Initial adviser" }));
     fireEvent.click(
       await screen.findByRole("option", {
         name: MOCK_PERSONAS.adviser.fullName,
@@ -624,7 +627,6 @@ describe("Department Staff accounts directory", () => {
       screen.getByRole("textbox", { name: "Institutional email" }),
       { target: { value: MOCK_PERSONAS.department_staff.email } },
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: "Student" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Adviser" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));

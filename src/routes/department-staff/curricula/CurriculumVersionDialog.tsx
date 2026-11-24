@@ -288,6 +288,18 @@ export function CurriculumVersionDialog({
               />
             </FormField>
             <FormField
+              label="Effective until (optional)"
+              htmlFor="new-version-end"
+              error={errors.effective_end?.message}
+            >
+              <Input
+                id="new-version-end"
+                type="date"
+                aria-invalid={!!errors.effective_end}
+                {...register("effective_end")}
+              />
+            </FormField>
+            <FormField
               label="Status"
               htmlFor="new-version-status"
               error={errors.status?.message}

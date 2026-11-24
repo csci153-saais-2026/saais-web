@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -101,8 +101,13 @@ export function AccountProvisionDialog({
   studentReferencesError,
   onRetryStudentReferences,
 }: AccountProvisionDialogProps) {
-  const [selectedRoles, setSelectedRoles] =
-    useState<AccountProvisionRole[]>([...initialRoles]);
+  const [selectedRoles, setSelectedRoles] = useState<AccountProvisionRole[]>([
+    ...initialRoles,
+  ]);
+
+  useEffect(() => {
+    if (!open) setSelectedRoles([...initialRoles]);
+  }, [open, initialRoles]);
 
   function toggleRole(role: AccountProvisionRole, checked: boolean) {
     const studentSelected = selectedRoles.includes("student");
@@ -162,7 +167,9 @@ export function AccountProvisionDialog({
                 value={fullName}
                 aria-invalid={Boolean(fullNameError)}
                 disabled={disabled}
-                onChange={(event) => onFullNameChange(event.currentTarget.value)}
+                onChange={(event) =>
+                  onFullNameChange(event.currentTarget.value)
+                }
               />
             </FormField>
             <FormField
@@ -264,7 +271,9 @@ export function AccountProvisionDialog({
                 loadingPrograms={studentProvisioning.loadingPrograms}
                 loadingCurricula={studentProvisioning.loadingCurricula}
                 loadingAdvisers={studentProvisioning.loadingAdvisers}
-                onStudentNumberChange={studentProvisioning.onStudentNumberChange}
+                onStudentNumberChange={
+                  studentProvisioning.onStudentNumberChange
+                }
                 onEntryYearChange={studentProvisioning.onEntryYearChange}
                 onProgramChange={studentProvisioning.onProgramChange}
                 onCurriculumChange={studentProvisioning.onCurriculumChange}

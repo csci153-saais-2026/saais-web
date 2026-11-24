@@ -72,9 +72,12 @@ export function StudentProvisioningFields({
           <Input
             id={`${idPrefix}-student-number`}
             maxLength={64}
+            required
             value={studentNumber}
             disabled={disabled}
-            onChange={(event) => onStudentNumberChange(event.currentTarget.value)}
+            onChange={(event) =>
+              onStudentNumberChange(event.currentTarget.value)
+            }
           />
         </FormField>
         <FormField
@@ -96,10 +99,16 @@ export function StudentProvisioningFields({
       <FormField label="Program" htmlFor={`${idPrefix}-program`}>
         <Select
           value={programId || "none"}
-          onValueChange={(value) => onProgramChange(value === "none" ? "" : value)}
+          onValueChange={(value) =>
+            onProgramChange(value === "none" ? "" : value)
+          }
           disabled={disabled || loadingPrograms}
         >
-          <SelectTrigger id={`${idPrefix}-program`} className="h-11! w-full">
+          <SelectTrigger
+            id={`${idPrefix}-program`}
+            className="h-11! w-full"
+            aria-required="true"
+          >
             <SelectValue placeholder="Select a program" />
           </SelectTrigger>
           <SelectContent
@@ -117,10 +126,7 @@ export function StudentProvisioningFields({
         </Select>
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField
-          label="Curriculum"
-          htmlFor={`${idPrefix}-curriculum`}
-        >
+        <FormField label="Curriculum" htmlFor={`${idPrefix}-curriculum`}>
           <Select
             value={curriculumVersionId || "none"}
             onValueChange={(value) =>
@@ -131,6 +137,7 @@ export function StudentProvisioningFields({
             <SelectTrigger
               id={`${idPrefix}-curriculum`}
               className="h-11! w-full"
+              aria-required="true"
             >
               <SelectValue placeholder="Select an active curriculum" />
             </SelectTrigger>
@@ -148,10 +155,7 @@ export function StudentProvisioningFields({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField
-          label="Initial adviser"
-          htmlFor={`${idPrefix}-adviser`}
-        >
+        <FormField label="Initial adviser" htmlFor={`${idPrefix}-adviser`}>
           <Select
             value={adviserId || "none"}
             onValueChange={(value) =>
@@ -159,7 +163,11 @@ export function StudentProvisioningFields({
             }
             disabled={disabled || loadingAdvisers || !programId}
           >
-            <SelectTrigger id={`${idPrefix}-adviser`} className="h-11! w-full">
+            <SelectTrigger
+              id={`${idPrefix}-adviser`}
+              className="h-11! w-full"
+              aria-required="true"
+            >
               <SelectValue placeholder="Select an eligible adviser" />
             </SelectTrigger>
             <SelectContent
