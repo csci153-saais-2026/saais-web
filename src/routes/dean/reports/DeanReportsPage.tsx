@@ -1,14 +1,23 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
-import { useState } from "react";
-import { CohortStudentsDialog } from "@/routes/dean/reports/CohortStudentsDialog";
-import { DeanPdfViewerDialog } from "@/routes/dean/reports/DeanPdfViewerDialog";
+import { useRef, useState } from "react";
+import {
+  CohortStudentsDialog,
+  type CohortStudentRow,
+} from "@/components/features/cohort-students-dialog";
+import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
+import { StudentRecordDialog } from "@/components/features/student-record-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { FacultyBatchGwaTable } from "@/routes/dean/reports/FacultyBatchGwaTable";
 import { FacultyReportHeader } from "@/routes/dean/reports/FacultyReportHeader";
 import { FacultyReportStatsAndDistribution } from "@/routes/dean/reports/FacultyReportStatsAndDistribution";
 import { useDeanReports } from "@/routes/dean/reports/use-dean-reports";
+import { useFacultyReportPdfPreview } from "@/routes/dean/reports/use-faculty-report-pdf";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
-import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog";
+import { DeanStudentAuditTab } from "@/routes/dean/students/DeanStudentAuditTab";
+import { DeanStudentChecklistTab } from "@/routes/dean/students/DeanStudentChecklistTab";
+import { DeanStudentGradesTab } from "@/routes/dean/students/DeanStudentGradesTab";
 import { toDeanStudentSummary } from "@/routes/dean/students/to-dean-student-summary";
+import { useDeanStudentRecordDialog } from "@/routes/dean/students/use-dean-student-record-dialog";
 import type {
   BatchCurriculumRow,
   DeanStudentSummary,
@@ -26,6 +35,9 @@ export default function DeanReportsPage() {
     useState<DeanStudentSummary | null>(null);
   const [pdfPreviewReport, setPdfPreviewReport] =
     useState<FacultyDepartmentReport | null>(null);
+  const { user } = useAuth();
+  const cohortOpenerRef = useRef<HTMLElement | null>(null);
+  const openingStudentFromCohortRef = useRef(false);
 
   const {
     report,
@@ -39,12 +51,24 @@ export default function DeanReportsPage() {
     recordView,
   } = useDeanReports(department);
 
+  const pdfPreview = useFacultyReportPdfPreview({
+    report: pdfPreviewReport,
+    facultyName,
+    deanName: user?.fullName,
+  });
+  const recordDialog = useDeanStudentRecordDialog(selectedStudent);
+
   const handleOpenPdfPreview = () => {
     if (!report) return;
     setPdfPreviewReport(report);
   };
 
   const handleSelectBatch = (row: BatchCurriculumRow) => {
+    openingStudentFromCohortRef.current = false;
+    cohortOpenerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setSelectedBatch(row);
     recordView(
       "report_viewed",
@@ -58,6 +82,16 @@ export default function DeanReportsPage() {
           `${selectedBatch.batch}::${selectedBatch.curriculum}`
         ] ?? [])
       : [];
+
+  const mappedCohortStudents: CohortStudentRow[] = cohortStudents.map(
+    (student) => ({
+      id: student.studentId,
+      name: student.name,
+      studentNumber: student.studentNumber,
+      curriculum: student.curriculum,
+      gwa: student.gwa,
+    }),
+  );
 
   return (
     <div className="space-y-6">
@@ -100,16 +134,33 @@ export default function DeanReportsPage() {
       )}
 
       <CohortStudentsDialog
-        batch={selectedBatch}
-        students={cohortStudents}
         open={selectedBatch !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedBatch(null);
+          if (!open) {
+            setSelectedBatch(null);
+            if (!openingStudentFromCohortRef.current) {
+              const opener = cohortOpenerRef.current;
+              queueMicrotask(() => opener?.focus());
+            }
+            openingStudentFromCohortRef.current = false;
+          }
         }}
+        title={
+          selectedBatch
+            ? `Batch ${selectedBatch.batch} · Student GWA`
+            : "Batch · Student GWA"
+        }
+        summary={
+          selectedBatch
+            ? `${selectedBatch.curriculum} · ${selectedBatch.students} ${selectedBatch.students === 1 ? "student" : "students"}`
+            : undefined
+        }
+        students={mappedCohortStudents}
         onOpenStudent={(studentId) => {
           const matched = rosterItems.find(
             (item) => item.student_id === studentId,
           );
+          openingStudentFromCohortRef.current = true;
           setSelectedBatch(null);
           if (matched) {
             setSelectedStudent(toDeanStudentSummary(matched));
@@ -117,22 +168,43 @@ export default function DeanReportsPage() {
         }}
       />
 
-      <DeanStudentRecordDialog
-        key={selectedStudent?.studentId ?? "closed"}
-        student={selectedStudent}
-        onClose={() => setSelectedStudent(null)}
-      />
+      <StudentRecordDialog
+        open={selectedStudent !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedStudent(null);
+        }}
+        student={recordDialog.headerStudent}
+        activeTab={recordDialog.activeTab}
+        onActiveTabChange={recordDialog.setActiveTab}
+      >
+        {selectedStudent && recordDialog.activeTab === "checklist" && (
+          <DeanStudentChecklistTab student={selectedStudent} />
+        )}
+        {selectedStudent && recordDialog.activeTab === "grades" && (
+          <DeanStudentGradesTab student={selectedStudent} />
+        )}
+        {selectedStudent && recordDialog.activeTab === "audit" && (
+          <DeanStudentAuditTab student={selectedStudent} />
+        )}
+      </StudentRecordDialog>
 
-      <DeanPdfViewerDialog
-        report={pdfPreviewReport}
-        facultyName={facultyName}
-        onClose={() => setPdfPreviewReport(null)}
-        onDownloaded={(downloadedReport) =>
-          recordView(
-            "pdf_exported",
-            `Exported faculty report (${downloadedReport.department}) as PDF`,
-          )
-        }
+      <PdfViewerDialog
+        open={pdfPreviewReport !== null}
+        onOpenChange={(open) => {
+          if (!open) setPdfPreviewReport(null);
+        }}
+        title="Faculty reports"
+        filename={pdfPreview.filename}
+        url={pdfPreview.url}
+        error={pdfPreview.error}
+        onDownload={() => {
+          if (pdfPreviewReport) {
+            recordView(
+              "pdf_exported",
+              `Exported faculty report (${pdfPreviewReport.department}) as PDF`,
+            );
+          }
+        }}
       />
     </div>
   );

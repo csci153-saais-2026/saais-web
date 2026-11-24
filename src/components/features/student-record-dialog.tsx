@@ -4,6 +4,7 @@ import {
   StudentRecordHeader,
 } from "@/components/features/student-record-header";
 import { Button } from "@/components/ui/button";
+import { TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogClose,
@@ -35,6 +36,8 @@ function StudentRecordDialog({
   tabs = DEFAULT_TABS,
   activeTab,
   onActiveTabChange,
+  recordLabel = "Academic record",
+  returnFocusTo,
   children,
 }: {
   open: boolean;
@@ -44,20 +47,50 @@ function StudentRecordDialog({
   tabs?: StudentRecordDialogTab[];
   activeTab: string;
   onActiveTabChange: (value: string) => void;
+  recordLabel?: string;
+  returnFocusTo?: HTMLElement | null;
   /** Content of the active tab. */
   children?: React.ReactNode;
 }) {
+  const content = React.useRef<HTMLDivElement>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(85dvh,760px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+      <DialogContent
+        ref={content}
+        className="flex h-[min(85dvh,760px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl"
+        onEscapeKeyDown={(event) => {
+          const target = event.target;
+          if (
+            target instanceof Element &&
+            target.closest('[data-slot="dialog-content"]') &&
+            !content.current?.contains(target)
+          ) {
+            // A portal can receive keyboard focus before Radix updates its layer stack.
+            event.preventDefault();
+          }
+        }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusTo?.isConnected) {
+            event.preventDefault();
+            returnFocusTo.focus();
+          }
+        }}
+      >
         {/* The visible name lives in the record header; these give the dialog its accessible name. */}
         <DialogHeader className="sr-only">
           <DialogTitle>
-            {student ? `${student.name} · Academic record` : "Student record"}
+            {student ? `${student.name} · ${recordLabel}` : "Student record"}
           </DialogTitle>
           <DialogDescription>
             {student
-              ? `${student.studentNumber} · ${student.program} · ${student.yearLabel}`
+              ? [
+                  student.studentNumber,
+                  student.program,
+                  student.curriculum,
+                  student.yearLabel,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               : ""}
           </DialogDescription>
         </DialogHeader>
@@ -70,8 +103,10 @@ function StudentRecordDialog({
                 tabs={tabs}
                 value={activeTab}
                 onValueChange={onActiveTabChange}
-              />
-              {children}
+                label="Student record sections"
+              >
+                <TabsContent value={activeTab}>{children}</TabsContent>
+              </RecordTabs>
             </>
           )}
         </div>

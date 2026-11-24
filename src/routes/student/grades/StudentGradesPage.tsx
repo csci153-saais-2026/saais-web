@@ -3,6 +3,11 @@ import { notify } from "@/lib/notify";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertIcon } from "@/components/icons";
+import {
+  GradesView,
+  type GradeRow,
+  type GradesViewTerm,
+} from "@/components/features/grades-view";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import {
@@ -11,6 +16,7 @@ import {
 } from "@/components/features/report-pdf-preview-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import type { Status } from "@/components/ui/status-badge";
 import {
   apiClient,
   postgrestFilter,
@@ -21,6 +27,7 @@ import {
   formatGradeSummaryReport,
   type PdfReportPayload,
 } from "@/lib/pdf/student-report-formatter";
+import { cn } from "@/lib/utils";
 import {
   useCreateGradeFlag,
   useRecordGradesExport,
@@ -33,7 +40,97 @@ import {
   type GradeFlagAttemptMeta,
   type GradeFlagDisplayItem,
 } from "./GradeFlagsListDialog";
-import { TermGradesPanel, type TermGradesSection } from "./TermGradesPanel";
+
+export type TermGradesAttemptRow = ApiSchema<"AttemptResult"> & {
+  readonly code?: string | null;
+  readonly title?: string | null;
+};
+
+export type TermGradesSection = Omit<ApiSchema<"TermGrades">, "attempts"> & {
+  readonly attempts: readonly TermGradesAttemptRow[];
+  readonly is_locked?: boolean;
+  readonly failed_units?: number;
+};
+
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+function formatDeadlineDate(dateValue: string | null | undefined): string {
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
+    if (monthLabel && day >= 1 && day <= 31) {
+      return `${day} ${monthLabel} ${year}`;
+    }
+  }
+  return trimmed;
+}
+
+function mapAttemptStatusToBadge(attempt: TermGradesAttemptRow): Status {
+  if (attempt.is_lapsed_inc) return "inc-lapsed";
+  switch (attempt.effective_status) {
+    case "passed":
+      return "passed";
+    case "failed":
+      return "failed";
+    case "inc":
+      return "inc";
+    case "currently_enrolled":
+      return "enrolled";
+    case "dr":
+      return "dr";
+    case "na":
+    default:
+      return "na";
+  }
+}
+
+function formatMidtermGrade(attempt: TermGradesAttemptRow): string {
+  if (attempt.midterm_status === "dr") return "DR";
+  if (attempt.midterm_grade != null) return attempt.midterm_grade.toFixed(2);
+  return "—";
+}
+
+function formatFinalOrCompletionGrade(attempt: TermGradesAttemptRow): string {
+  if (attempt.completion_grade != null) {
+    return `${attempt.completion_grade.toFixed(2)} (INC)`;
+  }
+  if (attempt.is_lapsed_inc) {
+    return "INC (5.00)";
+  }
+  if (attempt.recorded_status === "inc") return "INC";
+  if (attempt.recorded_status === "dr") return "DR";
+  if (attempt.recorded_status === "na") return "NA";
+  if (attempt.final_grade != null) return attempt.final_grade.toFixed(2);
+  return "—";
+}
+
+function computeFailedUnits(attempts: readonly TermGradesAttemptRow[]): number {
+  let failed = 0;
+  for (const attempt of attempts) {
+    if (attempt.effective_status === "failed") {
+      failed += attempt.units_attempted;
+    }
+  }
+  return failed;
+}
 
 export interface StudentGradesViewProps {
   readonly terms: readonly TermGradesSection[];
@@ -81,9 +178,6 @@ export function StudentGradesView({
   flagSubmitError = null,
   onPrintReport,
 }: StudentGradesViewProps) {
-  const [collapsedIds, setCollapsedIds] = React.useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
   const [flagTarget, setFlagTarget] = React.useState<FlagGradeTarget | null>(
     null,
   );
@@ -123,29 +217,73 @@ export function StudentGradesView({
     return map;
   }, [sortedTerms, courseDetails]);
 
-  const allCollapsed =
-    sortedTerms.length > 0 &&
-    sortedTerms.every((term) => collapsedIds.has(term.school_term_id));
+  const { gradesViewTerms, flagTargetsByAttemptId } = React.useMemo(() => {
+    const targets = new Map<string, FlagGradeTarget>();
+    const mappedTerms: GradesViewTerm[] = sortedTerms.map((term) => {
+      const failedUnits =
+        term.failed_units ?? computeFailedUnits(term.attempts);
+      const rows: GradeRow[] = term.attempts.map((attempt) => {
+        const lookup = courseDetails?.[attempt.course_offering_id];
+        const code =
+          attempt.code?.trim() ||
+          lookup?.code?.trim() ||
+          attempt.course_offering_id;
+        const title = attempt.title?.trim() || lookup?.title?.trim() || "";
+        const midterm = formatMidtermGrade(attempt);
+        const final = formatFinalOrCompletionGrade(attempt);
+        const recordedGrade =
+          final !== "—"
+            ? final
+            : midterm !== "—"
+              ? `mid ${midterm}`
+              : "No grade yet";
+        const reportedStage: "midterm" | "final" =
+          final === "—" && midterm !== "—" ? "midterm" : "final";
 
-  function handleToggleAll() {
-    if (allCollapsed) {
-      setCollapsedIds(new Set());
-    } else {
-      setCollapsedIds(new Set(sortedTerms.map((term) => term.school_term_id)));
-    }
-  }
+        targets.set(attempt.id, {
+          attemptId: attempt.id,
+          code,
+          title,
+          recordedGrade,
+          reportedStage,
+        });
 
-  function handleToggleTerm(termId: string) {
-    setCollapsedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(termId)) {
-        next.delete(termId);
-      } else {
-        next.add(termId);
-      }
-      return next;
+        const notes: string[] = [];
+        if (
+          attempt.effective_status === "inc" &&
+          !attempt.is_lapsed_inc &&
+          attempt.inc_deadline
+        ) {
+          notes.push(`Due ${formatDeadlineDate(attempt.inc_deadline)}`);
+        }
+        if (attempt.is_repeated) {
+          notes.push("Repeated");
+        }
+
+        return {
+          id: attempt.id,
+          code,
+          title: title || undefined,
+          units: attempt.units_attempted,
+          midterm,
+          final,
+          status: mapAttemptStatusToBadge(attempt),
+          statusNote: notes.length > 0 ? notes.join(" · ") : undefined,
+        };
+      });
+
+      return {
+        id: term.school_term_id,
+        title: `${term.school_year} · ${term.term_type}`,
+        gwa: term.gwa === null ? null : term.gwa.toFixed(2),
+        failedUnits,
+        locked: term.is_locked ?? false,
+        rows,
+      };
     });
-  }
+
+    return { gradesViewTerms: mappedTerms, flagTargetsByAttemptId: targets };
+  }, [sortedTerms, courseDetails]);
 
   const reportPayload = React.useMemo<PdfReportPayload>(() => {
     return formatGradeSummaryReport({
@@ -217,62 +355,51 @@ export function StudentGradesView({
         }
       />
 
-      {sortedTerms.length > 0 && (
-        <div className="mb-4 flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleToggleAll}
-            className="min-h-11 md:min-h-[38px]"
-          >
-            {allCollapsed ? "Expand all" : "Collapse all"}
-          </Button>
-        </div>
-      )}
-
-      {sortedTerms.length > 0 ? (
-        <div className="grid gap-1">
-          {sortedTerms.map((term) => (
-            <TermGradesPanel
-              key={term.school_term_id}
-              term={term}
-              courseDetails={courseDetails}
-              openFlagAttemptIds={openFlagAttemptIds}
-              open={!collapsedIds.has(term.school_term_id)}
-              onOpenChange={() => handleToggleTerm(term.school_term_id)}
-              onFlagClick={(attempt, meta) => {
-                if (openFlagAttemptIds.has(attempt.id)) {
-                  setFlagsListOpen(true);
-                  return;
-                }
-                setFlagTarget({
-                  attemptId: attempt.id,
-                  code: meta.code,
-                  title: meta.title,
-                  recordedGrade: meta.recordedGrade,
-                  reportedStage: meta.reportedStage,
-                });
-              }}
-            />
-          ))}
-        </div>
-      ) : (
-        <Panel title="No grade records">
-          <p className="py-6 text-center text-body text-muted-foreground">
-            No academic term grades recorded yet.
-          </p>
-        </Panel>
-      )}
-
-      <Alert variant="advisory" className="mt-5">
-        <AlertIcon />
-        <AlertDescription>
-          Once passed, the most recent passing attempt counts for non-repeatable
-          and grade-replacement courses. Additional-credit passes count
-          independently. Lapsed INC remains INC and counts as{" "}
-          <span className="font-mono">5.00</span> for GWA and failed units.
-        </AlertDescription>
-      </Alert>
+      <GradesView
+        terms={gradesViewTerms}
+        rowAction={{
+          header: "Flag",
+          render: (row) => {
+            const isFlagged = openFlagAttemptIds.has(row.id);
+            return (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-pressed={isFlagged}
+                className={cn(
+                  "min-h-11 md:min-h-[38px]",
+                  isFlagged &&
+                    "border-notice-advisory-border bg-notice-advisory-bg text-notice-advisory hover:bg-notice-advisory-bg",
+                )}
+                onClick={() => {
+                  if (isFlagged) {
+                    setFlagsListOpen(true);
+                    return;
+                  }
+                  const target = flagTargetsByAttemptId.get(row.id);
+                  if (target) {
+                    setFlagTarget(target);
+                  }
+                }}
+              >
+                {isFlagged ? "Flagged" : "Flag Grade"}
+              </Button>
+            );
+          },
+        }}
+        footnote={
+          <Alert variant="advisory" className="mt-5">
+            <AlertIcon />
+            <AlertDescription>
+              Once passed, the most recent passing attempt counts for
+              non-repeatable and grade-replacement courses. Additional-credit
+              passes count independently. Lapsed INC remains INC and counts as{" "}
+              <span className="font-mono">5.00</span> for GWA and failed units.
+            </AlertDescription>
+          </Alert>
+        }
+      />
 
       <FlagGradeDialog
         open={flagTarget !== null}

@@ -44,6 +44,7 @@ function CohortStudentsDialog({
   summary,
   students,
   onOpenStudent,
+  onCloseAutoFocus,
   emptyMessage = "No students match this cohort.",
   footnote,
 }: {
@@ -58,13 +59,20 @@ function CohortStudentsDialog({
   students: readonly CohortStudentRow[];
   /** When set, student names render as links that open that student's record. */
   onOpenStudent?: (studentId: string) => void;
+  /** Restore focus to the caller's opener when there is no DialogTrigger. */
+  onCloseAutoFocus?: React.ComponentProps<
+    typeof DialogContent
+  >["onCloseAutoFocus"];
   emptyMessage?: React.ReactNode;
   /** Small caption under the table, e.g. "All students in this cohort are shown." */
   footnote?: React.ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
+      <DialogContent
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl"
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="sr-only">

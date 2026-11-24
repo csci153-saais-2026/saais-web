@@ -15,16 +15,18 @@ export function AuditLogTable<T>({
   rowKey,
   empty = "No audit records match these filters.",
   spacious = false,
+  ariaLabel = "Audit log",
 }: {
   columns: Column<T>[];
   rows: T[];
   rowKey: (row: T) => string;
   empty?: string;
   spacious?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <>
-      <Table responsive aria-label="Audit log">
+      <Table responsive aria-label={ariaLabel}>
         <TableHeader className="bg-secondary">
           <TableRow>
             {columns.map((column) => (
