@@ -80,6 +80,6 @@ describe("getTermOfferings", () => {
     );
     expect(offeringCalls).toHaveLength(2);
     expect(offeringCalls[0][1].params.query.limit).toBe(1000);
-    expect(offeringCalls[0][1].params.query.offset).toBe(100);
+    expect(offeringCalls[1][1].params.query.limit).toBe(100);
   });
 });

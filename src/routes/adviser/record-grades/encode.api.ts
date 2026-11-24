@@ -12,25 +12,40 @@ export async function getEncodingChoices() {
   return { students, terms };
 }
 export async function getTermOfferings(studentId: string, termId: string) {
-  const fetchOfferings = (limit: number) =>
+  const fetchOfferings = (limit: number, offset?: number) =>
     apiClient
       .GET("/functions/v1/students/{student_id}/course-offerings", {
         params: {
           path: { student_id: studentId },
-          query: { school_term_id: termId, limit },
+          query: { school_term_id: termId, limit, offset },
         },
       })
       .then(unwrapApiResult);
+  // Smaller pages, fetched in bounded batches, so a failed limit=1000 request
+  // never leaves only the first page reachable.
+  const fetchOfferingPages = async () => {
+    const pageSize = 100;
+    const maxPages = 10;
+    const all: Awaited<ReturnType<typeof fetchOfferings>> = [];
+    for (let page = 0; page < maxPages; page++) {
+      const rows = await fetchOfferings(pageSize, page * pageSize);
+      for (const row of rows)
+        if (!all.some((item) => item.offering.id === row.offering.id))
+          all.push(row);
+      if (rows.length < pageSize) return all;
+    }
+    return all;
+  };
 
   // Try with limit=1000 first. If the server returns 5xx (edge-function error),
-  // fall back to limit=100 so a partial list is still usable.  If both fail
+  // page through limit=100 requests instead.  If those fail too
   // (F-01: backend bug for a specific term), re-throw so the UI can display the
   // "could not be completed" error panel rather than showing an empty course list.
 
   const [offerings, courses] = await Promise.all([
     fetchOfferings(1000).catch((error: unknown) => {
       if (error instanceof ApiClientError && error.status >= 500) {
-        return fetchOfferings(100);
+        return fetchOfferingPages();
       }
       throw error;
     }),

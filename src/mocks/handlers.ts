@@ -338,6 +338,7 @@ function studentDeficiencies(
 
 function deficiencySummary(
   studentId: string,
+  includeWithoutDeficiencies = false,
 ): ApiSchema<"DeficiencyStudentSummary"> | null {
   const db = getMockDatabase();
   const org = db.studentOrganizations.find(
@@ -351,7 +352,7 @@ function deficiencySummary(
   if (!org || !profile || !program || !curriculum) return null;
   const metrics = studentMetrics(studentId, org.department_id);
   const deficiencies = studentDeficiencies(metrics);
-  if (!deficiencies.length) return null;
+  if (!deficiencies.length && !includeWithoutDeficiencies) return null;
   const adviser = db.adviserAssignments.find(
     (item) => item.student_id === studentId && item.end_date === null,
   );
@@ -7771,7 +7772,7 @@ export const saaisMswHandlers = [
       },
       batch_curriculum_gwa: [...batches.values()].map((batch) => batch.row),
       advisees_with_deficiencies: studentIds
-        .map(deficiencySummary)
+        .map((id) => deficiencySummary(id))
         .filter(
           (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
             item !== null,
@@ -8005,8 +8006,13 @@ export const saaisMswHandlers = [
         (m) => m.isDelinquent || m.flags.length > 0,
       ).length,
       encoding_progress_pct: 85,
-      at_risk_roster: orgs
-        .map((item) => deficiencySummary(item.student_id))
+      at_risk_roster: metrics
+        .map((m) =>
+          deficiencySummary(
+            m.org.student_id,
+            m.isDelinquent || m.flags.length > 0,
+          ),
+        )
         .filter(
           (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
             item !== null,
