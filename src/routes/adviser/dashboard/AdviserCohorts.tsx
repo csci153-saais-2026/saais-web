@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { apiClient, postgrestFilter, unwrapApiResult } from "@/lib/api";
 import type { ApiSchema } from "@/lib/api";
-import { DataTablePanel } from "@/components/features/data-table-panel";
+import { CohortGwaTable } from "@/components/features/cohort-gwa-table";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -137,62 +137,37 @@ export function AdviserCohorts({
   );
   return (
     <>
-      <DataTablePanel
-        title="GWA by batch and curriculum"
+      <CohortGwaTable
         description="Entry year, study range, and academic performance for your current advisees."
-        rows={rows}
-        rowKey={(row) => `${row.entry_year}-${row.curriculum_version_id}`}
-        empty="Batch results are not available in this report."
-        columns={[
-          { header: "Entry year", cell: (row) => row.entry_year },
-          {
-            header: "Study range",
-            cell: (row) => {
-              const duration = programs?.find(
-                (program) => program.id === row.program_id,
-              )?.nominal_duration;
-              return duration != null && Number.isInteger(duration)
+        emptyMessage="Batch results are not available in this report."
+        rows={rows.map((row) => {
+          const duration = programs?.find(
+            (program) => program.id === row.program_id,
+          )?.nominal_duration;
+          return {
+            id: `${row.entry_year}-${row.curriculum_version_id}`,
+            entryYear: row.entry_year,
+            studyRange:
+              duration != null && Number.isInteger(duration)
                 ? `${row.entry_year}–${row.entry_year + duration}`
-                : "—";
-            },
-          },
-          {
-            header: "Curriculum",
-            cell: (row) =>
-              row.curriculum_label
-                .toUpperCase()
-                .startsWith(row.program_code.toUpperCase())
-                ? row.curriculum_label
-                : `${row.program_code} ${row.curriculum_label}`,
-          },
-          {
-            header: "Students",
-            numeric: true,
-            cell: (row) => row.student_count,
-          },
-          {
-            header: "Mean GWA",
-            numeric: true,
-            cell: (row) =>
-              row.mean_gwa == null ? "—" : row.mean_gwa.toFixed(2),
-          },
-          {
-            header: "Actions",
-            cell: (row) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelected(row)}
-              >
-                View students <span aria-hidden="true">→</span>
-                <span className="sr-only">
-                  {" "}
-                  for {row.entry_year} {row.program_code} {row.curriculum_label}
-                </span>
-              </Button>
-            ),
-          },
-        ]}
+                : "—",
+            curriculum: row.curriculum_label
+              .toUpperCase()
+              .startsWith(row.program_code.toUpperCase())
+              ? row.curriculum_label
+              : `${row.program_code} ${row.curriculum_label}`,
+            students: row.student_count,
+            meanGwa: row.mean_gwa == null ? "—" : row.mean_gwa.toFixed(2),
+          };
+        })}
+        onViewStudents={(row) =>
+          setSelected(
+            rows.find(
+              (item) =>
+                `${item.entry_year}-${item.curriculum_version_id}` === row.id,
+            ) ?? null,
+          )
+        }
       />
       <Dialog
         open={!!selected}

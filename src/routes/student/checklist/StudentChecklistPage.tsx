@@ -295,13 +295,18 @@ export function StudentChecklistView({
     summary.gwa === null ? "Not available" : summary.gwa.toFixed(2);
   const countedUnits = summary.counted_units ?? summary.earned_units;
   const deficiencies = summary.deficiencies ?? [];
-  const deficienciesCount = summary.deficiencies_count ?? deficiencies.length;
+  const deficienciesCount =
+    summary.deficiencies_count == null
+      ? deficiencies.length
+      : summary.deficiencies_count;
   const deficiencyNote =
     deficienciesCount > 0
-      ? deficiencies
-          .slice(0, 2)
-          .map((d) => d.course_code)
-          .join(", ")
+      ? deficiencies.length
+        ? deficiencies
+            .slice(0, 2)
+            .map((d) => d.course_code)
+            .join(", ")
+        : "Details unavailable"
       : "No open deficiencies";
 
   return (

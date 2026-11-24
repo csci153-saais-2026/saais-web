@@ -60,3 +60,43 @@ it("filters the selected student’s audit entries by search and actor", async (
   fireEvent.click(screen.getByRole("option", { name: "Advisee actions" }));
   expect(screen.queryByText("Note created")).toBeNull();
 });
+
+it("shows audit entries newest first", async () => {
+  vi.mocked(getStudentHistory).mockResolvedValue([
+    {
+      id: "old",
+      student_id: "student-one",
+      actor_id: "student-one",
+      actor_role: "student",
+      actor_name: "Student",
+      action: "plan.viewed",
+      details_summary: "Oldest entry",
+      created_at: new Date(2026, 0, 1, 12).toISOString(),
+    },
+    {
+      id: "new",
+      student_id: "student-one",
+      actor_id: "adviser-one",
+      actor_role: "adviser",
+      actor_name: "Adviser",
+      action: "note.created",
+      details_summary: "Newest entry",
+      created_at: new Date(2026, 0, 2, 12).toISOString(),
+    },
+  ] as ApiSchema<"AuditLogEntry">[]);
+
+  render(
+    <MemoryRouter initialEntries={["/advisee/student-one/history"]}>
+      <Routes>
+        <Route path="/advisee/:id/history" element={<AdviseeHistory />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  await screen.findByText("Newest entry");
+  const rows = screen.getAllByRole("row");
+  expect(rows[1].textContent).toContain("02 Jan 2026");
+  expect(rows[1].textContent).toContain("Newest entry");
+  expect(rows[2].textContent).toContain("01 Jan 2026");
+  expect(rows[2].textContent).toContain("Oldest entry");
+});

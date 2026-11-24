@@ -82,6 +82,8 @@ function GradeAction({
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const effectiveMidterm =
+    midterm || (attempt.midterm_status === "dr" ? "dr" : "");
   const resolution = useScopedRequest(
     JSON.stringify([studentId, attempt.id]),
     open && completedInc,
@@ -95,35 +97,51 @@ function GradeAction({
       setError(parsedReason.error.issues[0]?.message ?? "Enter a reason.");
       return;
     }
-    const gradeValues = inc || completedInc ? [grade] : [midterm, finalGrade];
-    const parsedGrades = gradeValues.map((value) =>
-      value ? gradeInputSchema.safeParse(value) : null,
-    );
+    const parseCorrectionGrade = (value: string) =>
+      value === "inc" || value === "dr"
+        ? { success: true as const, data: value }
+        : value
+          ? gradeInputSchema.safeParse(value)
+          : null;
+    const parsedGrades =
+      inc || completedInc
+        ? [grade ? gradeInputSchema.safeParse(grade) : null]
+        : [
+            midterm ? parseCorrectionGrade(midterm) : null,
+            finalGrade ? parseCorrectionGrade(finalGrade) : null,
+          ];
     const invalidGrade = parsedGrades.find(
-      (result) => result && !result.success,
+      (result) => result && result.success === false,
     );
-    if (invalidGrade && !invalidGrade.success) {
+    if (invalidGrade?.success === false) {
       setError(
         invalidGrade.error.issues[0]?.message ?? "Choose a valid grade.",
       );
       return;
     }
-    const [midtermGrade, finalGradeValue] = parsedGrades.map((result) =>
-      result?.success ? result.data : undefined,
-    );
+    const midtermGrade = parsedGrades[0]?.success
+      ? (parsedGrades[0].data as number | "inc" | "dr")
+      : undefined;
+    const finalGradeValue = parsedGrades[1]?.success
+      ? (parsedGrades[1].data as number | "inc" | "dr")
+      : undefined;
     setSaving(true);
     try {
-      if (inc)
-        await completeInc(studentId, attempt, midtermGrade!, parsedReason.data);
-      else if (completedInc && resolution.data)
+      if (inc) {
+        if (typeof midtermGrade !== "number")
+          throw new Error("Choose a valid completion grade.");
+        await completeInc(studentId, attempt, midtermGrade, parsedReason.data);
+      } else if (completedInc && resolution.data) {
+        if (typeof midtermGrade !== "number")
+          throw new Error("Choose a valid completion grade.");
         await correctIncCompletion(
           studentId,
           attempt.id,
-          midtermGrade!,
+          midtermGrade,
           parsedReason.data,
           resolution.data.updated_at,
         );
-      else if (!completedInc && (midterm || finalGrade)) {
+      } else if (!completedInc && (midterm || finalGrade)) {
         if (midterm && finalGrade)
           await correctGrade(
             studentId,
@@ -190,16 +208,24 @@ function GradeAction({
                   <label className="grid gap-1">
                     Midterm grade
                     <GradeSelect
-                      vsuScale
+                      allowDrop
                       disabled={completedInc}
                       value={midterm}
-                      onChange={(e) => setMidterm(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setMidterm(value);
+                        if (value === "dr") setFinalGrade("dr");
+                        else if (midterm === "dr") setFinalGrade("");
+                      }}
                     />
                   </label>
                   <label className="grid gap-1">
                     Final grade
                     <GradeSelect
                       vsuScale
+                      includeStatuses={!completedInc}
+                      disableDrop={effectiveMidterm !== "dr"}
+                      disabled={effectiveMidterm === "dr"}
                       value={completedInc ? grade : finalGrade}
                       onChange={(e) =>
                         completedInc

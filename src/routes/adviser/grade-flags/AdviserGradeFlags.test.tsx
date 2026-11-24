@@ -85,6 +85,19 @@ afterEach(() => {
   auth.user = { id: "adviser-one" };
 });
 describe("grade flag identity", () => {
+  it("shows open flags newest first", async () => {
+    vi.mocked(getFlags).mockResolvedValue(data);
+    render(
+      <MemoryRouter>
+        <Flags />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("First Student");
+    const rows = screen.getAllByRole("row");
+    expect(rows[1].textContent).toContain("Second Student");
+    expect(rows[2].textContent).toContain("First Student");
+  });
   it("uses the selected flag, student, course and revision", async () => {
     vi.mocked(getFlags).mockResolvedValue(data);
     vi.mocked(resolveFlag).mockResolvedValue({} as ApiSchema<"GradeFlag">);
@@ -94,7 +107,7 @@ describe("grade flag identity", () => {
       </MemoryRouter>,
     );
     const buttons = await screen.findAllByRole("button", { name: "Reject" });
-    fireEvent.click(buttons[1]!);
+    fireEvent.click(buttons[0]!);
     expect(screen.getByText(/Second Student · CS 2 · Second/)).toBeTruthy();
     expect(
       within(screen.getByRole("dialog")).getByText("Two comment"),
@@ -139,7 +152,7 @@ describe("grade flag identity", () => {
       </MemoryRouter>,
     );
     fireEvent.click(
-      (await screen.findAllByRole("button", { name: "Fix grade" }))[1]!,
+      (await screen.findAllByRole("button", { name: "Fix grade" }))[0]!,
     );
     fireEvent.change(screen.getByLabelText("Corrected grade"), {
       target: { value: "inc" },
@@ -167,7 +180,7 @@ describe("grade flag identity", () => {
       </MemoryRouter>,
     );
     fireEvent.click(
-      (await screen.findAllByRole("button", { name: "Fix grade" }))[0]!,
+      (await screen.findAllByRole("button", { name: "Fix grade" }))[1]!,
     );
     fireEvent.change(screen.getByLabelText("Corrected grade"), {
       target: { value: "dr" },
@@ -221,7 +234,7 @@ describe("grade flag identity", () => {
       </MemoryRouter>,
     );
     fireEvent.click(
-      (await screen.findAllByRole("button", { name: "Reject" }))[0]!,
+      (await screen.findAllByRole("button", { name: "Reject" }))[1]!,
     );
     fireEvent.change(screen.getByLabelText("Reply / reason"), {
       target: { value: "Reviewed" },
