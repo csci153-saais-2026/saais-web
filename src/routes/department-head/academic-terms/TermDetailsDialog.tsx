@@ -55,7 +55,7 @@ export function TermDetailsDialog({
           <div>
             <dt className={DETAIL_LABEL}>Closed by</dt>
             <dd className={DETAIL_VALUE}>
-              {term.closedBy ?? "Dr. Andrea Dela Cruz"}
+              {term.closedBy?.trim() || "Not recorded"}
             </dd>
           </div>
           {term.closureNote && (
