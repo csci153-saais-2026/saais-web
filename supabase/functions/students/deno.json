@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "imagescript": "npm:imagescript@3.20.5"
+  }
+}
