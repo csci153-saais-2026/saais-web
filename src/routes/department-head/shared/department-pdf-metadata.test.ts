@@ -49,4 +49,16 @@ describe("department PDF metadata", () => {
     await loadDepartmentPdfMetadata("department-a", signal);
     expect(api.read.mock.calls[0][1].signal).toBe(signal);
   });
+
+  it("propagates denied metadata reads instead of producing another letterhead", async () => {
+    api.read.mockResolvedValue({
+      error: { code: "INSUFFICIENT_PRIVILEGE", message: "Not allowed" },
+      response: new Response(null, { status: 403 }),
+    });
+    await expect(
+      loadDepartmentPdfMetadata("department-a"),
+    ).rejects.toMatchObject({
+      status: 403,
+    });
+  });
 });
