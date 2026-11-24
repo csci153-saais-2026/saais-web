@@ -109,30 +109,39 @@ function GradeAction({
             finalGrade ? parseCorrectionGrade(finalGrade) : null,
           ];
     const invalidGrade = parsedGrades.find(
-      (result) => result && !result.success,
+      (result) => result && result.success === false,
     );
-    if (invalidGrade && !invalidGrade.success) {
+    if (invalidGrade?.success === false) {
       setError(
         invalidGrade.error.issues[0]?.message ?? "Choose a valid grade.",
       );
       return;
     }
-    const [midtermGrade, finalGradeValue] = parsedGrades.map((result) =>
-      result?.success ? result.data : undefined,
-    );
+    const midtermGrade =
+      parsedGrades[0]?.success
+        ? (parsedGrades[0].data as number | "inc" | "dr")
+        : undefined;
+    const finalGradeValue =
+      parsedGrades[1]?.success
+        ? (parsedGrades[1].data as number | "inc" | "dr")
+        : undefined;
     setSaving(true);
     try {
-      if (inc)
-        await completeInc(studentId, attempt, midtermGrade!, parsedReason.data);
-      else if (completedInc && resolution.data)
+      if (inc) {
+        if (typeof midtermGrade !== "number")
+          throw new Error("Choose a valid completion grade.");
+        await completeInc(studentId, attempt, midtermGrade, parsedReason.data);
+      } else if (completedInc && resolution.data) {
+        if (typeof midtermGrade !== "number")
+          throw new Error("Choose a valid completion grade.");
         await correctIncCompletion(
           studentId,
           attempt.id,
-          midtermGrade!,
+          midtermGrade,
           parsedReason.data,
           resolution.data.updated_at,
         );
-      else if (!completedInc && (midterm || finalGrade)) {
+      } else if (!completedInc && (midterm || finalGrade)) {
         if (midterm && finalGrade)
           await correctGrade(
             studentId,
@@ -200,7 +209,6 @@ function GradeAction({
                     Midterm grade
                     <GradeSelect
                       allowDrop
-                      maxGrade={4.75}
                       disabled={completedInc}
                       value={midterm}
                       onChange={(e) => {
