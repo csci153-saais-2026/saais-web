@@ -1,40 +1,39 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
-import { useMemo, useState } from "react";
-import { GradeDistribution } from "@/components/features/grade-distribution";
+import { useMemo, useRef, useState } from "react";
+import { ReportStatsSection } from "@/components/features/report-stats-section";
+import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
+import { CohortGwaTable } from "@/components/features/cohort-gwa-table";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
-import { StatGrid } from "@/components/features/stat-tile";
 import { DownloadIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { QueryMessage } from "../shared/dh-ui";
-import { ReportCohortDialog } from "./ReportCohortDialog";
+import { CohortStudentsDialog } from "@/components/features/cohort-students-dialog";
 import { ReportFilters } from "./ReportFilters";
 import {
   ALL_PROGRAMS,
   buildDepartmentReport,
   getCohortStudents,
-  type CohortSummary,
 } from "./report-model";
 import type { DepartmentPdfDocument } from "../shared/department-pdf";
-import { PdfViewerDialog } from "../shared/PdfViewerDialog";
+import { useDepartmentPdfUrl } from "../shared/useDepartmentPdfUrl";
 import { buildReportPdf } from "./report-pdf";
 import { useReportSource } from "./reports-api";
+import {
+  reportDistributionFootnote,
+  toCohortRows,
+  toReportStats,
+} from "./report-presentation";
 
 export default function DepartmentReportsPage() {
   const source = useReportSource();
   const [pickedTerm, setTerm] = useState("");
   const [program, setProgram] = useState(ALL_PROGRAMS);
-  const [cohort, setCohort] = useState<CohortSummary | null>(null);
+  const cohortOpener = useRef<HTMLButtonElement | null>(null);
+  const [cohortId, setCohortId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null);
+  const pdfPreview = useDepartmentPdfUrl(pdf);
   const data = source.data;
   const term = pickedTerm || data?.currentTermId || data?.terms[0]?.value || "";
   const termLabel =
@@ -54,6 +53,7 @@ export default function DepartmentReportsPage() {
         : null,
     [data, term, termLabel, program],
   );
+  const cohort = report?.cohorts.find((row) => row.id === cohortId) ?? null;
   const cohortStudents = useMemo(
     () => (data && cohort ? getCohortStudents(data.students, cohort) : []),
     [data, cohort],
@@ -104,11 +104,11 @@ export default function DepartmentReportsPage() {
             programs={data.programs}
             onTermChange={(value) => {
               setTerm(value);
-              setCohort(null);
+              setCohortId(null);
             }}
             onProgramChange={(value) => {
               setProgram(value);
-              setCohort(null);
+              setCohortId(null);
             }}
           />
           {!report ? (
@@ -122,37 +122,16 @@ export default function DepartmentReportsPage() {
               <p className="sr-only" role="status">
                 Showing {report.termLabel}, {report.programLabel}.
               </p>
-              <StatGrid
-                className="lg:grid-cols-3"
-                items={[
-                  {
-                    label: "Currently enrolled",
-                    value: report.enrolled.toLocaleString("en-US"),
-                    note: report.enrolmentNote,
-                  },
-                  {
-                    label: "Mean GWA",
-                    value: report.meanGwa,
-                    note: "Average of student cumulative GWAs",
-                  },
-                  {
-                    label: "Students with deficiencies",
-                    value: report.deficiencies,
-                    note: report.enrolled
-                      ? `${((report.deficiencies / report.enrolled) * 100).toFixed(1)}% of enrolled students`
-                      : "No enrolled students",
-                  },
-                ]}
+              <ReportStatsSection
+                stats={toReportStats(report)}
+                distribution={{
+                  title: "GWA distribution",
+                  description: report.termLabel,
+                  bands: report.distribution,
+                  footnote: reportDistributionFootnote(report),
+                }}
               />
-              <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-                <Panel title="GWA distribution" description={report.termLabel}>
-                  <GradeDistribution bands={report.distribution} />
-                  <p className="mt-5 text-xs text-muted-foreground">
-                    {report.gwaStudents.toLocaleString("en-US")} of{" "}
-                    {report.enrolled.toLocaleString("en-US")} students have a
-                    cumulative GWA · Percentages sum to 100%.
-                  </p>
-                </Panel>
+              <div className="mt-6">
                 <Panel
                   title="Department summary"
                   description="Enrollment by active curriculum"
@@ -188,73 +167,54 @@ export default function DepartmentReportsPage() {
                   </ul>
                 </Panel>
               </div>
-              <Panel
-                title="GWA by batch and curriculum"
-                description="Entry year, study range, and academic performance for each cohort."
-                flush
-              >
-                <Table responsive aria-label="GWA by batch and curriculum">
-                  <TableHeader className="bg-secondary">
-                    <TableRow>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Entry year
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Study range
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Curriculum
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Students
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Mean GWA
-                      </TableHead>
-                      <TableHead aria-label="Actions" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.cohorts.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell label="Entry year">
-                          {row.entryYear}
-                        </TableCell>
-                        <TableCell label="Study range">
-                          {row.entryYear}–{row.entryYear + 4}
-                        </TableCell>
-                        <TableCell label="Curriculum">
-                          {row.curriculum}
-                        </TableCell>
-                        <TableCell label="Students">{row.students}</TableCell>
-                        <TableCell label="Mean GWA">{row.meanGwa}</TableCell>
-                        <TableCell label="Actions">
-                          <Button
-                            type="button"
-                            variant="link"
-                            size="sm"
-                            className="h-auto px-0 py-1 font-semibold underline-offset-4"
-                            aria-label={`View students for ${row.curriculum} batch ${row.entryYear}`}
-                            onClick={() => setCohort(row)}
-                          >
-                            View students →
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-                  {report.cohorts.length} cohorts · {report.programLabel}
-                </p>
-              </Panel>
+              <CohortGwaTable
+                rows={toCohortRows(report.cohorts)}
+                onOpenerChange={(opener) => {
+                  cohortOpener.current = opener;
+                }}
+                onViewStudents={(row) => {
+                  const original = report.cohorts.find(
+                    (item) => item.id === row.id,
+                  );
+                  if (original) setCohortId(original.id);
+                }}
+                footer={`${report.cohorts.length} cohorts · ${report.programLabel}`}
+              />
             </div>
           )}
-          <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
-          <ReportCohortDialog
-            cohort={cohort}
+          <PdfViewerDialog
+            open={pdf !== null}
+            onOpenChange={(open) => {
+              if (!open) setPdf(null);
+            }}
+            title={pdf?.title ?? ""}
+            filename={pdf?.filename ?? ""}
+            url={pdfPreview.url}
+            error={pdfPreview.error}
+          />
+          <CohortStudentsDialog
+            open={cohort !== null}
+            onOpenChange={(open) => {
+              if (!open) setCohortId(null);
+            }}
+            title={
+              cohort ? `Batch ${cohort.entryYear} · Student GWA` : "Student GWA"
+            }
+            summary={
+              cohort
+                ? `${cohortStudents.length} students · ${cohort.program.toUpperCase()} · Study range ${cohort.entryYear}–${cohort.entryYear + 4}`
+                : undefined
+            }
             students={cohortStudents}
-            onClose={() => setCohort(null)}
+            footnote="All students in this cohort are shown."
+            onCloseAutoFocus={(event) => {
+              const opener = cohortOpener.current;
+              if (opener?.isConnected) {
+                event.preventDefault();
+                opener.focus();
+              }
+              cohortOpener.current = null;
+            }}
           />
         </>
       )}

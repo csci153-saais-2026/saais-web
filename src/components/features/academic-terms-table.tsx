@@ -43,7 +43,7 @@ export function AcademicTermsTable({
 
   return (
     <>
-      <Table responsive className="text-[13.5px]">
+      <Table responsive aria-label="Academic terms" className="text-[13.5px]">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className={TH}>Academic year</TableHead>
