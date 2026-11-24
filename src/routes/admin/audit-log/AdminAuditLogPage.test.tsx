@@ -54,11 +54,18 @@ describe("AdminAuditLogPage", () => {
   afterEach(() => cleanup());
 
   it("loads institution-wide history with a safe projection and renders permitted details only", async () => {
-    render(<AdminAuditLogPage />);
+    const { container } = render(<AdminAuditLogPage />);
 
     expect(await screen.findByText("Morgan Lee")).toBeTruthy();
+    expect(screen.getByText("Admin")).toBeTruthy();
+    expect(screen.getByText("Plan save")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Audit log" })).toBeTruthy();
     expect(screen.getByText("Juan Dela Cruz")).toBeTruthy();
+    expect(screen.getByText(entry.target_label)).toBeTruthy();
     expect(screen.getByText("Saved an advising plan.")).toBeTruthy();
+    expect(
+      container.querySelector('time[datetime="2026-08-12T08:00:00Z"]'),
+    ).toBeTruthy();
     expect(
       screen.queryByText(/old snapshot|new snapshot|internal reason/),
     ).toBeNull();
