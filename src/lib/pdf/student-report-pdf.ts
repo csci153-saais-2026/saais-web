@@ -97,30 +97,36 @@ export async function createStudentReportPdf(
   const logos = await Promise.all([
     loadPublicPng("bagong-pilipinas.png"),
     loadPublicPng("vsu-wordmark.png"),
+    loadPublicPng("FC.png"),
+    loadPublicPng("DCST.png"),
   ]);
-  if (logos[0]) pdf.addImage(logos[0], "PNG", margin, 10, 22, 21);
-  if (logos[1]) pdf.addImage(logos[1], "PNG", margin + 25, 10, 60, 21);
+  if (logos[0]) pdf.addImage(logos[0], "PNG", margin, 12, 17, 17);
+  if (logos[1]) pdf.addImage(logos[1], "PNG", margin + 20, 12, 48, 17);
+  if (logos[2])
+    pdf.addImage(logos[2], "PNG", pageWidth - margin - 40, 10, 18, 21);
+  if (logos[3])
+    pdf.addImage(logos[3], "PNG", pageWidth - margin - 20, 10, 20, 21);
 
-  const dividerX = margin + 90;
+  const dividerX = margin + 72;
   pdf.setDrawColor(GREEN);
   pdf.line(dividerX, 10, dividerX, 31);
 
   pdf.setTextColor(GREEN);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8.5);
-  text(report.unit.prefix, dividerX + 5, 16);
+  pdf.setFontSize(7.5);
+  text(report.unit.prefix, dividerX + 4, 16);
 
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
+  pdf.setFontSize(10);
   const unitLines = pdf.splitTextToSize(
     cleanPdfText(report.unit.name),
-    pageWidth - (dividerX + 5) - margin,
+    pageWidth - margin - 43 - (dividerX + 4),
   ) as string[];
-  pdf.text(unitLines, dividerX + 5, 22.5);
+  pdf.text(unitLines, dividerX + 4, 22.5);
 
   pdf.setTextColor("#111111");
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
+  pdf.setFontSize(11);
   text(report.title.toUpperCase(), pageWidth / 2, 40, { align: "center" });
 
   let y = 46;

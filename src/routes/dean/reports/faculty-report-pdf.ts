@@ -1,6 +1,11 @@
 import type { FacultyDepartmentReport } from "@/routes/dean/types";
 
-const LOGOS = ["bagong-pilipinas.png", "vsu-wordmark.png"] as const;
+const LOGOS = [
+  "bagong-pilipinas.png",
+  "vsu-wordmark.png",
+  "FC.png",
+  "DCST.png",
+] as const;
 const GREEN = "#29450e";
 const CREAM = "#f8f6ed";
 
@@ -95,24 +100,26 @@ export async function createFacultyReportPdf(
 
   // Institutional letterhead
   stripe();
-  const [bagong, vsu] = logos;
-  if (bagong) pdf.addImage(bagong, "PNG", margin, 10, 22, 21);
-  if (vsu) pdf.addImage(vsu, "PNG", margin + 25, 10, 58, 21);
-  const dividerX = margin + 88;
+  const [bagong, vsu, fc, dcst] = logos;
+  if (bagong) pdf.addImage(bagong, "PNG", margin, 12, 17, 17);
+  if (vsu) pdf.addImage(vsu, "PNG", margin + 20, 12, 48, 17);
+  if (fc) pdf.addImage(fc, "PNG", pageWidth - margin - 40, 10, 18, 21);
+  if (dcst) pdf.addImage(dcst, "PNG", pageWidth - margin - 20, 10, 20, 21);
+  const dividerX = margin + 72;
   pdf.setDrawColor(GREEN);
   pdf.line(dividerX, 10, dividerX, 31);
   pdf.setTextColor(GREEN);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-  text("Office of the Dean", dividerX + 5, 17);
+  pdf.setFontSize(7.5);
+  text("Office of the Dean", dividerX + 4, 17);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
+  pdf.setFontSize(10);
   pdf.text(
     pdf.splitTextToSize(
       cleanPdfText(facultyLabel),
-      pageWidth - margin - dividerX - 5,
+      pageWidth - margin - 43 - (dividerX + 4),
     ) as string[],
-    dividerX + 5,
+    dividerX + 4,
     24,
   );
 
