@@ -31,10 +31,7 @@ afterEach(() => {
 describe("getTermOfferings", () => {
   it("uses bounded pages instead of the failing limit=1000 request", async () => {
     mocks.get.mockImplementation(
-      (
-        path: string,
-        options: { params: { query: { limit?: number; offset?: number } } },
-      ) => {
+      (path: string) => {
         if (path === "/rest/v1/course") {
           return Promise.resolve({
             data: [{ id: "course-one", is_elective: false }],

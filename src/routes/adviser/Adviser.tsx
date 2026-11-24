@@ -36,7 +36,7 @@ export function AdviserPage({
   title,
   tab,
   children,
-  sample = true,
+  sample: _sample,
 }: {
   title: string;
   tab?: string;

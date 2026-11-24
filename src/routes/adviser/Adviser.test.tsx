@@ -29,7 +29,11 @@ it("does not render the fixed 19 September 2026 sample footer", () => {
       <Routes>
         <Route
           path="/adviser/dashboard"
-          element={<AdviserPage title="Dashboard" sample={true} />}
+          element={
+            <AdviserPage title="Dashboard">
+              <p>Dashboard</p>
+            </AdviserPage>
+          }
         />
       </Routes>
     </MemoryRouter>,
