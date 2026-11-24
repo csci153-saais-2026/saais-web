@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -9,17 +11,148 @@ import {
 } from "@/components/ui/table";
 import type { DeanStudentSummary } from "@/routes/dean/types";
 
-export function StudentDirectoryTable({
-  students,
-  totalCount = students.length,
-  onSelectStudent,
-  onResetFilters,
-}: {
+type DepartmentDirectoryStudent = Pick<
+  DeanStudentSummary,
+  "name" | "studentNumber" | "curriculum" | "adviser"
+> & {
+  id: string;
+  email: string;
+  yearStanding: string;
+};
+
+type DepartmentDirectoryProps<Student extends DepartmentDirectoryStudent> = {
+  variant: "department-head";
+  students: Student[];
+  totalCount: number;
+  onSelectStudent: (
+    student: Student,
+    trigger: HTMLButtonElement | null,
+  ) => void;
+};
+
+type DeanDirectoryProps = {
+  variant?: "dean";
   students: DeanStudentSummary[];
   totalCount?: number;
   onSelectStudent: (student: DeanStudentSummary) => void;
   onResetFilters?: () => void;
+};
+
+const DEPARTMENT_COLUMNS = [
+  "Student",
+  "School email",
+  "Curriculum",
+  "Year standing",
+  "Adviser",
+];
+
+function DepartmentDirectoryRow<Student extends DepartmentDirectoryStudent>({
+  student,
+  onSelectStudent,
+}: {
+  student: Student;
+  onSelectStudent: DepartmentDirectoryProps<Student>["onSelectStudent"];
 }) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  return (
+    <TableRow
+      className="cursor-pointer"
+      onClick={() => onSelectStudent(student, trigger.current)}
+    >
+      <TableCell label="Student" className="px-5 py-3 whitespace-normal">
+        <Button
+          ref={trigger}
+          type="button"
+          variant="ghost"
+          className="h-auto min-w-0 flex-col items-start gap-0.5 rounded-sm p-0 text-left font-normal whitespace-normal hover:bg-transparent hover:text-primary"
+          aria-label={`View ${student.name} checklist`}
+        >
+          <span className="block font-semibold">{student.name}</span>
+          <span className="block font-mono text-xs font-normal text-muted-foreground">
+            {student.studentNumber}
+          </span>
+        </Button>
+      </TableCell>
+      <TableCell
+        label="School email"
+        className="px-5 py-3 text-[13.5px] whitespace-normal"
+      >
+        <span className="min-w-0 break-all">{student.email}</span>
+      </TableCell>
+      <TableCell label="Curriculum" className="px-5 py-3">
+        <Badge variant="secondary" className="rounded-sm">
+          {student.curriculum}
+        </Badge>
+      </TableCell>
+      <TableCell label="Year standing" className="px-5 py-3 text-[13.5px]">
+        {student.yearStanding}
+      </TableCell>
+      <TableCell
+        label="Adviser"
+        className="px-5 py-3 text-[13.5px] whitespace-normal"
+      >
+        {student.adviser}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function DepartmentDirectoryTable<Student extends DepartmentDirectoryStudent>({
+  students,
+  totalCount,
+  onSelectStudent,
+}: DepartmentDirectoryProps<Student>) {
+  return (
+    <>
+      <Table responsive aria-label="Department students">
+        <TableHeader className="bg-secondary">
+          <TableRow>
+            {DEPARTMENT_COLUMNS.map((label) => (
+              <TableHead
+                key={label}
+                className="px-5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase"
+              >
+                {label}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {students.map((student) => (
+            <DepartmentDirectoryRow
+              key={student.id}
+              student={student}
+              onSelectStudent={onSelectStudent}
+            />
+          ))}
+        </TableBody>
+      </Table>
+      {students.length === 0 && (
+        <div className="px-5 py-10 text-center">
+          <p className="font-semibold">No students match these filters.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Change your search or reset the filters.
+          </p>
+        </div>
+      )}
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="border-t border-border px-5 py-3 text-xs text-muted-foreground"
+      >
+        Showing {students.length} of {totalCount} students
+      </p>
+    </>
+  );
+}
+
+function DeanDirectoryTable({
+  students,
+  totalCount = students.length,
+  onSelectStudent,
+  onResetFilters,
+}: DeanDirectoryProps) {
   const countLabel =
     students.length === totalCount
       ? `${students.length} ${students.length === 1 ? "student" : "students"}`
@@ -127,5 +260,15 @@ export function StudentDirectoryTable({
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+export function StudentDirectoryTable<
+  Student extends DepartmentDirectoryStudent,
+>(props: DepartmentDirectoryProps<Student> | DeanDirectoryProps) {
+  return props.variant === "department-head" ? (
+    <DepartmentDirectoryTable {...props} />
+  ) : (
+    <DeanDirectoryTable {...props} />
   );
 }
