@@ -1,19 +1,12 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useState } from "react";
 import { ReportStatsSection } from "@/components/features/report-stats-section";
+import { CohortGwaTable } from "@/components/features/cohort-gwa-table";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { DownloadIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { QueryMessage } from "../shared/dh-ui";
 import { ReportCohortDialog } from "./ReportCohortDialog";
 import { ReportFilters } from "./ReportFilters";
@@ -27,7 +20,7 @@ import type { DepartmentPdfDocument } from "../shared/department-pdf";
 import { PdfViewerDialog } from "../shared/PdfViewerDialog";
 import { buildReportPdf } from "./report-pdf";
 import { useReportSource } from "./reports-api";
-import { reportDistributionFootnote, toReportStats } from "./report-presentation";
+import { reportDistributionFootnote, toCohortRows, toReportStats } from "./report-presentation";
 
 export default function DepartmentReportsPage() {
   const source = useReportSource();
@@ -167,66 +160,14 @@ export default function DepartmentReportsPage() {
                   </ul>
                 </Panel>
               </div>
-              <Panel
-                title="GWA by batch and curriculum"
-                description="Entry year, study range, and academic performance for each cohort."
-                flush
-              >
-                <Table responsive aria-label="GWA by batch and curriculum">
-                  <TableHeader className="bg-secondary">
-                    <TableRow>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Entry year
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Study range
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Curriculum
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Students
-                      </TableHead>
-                      <TableHead className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-2 uppercase">
-                        Mean GWA
-                      </TableHead>
-                      <TableHead aria-label="Actions" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.cohorts.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell label="Entry year">
-                          {row.entryYear}
-                        </TableCell>
-                        <TableCell label="Study range">
-                          {row.entryYear}–{row.entryYear + 4}
-                        </TableCell>
-                        <TableCell label="Curriculum">
-                          {row.curriculum}
-                        </TableCell>
-                        <TableCell label="Students">{row.students}</TableCell>
-                        <TableCell label="Mean GWA">{row.meanGwa}</TableCell>
-                        <TableCell label="Actions">
-                          <Button
-                            type="button"
-                            variant="link"
-                            size="sm"
-                            className="h-auto px-0 py-1 font-semibold underline-offset-4"
-                            aria-label={`View students for ${row.curriculum} batch ${row.entryYear}`}
-                            onClick={() => setCohort(row)}
-                          >
-                            View students →
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-                  {report.cohorts.length} cohorts · {report.programLabel}
-                </p>
-              </Panel>
+              <CohortGwaTable
+                rows={toCohortRows(report.cohorts)}
+                onViewStudents={(row) => {
+                  const original = report.cohorts.find((item) => item.id === row.id);
+                  if (original) setCohort(original);
+                }}
+                footer={`${report.cohorts.length} cohorts · ${report.programLabel}`}
+              />
             </div>
           )}
           <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
