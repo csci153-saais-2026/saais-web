@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { saaisMockServer } from "@/mocks/node";
 import AuditLogPage from "./AuditLogPage";
 import type { AuditEvent } from "./audit-types";
 import { EMPTY_AUDIT_FILTERS, filterAuditEvents } from "./audit-model";
@@ -133,5 +135,51 @@ describe("Audit Log screen", () => {
       target: { value: "2025-08-14" },
     });
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows the record, student, action and local date on the shared table", async () => {
+    saaisMockServer.use(
+      http.get("*/rest/v1/audit_log_entry", () =>
+        HttpResponse.json([
+          {
+            id: "late-event",
+            created_at: "2025-08-14T16:30:00Z",
+            actor_name: "Dr. Elena Reyes",
+            action_category: "update",
+            student_name: "Ana Marie Santos",
+            student_number: "24-1-00124",
+            target_label: "Course checklist",
+            details_summary: "Corrected an attempt",
+          },
+        ]),
+      ),
+    );
+    renderDepartmentHead(<AuditLogPage />);
+    const table = within(
+      await screen.findByRole("table", { name: "Department audit log" }),
+    );
+    const cells = table.getAllByRole("cell");
+    expect(cells.map((cell) => cell.getAttribute("data-label"))).toEqual([
+      "Timestamp",
+      "Person",
+      "Action",
+      "Student",
+      "Record",
+      "Details",
+    ]);
+    expect(cells[0].textContent).toMatch(/15 Aug 2025.*12:30\s*AM/);
+    expect(cells.slice(1).map((cell) => cell.textContent)).toEqual([
+      "Dr. Elena Reyes",
+      "Change",
+      "24-1-00124 · Ana Marie Santos",
+      "Course checklist",
+      "Corrected an attempt",
+    ]);
+    fireEvent.change(screen.getByLabelText("From date"), {
+      target: { value: "2025-08-15" },
+    });
+    expect(screen.getByRole("status").textContent).toBe(
+      "1 matching event of 1",
+    );
   });
 });
