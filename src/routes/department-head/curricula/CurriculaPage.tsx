@@ -106,7 +106,7 @@ export default function CurriculaPage() {
   const [tSem, setTSem] = React.useState<CurriculumSemester>("Semester 1");
 
   // Slot form state
-  const [sName, setSName] = React.useState("");
+  const [sCourseId, setSCourseId] = React.useState("");
   const [sUnits, setSUnits] = React.useState("3");
   const [sType, setSType] =
     React.useState<CurriculumSlotType>("Required course");
@@ -115,7 +115,7 @@ export default function CurriculaPage() {
   const [ncCode, setNcCode] = React.useState("");
   const [ncTitle, setNcTitle] = React.useState("");
   const [ncUnits, setNcUnits] = React.useState("3");
-  const [ncCurId, setNcCurId] = React.useState("");
+  const [ncDepartmentId, setNcDepartmentId] = React.useState("");
   const [ncTerm, setNcTerm] = React.useState(TERM_OPTIONS[0]);
   const [ncKind, setNcKind] = React.useState<"Non-Elective" | "Elective">(
     "Non-Elective",
@@ -125,6 +125,12 @@ export default function CurriculaPage() {
 
   const currentVersion =
     versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null;
+  const departments = query.data?.departments ?? [];
+  const activeCourses = (query.data?.courses ?? []).filter(
+    (course) =>
+      course.departmentId === currentVersion?.departmentId &&
+      course.status === "active",
+  );
 
   const deleteTargetVersion =
     dialog?.kind === "del-version"
@@ -233,7 +239,7 @@ export default function CurriculaPage() {
     setNcCode("");
     setNcTitle("");
     setNcUnits("3");
-    setNcCurId(currentVersion.id);
+    setNcDepartmentId(currentVersion.departmentId);
     setNcTerm(TERM_OPTIONS[0]);
     setNcKind("Non-Elective");
     setFormError(null);
@@ -241,7 +247,7 @@ export default function CurriculaPage() {
   };
 
   const openAddSlot = (termId: string) => {
-    setSName("");
+    setSCourseId("");
     setSUnits("3");
     setSType("Required course");
     setFormError(null);
@@ -249,7 +255,7 @@ export default function CurriculaPage() {
   };
 
   const openEditSlot = (termId: string, slot: CurriculumCourseSlot) => {
-    setSName(slot.courseOrSlot);
+    setSCourseId(slot.courseId ?? "");
     setSUnits(String(slot.requiredUnits));
     setSType(slot.type);
     setFormError(null);
@@ -395,8 +401,20 @@ export default function CurriculaPage() {
         return;
       }
 
-      const targetVersion =
-        versions.find((v) => v.id === ncCurId) ?? currentVersion;
+      const department = departments.find((item) => item.id === ncDepartmentId);
+      if (!department) {
+        setFormError("Choose a department.");
+        return;
+      }
+      const targetVersion = versions.find(
+        (version) =>
+          version.departmentId === department.id &&
+          version.status !== "retired",
+      );
+      if (!targetVersion) {
+        setFormError("No active or draft curriculum is available for this department.");
+        return;
+      }
       const match = /^Year (\d) \u00b7 (.+)$/.exec(ncTerm);
       const parsedYear = match ? Number(match[1]) : 1;
       const parsedSem = (match?.[2] ?? "Semester 1") as CurriculumSemester;
@@ -408,7 +426,7 @@ export default function CurriculaPage() {
           await actions.createTerm(targetVersion.id, parsedYear, parsedSem)
         ).id;
       await actions.createCourse({
-        departmentId: targetVersion.departmentId,
+        departmentId: department.id,
         code,
         title,
         units: unitsNum,
@@ -424,10 +442,10 @@ export default function CurriculaPage() {
     }
 
     if (active.kind === "add-slot" || active.kind === "edit-slot") {
-      const name = sName.trim();
       const unitsNum = Number(sUnits);
-      if (!name) {
-        setFormError("Enter the course or slot name.");
+      const course = activeCourses.find((item) => item.id === sCourseId);
+      if (!course) {
+        setFormError("Choose an active course from this department.");
         return;
       }
       if (sUnits.trim() === "" || !Number.isFinite(unitsNum) || unitsNum < 0) {
@@ -435,9 +453,9 @@ export default function CurriculaPage() {
         return;
       }
       if (active.kind === "edit-slot")
-        await actions.updateSlot(active.slotId, name, unitsNum, sType);
-      else await actions.createSlot(active.termId, name, unitsNum, sType);
-      showToast(`${name} was saved.`);
+        await actions.updateSlot(active.slotId, course.id, unitsNum, sType);
+      else await actions.createSlot(active.termId, course.id, unitsNum, sType);
+      showToast(`${course.code} was saved.`);
       closeDialog();
       return;
     }
@@ -785,7 +803,13 @@ export default function CurriculaPage() {
             open={!!dialog}
             onOpenChange={(open) => !open && closeDialog()}
           >
-            <DialogContent className="max-w-lg">
+              <DialogContent
+                className={
+                  dialog?.kind === "new-course"
+                    ? "max-w-[640px]"
+                    : "max-w-lg"
+                }
+              >
               <DialogHeader>
                 <DialogTitle>{dialogMeta.title}</DialogTitle>
               </DialogHeader>
@@ -988,19 +1012,21 @@ export default function CurriculaPage() {
                       />
                     </FormField>
 
-                    <FormField label="Curriculum" htmlFor="nc-cur">
-                      <Select value={ncCurId} onValueChange={setNcCurId}>
-                        <SelectTrigger id="nc-cur" className="w-full">
-                          <SelectValue />
+                    <FormField label="Department" htmlFor="nc-department">
+                      <Select value={ncDepartmentId} onValueChange={setNcDepartmentId}>
+                        <SelectTrigger id="nc-department" className="w-full">
+                          <SelectValue placeholder="Select a department" />
                         </SelectTrigger>
                         <SelectContent
                           position="popper"
                           side="bottom"
                           avoidCollisions={false}
                         >
-                          {versions.map((v) => (
-                            <SelectItem key={v.id} value={v.id}>
-                              {versionLabel(v)}
+                          {departments.map((department) => (
+                            <SelectItem key={department.id} value={department.id}>
+                              <span className="block max-w-full truncate" title={department.name}>
+                                {department.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1054,16 +1080,20 @@ export default function CurriculaPage() {
                 {(dialog?.kind === "add-slot" ||
                   dialog?.kind === "edit-slot") && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <FormField
-                      label="Course / slot"
-                      htmlFor="cu-sname"
-                      className="sm:col-span-2"
-                    >
-                      <Input
-                        id="cu-sname"
-                        value={sName}
-                        onChange={(e) => setSName(e.target.value)}
-                      />
+                    <FormField label="Active course" htmlFor="cu-scourse" className="sm:col-span-2">
+                      <Select value={sCourseId || "none"} onValueChange={(value) => setSCourseId(value === "none" ? "" : value)}>
+                        <SelectTrigger id="cu-scourse" className="w-full">
+                          <SelectValue placeholder="Select an active course" />
+                        </SelectTrigger>
+                        <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                          <SelectItem value="none">Select an active course</SelectItem>
+                          {activeCourses.map((course) => (
+                            <SelectItem key={course.id} value={course.id}>
+                              {course.code} — {course.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormField>
 
                     <FormField label="Required units" htmlFor="cu-sunits">

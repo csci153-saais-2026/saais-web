@@ -15,6 +15,7 @@ export const CURRICULUM_SEMESTERS: CurriculumSemester[] = [
 
 export interface CurriculumCourseSlot {
   id: string;
+  courseId: string | null;
   courseOrSlot: string;
   requiredUnits: number;
   type: CurriculumSlotType;
@@ -47,6 +48,8 @@ export interface CurriculumVersionRecord {
 export interface CurriculaData {
   versions: CurriculumVersionRecord[];
   programs: { id: string; code: string }[];
+  departments: { id: string; name: string }[];
+  courses: { id: string; departmentId: string; code: string; title: string; status: string }[];
 }
 
 const KEY = ["department-head", "curricula"] as const;
@@ -70,7 +73,7 @@ const SLOT_TYPE_API: Record<
 async function getCurricula(): Promise<CurriculaData> {
   const get = <T>(load: () => Promise<{ data?: T; error?: unknown }>) =>
     load().then(unwrapApiResult as (value: { data?: T; error?: unknown }) => T);
-  const [versions, programs, terms, slots, courses, transfers, pairs] =
+  const [versions, programs, terms, slots, courses, departments, transfers, pairs] =
     await Promise.all([
       get(() =>
         apiClient.GET("/rest/v1/curriculum_version", {
@@ -95,6 +98,11 @@ async function getCurricula(): Promise<CurriculaData> {
       get(() =>
         apiClient.GET("/rest/v1/course", {
           params: { query: { select: "*", limit: 100 } },
+        }),
+      ),
+      get(() =>
+        apiClient.GET("/rest/v1/department", {
+          params: { query: { select: "id,name", order: "name.asc", limit: 1000 } },
         }),
       ),
       get(() =>
@@ -160,6 +168,7 @@ async function getCurricula(): Promise<CurriculaData> {
               const course = courses.find((item) => item.id === slot.course_id);
               return {
                 id: slot.id,
+                courseId: slot.course_id,
                 courseOrSlot: course
                   ? `${course.code} — ${course.title}`
                   : (slot.slot_label ?? "Unnamed slot"),
@@ -177,6 +186,17 @@ async function getCurricula(): Promise<CurriculaData> {
     programs: programs.map((program) => ({
       id: program.id,
       code: program.code,
+    })),
+    departments: departments.map((department) => ({
+      id: department.id,
+      name: department.name,
+    })),
+    courses: courses.map((course) => ({
+      id: course.id,
+      departmentId: course.department_id,
+      code: course.code,
+      title: course.title,
+      status: course.status,
     })),
   };
 }
@@ -294,7 +314,7 @@ export async function deleteCurriculumTerm(id: string) {
 
 export async function createCurriculumSlot(
   termId: string,
-  name: string,
+  courseId: string,
   units: number,
   type: CurriculumSlotType,
 ) {
@@ -302,8 +322,8 @@ export async function createCurriculumSlot(
     await apiClient.POST("/functions/v1/catalog/curriculum_term_course", {
       body: {
         curriculum_term_id: termId,
-        course_id: null,
-        slot_label: name,
+        course_id: courseId,
+        slot_label: null,
         nominal_units: units,
         slot_type: SLOT_TYPE_API[type],
         is_elective_slot: type === "Elective slot",
@@ -314,7 +334,7 @@ export async function createCurriculumSlot(
 
 export async function updateCurriculumSlot(
   id: string,
-  name: string,
+  courseId: string,
   units: number,
   type: CurriculumSlotType,
 ) {
@@ -322,7 +342,8 @@ export async function updateCurriculumSlot(
     await apiClient.PATCH("/functions/v1/catalog/curriculum_term_course/{id}", {
       params: { path: { id } },
       body: {
-        slot_label: name,
+        course_id: courseId,
+        slot_label: null,
         nominal_units: units,
         slot_type: SLOT_TYPE_API[type],
         is_elective_slot: type === "Elective slot",

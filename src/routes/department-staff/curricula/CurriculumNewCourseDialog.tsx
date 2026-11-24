@@ -27,7 +27,9 @@ import {
   useCreateCurriculumTerm,
   useCurriculum,
 } from "@/hooks/use-curricula";
-import { useStaffDepartmentName } from "@/hooks/use-staff-department-name";
+import { useCourseCatalogReferences } from "@/hooks/use-course-catalog";
+import { useStaffScope } from "@/routes/department-staff/shared/use-staff-scope";
+import { z } from "zod";
 import type { CurriculumVersion } from "./curricula.api";
 import { curriculumTermSchema } from "./curriculum-term.schema";
 import { curriculumSlotSchema } from "./curriculum-slot.schema";
@@ -43,6 +45,7 @@ const terms = [1, 2, 3, 4, 5].flatMap((year) =>
 );
 
 const newCourseSchema = courseSchema.extend({
+  department_id: z.uuid("Choose a department.").optional(),
   term_position: courseSchema.shape.code,
 });
 type Values = import("zod").infer<typeof newCourseSchema>;
@@ -72,7 +75,10 @@ export function CurriculumNewCourseDialog({
   const catalogCourse = useCreateCatalogCourse();
   const createTerm = useCreateCurriculumTerm();
   const createSlot = useCreateCurriculumSlot();
-  const department = useStaffDepartmentName();
+  const scope = useStaffScope();
+  const departments = useCourseCatalogReferences();
+  const authorizedDepartmentId =
+    scope.status === "ready" ? scope.departmentId : "";
   const {
     register,
     control,
@@ -104,9 +110,17 @@ export function CurriculumNewCourseDialog({
     setSaveError("");
     try {
       const { term_position, ...courseFields } = values;
+      const department_id = courseFields.department_id || authorizedDepartmentId;
+      delete courseFields.department_id;
       const parsed = courseSchema.parse(courseFields);
       const position =
         terms.find((term) => term.value === term_position) ?? terms[0];
+      const selectedDepartment = (departments.data?.departments ?? []).find(
+        (department) => department.id === department_id,
+      );
+      if (!selectedDepartment || selectedDepartment.id !== authorizedDepartmentId) {
+        throw new Error("You can create courses only in your assigned department.");
+      }
       const catalogEntry =
         createdCourse ?? (await catalogCourse.mutateAsync(parsed));
       if (!createdCourse) setCreatedCourse(catalogEntry);
@@ -152,7 +166,7 @@ export function CurriculumNewCourseDialog({
       }}
     >
       <DialogContent
-        className="max-h-[90dvh] overflow-y-auto"
+        className="max-h-[90dvh] max-w-[640px] overflow-y-auto"
         showCloseButton={!pending}
       >
         <DialogHeader>
@@ -200,19 +214,30 @@ export function CurriculumNewCourseDialog({
                 {...register("units", { valueAsNumber: true })}
               />
             </FormField>
-            <FormField
-              label="Department"
-              htmlFor="new-curriculum-course-department"
-            >
-              <Input
-                id="new-curriculum-course-department"
-                value={
-                  department.data ??
-                  (department.isPending
-                    ? "Loading department..."
-                    : "Department unavailable")
-                }
-                readOnly
+            <FormField label="Department" htmlFor="new-curriculum-course-department">
+              <Controller
+                name="department_id"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || authorizedDepartmentId}
+                    onValueChange={field.onChange}
+                    disabled={pending || departments.isError || departments.isPending}
+                  >
+                    <SelectTrigger id="new-curriculum-course-department" className="w-full">
+                      <SelectValue placeholder="Select a department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(departments.data?.departments ?? []).map((department) => (
+                        <SelectItem key={department.id} value={department.id}>
+                          <span className="block max-w-full truncate" title={department.name}>
+                            {department.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
             </FormField>
             <FormField label="Term" htmlFor="new-curriculum-course-term">
@@ -267,12 +292,12 @@ export function CurriculumNewCourseDialog({
               />
             </FormField>
           </fieldset>
-          {(saveError || detail.isError || department.isError) && (
+          {(saveError || detail.isError || departments.isError) && (
             <p role="alert" className="text-sm text-destructive">
               {saveError ||
                 (detail.isError
                   ? message(detail.error)
-                  : message(department.error))}
+                  : message(departments.error))}
             </p>
           )}
           <DialogFooter>
@@ -289,8 +314,8 @@ export function CurriculumNewCourseDialog({
               disabled={
                 pending ||
                 detail.isPending ||
-                department.isPending ||
-                department.isError
+                departments.isPending ||
+                departments.isError
               }
             >
               {pending ? "Adding course..." : "Add course"}

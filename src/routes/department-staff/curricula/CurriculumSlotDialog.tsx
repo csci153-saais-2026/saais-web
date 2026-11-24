@@ -288,10 +288,6 @@ export function CurriculumSlotDialog({
                       <SelectItem value="required">Required course</SelectItem>
                       <SelectItem value="elective">Elective slot</SelectItem>
                       <SelectItem value="ge">GE slot</SelectItem>
-                      <SelectItem value="pe">
-                        Physical education course
-                      </SelectItem>
-                      <SelectItem value="nstp">NSTP course</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
