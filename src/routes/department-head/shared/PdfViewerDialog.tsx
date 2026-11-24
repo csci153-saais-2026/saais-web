@@ -1,4 +1,3 @@
-import { useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,12 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AuthContext } from "@/context/auth-context";
-import { apiClient, postgrestFilter, unwrapApiResult } from "@/lib/api";
-import {
-  createDepartmentPdf,
-  type DepartmentPdfDocument,
-} from "./department-pdf";
+import type { DepartmentPdfDocument } from "./department-pdf";
+import { useDepartmentPdfUrl } from "./useDepartmentPdfUrl";
 
 /** Opens an export in a viewer first; nothing downloads until the user chooses Download PDF. */
 export function PdfViewerDialog({
@@ -23,52 +18,7 @@ export function PdfViewerDialog({
   document: DepartmentPdfDocument | null;
   onClose: () => void;
 }) {
-  const [preview, setPreview] = useState<{
-    source: DepartmentPdfDocument;
-    url: string;
-    error: boolean;
-  } | null>(null);
-  const departmentId = useContext(AuthContext)?.profile?.department_id;
-  const current =
-    report !== null && preview?.source === report ? preview : null;
-
-  useEffect(() => {
-    if (!report) return;
-    let active = true;
-    let objectUrl = "";
-    const build = async () => {
-      let department;
-      if (departmentId) {
-        const rows = unwrapApiResult(
-          await apiClient.GET("/rest/v1/department", {
-            params: {
-              query: {
-                id: postgrestFilter.eq(departmentId),
-                select:
-                  "id,faculty_id,name,code,letterhead_prefix,letterhead_name,department_head_name,dean_name",
-                limit: 1,
-              },
-            },
-          }),
-        );
-        department = rows.find((row) => row.id === departmentId);
-      }
-      return createDepartmentPdf(report, department);
-    };
-    build()
-      .then((blob) => {
-        if (!active) return;
-        objectUrl = URL.createObjectURL(blob);
-        setPreview({ source: report, url: objectUrl, error: false });
-      })
-      .catch(() => {
-        if (active) setPreview({ source: report, url: "", error: true });
-      });
-    return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [report, departmentId]);
+  const current = useDepartmentPdfUrl(report);
 
   return (
     <Dialog
