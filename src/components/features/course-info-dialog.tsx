@@ -339,7 +339,7 @@ export function CourseInfoDialog({
                           </TableCell>
                           <TableCell
                             label="Term"
-                            className="px-3 py-row text-cell tabular-nums text-foreground"
+                            className="px-3 py-row text-cell tabular-nums whitespace-normal text-foreground"
                           >
                             {attempt.term_label}
                           </TableCell>
@@ -363,12 +363,9 @@ export function CourseInfoDialog({
                           </TableCell>
                           <TableCell
                             label="Instructor"
-                            className="px-3 py-row text-cell text-foreground"
+                            className="px-3 py-row text-cell whitespace-normal text-foreground"
                           >
-                            <span
-                              className="block max-w-48 truncate"
-                              title={attempt.instructor?.trim() || undefined}
-                            >
+                            <span className="block min-w-0 wrap-break-word">
                               {attempt.instructor?.trim() || "—"}
                             </span>
                           </TableCell>

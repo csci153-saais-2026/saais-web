@@ -13,6 +13,7 @@ function StudentRecordHeader({
   email,
   standing,
   standingLabel,
+  headingAs: Heading = "h1",
 }: {
   name: string;
   avatarUrl?: string | null;
@@ -23,6 +24,8 @@ function StudentRecordHeader({
   email: string;
   standing: Status;
   standingLabel?: string;
+  /** Use "h2" when the header sits inside a dialog or under another page heading. */
+  headingAs?: "h1" | "h2";
 }) {
   return (
     <div className="mb-5 flex items-center gap-4">
@@ -33,12 +36,12 @@ function StudentRecordHeader({
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        <h1
+        <Heading
           className="line-clamp-2 text-3xl leading-tight wrap-anywhere"
           title={name}
         >
           {name}
-        </h1>
+        </Heading>
         <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
           <span className="font-mono text-[13px]">{studentNumber}</span>
           <span className="max-w-full truncate" title={program}>
