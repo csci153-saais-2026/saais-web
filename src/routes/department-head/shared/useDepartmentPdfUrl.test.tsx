@@ -151,4 +151,19 @@ describe("useDepartmentPdfUrl", () => {
     expect(result.current.url).toBeUndefined();
     expect(createUrl).not.toHaveBeenCalled();
   });
+
+  it("releases a completed PDF when its viewer closes", async () => {
+    const view = mountPdf(report);
+    await waitFor(() => expect(view.result.current.url).toBeDefined());
+    view.select(null);
+    expect(view.result.current).toEqual({ url: undefined, error: false });
+    expect(revokeUrl).toHaveBeenCalledExactlyOnceWith("blob:department-report");
+  });
+
+  it("releases a completed PDF when the page unmounts", async () => {
+    const view = mountPdf(report);
+    await waitFor(() => expect(view.result.current.url).toBeDefined());
+    view.unmount();
+    expect(revokeUrl).toHaveBeenCalledExactlyOnceWith("blob:department-report");
+  });
 });
