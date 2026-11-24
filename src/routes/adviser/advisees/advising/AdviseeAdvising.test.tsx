@@ -74,6 +74,58 @@ afterEach(() => {
   auth.isMockMode = false;
 });
 describe("term advising identity", () => {
+  it("offers one latest option for each recommendation term", async () => {
+    vi.mocked(getAdvisingTerms).mockResolvedValue([
+      {
+        id: "term-old",
+        school_year: "2025",
+        term_type: "1st Semester",
+        chronological_key: 202501,
+      },
+      {
+        id: "term-first",
+        school_year: "2026",
+        term_type: "1st Semester",
+        chronological_key: 202601,
+      },
+      {
+        id: "term-second",
+        school_year: "2026",
+        term_type: "2nd Semester",
+        chronological_key: 202602,
+      },
+      {
+        id: "term-midyear",
+        school_year: "2026",
+        term_type: "Summer",
+        chronological_key: 202603,
+      },
+    ] as ApiSchema<"SchoolTerm">[]);
+    render(page());
+
+    const termSelect = await screen.findByLabelText("School term");
+    expect(termSelect.querySelectorAll("option")).toHaveLength(4);
+    expect(
+      (
+        screen.getByRole("option", {
+          name: "1st Semester",
+        }) as HTMLOptionElement
+      ).value,
+    ).toBe("term-first");
+    expect(
+      (
+        screen.getByRole("option", {
+          name: "2nd Semester",
+        }) as HTMLOptionElement
+      ).value,
+    ).toBe("term-second");
+    expect(
+      (screen.getByRole("option", { name: "Midyear" }) as HTMLOptionElement)
+        .value,
+    ).toBe("term-midyear");
+    expect(screen.queryByRole("option", { name: /2025/ })).toBeNull();
+  });
+
   it("disables Add selected to plan until a course is selected", async () => {
     vi.mocked(getAdvisingTerms).mockResolvedValue([
       { id: "term-two", school_year: "2026", term_type: "1st Semester" },
