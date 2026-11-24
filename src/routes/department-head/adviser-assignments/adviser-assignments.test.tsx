@@ -250,5 +250,44 @@ describe("Adviser Assignments screen", () => {
     expect(
       within(row).getAllByText("Polo, Marco Antonio P.").length,
     ).toBeGreaterThan(0);
+    expect(
+      (await getAuditEvents()).some(
+        (event) =>
+          event.studentNumber === "24-1-01798" &&
+          event.details.includes(future) &&
+          event.details.includes("Planned handover."),
+      ),
+    ).toBe(true);
+  });
+
+  it("submits a bulk reassignment and refreshes both selected rows", async () => {
+    const students = (await getDirectoryStudents())
+      .filter((entry) => entry.adviser === "Polo, Marco Antonio P.")
+      .slice(0, 2);
+    expect(students).toHaveLength(2);
+    await openPage();
+    for (const entry of students) {
+      fireEvent.click(
+        screen.getByRole("checkbox", { name: `Select ${entry.name}` }),
+      );
+    }
+    expect(screen.getByText("2 students selected")).toBeTruthy();
+    await reassign(
+      students[0].name,
+      "Coting, Eulo Rod M.",
+      "Balanced adviser workloads.",
+      undefined,
+      true,
+    );
+    expect(await screen.findByText("Reassigned 2 students.")).toBeTruthy();
+    await waitFor(() => {
+      for (const entry of students) {
+        const row = screen
+          .getByRole("checkbox", { name: `Select ${entry.name}` })
+          .closest("tr")!;
+        expect(within(row).getByText("Coting, Eulo Rod M.")).toBeTruthy();
+        expect(within(row).getByText("Polo, Marco Antonio P.")).toBeTruthy();
+      }
+    });
   });
 });
