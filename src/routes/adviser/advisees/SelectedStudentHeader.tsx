@@ -1,4 +1,5 @@
-import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { STUDENT_HEADER_SKELETON_SAMPLE } from "../adviser.skeleton-samples";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { StudentRecordHeader } from "@/components/features/student-record-header";
@@ -24,43 +25,53 @@ export function SelectedStudentHeader({ id }: { id: string }) {
         </Button>
       </div>
     );
-  if (!data)
-    return (
-      <TableSkeleton rows={4} columns={4} label="Loading student record…" />
-    );
-  return (
+  // While loading, the skeleton is measured from a sample record.
+  const record = data ?? STUDENT_HEADER_SKELETON_SAMPLE;
+  const header = (
     <StudentRecordHeader
-      name={data.full_name}
+      name={record.full_name}
       avatarUrl={photoUrl}
-      initials={data.full_name
+      initials={record.full_name
         .split(/\s+/)
         .filter(Boolean)
         .slice(0, 2)
         .map((word) => word[0])
         .join("")
         .toUpperCase()}
-      studentNumber={data.student_number}
-      program={data.program_name}
-      yearLabel={`Year ${data.year_level}`}
-      email={data.email}
+      studentNumber={record.student_number}
+      program={record.program_name}
+      yearLabel={`Year ${record.year_level}`}
+      email={record.email}
       standing={
-        data.is_delinquent ||
-        data.standing === "probation" ||
-        data.standing === "dismissed"
+        record.is_delinquent ||
+        record.standing === "probation" ||
+        record.standing === "dismissed"
           ? "delinquent"
-          : data.open_flags_count > 0 || data.standing === "warning"
+          : record.open_flags_count > 0 || record.standing === "warning"
             ? "flagged"
             : "good"
       }
       standingLabel={
-        data.is_delinquent ||
-        data.standing === "probation" ||
-        data.standing === "dismissed"
+        record.is_delinquent ||
+        record.standing === "probation" ||
+        record.standing === "dismissed"
           ? "Delinquency flag"
-          : data.open_flags_count > 0
+          : record.open_flags_count > 0
             ? "Open grade flag"
-            : data.standing.replaceAll("_", " ")
+            : record.standing.replaceAll("_", " ")
       }
     />
   );
+  if (!data)
+    return (
+      <AccountSkeleton
+        id="selected-student-header"
+        loading
+        measured
+        label="Loading student record…"
+      >
+        {header}
+      </AccountSkeleton>
+    );
+  return header;
 }

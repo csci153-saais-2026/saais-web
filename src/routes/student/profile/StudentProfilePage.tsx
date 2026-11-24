@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { PROFILE_SKELETON_SAMPLE } from "./profile.skeleton-sample";
 import * as React from "react";
 import {
   AssignmentHistoryDialog,
@@ -331,6 +332,7 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
     <AccountSkeleton
       id="student-profile"
       data={isPending ? null : data}
+      sample={PROFILE_SKELETON_SAMPLE}
       label="Loading..."
     >
       {(data) => (

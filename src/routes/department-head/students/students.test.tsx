@@ -114,10 +114,7 @@ describe("Students directory", () => {
     expect(await within(dialog).findAllByText(/GWA/)).not.toHaveLength(0);
     fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Audit log" }));
     await waitFor(() =>
-      expect(
-        within(dialog).queryByRole("table", { name: "Student audit log" }) ??
-          within(dialog).queryByText(/No audit events have been recorded/),
-      ).toBeTruthy(),
+      expect(within(dialog).queryByText("Record audit trail")).toBeTruthy(),
     );
   });
 

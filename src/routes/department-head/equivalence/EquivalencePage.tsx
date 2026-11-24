@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { EQUIVALENCE_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
 import * as React from "react";
 import { AlertIcon, PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
@@ -55,9 +56,10 @@ export default function EquivalencePage() {
     }
   }
   const showToast = useNotify();
-  const curricula = query.data?.curricula ?? [];
-  const courses = query.data?.courses ?? [];
-  const equivalencies = query.data?.equivalencies ?? [];
+  const curricula = (query.data ?? EQUIVALENCE_SKELETON_SAMPLE).curricula;
+  const courses = (query.data ?? EQUIVALENCE_SKELETON_SAMPLE).courses;
+  const equivalencies = (query.data ?? EQUIVALENCE_SKELETON_SAMPLE)
+    .equivalencies;
   const [pickedFromId, setFromCurriculumId] = React.useState("");
   const [pickedToId, setToCurriculumId] = React.useState("");
   // Start on a curriculum pair that already has equivalencies, otherwise on the first two curricula.
@@ -169,6 +171,7 @@ export default function EquivalencePage() {
     <AccountSkeleton
       id="dh-equivalence"
       data={query.data}
+      sample={EQUIVALENCE_SKELETON_SAMPLE}
       label="Loading equivalencies…"
     >
       {() => (

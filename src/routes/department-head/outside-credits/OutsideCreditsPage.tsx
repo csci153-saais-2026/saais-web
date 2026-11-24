@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { OUTSIDE_CREDITS_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -420,7 +421,7 @@ export default function OutsideCreditsPage() {
   const creditCourse = useCreditCourse();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const showToast = useNotify();
-  const credits = query.data?.records ?? [];
+  const credits = (query.data ?? OUTSIDE_CREDITS_SKELETON_SAMPLE).records;
 
   async function addCredit(credit: NewOutsideCredit) {
     const student = query.data?.students.find(
@@ -470,6 +471,7 @@ export default function OutsideCreditsPage() {
     <AccountSkeleton
       id="dh-outside-credits"
       data={query.data}
+      sample={OUTSIDE_CREDITS_SKELETON_SAMPLE}
       label="Loading outside credits…"
     >
       {(queryData) => (

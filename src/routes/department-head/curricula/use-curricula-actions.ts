@@ -66,29 +66,29 @@ export function useCurriculaActions() {
   const createSlot = useMutation({
     mutationFn: ({
       termId,
-      name,
+      courseId,
       units,
       type,
     }: {
       termId: string;
-      name: string;
+      courseId: string;
       units: number;
       type: Parameters<typeof createCurriculumSlot>[3];
-    }) => createCurriculumSlot(termId, name, units, type),
+    }) => createCurriculumSlot(termId, courseId, units, type),
     onSuccess,
   });
   const updateSlot = useMutation({
     mutationFn: ({
       id,
-      name,
+      courseId,
       units,
       type,
     }: {
       id: string;
-      name: string;
+      courseId: string;
       units: number;
       type: Parameters<typeof updateCurriculumSlot>[3];
-    }) => updateCurriculumSlot(id, name, units, type),
+    }) => updateCurriculumSlot(id, courseId, units, type),
     onSuccess,
   });
   const deleteSlot = useMutation({
@@ -121,16 +121,16 @@ export function useCurriculaActions() {
     deleteTerm: (id: string) => deleteTerm.mutateAsync(id),
     createSlot: (
       termId: string,
-      name: string,
+      courseId: string,
       units: number,
       type: Parameters<typeof createCurriculumSlot>[3],
-    ) => createSlot.mutateAsync({ termId, name, units, type }),
+    ) => createSlot.mutateAsync({ termId, courseId, units, type }),
     updateSlot: (
       id: string,
-      name: string,
+      courseId: string,
       units: number,
       type: Parameters<typeof updateCurriculumSlot>[3],
-    ) => updateSlot.mutateAsync({ id, name, units, type }),
+    ) => updateSlot.mutateAsync({ id, courseId, units, type }),
     deleteSlot: (id: string) => deleteSlot.mutateAsync(id),
     createCourse: (input: Parameters<typeof createCatalogCourse>[0]) =>
       createCourse.mutateAsync(input),

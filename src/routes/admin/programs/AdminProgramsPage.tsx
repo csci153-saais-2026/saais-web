@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { PROGRAMS_SKELETON_SAMPLE } from "../catalog.skeleton-sample";
 import { notify } from "@/lib/notify";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
@@ -391,6 +392,7 @@ export default function AdminProgramsPage() {
       <AccountSkeleton
         id="admin-programs-1"
         loading={loading}
+        measured
         label="Loading programs…"
       >
         <DataTablePanel
@@ -398,7 +400,13 @@ export default function AdminProgramsPage() {
           title="Degree programs"
           description="Codes and names must be unique."
           columns={columns}
-          rows={loading || error || searchError ? [] : programs}
+          rows={
+            error || searchError
+              ? []
+              : loading
+                ? PROGRAMS_SKELETON_SAMPLE
+                : programs
+          }
           rowKey={(program) => program.id}
           empty={
             loading

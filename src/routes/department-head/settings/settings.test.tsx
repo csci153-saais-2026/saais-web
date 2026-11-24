@@ -5,6 +5,7 @@ import { getAuditEvents, getSettings } from "../shared/dh-api";
 import {
   renderDepartmentHead,
   setupDepartmentHeadMockApi,
+  waitForLoaded,
 } from "../test-utils";
 
 setupDepartmentHeadMockApi();
@@ -12,6 +13,7 @@ setupDepartmentHeadMockApi();
 async function openPage() {
   renderDepartmentHead(<SettingsPage />);
   await screen.findByLabelText("Probation from (%)");
+  await waitForLoaded();
 }
 
 describe("Department Settings", () => {

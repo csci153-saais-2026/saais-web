@@ -172,8 +172,8 @@ describe("Manage positional curriculum terms", () => {
         .map((node) => node.textContent),
     ).toEqual(["Year 2 · Semester 1", "Year 3 · Semester 2"]);
     expect(
-      (screen.getByLabelText("Curriculum version") as HTMLSelectElement).value,
-    ).toBe("v1");
+      screen.getByRole("combobox", { name: "Curriculum version" }).textContent,
+    ).toContain("2027");
     expect(
       (client.getQueryData(detailKey) as { slots: unknown[] }).slots,
     ).toEqual(slots);
@@ -221,8 +221,8 @@ describe("Manage positional curriculum terms", () => {
     expect(screen.queryByText("Year 1 · Semester 1")).toBeNull();
     expect(screen.getByText("Year 2 · Semester 1")).toBeTruthy();
     expect(
-      (screen.getByLabelText("Curriculum version") as HTMLSelectElement).value,
-    ).toBe("v1");
+      screen.getByRole("combobox", { name: "Curriculum version" }).textContent,
+    ).toContain("2027");
     expect(
       (client.getQueryData(detailKey) as { slots: unknown[] }).slots,
     ).toEqual([]);

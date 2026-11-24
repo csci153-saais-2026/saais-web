@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { GRADE_FLAGS_SKELETON_SAMPLE } from "../adviser.skeleton-samples";
 import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { AdviserPage } from "../Adviser";
@@ -228,12 +229,13 @@ function Resolve({
 function FlagList({ userId }: { userId: string }) {
   const [revision, setRevision] = useState(0);
   const requestKey = JSON.stringify([userId, revision]);
-  const { data, error, key } = useScopedRequest(
-    requestKey,
-    true,
-    getFlags,
-    true,
-  );
+  const {
+    data: loadedData,
+    error,
+    key,
+  } = useScopedRequest(requestKey, true, getFlags, true);
+  // While loading, the skeleton is measured from sample content.
+  const data = loadedData ?? (error ? undefined : GRADE_FLAGS_SKELETON_SAMPLE);
   const openFlags = data?.flags
     .slice()
     .sort(
@@ -249,7 +251,8 @@ function FlagList({ userId }: { userId: string }) {
       />
       <AccountSkeleton
         id="AdviserGradeFlags-1"
-        loading={!data && !error}
+        loading={!loadedData && !error}
+        measured
         label="Loading flags…"
       >
         {error && (

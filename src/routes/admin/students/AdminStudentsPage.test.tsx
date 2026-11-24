@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -104,6 +105,7 @@ describe("AdminStudentsPage", () => {
     render(<AdminStudentsPage />);
 
     expect(await screen.findByText("Alex Student")).toBeTruthy();
+    await waitForLoaded();
     expect(screen.getByText("24-1-01798")).toBeTruthy();
     expect(screen.getByText("BSCS 2024-2025 v1")).toBeTruthy();
     expect(screen.getByText("1.75")).toBeTruthy();

@@ -142,8 +142,9 @@ describe("Department Staff accounts directory", () => {
       within(table).queryByRole("columnheader", { name: "Status" }),
     ).toBeNull();
     const peoplePanel = screen
-      .getByText("People")
-      .closest('[data-slot="card"]');
+      .getAllByText("People")
+      .map((node) => node.closest('[data-slot="card"]'))
+      .find((panel) => panel?.contains(table));
     expect(peoplePanel?.contains(table)).toBe(true);
     expect(
       peoplePanel?.contains(

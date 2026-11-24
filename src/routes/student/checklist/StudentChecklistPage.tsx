@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { CHECKLIST_SKELETON_SAMPLE } from "./checklist.skeleton-sample";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -383,6 +384,11 @@ export function StudentChecklistView({
   );
 }
 
+export interface ChecklistSkeletonData {
+  readonly meta: ChecklistMetaData;
+  readonly terms: readonly ChecklistTermSection[];
+}
+
 interface ChecklistMetaData {
   readonly summary: ApiSchema<"AcademicSummary">;
   readonly studentName: string | null;
@@ -626,11 +632,14 @@ export function StudentChecklistPage({ studentId }: { studentId: string }) {
     <AccountSkeleton
       id="student-checklist"
       data={
-        checklistQuery.isPending || metaQuery.isPending ? null : metaQuery.data
+        checklistQuery.isPending || metaQuery.isPending || !metaQuery.data
+          ? null
+          : { meta: metaQuery.data, terms }
       }
+      sample={CHECKLIST_SKELETON_SAMPLE}
       label="Loading..."
     >
-      {(meta) => (
+      {({ meta, terms }) => (
         <StudentChecklistView
           summary={meta.summary}
           terms={terms}

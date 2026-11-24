@@ -185,8 +185,17 @@ function hasRememberedShape(id: string | undefined): boolean {
  */
 export function AccountSkeleton<T>({
   fallback,
+  measured,
   ...props
-}: SkeletonProps<T> & { fallback?: React.ReactNode }) {
+}: SkeletonProps<T> & {
+  fallback?: React.ReactNode;
+  /**
+   * The children already render sample content while loading (their data
+   * falls back to a layout sample), so skullet can measure them directly and
+   * the generic bars are not needed.
+   */
+  measured?: boolean;
+}) {
   let accountId = "anonymous";
   try {
     // useAuth only throws when no provider exists, which is stable per tree.
@@ -195,7 +204,12 @@ export function AccountSkeleton<T>({
   } catch {
     // Rendered outside an AuthProvider (public pages, isolated tests).
   }
-  const useFallback = !props.skeleton && !hasRememberedShape(props.id);
+  // A `sample` lets skullet measure the real layout on the first visit too,
+  // so the generic bars are only for pages without one.
+  const hasSample =
+    measured || ("sample" in props && props.sample !== undefined);
+  const useFallback =
+    !props.skeleton && !hasSample && !hasRememberedShape(props.id);
   const bars =
     fallback ??
     ("data" in props ? (

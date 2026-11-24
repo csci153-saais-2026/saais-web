@@ -155,7 +155,9 @@ describe("advisee identity", () => {
     expect(await screen.findByText("First Student")).toBeTruthy();
     view.rerender(<SelectedStudentHeader id={second.student_id} />);
     expect(screen.queryByText("First Student")).toBeNull();
-    expect(screen.getByRole("status").textContent).toContain("Loading");
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
+      "Loading",
+    );
     auth.user = { id: "adviser-two" };
     view.rerender(<SelectedStudentHeader id={first.student_id} />);
     expect(screen.queryByText("First Student")).toBeNull();

@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { REPORTS_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
 import { useMemo, useRef, useState } from "react";
 import { ReportStatsSection } from "@/components/features/report-stats-section";
 import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
@@ -34,7 +35,7 @@ export default function DepartmentReportsPage() {
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null);
   const pdfPreview = useDepartmentPdfUrl(pdf);
-  const data = source.data;
+  const data = source.data ?? REPORTS_SKELETON_SAMPLE;
   const term = pickedTerm || data?.currentTermId || data?.terms[0]?.value || "";
   const termLabel =
     data?.terms.find((option) => option.value === term)?.label ?? "";
@@ -71,7 +72,7 @@ export default function DepartmentReportsPage() {
         <Button
           type="button"
           variant="outline"
-          disabled={!report}
+          disabled={!report || !source.data}
           onClick={exportPdf}
         >
           <DownloadIcon />
@@ -80,7 +81,7 @@ export default function DepartmentReportsPage() {
       }
     />
   );
-  if (source.isError && !data)
+  if (source.isError && !source.data)
     return (
       <>
         {heading}
@@ -91,7 +92,8 @@ export default function DepartmentReportsPage() {
   return (
     <AccountSkeleton
       id="dh-reports"
-      data={data}
+      data={source.data}
+      sample={REPORTS_SKELETON_SAMPLE}
       label="Loading department reports…"
     >
       {(data) => (

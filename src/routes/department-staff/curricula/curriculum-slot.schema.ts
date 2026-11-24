@@ -15,11 +15,11 @@ export const curriculumSlotSchema = z
   })
   .strict()
   .superRefine((values, context) => {
-    if (!values.course_id && !values.slot_label) {
+    if (!values.course_id) {
       context.addIssue({
         code: "custom",
-        path: ["slot_label"],
-        message: "Enter a course or slot name, or select a course.",
+        path: ["course_id"],
+        message: "Select an active course.",
       });
     }
   });

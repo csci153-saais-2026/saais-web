@@ -139,28 +139,15 @@ async function chooseOption(label: string, option: string) {
 }
 
 describe("Add curriculum requirement", () => {
-  it("adds a named required slot without a course reference", async () => {
-    const { onCreated } = mount();
-    fireEvent.change(screen.getByLabelText("Course / slot"), {
-      target: { value: "Core requirement" },
-    });
+  it("requires an active course before adding a requirement", async () => {
+    mount();
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await vi.waitFor(() => expect(createCurriculumSlot).toHaveBeenCalledOnce());
-    expect(createCurriculumSlot).toHaveBeenCalledWith({
-      curriculum_term_id: "term",
-      course_id: null,
-      is_elective_slot: false,
-      slot_type: "required",
-      slot_label: "Core requirement",
-      nominal_units: 3,
-    });
-    expect(onCreated).toHaveBeenCalledWith("version");
+    await screen.findByText("Select an active course.");
+    expect(createCurriculumSlot).not.toHaveBeenCalled();
   });
   it("submits a fixed required course and preserves its nominal units in the cache", async () => {
     const { client, onCreated } = mount();
-    fireEvent.change(screen.getByLabelText("Active course (optional)"), {
-      target: { value: course.id },
-    });
+    await chooseOption("Active course", "CS 101 — Computing");
     fireEvent.change(screen.getByLabelText("Required units"), {
       target: { value: "3.25" },
     });
@@ -186,9 +173,7 @@ describe("Add curriculum requirement", () => {
   it("submits a flexible elective without a course reference and retains its label and units", async () => {
     const { onCreated } = mount();
     await chooseOption("Type", "Elective slot");
-    fireEvent.change(screen.getByLabelText("Course / slot"), {
-      target: { value: "Technical elective" },
-    });
+    await chooseOption("Active course", "CS 101 — Computing");
     fireEvent.change(screen.getByLabelText("Required units"), {
       target: { value: "0.75" },
     });
@@ -196,10 +181,10 @@ describe("Add curriculum requirement", () => {
     await vi.waitFor(() => expect(createCurriculumSlot).toHaveBeenCalledOnce());
     expect(createCurriculumSlot).toHaveBeenCalledWith({
       curriculum_term_id: "term",
-      course_id: null,
+      course_id: course.id,
       is_elective_slot: true,
       slot_type: "elective",
-      slot_label: "Technical elective",
+      slot_label: null,
       nominal_units: 0.75,
     });
     expect(onCreated).toHaveBeenCalledWith("version");
@@ -208,12 +193,10 @@ describe("Add curriculum requirement", () => {
   it("blocks missing fixed-course references and invalid quarter-unit values before writing", async () => {
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await screen.findByText("Enter a course or slot name, or select a course.");
+    await screen.findByText("Select an active course.");
     expect(createCurriculumSlot).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Active course (optional)"), {
-      target: { value: course.id },
-    });
+    await chooseOption("Active course", "CS 101 — Computing");
     fireEvent.change(screen.getByLabelText("Required units"), {
       target: { value: "1.1" },
     });
@@ -225,9 +208,7 @@ describe("Add curriculum requirement", () => {
   it("blocks a stale course reference from another department", async () => {
     const foreignId = "22222222-2222-4222-8222-222222222222";
     mount([{ ...course, id: foreignId, department_id: "foreign-department" }]);
-    fireEvent.change(screen.getByLabelText("Active course (optional)"), {
-      target: { value: foreignId },
-    });
+    await chooseOption("Active course", "CS 101 — Computing");
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await screen.findByText(
       "Select an active course from your department catalog and retry.",
@@ -241,9 +222,7 @@ describe("Add curriculum requirement", () => {
       programs: [{ ...program, department_id: "foreign-department" }],
       versions: [version],
     });
-    fireEvent.change(screen.getByLabelText("Active course (optional)"), {
-      target: { value: course.id },
-    });
+    await chooseOption("Active course", "CS 101 — Computing");
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await screen.findByText(
       "This version is no longer available in your authorized department. Refresh the list.",
@@ -256,9 +235,7 @@ describe("Add curriculum requirement", () => {
       conflict("Referenced curriculum history prevents this change."),
     );
     const { onCreated } = mount();
-    fireEvent.change(screen.getByLabelText("Active course (optional)"), {
-      target: { value: course.id },
-    });
+    await chooseOption("Active course", "CS 101 — Computing");
     fireEvent.change(screen.getByLabelText("Required units"), {
       target: { value: "2.5" },
     });

@@ -20,14 +20,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ApiClientError } from "@/lib/api";
-import { notify } from "@/lib/notify";
 import {
   useCreateCurriculumSlot,
   useCurriculumCourses,
   useManageCurriculumSlot,
 } from "@/hooks/use-curricula";
-import { useStaffScope } from "../shared/use-staff-scope";
-import { CourseDialog } from "../course-catalog/CourseDialog";
 import type {
   CurriculumSlot,
   CurriculumTerm,
@@ -59,7 +56,6 @@ function slotError(error: unknown, editing: boolean): string {
 type CurriculumSlotDialogProps = {
   term: CurriculumTerm;
   version: CurriculumVersion;
-  courseLabel?: string;
   onClose: () => void;
 } & (
   | {
@@ -81,11 +77,9 @@ export function CurriculumSlotDialog({
   slot,
   onCreated,
   onUpdated,
-  courseLabel,
 }: CurriculumSlotDialogProps) {
   const creation = useCreateCurriculumSlot();
   const update = useManageCurriculumSlot();
-  const scope = useStaffScope();
   const editing = slot !== undefined;
   const courseOptions = useCurriculumCourses();
   const mutation = editing ? update : creation;
@@ -94,7 +88,6 @@ export function CurriculumSlotDialog({
     register,
     control,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CurriculumSlotValues>({
     resolver: zodResolver(curriculumSlotSchema),
@@ -119,16 +112,20 @@ export function CurriculumSlotDialog({
     if (submitting.current) return;
     submitting.current = true;
     try {
+      const courseValues = { ...values, slot_label: "" };
       if (slot) {
         const result = await update.mutateAsync({
           action: "edit",
           term,
           original: slot,
-          values,
+          values: courseValues,
         });
         onUpdated(result.versionId);
       } else {
-        const result = await creation.mutateAsync({ term, values });
+        const result = await creation.mutateAsync({
+          term,
+          values: courseValues,
+        });
         onCreated(result.versionId);
       }
     } catch {
@@ -178,36 +175,7 @@ export function CurriculumSlotDialog({
             className="grid min-w-0 gap-4 sm:grid-cols-2"
           >
             <FormField
-              label="Course / slot"
-              htmlFor="curriculum-slot-label"
-              className="sm:col-span-2"
-              error={errors.slot_label?.message}
-            >
-              <Input
-                id="curriculum-slot-label"
-                maxLength={150}
-                placeholder={courseLabel}
-                aria-invalid={!!errors.slot_label}
-                {...register("slot_label")}
-              />
-              {scope.status === "ready" && (
-                <CourseDialog
-                  departmentId={scope.departmentId}
-                  triggerLabel="Create catalog course"
-                  onCreated={(course) => {
-                    setValue("course_id", course.id, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    });
-                    notify.success(
-                      `Course ${course.code} created. Save this requirement to attach it.`,
-                    );
-                  }}
-                />
-              )}
-            </FormField>
-            <FormField
-              label="Active course (optional)"
+              label="Active course"
               htmlFor="curriculum-slot-course"
               className="sm:col-span-2"
               error={errors.course_id?.message}
@@ -216,29 +184,44 @@ export function CurriculumSlotDialog({
                 name="course_id"
                 control={control}
                 render={({ field }) => (
-                  <select
-                    {...field}
-                    id="curriculum-slot-course"
-                    className="w-full rounded-sm border border-input bg-card px-3 py-[9px] text-sm"
-                    aria-invalid={!!errors.course_id}
+                  <Select
+                    value={field.value || "none"}
+                    onValueChange={(value) =>
+                      field.onChange(value === "none" ? "" : value)
+                    }
                     disabled={pending || courseOptions.isError}
                   >
-                    <option value="">Select an active course</option>
-                    {editing &&
-                      slot.course_id &&
-                      !(courseOptions.data ?? []).some(
-                        (course) => course.id === slot.course_id,
-                      ) && (
-                        <option value={slot.course_id}>
-                          Current course reference unavailable or inactive
-                        </option>
-                      )}
-                    {(courseOptions.data ?? []).map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.code} — {course.title}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      id="curriculum-slot-course"
+                      className="w-full"
+                      aria-invalid={!!errors.course_id}
+                    >
+                      <SelectValue placeholder="Select an active course" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      avoidCollisions={false}
+                    >
+                      <SelectItem value="none">
+                        Select an active course
+                      </SelectItem>
+                      {editing &&
+                        slot.course_id &&
+                        !(courseOptions.data ?? []).some(
+                          (course) => course.id === slot.course_id,
+                        ) && (
+                          <SelectItem value={slot.course_id}>
+                            Current course reference unavailable or inactive
+                          </SelectItem>
+                        )}
+                      {(courseOptions.data ?? []).map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.code} — {course.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               />
               {courseOptions.isPending && (
@@ -305,10 +288,6 @@ export function CurriculumSlotDialog({
                       <SelectItem value="required">Required course</SelectItem>
                       <SelectItem value="elective">Elective slot</SelectItem>
                       <SelectItem value="ge">GE slot</SelectItem>
-                      <SelectItem value="pe">
-                        Physical education course
-                      </SelectItem>
-                      <SelectItem value="nstp">NSTP course</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

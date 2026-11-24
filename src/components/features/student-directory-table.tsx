@@ -147,22 +147,26 @@ function DepartmentDirectoryTable<Student extends DepartmentDirectoryStudent>({
   );
 }
 
+const DEAN_COLUMNS = [
+  "Student",
+  "School email",
+  "Department",
+  "Curriculum",
+  "Year standing",
+  "Adviser",
+];
+
 function DeanDirectoryTable({
   students,
   totalCount = students.length,
   onSelectStudent,
   onResetFilters,
 }: DeanDirectoryProps) {
-  const countLabel =
-    students.length === totalCount
-      ? `${students.length} ${students.length === 1 ? "student" : "students"}`
-      : `Showing ${students.length} of ${totalCount} students`;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between gap-4 px-5 py-4">
         <div>
           <h2 className="font-semibold">Student directory</h2>
-          <p className="text-sm text-muted-foreground">{countLabel}</p>
         </div>
         <span
           aria-live="polite"
@@ -172,77 +176,86 @@ function DeanDirectoryTable({
         </span>
       </div>
       <Table responsive aria-label="Student directory">
-        <TableHeader>
+        <TableHeader className="bg-secondary">
           <TableRow>
-            <TableHead>Student</TableHead>
-            <TableHead>Student no.</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead>Curriculum</TableHead>
-            <TableHead>Adviser</TableHead>
+            {DEAN_COLUMNS.map((label) => (
+              <TableHead
+                key={label}
+                className="px-5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase"
+              >
+                {label}
+              </TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {students.length ? (
-            students.map((student) => (
-              <TableRow
-                key={student.studentNumber}
-                tabIndex={0}
-                role="button"
-                aria-label={`Open record for ${student.name}`}
-                className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => onSelectStudent(student)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelectStudent(student);
-                  }
-                }}
-              >
-                <TableCell label="Student" className="font-medium text-primary">
-                  <span
-                    className="block max-w-56 truncate"
-                    title={student.name}
-                  >
-                    {student.name}
-                  </span>
-                </TableCell>
-                <TableCell label="Student no." className="font-mono text-xs">
-                  {student.studentNumber}
-                </TableCell>
-                <TableCell label="Department">
-                  <span
-                    className="block max-w-56 truncate"
-                    title={student.department}
-                  >
-                    {student.department}
-                  </span>
-                </TableCell>
-                <TableCell label="Curriculum">
-                  <span
-                    className="block max-w-48 truncate"
-                    title={student.curriculum}
-                  >
-                    {student.curriculum}
-                  </span>
-                </TableCell>
-                <TableCell label="Adviser">
-                  <span
-                    className="block max-w-56 truncate"
-                    title={student.adviser}
-                  >
-                    {student.adviser}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
+          {students.map((student) => (
+            <TableRow
+              key={student.studentNumber}
+              tabIndex={0}
+              role="button"
+              aria-label={`Open record for ${student.name}`}
+              className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              onClick={() => onSelectStudent(student)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectStudent(student);
+                }
+              }}
+            >
               <TableCell
-                colSpan={5}
-                className="py-10 text-center text-muted-foreground"
+                label="Student"
+                className="px-5 py-3 whitespace-normal"
               >
-                <div className="flex flex-col items-center gap-3">
-                  <span>No students match these filters.</span>
+                <span className="block font-semibold">{student.name}</span>
+                <span className="block font-mono text-xs font-normal text-muted-foreground">
+                  {student.studentNumber}
+                </span>
+              </TableCell>
+              <TableCell
+                label="School email"
+                className="px-5 py-3 text-[13.5px] whitespace-normal"
+              >
+                <span className="min-w-0 break-all">{student.email}</span>
+              </TableCell>
+              <TableCell
+                label="Department"
+                className="px-5 py-3 text-[13.5px] whitespace-normal"
+              >
+                {student.department}
+              </TableCell>
+              <TableCell label="Curriculum" className="px-5 py-3">
+                <Badge variant="secondary" className="rounded-sm">
+                  {student.curriculum}
+                </Badge>
+              </TableCell>
+              <TableCell
+                label="Year standing"
+                className="px-5 py-3 text-[13.5px]"
+              >
+                {student.yearLabel}
+              </TableCell>
+              <TableCell
+                label="Adviser"
+                className="px-5 py-3 text-[13.5px] whitespace-normal"
+              >
+                {student.adviser}
+              </TableCell>
+            </TableRow>
+          ))}
+          {students.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={DEAN_COLUMNS.length} className="px-5 py-10">
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <div>
+                    <p className="font-semibold">
+                      No students match these filters.
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Change your search or reset the filters.
+                    </p>
+                  </div>
                   {onResetFilters && (
                     <Button
                       type="button"
@@ -259,6 +272,14 @@ function DeanDirectoryTable({
           )}
         </TableBody>
       </Table>
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="border-t border-border px-5 py-3 text-xs text-muted-foreground"
+      >
+        Showing {students.length} of {totalCount} students
+      </p>
     </div>
   );
 }

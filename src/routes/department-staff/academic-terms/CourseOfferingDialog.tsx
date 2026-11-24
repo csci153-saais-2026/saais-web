@@ -1,4 +1,3 @@
-import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -324,11 +323,9 @@ export function CourseOfferingDialog({
               )}
 
               {mode === "create" && activeCourses.isPending && (
-                <TableSkeleton
-                  rows={4}
-                  columns={4}
-                  label="Loading active courses for your department…"
-                />
+                <p role="status" className="sr-only">
+                  Loading active courses for your department…
+                </p>
               )}
               {mode === "create" && activeCourses.isError && (
                 <div className="space-y-2">

@@ -8,6 +8,7 @@ import {
   type EnrollmentHistoryRow,
 } from "./EnrollmentHistoryTable";
 import type { EnrollmentHistoryOfferingDetail } from "./student-enrollment-history.api";
+import { ENROLLMENT_HISTORY_SKELETON_SAMPLE } from "./enrollment-history.skeleton-sample";
 import { useStudentEnrollmentHistory } from "./use-student-enrollment-history";
 
 export interface StudentEnrollmentHistoryViewProps {
@@ -72,6 +73,7 @@ export function StudentEnrollmentHistoryPage({
     <AccountSkeleton
       id="student-enrollment-history"
       data={isPending ? null : data}
+      sample={ENROLLMENT_HISTORY_SKELETON_SAMPLE}
       label="Loading..."
     >
       {(data) => (
