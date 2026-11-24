@@ -4,7 +4,7 @@ import { createHandler } from "../functions/_shared/http.ts";
 import {
   assistantAnswer,
   readAssistantConfig,
-} from "../functions/_shared/matt-assistant.ts";
+} from "../functions/_shared/ai-assistant.ts";
 
 test("checks record scope before contacting the assistant provider", async () => {
   const endpoint = "https://assistant.example.test/chat/completions";
@@ -274,7 +274,7 @@ test("supports native Google Gemini generateContent requests and filters interna
 
 test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and falls back on upstream failure", async () => {
   const vars = {
-    SAAIS_ASSISTANT_PROVIDERS: "gemini,nvidia,openai",
+    SAAIS_ASSISTANT_PROVIDERS: "openai,gemini,nvidia",
     SAAIS_ASSISTANT_GEMINI_API_KEY: "gemini-key",
     SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-2.5-flash",
     SAAIS_ASSISTANT_NVIDIA_API_KEY: "nvidia-key",
@@ -289,7 +289,7 @@ test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and 
   assert.equal(assistant.providers?.length, 3);
   assert.deepEqual(
     assistant.providers.map((item) => item.provider),
-    ["gemini", "nvidia", "openai"],
+    ["openai", "gemini", "nvidia"],
   );
 
   const attempted = [];
@@ -300,26 +300,23 @@ test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and 
       if (url.endsWith("/matt_assistant_context"))
         return Response.json(context);
       attempted.push({ url, options });
-      if (url.includes("generativelanguage.googleapis.com")) {
+      if (
+        url === "https://openai-compatible.example.test/v1/chat/completions"
+      ) {
+        assert.equal(options.headers.Authorization, "Bearer openai-key");
         return Response.json(
           { error: { message: "Quota exceeded" } },
           { status: 429 },
         );
       }
-      if (url === "https://integrate.api.nvidia.com/v1/chat/completions") {
-        const body = JSON.parse(options.body);
-        assert.equal(body.model, "meta/llama-3.3-70b-instruct");
-        assert.equal(body.max_tokens, 800);
-        assert.equal(options.headers.Authorization, "Bearer nvidia-key");
+      if (url.includes("generativelanguage.googleapis.com")) {
+        assert.equal(options.headers["x-goog-api-key"], "gemini-key");
         return Response.json({
-          choices: [
+          candidates: [
             {
-              message: {
-                content: [
-                  {
-                    type: "text",
-                    text: "NVIDIA NIM fallback answer from academic facts.",
-                  },
+              content: {
+                parts: [
+                  { text: "Gemini fallback answer from academic facts." },
                 ],
               },
             },
@@ -334,7 +331,9 @@ test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and 
   assert.equal(response.status, 200);
   assert.equal(attempted.length, 2);
   const data = await response.json();
-  assert.equal(data.answer, "NVIDIA NIM fallback answer from academic facts.");
+  assert.equal(data.answer, "Gemini fallback answer from academic facts.");
+  assert.match(attempted[0].url, /openai-compatible/);
+  assert.match(attempted[1].url, /generativelanguage/);
 });
 
 test("rejects non-HTTPS, credential-bearing, or path-injecting provider configs", () => {
@@ -383,6 +382,7 @@ test("safety blocks and incomplete answers stop rather than retry another provid
   const assistant = readAssistantConfig((name) => vars[name]);
   for (const result of [
     { promptFeedback: { blockReason: "SAFETY" } },
+    { candidates: [{ finishReason: "ESCALATION" }] },
     {
       candidates: [
         { finishReason: "SAFETY", content: { parts: [{ text: "blocked" }] } },
@@ -488,11 +488,16 @@ test("the complete fallback chain shares one 12-second budget", async () => {
   };
   const assistant = readAssistantConfig((name) => vars[name]);
   let clock = 100000;
-  const originalNow = Date.now;
+  const originalNow = Object.getOwnPropertyDescriptor(performance, "now");
+  const originalDateNow = Date.now;
   const originalTimeout = AbortSignal.timeout;
   const limits = [];
   try {
-    Date.now = () => clock;
+    Object.defineProperty(performance, "now", {
+      configurable: true,
+      value: () => clock,
+    });
+    Date.now = () => 100000 - (clock - 100000);
     AbortSignal.timeout = (ms) => {
       limits.push(ms);
       return new AbortController().signal;
@@ -510,7 +515,9 @@ test("the complete fallback chain shares one 12-second budget", async () => {
     assert.deepEqual(limits, [4000, 4000, 4000]);
     assert.equal(clock, 112000);
   } finally {
-    Date.now = originalNow;
+    if (originalNow) Object.defineProperty(performance, "now", originalNow);
+    else delete performance.now;
+    Date.now = originalDateNow;
     AbortSignal.timeout = originalTimeout;
   }
 });
@@ -523,12 +530,15 @@ test("the time budget adapts to one or four configured candidates", async () => 
   };
   for (const count of [1, 4]) {
     const providers = Array.from({ length: count }, () => provider);
-    const originalNow = Date.now;
+    const originalNow = Object.getOwnPropertyDescriptor(performance, "now");
     const originalTimeout = AbortSignal.timeout;
     const limits = [];
     let clock = 100000;
     try {
-      Date.now = () => clock;
+      Object.defineProperty(performance, "now", {
+        configurable: true,
+        value: () => clock,
+      });
       AbortSignal.timeout = (ms) => {
         limits.push(ms);
         return new AbortController().signal;
@@ -546,7 +556,8 @@ test("the time budget adapts to one or four configured candidates", async () => 
       assert.deepEqual(limits, Array(count).fill(12000 / count));
       assert.equal(clock, 112000);
     } finally {
-      Date.now = originalNow;
+      if (originalNow) Object.defineProperty(performance, "now", originalNow);
+      else delete performance.now;
       AbortSignal.timeout = originalTimeout;
     }
   }
@@ -577,4 +588,134 @@ test("full Gemini endpoint must match the configured model", () => {
   assert.equal(readAssistantConfig((name) => vars[name]).model, "gemini-new");
   legacy.SAAIS_ASSISTANT_ENDPOINT = vars.SAAIS_ASSISTANT_GEMINI_ENDPOINT;
   assert.equal(readAssistantConfig((name) => legacy[name]).model, "gemini-new");
+});
+
+test("Gemini base routes preserve query strings and existing full endpoints", () => {
+  for (const [endpoint, expected] of [
+    [
+      "https://gateway.example.test/v1beta?tenant=school",
+      "https://gateway.example.test/v1beta/models/gemini-test:generateContent?tenant=school",
+    ],
+    [
+      "https://gateway.example.test/v1/models/?tenant=school",
+      "https://gateway.example.test/v1/models/gemini-test:generateContent?tenant=school",
+    ],
+    [
+      "https://gateway.example.test/custom?tenant=school",
+      "https://gateway.example.test/custom/v1beta/models/gemini-test:generateContent?tenant=school",
+    ],
+    [
+      "https://gateway.example.test/v1beta/models/gemini-test:generateContent?tenant=school",
+      "https://gateway.example.test/v1beta/models/gemini-test:generateContent?tenant=school",
+    ],
+    [
+      "https://gateway.example.test/v1/chat/completions?tenant=school",
+      "https://gateway.example.test/v1/chat/completions?tenant=school",
+    ],
+  ]) {
+    const vars = {
+      SAAIS_ASSISTANT_GEMINI_ENDPOINT: endpoint,
+      SAAIS_ASSISTANT_GEMINI_API_KEY: "key",
+      SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-test",
+    };
+    assert.equal(readAssistantConfig((name) => vars[name])?.endpoint, expected);
+  }
+});
+
+test("custom-host native Gemini routes must match the configured model", () => {
+  const vars = {
+    SAAIS_ASSISTANT_ENDPOINT:
+      "https://gateway.example.test/v1beta/models/gemini-old:generateContent",
+    SAAIS_ASSISTANT_API_KEY: "key",
+    SAAIS_ASSISTANT_MODEL: "gemini-new",
+  };
+  assert.equal(
+    readAssistantConfig((name) => vars[name]),
+    undefined,
+  );
+  vars.SAAIS_ASSISTANT_ENDPOINT =
+    "https://gateway.example.test/v1beta/models/gemini-new:generateContent";
+  assert.equal(readAssistantConfig((name) => vars[name])?.protocol, "gemini");
+  vars.SAAIS_ASSISTANT_ENDPOINT =
+    "https://gateway.example.test/v1/chat/completions";
+  assert.equal(readAssistantConfig((name) => vars[name])?.protocol, "openai");
+});
+
+test("deduplicates native Gemini model aliases but preserves keys and chat model variants", () => {
+  const vars = {
+    SAAIS_ASSISTANT_PROVIDER: "gemini",
+    SAAIS_ASSISTANT_API_KEY: "same-key",
+    SAAIS_ASSISTANT_MODEL: "models/gemini-test",
+    SAAIS_ASSISTANT_GEMINI_API_KEY: "same-key",
+    SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-test",
+  };
+  assert.equal(readAssistantConfig((name) => vars[name]).providers.length, 1);
+  vars.SAAIS_ASSISTANT_GEMINI_API_KEY = "different-key";
+  assert.equal(readAssistantConfig((name) => vars[name]).providers.length, 2);
+  vars.SAAIS_ASSISTANT_GEMINI_API_KEY = "same-key";
+  vars.SAAIS_ASSISTANT_ENDPOINT =
+    "https://gateway.example.test/v1/chat/completions";
+  vars.SAAIS_ASSISTANT_GEMINI_ENDPOINT = vars.SAAIS_ASSISTANT_ENDPOINT;
+  assert.equal(readAssistantConfig((name) => vars[name]).providers.length, 2);
+});
+
+test("non-OK response streams are cancelled without blocking fallback", async () => {
+  const providers = [
+    settings.assistant,
+    {
+      ...settings.assistant,
+      endpoint: "https://fallback.example.test/chat/completions",
+    },
+  ];
+  for (const failCleanup of [false, true]) {
+    let calls = 0;
+    let cancelled = false;
+    const result = await assistantAnswer(
+      { ...settings.assistant, providers },
+      async () => {
+        calls++;
+        if (calls === 1)
+          return new Response(
+            new ReadableStream({
+              cancel() {
+                cancelled = true;
+                return failCleanup
+                  ? Promise.reject(new Error("cancel failed"))
+                  : new Promise(() => {});
+              },
+            }),
+            { status: 429 },
+          );
+        assert.equal(cancelled, true);
+        return Response.json({
+          choices: [{ message: { content: "Fallback answer" } }],
+        });
+      },
+      context,
+    );
+    assert.equal(result.answer, "Fallback answer");
+    assert.equal(calls, 2);
+  }
+});
+
+test("an empty unfiltered Gemini response can still fall back", async () => {
+  const vars = {
+    SAAIS_ASSISTANT_GEMINI_API_KEY: "key",
+    SAAIS_ASSISTANT_GEMINI_MODEL: "model",
+    SAAIS_ASSISTANT_OPENAI_API_KEY: "other",
+    SAAIS_ASSISTANT_OPENAI_MODEL: "other-model",
+  };
+  let calls = 0;
+  const result = await assistantAnswer(
+    readAssistantConfig((name) => vars[name]),
+    async () => {
+      calls++;
+      return calls === 1
+        ? Response.json({ candidates: [{ finishReason: "STOP" }] })
+        : Response.json({ choices: [{ message: { content: "Fallback" } }] });
+    },
+    context,
+  );
+  assert.equal(result.answer, "Fallback");
+  assert.equal(calls, 2);
 });

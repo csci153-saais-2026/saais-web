@@ -82,12 +82,13 @@ function resolveGeminiEndpoint(
       return match && match[1] === modelId ? parsed : undefined;
     }
     if (!/^[a-zA-Z0-9._-]+$/.test(modelId)) return undefined;
-    const base = parsed.href.replace(/\/+$/, "");
-    if (base.endsWith("/models"))
-      return parseHttpsUrl(`${base}/${modelId}:generateContent`);
-    if (base.endsWith("/v1beta") || base.endsWith("/v1"))
-      return parseHttpsUrl(`${base}/models/${modelId}:generateContent`);
-    return parseHttpsUrl(`${base}/v1beta/models/${modelId}:generateContent`);
+    const base = parsed.pathname.replace(/\/+$/, "");
+    parsed.pathname = base.endsWith("/models")
+      ? `${base}/${modelId}:generateContent`
+      : base.endsWith("/v1beta") || base.endsWith("/v1")
+        ? `${base}/models/${modelId}:generateContent`
+        : `${base}/v1beta/models/${modelId}:generateContent`;
+    return parsed;
   }
   if (!/^[a-zA-Z0-9._-]+$/.test(modelId)) return undefined;
   return parseHttpsUrl(
@@ -113,11 +114,11 @@ function buildProviderConfig(
   }
   if (!url) return undefined;
   const provider = providerHint ?? inferProviderFromUrl(url);
-  if (provider === "gemini" && !url.pathname.endsWith("/chat/completions")) {
+  const protocol = inferProtocol(provider, url);
+  if (protocol === "gemini") {
     url = resolveGeminiEndpoint(url.href, model);
     if (!url) return undefined;
   }
-  const protocol = inferProtocol(provider, url);
   return {
     provider,
     protocol,
@@ -183,7 +184,7 @@ export function readAssistantConfig(
       (existing) =>
         existing.protocol === item.protocol &&
         existing.endpoint === item.endpoint &&
-        existing.model === item.model &&
+        (item.protocol === "gemini" || existing.model === item.model) &&
         existing.key === item.key,
     );
     if (!exists) candidates.push(item);
@@ -208,8 +209,15 @@ export function readAssistantConfig(
 }
 
 async function readBoundedJson(response: Response): Promise<unknown> {
-  if (!response.ok || !response.body)
+  if (!response.ok) {
+    try {
+      void response.body?.cancel().catch(() => {});
+    } catch {
+      // Cleanup must not prevent fallback to another provider.
+    }
     throw new Error("Assistant provider unavailable.");
+  }
+  if (!response.body) throw new Error("Assistant provider unavailable.");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let raw = "";
@@ -265,6 +273,7 @@ function extractAnswer(
         "RECITATION",
         "IMAGE_SAFETY",
         "IMAGE_PROHIBITED_CONTENT",
+        "ESCALATION",
       ].includes(String(candidate.finishReason))
     )
       throw new ProviderSafetyError(
@@ -431,9 +440,9 @@ export async function assistantAnswer(
       ? config.providers
       : [config];
   let lastError: unknown;
-  const deadline = Date.now() + providerBudgetMs;
+  const deadline = performance.now() + providerBudgetMs;
   for (let index = 0; index < providers.length; index++) {
-    const remaining = deadline - Date.now();
+    const remaining = deadline - performance.now();
     if (remaining <= 0) break;
     // Reserve part of the remaining budget for each remaining provider.
     const timeoutMs = Math.max(
