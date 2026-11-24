@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import {
@@ -119,5 +125,33 @@ describe("DeanReportsPage", () => {
       screen.getByText("Faculty information is unavailable for this account."),
     ).toBeTruthy();
     expect(screen.queryByText(/Faculty of Computing/i)).toBeNull();
+  });
+
+  it("opens shared cohort students dialog and returns focus to the View students opener on close", async () => {
+    loginAsMockPersona("dean");
+    renderReportsPage();
+
+    const viewButtons = await screen.findAllByRole("button", {
+      name: /View students/,
+    });
+    const opener = viewButtons[0];
+    opener.focus();
+    expect(document.activeElement).toBe(opener);
+
+    fireEvent.click(opener);
+
+    expect(await screen.findByText(/Batch \d+ · Student GWA/)).toBeTruthy();
+    expect(screen.getByText(/· \d+ students?$/)).toBeTruthy();
+    expect(screen.getByText("Student ID")).toBeTruthy();
+
+    const closeButtons = screen.getAllByRole("button", { name: "Close" });
+    fireEvent.click(closeButtons[closeButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Batch \d+ · Student GWA/)).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(opener);
+    });
   });
 });
