@@ -15,14 +15,7 @@ import {
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { TermDialog } from "./TermDialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -53,38 +46,6 @@ const TH =
 const TD = "px-3.5 py-[11px] text-[13.5px] leading-normal";
 const DETAIL_LABEL = "text-xs text-muted-2";
 const DETAIL_VALUE = "mt-1 text-[13.5px] font-medium text-foreground";
-
-/** Mockup dialog: 680px wide, title row, body and footer separated by hairlines. */
-function TermDialog({
-  title,
-  footer,
-  children,
-  open,
-  onOpenChange,
-}: {
-  title: string;
-  footer: React.ReactNode;
-  children: React.ReactNode;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto p-0 sm:max-w-170">
-        <DialogHeader className="border-b border-line-soft px-5 py-4 pr-14 sm:px-6 sm:py-5">
-          <DialogTitle className="text-[22px] leading-[1.08] tracking-[-0.01em] sm:text-2xl">
-            {title}
-          </DialogTitle>
-          <DialogDescription className="sr-only">{title}</DialogDescription>
-        </DialogHeader>
-        <div className="p-5 text-sm sm:p-6">{children}</div>
-        <DialogFooter className="border-t border-line-soft px-5 py-4 sm:px-6">
-          {footer}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function AcademicTermsPage() {
   const termsQuery = useAcademicTerms();
