@@ -5,6 +5,7 @@ import {
   type CohortStudentRow,
 } from "@/components/features/cohort-students-dialog";
 import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
+import { StudentRecordDialog } from "@/components/features/student-record-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { FacultyBatchGwaTable } from "@/routes/dean/reports/FacultyBatchGwaTable";
 import { FacultyReportHeader } from "@/routes/dean/reports/FacultyReportHeader";
@@ -12,8 +13,11 @@ import { FacultyReportStatsAndDistribution } from "@/routes/dean/reports/Faculty
 import { useDeanReports } from "@/routes/dean/reports/use-dean-reports";
 import { useFacultyReportPdfPreview } from "@/routes/dean/reports/use-faculty-report-pdf";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
-import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog";
+import { DeanStudentAuditTab } from "@/routes/dean/students/DeanStudentAuditTab";
+import { DeanStudentChecklistTab } from "@/routes/dean/students/DeanStudentChecklistTab";
+import { DeanStudentGradesTab } from "@/routes/dean/students/DeanStudentGradesTab";
 import { toDeanStudentSummary } from "@/routes/dean/students/to-dean-student-summary";
+import { useDeanStudentRecordDialog } from "@/routes/dean/students/use-dean-student-record-dialog";
 import type {
   BatchCurriculumRow,
   DeanStudentSummary,
@@ -52,6 +56,7 @@ export default function DeanReportsPage() {
     facultyName,
     deanName: user?.fullName,
   });
+  const recordDialog = useDeanStudentRecordDialog(selectedStudent);
 
   const handleOpenPdfPreview = () => {
     if (!report) return;
@@ -163,11 +168,25 @@ export default function DeanReportsPage() {
         }}
       />
 
-      <DeanStudentRecordDialog
-        key={selectedStudent?.studentId ?? "closed"}
-        student={selectedStudent}
-        onClose={() => setSelectedStudent(null)}
-      />
+      <StudentRecordDialog
+        open={selectedStudent !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedStudent(null);
+        }}
+        student={recordDialog.headerStudent}
+        activeTab={recordDialog.activeTab}
+        onActiveTabChange={recordDialog.setActiveTab}
+      >
+        {selectedStudent && recordDialog.activeTab === "checklist" && (
+          <DeanStudentChecklistTab student={selectedStudent} />
+        )}
+        {selectedStudent && recordDialog.activeTab === "grades" && (
+          <DeanStudentGradesTab student={selectedStudent} />
+        )}
+        {selectedStudent && recordDialog.activeTab === "audit" && (
+          <DeanStudentAuditTab student={selectedStudent} />
+        )}
+      </StudentRecordDialog>
 
       <PdfViewerDialog
         open={pdfPreviewReport !== null}
