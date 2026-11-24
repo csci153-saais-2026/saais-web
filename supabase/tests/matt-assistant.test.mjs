@@ -1,7 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHandler } from "../functions/_shared/http.ts";
-import { readAssistantConfig } from "../functions/_shared/matt-assistant.ts";
+import {
+  assistantAnswer,
+  readAssistantConfig,
+} from "../functions/_shared/matt-assistant.ts";
 
 test("checks record scope before contacting the assistant provider", async () => {
   const endpoint = "https://assistant.example.test/chat/completions";
@@ -368,4 +371,210 @@ test("rejects non-HTTPS, credential-bearing, or path-injecting provider configs"
     ),
     undefined,
   );
+});
+
+test("safety blocks and incomplete answers stop rather than retry another provider", async () => {
+  const vars = {
+    SAAIS_ASSISTANT_GEMINI_API_KEY: "gemini-key",
+    SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-test",
+    SAAIS_ASSISTANT_NVIDIA_API_KEY: "nvidia-key",
+    SAAIS_ASSISTANT_NVIDIA_MODEL: "nim-test",
+  };
+  const assistant = readAssistantConfig((name) => vars[name]);
+  for (const result of [
+    { promptFeedback: { blockReason: "SAFETY" } },
+    {
+      candidates: [
+        { finishReason: "SAFETY", content: { parts: [{ text: "blocked" }] } },
+      ],
+    },
+    {
+      candidates: [
+        {
+          finishReason: "MAX_TOKENS",
+          content: { parts: [{ text: "partial" }] },
+        },
+      ],
+    },
+    {
+      candidates: [
+        {
+          finishReason: "CONTINUATION",
+          content: { parts: [{ text: "partial" }] },
+        },
+      ],
+    },
+  ]) {
+    const attempted = [];
+    const handler = createHandler("students", {
+      env: { ...settings, assistant },
+      fetch: async (url) => {
+        if (url.endsWith("/auth/v1/user"))
+          return Response.json({ id: student });
+        if (url.endsWith("/matt_assistant_context"))
+          return Response.json(context);
+        attempted.push(url);
+        return Response.json(result);
+      },
+    });
+    const response = await handler(ask());
+    assert.equal(response.status, 500);
+    assert.equal(
+      (await response.json()).message,
+      "The operation could not be completed.",
+    );
+    assert.equal(attempted.length, 1);
+    assert.match(attempted[0], /generativelanguage\.googleapis\.com/);
+  }
+  for (const choice of [
+    { finish_reason: "content_filter", message: { content: "blocked" } },
+    { message: { refusal: "I cannot answer" } },
+    { finish_reason: "length", message: { content: "partial" } },
+  ]) {
+    let calls = 0;
+    const providers = [
+      settings.assistant,
+      { ...settings.assistant, endpoint: "https://fallback.example.test" },
+    ];
+    await assert.rejects(
+      assistantAnswer(
+        { ...settings.assistant, providers },
+        async () => {
+          calls++;
+          return Response.json({ choices: [choice] });
+        },
+        context,
+      ),
+    );
+    assert.equal(calls, 1);
+  }
+});
+
+test("distinct legacy and provider-specific keys remain usable during key rotation", async () => {
+  const vars = {
+    SAAIS_ASSISTANT_PROVIDER: "nvidia",
+    SAAIS_ASSISTANT_API_KEY: "old-test-key",
+    SAAIS_ASSISTANT_MODEL: "same-model",
+    SAAIS_ASSISTANT_NVIDIA_API_KEY: "new-test-key",
+    SAAIS_ASSISTANT_NVIDIA_MODEL: "same-model",
+  };
+  const assistant = readAssistantConfig((name) => vars[name]);
+  assert.equal(assistant.providers.length, 2);
+  const used = [];
+  const result = await assistantAnswer(
+    assistant,
+    async (_url, options) => {
+      used.push(options.headers.Authorization);
+      return used.length === 1
+        ? Response.json({}, { status: 401 })
+        : Response.json({ choices: [{ message: { content: "Answer" } }] });
+    },
+    context,
+  );
+  assert.equal(result.answer, "Answer");
+  assert.deepEqual(used, ["Bearer old-test-key", "Bearer new-test-key"]);
+  vars.SAAIS_ASSISTANT_NVIDIA_API_KEY = "old-test-key";
+  assert.equal(readAssistantConfig((name) => vars[name]).providers.length, 1);
+});
+
+test("the complete fallback chain shares one 12-second budget", async () => {
+  const vars = {
+    SAAIS_ASSISTANT_GEMINI_API_KEY: "a",
+    SAAIS_ASSISTANT_GEMINI_MODEL: "m",
+    SAAIS_ASSISTANT_NVIDIA_API_KEY: "b",
+    SAAIS_ASSISTANT_NVIDIA_MODEL: "n",
+    SAAIS_ASSISTANT_OPENAI_API_KEY: "c",
+    SAAIS_ASSISTANT_OPENAI_MODEL: "o",
+  };
+  const assistant = readAssistantConfig((name) => vars[name]);
+  let clock = 100000;
+  const originalNow = Date.now;
+  const originalTimeout = AbortSignal.timeout;
+  const limits = [];
+  try {
+    Date.now = () => clock;
+    AbortSignal.timeout = (ms) => {
+      limits.push(ms);
+      return new AbortController().signal;
+    };
+    await assert.rejects(
+      assistantAnswer(
+        assistant,
+        async () => {
+          clock += limits.at(-1);
+          throw new Error("timeout");
+        },
+        context,
+      ),
+    );
+    assert.deepEqual(limits, [4000, 4000, 4000]);
+    assert.equal(clock, 112000);
+  } finally {
+    Date.now = originalNow;
+    AbortSignal.timeout = originalTimeout;
+  }
+});
+
+test("the time budget adapts to one or four configured candidates", async () => {
+  const provider = {
+    endpoint: "https://provider.example.test/v1/chat/completions",
+    key: "test-key",
+    model: "test-model",
+  };
+  for (const count of [1, 4]) {
+    const providers = Array.from({ length: count }, () => provider);
+    const originalNow = Date.now;
+    const originalTimeout = AbortSignal.timeout;
+    const limits = [];
+    let clock = 100000;
+    try {
+      Date.now = () => clock;
+      AbortSignal.timeout = (ms) => {
+        limits.push(ms);
+        return new AbortController().signal;
+      };
+      await assert.rejects(
+        assistantAnswer(
+          { ...provider, providers },
+          async () => {
+            clock += limits.at(-1);
+            throw new Error("timeout");
+          },
+          context,
+        ),
+      );
+      assert.deepEqual(limits, Array(count).fill(12000 / count));
+      assert.equal(clock, 112000);
+    } finally {
+      Date.now = originalNow;
+      AbortSignal.timeout = originalTimeout;
+    }
+  }
+});
+
+test("full Gemini endpoint must match the configured model", () => {
+  const vars = {
+    SAAIS_ASSISTANT_GEMINI_API_KEY: "key",
+    SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-new",
+    SAAIS_ASSISTANT_GEMINI_ENDPOINT:
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-old:generateContent",
+  };
+  assert.equal(
+    readAssistantConfig((name) => vars[name]),
+    undefined,
+  );
+  const legacy = {
+    SAAIS_ASSISTANT_API_KEY: "key",
+    SAAIS_ASSISTANT_MODEL: "gemini-new",
+    SAAIS_ASSISTANT_ENDPOINT: vars.SAAIS_ASSISTANT_GEMINI_ENDPOINT,
+  };
+  assert.equal(
+    readAssistantConfig((name) => legacy[name]),
+    undefined,
+  );
+  vars.SAAIS_ASSISTANT_GEMINI_ENDPOINT =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-new:generateContent";
+  assert.equal(readAssistantConfig((name) => vars[name]).model, "gemini-new");
+  legacy.SAAIS_ASSISTANT_ENDPOINT = vars.SAAIS_ASSISTANT_GEMINI_ENDPOINT;
+  assert.equal(readAssistantConfig((name) => legacy[name]).model, "gemini-new");
 });
