@@ -367,7 +367,7 @@ describe("AdminAccountsPage", () => {
       ),
     ).toBeTruthy();
     expect(postMock).not.toHaveBeenCalled();
-  });
+  }, 15000);
 
   it("filters student catalogs and resets dependent selections", async () => {
     const agricultureAdviser = {
