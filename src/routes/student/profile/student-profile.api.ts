@@ -123,7 +123,6 @@ export async function fetchStudentProfileData(
 }
 
 const STUDENT_PHOTO_BUCKET = "student-photos";
-const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365;
 
 /**
  * Uploads the photo to the private `student-photos` bucket and resolves the
@@ -136,7 +135,7 @@ export async function uploadStudentPhotoObject(
   mimeType: "image/jpeg" | "image/png",
 ): Promise<{ storagePath: string; avatarUrl: string }> {
   const ext = mimeType === "image/png" ? "png" : "jpg";
-  const storagePath = `students/${studentId}/avatar.${ext}`;
+  const storagePath = `students/${studentId}/upload-${crypto.randomUUID()}.${ext}`;
 
   if (resolveSaaisEnvConfig().mode === "mock") {
     return { storagePath, avatarUrl: URL.createObjectURL(file) };
@@ -144,18 +143,18 @@ export async function uploadStudentPhotoObject(
 
   const bucket = getSupabaseClient().storage.from(STUDENT_PHOTO_BUCKET);
   const upload = await bucket.upload(storagePath, file, {
-    upsert: true,
+    upsert: false,
     contentType: mimeType,
   });
   if (upload.error) throw new Error("Could not upload the photo.");
-  const signed = await bucket.createSignedUrl(
-    storagePath,
-    SIGNED_URL_TTL_SECONDS,
-  );
-  if (signed.error || !signed.data.signedUrl) {
-    throw new Error("Could not resolve the uploaded photo URL.");
-  }
-  return { storagePath, avatarUrl: signed.data.signedUrl };
+  return { storagePath, avatarUrl: `/student-photos/${storagePath}` };
+}
+
+export async function removeStudentPhotoStagingObject(storagePath: string) {
+  if (resolveSaaisEnvConfig().mode === "mock") return;
+  await getSupabaseClient()
+    .storage.from(STUDENT_PHOTO_BUCKET)
+    .remove([storagePath]);
 }
 
 /**

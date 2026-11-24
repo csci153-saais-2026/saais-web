@@ -1,6 +1,8 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
-import { DataTablePanel } from "@/components/features/data-table-panel";
+import type { Column } from "@/components/features/data-table-panel";
+import { AuditLogTable } from "@/components/features/audit-log-table";
+import { Panel } from "@/components/features/panel";
 import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
 import { SearchInput } from "@/components/features/search-input";
@@ -15,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EMPTY_AUDIT_FILTERS, filterAuditEvents } from "./audit-model";
-import type { AuditAction, AuditEvent } from "./audit-types";
+import type { AuditAction } from "./audit-types";
 import { useAuditEvents } from "../shared/dh-queries";
 import { QueryMessage } from "../shared/dh-ui";
 
@@ -46,6 +48,71 @@ export default function AuditLogPage() {
     filters.from && filters.to && filters.from > filters.to,
   );
   const events = filterAuditEvents(auditEvents, filters);
+  const tableRows = events.map((event) => ({
+    id: event.id,
+    timestamp: (
+      <time dateTime={event.timestamp}>
+        <span className="block">
+          {dateFormatter.format(new Date(event.timestamp))}
+        </span>
+        <span className="block text-xs text-muted-foreground">
+          {timeFormatter.format(new Date(event.timestamp)).toUpperCase()}
+        </span>
+      </time>
+    ),
+    person: event.person,
+    action: (
+      <StatusBadge status={actionStatus[event.action]}>
+        {event.action}
+      </StatusBadge>
+    ),
+    student:
+      [event.studentNumber, event.studentName].filter(Boolean).join(" · ") ||
+      "—",
+    record: event.record,
+    details: event.details,
+  }));
+  const tableColumns: Column<(typeof tableRows)[number]>[] = [
+    {
+      header: "Timestamp",
+      className: "font-mono text-xs text-muted-foreground",
+      cell: (row) => row.timestamp,
+    },
+    {
+      header: "Person",
+      className: "font-medium",
+      cell: (row) => (
+        <span
+          className="min-w-0 whitespace-normal wrap-break-word"
+          title={row.person}
+        >
+          {row.person}
+        </span>
+      ),
+    },
+    { header: "Action", cell: (row) => row.action },
+    {
+      header: "Student",
+      cell: (row) => (
+        <span
+          className="min-w-0 whitespace-normal wrap-break-word"
+          title={row.student}
+        >
+          {row.student}
+        </span>
+      ),
+    },
+    {
+      header: "Record",
+      className: "min-w-0 whitespace-normal wrap-break-word",
+      cell: (row) => row.record,
+    },
+    {
+      header: "Details",
+      className: "min-w-0 whitespace-normal wrap-break-word",
+      cell: (row) => row.details,
+    },
+  ];
   const hasFilters = Object.entries(filters).some(([key, value]) =>
     key === "action" ? value !== "all" : value !== "",
   );
@@ -77,10 +144,12 @@ export default function AuditLogPage() {
       {() => (
         <>
           {heading}
-          <DataTablePanel<AuditEvent>
+          <Panel
             title="Department activity"
             description="Record views are logged alongside changes and sign-ins."
-            toolbar={
+            flush
+          >
+            <div className="border-b border-line-soft p-5">
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 <FormField label="Person" htmlFor="audit-person">
                   <SearchInput
@@ -169,80 +238,27 @@ export default function AuditLogPage() {
                   </Button>
                 </div>
               </div>
-            }
-            rows={events}
-            rowKey={(event) => event.id}
-            columns={[
-              {
-                header: "Timestamp",
-                className: "whitespace-normal",
-                cell: (event) => (
-                  <time dateTime={event.timestamp}>
-                    <span className="block">
-                      {dateFormatter.format(new Date(event.timestamp))}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {timeFormatter
-                        .format(new Date(event.timestamp))
-                        .toUpperCase()}
-                    </span>
-                  </time>
-                ),
-              },
-              {
-                header: "Person",
-                className: "whitespace-normal",
-                cell: (event) => (
-                  <span className="min-w-0">{event.person}</span>
-                ),
-              },
-              {
-                header: "Action",
-                cell: (event) => (
-                  <StatusBadge status={actionStatus[event.action]}>
-                    {event.action}
-                  </StatusBadge>
-                ),
-              },
-              {
-                header: "Student / record",
-                className: "whitespace-normal",
-                cell: (event) => (
-                  <span className="min-w-0 wrap-break-word">
-                    {event.studentNumber || event.studentName
-                      ? [event.studentNumber, event.studentName]
-                          .filter(Boolean)
-                          .join(" · ")
-                      : "—"}
-                  </span>
-                ),
-              },
-              {
-                header: "Details",
-                className: "whitespace-normal",
-                cell: (event) => (
-                  <span className="min-w-0 wrap-break-word">
-                    {event.details}
-                  </span>
-                ),
-              },
-            ]}
-            empty={
-              dateError
-                ? "Choose a valid date range to view events."
-                : "No entries match these filters."
-            }
-            footer={
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span role="status" aria-live="polite" aria-atomic="true">
-                  {events.length} matching{" "}
-                  {events.length === 1 ? "event" : "events"} of{" "}
-                  {auditEvents.length}
-                </span>
-                <span>DCST department scope</span>
-              </div>
-            }
-          />
+            </div>
+            <AuditLogTable
+              ariaLabel="Department audit log"
+              columns={tableColumns}
+              rows={tableRows}
+              rowKey={(row) => row.id}
+              empty={
+                dateError
+                  ? "Choose a valid date range to view events."
+                  : "No entries match these filters."
+              }
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
+              <span role="status" aria-live="polite" aria-atomic="true">
+                {events.length} matching{" "}
+                {events.length === 1 ? "event" : "events"} of{" "}
+                {auditEvents.length}
+              </span>
+              <span>DCST department scope</span>
+            </div>
+          </Panel>
         </>
       )}
     </AccountSkeleton>

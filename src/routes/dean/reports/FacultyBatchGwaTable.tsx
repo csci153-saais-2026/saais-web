@@ -1,6 +1,12 @@
-import { DataTablePanel } from "@/components/features/data-table-panel";
-import { Button } from "@/components/ui/button";
+import {
+  CohortGwaTable,
+  type CohortGwaRow,
+} from "@/components/features/cohort-gwa-table";
 import type { BatchCurriculumRow } from "@/routes/dean/types";
+
+function toCohortRowId(row: BatchCurriculumRow) {
+  return `${row.batch}-${row.curriculum}`;
+}
 
 export function FacultyBatchGwaTable({
   rows,
@@ -9,54 +15,24 @@ export function FacultyBatchGwaTable({
   rows: BatchCurriculumRow[];
   onSelectBatch: (row: BatchCurriculumRow) => void;
 }) {
+  const rowsById = new Map(rows.map((row) => [toCohortRowId(row), row]));
+  const mappedRows: CohortGwaRow[] = rows.map((row) => ({
+    id: toCohortRowId(row),
+    entryYear: row.batch,
+    curriculum: row.curriculum,
+    students: row.students,
+    meanGwa: row.meanGwa,
+  }));
+
   return (
-    <DataTablePanel
-      title="GWA by batch and curriculum"
+    <CohortGwaTable
+      rows={mappedRows}
       description="Entry year and academic performance across the selected scope."
-      rows={rows}
-      rowKey={(row) => `${row.batch}-${row.curriculum}`}
-      empty="No cohort records available for this department."
-      columns={[
-        {
-          header: "Batch",
-          cell: (row) => row.batch,
-        },
-        {
-          header: "Curriculum",
-          cell: (row) => (
-            <span className="block max-w-64 truncate" title={row.curriculum}>
-              {row.curriculum}
-            </span>
-          ),
-        },
-        {
-          header: "Students",
-          numeric: true,
-          cell: (row) => row.students,
-        },
-        {
-          header: "Mean GWA",
-          numeric: true,
-          cell: (row) => row.meanGwa,
-        },
-        {
-          header: "Actions",
-          cell: (row) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onSelectBatch(row)}
-            >
-              View students <span aria-hidden="true">→</span>
-              <span className="sr-only">
-                {" "}
-                for {row.batch} {row.curriculum}
-              </span>
-            </Button>
-          ),
-        },
-      ]}
+      emptyMessage="No cohort records available for this department."
+      onViewStudents={(mapped) => {
+        const original = rowsById.get(mapped.id);
+        if (original) onSelectBatch(original);
+      }}
     />
   );
 }

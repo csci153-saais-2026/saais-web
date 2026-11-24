@@ -33,6 +33,26 @@ describe("Students directory", () => {
     ).toBeTruthy();
   });
 
+  it("keeps Department Head fields and mobile cell labels in the shared directory", async () => {
+    await openDirectory();
+    const table = screen.getByRole("table", { name: "Department students" });
+    const row = within(table)
+      .getByRole("button", {
+        name: "View Sta. Agata, Jerome Daniel S. checklist",
+      })
+      .closest("tr")!;
+    const cells = within(row).getAllByRole("cell");
+    expect(cells.map((cell) => cell.getAttribute("data-label"))).toEqual([
+      "Student",
+      "School email",
+      "Curriculum",
+      "Year standing",
+      "Adviser",
+    ]);
+    expect(cells[1].textContent).toBe("24-1-01798@vsu.edu.ph");
+    expect(cells[3].textContent).toMatch(/^\d+(st|nd|rd|th) year$/);
+  });
+
   it("searches names and IDs with case and surrounding spaces ignored", async () => {
     await openDirectory();
     fireEvent.change(

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ApiSchema } from "@/lib/api/types";
 
-export const MAX_STUDENT_PHOTO_BYTES = 2_097_152;
+export const MAX_STUDENT_PHOTO_BYTES = 5_242_880;
 
 export const studentPhotoMimeTypes = ["image/jpeg", "image/png"] as const;
 
@@ -14,7 +14,7 @@ export const studentPhotoFileSchema = z.object({
     error: "Choose a JPG or PNG image.",
   }),
   file_size_bytes: z.number().int().nonnegative().max(MAX_STUDENT_PHOTO_BYTES, {
-    error: "That image is over 2 MB. Choose a smaller one.",
+    error: "That image is over 5 MB. Choose a smaller one.",
   }),
 });
 

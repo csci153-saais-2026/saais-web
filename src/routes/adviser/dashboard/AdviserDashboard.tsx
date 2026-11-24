@@ -4,14 +4,11 @@ import { Link } from "react-router";
 import { AdviserPage } from "../Adviser";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeading } from "@/components/features/page-heading";
-import { StatTile } from "@/components/features/stat-tile";
-import { Panel } from "@/components/features/panel";
+import { ReportStatsSection } from "@/components/features/report-stats-section";
 import { AdviserCohorts } from "./AdviserCohorts";
-import { GradeDistribution } from "@/components/features/grade-distribution";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -58,6 +55,7 @@ export default function AdviserDashboard() {
   const { user, profile, isMockMode } = useAuth();
   const [termId, setTermId] = useState("");
   const [revision, setRevision] = useState(0);
+  const [deficienciesOpen, setDeficienciesOpen] = useState(false);
   const [preview, setPreview] = useState<{
     report: NonNullable<ReturnType<typeof useAdviserDashboard>["report"]>;
     termLabel: string;
@@ -140,33 +138,69 @@ export default function AdviserDashboard() {
         )}
         {report && (
           <>
-            <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <StatTile
-                label="Students"
-                value={String(report.total_advisees)}
-                note="Assigned to you"
+            <div className="grid gap-6">
+              <ReportStatsSection
+                stats={[
+                  {
+                    label: "Students",
+                    value: String(report.total_advisees),
+                    note: "Assigned to you",
+                  },
+                  {
+                    label: "Mean GWA",
+                    value:
+                      report.mean_gwa == null
+                        ? "—"
+                        : report.mean_gwa.toFixed(2),
+                    note: "Across your advisees",
+                  },
+                  deficientStudents
+                    ? {
+                        label: "With deficiencies",
+                        value: String(deficientStudents.length),
+                        note: "Students with open deficiencies · View list",
+                        onSelect: () => setDeficienciesOpen(true),
+                      }
+                    : {
+                        label: "With deficiencies",
+                        value: "—",
+                        note: fallbackDeficiencies.error
+                          ? "Details not available in this report"
+                          : "Loading deficiencies…",
+                      },
+                ]}
+                distribution={{
+                  title: "Final grade distribution",
+                  description: `${selectedTerm ? `${selectedTerm.school_year} · ${selectedTerm.term_type} · ` : ""}Share of final grades across your advisees`,
+                  bands: report.grade_distribution
+                    ? distributionBands(report.grade_distribution)
+                    : [],
+                  emptyMessage:
+                    "Grade distribution is not available in this report.",
+                  action: (
+                    <label className="grid gap-1 text-sm">
+                      Term
+                      <select
+                        className="rounded-md border border-border bg-background px-3 py-2"
+                        value={termId}
+                        onChange={(event) => setTermId(event.target.value)}
+                      >
+                        <option value="">All terms</option>
+                        {terms.map((term) => (
+                          <option key={term.id} value={term.id}>
+                            {term.school_year} · {term.term_type}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ),
+                }}
               />
-              <StatTile
-                label="Mean GWA"
-                value={
-                  report.mean_gwa == null ? "—" : report.mean_gwa.toFixed(2)
-                }
-                note="Across your advisees"
-              />
-              {deficientStudents ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      className="rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&>div]:h-full [&>div]:transition-colors hover:[&>div]:bg-secondary/50"
-                    >
-                      <StatTile
-                        label="With deficiencies"
-                        value={String(deficientStudents.length)}
-                        note="Students with open deficiencies · View list"
-                      />
-                    </button>
-                  </DialogTrigger>
+              {deficientStudents && (
+                <Dialog
+                  open={deficienciesOpen}
+                  onOpenChange={setDeficienciesOpen}
+                >
                   <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Advisees with deficiencies</DialogTitle>
@@ -206,51 +240,7 @@ export default function AdviserDashboard() {
                     )}
                   </DialogContent>
                 </Dialog>
-              ) : (
-                <StatTile
-                  label="With deficiencies"
-                  value="—"
-                  note={
-                    fallbackDeficiencies.error
-                      ? "Details not available in this report"
-                      : "Loading deficiencies…"
-                  }
-                />
               )}
-            </div>
-            <div className="grid gap-0">
-              <Panel
-                title="Final grade distribution"
-                description={`${terms.find((term) => term.id === termId) ? `${terms.find((term) => term.id === termId)?.school_year} · ${terms.find((term) => term.id === termId)?.term_type} · ` : ""}Share of final grades across your advisees`}
-                action={
-                  <label className="grid gap-1 text-sm">
-                    Term
-                    <select
-                      className="rounded-md border border-border bg-background px-3 py-2"
-                      value={termId}
-                      onChange={(event) => setTermId(event.target.value)}
-                    >
-                      <option value="">All terms</option>
-                      {terms.map((term) => (
-                        <option key={term.id} value={term.id}>
-                          {term.school_year} · {term.term_type}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                }
-              >
-                {report.grade_distribution ? (
-                  <GradeDistribution
-                    inline
-                    bands={distributionBands(report.grade_distribution)}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Grade distribution is not available in this report.
-                  </p>
-                )}
-              </Panel>
               {user && (
                 <AdviserCohorts
                   key={user.id}

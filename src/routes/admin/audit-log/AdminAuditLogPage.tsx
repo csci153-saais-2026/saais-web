@@ -1,8 +1,9 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DataTablePanel } from "@/components/features/data-table-panel";
+import { AuditLogTable } from "@/components/features/audit-log-table";
 import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
+import { Panel } from "@/components/features/panel";
 import { SearchInput } from "@/components/features/search-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -273,11 +274,12 @@ export default function AdminAuditLogPage() {
         loading={loading}
         label="Loading audit history…"
       >
-        <DataTablePanel
-          spacious
+        <Panel
           title="System activity"
           description="Record views are logged alongside changes and sign-ins."
-          toolbar={
+          flush
+        >
+          <div className="border-b border-line-soft p-5">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <FormField label="Person" htmlFor="audit-person">
                 <SearchInput
@@ -338,22 +340,25 @@ export default function AdminAuditLogPage() {
                 />
               </FormField>
             </div>
-          }
-          columns={columns}
-          rows={visibleEntries}
-          rowKey={(entry) => entry.id}
-          empty={
-            loading
-              ? "Loading audit history…"
-              : filterError
-                ? "Correct the filters to view audit history."
-                : error
-                  ? "Audit history is unavailable."
-                  : entries.length === 0
-                    ? "No entries match these filters."
-                    : "No audit entries are available on this page."
-          }
-          footer={
+          </div>
+          <AuditLogTable
+            spacious
+            columns={columns}
+            rows={visibleEntries}
+            rowKey={(entry) => entry.id}
+            empty={
+              loading
+                ? "Loading audit history…"
+                : filterError
+                  ? "Correct the filters to view audit history."
+                  : error
+                    ? "Audit history is unavailable."
+                    : entries.length === 0
+                      ? "No entries match these filters."
+                      : "No audit entries are available on this page."
+            }
+          />
+          <div className="border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span>
                 {rangeTotal === null
@@ -385,8 +390,8 @@ export default function AdminAuditLogPage() {
                 </Button>
               </div>
             </div>
-          }
-        />
+          </div>
+        </Panel>
       </AccountSkeleton>
     </div>
   );

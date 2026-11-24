@@ -4,25 +4,12 @@ import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { AcademicTermsTable } from "@/components/features/academic-terms-table";
+import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { TermDialog } from "./TermDialog";
+import { TermDetailsDialog } from "./TermDetailsDialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,7 +23,7 @@ import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { QueryMessage } from "../shared/dh-ui";
 import { useNotify } from "../shared/notify-context";
 import type { DepartmentPdfDocument } from "../shared/department-pdf";
-import { PdfViewerDialog } from "../shared/PdfViewerDialog";
+import { useDepartmentPdfUrl } from "../shared/useDepartmentPdfUrl";
 import {
   useAcademicTerms,
   useCloseEncoding,
@@ -47,44 +34,6 @@ import { buildTermsPdf } from "./terms-pdf";
 import { schoolTermFormSchema } from "@/lib/validation/school-term.schema";
 
 const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const;
-
-const TH =
-  "h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase";
-const TD = "px-3.5 py-[11px] text-[13.5px] leading-normal";
-const DETAIL_LABEL = "text-xs text-muted-2";
-const DETAIL_VALUE = "mt-1 text-[13.5px] font-medium text-foreground";
-
-/** Mockup dialog: 680px wide, title row, body and footer separated by hairlines. */
-function TermDialog({
-  title,
-  footer,
-  children,
-  open,
-  onOpenChange,
-}: {
-  title: string;
-  footer: React.ReactNode;
-  children: React.ReactNode;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto p-0 sm:max-w-170">
-        <DialogHeader className="border-b border-line-soft px-5 py-4 pr-14 sm:px-6 sm:py-5">
-          <DialogTitle className="text-[22px] leading-[1.08] tracking-[-0.01em] sm:text-2xl">
-            {title}
-          </DialogTitle>
-          <DialogDescription className="sr-only">{title}</DialogDescription>
-        </DialogHeader>
-        <div className="p-5 text-sm sm:p-6">{children}</div>
-        <DialogFooter className="border-t border-line-soft px-5 py-4 sm:px-6">
-          {footer}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function AcademicTermsPage() {
   const termsQuery = useAcademicTerms();
@@ -113,6 +62,7 @@ export default function AcademicTermsPage() {
   const [newStatus, setNewStatus] = React.useState<"Open" | "Closed">("Open");
 
   const [pdf, setPdf] = React.useState<DepartmentPdfDocument | null>(null);
+  const pdfPreview = useDepartmentPdfUrl(pdf);
   const handleExportPdf = () => setPdf(buildTermsPdf(terms));
 
   const handleCreateTerm = async () => {
@@ -215,9 +165,6 @@ export default function AcademicTermsPage() {
     );
   }
 
-  const openCount = terms.filter((t) => t.status === "Open").length;
-  const closedCount = terms.length - openCount;
-
   return (
     <AccountSkeleton
       id="dh-academic-terms"
@@ -264,77 +211,18 @@ export default function AcademicTermsPage() {
             description="Encoding windows are tracked separately for each semester."
             flush
           >
-            <Table responsive className="text-[13.5px]">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className={TH}>Academic year</TableHead>
-                  <TableHead className={TH}>Semester</TableHead>
-                  <TableHead className={TH}>Term dates</TableHead>
-                  <TableHead className={TH}>Encoding deadline</TableHead>
-                  <TableHead className={TH}>Status</TableHead>
-                  <TableHead className={TH} aria-label="Actions" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {terms.map((t) => (
-                  <TableRow
-                    key={t.id}
-                    className="border-line-soft hover:bg-line-soft"
-                  >
-                    <TableCell
-                      label="Academic year"
-                      className={`${TD} ${t.status === "Open" ? "font-semibold" : ""}`}
-                    >
-                      {t.academicYear}
-                    </TableCell>
-                    <TableCell label="Semester" className={TD}>
-                      {t.semester}
-                    </TableCell>
-                    <TableCell label="Term dates" className={TD}>
-                      {t.termDates}
-                    </TableCell>
-                    <TableCell label="Encoding deadline" className={TD}>
-                      {t.encodingDeadline}
-                    </TableCell>
-                    <TableCell label="Status" className={TD}>
-                      <StatusBadge
-                        status={t.status === "Open" ? "current" : "archived"}
-                      >
-                        {t.status}
-                      </StatusBadge>
-                    </TableCell>
-                    <TableCell label="Actions" className={TD}>
-                      {t.status === "Open" ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => setTermToClose(t)}
-                          className="cursor-pointer"
-                        >
-                          Close encoding
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => setTermToView(t)}
-                          className="h-auto px-0 py-1 text-[13px] font-semibold no-underline hover:no-underline cursor-pointer"
-                        >
-                          View term
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-2">
-              <span>
-                {openCount} open {openCount === 1 ? "term" : "terms"} ·{" "}
-                {closedCount} closed {closedCount === 1 ? "term" : "terms"}
-              </span>
-              <span>DCST department scope</span>
-            </div>
+            <AcademicTermsTable
+              rows={terms}
+              onClose={(row) => {
+                const selected = terms.find((term) => term.id === row.id);
+                if (selected?.status === "Open") setTermToClose(selected);
+              }}
+              onView={(row) => {
+                const selected = terms.find((term) => term.id === row.id);
+                if (selected) setTermToView(selected);
+              }}
+              scopeLabel="Department scope"
+            />
           </Panel>
 
           {/* Add Term Dialog */}
@@ -509,66 +397,21 @@ export default function AcademicTermsPage() {
             )}
           </TermDialog>
 
-          {/* Term Details Dialog */}
-          <TermDialog
-            open={!!termToView}
-            onOpenChange={(open) => !open && setTermToView(null)}
-            title="Academic term details"
-            footer={
-              <Button variant="outline" onClick={() => setTermToView(null)}>
-                Close
-              </Button>
-            }
-          >
-            {termToView && (
-              <dl className="grid grid-cols-2 gap-5">
-                <div>
-                  <dt className={DETAIL_LABEL}>Academic year</dt>
-                  <dd className={DETAIL_VALUE}>{termToView.academicYear}</dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Semester</dt>
-                  <dd className={DETAIL_VALUE}>{termToView.semester}</dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Term dates</dt>
-                  <dd className={DETAIL_VALUE}>{termToView.termDates}</dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Encoding deadline</dt>
-                  <dd className={DETAIL_VALUE}>
-                    {termToView.encodingDeadline}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Status</dt>
-                  <dd className="mt-1">
-                    <StatusBadge
-                      status={
-                        termToView.status === "Open" ? "current" : "archived"
-                      }
-                    >
-                      {termToView.status}
-                    </StatusBadge>
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Closed by</dt>
-                  <dd className={DETAIL_VALUE}>
-                    {termToView.closedBy ?? "Dr. Andrea Dela Cruz"}
-                  </dd>
-                </div>
-                {termToView.closureNote && (
-                  <div className="col-span-2">
-                    <dt className={DETAIL_LABEL}>Closure note</dt>
-                    <dd className={DETAIL_VALUE}>{termToView.closureNote}</dd>
-                  </div>
-                )}
-              </dl>
-            )}
-          </TermDialog>
+          <TermDetailsDialog
+            term={termToView}
+            onClose={() => setTermToView(null)}
+          />
 
-          <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
+          <PdfViewerDialog
+            open={pdf !== null}
+            onOpenChange={(open) => {
+              if (!open) setPdf(null);
+            }}
+            title={pdf?.title ?? ""}
+            filename={pdf?.filename ?? ""}
+            url={pdfPreview.url}
+            error={pdfPreview.error}
+          />
         </div>
       )}
     </AccountSkeleton>

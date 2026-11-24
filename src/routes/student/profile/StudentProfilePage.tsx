@@ -19,7 +19,10 @@ import type { ApiSchema } from "@/lib/api";
 import { CurriculumHistoryDialog } from "./CurriculumHistoryDialog";
 import { ProfileDetailsPanel } from "./ProfileDetailsPanel";
 import { ProfilePhotoCard } from "./ProfilePhotoCard";
-import { uploadStudentPhotoObject } from "./student-profile.api";
+import {
+  removeStudentPhotoStagingObject,
+  uploadStudentPhotoObject,
+} from "./student-profile.api";
 import {
   useDeleteStudentPhoto,
   useUpdateStudentPhoto,
@@ -295,6 +298,7 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
         file_size_bytes: file.size,
       });
       await updatePhotoMutation.mutateAsync(payload);
+      void removeStudentPhotoStagingObject(storagePath).catch(() => {});
     } finally {
       photoLockRef.current = false;
     }

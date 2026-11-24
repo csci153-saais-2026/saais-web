@@ -50,6 +50,7 @@ export interface CourseInfoDialogProps {
   /** Optional subtitle metadata override (defaults to `slot.meta` or required units summary). */
   readonly meta?: string;
   readonly className?: string;
+  readonly returnFocusTo?: HTMLElement | null;
 }
 
 const EXCEPTION_SOURCES: ReadonlySet<string> = new Set([
@@ -195,9 +196,11 @@ export function CourseInfoDialog({
   title,
   meta,
   className,
+  returnFocusTo,
 }: CourseInfoDialogProps) {
   const attempts = slot?.attempts ?? [];
   const gradeFixes = slot?.grade_fix_history ?? [];
+  const escapeHandledByLayer = React.useRef<KeyboardEvent | null>(null);
 
   const resolvedTitle = React.useMemo(() => {
     if (title && title.trim().length > 0) return title.trim();
@@ -245,6 +248,25 @@ export function CourseInfoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onEscapeKeyDown={(event) => {
+          if (!event.defaultPrevented) escapeHandledByLayer.current = event;
+        }}
+        onKeyDown={(event) => {
+          if (
+            event.key === "Escape" &&
+            escapeHandledByLayer.current !== event.nativeEvent
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            onOpenChange(false);
+          }
+        }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusTo?.isConnected) {
+            event.preventDefault();
+            returnFocusTo.focus();
+          }
+        }}
         className={cn(
           "max-h-[90dvh] overflow-y-auto sm:max-w-[800px]",
           className,
@@ -339,7 +361,7 @@ export function CourseInfoDialog({
                           </TableCell>
                           <TableCell
                             label="Term"
-                            className="px-3 py-row text-cell tabular-nums text-foreground"
+                            className="px-3 py-row text-cell tabular-nums whitespace-normal text-foreground"
                           >
                             {attempt.term_label}
                           </TableCell>
@@ -363,12 +385,9 @@ export function CourseInfoDialog({
                           </TableCell>
                           <TableCell
                             label="Instructor"
-                            className="px-3 py-row text-cell text-foreground"
+                            className="px-3 py-row text-cell whitespace-normal text-foreground"
                           >
-                            <span
-                              className="block max-w-48 truncate"
-                              title={attempt.instructor?.trim() || undefined}
-                            >
+                            <span className="block min-w-0 wrap-break-word">
                               {attempt.instructor?.trim() || "—"}
                             </span>
                           </TableCell>

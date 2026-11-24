@@ -1,28 +1,12 @@
 import { useState } from "react";
+import type { ChecklistRow } from "@/components/features/checklist-term-group";
 import {
-  ChecklistTermGroup,
-  type ChecklistRow,
-} from "@/components/features/checklist-term-group";
+  ChecklistView,
+  type ChecklistViewTerm,
+} from "@/components/features/checklist-view";
+import { CourseInfoDialog } from "@/components/features/course-info-dialog";
 import { DegreeProgress } from "@/components/features/degree-progress";
-import { XIcon } from "@/components/icons";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { StatusBadge, type Status } from "@/components/ui/status-badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { Status } from "@/components/ui/status-badge";
 import type { ApiSchema } from "@/lib/api";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
 import { useDeanStudentChecklist } from "@/routes/dean/students/use-dean-students";
@@ -51,23 +35,9 @@ const CATEGORY_LABELS: Record<
   service: "Service",
 };
 
-const ATTEMPT_HEADERS = [
-  "Attempt",
-  "Term",
-  "Midterm",
-  "Final",
-  "Completion",
-  "Instructor",
-  "Result",
-];
-
 function ordinal(n: number) {
   const suffix = new Intl.PluralRules("en", { type: "ordinal" }).select(n);
   return `${n}${suffix === "one" ? "st" : suffix === "two" ? "nd" : suffix === "few" ? "rd" : "th"}`;
-}
-
-function formatGrade(value: number | null | undefined) {
-  return value == null ? null : value.toFixed(2);
 }
 
 function buildChecklistTerms(data: {
@@ -75,7 +45,7 @@ function buildChecklistTerms(data: {
   slots: ApiSchema<"CurriculumTermCourse">[];
   terms: ApiSchema<"CurriculumTerm">[];
   courses: ApiSchema<"Course">[];
-}) {
+}): ChecklistViewTerm[] {
   const groups = new Map<string, ChecklistRow[]>();
 
   for (const result of data.results) {
@@ -108,7 +78,13 @@ function buildChecklistTerms(data: {
 
   return [...groups]
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-    .map(([title, rows]) => ({ title, rows }));
+    .map(([title, rows]) => ({
+      id: title,
+      title,
+      passedUnits: rows.reduce((sum, r) => sum + r.unitsEarned, 0),
+      totalUnits: rows.reduce((sum, r) => sum + r.unitsRequired, 0),
+      rows,
+    }));
 }
 
 export function DeanStudentChecklistTab({
@@ -170,159 +146,37 @@ export function DeanStudentChecklistTab({
     .filter(Boolean)
     .join(" · ");
 
-  const attempts = selectedResult?.attempts ?? [];
-  const fixes = selectedResult?.grade_fix_history ?? [];
-
   return (
-    <div className="space-y-6">
-      <DegreeProgress
-        program={student.program}
-        curriculum={student.curriculum}
-        earned={student.unitsEarned}
-        required={student.unitsRequired}
-      >
-        Cumulative GWA:{" "}
-        <strong className="font-mono text-primary">{student.gwa}</strong>
-      </DegreeProgress>
+    <>
+      <ChecklistView
+        summary={
+          <DegreeProgress
+            program={student.program}
+            curriculum={student.curriculum}
+            earned={student.unitsEarned}
+            required={student.unitsRequired}
+          >
+            Cumulative GWA:{" "}
+            <strong className="font-mono text-primary">{student.gwa}</strong>
+          </DegreeProgress>
+        }
+        terms={terms}
+        onCourseInfo={(_termId, courseCode) =>
+          setSelectedCourseCode(courseCode)
+        }
+        emptyTitle="No checklist available"
+        emptyMessage="No checklist is available for this curriculum."
+      />
 
-      {terms.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          No checklist is available for this curriculum.
-        </p>
-      ) : (
-        <div className="space-y-4">
-          {terms.map((term) => (
-            <ChecklistTermGroup
-              key={term.title}
-              title={term.title}
-              passedUnits={term.rows.reduce((sum, r) => sum + r.unitsEarned, 0)}
-              totalUnits={term.rows.reduce(
-                (sum, r) => sum + r.unitsRequired,
-                0,
-              )}
-              rows={term.rows}
-              onCourseInfo={setSelectedCourseCode}
-            />
-          ))}
-        </div>
-      )}
-
-      <Dialog
+      <CourseInfoDialog
         open={selectedCourseCode !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedCourseCode(null);
         }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0 sm:max-w-240"
-        >
-          <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border px-5 pt-4.5 pb-4">
-            <div>
-              <DialogTitle>{modalTitle}</DialogTitle>
-              <DialogDescription className="mt-1.5 text-[13px]">
-                {modalMeta}
-              </DialogDescription>
-            </div>
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8.5 shrink-0 text-muted-foreground"
-                aria-label="Close"
-              >
-                <XIcon className="size-4.5" aria-hidden />
-              </Button>
-            </DialogClose>
-          </DialogHeader>
-
-          <div className="p-5">
-            {selectedResult && (
-              <div className="flex items-center gap-2.5 text-sm">
-                <span>Status:</span>
-                <StatusBadge status={STATUS_MAP[selectedResult.status]} />
-                <span className="text-muted-foreground">
-                  · {attempts.length}{" "}
-                  {attempts.length === 1 ? "attempt" : "attempts"}
-                </span>
-              </div>
-            )}
-
-            {attempts.length > 0 ? (
-              <Table className="mt-4">
-                <TableHeader className="bg-secondary">
-                  <TableRow>
-                    {ATTEMPT_HEADERS.map((header) => (
-                      <TableHead
-                        key={header}
-                        className="px-3.5 text-[11.5px] font-semibold tracking-[0.09em] whitespace-nowrap text-muted-2 uppercase"
-                      >
-                        {header}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {attempts.map((a, index) => (
-                    <TableRow key={a.attempt_id}>
-                      <TableCell className="px-3.5 py-2.75">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell className="px-3.5 py-2.75 whitespace-normal">
-                        {a.term_label}
-                      </TableCell>
-                      <TableCell className="px-3.5 py-2.75">
-                        {formatGrade(a.midterm_grade) ??
-                          (a.midterm_status === "dr" ? "DR" : "—")}
-                      </TableCell>
-                      <TableCell className="px-3.5 py-2.75">
-                        {formatGrade(a.final_grade) ?? "—"}
-                      </TableCell>
-                      <TableCell className="px-3.5 py-2.75">
-                        {formatGrade(a.completion_grade) ?? "—"}
-                      </TableCell>
-                      <TableCell className="px-3.5 py-2.75">
-                        <span
-                          className="block max-w-48 truncate"
-                          title={a.instructor || undefined}
-                        >
-                          {a.instructor || "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-3.5 py-2.75">
-                        <StatusBadge status={STATUS_MAP[a.effective_status]} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="mt-4 text-[13.5px] text-muted-foreground">
-                No attempts recorded yet.
-              </p>
-            )}
-
-            <h3 className="mt-5.5 text-[15.5px] font-semibold">
-              Grade fix history
-            </h3>
-            {fixes.length > 0 ? (
-              <ul className="mt-2.5 grid gap-1.5 text-[13.5px] text-muted-foreground">
-                {fixes.map((entry, index) => (
-                  <li key={`${entry.changed_at}:${index}`}>
-                    {new Date(entry.changed_at).toLocaleString()} ·{" "}
-                    {entry.old_grade ?? "—"} → {entry.new_grade ?? "—"}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-[13.5px] text-muted-foreground">
-                No grade fixes recorded.
-              </p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        slot={selectedResult}
+        title={modalTitle}
+        meta={modalMeta}
+      />
+    </>
   );
 }

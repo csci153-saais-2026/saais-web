@@ -16,12 +16,19 @@ export function useUpdateStudentPhoto(studentId: string) {
     mutationFn: (body: ApiSchema<"StudentPhotoUpdateRequest">) =>
       updateStudentPhoto(studentId, body),
     onSuccess: (updated) => {
+      queryClient.setQueryData(
+        ["sidebar-student-photo", studentId],
+        updated.avatar_url ?? null,
+      );
       queryClient.setQueryData<StudentProfileData>(
         ["student", studentId, "profile"],
         (prev) => (prev ? { ...prev, profile: updated } : prev),
       );
       void queryClient.invalidateQueries({
         queryKey: ["student", studentId, "profile"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["sidebar-student-photo", studentId],
       });
     },
   });
@@ -36,12 +43,19 @@ export function useDeleteStudentPhoto(studentId: string) {
   return useMutation({
     mutationFn: () => deleteStudentPhoto(studentId),
     onSuccess: (updated) => {
+      queryClient.setQueryData(
+        ["sidebar-student-photo", studentId],
+        updated.avatar_url ?? null,
+      );
       queryClient.setQueryData<StudentProfileData>(
         ["student", studentId, "profile"],
         (prev) => (prev ? { ...prev, profile: updated } : prev),
       );
       void queryClient.invalidateQueries({
         queryKey: ["student", studentId, "profile"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["sidebar-student-photo", studentId],
       });
     },
   });

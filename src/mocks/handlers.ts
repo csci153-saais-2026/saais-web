@@ -271,6 +271,10 @@ function studentMetrics(studentId: string, departmentId: string) {
   };
 }
 
+function deficiencyCount(deficiencies: ApiSchema<"AttemptResult">[]): number {
+  return new Set(deficiencies.map((attempt) => attempt.id)).size;
+}
+
 function studentDeficiencies(
   metrics: ReturnType<typeof studentMetrics>,
 ): ApiSchema<"StudentDeficiencyItem">[] {
@@ -309,22 +313,6 @@ function studentDeficiencies(
         inc_deadline: attempt.inc_deadline,
       };
     }),
-    ...metrics.flags.map((flag) => {
-      const attempt = metrics.results.find(
-        (item) => item.id === flag.attempt_id,
-      );
-      const offering = db.courseOfferings.find(
-        (item) => item.id === attempt?.course_offering_id,
-      );
-      const course = db.courses.find((item) => item.id === offering?.course_id);
-      return {
-        kind: "open_flag" as const,
-        attempt_id: flag.attempt_id,
-        course_code: course?.code ?? "Unknown",
-        course_title: course?.title ?? "Course unavailable",
-        detail: flag.details,
-      };
-    }),
     ...metrics.results
       .filter(
         (attempt) =>
@@ -350,6 +338,7 @@ function studentDeficiencies(
 
 function deficiencySummary(
   studentId: string,
+  includeWithoutDeficiencies = false,
 ): ApiSchema<"DeficiencyStudentSummary"> | null {
   const db = getMockDatabase();
   const org = db.studentOrganizations.find(
@@ -363,7 +352,7 @@ function deficiencySummary(
   if (!org || !profile || !program || !curriculum) return null;
   const metrics = studentMetrics(studentId, org.department_id);
   const deficiencies = studentDeficiencies(metrics);
-  if (!deficiencies.length) return null;
+  if (!deficiencies.length && !includeWithoutDeficiencies) return null;
   const adviser = db.adviserAssignments.find(
     (item) => item.student_id === studentId && item.end_date === null,
   );
@@ -3812,7 +3801,7 @@ export const saaisMswHandlers = [
         required_units: curriculum.total_units,
         standing,
         is_delinquent: isDelinquent,
-        deficiencies_count: deficiencies.length,
+        deficiencies_count: deficiencyCount(deficiencies),
         open_inc_count: openInc.length,
         lapsed_inc_count: lapsed.length,
         open_flags_count: flags.length,
@@ -4056,7 +4045,8 @@ export const saaisMswHandlers = [
         open_inc_count: metrics.openInc.length,
         lapsed_inc_count: metrics.lapsed.length,
         open_flags_count: metrics.flags.length,
-        deficiencies_count: metrics.deficiencies.length,
+        deficiencies_count: deficiencyCount(metrics.deficiencies),
+        deficiencies: studentDeficiencies(metrics),
         is_delinquent: metrics.isDelinquent,
         computed_at: "2026-11-10T08:00:00Z",
       };
@@ -7815,7 +7805,7 @@ export const saaisMswHandlers = [
       },
       batch_curriculum_gwa: [...batches.values()].map((batch) => batch.row),
       advisees_with_deficiencies: studentIds
-        .map(deficiencySummary)
+        .map((id) => deficiencySummary(id))
         .filter(
           (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
             item !== null,
@@ -8049,8 +8039,13 @@ export const saaisMswHandlers = [
         (m) => m.isDelinquent || m.flags.length > 0,
       ).length,
       encoding_progress_pct: 85,
-      at_risk_roster: orgs
-        .map((item) => deficiencySummary(item.student_id))
+      at_risk_roster: metrics
+        .map((m) =>
+          deficiencySummary(
+            m.org.student_id,
+            m.isDelinquent || m.flags.length > 0,
+          ),
+        )
         .filter(
           (item): item is ApiSchema<"DeficiencyStudentSummary"> =>
             item !== null,

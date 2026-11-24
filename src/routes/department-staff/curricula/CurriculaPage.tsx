@@ -4,7 +4,6 @@ import "../shared/staff-filters.css";
 import { useState } from "react";
 import { PlusIcon } from "@/components/icons";
 import { PageHeading } from "@/components/features/page-heading";
-import { FormField } from "@/components/features/form-field";
 import { Panel } from "@/components/features/panel";
 import { StatGrid } from "@/components/features/stat-tile";
 import { Button } from "@/components/ui/button";
@@ -51,6 +50,7 @@ export default function CurriculaPage() {
     version: CurriculumVersion;
   } | null>(null);
   const [addingTerm, setAddingTerm] = useState<CurriculumVersion | null>(null);
+  const [termMessage, setTermMessage] = useState("");
   const [termAction, setTermAction] = useState<{
     action: "edit" | "delete";
     term: CurriculumTerm;
@@ -256,78 +256,61 @@ export default function CurriculaPage() {
             </Button>
           </Panel>
         )}
-        {catalog.isSuccess && versions.length === 0 && (
+        {catalog.isSuccess && !version && (
           <Panel title="Curriculum versions">
             <p>No curriculum versions are available for your department.</p>
           </Panel>
         )}
-        {version && (
+        {catalog.isSuccess && version && (
           <>
-            <div className="staff-filter-controls department-filter-typography flex flex-wrap items-end gap-3 pb-1">
-              <FormField
-                label="Curriculum version"
-                htmlFor="curriculum-version"
-                className="min-w-[220px] flex-[0_1_280px]"
-              >
+            <Panel title="Curriculum versions">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="sr-only" htmlFor="curriculum-version">
+                  Curriculum version
+                </label>
                 <select
                   id="curriculum-version"
-                  className="min-h-10 w-full rounded-sm border border-input bg-card px-3 text-sm"
+                  className="min-w-0 flex-1 rounded-sm border border-input bg-card px-3 py-2 text-sm"
                   value={version.id}
-                  onChange={(event) => setSelection(event.target.value)}
+                  onChange={(event) => setSelection(event.currentTarget.value)}
                 >
-                  {versions.map((item) => {
-                    const code =
-                      catalog.data?.programs.find(
-                        (program) => program.id === item.program_id,
-                      )?.code ?? "Program unavailable";
-                    const label = item.version_label.startsWith(`${code} `)
-                      ? item.version_label.slice(code.length + 1)
-                      : item.version_label;
-                    return (
-                      <option key={item.id} value={item.id}>
-                        {code} · {label}
-                      </option>
-                    );
-                  })}
+                  {versions.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.version_label}
+                    </option>
+                  ))}
                 </select>
-              </FormField>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!catalog.isSuccess || catalog.isFetching}
-                onClick={() => {
-                  setEditing(version);
-                }}
-              >
-                Edit version
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={!catalog.isSuccess || catalog.isFetching}
-                onClick={() => {
-                  setLifecycle({ action: "delete", version });
-                }}
-              >
-                Delete version
-              </Button>
-              <div className="min-w-4 flex-1" aria-hidden="true" />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={
-                  !catalog.isSuccess ||
-                  catalog.isFetching ||
-                  !detail.isSuccess ||
-                  detail.isFetching
-                }
-                onClick={() => {
-                  setAddingTerm(version);
-                }}
-              >
-                Add term
-              </Button>
-            </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={catalog.isFetching}
+                  onClick={() => setEditing(version)}
+                >
+                  Edit version
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={catalog.isFetching}
+                  onClick={() => setLifecycle({ action: "delete", version })}
+                >
+                  Delete version
+                </Button>
+                <div className="min-w-4 flex-1" aria-hidden="true" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!detail.isSuccess || detail.isFetching}
+                  onClick={() => {
+                    setTermMessage("");
+                    setAddingTerm(version);
+                  }}
+                >
+                  Add term
+                </Button>
+              </div>
+            </Panel>
+            {termMessage && <p role="status">{termMessage}</p>}
             <StatGrid
               items={[
                 {
@@ -418,30 +401,21 @@ export default function CurriculaPage() {
                         term={term}
                         slots={slots}
                         courses={detail.data.courses}
-                        actionsDisabled={
-                          !catalog.isSuccess ||
-                          catalog.isFetching ||
-                          detail.isFetching
+                        actionsDisabled={detail.isFetching}
+                        onAddRequirement={() =>
+                          setAddingRequirement({ term, version })
                         }
-                        onAddRequirement={() => {
-                          setAddingRequirement({ term, version });
-                        }}
-                        onEditSlot={(slot) => {
-                          setSlotAction({
-                            action: "edit",
-                            term,
-                            version,
-                            slot,
-                          });
-                        }}
-                        onDeleteSlot={(slot) => {
+                        onEditSlot={(slot) =>
+                          setSlotAction({ action: "edit", term, version, slot })
+                        }
+                        onDeleteSlot={(slot) =>
                           setSlotAction({
                             action: "delete",
                             term,
                             version,
                             slot,
-                          });
-                        }}
+                          })
+                        }
                         onEdit={() => openTermAction("edit")}
                         onDelete={() => openTermAction("delete")}
                       />

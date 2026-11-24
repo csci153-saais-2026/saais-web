@@ -7,12 +7,22 @@ export async function getFlags() {
   for (let offset = 0; ; offset += 100) {
     const page = unwrapApiResult(
       await apiClient.GET("/rest/v1/grade_flag", {
-        params: { query: { status: "eq.open", limit: 100, offset } },
+        params: {
+          query: {
+            status: "eq.open",
+            order: "created_at.desc,id.desc",
+            limit: 100,
+            offset,
+          },
+        },
       }),
     );
-    if (page.some((f) => flags.some((o) => o.id === f.id)))
+    // Flags created while paging shift newest-first offsets, so repeats are
+    // expected; only a page made entirely of repeats means paging is stuck.
+    const fresh = page.filter((f) => !flags.some((o) => o.id === f.id));
+    if (page.length > 0 && fresh.length === 0)
       throw new Error("Grade flag pagination returned duplicates.");
-    flags.push(...page);
+    flags.push(...fresh);
     if (page.length < 100) break;
   }
   const visible = flags.filter((f) =>

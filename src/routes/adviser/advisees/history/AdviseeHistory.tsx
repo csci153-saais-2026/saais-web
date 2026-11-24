@@ -39,6 +39,12 @@ const humanizeAction = (action: string) => {
   const text = action.replace(/[._]+/g, " ").trim();
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
+const formatAuditDetail = (detail?: string | null) => {
+  const value = detail?.trim();
+  if (!value) return "—";
+  if (!/^[\w.-]+$/.test(value)) return value;
+  return humanizeAction(value);
+};
 const roleLabel = (role?: string | null) =>
   role === "student"
     ? "Advisee"
@@ -72,16 +78,22 @@ export default function AdviseeHistory() {
     !!user?.id && !!id,
     () => getStudentHistory(id!),
   );
-  const rows = data?.filter(
-    (row) =>
-      (filter === "all" ||
-        (filter === "student"
-          ? row.actor_id === id
-          : row.actor_role === "adviser")) &&
-      [row.actor_name, row.action, row.details_summary, row.actor_role].some(
-        (value) => value?.toLowerCase().includes(search.trim().toLowerCase()),
-      ),
-  );
+  const rows = data
+    ?.filter(
+      (row) =>
+        (filter === "all" ||
+          (filter === "student"
+            ? row.actor_id === id
+            : row.actor_role === "adviser")) &&
+        [row.actor_name, row.action, row.details_summary, row.actor_role].some(
+          (value) => value?.toLowerCase().includes(search.trim().toLowerCase()),
+        ),
+    )
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
   const studentName =
     data?.find((row) => row.actor_id === id && row.actor_name)?.actor_name ??
     "the advisee";
@@ -169,7 +181,7 @@ export default function AdviseeHistory() {
                         <TableCell>{humanizeAction(row.action)}</TableCell>
                         <TableCell className="text-[#3C4A2A]">
                           <Truncate
-                            text={row.details_summary ?? "—"}
+                            text={formatAuditDetail(row.details_summary)}
                             className="max-w-96"
                           />
                         </TableCell>

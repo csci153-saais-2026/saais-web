@@ -1,20 +1,11 @@
+import { AdviserAssignmentsTable } from "@/components/features/adviser-assignments-table";
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { AlertIcon, SwapIcon } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { ReassignAdviserDialog } from "./ReassignAdviserDialog";
 import { StudentDirectoryFilters } from "../shared/StudentDirectoryFilters";
 import {
@@ -31,10 +22,6 @@ import { todayInManila } from "../shared/dh-utils";
 import { QueryMessage } from "../shared/dh-ui";
 import { useNotify } from "../shared/notify-context";
 import type { DirectoryStudent } from "../shared/students-types";
-
-const TH =
-  "h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase";
-const TD = "px-3.5 py-[11px] text-[13.5px] leading-normal";
 
 type Filters = { search: string; curriculum: string; adviser: string };
 
@@ -186,115 +173,30 @@ export default function AdviserAssignmentsPage() {
                 Reassign selected
               </Button>
             </div>
-            <Table responsive aria-label="Student adviser assignments">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={`${TH} w-20`}>
-                    <Checkbox
-                      aria-label="Select all visible students"
-                      disabled={visible.length === 0}
-                      checked={
-                        partiallySelected ? "indeterminate" : allSelected
-                      }
-                      onCheckedChange={(checked) =>
-                        setSelected(
-                          checked === true
-                            ? visible.map((student) => student.id)
-                            : [],
-                        )
-                      }
-                      className="data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden"
-                    />
-                  </TableHead>
-                  <TableHead className={TH}>Student</TableHead>
-                  <TableHead className={TH}>Current adviser</TableHead>
-                  <TableHead className={TH}>Since</TableHead>
-                  <TableHead className={TH}>Previous adviser</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((student) => (
-                  <TableRow
-                    key={student.id}
-                    className="cursor-pointer border-line-soft hover:bg-line-soft"
-                    onClick={() =>
-                      toggleStudent(student.id, !selected.includes(student.id))
-                    }
-                    data-state={
-                      selected.includes(student.id) ? "selected" : undefined
-                    }
-                  >
-                    <TableCell
-                      label="Select"
-                      className={`${TD} w-20`}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <Checkbox
-                        aria-label={`Select ${student.name}`}
-                        checked={selected.includes(student.id)}
-                        onCheckedChange={(checked) =>
-                          toggleStudent(student.id, checked === true)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell
-                      label="Student"
-                      className={`${TD} whitespace-normal`}
-                    >
-                      <div className="min-w-0">
-                        <span
-                          className="block max-w-64 truncate text-[13.5px] font-semibold"
-                          title={student.name}
-                        >
-                          {student.name}
-                        </span>
-                        <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
-                          {student.studentNumber}
-                        </span>
-                        <Badge
-                          variant="secondary"
-                          className="mt-1 gap-1.5 rounded-sm"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="size-1.5 rounded-full bg-current"
-                          />
-                          {student.curriculum}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      label="Current adviser"
-                      className={`${TD} whitespace-normal`}
-                    >
-                      <div className="min-w-0">
-                        <span>{student.adviser}</span>
-                        {student.scheduledAssignment && (
-                          <p className="mt-1 max-w-64 text-xs text-muted-foreground">
-                            Scheduled: {student.scheduledAssignment.adviser}{" "}
-                            from{" "}
-                            {assignmentDateLabel(
-                              student.scheduledAssignment.effectiveDate,
-                            )}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell label="Since" className={TD}>
-                      {assignmentDateLabel(student.adviserSince)}
-                    </TableCell>
-                    <TableCell
-                      label="Previous adviser"
-                      className={`${TD} whitespace-normal`}
-                    >
-                      <span className="min-w-0">
-                        {student.previousAdviser || "—"}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <AdviserAssignmentsTable
+              variant="department-head"
+              assignments={visible.map((student) => ({
+                id: student.id,
+                name: student.name,
+                studentNumber: student.studentNumber,
+                curriculum: student.curriculum,
+                adviser: student.adviser,
+                adviserSince: assignmentDateLabel(student.adviserSince),
+                previousAdviser: student.previousAdviser,
+                scheduledAssignment: student.scheduledAssignment && {
+                  ...student.scheduledAssignment,
+                  effectiveDate: assignmentDateLabel(
+                    student.scheduledAssignment.effectiveDate,
+                  ),
+                },
+                selected: selected.includes(student.id),
+              }))}
+              selectAll={partiallySelected ? "indeterminate" : allSelected}
+              onSelectAll={(checked) =>
+                setSelected(checked ? visible.map((student) => student.id) : [])
+              }
+              onSelectAssignment={toggleStudent}
+            />
             {visible.length === 0 && (
               <p className="px-5 py-10 text-center text-sm text-muted-foreground">
                 No students match these filters.
