@@ -25,11 +25,17 @@ export async function getRoster(
   }
 }
 
-export async function getSelectedStudent(id: string) {
+export async function getSelectedStudent(
+  id: string,
+): Promise<ApiSchema<"StudentRosterItem"> & { avatar_url?: string | null }> {
   const profiles = unwrapApiResult(
     await apiClient.GET("/rest/v1/profile", {
       params: {
-        query: { id: `eq.${id}`, select: "id,student_number", limit: 1 },
+        query: {
+          id: `eq.${id}`,
+          select: "id,student_number,avatar_url",
+          limit: 1,
+        },
       },
     }),
   );
@@ -46,5 +52,5 @@ export async function getSelectedStudent(id: string) {
     throw new Error(
       "Student record is unavailable or outside your access scope.",
     );
-  return student;
+  return { ...student, avatar_url: profile.avatar_url };
 }
