@@ -126,6 +126,49 @@ describe("term advising identity", () => {
     expect(screen.queryByRole("option", { name: /2025/ })).toBeNull();
   });
 
+  it("removes every selected course when Remove all is clicked", async () => {
+    vi.mocked(getAdvisingTerms).mockResolvedValue([
+      { id: "term-two", school_year: "2026", term_type: "1st Semester" },
+    ] as ApiSchema<"SchoolTerm">[]);
+    vi.mocked(getAdvisingData).mockResolvedValue({
+      ...data,
+      items: [
+        {
+          id: "item-two",
+          advising_plan_id: "plan-two",
+          student_id: "student-two",
+          school_term_id: "term-two",
+          course_offering_id: "offering-two",
+          curriculum_term_course_id: "slot-two",
+          display_order: 1,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+    });
+    vi.mocked(saveAdvisingPlan).mockResolvedValue(
+      {} as ApiSchema<"AdvisingPlanResponse">,
+    );
+    render(page());
+    fireEvent.change(await screen.findByLabelText("School term"), {
+      target: { value: "term-two" },
+    });
+    const checkbox = await screen.findByRole("checkbox", { name: /CS 2/ });
+    expect((checkbox as HTMLInputElement).checked).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove all" }));
+
+    await waitFor(() =>
+      expect(saveAdvisingPlan).toHaveBeenCalledWith(
+        "student-two",
+        "term-two",
+        null,
+        "assignment-two",
+        [],
+      ),
+    );
+    expect((checkbox as HTMLInputElement).checked).toBe(false);
+  });
+
   it("disables Add selected to plan until a course is selected", async () => {
     vi.mocked(getAdvisingTerms).mockResolvedValue([
       { id: "term-two", school_year: "2026", term_type: "1st Semester" },

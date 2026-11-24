@@ -79,7 +79,7 @@ function PlanEditor({
         : items.filter((item) => item.course_offering_id !== offering),
     );
   }
-  async function save() {
+  async function savePlan(items: typeof selected) {
     if (!data.assignmentId) return;
     setBusy(true);
     setError("");
@@ -89,7 +89,7 @@ function PlanEditor({
         term,
         data.plan?.revision ?? null,
         data.assignmentId,
-        selected,
+        items,
       );
       onSaved();
     } catch (e) {
@@ -97,6 +97,10 @@ function PlanEditor({
     } finally {
       setBusy(false);
     }
+  }
+  async function removeAll() {
+    setSelected([]);
+    await savePlan([]);
   }
   return (
     <>
@@ -191,9 +195,18 @@ function PlanEditor({
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm">{selected.length} selected</span>
               <Button
+                variant="outline"
+                disabled={
+                  busy || !data.assignmentId || selected.length === 0
+                }
+                onClick={() => void removeAll()}
+              >
+                {busy ? "Removing…" : "Remove all"}
+              </Button>
+              <Button
                 className="ml-auto"
                 disabled={busy || !data.assignmentId || selected.length === 0}
-                onClick={() => void save()}
+                onClick={() => void savePlan(selected)}
               >
                 {busy ? "Saving…" : "Add selected to plan"}
               </Button>
