@@ -192,4 +192,24 @@ describe("useDepartmentPdfUrl", () => {
       expect(view.result.current.url).toBe("blob:replacement"),
     );
   });
+
+  it("does not let an older generation replace the latest PDF", async () => {
+    let finishOlder!: (blob: Blob) => void;
+    pdf.build.mockImplementationOnce(
+      () =>
+        new Promise<Blob>((resolve) => {
+          finishOlder = resolve;
+        }),
+    );
+    const view = mountPdf(report);
+    await waitFor(() => expect(pdf.build).toHaveBeenCalledTimes(1));
+    view.select({ ...report, filename: "latest.pdf" });
+    await waitFor(() =>
+      expect(view.result.current.url).toBe("blob:department-report"),
+    );
+    await act(async () => finishOlder(new Blob(["older export"])));
+    expect(view.result.current.url).toBe("blob:department-report");
+    expect(createUrl).toHaveBeenCalledTimes(1);
+    expect(revokeUrl).not.toHaveBeenCalled();
+  });
 });
