@@ -97,7 +97,7 @@ const adviserAssignmentHistorySchema = z
     handed_over_to_adviser_id: z.uuid().nullable().optional(),
     handed_over_to_name: z.string().nullable().optional(),
     handover_label: z.string().nullable().optional(),
-    created_at: z.iso.datetime(),
+    created_at: z.iso.datetime({ offset: true }),
   })
   .strict();
 const reassignmentResponseSchema = z
@@ -117,7 +117,7 @@ const reassignmentResponseSchema = z
         handed_over_to_adviser_id: z.uuid().nullable().optional(),
         handed_over_to_name: z.string().nullable().optional(),
         handover_label: z.string().nullable().optional(),
-        created_at: z.iso.datetime(),
+        created_at: z.iso.datetime({ offset: true }),
       }),
     ),
   })

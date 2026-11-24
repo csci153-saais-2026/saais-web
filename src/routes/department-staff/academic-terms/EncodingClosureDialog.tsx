@@ -190,7 +190,11 @@ export function EncodingClosureDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button
+              type="submit"
+              variant={isClosing ? "destructive" : "default"}
+              disabled={pending}
+            >
               {pending
                 ? isClosing
                   ? "Closing encoding…"
