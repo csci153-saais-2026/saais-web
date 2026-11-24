@@ -26,6 +26,38 @@ async function openCohort() {
 }
 
 describe("Department report shared-component wiring", () => {
+  it("filters shared cohort views by program and keeps student names read-only", async () => {
+    renderDepartmentHead(<DepartmentReportsPage />);
+    await screen.findByLabelText("Selected department report");
+    fireEvent.keyDown(
+      screen.getByRole("combobox", { name: "Degree program" }),
+      { key: "ArrowDown" },
+    );
+    fireEvent.click(
+      await screen.findByRole("option", {
+        name: "Bachelor of Science in Computer Science",
+      }),
+    );
+    const table = screen.getByRole("table", {
+      name: "GWA by batch and curriculum",
+    });
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.textContent).toContain("BSCS");
+    fireEvent.click(
+      within(table).getAllByRole("button", { name: /View students for/ })[0],
+    );
+    const dialog = await screen.findByRole("dialog", { name: /Student GWA/ });
+    const studentTable = within(dialog).getByRole("table", {
+      name: "Cohort student GWA",
+    });
+    expect(within(studentTable).getAllByRole("row").length).toBeGreaterThan(1);
+    expect(within(studentTable).queryByRole("button")).toBeNull();
+    expect(within(studentTable).queryByRole("link")).toBeNull();
+    for (const row of within(studentTable).getAllByRole("row").slice(1))
+      expect(row.textContent).toContain("BSCS");
+  });
+
   it("restores cohort action focus after keyboard dismissal", async () => {
     const { opener, dialog } = await openCohort();
     fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
