@@ -1,9 +1,8 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useState } from "react";
-import { GradeDistribution } from "@/components/features/grade-distribution";
+import { ReportStatsSection } from "@/components/features/report-stats-section";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
-import { StatGrid } from "@/components/features/stat-tile";
 import { DownloadIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,7 @@ import type { DepartmentPdfDocument } from "../shared/department-pdf";
 import { PdfViewerDialog } from "../shared/PdfViewerDialog";
 import { buildReportPdf } from "./report-pdf";
 import { useReportSource } from "./reports-api";
+import { reportDistributionFootnote, toReportStats } from "./report-presentation";
 
 export default function DepartmentReportsPage() {
   const source = useReportSource();
@@ -122,37 +122,16 @@ export default function DepartmentReportsPage() {
               <p className="sr-only" role="status">
                 Showing {report.termLabel}, {report.programLabel}.
               </p>
-              <StatGrid
-                className="lg:grid-cols-3"
-                items={[
-                  {
-                    label: "Currently enrolled",
-                    value: report.enrolled.toLocaleString("en-US"),
-                    note: report.enrolmentNote,
-                  },
-                  {
-                    label: "Mean GWA",
-                    value: report.meanGwa,
-                    note: "Average of student cumulative GWAs",
-                  },
-                  {
-                    label: "Students with deficiencies",
-                    value: report.deficiencies,
-                    note: report.enrolled
-                      ? `${((report.deficiencies / report.enrolled) * 100).toFixed(1)}% of enrolled students`
-                      : "No enrolled students",
-                  },
-                ]}
+              <ReportStatsSection
+                stats={toReportStats(report)}
+                distribution={{
+                  title: "GWA distribution",
+                  description: report.termLabel,
+                  bands: report.distribution,
+                  footnote: reportDistributionFootnote(report),
+                }}
               />
-              <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-                <Panel title="GWA distribution" description={report.termLabel}>
-                  <GradeDistribution bands={report.distribution} />
-                  <p className="mt-5 text-xs text-muted-foreground">
-                    {report.gwaStudents.toLocaleString("en-US")} of{" "}
-                    {report.enrolled.toLocaleString("en-US")} students have a
-                    cumulative GWA · Percentages sum to 100%.
-                  </p>
-                </Panel>
+              <div className="mt-6">
                 <Panel
                   title="Department summary"
                   description="Enrollment by active curriculum"
