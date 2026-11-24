@@ -4,11 +4,13 @@ import {
   CohortStudentsDialog,
   type CohortStudentRow,
 } from "@/components/features/cohort-students-dialog";
-import { DeanPdfViewerDialog } from "@/routes/dean/reports/DeanPdfViewerDialog";
+import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { FacultyBatchGwaTable } from "@/routes/dean/reports/FacultyBatchGwaTable";
 import { FacultyReportHeader } from "@/routes/dean/reports/FacultyReportHeader";
 import { FacultyReportStatsAndDistribution } from "@/routes/dean/reports/FacultyReportStatsAndDistribution";
 import { useDeanReports } from "@/routes/dean/reports/use-dean-reports";
+import { useFacultyReportPdfPreview } from "@/routes/dean/reports/use-faculty-report-pdf";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
 import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog";
 import { toDeanStudentSummary } from "@/routes/dean/students/to-dean-student-summary";
@@ -29,6 +31,7 @@ export default function DeanReportsPage() {
     useState<DeanStudentSummary | null>(null);
   const [pdfPreviewReport, setPdfPreviewReport] =
     useState<FacultyDepartmentReport | null>(null);
+  const { user } = useAuth();
   const cohortOpenerRef = useRef<HTMLElement | null>(null);
   const openingStudentFromCohortRef = useRef(false);
 
@@ -43,6 +46,12 @@ export default function DeanReportsPage() {
     refetch,
     recordView,
   } = useDeanReports(department);
+
+  const pdfPreview = useFacultyReportPdfPreview({
+    report: pdfPreviewReport,
+    facultyName,
+    deanName: user?.fullName,
+  });
 
   const handleOpenPdfPreview = () => {
     if (!report) return;
@@ -160,16 +169,23 @@ export default function DeanReportsPage() {
         onClose={() => setSelectedStudent(null)}
       />
 
-      <DeanPdfViewerDialog
-        report={pdfPreviewReport}
-        facultyName={facultyName}
-        onClose={() => setPdfPreviewReport(null)}
-        onDownloaded={(downloadedReport) =>
-          recordView(
-            "pdf_exported",
-            `Exported faculty report (${downloadedReport.department}) as PDF`,
-          )
-        }
+      <PdfViewerDialog
+        open={pdfPreviewReport !== null}
+        onOpenChange={(open) => {
+          if (!open) setPdfPreviewReport(null);
+        }}
+        title="Faculty reports"
+        filename={pdfPreview.filename}
+        url={pdfPreview.url}
+        error={pdfPreview.error}
+        onDownload={() => {
+          if (pdfPreviewReport) {
+            recordView(
+              "pdf_exported",
+              `Exported faculty report (${pdfPreviewReport.department}) as PDF`,
+            );
+          }
+        }}
       />
     </div>
   );
