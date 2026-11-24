@@ -43,6 +43,10 @@ preview is not shown for a new scope.
 The shared viewer only displays the prepared PDF and offers an explicit download.
 The pages and hook continue to own data retrieval and PDF creation.
 
+The old `document`/`onClose` dialog interface remains as a small compatibility
+adapter because Department Staff Academic Terms still imports it. The adapter
+uses the shared preparation hook and delegates display to the shared viewer.
+
 ## Scope and verification record
 
 This change adds no API contract, database, role permission or calculation
