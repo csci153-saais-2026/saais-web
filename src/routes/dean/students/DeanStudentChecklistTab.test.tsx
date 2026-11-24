@@ -74,8 +74,8 @@ describe("DeanStudentChecklistTab", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText("36 units earned")).toBeTruthy();
     expect(await screen.findByText(/Year 1 · Semester 1/)).toBeTruthy();
+    expect(screen.queryByText("36 units earned")).toBeNull();
     expect(screen.queryByText(/Read-only/i)).toBeNull();
     expect(screen.queryByLabelText("Show requirements")).toBeNull();
 

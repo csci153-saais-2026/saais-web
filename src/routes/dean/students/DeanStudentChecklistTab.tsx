@@ -5,7 +5,6 @@ import {
   type ChecklistViewTerm,
 } from "@/components/features/checklist-view";
 import { CourseInfoDialog } from "@/components/features/course-info-dialog";
-import { DegreeProgress } from "@/components/features/degree-progress";
 import type { Status } from "@/components/ui/status-badge";
 import type { ApiSchema } from "@/lib/api";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
@@ -149,17 +148,6 @@ export function DeanStudentChecklistTab({
   return (
     <>
       <ChecklistView
-        summary={
-          <DegreeProgress
-            program={student.program}
-            curriculum={student.curriculum}
-            earned={student.unitsEarned}
-            required={student.unitsRequired}
-          >
-            Cumulative GWA:{" "}
-            <strong className="font-mono text-primary">{student.gwa}</strong>
-          </DegreeProgress>
-        }
         terms={terms}
         onCourseInfo={(_termId, courseCode) =>
           setSelectedCourseCode(courseCode)
