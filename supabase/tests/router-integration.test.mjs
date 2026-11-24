@@ -49,6 +49,8 @@ test("the shared router registers all 81 operations once and forwards to the cor
       fromGroup.filter((candidate) => candidate.id === operation.id).length,
       1,
     );
+    // Photo upload has a validation and trusted-copy workflow, exercised separately.
+    if (operation.id === "uploadStudentPhoto") continue;
     const calls = [];
     const handler = createHandler(group, {
       env,

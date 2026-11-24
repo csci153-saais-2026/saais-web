@@ -6,7 +6,8 @@ import {
 import contract from "./contract.json" with { type: "json" };
 import mattContract from "./matt-contract.json" with { type: "json" };
 import { mattRoutes } from "./matt-routes.ts";
-import { assistantAnswer, type AssistantConfig } from "./matt-assistant.ts";
+import { assistantAnswer, type AssistantConfig } from "./ai-assistant.ts";
+import { PhotoError } from "./photo-error.ts";
 
 type Parameter = { name: string; in: string; schema: { type?: string } };
 export type Operation = {
@@ -30,10 +31,19 @@ export type Environment = {
   serviceKey?: string;
 };
 export type RouteGroup = string;
+export type PhotoPreparer = (
+  env: Environment,
+  fetcher: typeof fetch,
+  headers: Record<string, string>,
+  student: string,
+  actor: string,
+  body: unknown,
+) => Promise<{ body: unknown; cleanup?: () => Promise<void> }>;
 type Dependencies = {
   env: Environment;
   fetch?: typeof fetch;
   operations?: Operation[];
+  photoUpload?: PhotoPreparer;
 };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 1024 * 1024;
@@ -286,6 +296,40 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           authorization: authorization!,
         });
       }
+      let photoCleanup: (() => Promise<void>) | undefined;
+      if (operation.id === "uploadStudentPhoto") {
+        try {
+          if (!dependencies.photoUpload)
+            throw new PhotoError(500, "Photo validation is unavailable.");
+          const validated = await dependencies.photoUpload(
+            env,
+            fetcher,
+            upstreamHeaders,
+            String(params.student_id),
+            identity.id,
+            body,
+          );
+          body = validated.body;
+          photoCleanup = validated.cleanup;
+        } catch (failure) {
+          if (!(failure instanceof PhotoError)) throw failure;
+          if (failure.status === 429) headers.set("Retry-After", "60");
+          return error(
+            failure.status,
+            failure.status === 400
+              ? "PT400"
+              : failure.status === 401
+                ? "PT401"
+                : failure.status === 403
+                  ? "PT403"
+                  : failure.status === 429
+                    ? "PT429"
+                    : "XX000",
+            failure.message,
+            headers,
+          );
+        }
+      }
       // Use the caller JWT, never a service-role credential. SQL rechecks active
       // session/profile/role/scope at commit and makes the operation atomic.
       const assistant = operation.id === "askAdvisingAssistant";
@@ -319,6 +363,9 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           message?: string;
           details?: string;
         };
+        if (photoCleanup && (result.status < 500 || Boolean(upstream.code))) {
+          await photoCleanup();
+        }
         // Only controlled PT errors contain reviewed public messages. Database
         // constraint details and SQL row dumps never leave the function.
         const controlled = /^PT(400|401|403|404|409|429)$/.test(

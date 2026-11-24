@@ -520,7 +520,7 @@ test("grade recording and correction are separate, with original prerequisite an
   );
   assert.equal(
     schemas.StudentPhotoUpdateRequest.properties.file_size_bytes.maximum,
-    2097152,
+    5242880,
   );
   for (const event of [
     "sign_in_succeeded",

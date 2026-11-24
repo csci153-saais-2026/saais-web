@@ -265,4 +265,51 @@ describe("PostgREST mock query fidelity", () => {
       );
     }
   });
+
+  it("supports documented OR search on /rest/v1/course and enforces per-endpoint OR allowlists", async () => {
+    const db = getMockDatabase();
+    const course = db.courses[0];
+    db.courses.splice(
+      0,
+      db.courses.length,
+      { ...course, id: "c1", code: "CSCI 101", title: "Intro to Computing" },
+      { ...course, id: "c2", code: "MATH 101", title: "Calculus I" },
+      { ...course, id: "c3", code: "PHYS 101", title: "Computing Physics" },
+    );
+
+    const matched = await read("/rest/v1/course", {
+      or: "(code.ilike.%CSCI%,title.ilike.%Physics%)",
+    });
+    expect(matched.status).toBe(200);
+    const matchedRows = await matched.json();
+    expect(matchedRows.map((row: { id: string }) => row.id)).toEqual([
+      "c1",
+      "c3",
+    ]);
+
+    const maxTitle = await read("/rest/v1/course", {
+      or: `(title.ilike.%${"a".repeat(248)}%)`,
+    });
+    expect(maxTitle.status).toBe(200);
+
+    const overCode = await read("/rest/v1/course", {
+      or: `(code.ilike.${"a".repeat(101)})`,
+    });
+    expect(overCode.status).toBe(400);
+
+    const overTitle = await read("/rest/v1/course", {
+      or: `(title.ilike.${"a".repeat(251)})`,
+    });
+    expect(overTitle.status).toBe(400);
+
+    const auditFieldOnCourse = await read("/rest/v1/course", {
+      or: "(actor_name.ilike.%Admin%)",
+    });
+    expect(auditFieldOnCourse.status).toBe(400);
+
+    const courseFieldOnAudit = await read("/rest/v1/audit_log_entry", {
+      or: "(title.ilike.%Computing%)",
+    });
+    expect(courseFieldOnAudit.status).toBe(400);
+  });
 });
