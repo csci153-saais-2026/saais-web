@@ -4,15 +4,7 @@ import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { AcademicTermsTable } from "@/components/features/academic-terms-table";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TermDialog } from "./TermDialog";
@@ -41,10 +33,6 @@ import { buildTermsPdf } from "./terms-pdf";
 import { schoolTermFormSchema } from "@/lib/validation/school-term.schema";
 
 const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const;
-
-const TH =
-  "h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase";
-const TD = "px-3.5 py-[11px] text-[13.5px] leading-normal";
 
 export default function AcademicTermsPage() {
   const termsQuery = useAcademicTerms();
@@ -175,9 +163,6 @@ export default function AcademicTermsPage() {
     );
   }
 
-  const openCount = terms.filter((t) => t.status === "Open").length;
-  const closedCount = terms.length - openCount;
-
   return (
     <AccountSkeleton
       id="dh-academic-terms"
@@ -224,77 +209,18 @@ export default function AcademicTermsPage() {
             description="Encoding windows are tracked separately for each semester."
             flush
           >
-            <Table responsive className="text-[13.5px]">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className={TH}>Academic year</TableHead>
-                  <TableHead className={TH}>Semester</TableHead>
-                  <TableHead className={TH}>Term dates</TableHead>
-                  <TableHead className={TH}>Encoding deadline</TableHead>
-                  <TableHead className={TH}>Status</TableHead>
-                  <TableHead className={TH} aria-label="Actions" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {terms.map((t) => (
-                  <TableRow
-                    key={t.id}
-                    className="border-line-soft hover:bg-line-soft"
-                  >
-                    <TableCell
-                      label="Academic year"
-                      className={`${TD} ${t.status === "Open" ? "font-semibold" : ""}`}
-                    >
-                      {t.academicYear}
-                    </TableCell>
-                    <TableCell label="Semester" className={TD}>
-                      {t.semester}
-                    </TableCell>
-                    <TableCell label="Term dates" className={TD}>
-                      {t.termDates}
-                    </TableCell>
-                    <TableCell label="Encoding deadline" className={TD}>
-                      {t.encodingDeadline}
-                    </TableCell>
-                    <TableCell label="Status" className={TD}>
-                      <StatusBadge
-                        status={t.status === "Open" ? "current" : "archived"}
-                      >
-                        {t.status}
-                      </StatusBadge>
-                    </TableCell>
-                    <TableCell label="Actions" className={TD}>
-                      {t.status === "Open" ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => setTermToClose(t)}
-                          className="cursor-pointer"
-                        >
-                          Close encoding
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => setTermToView(t)}
-                          className="h-auto px-0 py-1 text-[13px] font-semibold no-underline hover:no-underline cursor-pointer"
-                        >
-                          View term
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <div className="flex justify-between items-center border-t border-line-soft px-5 py-3 text-xs text-muted-2">
-              <span>
-                {openCount} open {openCount === 1 ? "term" : "terms"} ·{" "}
-                {closedCount} closed {closedCount === 1 ? "term" : "terms"}
-              </span>
-              <span>DCST department scope</span>
-            </div>
+            <AcademicTermsTable
+              rows={terms}
+              onClose={(row) => {
+                const selected = terms.find((term) => term.id === row.id);
+                if (selected?.status === "Open") setTermToClose(selected);
+              }}
+              onView={(row) => {
+                const selected = terms.find((term) => term.id === row.id);
+                if (selected) setTermToView(selected);
+              }}
+              scopeLabel="Department scope"
+            />
           </Panel>
 
           {/* Add Term Dialog */}
