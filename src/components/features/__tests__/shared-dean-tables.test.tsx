@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { AdviserAssignmentsTable } from "@/components/features/adviser-assignments-table";
 import { AuditLogTable } from "@/components/features/audit-log-table";
 import { StudentDirectoryTable } from "@/components/features/student-directory-table";
-import type { DeanStudentSummary } from "@/routes/dean/types";
+import { DeanAuditActionPill } from "@/routes/dean/audit-log/DeanAuditActionPill";
+import type { DeanAuditEntry, DeanStudentSummary } from "@/routes/dean/types";
+import type { Column } from "@/components/features/data-table-panel";
 
 const student: DeanStudentSummary = {
   studentId: "student-1",
@@ -87,18 +89,31 @@ describe("shared tables with their original Dean props", () => {
   });
 
   it("keeps the Dean audit headers, action display and custom empty message", () => {
+    const entries: DeanAuditEntry[] = [
+      {
+        id: "view",
+        timestamp: "Aug 15, 2025",
+        actor: "Dr. Reyes",
+        action: "View",
+        student: student.name,
+        details: "Viewed the checklist",
+      },
+    ];
+    const columns: Column<DeanAuditEntry>[] = [
+      { header: "When", cell: (row) => row.timestamp },
+      { header: "Who", cell: (row) => row.actor },
+      {
+        header: "Action",
+        cell: (row) => <DeanAuditActionPill action={row.action} />,
+      },
+      { header: "Student", cell: (row) => row.student },
+      { header: "Details", cell: (row) => row.details },
+    ];
     const { rerender } = render(
       <AuditLogTable
-        entries={[
-          {
-            id: "view",
-            timestamp: "Aug 15, 2025",
-            actor: "Dr. Reyes",
-            action: "View",
-            student: student.name,
-            details: "Viewed the checklist",
-          },
-        ]}
+        columns={columns}
+        rows={entries}
+        rowKey={(entry) => entry.id}
       />,
     );
     const table = within(screen.getByRole("table", { name: "Audit log" }));
@@ -107,9 +122,14 @@ describe("shared tables with their original Dean props", () => {
     ).toEqual(["When", "Who", "Action", "Student", "Details"]);
     expect(table.getByText("Dr. Reyes")).toBeTruthy();
     expect(table.getByText("View")).toBeTruthy();
-    rerender(<AuditLogTable entries={[]} emptyMessage="No activity today." />);
-    expect(
-      table.getByRole("cell", { name: "No activity today." }),
-    ).toBeTruthy();
+    rerender(
+      <AuditLogTable
+        columns={columns}
+        rows={[]}
+        rowKey={(entry) => entry.id}
+        empty="No activity today."
+      />,
+    );
+    expect(screen.getByText("No activity today.")).toBeTruthy();
   });
 });

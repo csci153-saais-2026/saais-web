@@ -318,6 +318,182 @@ describe("AdminAccountsPage", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("resets selected roles when the invitation dialog closes and reopens", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Add account" }));
+    const systemAdmin = await screen.findByRole("checkbox", {
+      name: "System Admin",
+    });
+    await waitFor(() =>
+      expect(systemAdmin.hasAttribute("disabled")).toBe(false),
+    );
+    fireEvent.click(systemAdmin);
+    await waitFor(() =>
+      expect(systemAdmin.getAttribute("aria-checked")).toBe("true"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add account" }));
+
+    expect(
+      (
+        await screen.findByRole("checkbox", { name: "System Admin" })
+      ).getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+
+  it("validates identity fields before sending an invitation", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Add account" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "System Admin" }),
+    );
+    fireEvent.change(screen.getByLabelText("Full name"), {
+      target: { value: "New Administrator" },
+    });
+    fireEvent.change(screen.getByLabelText("VSU email"), {
+      target: { value: "new.admin@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
+
+    expect(
+      await screen.findByText(
+        "Use an institutional email ending in @vsu.edu.ph.",
+      ),
+    ).toBeTruthy();
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("filters student catalogs and resets dependent selections", async () => {
+    const agricultureAdviser = {
+      ...account,
+      profile: {
+        ...account.profile,
+        id: "profile-2",
+        full_name: "Ag Adviser",
+        email: "ag.adviser@vsu.edu.ph",
+        faculty_id: "faculty-2",
+        department_id: "department-2",
+      },
+      role_assignments: [
+        {
+          ...account.role_assignments[0],
+          id: "role-3",
+          profile_id: "profile-2",
+          faculty_id: "faculty-2",
+          department_id: "department-2",
+        },
+      ],
+    };
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === "/functions/v1/accounts"
+            ? [account, agricultureAdviser]
+            : path === "/rest/v1/faculty"
+              ? faculties
+              : path === "/rest/v1/department"
+                ? departments
+                : path === "/rest/v1/program"
+                  ? [
+                      ...programs,
+                      {
+                        id: "program-2",
+                        code: "AG",
+                        name: "Agriculture",
+                        department_id: "department-2",
+                        status: "active",
+                      },
+                      {
+                        id: "program-inactive",
+                        code: "OLD",
+                        name: "Inactive program",
+                        department_id: "department-1",
+                        status: "inactive",
+                      },
+                    ]
+                  : path === "/rest/v1/curriculum_version"
+                    ? [
+                        ...curricula,
+                        {
+                          id: "curriculum-inactive",
+                          program_id: "program-1",
+                          version_label: "CS 2024",
+                          status: "inactive",
+                        },
+                      ]
+                    : [],
+        response: new Response(),
+      }),
+    );
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Add account" }));
+    const studentRole = await screen.findByRole("checkbox", {
+      name: "Student",
+    });
+    await waitFor(() =>
+      expect(studentRole.hasAttribute("disabled")).toBe(false),
+    );
+    fireEvent.click(studentRole);
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: "Faculty" })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Faculty" }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Faculty of Computing" }),
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Department" }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Computer Science" }),
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Program" }));
+    expect(
+      await screen.findByRole("option", { name: "CS · Computer Science" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("option", { name: "Inactive program" }),
+    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole("option", { name: "CS · Computer Science" }),
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Curriculum" }));
+    expect(await screen.findByRole("option", { name: "CS 2026" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "CS 2024" })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "CS 2026" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Initial adviser" }));
+    expect(
+      await screen.findByRole("option", { name: "Alex Adviser" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Ag Adviser" })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "Alex Adviser" }));
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Faculty" }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Faculty of Agriculture" }),
+    );
+    expect(
+      screen
+        .getByRole("combobox", { name: "Program" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+    expect(
+      screen
+        .getByRole("combobox", { name: "Curriculum" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+    expect(
+      screen
+        .getByRole("combobox", { name: "Initial adviser" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
   it("uses the first checked role as primary and sends remaining role assignments", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));

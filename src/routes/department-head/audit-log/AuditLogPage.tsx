@@ -1,5 +1,6 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useState } from "react";
+import type { Column } from "@/components/features/data-table-panel";
 import { AuditLogTable } from "@/components/features/audit-log-table";
 import { Panel } from "@/components/features/panel";
 import { FormField } from "@/components/features/form-field";
@@ -47,6 +48,71 @@ export default function AuditLogPage() {
     filters.from && filters.to && filters.from > filters.to,
   );
   const events = filterAuditEvents(auditEvents, filters);
+  const tableRows = events.map((event) => ({
+    id: event.id,
+    timestamp: (
+      <time dateTime={event.timestamp}>
+        <span className="block">
+          {dateFormatter.format(new Date(event.timestamp))}
+        </span>
+        <span className="block text-xs text-muted-foreground">
+          {timeFormatter.format(new Date(event.timestamp)).toUpperCase()}
+        </span>
+      </time>
+    ),
+    person: event.person,
+    action: (
+      <StatusBadge status={actionStatus[event.action]}>
+        {event.action}
+      </StatusBadge>
+    ),
+    student:
+      [event.studentNumber, event.studentName].filter(Boolean).join(" · ") ||
+      "—",
+    record: event.record,
+    details: event.details,
+  }));
+  const tableColumns: Column<(typeof tableRows)[number]>[] = [
+    {
+      header: "Timestamp",
+      className: "font-mono text-xs text-muted-foreground",
+      cell: (row) => row.timestamp,
+    },
+    {
+      header: "Person",
+      className: "font-medium",
+      cell: (row) => (
+        <span
+          className="min-w-0 whitespace-normal wrap-break-word"
+          title={row.person}
+        >
+          {row.person}
+        </span>
+      ),
+    },
+    { header: "Action", cell: (row) => row.action },
+    {
+      header: "Student",
+      cell: (row) => (
+        <span
+          className="min-w-0 whitespace-normal wrap-break-word"
+          title={row.student}
+        >
+          {row.student}
+        </span>
+      ),
+    },
+    {
+      header: "Record",
+      className: "min-w-0 whitespace-normal wrap-break-word",
+      cell: (row) => row.record,
+    },
+    {
+      header: "Details",
+      className: "min-w-0 whitespace-normal wrap-break-word",
+      cell: (row) => row.details,
+    },
+  ];
   const hasFilters = Object.entries(filters).some(([key, value]) =>
     key === "action" ? value !== "all" : value !== "",
   );
@@ -174,35 +240,11 @@ export default function AuditLogPage() {
               </div>
             </div>
             <AuditLogTable
-              variant="department-head"
-              entries={events.map((event) => ({
-                id: event.id,
-                timestamp: (
-                  <time dateTime={event.timestamp}>
-                    <span className="block">
-                      {dateFormatter.format(new Date(event.timestamp))}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {timeFormatter
-                        .format(new Date(event.timestamp))
-                        .toUpperCase()}
-                    </span>
-                  </time>
-                ),
-                person: event.person,
-                action: (
-                  <StatusBadge status={actionStatus[event.action]}>
-                    {event.action}
-                  </StatusBadge>
-                ),
-                student:
-                  [event.studentNumber, event.studentName]
-                    .filter(Boolean)
-                    .join(" · ") || "—",
-                record: event.record,
-                details: event.details,
-              }))}
-              emptyMessage={
+              ariaLabel="Department audit log"
+              columns={tableColumns}
+              rows={tableRows}
+              rowKey={(row) => row.id}
+              empty={
                 dateError
                   ? "Choose a valid date range to view events."
                   : "No entries match these filters."

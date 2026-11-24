@@ -36,9 +36,13 @@ interface AccountProvisionDialogProps {
   onEmailChange: (value: string) => void;
   roleOptions: readonly AccountProvisionRoleOption[];
   initialRoles?: readonly AccountProvisionRole[];
+  selectedRoles?: readonly AccountProvisionRole[];
   disabledRoles?: readonly AccountProvisionRole[];
+  allowStudentRoleSwitch?: boolean;
   disabled?: boolean;
   pending?: boolean;
+  preventCloseWhilePending?: boolean;
+  submitDisabled?: boolean;
   idPrefix?: string;
   emailLabel?: string;
   fullNameError?: string;
@@ -59,9 +63,15 @@ interface AccountProvisionDialogProps {
     programs: readonly AccountProvisionStudentOption[];
     curricula: readonly AccountProvisionStudentOption[];
     advisers: readonly AccountProvisionStudentOption[];
+    programsDisabled?: boolean;
     loadingPrograms?: boolean;
     loadingCurricula?: boolean;
     loadingAdvisers?: boolean;
+    studentNumberError?: string;
+    entryYearError?: string;
+    programError?: string;
+    curriculumError?: string;
+    adviserError?: string;
     onStudentNumberChange: (value: string) => void;
     onEntryYearChange: (value: string) => void;
     onProgramChange: (value: string) => void;
@@ -82,9 +92,13 @@ export function AccountProvisionDialog({
   onEmailChange,
   roleOptions,
   initialRoles = [],
+  selectedRoles: controlledRoles,
   disabledRoles = [],
+  allowStudentRoleSwitch = false,
   disabled = false,
   pending = false,
+  preventCloseWhilePending = false,
+  submitDisabled = false,
   idPrefix = "account",
   emailLabel = "VSU email",
   fullNameError,
@@ -101,12 +115,21 @@ export function AccountProvisionDialog({
   studentReferencesError,
   onRetryStudentReferences,
 }: AccountProvisionDialogProps) {
-  const [selectedRoles, setSelectedRoles] = useState<AccountProvisionRole[]>([
+  const [internalRoles, setInternalRoles] = useState<AccountProvisionRole[]>([
     ...initialRoles,
   ]);
+  const selectedRoles = controlledRoles ?? internalRoles;
+
+  function updateRoles(roles: AccountProvisionRole[]) {
+    if (controlledRoles === undefined) setInternalRoles(roles);
+    onRolesChange?.(roles);
+  }
 
   function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen) setSelectedRoles([...initialRoles]);
+    if (!nextOpen && pending && preventCloseWhilePending) return;
+    if (!nextOpen && controlledRoles === undefined) {
+      setInternalRoles([...initialRoles]);
+    }
     onOpenChange(nextOpen);
   }
 
@@ -115,16 +138,14 @@ export function AccountProvisionDialog({
     if (studentSelected && role !== "student") return;
     if (role === "student") {
       const roles: AccountProvisionRole[] = checked ? ["student"] : [];
-      setSelectedRoles(roles);
-      onRolesChange?.(roles);
+      updateRoles(roles);
       return;
     }
     const next = checked
       ? [...selectedRoles, role]
       : selectedRoles.filter((selectedRole) => selectedRole !== role);
     const roles = Array.from(new Set(next));
-    setSelectedRoles(roles);
-    onRolesChange?.(roles);
+    updateRoles(roles);
   }
 
   return (
@@ -217,7 +238,9 @@ export function AccountProvisionDialog({
                       disabled={
                         disabled ||
                         (studentSelected && option.value !== "student") ||
-                        (nonStudentSelected && option.value === "student") ||
+                        (!allowStudentRoleSwitch &&
+                          nonStudentSelected &&
+                          option.value === "student") ||
                         disabledRoles.includes(option.value)
                       }
                       onCheckedChange={(checked) =>
@@ -235,6 +258,8 @@ export function AccountProvisionDialog({
               </p>
             )}
           </fieldset>
+
+          {children?.(selectedRoles)}
 
           {studentProvisioning && selectedRoles.includes("student") && (
             <>
@@ -269,9 +294,15 @@ export function AccountProvisionDialog({
                 programs={studentProvisioning.programs}
                 curricula={studentProvisioning.curricula}
                 advisers={studentProvisioning.advisers}
+                programsDisabled={studentProvisioning.programsDisabled}
                 loadingPrograms={studentProvisioning.loadingPrograms}
                 loadingCurricula={studentProvisioning.loadingCurricula}
                 loadingAdvisers={studentProvisioning.loadingAdvisers}
+                studentNumberError={studentProvisioning.studentNumberError}
+                entryYearError={studentProvisioning.entryYearError}
+                programError={studentProvisioning.programError}
+                curriculumError={studentProvisioning.curriculumError}
+                adviserError={studentProvisioning.adviserError}
                 onStudentNumberChange={
                   studentProvisioning.onStudentNumberChange
                 }
@@ -283,18 +314,19 @@ export function AccountProvisionDialog({
             </>
           )}
 
-          {children?.(selectedRoles)}
-
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               disabled={pending}
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={disabled || pending}>
+            <Button
+              type="submit"
+              disabled={disabled || pending || submitDisabled}
+            >
               {pending ? "Sending invitation…" : submitLabel}
             </Button>
           </DialogFooter>

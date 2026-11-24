@@ -1,16 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
+import { AccountProvisionDialog } from "@/components/features/account-provision-dialog";
 import { FormField } from "@/components/features/form-field";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -54,48 +44,6 @@ const EMPTY_VALUES: AccountInviteValues = {
   entryYear: "",
 };
 
-function FieldSelect({
-  id,
-  label,
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled = false,
-  error,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly { value: string; label: string }[];
-  placeholder: string;
-  disabled?: boolean;
-  error?: string;
-}) {
-  return (
-    <FormField label={label} htmlFor={id} error={error}>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger
-          id={id}
-          className="w-full"
-          disabled={disabled}
-          aria-invalid={Boolean(error)}
-        >
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </FormField>
-  );
-}
-
 export function AdminAccountProvisionDialog({
   open,
   onOpenChange,
@@ -126,11 +74,6 @@ export function AdminAccountProvisionDialog({
   const [values, setValues] = useState<AccountInviteValues>(EMPTY_VALUES);
   const [selectedRoles, setSelectedRoles] = useState<AccountRole[]>([]);
   const [errors, setErrors] = useState<AccountInviteErrors>({});
-  const inviteValues: AccountInviteValues = {
-    ...values,
-    primaryRole: selectedRoles[0] ?? "student",
-    additionalRoles: selectedRoles.slice(1),
-  };
   const programById = useMemo(
     () => new Map(programs.map((program) => [program.id, program])),
     [programs],
@@ -166,14 +109,14 @@ export function AdminAccountProvisionDialog({
     setErrors((current) => ({ ...current, [key]: undefined }));
   }
 
-  function toggleRole(role: AccountRole, checked: boolean) {
-    setSelectedRoles((current) => {
-      if (role === "student") return checked ? ["student"] : [];
-      if (current.includes("student")) return current;
-      return checked
-        ? [...current, role]
-        : current.filter((currentRole) => currentRole !== role);
-    });
+  function changeRoles(roles: readonly AccountRole[]) {
+    const nextRoles = [...roles];
+    setSelectedRoles(nextRoles);
+    setValues((current) => ({
+      ...current,
+      primaryRole: nextRoles[0] ?? "student",
+      additionalRoles: nextRoles.slice(1),
+    }));
     setErrors((current) => ({ ...current, additionalRoles: undefined }));
   }
 
@@ -200,15 +143,20 @@ export function AdminAccountProvisionDialog({
     setErrors({});
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (selectedRoles.length === 0) {
+  function submit(roles: AccountRole[]) {
+    if (roles.length === 0) {
       setErrors((current) => ({
         ...current,
         additionalRoles: "Select at least one role.",
       }));
       return;
     }
+
+    const inviteValues: AccountInviteValues = {
+      ...values,
+      primaryRole: roles[0],
+      additionalRoles: roles.slice(1),
+    };
     const nextErrors = validateAccountInvite(
       inviteValues,
       currentEmail,
@@ -233,245 +181,147 @@ export function AdminAccountProvisionDialog({
     void onSubmit(buildAccountInviteRequest(inviteValues));
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && submitting) return;
+    if (!nextOpen) {
+      setValues(EMPTY_VALUES);
+      setSelectedRoles([]);
+      setErrors({});
+    }
+    onOpenChange(nextOpen);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Add account</DialogTitle>
-          <DialogDescription>
-            Send a secure, expiring invitation to a VSU account. Role and
-            student assignments are validated and created by the server.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-5" onSubmit={submit} noValidate>
-          {submissionError && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-card px-4 py-3 text-sm text-destructive"
-            >
-              {submissionError}
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              label="Full name"
-              htmlFor="account-full-name"
-              error={errors.fullName}
-            >
-              <Input
-                id="account-full-name"
-                autoComplete="name"
-                maxLength={150}
-                value={values.fullName}
-                aria-invalid={Boolean(errors.fullName)}
-                onChange={(event) =>
-                  update("fullName", event.currentTarget.value)
-                }
-              />
-            </FormField>
-            <FormField
-              label="VSU email"
-              htmlFor="account-email"
-              error={errors.email}
-            >
-              <Input
-                id="account-email"
-                type="email"
-                autoComplete="email"
-                maxLength={254}
-                value={values.email}
-                aria-invalid={Boolean(errors.email)}
-                onChange={(event) => update("email", event.currentTarget.value)}
-              />
-            </FormField>
-          </div>
-
-          <fieldset className="grid gap-2">
-            <legend className="text-[13px] font-semibold text-muted-foreground">
-              Roles
-            </legend>
-            <p className="text-xs text-muted-foreground">
-              The first selected role is primary; other selected roles are added
-              as assignments. Student accounts cannot have other roles.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {accountRoles.map((option) => {
-                const studentSelected = selectedRoles.includes("student");
-                const id = `account-role-${option.value}`;
-                return (
-                  <label
-                    key={option.value}
-                    htmlFor={id}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      id={id}
-                      checked={selectedRoles.includes(option.value)}
-                      disabled={
-                        catalogsLoading ||
-                        (studentSelected && option.value !== "student")
-                      }
-                      onCheckedChange={(checked) =>
-                        toggleRole(option.value, checked === true)
-                      }
-                    />
-                    {option.label}
-                  </label>
-                );
-              })}
-            </div>
-            {errors.additionalRoles && (
-              <p role="alert" className="text-xs font-medium text-destructive">
-                {errors.additionalRoles}
-              </p>
-            )}
-          </fieldset>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FieldSelect
-              id="account-faculty"
-              label="Faculty"
-              value={values.facultyId}
-              onChange={changeFaculty}
-              options={faculties.map((faculty) => ({
-                value: faculty.id,
-                label: faculty.name,
-              }))}
-              placeholder="Select a faculty"
+    <AccountProvisionDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      fullName={values.fullName}
+      email={values.email}
+      onFullNameChange={(fullName) => update("fullName", fullName)}
+      onEmailChange={(email) => update("email", email)}
+      roleOptions={accountRoles}
+      selectedRoles={selectedRoles}
+      allowStudentRoleSwitch
+      disabledRoles={
+        catalogsLoading ? accountRoles.map(({ value }) => value) : []
+      }
+      pending={submitting}
+      preventCloseWhilePending
+      submitDisabled={catalogsLoading}
+      idPrefix="account"
+      fullNameError={errors.fullName}
+      emailError={errors.email}
+      roleError={errors.additionalRoles}
+      submissionError={submissionError}
+      onRolesChange={changeRoles}
+      onSubmit={submit}
+      studentProvisioning={{
+        studentNumber: values.studentNumber,
+        entryYear: values.entryYear,
+        programId: values.programId,
+        curriculumVersionId: values.curriculumVersionId,
+        adviserId: values.adviserId,
+        programs: programOptions.map((program) => ({
+          value: program.id,
+          label: `${program.code} · ${program.name}`,
+        })),
+        curricula: curriculumOptions.map((curriculum) => ({
+          value: curriculum.id,
+          label: curriculum.version_label,
+        })),
+        advisers: adviserOptions.map((adviser) => ({
+          value: adviser.id,
+          label: adviser.fullName,
+        })),
+        programsDisabled: !values.departmentId,
+        loadingPrograms: catalogsLoading,
+        loadingCurricula: catalogsLoading,
+        loadingAdvisers: catalogsLoading,
+        studentNumberError: errors.studentNumber,
+        entryYearError: errors.entryYear,
+        programError: errors.programId,
+        curriculumError: errors.curriculumVersionId,
+        adviserError: errors.adviserId,
+        onStudentNumberChange: (value) => update("studentNumber", value),
+        onEntryYearChange: (value) => update("entryYear", value),
+        onProgramChange: (programId) => {
+          setValues((current) => ({
+            ...current,
+            programId,
+            curriculumVersionId: "",
+            adviserId: "",
+          }));
+          setErrors((current) => ({
+            ...current,
+            programId: undefined,
+            curriculumVersionId: undefined,
+            adviserId: undefined,
+          }));
+        },
+        onCurriculumChange: (value) => update("curriculumVersionId", value),
+        onAdviserChange: (value) => update("adviserId", value),
+      }}
+    >
+      {() => (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            label="Faculty"
+            htmlFor="account-faculty"
+            error={errors.facultyId}
+          >
+            <Select
+              value={values.facultyId || "none"}
+              onValueChange={(value) =>
+                changeFaculty(value === "none" ? "" : value)
+              }
               disabled={catalogsLoading}
-              error={errors.facultyId}
-            />
-            <FieldSelect
-              id="account-department"
-              label="Department"
-              value={values.departmentId}
-              onChange={changeDepartment}
-              options={departmentOptions.map((department) => ({
-                value: department.id,
-                label: department.name,
-              }))}
-              placeholder="Select a department"
+            >
+              <SelectTrigger
+                id="account-faculty"
+                className="h-11 w-full"
+                aria-invalid={Boolean(errors.facultyId)}
+              >
+                <SelectValue placeholder="Select a faculty" />
+              </SelectTrigger>
+              <SelectContent>
+                {faculties.map((faculty) => (
+                  <SelectItem key={faculty.id} value={faculty.id}>
+                    {faculty.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField
+            label="Department"
+            htmlFor="account-department"
+            error={errors.departmentId}
+          >
+            <Select
+              value={values.departmentId || "none"}
+              onValueChange={(value) =>
+                changeDepartment(value === "none" ? "" : value)
+              }
               disabled={catalogsLoading || !values.facultyId}
-              error={errors.departmentId}
-            />
-          </div>
-
-          {selectedRoles.includes("student") && (
-            <section
-              aria-labelledby="student-provisioning-heading"
-              className="grid gap-4 rounded-md border border-border p-4"
             >
-              <div>
-                <h3
-                  id="student-provisioning-heading"
-                  className="text-sm font-semibold"
-                >
-                  Student provisioning
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Student number, program, active curriculum, and an eligible
-                  active adviser are required by the invitation contract.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  label="Student number"
-                  htmlFor="account-student-number"
-                  error={errors.studentNumber}
-                >
-                  <Input
-                    id="account-student-number"
-                    maxLength={64}
-                    value={values.studentNumber}
-                    aria-invalid={Boolean(errors.studentNumber)}
-                    onChange={(event) =>
-                      update("studentNumber", event.currentTarget.value)
-                    }
-                  />
-                </FormField>
-                <FormField
-                  label="Entry year (optional)"
-                  htmlFor="account-entry-year"
-                  error={errors.entryYear}
-                >
-                  <Input
-                    id="account-entry-year"
-                    type="number"
-                    min={1900}
-                    max={3000}
-                    inputMode="numeric"
-                    value={values.entryYear}
-                    aria-invalid={Boolean(errors.entryYear)}
-                    onChange={(event) =>
-                      update("entryYear", event.currentTarget.value)
-                    }
-                  />
-                </FormField>
-              </div>
-              <FieldSelect
-                id="account-program"
-                label="Program"
-                value={values.programId}
-                onChange={(value) => {
-                  update("programId", value);
-                  update("curriculumVersionId", "");
-                  update("adviserId", "");
-                }}
-                options={programOptions.map((program) => ({
-                  value: program.id,
-                  label: `${program.code} · ${program.name}`,
-                }))}
-                placeholder="Select a program"
-                disabled={catalogsLoading || !values.departmentId}
-                error={errors.programId}
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FieldSelect
-                  id="account-curriculum"
-                  label="Curriculum"
-                  value={values.curriculumVersionId}
-                  onChange={(value) => update("curriculumVersionId", value)}
-                  options={curriculumOptions.map((curriculum) => ({
-                    value: curriculum.id,
-                    label: curriculum.version_label,
-                  }))}
-                  placeholder="Select an active curriculum"
-                  disabled={catalogsLoading || !values.programId}
-                  error={errors.curriculumVersionId}
-                />
-                <FieldSelect
-                  id="account-adviser"
-                  label="Initial adviser"
-                  value={values.adviserId}
-                  onChange={(value) => update("adviserId", value)}
-                  options={adviserOptions.map((adviser) => ({
-                    value: adviser.id,
-                    label: adviser.fullName,
-                  }))}
-                  placeholder="Select an eligible adviser"
-                  disabled={catalogsLoading || !selectedProgram}
-                  error={errors.adviserId}
-                />
-              </div>
-            </section>
-          )}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting || catalogsLoading}>
-              {submitting ? "Sending invitation…" : "Send invitation"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+              <SelectTrigger
+                id="account-department"
+                className="h-11 w-full"
+                aria-invalid={Boolean(errors.departmentId)}
+              >
+                <SelectValue placeholder="Select a department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departmentOptions.map((department) => (
+                  <SelectItem key={department.id} value={department.id}>
+                    {department.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        </div>
+      )}
+    </AccountProvisionDialog>
   );
 }

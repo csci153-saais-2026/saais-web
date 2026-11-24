@@ -24,9 +24,15 @@ export interface StudentProvisioningFieldsProps {
   programs: readonly StudentProvisioningOption[];
   curricula: readonly StudentProvisioningOption[];
   advisers: readonly StudentProvisioningOption[];
+  programsDisabled?: boolean;
   loadingPrograms?: boolean;
   loadingCurricula?: boolean;
   loadingAdvisers?: boolean;
+  studentNumberError?: string;
+  entryYearError?: string;
+  programError?: string;
+  curriculumError?: string;
+  adviserError?: string;
   onStudentNumberChange: (value: string) => void;
   onEntryYearChange: (value: string) => void;
   onProgramChange: (value: string) => void;
@@ -45,9 +51,15 @@ export function StudentProvisioningFields({
   programs,
   curricula,
   advisers,
+  programsDisabled = false,
   loadingPrograms = false,
   loadingCurricula = false,
   loadingAdvisers = false,
+  studentNumberError,
+  entryYearError,
+  programError,
+  curriculumError,
+  adviserError,
   onStudentNumberChange,
   onEntryYearChange,
   onProgramChange,
@@ -68,6 +80,7 @@ export function StudentProvisioningFields({
           label="Student number"
           htmlFor={`${idPrefix}-student-number`}
           hint="Format: YY-N-NNNNN."
+          error={studentNumberError}
         >
           <Input
             id={`${idPrefix}-student-number`}
@@ -75,6 +88,7 @@ export function StudentProvisioningFields({
             required
             value={studentNumber}
             disabled={disabled}
+            aria-invalid={Boolean(studentNumberError)}
             onChange={(event) =>
               onStudentNumberChange(event.currentTarget.value)
             }
@@ -83,6 +97,7 @@ export function StudentProvisioningFields({
         <FormField
           label="Entry year (optional)"
           htmlFor={`${idPrefix}-entry-year`}
+          error={entryYearError}
         >
           <Input
             id={`${idPrefix}-entry-year`}
@@ -92,22 +107,28 @@ export function StudentProvisioningFields({
             inputMode="numeric"
             value={entryYear}
             disabled={disabled}
+            aria-invalid={Boolean(entryYearError)}
             onChange={(event) => onEntryYearChange(event.currentTarget.value)}
           />
         </FormField>
       </div>
-      <FormField label="Program" htmlFor={`${idPrefix}-program`}>
+      <FormField
+        label="Program"
+        htmlFor={`${idPrefix}-program`}
+        error={programError}
+      >
         <Select
           value={programId || "none"}
           onValueChange={(value) =>
             onProgramChange(value === "none" ? "" : value)
           }
-          disabled={disabled || loadingPrograms}
+          disabled={disabled || loadingPrograms || programsDisabled}
         >
           <SelectTrigger
             id={`${idPrefix}-program`}
             className="h-11! w-full"
             aria-required="true"
+            aria-invalid={Boolean(programError)}
           >
             <SelectValue placeholder="Select a program" />
           </SelectTrigger>
@@ -126,7 +147,11 @@ export function StudentProvisioningFields({
         </Select>
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Curriculum" htmlFor={`${idPrefix}-curriculum`}>
+        <FormField
+          label="Curriculum"
+          htmlFor={`${idPrefix}-curriculum`}
+          error={curriculumError}
+        >
           <Select
             value={curriculumVersionId || "none"}
             onValueChange={(value) =>
@@ -138,6 +163,7 @@ export function StudentProvisioningFields({
               id={`${idPrefix}-curriculum`}
               className="h-11! w-full"
               aria-required="true"
+              aria-invalid={Boolean(curriculumError)}
             >
               <SelectValue placeholder="Select an active curriculum" />
             </SelectTrigger>
@@ -155,7 +181,11 @@ export function StudentProvisioningFields({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="Initial adviser" htmlFor={`${idPrefix}-adviser`}>
+        <FormField
+          label="Initial adviser"
+          htmlFor={`${idPrefix}-adviser`}
+          error={adviserError}
+        >
           <Select
             value={adviserId || "none"}
             onValueChange={(value) =>
@@ -167,6 +197,7 @@ export function StudentProvisioningFields({
               id={`${idPrefix}-adviser`}
               className="h-11! w-full"
               aria-required="true"
+              aria-invalid={Boolean(adviserError)}
             >
               <SelectValue placeholder="Select an eligible adviser" />
             </SelectTrigger>
