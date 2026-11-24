@@ -1,5 +1,5 @@
 import { DataTablePanel } from "@/components/features/data-table-panel";
-import { DeanAuditActionPill } from "@/routes/dean/audit-log/DeanAuditActionPill";
+import { AuditActionPill } from "@/components/features/audit-action-pill";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
 import { useDeanStudentAudit } from "@/routes/dean/students/use-dean-students";
 import type {
@@ -87,7 +87,7 @@ export function DeanStudentAuditTab({
         },
         {
           header: "Action",
-          cell: (row) => <DeanAuditActionPill action={row.action} />,
+          cell: (row) => <AuditActionPill action={row.action} />,
         },
         {
           header: "Details",

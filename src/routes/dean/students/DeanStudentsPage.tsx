@@ -7,7 +7,7 @@ import { DeanStudentAuditTab } from "@/routes/dean/students/DeanStudentAuditTab"
 import { DeanStudentChecklistTab } from "@/routes/dean/students/DeanStudentChecklistTab";
 import { DeanStudentGradesTab } from "@/routes/dean/students/DeanStudentGradesTab";
 import { StudentDirectoryFilters } from "@/routes/dean/students/StudentDirectoryFilters";
-import { StudentDirectoryTable } from "@/routes/dean/students/StudentDirectoryTable";
+import { StudentDirectoryTable as SharedStudentDirectoryTable } from "@/components/features/student-directory-table";
 import { useDeanStudentRecordDialog } from "@/routes/dean/students/use-dean-student-record-dialog";
 import { useDeanStudents } from "@/routes/dean/students/use-dean-students";
 import type { DeanStudentSummary } from "@/routes/dean/types";
@@ -93,7 +93,7 @@ export default function DeanStudentsPage() {
               onReset={handleReset}
             />
 
-            <StudentDirectoryTable
+            <SharedStudentDirectoryTable
               students={filteredStudents}
               totalCount={students.length}
               onSelectStudent={setSelectedStudent}

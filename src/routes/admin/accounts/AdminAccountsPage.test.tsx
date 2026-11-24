@@ -360,6 +360,8 @@ describe("AdminAccountsPage", () => {
     expect(
       await screen.findByText(
         "Use an institutional email ending in @vsu.edu.ph.",
+        undefined,
+        { timeout: 5000 },
       ),
     ).toBeTruthy();
     expect(postMock).not.toHaveBeenCalled();

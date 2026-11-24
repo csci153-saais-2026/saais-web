@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { ChecklistRow } from "@/components/features/checklist-term-table";
 import {
-  ChecklistTermGroup,
-  type ChecklistRow,
-} from "@/components/features/checklist-term-group";
+  ChecklistView,
+  type ChecklistViewTerm,
+} from "@/components/features/checklist-view";
 import { CourseInfoDialog } from "@/components/features/course-info-dialog";
 import type { Status } from "@/components/ui/status-badge";
 import type { ApiSchema } from "@/lib/api";
@@ -45,13 +46,11 @@ type ChecklistCourse = {
   title: string;
   meta: string;
 };
-type TermGroup = {
-  title: string;
-  rows: (ChecklistRow & { course: ChecklistCourse })[];
-};
+type TermRow = ChecklistRow & { course: ChecklistCourse };
+type TermGroup = Omit<ChecklistViewTerm, "rows"> & { rows: TermRow[] };
 
 function toTerms(data: Checklist): TermGroup[] {
-  const groups = new Map<string, TermGroup["rows"]>();
+  const groups = new Map<string, TermRow[]>();
   for (const result of data.results) {
     const slot = data.slots.find(
       (item) => item.id === result.curriculum_term_course_id,
@@ -100,7 +99,13 @@ function toTerms(data: Checklist): TermGroup[] {
   }
   return [...groups]
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-    .map(([title, rows]) => ({ title, rows }));
+    .map(([title, rows]) => ({
+      id: title,
+      title,
+      passedUnits: rows.reduce((total, row) => total + row.unitsEarned, 0),
+      totalUnits: rows.reduce((total, row) => total + row.unitsRequired, 0),
+      rows,
+    }));
 }
 
 export function ChecklistTab({ student }: { student: DirectoryStudent }) {
@@ -119,35 +124,24 @@ export function ChecklistTab({ student }: { student: DirectoryStudent }) {
     return <QueryMessage query={checklist} label="the checklist" />;
   const terms = toTerms(checklist.data);
   return (
-    <div className="min-w-0 **:data-[slot=collapsible-trigger]:flex-wrap [&_[data-slot=collapsible-trigger]>span:first-child]:basis-full sm:**:data-[slot=collapsible-trigger]:flex-nowrap sm:[&_[data-slot=collapsible-trigger]>span:first-child]:basis-auto">
-      {terms.map((term) => (
-        <ChecklistTermGroup
-          key={term.title}
-          title={term.title}
-          rows={term.rows}
-          passedUnits={term.rows.reduce(
-            (total, row) => total + row.unitsEarned,
-            0,
-          )}
-          totalUnits={term.rows.reduce(
-            (total, row) => total + row.unitsRequired,
-            0,
-          )}
-          onCourseInfo={(code) => {
-            const course = term.rows.find((row) => row.code === code)?.course;
-            if (course) {
-              const focused = document.activeElement;
-              setSelected({
-                course,
-                trigger: focused instanceof HTMLButtonElement ? focused : null,
-              });
-            }
-          }}
-        />
-      ))}
-      {terms.length === 0 && (
-        <p>No checklist is available for this curriculum.</p>
-      )}
+    <>
+      <ChecklistView
+        terms={terms}
+        onCourseInfo={(termId, code) => {
+          const course = terms
+            .find((term) => term.id === termId)
+            ?.rows.find((row) => row.code === code)?.course;
+          if (course) {
+            const focused = document.activeElement;
+            setSelected({
+              course,
+              trigger: focused instanceof HTMLButtonElement ? focused : null,
+            });
+          }
+        }}
+        emptyTitle="No checklist available"
+        emptyMessage="No checklist is available for this curriculum."
+      />
       {selected && (
         <CourseInfoDialog
           open
@@ -160,6 +154,6 @@ export function ChecklistTab({ student }: { student: DirectoryStudent }) {
           returnFocusTo={selected.trigger}
         />
       )}
-    </div>
+    </>
   );
 }

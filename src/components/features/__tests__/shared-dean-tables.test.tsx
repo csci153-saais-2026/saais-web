@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AdviserAssignmentsTable } from "@/components/features/adviser-assignments-table";
 import { AuditLogTable } from "@/components/features/audit-log-table";
 import { StudentDirectoryTable } from "@/components/features/student-directory-table";
-import { DeanAuditActionPill } from "@/routes/dean/audit-log/DeanAuditActionPill";
+import { AuditActionPill } from "@/components/features/audit-action-pill";
 import type { DeanAuditEntry, DeanStudentSummary } from "@/routes/dean/types";
 import type { Column } from "@/components/features/data-table-panel";
 
@@ -104,7 +104,7 @@ describe("shared tables with their original Dean props", () => {
       { header: "Who", cell: (row) => row.actor },
       {
         header: "Action",
-        cell: (row) => <DeanAuditActionPill action={row.action} />,
+        cell: (row) => <AuditActionPill action={row.action} />,
       },
       { header: "Student", cell: (row) => row.student },
       { header: "Details", cell: (row) => row.details },
