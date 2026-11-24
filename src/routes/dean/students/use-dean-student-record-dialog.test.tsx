@@ -129,7 +129,8 @@ describe("useDeanStudentRecordDialog with StudentRecordDialog", () => {
       screen.getByRole("heading", { name: "Student Primary" }),
     ).toBeTruthy();
     expect(screen.getByText("SP")).toBeTruthy();
-    expect(await screen.findByText("36 units earned")).toBeTruthy();
+    expect(await screen.findByText(/Year 1 · Semester 1/)).toBeTruthy();
+    expect(screen.queryByText("36 units earned")).toBeNull();
     expect(screen.queryByText(/Read-only Dean inspection/i)).toBeNull();
 
     await waitFor(() => {
