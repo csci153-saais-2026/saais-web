@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ASSIGNMENTS_DIRECTORY_SKELETON_SAMPLE } from "../shared/roster.skeleton-sample";
 import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useEffect, useMemo, useState } from "react";
@@ -143,7 +144,7 @@ export default function AdviserAssignmentsPage() {
       return listDepartmentAssignmentAdvisers(active.departmentId, signal);
     },
   });
-  const directoryData = directory.data;
+  const directoryData = directory.data ?? ASSIGNMENTS_DIRECTORY_SKELETON_SAMPLE;
   const students = useMemo(() => {
     const historyByStudent = new Map<
       string,
@@ -308,6 +309,7 @@ export default function AdviserAssignmentsPage() {
     <AccountSkeleton
       id="staff-adviser-assignments"
       data={directory.data}
+      sample={ASSIGNMENTS_DIRECTORY_SKELETON_SAMPLE}
       label="Loading adviser assignments…"
     >
       {() => (

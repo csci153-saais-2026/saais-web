@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ADMIN_STUDENTS_SKELETON_SAMPLE } from "./students.skeleton-sample";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -267,6 +268,9 @@ export default function AdminStudentsPage() {
     hasOpenFlags,
   ].filter((value) => value !== ALL).length;
   const totalCount = roster?.total_count ?? 0;
+  // While loading, the skeleton is measured from sample rows.
+  const rosterView =
+    roster ?? (loading ? ADMIN_STUDENTS_SKELETON_SAMPLE : null);
   const pageCount = Math.ceil(totalCount / PAGE_SIZE);
 
   function resetPageAnd<T>(setter: (value: T) => void, value: T) {
@@ -501,9 +505,10 @@ export default function AdminStudentsPage() {
         <AccountSkeleton
           id="admin-students"
           loading={loading}
+          measured
           label="Loading student roster…"
         >
-          {roster ? (
+          {rosterView ? (
             <Panel
               title="All students"
               action={
@@ -511,7 +516,7 @@ export default function AdminStudentsPage() {
                   className="text-sm text-muted-foreground"
                   aria-live="polite"
                 >
-                  {roster.items.length} of {totalCount} shown
+                  {rosterView.items.length} of {totalCount} shown
                 </span>
               }
               flush
@@ -552,7 +557,7 @@ export default function AdminStudentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {roster.items.map((student) => (
+                  {rosterView.items.map((student) => (
                     <TableRow key={student.student_id}>
                       <TableCell
                         label="Student"
@@ -625,7 +630,7 @@ export default function AdminStudentsPage() {
                   ))}
                 </TableBody>
               </Table>
-              {roster.items.length === 0 && (
+              {rosterView.items.length === 0 && (
                 <p className="px-5 py-8 text-center text-sm text-muted-foreground">
                   {hasActiveFilters
                     ? search.trim()
@@ -639,7 +644,7 @@ export default function AdminStudentsPage() {
                   {totalCount === 0
                     ? "0 students"
                     : `Showing ${page * PAGE_SIZE + 1}–${Math.min(
-                        page * PAGE_SIZE + roster.items.length,
+                        page * PAGE_SIZE + rosterView.items.length,
                         totalCount,
                       )} of ${totalCount} students`}
                 </span>

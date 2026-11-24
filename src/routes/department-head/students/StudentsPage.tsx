@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { DIRECTORY_SKELETON_SAMPLE } from "../shared/directory.skeleton-sample";
 import { useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
@@ -14,7 +15,8 @@ import type { DirectoryStudent } from "../shared/students-types";
 
 export default function StudentsPage() {
   const directory = useDirectoryStudents();
-  const students = directory.data ?? [];
+  // While loading, the skeleton is measured from sample rows.
+  const students = directory.data ?? DIRECTORY_SKELETON_SAMPLE;
   const [search, setSearch] = useState("");
   const [curriculum, setCurriculum] = useState("all");
   const [adviser, setAdviser] = useState("all");
@@ -56,6 +58,7 @@ export default function StudentsPage() {
     <AccountSkeleton
       id="dh-students"
       data={directory.data}
+      sample={DIRECTORY_SKELETON_SAMPLE}
       label="Loading students…"
     >
       {() => (

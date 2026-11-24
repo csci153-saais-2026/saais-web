@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ACCOUNTS_SKELETON_SAMPLE } from "./accounts.skeleton-sample";
 import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
@@ -288,6 +289,8 @@ export default function AccountsPage() {
     role: role || undefined,
     offset,
   });
+  // While loading, the skeleton is measured from sample rows.
+  const accountsView = accounts.data ?? ACCOUNTS_SKELETON_SAMPLE;
   const accountColumns: Column<DepartmentAccount>[] = [
     {
       header: "Name",
@@ -446,6 +449,7 @@ export default function AccountsPage() {
           <AccountSkeleton
             id="AccountsPage-1"
             loading={accounts.isPending}
+            measured
             label="Loading department accounts..."
           >
             {accounts.isError && (
@@ -466,11 +470,11 @@ export default function AccountsPage() {
               </div>
             )}
 
-            {accounts.isSuccess && (
+            {(accounts.isSuccess || accounts.isPending) && (
               <DataTablePanel
                 title="People"
                 columns={accountColumns}
-                rows={accounts.data.accounts}
+                rows={accountsView.accounts}
                 rowKey={(account) => account.profile.id}
                 spacious
                 empty={
@@ -484,8 +488,8 @@ export default function AccountsPage() {
                       className="text-sm text-muted-foreground"
                       aria-live="polite"
                     >
-                      {accounts.data.accounts.length
-                        ? `Showing ${offset + 1}-${offset + accounts.data.accounts.length}`
+                      {accountsView.accounts.length
+                        ? `Showing ${offset + 1}-${offset + accountsView.accounts.length}`
                         : `No accounts on page ${offset / accountsPageSize + 1}`}
                     </p>
                     <div className="flex gap-2">
@@ -501,7 +505,7 @@ export default function AccountsPage() {
                         type="button"
                         variant="outline"
                         onClick={() => updateOffset(offset + accountsPageSize)}
-                        disabled={!accounts.data.hasNext || accounts.isFetching}
+                        disabled={!accountsView.hasNext || accounts.isFetching}
                       >
                         Next
                       </Button>

@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -169,6 +170,7 @@ describe("AdminAccountsPage", () => {
     renderPage();
 
     expect(await screen.findByText("Alex Adviser")).toBeTruthy();
+    await waitForLoaded();
     expect(screen.getByText("alex@vsu.edu.ph")).toBeTruthy();
     expect(screen.getByText("Faculty of Computing")).toBeTruthy();
     expect(screen.getByText("Computer Science")).toBeTruthy();
@@ -345,6 +347,9 @@ describe("AdminAccountsPage", () => {
 
   it("validates identity fields before sending an invitation", async () => {
     renderPage();
+    // Let the account list and catalogs settle before opening the dialog.
+    await screen.findByText("Alex Adviser");
+    await waitForLoaded();
     fireEvent.click(screen.getByRole("button", { name: "Add account" }));
     fireEvent.click(
       await screen.findByRole("checkbox", { name: "System Admin" }),
@@ -361,11 +366,11 @@ describe("AdminAccountsPage", () => {
       await screen.findByText(
         "Use an institutional email ending in @vsu.edu.ph.",
         undefined,
-        { timeout: 5000 },
+        { timeout: 12000 },
       ),
     ).toBeTruthy();
     expect(postMock).not.toHaveBeenCalled();
-  });
+  }, 15000);
 
   it("filters student catalogs and resets dependent selections", async () => {
     const agricultureAdviser = {

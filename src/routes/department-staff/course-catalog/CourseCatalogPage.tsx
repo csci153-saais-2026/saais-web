@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { COURSE_CATALOG_SKELETON_SAMPLE } from "./course-catalog.skeleton-sample";
 import "../shared/staff-filters.css";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -216,7 +217,8 @@ export default function CourseCatalogPage() {
     },
   ];
 
-  const data = catalog.data;
+  // While loading, the skeleton is measured from sample rows.
+  const data = catalog.data ?? COURSE_CATALOG_SKELETON_SAMPLE;
   const start = data?.total ? filters.page * courseCatalogPageSize + 1 : 0;
   const end = data
     ? filters.page * courseCatalogPageSize + data.courses.length
@@ -326,6 +328,7 @@ export default function CourseCatalogPage() {
               !catalog.isError &&
               (references.isPending || catalog.isPending)
             }
+            measured
             label="Loading courses and department references..."
           >
             {(references.isError || catalog.isError) && (
@@ -349,53 +352,55 @@ export default function CourseCatalogPage() {
               </div>
             )}
 
-            {references.isSuccess && catalog.isSuccess && !searchError && (
-              <DataTablePanel
-                title="Course records"
-                columns={columns}
-                rows={data.courses}
-                rowKey={(course) => course.id}
-                spacious
-                empty="No courses match these filters."
-                footer={
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm" aria-live="polite">
-                      {data.total != null
-                        ? `${start} - ${end} of ${data.total}`
-                        : `Page ${filters.page + 1}`}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          updateFilters(
-                            { page: String(filters.page - 1) },
-                            false,
-                          )
-                        }
-                        disabled={filters.page === 0 || catalog.isFetching}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          updateFilters(
-                            { page: String(filters.page + 1) },
-                            false,
-                          )
-                        }
-                        disabled={!hasNext || catalog.isFetching}
-                      >
-                        Next
-                      </Button>
+            {(references.isSuccess || references.isPending) &&
+              (catalog.isSuccess || catalog.isPending) &&
+              !searchError && (
+                <DataTablePanel
+                  title="Course records"
+                  columns={columns}
+                  rows={data.courses}
+                  rowKey={(course) => course.id}
+                  spacious
+                  empty="No courses match these filters."
+                  footer={
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm" aria-live="polite">
+                        {data.total != null
+                          ? `${start} - ${end} of ${data.total}`
+                          : `Page ${filters.page + 1}`}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            updateFilters(
+                              { page: String(filters.page - 1) },
+                              false,
+                            )
+                          }
+                          disabled={filters.page === 0 || catalog.isFetching}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            updateFilters(
+                              { page: String(filters.page + 1) },
+                              false,
+                            )
+                          }
+                          disabled={!hasNext || catalog.isFetching}
+                        >
+                          Next
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-            )}
+                  }
+                />
+              )}
           </AccountSkeleton>
         </Panel>
         <CoursePrerequisitesDialog

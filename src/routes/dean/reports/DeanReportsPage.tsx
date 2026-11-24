@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { DEAN_REPORT_SKELETON_SAMPLE } from "../dean.skeleton-samples";
 import { useRef, useState } from "react";
 import {
   CohortStudentsDialog,
@@ -118,6 +119,7 @@ export default function DeanReportsPage() {
         <AccountSkeleton
           id="dean-reports"
           data={report}
+          sample={DEAN_REPORT_SKELETON_SAMPLE}
           label="Loading faculty reports…"
         >
           {(report) => (

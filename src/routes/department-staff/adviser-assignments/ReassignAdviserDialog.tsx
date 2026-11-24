@@ -1,4 +1,3 @@
-import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { useState, type FormEvent } from "react";
 import { FormField } from "@/components/features/form-field";
 import { AlertIcon } from "@/components/icons";
@@ -137,7 +136,9 @@ export function ReassignAdviserDialog({
             </Select>
           </FormField>
           {advisersLoading && (
-            <TableSkeleton rows={4} columns={4} label="Loading advisers…" />
+            <p role="status" className="sr-only">
+              Loading advisers…
+            </p>
           )}
           {advisersError && (
             <div role="alert">

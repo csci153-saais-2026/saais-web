@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -57,6 +58,7 @@ describe("AdminAuditLogPage", () => {
     const { container } = render(<AdminAuditLogPage />);
 
     expect(await screen.findByText("Morgan Lee")).toBeTruthy();
+    await waitForLoaded();
     expect(screen.getByText("Admin")).toBeTruthy();
     expect(screen.getByText("Plan save")).toBeTruthy();
     expect(screen.getByRole("table", { name: "Audit log" })).toBeTruthy();
@@ -101,7 +103,9 @@ describe("AdminAuditLogPage", () => {
     );
     render(<AdminAuditLogPage />);
 
-    const entityLabel = await screen.findByText("Advising Plan");
+    await screen.findByText("Advising Plan");
+    await waitForLoaded();
+    const entityLabel = screen.getByText("Advising Plan");
     expect(entityLabel.getAttribute("title")).toBe("Advising Plan");
     expect(screen.queryByText("Juan Dela Cruz")).toBeNull();
   });
@@ -170,11 +174,13 @@ describe("AdminAuditLogPage", () => {
     render(<AdminAuditLogPage />);
 
     expect(await screen.findByText("Page 1 · 26 entries")).toBeTruthy();
+    await waitForLoaded();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Audit service unavailable.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
     expect(await screen.findByText("Retry-only student")).toBeTruthy();
+    await waitForLoaded();
     expect(screen.getByText("Page 2 · 26 entries")).toBeTruthy();
     expect(screen.queryByText("Audit service unavailable.")).toBeNull();
     expect(getMock.mock.calls[1]?.[1]).toMatchObject({

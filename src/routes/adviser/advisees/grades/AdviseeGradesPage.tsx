@@ -2,6 +2,7 @@ import {
   AccountSkeleton,
   LinesSkeleton,
 } from "@/components/features/loading-skeletons";
+import { GRADES_SKELETON_SAMPLE } from "../../adviser.skeleton-samples";
 import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
@@ -288,9 +289,13 @@ export default function AdviseeGradesPage() {
   const [revision, setRevision] = useState(0);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const key = JSON.stringify([user?.id, id, revision]);
-  const { data, error } = useScopedRequest(key, !!user?.id && !!id, () =>
-    getGrades(id!),
+  const { data: loadedData, error } = useScopedRequest(
+    key,
+    !!user?.id && !!id,
+    () => getGrades(id!),
   );
+  // While loading, the skeleton is measured from sample content.
+  const data = loadedData ?? (error ? undefined : GRADES_SKELETON_SAMPLE);
   const allCollapsed =
     !!data?.terms.length &&
     data.terms.every((term) => collapsed.has(term.school_term_id));
@@ -298,7 +303,8 @@ export default function AdviseeGradesPage() {
     <AdviserPage title="Grades" tab="grades" sample={false}>
       <AccountSkeleton
         id="AdviseeGradesPage-2"
-        loading={!data && !error}
+        loading={!loadedData && !error}
+        measured
         label="Loading grades…"
       >
         {error && (

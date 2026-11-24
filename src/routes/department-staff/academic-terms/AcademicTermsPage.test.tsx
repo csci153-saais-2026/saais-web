@@ -244,14 +244,16 @@ describe("Department Staff academic terms", () => {
         /Closing encoding prevents further grade entry for the term/,
       ),
     ).toBeTruthy();
-    expect(screen.getByText("Academic term history")).toBeTruthy();
+    expect(await screen.findByText("Academic term history")).toBeTruthy();
     expect(
       await screen.findByText(
         "Encoding windows are tracked separately for each semester.",
       ),
     ).toBeTruthy();
+    // Skeleton sample rows are hidden from the accessibility tree, so this
+    // waits for the loaded table.
     expect(
-      screen.getByRole("columnheader", { name: "Academic year" }),
+      await screen.findByRole("columnheader", { name: "Academic year" }),
     ).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Semester" })).toBeTruthy();
     expect(

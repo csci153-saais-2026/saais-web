@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { slotChildren } from "@/lib/slot-children";
 import { cn } from "@/lib/utils";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
@@ -14,9 +15,14 @@ function Dialog({
 }
 
 function DialogTrigger({
+  children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
+  return (
+    <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props}>
+      {slotChildren(children)}
+    </DialogPrimitive.Trigger>
+  );
 }
 
 function DialogPortal({
@@ -26,9 +32,14 @@ function DialogPortal({
 }
 
 function DialogClose({
+  children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
+  return (
+    <DialogPrimitive.Close data-slot="dialog-close" {...props}>
+      {slotChildren(children)}
+    </DialogPrimitive.Close>
+  );
 }
 
 function DialogOverlay({

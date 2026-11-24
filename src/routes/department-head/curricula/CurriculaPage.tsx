@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { CURRICULA_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
 import * as React from "react";
 import { PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
@@ -84,10 +85,10 @@ export default function CurriculaPage() {
   const query = useCurricula();
   const actions = useCurriculaActions();
   const versions = React.useMemo(
-    () => query.data?.versions ?? [],
+    () => (query.data ?? CURRICULA_SKELETON_SAMPLE).versions,
     [query.data],
   );
-  const programs = query.data?.programs ?? [];
+  const programs = (query.data ?? CURRICULA_SKELETON_SAMPLE).programs;
   const [selectedVersionId, setSelectedVersionId] = React.useState<string>("");
   const [dialog, setDialog] = React.useState<CurriculaDialogState>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -125,8 +126,10 @@ export default function CurriculaPage() {
 
   const currentVersion =
     versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null;
-  const departments = query.data?.departments ?? [];
-  const activeCourses = (query.data?.courses ?? []).filter(
+  const departments = (query.data ?? CURRICULA_SKELETON_SAMPLE).departments;
+  const activeCourses = (
+    query.data ?? CURRICULA_SKELETON_SAMPLE
+  ).courses.filter(
     (course) =>
       course.departmentId === currentVersion?.departmentId &&
       course.status === "active",
@@ -547,6 +550,7 @@ export default function CurriculaPage() {
     <AccountSkeleton
       id="dh-curricula"
       data={query.data}
+      sample={CURRICULA_SKELETON_SAMPLE}
       label="Loading curricula…"
     >
       {() => (

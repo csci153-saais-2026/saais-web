@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { HISTORY_SKELETON_SAMPLE } from "../../adviser.skeleton-samples";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -73,11 +74,13 @@ export default function AdviseeHistory() {
   const [filter, setFilter] = useState<"all" | "student" | "adviser">("all");
   const [revision, setRevision] = useState(0);
   const [search, setSearch] = useState("");
-  const { data, error } = useScopedRequest(
+  const { data: loadedData, error } = useScopedRequest(
     JSON.stringify([user?.id, activeRole, id, revision]),
     !!user?.id && !!id,
     () => getStudentHistory(id!),
   );
+  // While loading, the skeleton is measured from sample content.
+  const data = loadedData ?? (error ? undefined : HISTORY_SKELETON_SAMPLE);
   const rows = data
     ?.filter(
       (row) =>
@@ -101,7 +104,8 @@ export default function AdviseeHistory() {
     <AdviserPage title="Audit log" tab="history" sample={false}>
       <AccountSkeleton
         id="AdviseeHistory-1"
-        loading={!data && !error}
+        loading={!loadedData && !error}
+        measured
         label="Loading history…"
       >
         {error && (

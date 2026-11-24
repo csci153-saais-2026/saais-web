@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { CURRICULUM_SKELETON_SAMPLE } from "../../adviser.skeleton-samples";
 import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { useParams } from "react-router";
@@ -32,7 +33,9 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
     true,
     () => getCurriculumData(id),
   );
-  const data = result.data;
+  // While loading, the skeleton is measured from sample content.
+  const data =
+    result.data ?? (result.error ? undefined : CURRICULUM_SKELETON_SAMPLE);
   async function run(action: "preview" | "endorse") {
     setBusy(true);
     setError("");
@@ -62,7 +65,8 @@ function CurriculumContent({ id, userId }: { id: string; userId: string }) {
     <>
       <AccountSkeleton
         id="AdviseeCurriculum-1"
-        loading={!data && !result.error}
+        loading={!result.data && !result.error}
+        measured
         label="Loading curriculum history…"
       >
         {result.error && (

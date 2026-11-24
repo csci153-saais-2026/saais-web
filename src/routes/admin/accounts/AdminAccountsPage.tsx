@@ -1,4 +1,5 @@
-import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ADMIN_ACCOUNTS_SKELETON_SAMPLE } from "./accounts.skeleton-sample";
 import { notify } from "@/lib/notify";
 import { useMemo, useState } from "react";
 import { FormField } from "@/components/features/form-field";
@@ -187,7 +188,10 @@ export default function AdminAccountsPage() {
     (department) =>
       facultyId === ALL_ACCOUNTS_FILTER || department.faculty_id === facultyId,
   );
-  const visibleAccounts = accounts.slice(0, ACCOUNT_PAGE_SIZE);
+  // While loading, the skeleton is measured from sample rows.
+  const visibleAccounts = (
+    accountsLoading ? ADMIN_ACCOUNTS_SKELETON_SAMPLE : accounts
+  ).slice(0, ACCOUNT_PAGE_SIZE);
   const hasNextPage = accounts.length > ACCOUNT_PAGE_SIZE;
 
   function resetPageAnd<T>(setter: (value: T) => void, value: T) {
@@ -417,186 +421,201 @@ export default function AdminAccountsPage() {
         }
         flush
       >
-        <Table responsive>
-          <TableHeader className="bg-secondary">
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>VSU email</TableHead>
-              <TableHead>Faculty / department</TableHead>
-              <TableHead>Roles</TableHead>
-              <TableHead className="w-12">
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {accountsLoading ? (
+        <AccountSkeleton
+          id="admin-accounts"
+          loading={accountsLoading}
+          measured
+          label="Loading accounts…"
+        >
+          <Table responsive>
+            <TableHeader className="bg-secondary">
               <TableRow>
-                <TableCell colSpan={5} className="px-5 py-4">
-                  <TableSkeleton
-                    rows={5}
-                    columns={5}
-                    label="Loading accounts…"
-                  />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>VSU email</TableHead>
+                <TableHead>Faculty / department</TableHead>
+                <TableHead>Roles</TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
-            ) : accountsError ? (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="px-5 py-8 text-center text-muted-foreground"
-                >
-                  Account records are unavailable until the request succeeds.
-                </TableCell>
-              </TableRow>
-            ) : visibleAccounts.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="px-5 py-8 text-center text-muted-foreground"
-                >
-                  No accounts match these search and filter values.
-                </TableCell>
-              </TableRow>
-            ) : (
-              visibleAccounts.map((account) => {
-                const profile = account.profile;
-                const roles = getAccountRoles(account);
-                const invitationStatus = profile.invitation_status;
-                const hasPendingInvitation =
-                  invitationStatus === "pending" &&
-                  profile.status === "invited";
-                const isCurrentAccount =
-                  profile.id === user?.id ||
-                  profile.email.trim().toLowerCase() ===
-                    user?.email?.trim().toLowerCase();
-                const organization = getOrganization(
-                  account,
-                  departmentsById,
-                  facultiesById,
-                );
-                return (
-                  <TableRow key={profile.id}>
-                    <TableCell label="Name" className="whitespace-normal">
-                      <div className="flex min-w-48 items-center gap-3">
-                        <Avatar aria-hidden="true" className="shrink-0">
-                          <AvatarFallback className="bg-[#F2EDDC] text-xs font-semibold text-[#2F4A12]">
-                            {getInitials(profile.full_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <span
-                            className="block max-w-56 truncate font-medium"
-                            title={profile.full_name}
-                          >
-                            {profile.full_name}
-                          </span>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            <StatusBadge status={profile.status} />
-                            {invitationStatus && (
-                              <Badge variant="outline">
-                                Invitation:{" "}
-                                {getInvitationStatusLabel(invitationStatus)}
-                              </Badge>
-                            )}
+            </TableHeader>
+            <TableBody>
+              {accountsError ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="px-5 py-8 text-center text-muted-foreground"
+                  >
+                    Account records are unavailable until the request succeeds.
+                  </TableCell>
+                </TableRow>
+              ) : visibleAccounts.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="px-5 py-8 text-center text-muted-foreground"
+                  >
+                    No accounts match these search and filter values.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                visibleAccounts.map((account) => {
+                  const profile = account.profile;
+                  const roles = getAccountRoles(account);
+                  const invitationStatus = profile.invitation_status;
+                  const hasPendingInvitation =
+                    invitationStatus === "pending" &&
+                    profile.status === "invited";
+                  const isCurrentAccount =
+                    profile.id === user?.id ||
+                    profile.email.trim().toLowerCase() ===
+                      user?.email?.trim().toLowerCase();
+                  const organization = getOrganization(
+                    account,
+                    departmentsById,
+                    facultiesById,
+                  );
+                  return (
+                    <TableRow key={profile.id}>
+                      <TableCell label="Name" className="whitespace-normal">
+                        <div className="flex min-w-48 items-center gap-3">
+                          <Avatar aria-hidden="true" className="shrink-0">
+                            <AvatarFallback className="bg-[#F2EDDC] text-xs font-semibold text-[#2F4A12]">
+                              {getInitials(profile.full_name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <span
+                              className="block max-w-56 truncate font-medium"
+                              title={profile.full_name}
+                            >
+                              {profile.full_name}
+                            </span>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <StatusBadge status={profile.status} />
+                              {invitationStatus && (
+                                <Badge variant="outline">
+                                  Invitation:{" "}
+                                  {getInvitationStatusLabel(invitationStatus)}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell label="VSU email" className="whitespace-normal">
-                      <span
-                        className="block max-w-64 truncate"
-                        title={profile.email}
+                      </TableCell>
+                      <TableCell
+                        label="VSU email"
+                        className="whitespace-normal"
                       >
-                        {profile.email}
-                      </span>
-                      {profile.student_number && (
-                        <span className="block font-mono text-xs text-muted-foreground">
-                          {profile.student_number}
+                        <span
+                          className="block max-w-64 truncate"
+                          title={profile.email}
+                        >
+                          {profile.email}
                         </span>
-                      )}
-                    </TableCell>
-                    <TableCell
-                      label="Faculty / department"
-                      className="whitespace-normal"
-                    >
-                      <span className="block font-medium">
-                        {organization.faculty}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {organization.department}
-                      </span>
-                    </TableCell>
-                    <TableCell label="Roles" className="whitespace-normal">
-                      <div className="flex flex-wrap gap-1">
-                        {roles.map((accountRole) => (
-                          <Badge
-                            key={accountRole}
-                            variant="secondary"
-                            aria-label={getAccountRoleLabel(accountRole)}
-                          >
-                            {getAccountRoleLabel(accountRole)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell label="Actions">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        {profile.student_number && (
+                          <span className="block font-mono text-xs text-muted-foreground">
+                            {profile.student_number}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        label="Faculty / department"
+                        className="whitespace-normal"
+                      >
+                        <span className="block font-medium">
+                          {organization.faculty}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {organization.department}
+                        </span>
+                      </TableCell>
+                      <TableCell label="Roles" className="whitespace-normal">
+                        <div className="flex flex-wrap gap-1">
+                          {roles.map((accountRole) => (
+                            <Badge
+                              key={accountRole}
+                              variant="secondary"
+                              aria-label={getAccountRoleLabel(accountRole)}
+                            >
+                              {getAccountRoleLabel(accountRole)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell label="Actions">
+                        {accountsLoading ? (
+                          // Sample rows only reserve the menu button's space.
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            aria-label={`Actions for ${profile.full_name}`}
-                            disabled={accountActionId === profile.id}
+                            disabled
+                            aria-hidden="true"
+                            tabIndex={-1}
                           >
                             <EllipsisIcon />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            disabled={
-                              isCurrentAccount || accountActionId === profile.id
-                            }
-                            onSelect={() => {
-                              setAccountActionError(null);
-                              setEditingAccount(account);
-                            }}
-                          >
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={
-                              !hasPendingInvitation ||
-                              accountActionId === profile.id
-                            }
-                            onSelect={() =>
-                              void runInvitationAction(account, "resend")
-                            }
-                          >
-                            Resend
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={
-                              !hasPendingInvitation ||
-                              accountActionId === profile.id
-                            }
-                            onSelect={() => {
-                              setAccountActionError(null);
-                              setRevokeTarget(account);
-                            }}
-                          >
-                            Revoke
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Actions for ${profile.full_name}`}
+                                disabled={accountActionId === profile.id}
+                              >
+                                <EllipsisIcon />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                disabled={
+                                  isCurrentAccount ||
+                                  accountActionId === profile.id
+                                }
+                                onSelect={() => {
+                                  setAccountActionError(null);
+                                  setEditingAccount(account);
+                                }}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={
+                                  !hasPendingInvitation ||
+                                  accountActionId === profile.id
+                                }
+                                onSelect={() =>
+                                  void runInvitationAction(account, "resend")
+                                }
+                              >
+                                Resend
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={
+                                  !hasPendingInvitation ||
+                                  accountActionId === profile.id
+                                }
+                                onSelect={() => {
+                                  setAccountActionError(null);
+                                  setRevokeTarget(account);
+                                }}
+                              >
+                                Revoke
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </AccountSkeleton>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-5 py-3">
           <span className="text-xs text-muted-foreground">
             Page {page + 1} · results are loaded in bounded pages

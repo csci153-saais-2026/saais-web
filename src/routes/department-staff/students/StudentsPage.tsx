@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ROSTER_SKELETON_SAMPLE } from "../shared/roster.skeleton-sample";
 import "../shared/staff-filters.css";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -91,7 +92,7 @@ export default function StudentsPage() {
       }
     },
   });
-  const students = directory.data ?? [];
+  const students = directory.data ?? ROSTER_SKELETON_SAMPLE;
   const query = search.trim().toLowerCase();
   const filtered = students.filter(
     (student) =>
@@ -261,6 +262,7 @@ export default function StudentsPage() {
     <AccountSkeleton
       id="staff-students"
       data={directory.data}
+      sample={ROSTER_SKELETON_SAMPLE}
       label="Loading students…"
     >
       {() => (

@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ADVISEES_SKELETON_SAMPLE } from "../adviser.skeleton-samples";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AdviserPage } from "../Adviser";
@@ -37,9 +38,11 @@ export default function AdviseesPage() {
   const { data, error } = useScopedRequest(key, !!user?.id, () =>
     getRoster(scope, search),
   );
+  // While loading, the skeleton is measured from sample rows.
+  const view = data ?? (error ? undefined : ADVISEES_SKELETON_SAMPLE);
   const isFlagged = (row: NonNullable<typeof data>[number]) =>
     row.open_flags_count > 0 || row.standing !== "good_standing";
-  const rows = data?.filter(
+  const rows = view?.filter(
     (row) =>
       standing === "all" ||
       (standing === "flagged" ? isFlagged(row) : !isFlagged(row)),
@@ -111,6 +114,7 @@ export default function AdviseesPage() {
       <AccountSkeleton
         id="AdviseesPage-1"
         loading={!data && !error}
+        measured
         label="Loading advisees…"
       >
         {error && (

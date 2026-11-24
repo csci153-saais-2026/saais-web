@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { AUDIT_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
 import { useState } from "react";
 import type { Column } from "@/components/features/data-table-panel";
 import { AuditLogTable } from "@/components/features/audit-log-table";
@@ -42,7 +43,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-GB", {
 
 export default function AuditLogPage() {
   const audit = useAuditEvents();
-  const auditEvents = audit.data ?? [];
+  const auditEvents = audit.data ?? AUDIT_SKELETON_SAMPLE;
   const [filters, setFilters] = useState(EMPTY_AUDIT_FILTERS);
   const dateError = Boolean(
     filters.from && filters.to && filters.from > filters.to,
@@ -139,6 +140,7 @@ export default function AuditLogPage() {
     <AccountSkeleton
       id="dh-audit-log"
       data={audit.data}
+      sample={AUDIT_SKELETON_SAMPLE}
       label="Loading the audit log…"
     >
       {() => (

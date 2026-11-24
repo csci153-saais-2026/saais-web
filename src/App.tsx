@@ -73,9 +73,12 @@ const NotificationsPage = lazy(
 function App() {
   return (
     <SkulletProvider
-      mode="system"
-      reveal="together"
-      theme={{ animation: "shimmer" }}
+      mode="light"
+      reveal="smart"
+      theme={{
+        animation: "shimmer",
+        radius: "6px",
+      }}
     >
       <QueryProvider>
         <AuthProvider>

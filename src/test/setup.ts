@@ -8,7 +8,13 @@ import { Toaster } from "@/components/ui/sonner";
 // Lazy route modules and MSW-backed requests can take longer under coverage
 // instrumentation, especially on CI. Keep async queries patient without
 // increasing the timeout for individual test cases.
-configure({ asyncUtilTimeout: 5000 });
+configure({
+  asyncUtilTimeout: 5000,
+  // Skeletons draw a hidden copy of the page from sample data. Text queries
+  // should only ever see real content, never that copy (the selector must
+  // match descendants too: `ignore` only skips elements that match it).
+  defaultIgnore: "script, style, [skullet-loading], [skullet-loading] *",
+});
 
 // jsdom has no ResizeObserver; Radix primitives (e.g. Checkbox) measure themselves with it.
 if (!("ResizeObserver" in globalThis)) {

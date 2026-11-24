@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -63,8 +64,10 @@ describe("AdviserDashboard", () => {
         <AdviserDashboard />
       </MemoryRouter>,
     );
+    await screen.findByText("INC / DR / NA");
+    await waitForLoaded();
     expect(
-      (await screen.findByText("INC / DR / NA")).closest("li")?.textContent,
+      screen.getByText("INC / DR / NA").closest("li")?.textContent,
     ).toContain("50%");
     expect(screen.getByText("1.00–1.50").closest("li")?.textContent).toContain(
       "50%",
@@ -90,7 +93,9 @@ describe("AdviserDashboard", () => {
         <AdviserDashboard />
       </MemoryRouter>,
     );
-    const fail = (await screen.findByText("5.00")).closest("li")!;
+    await screen.findByText("5.00");
+    await waitForLoaded();
+    const fail = screen.getByText("5.00").closest("li")!;
     const special = screen.getByText("INC / DR / NA").closest("li")!;
     expect(fail.querySelector(".text-status-fail")?.textContent).toBe("50%");
     expect(special.querySelector(".text-status-inc")?.textContent).toBe("50%");
