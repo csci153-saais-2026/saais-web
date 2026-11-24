@@ -167,6 +167,75 @@ describe("StudentGradesView", () => {
       );
     });
   });
+
+  it("renders Repeated statusNote and maps midterm-only attempt to FlagGradeDialog payload", async () => {
+    const onCreateFlag = vi.fn().mockResolvedValue(undefined);
+    const midtermOnlyTerms: TermGradesSection[] = [
+      {
+        school_term_id: "term-midterm",
+        school_year: "2025 - 2026",
+        term_type: "2nd Semester",
+        chronological_key: 20252,
+        gwa: null,
+        is_locked: false,
+        attempts: [
+          {
+            id: "att-midterm-only",
+            student_id: "stu-1",
+            course_offering_id: "off-mid",
+            code: "CSci 110",
+            title: "Operating Systems",
+            recorded_status: "currently_enrolled" as never,
+            midterm_status: "graded",
+            midterm_grade: 2.25,
+            final_grade: null,
+            inc_deadline: null,
+            units_attempted: 3,
+            revision: 1,
+            completion_grade: null,
+            effective_status: "currently_enrolled",
+            gwa_grade: null,
+            is_lapsed_inc: false,
+            is_repeated: true,
+            counts_toward_cumulative_gwa: false,
+          },
+        ],
+      },
+    ];
+
+    render(
+      <StudentGradesView
+        terms={midtermOnlyTerms}
+        flags={[]}
+        onCreateFlag={onCreateFlag}
+      />,
+    );
+
+    expect(screen.getByText("Repeated")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Flag Grade" }));
+
+    const recordedInput = screen.getByLabelText(
+      "Recorded grade",
+    ) as HTMLInputElement;
+    expect(recordedInput.value).toBe("mid 2.25");
+
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Midterm grade should be 2.00." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit flag" }));
+
+    await waitFor(() => {
+      expect(onCreateFlag).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attempt_id: "att-midterm-only",
+          reported_stage: "midterm",
+          reported_grade_text: "mid 2.25",
+          details: "Midterm grade should be 2.00.",
+        }),
+      );
+    });
+  });
 });
 
 describe("StudentGradesPage", () => {
