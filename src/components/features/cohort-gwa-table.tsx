@@ -40,7 +40,10 @@ function CohortGwaTable({
 }: {
   rows: readonly CohortGwaRow[];
   /** Omit to hide the action column. */
-  onViewStudents?: (row: CohortGwaRow) => void;
+  onViewStudents?: (
+    row: CohortGwaRow,
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
   title?: string;
   description?: string;
   /** Caption under the table, e.g. "3 cohorts · All department programs". */
@@ -93,7 +96,7 @@ function CohortGwaTable({
                       size="sm"
                       className="h-auto px-0 py-1 font-semibold underline-offset-4"
                       aria-label={`View students for ${row.curriculum} batch ${row.entryYear}`}
-                      onClick={() => onViewStudents(row)}
+                      onClick={(event) => onViewStudents(row, event)}
                     >
                       View students →
                     </Button>
