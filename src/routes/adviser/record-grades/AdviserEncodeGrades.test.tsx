@@ -94,7 +94,6 @@ afterEach(() => {
   auth.isMockMode = true;
 });
 describe("encoding workspace identity", () => {
-
   it("does not offer deletion for a saved course", async () => {
     vi.mocked(getEncodingChoices).mockResolvedValue(choices);
     vi.mocked(getGrades).mockResolvedValue(data);

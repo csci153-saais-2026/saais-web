@@ -12,7 +12,7 @@ export async function getEncodingChoices() {
   return { students, terms };
 }
 export async function getTermOfferings(studentId: string, termId: string) {
-  const fetchOfferings = (limit: number) => 
+  const fetchOfferings = (limit: number) =>
     apiClient
       .GET("/functions/v1/students/{student_id}/course-offerings", {
         params: {
@@ -22,7 +22,7 @@ export async function getTermOfferings(studentId: string, termId: string) {
       })
       .then(unwrapApiResult);
 
-// Try with limit=1000 first. If the server returns 5xx (edge-function error),
+  // Try with limit=1000 first. If the server returns 5xx (edge-function error),
   // fall back to limit=100 so a partial list is still usable.  If both fail
   // (F-01: backend bug for a specific term), re-throw so the UI can display the
   // "could not be completed" error panel rather than showing an empty course list.
