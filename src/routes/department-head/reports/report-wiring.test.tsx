@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import DepartmentReportsPage from "./DepartmentReportsPage";
+import { saaisMockServer } from "@/mocks/node";
 import {
   renderDepartmentHead,
   setupDepartmentHeadMockApi,
@@ -26,6 +28,30 @@ async function openCohort() {
 }
 
 describe("Department report shared-component wiring", () => {
+  it("keeps export unavailable after a failed report read and recovers on retry", async () => {
+    saaisMockServer.use(
+      http.get("*/functions/v1/students", () =>
+        HttpResponse.json({ message: "Report unavailable" }, { status: 500 }),
+      ),
+    );
+    renderDepartmentHead(<DepartmentReportsPage />);
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "We couldn’t load department reports.",
+    );
+    expect(screen.queryByLabelText("Selected department report")).toBeNull();
+    expect(
+      (screen.getByRole("button", { name: "Export PDF" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    saaisMockServer.resetHandlers();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await screen.findByLabelText("Selected department report");
+    expect(
+      (screen.getByRole("button", { name: "Export PDF" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
   it("filters shared cohort views by program and keeps student names read-only", async () => {
     renderDepartmentHead(<DepartmentReportsPage />);
     await screen.findByLabelText("Selected department report");
