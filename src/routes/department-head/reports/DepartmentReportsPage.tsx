@@ -1,5 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ReportStatsSection } from "@/components/features/report-stats-section";
 import { CohortGwaTable } from "@/components/features/cohort-gwa-table";
 import { PageHeading } from "@/components/features/page-heading";
@@ -8,7 +8,7 @@ import { DownloadIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { QueryMessage } from "../shared/dh-ui";
-import { ReportCohortDialog } from "./ReportCohortDialog";
+import { CohortStudentsDialog } from "@/components/features/cohort-students-dialog";
 import { ReportFilters } from "./ReportFilters";
 import {
   ALL_PROGRAMS,
@@ -26,6 +26,7 @@ export default function DepartmentReportsPage() {
   const source = useReportSource();
   const [pickedTerm, setTerm] = useState("");
   const [program, setProgram] = useState(ALL_PROGRAMS);
+  const cohortOpener = useRef<HTMLButtonElement | null>(null);
   const [cohort, setCohort] = useState<CohortSummary | null>(null);
   const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null);
   const data = source.data;
@@ -162,7 +163,8 @@ export default function DepartmentReportsPage() {
               </div>
               <CohortGwaTable
                 rows={toCohortRows(report.cohorts)}
-                onViewStudents={(row) => {
+                onViewStudents={(row, event) => {
+                  cohortOpener.current = event.currentTarget;
                   const original = report.cohorts.find((item) => item.id === row.id);
                   if (original) setCohort(original);
                 }}
@@ -171,10 +173,23 @@ export default function DepartmentReportsPage() {
             </div>
           )}
           <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
-          <ReportCohortDialog
-            cohort={cohort}
+          <CohortStudentsDialog
+            open={cohort !== null}
+            onOpenChange={(open) => {
+              if (!open) setCohort(null);
+            }}
+            title={cohort ? `Batch ${cohort.entryYear} · Student GWA` : "Student GWA"}
+            summary={cohort ? `${cohortStudents.length} students · ${cohort.program.toUpperCase()} · Study range ${cohort.entryYear}–${cohort.entryYear + 4}` : undefined}
             students={cohortStudents}
-            onClose={() => setCohort(null)}
+            footnote="All students in this cohort are shown."
+            onCloseAutoFocus={(event) => {
+              const opener = cohortOpener.current;
+              if (opener?.isConnected) {
+                event.preventDefault();
+                opener.focus();
+              }
+              cohortOpener.current = null;
+            }}
           />
         </>
       )}
