@@ -44,6 +44,7 @@ export function toDeanStudentSummary(
     department: item.department_name,
     curriculum: item.curriculum_label,
     adviser: item.adviser_name ?? "Unassigned",
+    hasAdviser: item.adviser_name != null,
     program: item.program_name,
     yearLabel: YEAR_LABELS[item.year_level] ?? `${item.year_level}th Year`,
     email: item.email,

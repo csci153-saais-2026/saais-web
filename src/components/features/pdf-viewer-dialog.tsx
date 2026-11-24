@@ -43,6 +43,9 @@ function PdfViewerDialog({
   onDownload,
   className,
 }: PdfViewerDialogProps) {
+  // A failed generation wins over any stale URL, so the error stays visible and Download disabled.
+  const ready = Boolean(url) && !error;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -73,7 +76,7 @@ function PdfViewerDialog({
                 Close
               </Button>
             </DialogClose>
-            {url ? (
+            {ready ? (
               <Button asChild>
                 <a href={url} download={filename} onClick={onDownload}>
                   Download PDF
@@ -87,7 +90,7 @@ function PdfViewerDialog({
           </div>
         </DialogHeader>
 
-        {url ? (
+        {ready ? (
           <iframe
             title={`Preview: ${title}`}
             src={url}

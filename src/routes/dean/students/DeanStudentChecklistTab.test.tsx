@@ -57,6 +57,7 @@ describe("DeanStudentChecklistTab", () => {
       department: "DCST",
       curriculum: "BSCS 2025",
       adviser: "Adviser",
+      hasAdviser: true,
       program: "BS Computer Science",
       yearLabel: "2nd Year",
       email: "student@example.edu.ph",

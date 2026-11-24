@@ -66,6 +66,7 @@ function ChecklistView({
   emptyTitle?: string;
   emptyMessage?: React.ReactNode;
 }) {
+  const filterId = React.useId();
   const [collapsed, setCollapsed] = React.useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -94,12 +95,12 @@ function ChecklistView({
         {filter && (
           <FormField
             label="Show requirements"
-            htmlFor="checklist-status-filter"
+            htmlFor={filterId}
             className="w-full sm:w-60"
           >
             <Select value={filter.value} onValueChange={filter.onChange}>
               <SelectTrigger
-                id="checklist-status-filter"
+                id={filterId}
                 aria-label="Show requirements"
                 className="min-h-11 w-full md:min-h-[38px]"
               >

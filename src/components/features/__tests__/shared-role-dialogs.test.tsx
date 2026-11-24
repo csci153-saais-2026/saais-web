@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { CohortStudentsDialog } from "@/components/features/cohort-students-dialog";
 import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
 import { StudentRecordDialog } from "@/components/features/student-record-dialog";
@@ -190,8 +196,11 @@ describe("StudentRecordDialog", () => {
       />,
     );
     // The dialog has an "X" close button and a footer Close button; use the footer one.
-    const closeButtons = screen.getAllByRole("button", { name: "Close" });
-    fireEvent.click(closeButtons[closeButtons.length - 1]);
+    const footer = screen
+      .getByRole("dialog")
+      .querySelector<HTMLElement>('[data-slot="dialog-footer"]');
+    expect(footer).not.toBeNull();
+    fireEvent.click(within(footer!).getByRole("button", { name: "Close" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

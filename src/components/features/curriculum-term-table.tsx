@@ -76,16 +76,10 @@ export function CurriculumTermTable({
                   {row.courseOrSlot}
                 </span>
               </TableCell>
-              <TableCell
-                label="Required units"
-                className="font-mono text-sm"
-              >
+              <TableCell label="Required units" className="font-mono text-sm">
                 {row.requiredUnits ?? "Unavailable"}
               </TableCell>
-              <TableCell
-                label="Type"
-                className="text-muted-foreground"
-              >
+              <TableCell label="Type" className="text-muted-foreground">
                 {row.type}
               </TableCell>
               {showActions && (
