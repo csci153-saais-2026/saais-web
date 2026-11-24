@@ -167,8 +167,10 @@ export default function DepartmentReportsPage() {
               </div>
               <CohortGwaTable
                 rows={toCohortRows(report.cohorts)}
-                onViewStudents={(row, event) => {
-                  cohortOpener.current = event.currentTarget;
+                onOpenerChange={(opener) => {
+                  cohortOpener.current = opener;
+                }}
+                onViewStudents={(row) => {
                   const original = report.cohorts.find(
                     (item) => item.id === row.id,
                   );

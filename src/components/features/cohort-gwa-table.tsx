@@ -33,6 +33,7 @@ const HEAD =
 function CohortGwaTable({
   rows,
   onViewStudents,
+  onOpenerChange,
   title = "GWA by batch and curriculum",
   description = "Entry year, study range, and academic performance for each cohort.",
   footer,
@@ -40,10 +41,9 @@ function CohortGwaTable({
 }: {
   rows: readonly CohortGwaRow[];
   /** Omit to hide the action column. */
-  onViewStudents?: (
-    row: CohortGwaRow,
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => void;
+  onViewStudents?: (row: CohortGwaRow) => void;
+  /** Capture the action element for caller-managed dialog focus restoration. */
+  onOpenerChange?: (opener: HTMLButtonElement) => void;
   title?: string;
   description?: string;
   /** Caption under the table, e.g. "3 cohorts · All department programs". */
@@ -96,7 +96,10 @@ function CohortGwaTable({
                       size="sm"
                       className="h-auto px-0 py-1 font-semibold underline-offset-4"
                       aria-label={`View students for ${row.curriculum} batch ${row.entryYear}`}
-                      onClick={(event) => onViewStudents(row, event)}
+                      onClick={(event) => {
+                        onOpenerChange?.(event.currentTarget);
+                        onViewStudents(row);
+                      }}
                     >
                       View students →
                     </Button>
