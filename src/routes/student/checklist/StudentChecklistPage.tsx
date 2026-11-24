@@ -2,9 +2,11 @@ import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChecklistTermGroup,
-  type ChecklistRow,
-} from "@/components/features/checklist-term-table";
+  type ChecklistFilterOption,
+  ChecklistView,
+  type ChecklistViewTerm,
+} from "@/components/features/checklist-view";
+import { type ChecklistRow } from "@/components/features/checklist-term-group";
 import {
   CourseInfoDialog,
   type CourseInfoSlotRecord,
@@ -15,7 +17,6 @@ import {
   ReportPdfPreviewDialog,
   type ReportAuditEventType,
 } from "@/components/features/report-pdf-preview-dialog";
-import { StatGrid } from "@/components/features/stat-tile";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/components/ui/status-badge";
 import { fetchAllPages } from "../fetch-all-pages";
@@ -31,13 +32,24 @@ import {
   type PdfReportPayload,
 } from "@/lib/pdf/student-report-formatter";
 import {
-  ChecklistToolbar,
-  type ChecklistFilterValue,
-} from "./ChecklistToolbar";
-import {
   useRecordChecklistExport,
   useStudentChecklist,
 } from "./use-student-checklist";
+
+type ChecklistFilterValue =
+  | "all"
+  | "open"
+  | "passed"
+  | "inc"
+  | "currently_enrolled";
+
+const STUDENT_CHECKLIST_FILTER_OPTIONS: ChecklistFilterOption[] = [
+  { value: "all", label: "All statuses" },
+  { value: "open", label: "Not yet taken" },
+  { value: "passed", label: "Passed / credited" },
+  { value: "inc", label: "INC" },
+  { value: "currently_enrolled", label: "Currently enrolled" },
+];
 
 export interface ChecklistSlotDisplayItem extends ApiSchema<"ChecklistSlotResult"> {
   readonly code: string;
@@ -209,9 +221,6 @@ export function StudentChecklistView({
   onPrintReport,
 }: StudentChecklistViewProps) {
   const [filter, setFilter] = React.useState<ChecklistFilterValue>("all");
-  const [collapsedIds, setCollapsedIds] = React.useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
   const [selectedSlot, setSelectedSlot] =
     React.useState<CourseInfoSlotRecord | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -225,29 +234,29 @@ export function StudentChecklistView({
       .filter((term) => term.slots.length > 0);
   }, [terms, filter]);
 
-  const allCollapsed =
-    filteredTerms.length > 0 &&
-    filteredTerms.every((term) => collapsedIds.has(term.id));
+  const checklistTerms = React.useMemo<ChecklistViewTerm[]>(() => {
+    return filteredTerms.map((term) => {
+      const allTermSlots =
+        terms.find((item) => item.id === term.id)?.slots ?? term.slots;
+      const passedUnits = allTermSlots.reduce(
+        (acc, slot) => acc + slot.earned_units,
+        0,
+      );
+      const totalUnits = allTermSlots.reduce(
+        (acc, slot) => acc + slot.required_units,
+        0,
+      );
 
-  function handleToggleAll() {
-    if (allCollapsed) {
-      setCollapsedIds(new Set());
-    } else {
-      setCollapsedIds(new Set(filteredTerms.map((term) => term.id)));
-    }
-  }
-
-  function handleToggleTerm(termId: string) {
-    setCollapsedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(termId)) {
-        next.delete(termId);
-      } else {
-        next.add(termId);
-      }
-      return next;
+      return {
+        id: term.id,
+        title: term.title,
+        description: term.description,
+        passedUnits,
+        totalUnits,
+        rows: term.slots.map(buildRowFromSlot),
+      };
     });
-  }
+  }, [filteredTerms, terms]);
 
   const reportPayload = React.useMemo<PdfReportPayload>(() => {
     return formatChecklistReport({
@@ -316,8 +325,8 @@ export function StudentChecklistView({
         }
       />
 
-      <StatGrid
-        items={[
+      <ChecklistView
+        stats={[
           {
             label: "Cumulative GWA",
             value: gwaDisplay,
@@ -339,60 +348,20 @@ export function StudentChecklistView({
             note: deficiencyNote,
           },
         ]}
+        filter={{
+          value: filter,
+          onChange: (value) => setFilter(value as ChecklistFilterValue),
+          options: STUDENT_CHECKLIST_FILTER_OPTIONS,
+        }}
+        terms={checklistTerms}
+        onCourseInfo={(termId, code) => {
+          const term = filteredTerms.find((t) => t.id === termId);
+          const matched = term?.slots.find((s) => s.code === code);
+          if (matched && term) {
+            setSelectedSlot(toCourseInfoSlotRecord(matched, term));
+          }
+        }}
       />
-
-      <ChecklistToolbar
-        filter={filter}
-        onFilterChange={setFilter}
-        allCollapsed={allCollapsed}
-        onToggleAll={handleToggleAll}
-        disableToggleAll={filteredTerms.length === 0}
-      />
-
-      {filteredTerms.length > 0 ? (
-        <div className="grid gap-1">
-          {filteredTerms.map((term) => {
-            const allTermSlots =
-              terms.find((item) => item.id === term.id)?.slots ?? term.slots;
-            const passedUnits = allTermSlots.reduce(
-              (acc, slot) => acc + slot.earned_units,
-              0,
-            );
-            const totalUnits = allTermSlots.reduce(
-              (acc, slot) => acc + slot.required_units,
-              0,
-            );
-
-            return (
-              <ChecklistTermGroup
-                key={term.id}
-                title={term.title}
-                description={
-                  term.description ??
-                  "Curriculum position · course availability depends on the school term."
-                }
-                passedUnits={passedUnits}
-                totalUnits={totalUnits}
-                rows={term.slots.map(buildRowFromSlot)}
-                open={!collapsedIds.has(term.id)}
-                onOpenChange={() => handleToggleTerm(term.id)}
-                onCourseInfo={(code) => {
-                  const matched = term.slots.find((s) => s.code === code);
-                  if (matched) {
-                    setSelectedSlot(toCourseInfoSlotRecord(matched, term));
-                  }
-                }}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <Panel title="No matching requirements">
-          <p className="py-6 text-center text-body text-muted-foreground">
-            No curriculum requirements match the selected status filter.
-          </p>
-        </Panel>
-      )}
 
       <CourseInfoDialog
         open={selectedSlot !== null}
