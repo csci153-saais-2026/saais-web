@@ -35,20 +35,24 @@ export async function createDashboardPdf(
   topStripe();
   // These are the same public institutional assets used by the application.
   const logos = await Promise.all(
-    ["bagong-pilipinas.png", "vsu-wordmark.png", "FC.png", "DCST.png"].map(async (name) => {
-      try {
-        const response = await fetch(`${import.meta.env.BASE_URL}${name}`);
-        if (!response.ok) return null;
-        return new Uint8Array(await response.arrayBuffer());
-      } catch {
-        return null;
-      }
-    }),
+    ["bagong-pilipinas.png", "vsu-wordmark.png", "FC.png", "DCST.png"].map(
+      async (name) => {
+        try {
+          const response = await fetch(`${import.meta.env.BASE_URL}${name}`);
+          if (!response.ok) return null;
+          return new Uint8Array(await response.arrayBuffer());
+        } catch {
+          return null;
+        }
+      },
+    ),
   );
   if (logos[0]) pdf.addImage(logos[0], "PNG", margin, 12, 20, 20);
   if (logos[1]) pdf.addImage(logos[1], "PNG", margin + 24, 12, 56, 20);
-  if (logos[2]) pdf.addImage(logos[2], "PNG", pageWidth - margin - 45, 10, 20, 24);
-  if (logos[3]) pdf.addImage(logos[3], "PNG", pageWidth - margin - 22, 10, 22, 24);
+  if (logos[2])
+    pdf.addImage(logos[2], "PNG", pageWidth - margin - 45, 10, 20, 24);
+  if (logos[3])
+    pdf.addImage(logos[3], "PNG", pageWidth - margin - 22, 10, 22, 24);
   pdf.setDrawColor(green);
   pdf.line(96, 10, 96, 34);
   pdf.setTextColor(green);

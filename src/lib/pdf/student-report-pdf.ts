@@ -102,8 +102,10 @@ export async function createStudentReportPdf(
   ]);
   if (logos[0]) pdf.addImage(logos[0], "PNG", margin, 12, 17, 17);
   if (logos[1]) pdf.addImage(logos[1], "PNG", margin + 20, 12, 48, 17);
-  if (logos[2]) pdf.addImage(logos[2], "PNG", pageWidth - margin - 40, 10, 18, 21);
-  if (logos[3]) pdf.addImage(logos[3], "PNG", pageWidth - margin - 20, 10, 20, 21);
+  if (logos[2])
+    pdf.addImage(logos[2], "PNG", pageWidth - margin - 40, 10, 18, 21);
+  if (logos[3])
+    pdf.addImage(logos[3], "PNG", pageWidth - margin - 20, 10, 20, 21);
 
   const dividerX = margin + 72;
   pdf.setDrawColor(GREEN);

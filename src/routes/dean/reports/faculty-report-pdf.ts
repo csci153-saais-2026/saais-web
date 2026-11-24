@@ -1,6 +1,11 @@
 import type { FacultyDepartmentReport } from "@/routes/dean/types";
 
-const LOGOS = ["bagong-pilipinas.png", "vsu-wordmark.png", "FC.png", "DCST.png"] as const;
+const LOGOS = [
+  "bagong-pilipinas.png",
+  "vsu-wordmark.png",
+  "FC.png",
+  "DCST.png",
+] as const;
 const GREEN = "#29450e";
 const CREAM = "#f8f6ed";
 
