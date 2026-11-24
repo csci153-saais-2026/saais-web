@@ -88,6 +88,24 @@ describe("AdminAuditLogPage", () => {
     ).toBe(true);
   });
 
+  it("falls back to entity type when no student or target label is available", async () => {
+    getMock.mockResolvedValueOnce(
+      result([
+        {
+          ...entry,
+          student_name: null,
+          student_number: null,
+          target_label: null,
+        },
+      ]),
+    );
+    render(<AdminAuditLogPage />);
+
+    const entityLabel = await screen.findByText("Advising Plan");
+    expect(entityLabel.getAttribute("title")).toBe("Advising Plan");
+    expect(screen.queryByText("Juan Dela Cruz")).toBeNull();
+  });
+
   it("applies person, student, action, and bounded date filters live", async () => {
     render(<AdminAuditLogPage />);
     await screen.findByText("Morgan Lee");
