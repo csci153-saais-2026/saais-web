@@ -577,6 +577,28 @@ function matchesPostgrestOperator(
   return true;
 }
 
+const AUDIT_OR_FIELD_LIMITS: Record<string, number> = {
+  actor_name: 100,
+  student_name: 100,
+  student_number: 100,
+  target_label: 100,
+  action: 100,
+  details_summary: 100,
+  reason: 100,
+};
+
+const COURSE_OR_FIELD_LIMITS: Record<string, number> = {
+  code: 100,
+  title: 250,
+};
+
+function getOrFieldLimits(pathname: string): Record<string, number> | null {
+  if (pathname.endsWith("/rest/v1/course")) return COURSE_OR_FIELD_LIMITS;
+  if (pathname.endsWith("/rest/v1/audit_log_entry"))
+    return AUDIT_OR_FIELD_LIMITS;
+  return null;
+}
+
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
   url: URL,
@@ -620,31 +642,34 @@ function applyPostgrestQuery<T extends object>(
 
   const orParam = url.searchParams.get("or");
   if (orParam) {
-    if (!orParam.startsWith("(") || !orParam.endsWith(")"))
+    const fieldLimits = getOrFieldLimits(url.pathname);
+    if (!fieldLimits || !orParam.startsWith("(") || !orParam.endsWith(")"))
       return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
-    const terms = orParam
-      .slice(1, -1)
-      .split(",")
-      .map((term) =>
-        /^(actor_name|student_name|student_number|target_label|action|details_summary|reason)\.(ilike|like|eq)\.([^,()]{1,100})$/.exec(
-          term,
-        ),
-      );
-    if (
-      terms.length > 7 ||
-      terms.some(
-        (term) =>
-          !term || Array.from(term[3]).some((char) => char.charCodeAt(0) < 32),
+    const rawTerms = orParam.slice(1, -1).split(",");
+    if (rawTerms.length > 7)
+      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
+    const terms = rawTerms.map((term) => {
+      const match = term.match(/^([a-z_]+)\.(ilike|like|eq)\.([^,()]+)$/);
+      if (!match) return null;
+      const [, field, op, operand] = match;
+      const maxLen = Object.hasOwn(fieldLimits, field) ? fieldLimits[field] : 0;
+      if (
+        !maxLen ||
+        operand.length > maxLen ||
+        Array.from(operand).some((char) => char.charCodeAt(0) < 32)
       )
-    )
+        return null;
+      return { field, op, operand };
+    });
+    if (terms.some((term) => !term))
       return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
     filtered = filtered.filter((row) =>
       terms.some(
         (term) =>
           term &&
           matchesPostgrestOperator(
-            (row as Record<string, unknown>)[term[1]],
-            `${term[2]}.${term[3]}`,
+            (row as Record<string, unknown>)[term.field],
+            `${term.op}.${term.operand}`,
           ),
       ),
     );
