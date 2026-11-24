@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -105,9 +105,10 @@ export function AccountProvisionDialog({
     ...initialRoles,
   ]);
 
-  useEffect(() => {
-    if (!open) setSelectedRoles([...initialRoles]);
-  }, [open, initialRoles]);
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) setSelectedRoles([...initialRoles]);
+    onOpenChange(nextOpen);
+  }
 
   function toggleRole(role: AccountProvisionRole, checked: boolean) {
     const studentSelected = selectedRoles.includes("student");
@@ -127,7 +128,7 @@ export function AccountProvisionDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
