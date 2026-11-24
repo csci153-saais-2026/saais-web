@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
@@ -58,7 +59,7 @@ export default function DeanStudentsPage() {
     <div className="space-y-6">
       <PageHeading title="Students" subtitle={facultyName ?? undefined} />
 
-      {!hasData || isLoading || isError || isFacultyUnavailable ? (
+      {(!hasData && !isLoading) || isError || isFacultyUnavailable ? (
         <DeanQueryState
           isLoading={isLoading}
           isError={isError}
@@ -69,26 +70,32 @@ export default function DeanStudentsPage() {
           onRetry={refetch}
         />
       ) : (
-        <div className="space-y-4">
-          <StudentDirectoryFilters
-            query={query}
-            onQueryChange={setQuery}
-            curriculum={curriculum}
-            onCurriculumChange={setCurriculum}
-            curriculumOptions={curriculumOptions}
-            adviser={adviser}
-            onAdviserChange={setAdviser}
-            adviserOptions={adviserOptions}
-            onReset={handleReset}
-          />
+        <AccountSkeleton
+          id="dean-students"
+          loading={isLoading}
+          label="Loading students…"
+        >
+          <div className="space-y-4">
+            <StudentDirectoryFilters
+              query={query}
+              onQueryChange={setQuery}
+              curriculum={curriculum}
+              onCurriculumChange={setCurriculum}
+              curriculumOptions={curriculumOptions}
+              adviser={adviser}
+              onAdviserChange={setAdviser}
+              adviserOptions={adviserOptions}
+              onReset={handleReset}
+            />
 
-          <StudentDirectoryTable
-            students={filteredStudents}
-            totalCount={students.length}
-            onSelectStudent={setSelectedStudent}
-            onResetFilters={handleReset}
-          />
-        </div>
+            <StudentDirectoryTable
+              students={filteredStudents}
+              totalCount={students.length}
+              onSelectStudent={setSelectedStudent}
+              onResetFilters={handleReset}
+            />
+          </div>
+        </AccountSkeleton>
       )}
 
       <DeanStudentRecordDialog

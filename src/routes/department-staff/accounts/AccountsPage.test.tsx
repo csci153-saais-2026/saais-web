@@ -264,7 +264,7 @@ describe("Department Staff accounts directory", () => {
     );
     renderAccounts();
     await started;
-    expect(screen.getByRole("status").textContent).toContain(
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
       "Loading department accounts",
     );
     releaseResponse?.();

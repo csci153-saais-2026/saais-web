@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import type { DepartmentAdviser } from "../shared/dh-api";
 import { todayInManila } from "../shared/dh-utils";
 import type { ReassignmentInput } from "./assignment-model";
@@ -114,6 +115,7 @@ export function ReassignAdviserDialog({
           >
             <Textarea
               id="reassignment-reason"
+              maxLength={REASON_MAX_LENGTH}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               placeholder="Explain the adviser change."

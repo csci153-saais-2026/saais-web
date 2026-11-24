@@ -161,7 +161,9 @@ describe("advisee identity", () => {
         <AdviseesPage />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("status").textContent).toContain("Loading");
+    expect(document.querySelector("[skullet-status]")?.textContent).toContain(
+      "Loading",
+    );
     expect((await screen.findByRole("alert")).textContent).toContain(
       "Roster unavailable",
     );

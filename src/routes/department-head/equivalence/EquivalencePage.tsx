@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import * as React from "react";
 import { AlertIcon, PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
@@ -152,7 +153,7 @@ export default function EquivalencePage() {
     (curriculum) => curriculum.id === toCurriculumId,
   )?.label;
 
-  if (!query.data) {
+  if (query.isError && !query.data) {
     return (
       <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
         <PageHeading
@@ -165,351 +166,376 @@ export default function EquivalencePage() {
   }
 
   return (
-    <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
-      <PageHeading
-        title="Equivalence"
-        subtitle="Define one-to-one course equivalencies between curriculum versions."
-        actions={
-          <Button
-            disabled={!curricula.length || !courses.length}
-            onClick={openAddDialog}
-            className="gap-2 cursor-pointer"
-          >
-            <PlusIcon className="size-4" />
-            Add course equivalence
-          </Button>
-        }
-      />
-
-      <Alert variant="advisory">
-        <AlertIcon />
-        <AlertDescription>
-          Equivalencies apply to a curriculum pair, one course to one course. A
-          credited course satisfies its mapped requirement; credit is counted
-          once.
-        </AlertDescription>
-      </Alert>
-
-      <DataTablePanel
-        title="Curriculum equivalencies"
-        description="Different codes and titles, the same credited requirement."
-        toolbar={
-          <div className="flex flex-wrap items-end gap-4">
-            <FormField
-              label="From curriculum"
-              htmlFor="from-curr"
-              className="w-44"
-            >
-              <Select
-                value={fromCurriculumId}
-                onValueChange={setFromCurriculumId}
-              >
-                <SelectTrigger id="from-curr" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {curricula.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-
-            <FormField label="To curriculum" htmlFor="to-curr" className="w-44">
-              <Select value={toCurriculumId} onValueChange={setToCurriculumId}>
-                <SelectTrigger id="to-curr" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {curricula.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-          </div>
-        }
-        rows={displayedEquivalencies}
-        rowKey={(row) => row.id}
-        empty="No equivalencies recorded for this pair."
-        columns={[
-          {
-            header: "Old course subject",
-            cell: (row) => (
-              <div>
-                <strong className="block font-semibold">
-                  {row.sourceCourse.code}
-                </strong>
-                <small className="block text-xs text-muted-2">
-                  {row.sourceCourse.title}
-                </small>
-              </div>
-            ),
-          },
-          {
-            header: "Old course units",
-            headerContent: "Units",
-            cell: (row) => row.sourceCourse.units,
-          },
-          {
-            header: "Equivalent course subject",
-            cell: (row) => (
-              <div>
-                <strong className="block font-semibold">
-                  {row.targetCourse.code}
-                </strong>
-                <small className="block text-xs text-muted-2">
-                  {row.targetCourse.title}
-                </small>
-              </div>
-            ),
-          },
-          {
-            header: "Equivalent course units",
-            headerContent: "Units",
-            cell: (row) => row.targetCourse.units,
-          },
-          {
-            header: "Curriculum pair",
-            cell: () => (
-              <>
-                {fromLabel} → {toLabel}
-              </>
-            ),
-          },
-          {
-            header: "Status",
-            cell: () => <StatusBadge status="passed">Equivalent</StatusBadge>,
-          },
-          {
-            header: "Actions",
-            cell: (row) => (
+    <AccountSkeleton
+      id="dh-equivalence"
+      data={query.data}
+      label="Loading equivalencies…"
+    >
+      {() => (
+        <div className="space-y-6 [&_th]:h-auto [&_th]:px-3.5 [&_th]:py-2.5 [&_td]:px-3.5 [&_td]:py-[11px] [&_td]:whitespace-normal">
+          <PageHeading
+            title="Equivalence"
+            subtitle="Define one-to-one course equivalencies between curriculum versions."
+            actions={
               <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  setDeleteTarget(row);
-                  setDeleteError("");
-                }}
-                aria-label={`Delete equivalence ${row.sourceCourse.code} to ${row.targetCourse.code}`}
+                disabled={!curricula.length || !courses.length}
+                onClick={openAddDialog}
+                className="gap-2 cursor-pointer"
               >
-                Delete
+                <PlusIcon className="size-4" />
+                Add course equivalence
               </Button>
-            ),
-          },
-        ]}
-        footer={
-          <div className="flex flex-wrap justify-between gap-2">
-            <span>{displayedEquivalencies.length} course equivalencies</span>
-            <span>DCST department scope</span>
-          </div>
-        }
-      />
+            }
+          />
 
-      {/* Add Equivalence Dialog */}
-      <Dialog
-        open={isAddModalOpen}
-        onOpenChange={(open) =>
-          !addEquivalence.isPending && setIsAddModalOpen(open)
-        }
-      >
-        <DialogContent
-          className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]"
-          showCloseButton={!addEquivalence.isPending}
-        >
-          <DialogHeader className="pr-6">
-            <DialogTitle>Add course equivalence</DialogTitle>
-            <DialogDescription>
-              Establish a direct 1-to-1 credit mapping between courses across
-              curriculum versions.
-            </DialogDescription>
-          </DialogHeader>
+          <Alert variant="advisory">
+            <AlertIcon />
+            <AlertDescription>
+              Equivalencies apply to a curriculum pair, one course to one
+              course. A credited course satisfies its mapped requirement; credit
+              is counted once.
+            </AlertDescription>
+          </Alert>
 
-          <fieldset
-            disabled={addEquivalence.isPending}
-            className="min-w-0 space-y-4 py-2 text-sm"
+          <DataTablePanel
+            title="Curriculum equivalencies"
+            description="Different codes and titles, the same credited requirement."
+            toolbar={
+              <div className="flex flex-wrap items-end gap-4">
+                <FormField
+                  label="From curriculum"
+                  htmlFor="from-curr"
+                  className="w-44"
+                >
+                  <Select
+                    value={fromCurriculumId}
+                    onValueChange={setFromCurriculumId}
+                  >
+                    <SelectTrigger id="from-curr" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {curricula.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+
+                <FormField
+                  label="To curriculum"
+                  htmlFor="to-curr"
+                  className="w-44"
+                >
+                  <Select
+                    value={toCurriculumId}
+                    onValueChange={setToCurriculumId}
+                  >
+                    <SelectTrigger id="to-curr" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {curricula.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              </div>
+            }
+            rows={displayedEquivalencies}
+            rowKey={(row) => row.id}
+            empty="No equivalencies recorded for this pair."
+            columns={[
+              {
+                header: "Old course subject",
+                cell: (row) => (
+                  <div>
+                    <strong className="block font-semibold">
+                      {row.sourceCourse.code}
+                    </strong>
+                    <small
+                      className="block max-w-64 truncate text-xs text-muted-2"
+                      title={row.sourceCourse.title}
+                    >
+                      {row.sourceCourse.title}
+                    </small>
+                  </div>
+                ),
+              },
+              {
+                header: "Old course units",
+                headerContent: "Units",
+                cell: (row) => row.sourceCourse.units,
+              },
+              {
+                header: "Equivalent course subject",
+                cell: (row) => (
+                  <div>
+                    <strong className="block font-semibold">
+                      {row.targetCourse.code}
+                    </strong>
+                    <small
+                      className="block max-w-64 truncate text-xs text-muted-2"
+                      title={row.targetCourse.title}
+                    >
+                      {row.targetCourse.title}
+                    </small>
+                  </div>
+                ),
+              },
+              {
+                header: "Equivalent course units",
+                headerContent: "Units",
+                cell: (row) => row.targetCourse.units,
+              },
+              {
+                header: "Curriculum pair",
+                cell: () => (
+                  <>
+                    {fromLabel} → {toLabel}
+                  </>
+                ),
+              },
+              {
+                header: "Status",
+                cell: () => (
+                  <StatusBadge status="passed">Equivalent</StatusBadge>
+                ),
+              },
+              {
+                header: "Actions",
+                cell: (row) => (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setDeleteTarget(row);
+                      setDeleteError("");
+                    }}
+                    aria-label={`Delete equivalence ${row.sourceCourse.code} to ${row.targetCourse.code}`}
+                  >
+                    Delete
+                  </Button>
+                ),
+              },
+            ]}
+            footer={
+              <div className="flex flex-wrap justify-between gap-2">
+                <span>
+                  {displayedEquivalencies.length} course equivalencies
+                </span>
+                <span>DCST department scope</span>
+              </div>
+            }
+          />
+
+          {/* Add Equivalence Dialog */}
+          <Dialog
+            open={isAddModalOpen}
+            onOpenChange={(open) =>
+              !addEquivalence.isPending && setIsAddModalOpen(open)
+            }
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="From curriculum"
-                htmlFor="m-from"
-                className="min-w-0"
+            <DialogContent
+              className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]"
+              showCloseButton={!addEquivalence.isPending}
+            >
+              <DialogHeader className="pr-6">
+                <DialogTitle>Add course equivalence</DialogTitle>
+                <DialogDescription>
+                  Establish a direct 1-to-1 credit mapping between courses
+                  across curriculum versions.
+                </DialogDescription>
+              </DialogHeader>
+
+              <fieldset
+                disabled={addEquivalence.isPending}
+                className="min-w-0 space-y-4 py-2 text-sm"
               >
-                <Select
-                  value={modalFromId}
-                  onValueChange={(id) => {
-                    setModalFromId(id);
-                    setFormError("");
-                  }}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FormField
+                    label="From curriculum"
+                    htmlFor="m-from"
+                    className="min-w-0"
+                  >
+                    <Select
+                      value={modalFromId}
+                      onValueChange={(id) => {
+                        setModalFromId(id);
+                        setFormError("");
+                      }}
+                    >
+                      <SelectTrigger id="m-from" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {curricula.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+
+                  <FormField
+                    label="To curriculum"
+                    htmlFor="m-to"
+                    className="min-w-0"
+                  >
+                    <Select
+                      value={modalToId}
+                      onValueChange={(id) => {
+                        setModalToId(id);
+                        setFormError("");
+                      }}
+                    >
+                      <SelectTrigger id="m-to" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {curricula.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                </div>
+
+                <FormField
+                  label="Old course subject"
+                  htmlFor="m-old"
+                  className="min-w-0"
                 >
-                  <SelectTrigger id="m-from" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {curricula.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
+                  <Select
+                    value={sourceCourseId}
+                    onValueChange={(id) => {
+                      setSourceCourseId(id);
+                      setFormError("");
+                    }}
+                  >
+                    <SelectTrigger
+                      id="m-old"
+                      className="w-full min-w-0 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.code} · {course.title} · {course.units} units
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
 
-              <FormField
-                label="To curriculum"
-                htmlFor="m-to"
-                className="min-w-0"
-              >
-                <Select
-                  value={modalToId}
-                  onValueChange={(id) => {
-                    setModalToId(id);
-                    setFormError("");
-                  }}
+                <FormField
+                  label="Equivalent course subject"
+                  htmlFor="m-equiv"
+                  className="min-w-0"
                 >
-                  <SelectTrigger id="m-to" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {curricula.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
+                  <Select
+                    value={targetCourseId}
+                    onValueChange={(id) => {
+                      setTargetCourseId(id);
+                      setFormError("");
+                    }}
+                  >
+                    <SelectTrigger
+                      id="m-equiv"
+                      className="w-full min-w-0 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.code} · {course.title} · {course.units} units
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
 
-            <FormField
-              label="Old course subject"
-              htmlFor="m-old"
-              className="min-w-0"
-            >
-              <Select
-                value={sourceCourseId}
-                onValueChange={(id) => {
-                  setSourceCourseId(id);
-                  setFormError("");
-                }}
-              >
-                <SelectTrigger
-                  id="m-old"
-                  className="w-full min-w-0 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"
+                <p className="text-xs text-muted-2 leading-relaxed">
+                  One-to-one equivalence applies to this curriculum pair only.
+                  Units are counted once.
+                </p>
+                {formError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{formError}</AlertDescription>
+                  </Alert>
+                )}
+              </fieldset>
+
+              <DialogFooter>
+                <Button
+                  disabled={addEquivalence.isPending}
+                  variant="outline"
+                  onClick={() => setIsAddModalOpen(false)}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.code} · {course.title} · {course.units} units
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-
-            <FormField
-              label="Equivalent course subject"
-              htmlFor="m-equiv"
-              className="min-w-0"
-            >
-              <Select
-                value={targetCourseId}
-                onValueChange={(id) => {
-                  setTargetCourseId(id);
-                  setFormError("");
-                }}
-              >
-                <SelectTrigger
-                  id="m-equiv"
-                  className="w-full min-w-0 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate"
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddEquivalence}
+                  disabled={addEquivalence.isPending}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.code} · {course.title} · {course.units} units
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-
-            <p className="text-xs text-muted-2 leading-relaxed">
-              One-to-one equivalence applies to this curriculum pair only. Units
-              are counted once.
-            </p>
-            {formError && (
-              <Alert variant="destructive">
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            )}
-          </fieldset>
-
-          <DialogFooter>
-            <Button
-              disabled={addEquivalence.isPending}
-              variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
+                  Add equivalence
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={!!deleteTarget}
+            onOpenChange={(open) =>
+              !open && !deletion.isPending && setDeleteTarget(null)
+            }
+          >
+            <DialogContent
+              className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]"
+              showCloseButton={!deletion.isPending}
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddEquivalence}
-              disabled={addEquivalence.isPending}
-            >
-              Add equivalence
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={!!deleteTarget}
-        onOpenChange={(open) =>
-          !open && !deletion.isPending && setDeleteTarget(null)
-        }
-      >
-        <DialogContent
-          className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]"
-          showCloseButton={!deletion.isPending}
-        >
-          <DialogHeader className="pr-6">
-            <DialogTitle>Delete course equivalence</DialogTitle>
-            <DialogDescription>
-              Remove the rule mapping {deleteTarget?.sourceCourse.code} to{" "}
-              {deleteTarget?.targetCourse.code}? Existing student credit
-              decisions are preserved.
-            </DialogDescription>
-          </DialogHeader>
-          {deleteError && (
-            <p role="alert" className="text-sm text-destructive">
-              {deleteError}
-            </p>
-          )}
-          <DialogFooter>
-            <Button
-              disabled={deletion.isPending}
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={deletion.isPending}
-              variant="destructive"
-              onClick={confirmDelete}
-            >
-              {deletion.isPending ? "Deleting…" : "Delete equivalence"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+              <DialogHeader className="pr-6">
+                <DialogTitle>Delete course equivalence</DialogTitle>
+                <DialogDescription>
+                  Remove the rule mapping {deleteTarget?.sourceCourse.code} to{" "}
+                  {deleteTarget?.targetCourse.code}? Existing student credit
+                  decisions are preserved.
+                </DialogDescription>
+              </DialogHeader>
+              {deleteError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {deleteError}
+                </p>
+              )}
+              <DialogFooter>
+                <Button
+                  disabled={deletion.isPending}
+                  variant="outline"
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={deletion.isPending}
+                  variant="destructive"
+                  onClick={confirmDelete}
+                >
+                  {deletion.isPending ? "Deleting…" : "Delete equivalence"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+    </AccountSkeleton>
   );
 }

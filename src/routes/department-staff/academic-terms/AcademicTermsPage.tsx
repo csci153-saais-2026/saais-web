@@ -1,3 +1,5 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons";
 import {
@@ -148,7 +150,6 @@ export default function AcademicTermsPage() {
                 size="sm"
                 aria-label={`Close encoding for ${term.school_year} ${termTypeLabel(term.term_type)}`}
                 onClick={() => {
-                  setSaveMessage(null);
                   setClosureDialog({ mode: "close", term });
                 }}
               >
@@ -227,17 +228,13 @@ export default function AcademicTermsPage() {
         </AlertDescription>
       </Alert>
 
-      {saveMessage && (
-        <p role="status" className="text-sm text-muted-foreground">
-          {saveMessage}
-        </p>
-      )}
-
       {academicTerms.isPending && (
         <Panel title="Academic term history">
-          <p role="status" className="p-6 text-sm text-muted-foreground">
-            Loading academic terms and department encoding status…
-          </p>
+          <TableSkeleton
+            rows={4}
+            columns={4}
+            label="Loading academic terms and department encoding status…"
+          />
         </Panel>
       )}
 
@@ -375,7 +372,6 @@ export default function AcademicTermsPage() {
                       onClick={() => {
                         setClosureDialog({ mode: "reopen", term: termToView });
                         setTermToViewId(null);
-                        setSaveMessage(null);
                       }}
                     >
                       Reopen encoding
@@ -392,7 +388,7 @@ export default function AcademicTermsPage() {
           onClose={() => setDialogOpen(false)}
           onSaved={() => {
             setDialogOpen(false);
-            setSaveMessage(
+            notify.success(
               dialogTerm ? "Academic term updated." : "Academic term created.",
             );
           }}
@@ -403,7 +399,7 @@ export default function AcademicTermsPage() {
           onClose={() => setDialogOpen(false)}
           onSaved={() => {
             setDialogOpen(false);
-            setSaveMessage("Academic term created.");
+            notify.success("Academic term created.");
           }}
         />
       )}
@@ -414,7 +410,7 @@ export default function AcademicTermsPage() {
           onClose={() => setClosureDialog(null)}
           onComplete={(action) => {
             setClosureDialog(null);
-            setSaveMessage(
+            notify.success(
               `Department grade encoding ${action} for ${closureDialog.term.school_year}, ${termTypeLabel(closureDialog.term.term_type)}.`,
             );
           }}

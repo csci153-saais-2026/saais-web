@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { ApiClientError } from "@/lib/api";
 import {
   useCloseAcademicTermEncoding,
@@ -166,7 +167,7 @@ export function EncodingClosureDialog({
               >
                 <Textarea
                   id="encoding-closure-note"
-                  maxLength={2000}
+                  maxLength={REASON_MAX_LENGTH}
                   aria-invalid={!!form.formState.errors.closure_note}
                   {...form.register("closure_note")}
                 />

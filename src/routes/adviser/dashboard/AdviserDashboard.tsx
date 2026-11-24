@@ -1,3 +1,4 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { AdviserPage } from "../Adviser";
@@ -119,138 +120,148 @@ export default function AdviserDashboard() {
           Showing shared sample records.
         </p>
       )}
-      {loading && <p role="status">Loading adviser dashboard…</p>}
-      {error && (
-        <div role="alert" className="grid gap-3">
-          <p>{error}</p>
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => setRevision((value) => value + 1)}
-            >
-              Try again
-            </Button>
+      <AccountSkeleton
+        id="AdviserDashboard-1"
+        loading={loading}
+        label="Loading adviser dashboard…"
+      >
+        {error && (
+          <div role="alert" className="grid gap-3">
+            <p>{error}</p>
+            <div>
+              <Button
+                variant="outline"
+                onClick={() => setRevision((value) => value + 1)}
+              >
+                Try again
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-      {report && (
-        <>
-          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatTile
-              label="Students"
-              value={String(report.total_advisees)}
-              note="Assigned to you"
-            />
-            <StatTile
-              label="Mean GWA"
-              value={report.mean_gwa == null ? "—" : report.mean_gwa.toFixed(2)}
-              note="Across your advisees"
-            />
-            {deficientStudents ? (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button
-                    type="button"
-                    className="rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&>div]:h-full [&>div]:transition-colors hover:[&>div]:bg-secondary/50"
-                  >
-                    <StatTile
-                      label="With deficiencies"
-                      value={String(deficientStudents.length)}
-                      note="Students with open deficiencies · View list"
-                    />
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Advisees with deficiencies</DialogTitle>
-                    <DialogDescription>
-                      Select an advisee to open their record.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <ul className="divide-y divide-line-soft">
-                    {deficientStudents.map((student) => (
-                      <li key={student.student_id}>
-                        <Link
-                          className="flex justify-between gap-4 py-3 hover:bg-secondary/50"
-                          to={`/adviser/advisee/${encodeURIComponent(student.student_id)}/checklist`}
-                        >
-                          <span>
-                            <b className="block underline">
-                              {student.full_name}
-                            </b>
-                            <span className="text-xs text-muted-foreground">
-                              {student.student_number}
-                            </span>
-                          </span>
-                          <span className="text-right text-sm">
-                            {student.deficiencies
-                              .map((item) => item.course_code)
-                              .join(", ") || "Subject details unavailable"}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                  {!deficientStudents.length && (
-                    <p>No advisees with deficiencies.</p>
-                  )}
-                </DialogContent>
-              </Dialog>
-            ) : (
+        )}
+        {report && (
+          <>
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatTile
-                label="With deficiencies"
-                value="—"
-                note={
-                  fallbackDeficiencies.error
-                    ? "Details not available in this report"
-                    : "Loading deficiencies…"
+                label="Students"
+                value={String(report.total_advisees)}
+                note="Assigned to you"
+              />
+              <StatTile
+                label="Mean GWA"
+                value={
+                  report.mean_gwa == null ? "—" : report.mean_gwa.toFixed(2)
                 }
+                note="Across your advisees"
               />
-            )}
-          </div>
-          <div className="grid gap-0">
-            <Panel
-              title="Final grade distribution"
-              description={`${terms.find((term) => term.id === termId) ? `${terms.find((term) => term.id === termId)?.school_year} · ${terms.find((term) => term.id === termId)?.term_type} · ` : ""}Share of final grades across your advisees`}
-              action={
-                <label className="grid gap-1 text-sm">
-                  Term
-                  <select
-                    className="rounded-md border border-border bg-background px-3 py-2"
-                    value={termId}
-                    onChange={(event) => setTermId(event.target.value)}
-                  >
-                    <option value="">All terms</option>
-                    {terms.map((term) => (
-                      <option key={term.id} value={term.id}>
-                        {term.school_year} · {term.term_type}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              }
-            >
-              {report.grade_distribution ? (
-                <GradeDistribution
-                  inline
-                  bands={distributionBands(report.grade_distribution)}
-                />
+              {deficientStudents ? (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&>div]:h-full [&>div]:transition-colors hover:[&>div]:bg-secondary/50"
+                    >
+                      <StatTile
+                        label="With deficiencies"
+                        value={String(deficientStudents.length)}
+                        note="Students with open deficiencies · View list"
+                      />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Advisees with deficiencies</DialogTitle>
+                      <DialogDescription>
+                        Select an advisee to open their record.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ul className="divide-y divide-line-soft">
+                      {deficientStudents.map((student) => (
+                        <li key={student.student_id}>
+                          <Link
+                            className="flex justify-between gap-4 py-3 hover:bg-secondary/50"
+                            to={`/adviser/advisee/${encodeURIComponent(student.student_id)}/checklist`}
+                          >
+                            <span className="min-w-0">
+                              <b
+                                className="block truncate underline"
+                                title={student.full_name}
+                              >
+                                {student.full_name}
+                              </b>
+                              <span className="text-xs text-muted-foreground">
+                                {student.student_number}
+                              </span>
+                            </span>
+                            <span className="line-clamp-2 max-w-[50%] shrink-0 text-right text-sm">
+                              {student.deficiencies
+                                .map((item) => item.course_code)
+                                .join(", ") || "Subject details unavailable"}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                    {!deficientStudents.length && (
+                      <p>No advisees with deficiencies.</p>
+                    )}
+                  </DialogContent>
+                </Dialog>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Grade distribution is not available in this report.
-                </p>
+                <StatTile
+                  label="With deficiencies"
+                  value="—"
+                  note={
+                    fallbackDeficiencies.error
+                      ? "Details not available in this report"
+                      : "Loading deficiencies…"
+                  }
+                />
               )}
-            </Panel>
-            {user && (
-              <AdviserCohorts
-                key={user.id}
-                userId={user.id}
-                rows={report.batch_curriculum_gwa ?? []}
-              />
-            )}
-          </div>
-        </>
-      )}
+            </div>
+            <div className="grid gap-0">
+              <Panel
+                title="Final grade distribution"
+                description={`${terms.find((term) => term.id === termId) ? `${terms.find((term) => term.id === termId)?.school_year} · ${terms.find((term) => term.id === termId)?.term_type} · ` : ""}Share of final grades across your advisees`}
+                action={
+                  <label className="grid gap-1 text-sm">
+                    Term
+                    <select
+                      className="rounded-md border border-border bg-background px-3 py-2"
+                      value={termId}
+                      onChange={(event) => setTermId(event.target.value)}
+                    >
+                      <option value="">All terms</option>
+                      {terms.map((term) => (
+                        <option key={term.id} value={term.id}>
+                          {term.school_year} · {term.term_type}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                }
+              >
+                {report.grade_distribution ? (
+                  <GradeDistribution
+                    inline
+                    bands={distributionBands(report.grade_distribution)}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Grade distribution is not available in this report.
+                  </p>
+                )}
+              </Panel>
+              {user && (
+                <AdviserCohorts
+                  key={user.id}
+                  userId={user.id}
+                  rows={report.batch_curriculum_gwa ?? []}
+                />
+              )}
+            </div>
+          </>
+        )}
+      </AccountSkeleton>
     </AdviserPage>
   );
 }

@@ -285,8 +285,9 @@ export function CourseInfoDialog({
                   <span aria-hidden="true">·</span>
                   <span
                     data-slot="satisfaction-source"
+                    title={sourceLine}
                     className={cn(
-                      "text-cell",
+                      "line-clamp-2 min-w-0 text-cell",
                       isExceptionSource
                         ? "font-medium text-gold-deep"
                         : "text-muted-foreground",
@@ -364,7 +365,12 @@ export function CourseInfoDialog({
                             label="Instructor"
                             className="px-3 py-row text-cell text-foreground"
                           >
-                            {attempt.instructor?.trim() || "—"}
+                            <span
+                              className="block max-w-48 truncate"
+                              title={attempt.instructor?.trim() || undefined}
+                            >
+                              {attempt.instructor?.trim() || "—"}
+                            </span>
                           </TableCell>
                           <TableCell
                             label="Result"

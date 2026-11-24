@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 import { useRef, useState } from "react";
 import { PlusIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";

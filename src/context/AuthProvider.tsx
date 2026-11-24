@@ -207,6 +207,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const keepSignedInRef = useRef<boolean>(keepSignedIn);
   const hydrationRequestIdRef = useRef<number>(0);
+  // User id whose profile/roles are currently hydrated. Lets the auth listener
+  // skip re-hydration when Supabase re-emits SIGNED_IN on tab refocus.
+  const hydratedUserIdRef = useRef<string | null>(null);
   const [pendingRealSession, setPendingRealSession] = useState<Session | null>(
     null,
   );
@@ -214,6 +217,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const clearAuthState = useCallback(
     (options?: { preserveBlockedReason?: string | null }) => {
       hydrationRequestIdRef.current += 1;
+      hydratedUserIdRef.current = null;
       queryClient.clear();
       setUser(null);
       setProfile(null);
@@ -320,6 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (!nextSession?.user) {
         if (requestId !== hydrationRequestIdRef.current) return;
+        hydratedUserIdRef.current = null;
         queryClient.clear();
         setUser(null);
         setProfile(null);
@@ -334,6 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
+      hydratedUserIdRef.current = null;
       setIsLoading(true);
       setAuthError(null);
       queryClient.clear();
@@ -405,6 +411,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setEntryBlockedReason(null);
         setAuthError(null);
         setIsLoading(false);
+        hydratedUserIdRef.current = nextSession.user.id;
       } catch (err: unknown) {
         if (requestId !== hydrationRequestIdRef.current) return;
         // Fail closed on API/network failures without misclassifying as
@@ -461,8 +468,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsPasswordRecovery(false);
         queryClient.clear();
       }
+      if (
+        nextSession &&
+        event !== "USER_UPDATED" &&
+        event !== "PASSWORD_RECOVERY" &&
+        hydratedUserIdRef.current === nextSession.user.id
+      ) {
+        // Same user already hydrated (e.g. SIGNED_IN re-emitted on tab refocus,
+        // or TOKEN_REFRESHED): keep the fresh tokens, skip the re-verify/spinner.
+        setSession(nextSession);
+        return;
+      }
       if (!nextSession) {
         hydrationRequestIdRef.current += 1;
+        hydratedUserIdRef.current = null;
         setPendingRealSession(null);
         setUser(null);
         setProfile(null);

@@ -68,14 +68,40 @@ export function StudentDirectoryTable({
                 }}
               >
                 <TableCell label="Student" className="font-medium text-primary">
-                  {student.name}
+                  <span
+                    className="block max-w-56 truncate"
+                    title={student.name}
+                  >
+                    {student.name}
+                  </span>
                 </TableCell>
                 <TableCell label="Student no." className="font-mono text-xs">
                   {student.studentNumber}
                 </TableCell>
-                <TableCell label="Department">{student.department}</TableCell>
-                <TableCell label="Curriculum">{student.curriculum}</TableCell>
-                <TableCell label="Adviser">{student.adviser}</TableCell>
+                <TableCell label="Department">
+                  <span
+                    className="block max-w-56 truncate"
+                    title={student.department}
+                  >
+                    {student.department}
+                  </span>
+                </TableCell>
+                <TableCell label="Curriculum">
+                  <span
+                    className="block max-w-48 truncate"
+                    title={student.curriculum}
+                  >
+                    {student.curriculum}
+                  </span>
+                </TableCell>
+                <TableCell label="Adviser">
+                  <span
+                    className="block max-w-56 truncate"
+                    title={student.adviser}
+                  >
+                    {student.adviser}
+                  </span>
+                </TableCell>
               </TableRow>
             ))
           ) : (

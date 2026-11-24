@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/features/loading-skeletons";
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,13 +32,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-primary">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium text-muted-foreground">
-            Verifying session…
-          </span>
-        </div>
+      <div className="min-h-screen bg-background">
+        <PageSkeleton label="Verifying session…" />
       </div>
     );
   }

@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusBadge, type Status } from "@/components/ui/status-badge";
+import { Truncate } from "@/components/ui/truncate";
 import {
   Table,
   TableBody,
@@ -137,7 +138,10 @@ export function CourseInfoDialog({
                       {grade(attempt.completion_grade) ?? "—"}
                     </TableCell>
                     <TableCell label="Instructor" className="px-3.5 py-2.75">
-                      {attempt.instructor || "—"}
+                      <Truncate
+                        text={attempt.instructor || "—"}
+                        className="max-w-48"
+                      />
                     </TableCell>
                     <TableCell label="Result" className="px-3.5 py-2.75">
                       <StatusBadge

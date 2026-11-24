@@ -20,6 +20,7 @@ export function AdvisingAssistant({
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState("");
+  const [verificationNotice, setVerificationNotice] = useState("");
   const [pending, setPending] = useState(false);
   const mounted = useRef(true);
   const chatLog = useRef<HTMLDivElement>(null);
@@ -39,7 +40,6 @@ export function AdvisingAssistant({
     event.preventDefault();
     const text = message.trim();
     if (
-      !isMockMode ||
       !studentId ||
       !validStudent ||
       pending ||
@@ -52,6 +52,7 @@ export function AdvisingAssistant({
     try {
       const result = await askAdvisingAssistant(studentId, text, messages);
       if (!mounted.current) return;
+      setVerificationNotice(result.verification_notice);
       setMessages((previous) => [
         ...previous,
         { role: "user", content: text },
@@ -100,7 +101,9 @@ export function AdvisingAssistant({
               <p className="text-sm font-semibold leading-[1.25]">
                 Advising assistant
               </p>
-              <p className="text-[11.5px] text-[#F6F2E4]/60">Demo preview</p>
+              <p className="text-[11.5px] text-[#F6F2E4]/60">
+                {isMockMode ? "Demo preview" : "Adviser support"}
+              </p>
             </div>
             <button
               type="button"
@@ -117,15 +120,9 @@ export function AdvisingAssistant({
             aria-relevant="additions"
             className="flex min-h-0 flex-1 flex-col gap-[10px] overflow-y-auto bg-[#FBF8EF] p-4"
           >
-            {!isMockMode && (
+            {!validStudent && (
               <p className="text-sm">
-                The assistant is not available outside mock mode yet.
-              </p>
-            )}
-            {isMockMode && !validStudent && (
-              <p className="text-sm">
-                Select a student record connected to the shared data to use the
-                demo.
+                Select a student record to use the assistant.
               </p>
             )}
             {messages.map((item, index) => (
@@ -150,12 +147,15 @@ export function AdvisingAssistant({
             ))}
             {pending && (
               <p role="status" className="text-sm text-[#6E6C58]">
-                Preparing a simulated reply...
+                {isMockMode
+                  ? "Preparing a simulated reply..."
+                  : "Preparing a reply..."}
               </p>
             )}
           </div>
           <p className="shrink-0 px-4 pt-2 text-[11.5px] text-[#8C8A76]">
-            AI can make mistakes.
+            {verificationNotice ||
+              "AI can make mistakes. Verify the student record."}
           </p>
           {error && (
             <p role="alert" className="px-4 pt-2 text-sm text-destructive">
@@ -189,14 +189,13 @@ export function AdvisingAssistant({
                 }
               }}
               className="min-h-[38px] max-h-24 flex-1 resize-none rounded-[5px] border-[#E1DBC6] bg-white px-3 py-2 text-sm"
-              disabled={!isMockMode || !validStudent || pending}
+              disabled={!validStudent || pending}
             />
             <Button
               type="submit"
               aria-label="Send"
               className="size-[38px] shrink-0 rounded-full bg-[#2F4A12] p-0 text-[#FBF8EF]"
               disabled={
-                !isMockMode ||
                 !validStudent ||
                 pending ||
                 !message.trim() ||

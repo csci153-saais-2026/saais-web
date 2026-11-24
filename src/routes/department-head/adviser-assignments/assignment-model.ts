@@ -1,3 +1,4 @@
+import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 import type { DirectoryStudent } from "../shared/students-types";
 
 export type ReassignmentInput = {
@@ -34,6 +35,8 @@ export function validateReassignment(
     throw new Error("Choose a valid effective date.");
   if (!input.reason.trim())
     throw new Error("Add a reason for the reassignment.");
+  if (input.reason.trim().length > REASON_MAX_LENGTH)
+    throw new Error(REASON_MAX_MESSAGE);
   const changing = selected.filter(
     (student) => student.adviser !== adviserName,
   );

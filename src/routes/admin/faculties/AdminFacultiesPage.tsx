@@ -1,3 +1,5 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import { useEffect, useMemo, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { PageHeading } from "@/components/features/page-heading";
@@ -134,7 +136,11 @@ export default function AdminFacultiesPage() {
   const facultyColumns = [
     {
       header: "Faculty",
-      cell: (faculty: Faculty) => faculty.name,
+      cell: (faculty: Faculty) => (
+        <span className="block max-w-72 truncate" title={faculty.name}>
+          {faculty.name}
+        </span>
+      ),
     },
     {
       header: "Code",
@@ -162,7 +168,11 @@ export default function AdminFacultiesPage() {
   const departmentColumns = [
     {
       header: "Department",
-      cell: (department: Department) => department.name,
+      cell: (department: Department) => (
+        <span className="block max-w-72 truncate" title={department.name}>
+          {department.name}
+        </span>
+      ),
     },
     {
       header: "Code",
@@ -171,8 +181,15 @@ export default function AdminFacultiesPage() {
     },
     {
       header: "Parent faculty",
-      cell: (department: Department) =>
-        facultiesById.get(department.faculty_id)?.name ?? "Unknown faculty",
+      cell: (department: Department) => {
+        const name =
+          facultiesById.get(department.faculty_id)?.name ?? "Unknown faculty";
+        return (
+          <span className="block max-w-72 truncate" title={name}>
+            {name}
+          </span>
+        );
+      },
     },
     {
       header: "Actions",
@@ -229,37 +246,49 @@ export default function AdminFacultiesPage() {
         </div>
       )}
 
-      <DataTablePanel
-        spacious
-        title="Faculties"
-        description="Institutional colleges and divisions, with department totals."
-        columns={facultyColumns}
-        rows={!loading && !error ? faculties : []}
-        rowKey={(faculty) => faculty.id}
-        empty={
-          loading
-            ? "Loading faculties…"
-            : error
-              ? "Faculties are unavailable."
-              : "No faculties have been added to the catalog."
-        }
-      />
+      <AccountSkeleton
+        id="admin-faculties-1"
+        loading={loading}
+        label="Loading faculties…"
+      >
+        <DataTablePanel
+          spacious
+          title="Faculties"
+          description="Institutional colleges and divisions, with department totals."
+          columns={facultyColumns}
+          rows={!loading && !error ? faculties : []}
+          rowKey={(faculty) => faculty.id}
+          empty={
+            loading
+              ? "Loading faculties…"
+              : error
+                ? "Faculties are unavailable."
+                : "No faculties have been added to the catalog."
+          }
+        />
+      </AccountSkeleton>
 
-      <DataTablePanel
-        spacious
-        title="Departments"
-        description="Academic departments and their parent faculties."
-        columns={departmentColumns}
-        rows={!loading && !error ? departments : []}
-        rowKey={(department) => department.id}
-        empty={
-          loading
-            ? "Loading departments…"
-            : error
-              ? "Departments are unavailable."
-              : "No departments have been added to the catalog."
-        }
-      />
+      <AccountSkeleton
+        id="admin-faculties-2"
+        loading={loading}
+        label="Loading departments…"
+      >
+        <DataTablePanel
+          spacious
+          title="Departments"
+          description="Academic departments and their parent faculties."
+          columns={departmentColumns}
+          rows={!loading && !error ? departments : []}
+          rowKey={(department) => department.id}
+          empty={
+            loading
+              ? "Loading departments…"
+              : error
+                ? "Departments are unavailable."
+                : "No departments have been added to the catalog."
+          }
+        />
+      </AccountSkeleton>
 
       {deleteFaculty && (
         <AdminFacultyDeleteDialog
@@ -280,6 +309,7 @@ export default function AdminFacultiesPage() {
               );
               setDeleteFaculty(null);
               setReloadCount((count) => count + 1);
+              notify.success("Faculty deleted.");
             } finally {
               setDeletingFacultyId(null);
             }
@@ -312,6 +342,7 @@ export default function AdminFacultiesPage() {
               );
               setDeleteDepartment(null);
               setReloadCount((count) => count + 1);
+              notify.success("Department deleted.");
             } finally {
               setDeletingDepartmentId(null);
             }
@@ -343,6 +374,9 @@ export default function AdminFacultiesPage() {
                   }),
                 );
               }
+              notify.success(
+                facultyDialog ? "Faculty updated." : "Faculty created.",
+              );
               setFacultyDialog(undefined);
               setReloadCount((count) => count + 1);
             } finally {
@@ -379,6 +413,11 @@ export default function AdminFacultiesPage() {
                   }),
                 );
               }
+              notify.success(
+                departmentDialog
+                  ? "Department updated."
+                  : "Department created.",
+              );
               setDepartmentDialog(undefined);
               setReloadCount((count) => count + 1);
             } finally {

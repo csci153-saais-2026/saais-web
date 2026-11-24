@@ -1,3 +1,5 @@
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -85,7 +87,6 @@ export default function AdviserAssignmentsPage() {
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [selected, setSelected] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [notice, setNotice] = useState("");
   const directory = useQuery({
     queryKey: staffQueryKeys.resource(
       active?.profileId ?? "",
@@ -271,7 +272,7 @@ export default function AdviserAssignmentsPage() {
       reason: input.reason,
     });
     setSelected([]);
-    setNotice(
+    notify.success(
       `${input.effectiveDate > todayInManila() ? "Scheduled reassignment for" : "Reassigned"} ${selectedVisible.length} student${selectedVisible.length === 1 ? "" : "s"}.`,
     );
   }
@@ -284,11 +285,11 @@ export default function AdviserAssignmentsPage() {
       subtitle="Keep every student connected to an adviser in your department."
     />
   );
-  if (!directory.data)
+  if (!directory.data && directory.isError)
     return (
       <>
         {heading}
-        {directory.isError ? (
+        {
           <div role="alert" className="rounded-md border p-5">
             <p>We couldn’t load adviser assignments.</p>
             <p>
@@ -300,253 +301,270 @@ export default function AdviserAssignmentsPage() {
               Try again
             </Button>
           </div>
-        ) : (
-          <p
-            role="status"
-            className="py-10 text-center text-sm text-muted-foreground"
-          >
-            Loading adviser assignments…
-          </p>
-        )}
+        }
       </>
     );
   return (
-    <>
-      {heading}
-      <Alert variant="advisory">
-        <AlertIcon />
-        <AlertDescription>
-          Reassignment takes effect on the selected date. The previous adviser
-          and assignment history remain visible.
-        </AlertDescription>
-      </Alert>
-      {directory.isError && (
-        <div role="alert">
-          Cached assignments are stale.{" "}
-          <Button variant="link" onClick={() => void directory.refetch()}>
-            Retry assignments
-          </Button>
-        </div>
-      )}
-      {notice && (
-        <p role="status" className="text-sm text-primary">
-          {notice}
-        </p>
-      )}
-      <Panel
-        title="Student–adviser assignments"
-        description="Select one or more students to reassign together."
-        flush
-      >
-        <div className="staff-filter-controls grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
-          <FormField label="Search students" htmlFor="staff-assignment-search">
-            <SearchInput
-              id="staff-assignment-search"
-              placeholder="Search by student name or ID"
-              value={filters.search}
-              onChange={(event) =>
-                changeFilters({ ...filters, search: event.target.value })
-              }
-            />
-          </FormField>
-          <FormField label="Curriculum" htmlFor="staff-assignment-curriculum">
-            <Select
-              value={filters.curriculum}
-              onValueChange={(curriculum) =>
-                changeFilters({ ...filters, curriculum })
-              }
-            >
-              <SelectTrigger
-                id="staff-assignment-curriculum"
-                className="w-full"
+    <AccountSkeleton
+      id="staff-adviser-assignments"
+      data={directory.data}
+      label="Loading adviser assignments…"
+    >
+      {() => (
+        <>
+          {heading}
+          <Alert variant="advisory">
+            <AlertIcon />
+            <AlertDescription>
+              Reassignment takes effect on the selected date. The previous
+              adviser and assignment history remain visible.
+            </AlertDescription>
+          </Alert>
+          {directory.isError && (
+            <div role="alert">
+              Cached assignments are stale.{" "}
+              <Button variant="link" onClick={() => void directory.refetch()}>
+                Retry assignments
+              </Button>
+            </div>
+          )}
+          <Panel
+            title="Student–adviser assignments"
+            description="Select one or more students to reassign together."
+            flush
+          >
+            <div className="staff-filter-controls grid gap-3 border-b border-border p-5 md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_200px_240px_auto] xl:items-end">
+              <FormField
+                label="Search students"
+                htmlFor="staff-assignment-search"
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All curricula</SelectItem>
-                {curricula.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <FormField label="Adviser" htmlFor="staff-assignment-adviser">
-            <Select
-              value={filters.adviser}
-              onValueChange={(adviser) =>
-                changeFilters({ ...filters, adviser })
-              }
-            >
-              <SelectTrigger id="staff-assignment-adviser" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All advisers</SelectItem>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
-                {adviserNames.map((value) => (
-                  <SelectItem key={value.id} value={value.id}>
-                    {value.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <Button
-            variant="outline"
-            disabled={
-              !filters.search &&
-              filters.curriculum === "all" &&
-              filters.adviser === "all"
-            }
-            onClick={() => changeFilters(emptyFilters)}
-          >
-            Reset filters
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-4 border-b border-border px-5 py-4">
-          <span aria-live="polite" className="text-sm text-muted-foreground">
-            {selectedVisible.length} student
-            {selectedVisible.length === 1 ? "" : "s"} selected (maximum 500)
-          </span>
-          <Button
-            type="button"
-            disabled={
-              !selectedVisible.length ||
-              selectedVisible.length > 500 ||
-              directory.isError ||
-              directory.isFetching
-            }
-            onClick={() => setDialogOpen(true)}
-          >
-            <SwapIcon aria-hidden="true" />
-            Reassign selected
-          </Button>
-        </div>
-        <Table responsive aria-label="Student adviser assignments">
-          <TableHeader>
-            <TableRow>
-              <TableHead className={`${TH} w-20`}>
-                <Checkbox
-                  className="data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden"
-                  aria-label="Select all visible students"
-                  disabled={!visible.length}
-                  checked={
-                    selectedVisible.length && !allSelected
-                      ? "indeterminate"
-                      : allSelected
-                  }
-                  onCheckedChange={(checked) =>
-                    setSelected(
-                      checked === true
-                        ? visible.map((item) => item.student.student_id)
-                        : [],
-                    )
+                <SearchInput
+                  id="staff-assignment-search"
+                  placeholder="Search by student name or ID"
+                  value={filters.search}
+                  onChange={(event) =>
+                    changeFilters({ ...filters, search: event.target.value })
                   }
                 />
-              </TableHead>
-              {["Student", "Current adviser", "Since", "Previous adviser"].map(
-                (label) => (
-                  <TableHead key={label} className={TH}>
-                    {label}
-                  </TableHead>
-                ),
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visible.map((item) => (
-              <TableRow
-                key={item.student.student_id}
-                className="cursor-pointer border-line-soft hover:bg-line-soft"
-                onClick={() =>
-                  toggleStudent(
-                    item.student.student_id,
-                    !selected.includes(item.student.student_id),
-                  )
-                }
-                data-state={
-                  selected.includes(item.student.student_id)
-                    ? "selected"
-                    : undefined
-                }
+              </FormField>
+              <FormField
+                label="Curriculum"
+                htmlFor="staff-assignment-curriculum"
               >
-                <TableCell
-                  label="Select"
-                  className={`${TD} w-20`}
-                  onClick={(event) => event.stopPropagation()}
+                <Select
+                  value={filters.curriculum}
+                  onValueChange={(curriculum) =>
+                    changeFilters({ ...filters, curriculum })
+                  }
                 >
-                  <Checkbox
-                    aria-label={`Select ${item.student.full_name}`}
-                    checked={selected.includes(item.student.student_id)}
-                    onCheckedChange={(checked) =>
-                      toggleStudent(item.student.student_id, checked === true)
+                  <SelectTrigger
+                    id="staff-assignment-curriculum"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All curricula</SelectItem>
+                    {curricula.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Adviser" htmlFor="staff-assignment-adviser">
+                <Select
+                  value={filters.adviser}
+                  onValueChange={(adviser) =>
+                    changeFilters({ ...filters, adviser })
+                  }
+                >
+                  <SelectTrigger
+                    id="staff-assignment-adviser"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All advisers</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {adviserNames.map((value) => (
+                      <SelectItem key={value.id} value={value.id}>
+                        {value.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <Button
+                variant="outline"
+                disabled={
+                  !filters.search &&
+                  filters.curriculum === "all" &&
+                  filters.adviser === "all"
+                }
+                onClick={() => changeFilters(emptyFilters)}
+              >
+                Reset filters
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-4 border-b border-border px-5 py-4">
+              <span
+                aria-live="polite"
+                className="text-sm text-muted-foreground"
+              >
+                {selectedVisible.length} student
+                {selectedVisible.length === 1 ? "" : "s"} selected (maximum 500)
+              </span>
+              <Button
+                type="button"
+                disabled={
+                  !selectedVisible.length ||
+                  selectedVisible.length > 500 ||
+                  directory.isError ||
+                  directory.isFetching
+                }
+                onClick={() => setDialogOpen(true)}
+              >
+                <SwapIcon aria-hidden="true" />
+                Reassign selected
+              </Button>
+            </div>
+            <Table responsive aria-label="Student adviser assignments">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={`${TH} w-20`}>
+                    <Checkbox
+                      className="data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:before:absolute data-[state=indeterminate]:before:h-px data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:bg-primary-foreground data-[state=indeterminate]:[&_svg]:hidden"
+                      aria-label="Select all visible students"
+                      disabled={!visible.length}
+                      checked={
+                        selectedVisible.length && !allSelected
+                          ? "indeterminate"
+                          : allSelected
+                      }
+                      onCheckedChange={(checked) =>
+                        setSelected(
+                          checked === true
+                            ? visible.map((item) => item.student.student_id)
+                            : [],
+                        )
+                      }
+                    />
+                  </TableHead>
+                  {[
+                    "Student",
+                    "Current adviser",
+                    "Since",
+                    "Previous adviser",
+                  ].map((label) => (
+                    <TableHead key={label} className={TH}>
+                      {label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((item) => (
+                  <TableRow
+                    key={item.student.student_id}
+                    className="cursor-pointer border-line-soft hover:bg-line-soft"
+                    onClick={() =>
+                      toggleStudent(
+                        item.student.student_id,
+                        !selected.includes(item.student.student_id),
+                      )
                     }
-                  />
-                </TableCell>
-                <TableCell
-                  label="Student"
-                  className={`${TD} whitespace-normal`}
-                >
-                  <span className="block font-semibold">
-                    {item.student.full_name}
-                  </span>
-                  <span className="block font-mono text-xs text-muted-foreground">
-                    {item.student.student_number}
-                  </span>
-                  <Badge variant="secondary" className="mt-1 rounded-sm">
-                    {item.student.curriculum_label}
-                  </Badge>
-                </TableCell>
-                <TableCell
-                  label="Current adviser"
-                  className={`${TD} whitespace-normal`}
-                >
-                  {item.adviser}
-                  {item.scheduled && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Scheduled: {item.scheduled.adviser_name} from{" "}
-                      {dateLabel(item.scheduled.start_date)}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell label="Since" className={TD}>
-                  {dateLabel(item.current?.start_date)}
-                </TableCell>
-                <TableCell
-                  label="Previous adviser"
-                  className={`${TD} whitespace-normal`}
-                >
-                  {item.previous?.adviser_name ?? "—"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {!visible.length && (
-          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-            No students match these filters.
-          </p>
-        )}
-        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          <span role="status">
-            Showing {visible.length} of {students.length} assignments
-          </span>
-          <span>{department.data ?? "Department"} scope</span>
-        </div>
-      </Panel>
-      {dialogOpen && (
-        <ReassignAdviserDialog
-          studentCount={selectedVisible.length}
-          advisers={assignableAdvisers}
-          advisersLoading={advisers.isPending}
-          advisersError={advisers.isError}
-          onRetry={() => void advisers.refetch()}
-          onClose={() => setDialogOpen(false)}
-          onConfirm={apply}
-        />
+                    data-state={
+                      selected.includes(item.student.student_id)
+                        ? "selected"
+                        : undefined
+                    }
+                  >
+                    <TableCell
+                      label="Select"
+                      className={`${TD} w-20`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Checkbox
+                        aria-label={`Select ${item.student.full_name}`}
+                        checked={selected.includes(item.student.student_id)}
+                        onCheckedChange={(checked) =>
+                          toggleStudent(
+                            item.student.student_id,
+                            checked === true,
+                          )
+                        }
+                      />
+                    </TableCell>
+                    <TableCell
+                      label="Student"
+                      className={`${TD} whitespace-normal`}
+                    >
+                      <span
+                        className="block max-w-64 truncate font-semibold"
+                        title={item.student.full_name}
+                      >
+                        {item.student.full_name}
+                      </span>
+                      <span className="block font-mono text-xs text-muted-foreground">
+                        {item.student.student_number}
+                      </span>
+                      <Badge variant="secondary" className="mt-1 rounded-sm">
+                        {item.student.curriculum_label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell
+                      label="Current adviser"
+                      className={`${TD} whitespace-normal`}
+                    >
+                      {item.adviser}
+                      {item.scheduled && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Scheduled: {item.scheduled.adviser_name} from{" "}
+                          {dateLabel(item.scheduled.start_date)}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell label="Since" className={TD}>
+                      {dateLabel(item.current?.start_date)}
+                    </TableCell>
+                    <TableCell
+                      label="Previous adviser"
+                      className={`${TD} whitespace-normal`}
+                    >
+                      {item.previous?.adviser_name ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {!visible.length && (
+              <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+                No students match these filters.
+              </p>
+            )}
+            <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+              <span role="status">
+                Showing {visible.length} of {students.length} assignments
+              </span>
+              <span>{department.data ?? "Department"} scope</span>
+            </div>
+          </Panel>
+          {dialogOpen && (
+            <ReassignAdviserDialog
+              studentCount={selectedVisible.length}
+              advisers={assignableAdvisers}
+              advisersLoading={advisers.isPending}
+              advisersError={advisers.isError}
+              onRetry={() => void advisers.refetch()}
+              onClose={() => setDialogOpen(false)}
+              onConfirm={apply}
+            />
+          )}
+        </>
       )}
-    </>
+    </AccountSkeleton>
   );
 }

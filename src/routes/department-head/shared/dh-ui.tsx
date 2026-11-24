@@ -1,32 +1,4 @@
-import { cn } from "@/lib/utils";
-
-/**
- * Floating confirmation toast styled in `--forest-deep` (`#1d2f0a`) with cream
- * foreground (`--background`) to match `.toast` in `department-head.css`.
- */
-export function DepartmentToast({
-  message,
-  className,
-}: {
-  message: string | null;
-  className?: string;
-}) {
-  if (!message) return null;
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={cn(
-        "fixed right-6 bottom-6 z-50 max-w-sm rounded-lg bg-forest-deep px-4 py-2.5 text-[13.5px] font-medium text-background shadow-lg",
-        className,
-      )}
-    >
-      {message}
-    </div>
-  );
-}
-
+import { TableSkeleton } from "@/components/features/loading-skeletons";
 /** Loading and failure message for a page whose data comes from the API. */
 export function QueryMessage({
   query,
@@ -37,12 +9,12 @@ export function QueryMessage({
 }) {
   if (!query.isError)
     return (
-      <p
-        role="status"
-        className="py-10 text-center text-sm text-muted-foreground"
-      >
-        Loading {label}…
-      </p>
+      <TableSkeleton
+        rows={5}
+        columns={4}
+        label={`Loading ${label}…`}
+        className="py-6"
+      />
     );
   const message =
     query.error instanceof Error

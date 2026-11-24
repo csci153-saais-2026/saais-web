@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/features/loading-skeletons";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,9 +24,7 @@ export default function StudentPortal() {
   }
 
   return (
-    <Suspense
-      fallback={<div className="p-8 text-muted-foreground">Loading…</div>}
-    >
+    <Suspense fallback={<PageSkeleton label="Loading…" />}>
       <Routes>
         <Route index element={<StudentDashboardPage studentId={user.id} />} />
         <Route

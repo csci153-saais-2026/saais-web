@@ -6,7 +6,7 @@ import {
 } from "./student-photo-schema";
 
 describe("studentPhotoFileSchema & studentPhotoSchema", () => {
-  it("accepts JPG and PNG files up to 2 MB", () => {
+  it("accepts JPG and PNG files up to 5 MiB", () => {
     expect(
       studentPhotoFileSchema.safeParse({
         mime_type: "image/jpeg",
@@ -38,7 +38,7 @@ describe("studentPhotoFileSchema & studentPhotoSchema", () => {
     }
   });
 
-  it("rejects files over 2 MB with user-friendly message", () => {
+  it("rejects files over 5 MiB with user-friendly message", () => {
     const result = studentPhotoFileSchema.safeParse({
       mime_type: "image/jpeg",
       file_size_bytes: MAX_STUDENT_PHOTO_BYTES + 1,
@@ -47,7 +47,7 @@ describe("studentPhotoFileSchema & studentPhotoSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0]?.message).toBe(
-        "That image is over 2 MB. Choose a smaller one.",
+        "That image is over 5 MB. Choose a smaller one.",
       );
     }
   });
