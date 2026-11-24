@@ -34,4 +34,12 @@ describe("department PDF metadata", () => {
     expect(await loadDepartmentPdfMetadata(undefined)).toBeUndefined();
     expect(api.read).not.toHaveBeenCalled();
   });
+
+  it("does not use a different department returned by the API", async () => {
+    api.read.mockResolvedValue({
+      data: [{ id: "department-b", name: "Other department" }],
+      response: new Response(),
+    });
+    expect(await loadDepartmentPdfMetadata("department-a")).toBeUndefined();
+  });
 });
