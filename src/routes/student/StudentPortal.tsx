@@ -26,7 +26,7 @@ export default function StudentPortal() {
   return (
     <Suspense fallback={<PageSkeleton label="Loading…" />}>
       <Routes>
-        <Route index element={<StudentDashboardPage studentId={user.id} />} />
+        <Route index element={<Navigate to="/student/dashboard" replace />} />
         <Route
           path="dashboard"
           element={<StudentDashboardPage studentId={user.id} />}
