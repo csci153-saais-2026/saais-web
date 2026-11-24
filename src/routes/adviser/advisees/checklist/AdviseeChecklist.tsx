@@ -321,7 +321,10 @@ export default function AdviseeChecklist() {
                 },
                 {
                   label: "Deficiencies",
-                  value: data.summary.deficiencies_count ?? "—",
+                  value: Math.max(
+                    data.summary.deficiencies_count ?? 0,
+                    data.summary.open_flags_count ?? 0,
+                  ),
                   note: deficiencyNote(data),
                 },
               ]}
