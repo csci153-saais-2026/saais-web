@@ -14,6 +14,7 @@ import { StudentProfilePage, StudentProfileView } from "./StudentProfilePage";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const mockProfile: ApiSchema<"Profile"> = {
@@ -92,7 +93,11 @@ describe("StudentProfileView", () => {
     expect(screen.getAllByText("Current").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("validates photo type and 2 MB limit, accepts valid photo, and removes photo", async () => {
+  it("validates photo type and 5 MiB limit, accepts valid photo, and removes photo", async () => {
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn().mockResolvedValue({ width: 100, height: 100, close: vi.fn() }),
+    );
     const onUploadPhoto = vi.fn().mockResolvedValue(undefined);
     const onRemovePhoto = vi.fn().mockResolvedValue(undefined);
 
@@ -122,17 +127,21 @@ describe("StudentProfileView", () => {
     expect(onUploadPhoto).not.toHaveBeenCalled();
 
     const oversizedFile = new File(
-      [new Uint8Array(2 * 1024 * 1024 + 1)],
+      [new Uint8Array(5 * 1024 * 1024 + 1)],
       "big.png",
       { type: "image/png" },
     );
     fireEvent.change(fileInput, { target: { files: [oversizedFile] } });
     expect(screen.getByRole("alert").textContent).toBe(
-      "That image is over 2 MB. Choose a smaller one.",
+      "That image is over 5 MB. Choose a smaller one.",
     );
     expect(onUploadPhoto).not.toHaveBeenCalled();
 
-    const validFile = new File(["png"], "avatar.png", { type: "image/png" });
+    const validFile = new File(
+      [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0])],
+      "avatar.png",
+      { type: "image/png" },
+    );
     fireEvent.change(fileInput, { target: { files: [validFile] } });
     await waitFor(() => {
       expect(onUploadPhoto).toHaveBeenCalledWith(validFile);
