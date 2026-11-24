@@ -8,8 +8,11 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { apiClient, type ApiSchema } from "@/lib/api";
-import { StudentGradesPage, StudentGradesView } from "./StudentGradesPage";
-import type { TermGradesSection } from "./TermGradesPanel";
+import {
+  StudentGradesPage,
+  StudentGradesView,
+  type TermGradesSection,
+} from "./StudentGradesPage";
 
 afterEach(() => {
   cleanup();

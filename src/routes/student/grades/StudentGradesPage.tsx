@@ -11,6 +11,7 @@ import {
 } from "@/components/features/report-pdf-preview-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import type { Status } from "@/components/ui/status-badge";
 import {
   apiClient,
   postgrestFilter,
@@ -33,7 +34,109 @@ import {
   type GradeFlagAttemptMeta,
   type GradeFlagDisplayItem,
 } from "./GradeFlagsListDialog";
-import { TermGradesPanel, type TermGradesSection } from "./TermGradesPanel";
+import { TermGradesPanel } from "./TermGradesPanel";
+
+export type TermGradesAttemptRow = ApiSchema<"AttemptResult"> & {
+  readonly code?: string | null;
+  readonly title?: string | null;
+};
+
+export type TermGradesSection = Omit<ApiSchema<"TermGrades">, "attempts"> & {
+  readonly attempts: readonly TermGradesAttemptRow[];
+  readonly is_locked?: boolean;
+  readonly failed_units?: number;
+};
+
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function formatDeadlineDate(
+  dateValue: string | null | undefined,
+): string {
+  if (!dateValue) return "—";
+  const trimmed = dateValue.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(trimmed);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const monthIndex = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const monthLabel = SHORT_MONTHS[monthIndex];
+    if (monthLabel && day >= 1 && day <= 31) {
+      return `${day} ${monthLabel} ${year}`;
+    }
+  }
+  return trimmed;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function mapAttemptStatusToBadge(attempt: TermGradesAttemptRow): Status {
+  if (attempt.is_lapsed_inc) return "inc-lapsed";
+  switch (attempt.effective_status) {
+    case "passed":
+      return "passed";
+    case "failed":
+      return "failed";
+    case "inc":
+      return "inc";
+    case "currently_enrolled":
+      return "enrolled";
+    case "dr":
+      return "dr";
+    case "na":
+    default:
+      return "na";
+  }
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function formatMidtermGrade(attempt: TermGradesAttemptRow): string {
+  if (attempt.midterm_status === "dr") return "DR";
+  if (attempt.midterm_grade != null) return attempt.midterm_grade.toFixed(2);
+  return "—";
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function formatFinalOrCompletionGrade(
+  attempt: TermGradesAttemptRow,
+): string {
+  if (attempt.completion_grade != null) {
+    return `${attempt.completion_grade.toFixed(2)} (INC)`;
+  }
+  if (attempt.is_lapsed_inc) {
+    return "INC (5.00)";
+  }
+  if (attempt.recorded_status === "inc") return "INC";
+  if (attempt.recorded_status === "dr") return "DR";
+  if (attempt.recorded_status === "na") return "NA";
+  if (attempt.final_grade != null) return attempt.final_grade.toFixed(2);
+  return "—";
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function computeFailedUnits(
+  attempts: readonly TermGradesAttemptRow[],
+): number {
+  let failed = 0;
+  for (const attempt of attempts) {
+    if (attempt.effective_status === "failed") {
+      failed += attempt.units_attempted;
+    }
+  }
+  return failed;
+}
 
 export interface StudentGradesViewProps {
   readonly terms: readonly TermGradesSection[];
