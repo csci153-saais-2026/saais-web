@@ -39,6 +39,8 @@ export interface DeanStudentSummary {
   department: string;
   curriculum: string;
   adviser: string;
+  /** False when no adviser is assigned; `adviser` then holds the "Unassigned" placeholder. */
+  hasAdviser: boolean;
   program: string;
   yearLabel: string;
   email: string;
