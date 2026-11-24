@@ -151,8 +151,8 @@ describe("Curriculum version retirement and deletion", () => {
     expect(deleteCurriculumVersion).not.toHaveBeenCalled();
     expect(createCurriculumVersion).not.toHaveBeenCalled();
     expect(
-      (screen.getByLabelText("Curriculum version") as HTMLSelectElement).value,
-    ).toBe("v1");
+      screen.getByRole("combobox", { name: "Curriculum version" }).textContent,
+    ).toContain("BSCS 2027");
     expect(screen.getByText("retired")).toBeTruthy();
     expect(client.getQueryData(detailKey)).toBeDefined();
     expect(screen.queryByRole("button", { name: "Retire version" })).toBeNull();
@@ -170,8 +170,8 @@ describe("Curriculum version retirement and deletion", () => {
     expect(updateCurriculumVersion).not.toHaveBeenCalled();
     expect(client.getQueryData(detailKey)).toBeUndefined();
     expect(
-      (screen.getByLabelText("Curriculum version") as HTMLSelectElement).value,
-    ).toBe("v2");
+      screen.getByRole("combobox", { name: "Curriculum version" }).textContent,
+    ).toContain("BSCS 2024");
     expect(
       screen.queryByRole("option", { name: "BSCS - BSCS 2027" }),
     ).toBeNull();

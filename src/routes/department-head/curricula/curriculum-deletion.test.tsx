@@ -86,11 +86,17 @@ describe("Curriculum deletion", () => {
     const slotForm = within(
       screen.getByRole("dialog", { name: "Add course / slot" }),
     );
-    fireEvent.change(slotForm.getByLabelText("Course / slot"), {
-      target: { value: "Draft elective" },
+    const courseSelect = slotForm.getByRole("combobox", {
+      name: "Active course",
     });
+    fireEvent.keyDown(courseSelect, { key: "ArrowDown" });
+    fireEvent.click(
+      await screen.findByRole("option", {
+        name: "CSCI 101 — Introduction to Computing",
+      }),
+    );
     fireEvent.click(slotForm.getByRole("button", { name: "Add" }));
-    const row = await screen.findByRole("row", { name: /Draft elective/ });
+    const row = await screen.findByRole("row", { name: /CSCI 101/ });
 
     fireEvent.click(within(row).getByRole("button", { name: "Delete" }));
     await confirmDeletion();

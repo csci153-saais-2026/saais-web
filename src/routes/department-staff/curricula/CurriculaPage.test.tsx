@@ -146,9 +146,7 @@ describe("Department Staff curricula", () => {
     expect(screen.getByRole("button", { name: "Delete version" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add term" })).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Curriculum version"), {
-      target: { value: MOCK_IDS.curriculumBscs2024 },
-    });
+    await chooseOption("Curriculum version", "BSCS 2024-2025 v1");
     expect(await screen.findByText("Year 1 · Semester 1")).toBeTruthy();
     expect(
       screen.getByText("CSCI 101 — Introduction to Computing"),
@@ -168,15 +166,14 @@ describe("Department Staff curricula", () => {
         "Positional curriculum term; not a calendar school term.",
       ),
     ).toHaveLength(4);
-    expect(screen.queryByRole("button", { name: "New course" })).toBeNull();
+    expect(screen.getByRole("button", { name: "New course" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Retire version" })).toBeNull();
   });
 
   it("adds an empty positional term through the Department Staff MSW handler", async () => {
     renderPage();
-    fireEvent.change(await screen.findByLabelText("Curriculum version"), {
-      target: { value: MOCK_IDS.curriculumBscs2024 },
-    });
+    await screen.findByLabelText("Curriculum version");
+    await chooseOption("Curriculum version", "BSCS 2024-2025 v1");
     const addTermButton = await screen.findByRole("button", {
       name: "Add term",
     });

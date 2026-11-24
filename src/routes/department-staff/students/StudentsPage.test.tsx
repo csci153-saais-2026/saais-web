@@ -151,7 +151,11 @@ describe("Department Staff student directory", () => {
       screen.getByRole("searchbox", { name: "Search students" }),
       { target: { value: "no matching student" } },
     );
-    expect(screen.getByText("No students match these filters.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "No students match these filters. Change your search or reset the filters.",
+      ),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
     expect(screen.getByText("Showing 31 of 31 students")).toBeTruthy();
   });
