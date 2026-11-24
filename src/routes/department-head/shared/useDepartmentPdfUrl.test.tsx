@@ -49,7 +49,7 @@ function makeAuth(
     session: null,
     roles: ["department_head"],
     roleAssignments: [],
-    roleScopes: [{ role: "department_head", departmentId }],
+    roleScopes: [{ role: "department_head", facultyId: null, departmentId }],
     activeRole: "department_head",
     primaryRole: "department_head",
     isLoading: false,
