@@ -211,6 +211,26 @@ describe("StudentChecklistView", () => {
     expect(screen.getByText("3/6")).toBeTruthy();
     expect(screen.getByText("CSIT 100")).toBeTruthy();
   });
+
+  it("excludes the Failed option from the status filter", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    render(<StudentChecklistView summary={mockSummary} terms={mockTerms} />);
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "Show requirements" }),
+    );
+
+    expect(screen.queryByRole("option", { name: "Failed" })).toBeNull();
+    for (const label of [
+      "All statuses",
+      "Not yet taken",
+      "Passed / credited",
+      "INC",
+      "Currently enrolled",
+    ]) {
+      expect(screen.getByRole("option", { name: label })).toBeTruthy();
+    }
+  });
 });
 
 describe("StudentChecklistPage", () => {
