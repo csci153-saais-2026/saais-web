@@ -12,7 +12,10 @@ beforeEach(() => vi.resetAllMocks());
 describe("department PDF metadata", () => {
   it("requests the selected department's letterhead and signatories", async () => {
     const department = { id: "department-a", name: "Computing" };
-    api.read.mockResolvedValue({ data: [department] });
+    api.read.mockResolvedValue({
+      data: [department],
+      response: new Response(),
+    });
 
     expect(await loadDepartmentPdfMetadata("department-a")).toBe(department);
     expect(api.read).toHaveBeenCalledWith("/rest/v1/department", {
@@ -25,5 +28,10 @@ describe("department PDF metadata", () => {
         },
       },
     });
+  });
+
+  it("does not read all departments when no department is assigned", async () => {
+    expect(await loadDepartmentPdfMetadata(undefined)).toBeUndefined();
+    expect(api.read).not.toHaveBeenCalled();
   });
 });
