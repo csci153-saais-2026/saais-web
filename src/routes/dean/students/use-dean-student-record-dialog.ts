@@ -16,7 +16,9 @@ function computeInitials(name: string): string {
  * tab to `"checklist"` when the selected student changes, logs the `"student_record_viewed"`
  * audit event, and maps `DeanStudentSummary` to `StudentRecordHeader` props.
  */
-export function useDeanStudentRecordDialog(student: DeanStudentSummary | null): {
+export function useDeanStudentRecordDialog(
+  student: DeanStudentSummary | null,
+): {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   headerStudent: ComponentProps<typeof StudentRecordHeader> | null;

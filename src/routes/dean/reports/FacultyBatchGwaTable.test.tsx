@@ -22,7 +22,9 @@ describe("FacultyBatchGwaTable", () => {
     expect(
       screen.getByRole("columnheader", { name: "Entry year" }),
     ).toBeTruthy();
-    expect(screen.queryByRole("columnheader", { name: "Study range" })).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Study range" }),
+    ).toBeNull();
     expect(screen.getByText("2025")).toBeTruthy();
     expect(screen.getByText("BSCS 2025")).toBeTruthy();
     expect(screen.getByText("42")).toBeTruthy();

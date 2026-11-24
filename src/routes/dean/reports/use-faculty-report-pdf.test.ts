@@ -155,7 +155,9 @@ describe("useFacultyReportPdfPreview", () => {
           report,
           facultyName: "Faculty of Computing",
         }),
-      { initialProps: { report: REPORT_ALL as FacultyDepartmentReport | null } },
+      {
+        initialProps: { report: REPORT_ALL as FacultyDepartmentReport | null },
+      },
     );
 
     await waitFor(() => {

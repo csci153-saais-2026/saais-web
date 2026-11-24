@@ -80,13 +80,9 @@ describe("DeanStudentChecklistTab", () => {
     expect(screen.queryByLabelText("Show requirements")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
-    expect(
-      screen.getByRole("button", { name: "Expand all" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expand all" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
-    expect(
-      screen.getByRole("button", { name: "Collapse all" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse all" })).toBeTruthy();
 
     const infoButtons = screen.getAllByRole("button", { name: "Course info" });
     fireEvent.click(infoButtons[0]);

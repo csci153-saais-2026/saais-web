@@ -161,7 +161,9 @@ export function DeanStudentChecklistTab({
           </DegreeProgress>
         }
         terms={terms}
-        onCourseInfo={(_termId, courseCode) => setSelectedCourseCode(courseCode)}
+        onCourseInfo={(_termId, courseCode) =>
+          setSelectedCourseCode(courseCode)
+        }
         emptyTitle="No checklist available"
         emptyMessage="No checklist is available for this curriculum."
       />
