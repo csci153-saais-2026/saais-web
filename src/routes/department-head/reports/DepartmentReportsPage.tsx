@@ -14,7 +14,6 @@ import {
   ALL_PROGRAMS,
   buildDepartmentReport,
   getCohortStudents,
-  type CohortSummary,
 } from "./report-model";
 import type { DepartmentPdfDocument } from "../shared/department-pdf";
 import { PdfViewerDialog } from "../shared/PdfViewerDialog";
@@ -27,7 +26,7 @@ export default function DepartmentReportsPage() {
   const [pickedTerm, setTerm] = useState("");
   const [program, setProgram] = useState(ALL_PROGRAMS);
   const cohortOpener = useRef<HTMLButtonElement | null>(null);
-  const [cohort, setCohort] = useState<CohortSummary | null>(null);
+  const [cohortId, setCohortId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null);
   const data = source.data;
   const term = pickedTerm || data?.currentTermId || data?.terms[0]?.value || "";
@@ -48,6 +47,7 @@ export default function DepartmentReportsPage() {
         : null,
     [data, term, termLabel, program],
   );
+  const cohort = report?.cohorts.find((row) => row.id === cohortId) ?? null;
   const cohortStudents = useMemo(
     () => (data && cohort ? getCohortStudents(data.students, cohort) : []),
     [data, cohort],
@@ -98,11 +98,11 @@ export default function DepartmentReportsPage() {
             programs={data.programs}
             onTermChange={(value) => {
               setTerm(value);
-              setCohort(null);
+              setCohortId(null);
             }}
             onProgramChange={(value) => {
               setProgram(value);
-              setCohort(null);
+              setCohortId(null);
             }}
           />
           {!report ? (
@@ -166,7 +166,7 @@ export default function DepartmentReportsPage() {
                 onViewStudents={(row, event) => {
                   cohortOpener.current = event.currentTarget;
                   const original = report.cohorts.find((item) => item.id === row.id);
-                  if (original) setCohort(original);
+                  if (original) setCohortId(original.id);
                 }}
                 footer={`${report.cohorts.length} cohorts · ${report.programLabel}`}
               />
@@ -176,7 +176,7 @@ export default function DepartmentReportsPage() {
           <CohortStudentsDialog
             open={cohort !== null}
             onOpenChange={(open) => {
-              if (!open) setCohort(null);
+              if (!open) setCohortId(null);
             }}
             title={cohort ? `Batch ${cohort.entryYear} · Student GWA` : "Student GWA"}
             summary={cohort ? `${cohortStudents.length} students · ${cohort.program.toUpperCase()} · Study range ${cohort.entryYear}–${cohort.entryYear + 4}` : undefined}
