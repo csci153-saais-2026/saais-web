@@ -71,7 +71,7 @@ it("shows audit entries newest first", async () => {
       actor_name: "Student",
       action: "plan.viewed",
       details_summary: "Oldest entry",
-      created_at: "2026-01-01T00:00:00Z",
+      created_at: new Date(2026, 0, 1, 12).toISOString(),
     },
     {
       id: "new",
@@ -81,7 +81,7 @@ it("shows audit entries newest first", async () => {
       actor_name: "Adviser",
       action: "note.created",
       details_summary: "Newest entry",
-      created_at: "2026-01-02T00:00:00Z",
+      created_at: new Date(2026, 0, 2, 12).toISOString(),
     },
   ] as ApiSchema<"AuditLogEntry">[]);
 

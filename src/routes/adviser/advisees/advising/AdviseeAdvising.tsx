@@ -196,7 +196,11 @@ function PlanEditor({
               <span className="text-sm">{selected.length} selected</span>
               <Button
                 variant="outline"
-                disabled={busy || !data.assignmentId || selected.length === 0}
+                disabled={
+                  busy ||
+                  !data.assignmentId ||
+                  (selected.length === 0 && data.items.length === 0)
+                }
                 onClick={() => void removeAll()}
               >
                 {busy ? "Removing…" : "Remove all"}

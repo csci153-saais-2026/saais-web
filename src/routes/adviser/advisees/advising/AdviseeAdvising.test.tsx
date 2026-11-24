@@ -130,21 +130,23 @@ describe("term advising identity", () => {
     vi.mocked(getAdvisingTerms).mockResolvedValue([
       { id: "term-two", school_year: "2026", term_type: "1st Semester" },
     ] as ApiSchema<"SchoolTerm">[]);
-    vi.mocked(getAdvisingData).mockResolvedValue({
-      ...data,
-      items: [
-        {
-          id: "item-two",
-          advising_plan_id: "plan-two",
-          student_id: "student-two",
-          school_term_id: "term-two",
-          course_offering_id: "offering-two",
-          curriculum_term_course_id: "slot-two",
-          display_order: 1,
-          created_at: "2026-01-01T00:00:00Z",
-        },
-      ],
-    });
+    vi.mocked(getAdvisingData)
+      .mockResolvedValueOnce({
+        ...data,
+        items: [
+          {
+            id: "item-two",
+            advising_plan_id: "plan-two",
+            student_id: "student-two",
+            school_term_id: "term-two",
+            course_offering_id: "offering-two",
+            curriculum_term_course_id: "slot-two",
+            display_order: 1,
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      })
+      .mockResolvedValue({ ...data, items: [] });
     vi.mocked(saveAdvisingPlan).mockResolvedValue(
       {} as ApiSchema<"AdvisingPlanResponse">,
     );
@@ -166,7 +168,15 @@ describe("term advising identity", () => {
         [],
       ),
     );
-    expect((checkbox as HTMLInputElement).checked).toBe(false);
+    await waitFor(() =>
+      expect(getAdvisingData).toHaveBeenCalledTimes(2),
+    );
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("checkbox", { name: /CS 2/ }) as HTMLInputElement)
+          .checked,
+      ).toBe(false),
+    );
   });
 
   it("disables Add selected to plan until a course is selected", async () => {

@@ -82,6 +82,8 @@ function GradeAction({
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const effectiveMidterm =
+    midterm || (attempt.midterm_status === "dr" ? "dr" : "");
   const resolution = useScopedRequest(
     JSON.stringify([studentId, attempt.id]),
     open && completedInc,
@@ -222,8 +224,8 @@ function GradeAction({
                     <GradeSelect
                       vsuScale
                       includeStatuses={!completedInc}
-                      disableDrop={midterm !== "dr"}
-                      disabled={midterm === "dr"}
+                      disableDrop={effectiveMidterm !== "dr"}
+                      disabled={effectiveMidterm === "dr"}
                       value={completedInc ? grade : finalGrade}
                       onChange={(e) =>
                         completedInc

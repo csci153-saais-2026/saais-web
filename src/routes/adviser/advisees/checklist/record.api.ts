@@ -153,6 +153,8 @@ export async function correctGrade(
   stage: "midterm" | "final",
   finalGrade?: number | "inc" | "dr",
 ) {
+  if (stage === "midterm" && grade === "inc")
+    throw new Error("INC is not a valid midterm grade.");
   return unwrapApiResult(
     await apiClient.PATCH(
       "/functions/v1/students/{student_id}/attempts/{attempt_id}/grades",
@@ -162,7 +164,12 @@ export async function correctGrade(
           expected_revision: attempt.revision,
           ...(stage === "midterm"
             ? grade === "dr"
-              ? { midterm_status: "dr" as const, status: "dr" as const }
+              ? {
+                  midterm_status: "dr" as const,
+                  status: "dr" as const,
+                  midterm_grade: null,
+                  final_grade: null,
+                }
               : {
                   midterm_grade: grade,
                   midterm_status: "graded" as const,

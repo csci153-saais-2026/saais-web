@@ -17,9 +17,12 @@ export async function getFlags() {
         },
       }),
     );
-    if (page.some((f) => flags.some((o) => o.id === f.id)))
+    // Flags created while paging shift newest-first offsets, so repeats are
+    // expected; only a page made entirely of repeats means paging is stuck.
+    const fresh = page.filter((f) => !flags.some((o) => o.id === f.id));
+    if (page.length > 0 && fresh.length === 0)
       throw new Error("Grade flag pagination returned duplicates.");
-    flags.push(...page);
+    flags.push(...fresh);
     if (page.length < 100) break;
   }
   const visible = flags.filter((f) =>
