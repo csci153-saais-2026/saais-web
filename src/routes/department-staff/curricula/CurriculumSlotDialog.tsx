@@ -203,7 +203,11 @@ export function CurriculumSlotDialog({
                       onValueChange={(courseId) => {
                         field.onChange(courseId);
                       }}
-                      disabled={pending || courseOptions.isPending || courseOptions.isError}
+                      disabled={
+                        pending ||
+                        courseOptions.isPending ||
+                        courseOptions.isError
+                      }
                     >
                       <SelectTrigger
                         id="curriculum-slot-course"

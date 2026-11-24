@@ -181,10 +181,10 @@ describe("Adviser assignment preparation reads", () => {
       listStudentAdviserAssignments([studentIds[0]]),
     ).resolves.toHaveLength(1);
   });
-  
+
   it("rejects malformed assignment dates before exposing history to selection", async () => {
     server.use(
-      http.get('*/rest/v1/adviser_assignment', () =>
+      http.get("*/rest/v1/adviser_assignment", () =>
         HttpResponse.json([
           {
             id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",

@@ -46,8 +46,7 @@ export default function InviteAccountDialog() {
   const invitation = useSendDepartmentInvitation();
   const canInvitePrivilegedRoles = auth.roles.includes("admin");
   const primaryInviteRoles = departmentInviteRoles.filter(
-    (role) =>
-      canInvitePrivilegedRoles || (role !== "dean" && role !== "admin"),
+    (role) => canInvitePrivilegedRoles || (role !== "dean" && role !== "admin"),
   );
   const departmentId = scope.status === "ready" ? scope.departmentId : null;
   const facultyId = departmentId
@@ -76,7 +75,9 @@ export default function InviteAccountDialog() {
     invitation.reset();
   }
 
-  function sendReviewedInvitation(selectedRoles: readonly DepartmentInviteRole[]) {
+  function sendReviewedInvitation(
+    selectedRoles: readonly DepartmentInviteRole[],
+  ) {
     if (sendLock.current || invitation.isPending || invitation.isSuccess)
       return;
     if (selectedRoles.length === 0) {
@@ -145,34 +146,30 @@ export default function InviteAccountDialog() {
           : undefined
       }
       submissionError={
-        errors.length
-          ? errors.map((error, index) => (
-              <p key={`${error}-${index}`}>{error}</p>
-            ))
-          : invitation.isError
-            ? (
-                <>
-                  <p>
-                    {invitation.error instanceof Error
-                      ? invitation.error.message
-                      : "The invitation could not be sent."}
-                  </p>
-                  {invitation.error instanceof ApiClientError && (
-                    <p className="mt-1">
-                      {invitation.error.isConflict
-                        ? "The server reports a duplicate or conflicting account."
-                        : invitation.error.isForbidden
-                          ? "The server denied this invitation for the current scope."
-                          : invitation.error.isNetworkError
-                            ? "Check your connection before retrying; the server may have received the request."
-                            : `Request failed (${invitation.error.status}).`}
-                    </p>
-                  )}
-                </>
-              )
-            : invitation.isSuccess
-              ? invitation.data.message
-              : undefined
+        errors.length ? (
+          errors.map((error, index) => <p key={`${error}-${index}`}>{error}</p>)
+        ) : invitation.isError ? (
+          <>
+            <p>
+              {invitation.error instanceof Error
+                ? invitation.error.message
+                : "The invitation could not be sent."}
+            </p>
+            {invitation.error instanceof ApiClientError && (
+              <p className="mt-1">
+                {invitation.error.isConflict
+                  ? "The server reports a duplicate or conflicting account."
+                  : invitation.error.isForbidden
+                    ? "The server denied this invitation for the current scope."
+                    : invitation.error.isNetworkError
+                      ? "Check your connection before retrying; the server may have received the request."
+                      : `Request failed (${invitation.error.status}).`}
+              </p>
+            )}
+          </>
+        ) : invitation.isSuccess ? (
+          invitation.data.message
+        ) : undefined
       }
       submitLabel={invitation.isSuccess ? "Invitation sent" : "Send invitation"}
       onSubmit={sendReviewedInvitation}
@@ -216,8 +213,7 @@ export default function InviteAccountDialog() {
             adviser_id: "",
           }));
         },
-        onCurriculumChange: (value) =>
-          update("curriculum_version_id", value),
+        onCurriculumChange: (value) => update("curriculum_version_id", value),
         onAdviserChange: (value) => update("adviser_id", value),
       }}
       trigger={

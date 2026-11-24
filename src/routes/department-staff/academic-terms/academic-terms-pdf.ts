@@ -1,8 +1,5 @@
 import type { DepartmentPdfDocument } from "@/routes/department-head/shared/department-pdf";
-import type {
-  DepartmentTermEncoding,
-  SchoolTerm,
-} from "./academic-terms.api";
+import type { DepartmentTermEncoding, SchoolTerm } from "./academic-terms.api";
 
 function termTypeLabel(termType: SchoolTerm["term_type"]): string {
   return termType === "Summer" ? "Summer/Midyear" : termType;
@@ -27,7 +24,8 @@ export function buildAcademicTermsPdf(
   closureByTermId: Map<string, DepartmentTermEncoding>,
 ): DepartmentPdfDocument {
   const open = terms.filter(
-    (term) => !term.is_locked && closureByTermId.get(term.id)?.is_closed !== true,
+    (term) =>
+      !term.is_locked && closureByTermId.get(term.id)?.is_closed !== true,
   ).length;
 
   return {
@@ -47,8 +45,7 @@ export function buildAcademicTermsPdf(
         weights: [1.1, 1.1, 2.2, 1.5, 0.9],
         rows: terms.map((term) => {
           const closed =
-            term.is_locked ||
-            closureByTermId.get(term.id)?.is_closed === true;
+            term.is_locked || closureByTermId.get(term.id)?.is_closed === true;
           return [
             `${term.start_year}-${term.end_year}`,
             termTypeLabel(term.term_type).toLowerCase(),
