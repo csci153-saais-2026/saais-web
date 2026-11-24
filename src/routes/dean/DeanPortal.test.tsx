@@ -221,7 +221,10 @@ describe("DeanPortal (MSW integration)", () => {
     const gradesTab = screen.getByRole("tab", { name: "Grades" });
     fireEvent.mouseDown(gradesTab, { button: 0 });
     fireEvent.click(gradesTab);
-    expect(await screen.findByText("Grades by term")).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "Collapse all" }),
+    ).toBeTruthy();
+    expect(screen.getAllByText(/Term GWA/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Read-only transcript summary/i)).toBeNull();
 
     const auditTab = screen.getByRole("tab", { name: "Audit log" });
