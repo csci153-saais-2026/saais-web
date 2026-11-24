@@ -38,6 +38,7 @@ function toDeanAuditEntry(
     timestamp: Number.isNaN(created.getTime())
       ? entry.created_at
       : dateFormatter.format(created),
+    occurredAt: entry.created_at,
     actor: entry.actor_name,
     action: mapCategoryToAction(entry.action_category),
     student: studentDisplay,

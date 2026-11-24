@@ -37,8 +37,7 @@ it("uses accessible record tabs, returns focus and leaves the audit trail intact
   const audit = dialog.getByRole("tabpanel", { name: "Audit log" });
   await waitFor(() => {
     expect(
-      within(audit).queryByRole("table", { name: "Student audit log" }) ??
-        within(audit).queryByText(/No audit events have been recorded/),
+      within(audit).queryByText("Record audit trail"),
     ).toBeTruthy();
   });
   fireEvent.keyDown(record, { key: "Escape" });

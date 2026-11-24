@@ -56,6 +56,8 @@ export type DeanAuditAction = "View" | "Change" | "Sign-in";
 export interface DeanAuditEntry {
   id: string;
   timestamp: string;
+  /** ISO instant, when known, for rendering date and time separately. */
+  occurredAt?: string;
   actor: string;
   action: DeanAuditAction;
   student: string;

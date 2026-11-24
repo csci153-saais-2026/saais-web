@@ -1,19 +1,84 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useState } from "react";
+import { AuditLogTable } from "@/components/features/audit-log-table";
+import type { Column } from "@/components/features/data-table-panel";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { DeanAuditActionPill } from "@/routes/dean/audit-log/DeanAuditActionPill";
+import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import { FacultyAuditFilters } from "@/routes/dean/audit-log/FacultyAuditFilters";
 import { useDeanAuditLog } from "@/routes/dean/audit-log/use-dean-audit-log";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
+import type { DeanAuditAction, DeanAuditEntry } from "@/routes/dean/types";
+
+const actionStatus: Record<DeanAuditAction, Status> = {
+  View: "enrolled",
+  Change: "passed",
+  "Sign-in": "disabled",
+};
+
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Manila",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Manila",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+});
+
+function AuditTimestamp({ row }: { row: DeanAuditEntry }) {
+  const date = row.occurredAt ? new Date(row.occurredAt) : null;
+  if (!date || Number.isNaN(date.getTime())) return <>{row.timestamp}</>;
+  return (
+    <time dateTime={row.occurredAt}>
+      <span className="block">{dateFormatter.format(date)}</span>
+      <span className="block text-xs text-muted-foreground">
+        {timeFormatter.format(date).toUpperCase()}
+      </span>
+    </time>
+  );
+}
+
+const wrapCell = "min-w-0 whitespace-normal wrap-break-word";
+
+const auditColumns: Column<DeanAuditEntry>[] = [
+  {
+    header: "Timestamp",
+    className: "font-mono text-xs text-muted-foreground",
+    cell: (row) => <AuditTimestamp row={row} />,
+  },
+  {
+    header: "Person",
+    className: "font-medium",
+    cell: (row) => (
+      <span className={wrapCell} title={row.actor}>
+        {row.actor}
+      </span>
+    ),
+  },
+  {
+    header: "Action",
+    cell: (row) => (
+      <StatusBadge status={actionStatus[row.action]}>{row.action}</StatusBadge>
+    ),
+  },
+  {
+    header: "Student",
+    cell: (row) => (
+      <span className={wrapCell} title={row.student}>
+        {row.student}
+      </span>
+    ),
+  },
+  {
+    header: "Details",
+    className: wrapCell,
+    cell: (row) => row.details,
+  },
+];
 
 export default function DeanAuditLogPage() {
   const [person, setPerson] = useState("");
@@ -92,67 +157,12 @@ export default function DeanAuditLogPage() {
               onReset={handleReset}
             />
 
-            <Table responsive>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>Who</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEntries.length > 0 ? (
-                  filteredEntries.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell
-                        label="When"
-                        className="font-mono text-xs text-muted-foreground"
-                      >
-                        {row.timestamp}
-                      </TableCell>
-                      <TableCell label="Who" className="font-medium">
-                        <span
-                          className="block max-w-56 truncate"
-                          title={row.actor}
-                        >
-                          {row.actor}
-                        </span>
-                      </TableCell>
-                      <TableCell label="Action">
-                        <DeanAuditActionPill action={row.action} />
-                      </TableCell>
-                      <TableCell label="Student">
-                        <span
-                          className="block max-w-56 truncate"
-                          title={row.student}
-                        >
-                          {row.student}
-                        </span>
-                      </TableCell>
-                      <TableCell label="Details">
-                        <span
-                          className="block max-w-96 truncate"
-                          title={row.details}
-                        >
-                          {row.details}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="py-10 text-center text-muted-foreground"
-                    >
-                      No audit records match these filters.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <AuditLogTable
+              columns={auditColumns}
+              rows={filteredEntries}
+              rowKey={(row) => row.id}
+              ariaLabel="Faculty audit log"
+            />
           </Panel>
         </AccountSkeleton>
       )}

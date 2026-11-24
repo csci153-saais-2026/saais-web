@@ -1,20 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  GradesView,
+  type GradeRow,
+  type GradesViewTerm,
+} from "@/components/features/grades-view";
+import type { Status } from "@/components/ui/status-badge";
 import type { ApiSchema } from "@/lib/api";
 import { getGrades } from "@/routes/adviser/advisees/checklist/record.api";
 import { QueryMessage } from "../shared/dh-ui";
 import type { DirectoryStudent } from "../shared/students-types";
 import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
-const STATUS: Record<ApiSchema<"AttemptStatus">, Status> = {
+const STATUS: Record<ApiSchema<"AttemptResult">["effective_status"], Status> = {
   na: "na",
   failed: "failed",
   passed: "passed",
@@ -22,11 +19,24 @@ const STATUS: Record<ApiSchema<"AttemptStatus">, Status> = {
   dr: "dr",
   currently_enrolled: "enrolled",
 };
-const grade = (value: number | null) =>
-  value == null ? "—" : value.toFixed(2);
-const HEAD =
-  "px-3.5 text-[11.5px] font-semibold tracking-widest text-muted-2 uppercase";
-const CELL = "px-3.5 py-2.5 text-[13.5px]";
+
+function formatMidtermGrade(attempt: ApiSchema<"AttemptResult">): string {
+  if (attempt.midterm_status === "dr") return "DR";
+  if (attempt.midterm_grade != null) return attempt.midterm_grade.toFixed(2);
+  return "—";
+}
+
+function formatFinalGrade(attempt: ApiSchema<"AttemptResult">): string {
+  if (attempt.recorded_status === "inc") {
+    return attempt.completion_grade != null
+      ? `${attempt.completion_grade.toFixed(2)} (INC)`
+      : "INC";
+  }
+  if (attempt.recorded_status === "dr") return "DR";
+  if (attempt.recorded_status === "na") return "NA";
+  if (attempt.final_grade != null) return attempt.final_grade.toFixed(2);
+  return "—";
+}
 
 export function GradesTab({ student }: { student: DirectoryStudent }) {
   const grades = useQuery({
@@ -37,88 +47,47 @@ export function GradesTab({ student }: { student: DirectoryStudent }) {
     queryFn: () => getGrades(student.id),
   });
   if (!grades.data) return <QueryMessage query={grades} label="the grades" />;
-  const { terms, offerings, courses } = grades.data;
-  if (terms.length === 0)
-    return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        No grades have been recorded for this student.
-      </p>
+
+  const courseById = new Map(grades.data.courses.map((c) => [c.id, c]));
+  const offeringById = new Map(grades.data.offerings.map((o) => [o.id, o]));
+
+  const terms: GradesViewTerm[] = grades.data.terms.map((term) => {
+    const failedUnits = term.attempts.reduce(
+      (sum, attempt) =>
+        attempt.effective_status === "failed" || attempt.is_lapsed_inc
+          ? sum + attempt.units_attempted
+          : sum,
+      0,
     );
+    const rows: GradeRow[] = term.attempts.map((attempt) => {
+      const offering = offeringById.get(attempt.course_offering_id);
+      const course = offering ? courseById.get(offering.course_id) : undefined;
+      return {
+        id: attempt.id,
+        code: course?.code ?? "Course",
+        title: course?.title ?? "Enrolled course",
+        units: attempt.units_attempted,
+        midterm: formatMidtermGrade(attempt),
+        final: formatFinalGrade(attempt),
+        status: attempt.is_lapsed_inc
+          ? "inc-lapsed"
+          : STATUS[attempt.effective_status],
+        statusNote: attempt.is_repeated ? "Repeated" : undefined,
+      };
+    });
+    return {
+      id: term.school_term_id,
+      title: `${term.school_year} · ${term.term_type}`,
+      gwa: term.gwa != null ? term.gwa.toFixed(2) : null,
+      failedUnits,
+      rows,
+    };
+  });
+
   return (
-    <div className="grid gap-4">
-      {terms.map((term) => (
-        <section
-          key={term.school_term_id}
-          aria-label={`${term.school_year} ${term.term_type}`}
-          className="overflow-hidden rounded-md border border-border bg-card"
-        >
-          <header className="flex items-center justify-between gap-4 bg-secondary px-5 py-3">
-            <h3 className="font-semibold">
-              {term.school_year} · {term.term_type}
-            </h3>
-            <span className="text-sm text-muted-foreground">
-              GWA{" "}
-              <b className="font-mono text-primary">
-                {term.gwa == null ? "—" : term.gwa.toFixed(2)}
-              </b>
-            </span>
-          </header>
-          <Table responsive>
-            <TableHeader>
-              <TableRow>
-                {["Course", "Units", "Midterm", "Final", "Result"].map(
-                  (label) => (
-                    <TableHead key={label} className={HEAD}>
-                      {label}
-                    </TableHead>
-                  ),
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {term.attempts.map((attempt) => {
-                const course = courses.find(
-                  (item) =>
-                    item.id ===
-                    offerings.find(
-                      (offering) => offering.id === attempt.course_offering_id,
-                    )?.course_id,
-                );
-                return (
-                  <TableRow key={attempt.id}>
-                    <TableCell
-                      label="Course"
-                      className={`${CELL} whitespace-normal`}
-                    >
-                      <b className="block font-semibold">
-                        {course?.code ?? "Course"}
-                      </b>
-                      <span
-                        className="block max-w-64 truncate text-xs text-muted-foreground"
-                        title={course?.title}
-                      >
-                        {course?.title}
-                      </span>
-                    </TableCell>
-                    <TableCell label="Units" className={CELL}>
-                      {attempt.units_attempted}
-                    </TableCell>
-                    <TableCell label="Midterm" className={`${CELL} font-mono`}>
-                      {grade(attempt.midterm_grade)}
-                    </TableCell>
-                    <TableCell label="Final" className={`${CELL} font-mono`}>
-                      {grade(attempt.completion_grade ?? attempt.final_grade)}
-                    </TableCell>
-                    <TableCell label="Result" className={CELL}>
-                      <StatusBadge status={STATUS[attempt.effective_status]} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </section>
-      ))}
-    </div>
+    <GradesView
+      terms={terms}
+      emptyMessage="No grades have been recorded for this student."
+    />
   );
 }
