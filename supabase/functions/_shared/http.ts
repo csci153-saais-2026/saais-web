@@ -6,7 +6,7 @@ import {
 import contract from "./contract.json" with { type: "json" };
 import mattContract from "./matt-contract.json" with { type: "json" };
 import { mattRoutes } from "./matt-routes.ts";
-import { assistantAnswer, type AssistantConfig } from "./matt-assistant.ts";
+import { assistantAnswer, type AssistantConfig } from "./ai-assistant.ts";
 import { PhotoError } from "./photo-error.ts";
 
 type Parameter = { name: string; in: string; schema: { type?: string } };

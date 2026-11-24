@@ -4,7 +4,7 @@ import {
   type PhotoPreparer,
   type RouteGroup,
 } from "./http.ts";
-import { readAssistantConfig } from "./matt-assistant.ts";
+import { readAssistantConfig } from "./ai-assistant.ts";
 
 export function environment(
   get: (name: string) => string | undefined,
