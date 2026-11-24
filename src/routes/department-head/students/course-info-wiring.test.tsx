@@ -1,9 +1,9 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { expect, it } from "vitest";
+import { MOCK_PERSONAS } from "@/mocks";
 import { saaisMockServer } from "@/mocks/node";
 import { getChecklist } from "@/routes/adviser/advisees/checklist/record.api";
-import { getDirectoryStudents } from "../shared/dh-api";
 import {
   renderDepartmentHead,
   setupDepartmentHeadMockApi,
@@ -13,17 +13,15 @@ import StudentsPage from "./StudentsPage";
 setupDepartmentHeadMockApi();
 
 it("shows the selected checklist result's attempt and grade-correction history", async () => {
-  const student = (await getDirectoryStudents()).find(
-    (entry) => entry.studentNumber === "24-1-01798",
-  )!;
-  const { results, slots, courses } = await getChecklist(student.id);
+  const student = MOCK_PERSONAS.student;
+  const { results, slots, courses } = await getChecklist(student.profileId);
   const result = results.find((entry) => entry.attempts?.length)!;
   const slot = slots.find(
     (entry) => entry.id === result.curriculum_term_course_id,
   )!;
   const course = courses.find((entry) => entry.id === slot.course_id)!;
   saaisMockServer.use(
-    http.get(`*/functions/v1/students/${student.id}/checklist`, () =>
+    http.get(`*/functions/v1/students/${student.profileId}/checklist`, () =>
       HttpResponse.json(
         results.map((entry) =>
           entry === result
@@ -47,11 +45,11 @@ it("shows the selected checklist result's attempt and grade-correction history",
   renderDepartmentHead(<StudentsPage />);
   fireEvent.click(
     await screen.findByRole("button", {
-      name: `View ${student.name} checklist`,
+      name: `View ${student.fullName} checklist`,
     }),
   );
   const record = await screen.findByRole("dialog", {
-    name: `${student.name} · Student record`,
+    name: `${student.fullName} · Student record`,
   });
   const row = (await within(record).findByText(course.code)).closest("tr")!;
   const trigger = within(row).getByRole("button", { name: "Course info" });
@@ -70,7 +68,9 @@ it("shows the selected checklist result's attempt and grade-correction history",
   expect(
     dialog.getByText(/03 Mar 2026.*Prof\. Test.*2\.25 → 1\.75/),
   ).toBeTruthy();
-  fireEvent.click(dialog.getByRole("button", { name: "Close" }));
+  const close = dialog.getByRole("button", { name: "Close" });
+  await waitFor(() => expect(document.activeElement).toBe(close));
+  fireEvent.keyDown(close, { key: "Escape" });
   await waitFor(() => expect(document.activeElement).toBe(trigger));
   expect(screen.getByRole("dialog")).toBe(record);
 });

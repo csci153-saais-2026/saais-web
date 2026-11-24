@@ -200,6 +200,7 @@ export function CourseInfoDialog({
 }: CourseInfoDialogProps) {
   const attempts = slot?.attempts ?? [];
   const gradeFixes = slot?.grade_fix_history ?? [];
+  const escapeHandledByLayer = React.useRef<KeyboardEvent | null>(null);
 
   const resolvedTitle = React.useMemo(() => {
     if (title && title.trim().length > 0) return title.trim();
@@ -247,6 +248,19 @@ export function CourseInfoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onEscapeKeyDown={(event) => {
+          if (!event.defaultPrevented) escapeHandledByLayer.current = event;
+        }}
+        onKeyDown={(event) => {
+          if (
+            event.key === "Escape" &&
+            escapeHandledByLayer.current !== event.nativeEvent
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            onOpenChange(false);
+          }
+        }}
         onCloseAutoFocus={(event) => {
           if (returnFocusTo?.isConnected) {
             event.preventDefault();
