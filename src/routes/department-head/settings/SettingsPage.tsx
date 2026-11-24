@@ -1,4 +1,6 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { SETTINGS_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
+import { Fragment } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { useDepartmentSettings } from "../shared/dh-queries";
 import { QueryMessage } from "../shared/dh-ui";
@@ -21,10 +23,13 @@ export default function SettingsPage() {
         <AccountSkeleton
           id="dh-settings"
           data={settings}
+          sample={SETTINGS_SKELETON_SAMPLE}
           label="Loading settings…"
         >
           {(settings) => (
-            <>
+            <Fragment
+              key={settings === SETTINGS_SKELETON_SAMPLE ? "sample" : "live"}
+            >
               <div className="mb-4">
                 <BackupBanner settings={settings} />
               </div>
@@ -33,7 +38,7 @@ export default function SettingsPage() {
                 <EmailSettingsForm settings={settings} />
                 <BackupRecordPanel settings={settings} />
               </div>
-            </>
+            </Fragment>
           )}
         </AccountSkeleton>
       )}

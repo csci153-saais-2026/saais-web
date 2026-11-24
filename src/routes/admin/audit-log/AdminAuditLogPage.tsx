@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ADMIN_AUDIT_SKELETON_SAMPLE } from "./audit-log.skeleton-sample";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuditLogTable } from "@/components/features/audit-log-table";
 import { FormField } from "@/components/features/form-field";
@@ -242,7 +243,13 @@ export default function AdminAuditLogPage() {
     },
   ];
 
-  const visibleEntries = loading || error || filterError ? [] : entries;
+  // While loading, the skeleton is measured from sample rows.
+  const visibleEntries =
+    error || filterError
+      ? []
+      : loading
+        ? ADMIN_AUDIT_SKELETON_SAMPLE
+        : entries;
   const pageNumber = Math.floor(offset / AUDIT_PAGE_SIZE) + 1;
 
   return (
@@ -272,6 +279,7 @@ export default function AdminAuditLogPage() {
       <AccountSkeleton
         id="AdminAuditLogPage-1"
         loading={loading}
+        measured
         label="Loading audit history…"
       >
         <Panel

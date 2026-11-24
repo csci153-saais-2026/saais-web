@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { DEAN_AUDIT_SKELETON_SAMPLE } from "../dean.skeleton-samples";
 import { useMemo, useState } from "react";
 import { AuditLogTable } from "@/components/features/audit-log-table";
 import type { Column } from "@/components/features/data-table-panel";
@@ -87,7 +88,7 @@ export default function DeanAuditLogPage() {
   const [fromDate, setFromDate] = useState("");
 
   const {
-    entries,
+    entries: loadedEntries,
     hasData,
     facultyName,
     isLoading,
@@ -95,6 +96,8 @@ export default function DeanAuditLogPage() {
     isFacultyUnavailable,
     refetch,
   } = useDeanAuditLog();
+  // While loading, the skeleton is measured from sample rows.
+  const entries = isLoading ? DEAN_AUDIT_SKELETON_SAMPLE : loadedEntries;
 
   const filteredEntries = useMemo(() => {
     const personQuery = person.trim().toLowerCase();
@@ -138,6 +141,7 @@ export default function DeanAuditLogPage() {
         <AccountSkeleton
           id="dean-audit-log"
           loading={isLoading}
+          measured
           label="Loading the audit log…"
         >
           <Panel

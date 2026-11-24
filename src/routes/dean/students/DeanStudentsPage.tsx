@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { DEAN_STUDENTS_SKELETON_SAMPLE } from "../dean.skeleton-samples";
 import { useMemo, useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { StudentRecordDialog } from "@/components/features/student-record-dialog";
@@ -21,7 +22,7 @@ export default function DeanStudentsPage() {
   const recordDialog = useDeanStudentRecordDialog(selectedStudent);
 
   const {
-    students,
+    students: loadedStudents,
     hasData,
     facultyName,
     isLoading,
@@ -29,6 +30,8 @@ export default function DeanStudentsPage() {
     isFacultyUnavailable,
     refetch,
   } = useDeanStudents();
+  // While loading, the skeleton is measured from sample rows.
+  const students = isLoading ? DEAN_STUDENTS_SKELETON_SAMPLE : loadedStudents;
 
   const curriculumOptions = useMemo(
     () => Array.from(new Set(students.map((s) => s.curriculum))).sort(),
@@ -78,6 +81,7 @@ export default function DeanStudentsPage() {
         <AccountSkeleton
           id="dean-students"
           loading={isLoading}
+          measured
           label="Loading students…"
         >
           <div className="space-y-4">

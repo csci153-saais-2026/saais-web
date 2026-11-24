@@ -1,4 +1,8 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import {
+  CURRICULA_VERSIONS_SKELETON_SAMPLE,
+  CURRICULUM_DETAIL_SKELETON_SAMPLE,
+} from "./curricula.skeleton-sample";
 import { notify } from "@/lib/notify";
 import "../shared/staff-filters.css";
 import { useState } from "react";
@@ -77,9 +81,17 @@ export default function CurriculaPage() {
     version: CurriculumVersion;
     slot: CurriculumSlot;
   } | null>(null);
-  const versions = catalog.isError ? [] : (catalog.data?.versions ?? []);
-  const version = versions.find((item) => item.id === selection) ?? versions[0];
-  const detail = useCurriculum(version?.id);
+  const loadedVersions = catalog.isError ? [] : (catalog.data?.versions ?? []);
+  const loadedVersion =
+    loadedVersions.find((item) => item.id === selection) ?? loadedVersions[0];
+  // While loading, the skeleton is measured from sample content; only the
+  // loaded version is ever fetched.
+  const versions = catalog.isPending
+    ? CURRICULA_VERSIONS_SKELETON_SAMPLE
+    : loadedVersions;
+  const version = catalog.isPending ? versions[0] : loadedVersion;
+  const detail = useCurriculum(loadedVersion?.id);
+  const detailData = detail.data ?? CURRICULUM_DETAIL_SKELETON_SAMPLE;
   const statuses = {
     draft: "draft",
     active: "active",
@@ -256,6 +268,7 @@ export default function CurriculaPage() {
       <AccountSkeleton
         id="CurriculaPage-1"
         loading={catalog.isPending}
+        measured
         label="Loading curriculum versions..."
       >
         {catalog.isError && (
@@ -276,7 +289,7 @@ export default function CurriculaPage() {
             <p>No curriculum versions are available for your department.</p>
           </Panel>
         )}
-        {catalog.isSuccess && version && (
+        {(catalog.isSuccess || catalog.isPending) && version && (
           <>
             <div className="mb-6 flex flex-wrap items-end gap-3">
               <FormField
@@ -393,6 +406,7 @@ export default function CurriculaPage() {
             <AccountSkeleton
               id="CurriculaPage-2"
               loading={detail.isPending}
+              measured
               label="Loading curriculum requirements..."
             >
               {detail.isError && (
@@ -408,16 +422,16 @@ export default function CurriculaPage() {
                   </Button>
                 </Panel>
               )}
-              {detail.isSuccess && (
+              {(detail.isSuccess || detail.isPending) && (
                 <>
-                  {detail.data.terms.length === 0 && (
+                  {detailData.terms.length === 0 && (
                     <Panel title="Curriculum requirements">
                       <p>No terms are available for this curriculum version.</p>
                     </Panel>
                   )}
                   <div className="space-y-5">
-                    {detail.data.terms.map((term) => {
-                      const slots = detail.data.slots.filter(
+                    {detailData.terms.map((term) => {
+                      const slots = detailData.slots.filter(
                         (slot) => slot.curriculum_term_id === term.id,
                       );
                       function openTermAction(action: "edit" | "delete") {
@@ -433,7 +447,7 @@ export default function CurriculaPage() {
                           key={term.id}
                           term={term}
                           slots={slots}
-                          courses={detail.data.courses}
+                          courses={detailData.courses}
                           actionsDisabled={detail.isFetching}
                           onAddRequirement={() =>
                             setAddingRequirement({ term, version })

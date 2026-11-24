@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { ADVISEES_SKELETON_SAMPLE } from "../adviser.skeleton-samples";
 import { useState } from "react";
 import { Link } from "react-router";
 import { apiClient, postgrestFilter, unwrapApiResult } from "@/lib/api";
@@ -55,7 +56,18 @@ function CohortStudents({
     true,
     () => getRoster("current"),
   );
-  const students = data?.filter(
+  // While loading, the skeleton is measured from sample rows for this cohort.
+  const students = (
+    data ??
+    (error
+      ? undefined
+      : ADVISEES_SKELETON_SAMPLE.map((student) => ({
+          ...student,
+          entry_year: cohort.entry_year,
+          curriculum_version_id: cohort.curriculum_version_id,
+          program_id: cohort.program_id,
+        })))
+  )?.filter(
     (student) =>
       student.entry_year === cohort.entry_year &&
       student.curriculum_version_id === cohort.curriculum_version_id &&
@@ -66,6 +78,7 @@ function CohortStudents({
       <AccountSkeleton
         id="AdviserCohorts-1"
         loading={!data && !error}
+        measured
         label="Loading advisees…"
       >
         {error && (
@@ -124,15 +137,18 @@ function CohortStudents({
 export function AdviserCohorts({
   rows,
   userId,
+  sample = false,
 }: {
   rows: Cohort[];
   userId: string;
+  /** Rows are layout-only skeleton samples: do not look anything up for them. */
+  sample?: boolean;
 }) {
   const [selected, setSelected] = useState<Cohort | null>(null);
   const ids = [...new Set(rows.map((row) => row.program_id))].sort();
   const { data: programs } = useScopedRequest(
     JSON.stringify([userId, ids]),
-    ids.length > 0,
+    ids.length > 0 && !sample,
     () => getPrograms(ids),
   );
   return (

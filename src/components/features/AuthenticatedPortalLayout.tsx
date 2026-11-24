@@ -1,4 +1,4 @@
-import { PageSkeleton } from "@/components/features/loading-skeletons";
+import { ShellSkeleton } from "@/components/features/shell-skeleton";
 import { matchPath, useLocation, useNavigate } from "react-router";
 import { AuthenticatedLayout } from "@/layouts/AuthenticatedLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -114,11 +114,7 @@ export function AuthenticatedPortalLayout() {
   );
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <PageSkeleton label="Loading workspace…" />
-      </div>
-    );
+    return <ShellSkeleton label="Loading workspace…" />;
   }
 
   if (!user || isAllowedToEnter === false) {

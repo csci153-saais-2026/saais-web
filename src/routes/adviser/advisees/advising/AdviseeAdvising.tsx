@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { NOTES_SKELETON_SAMPLE } from "../../adviser.skeleton-samples";
 import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -246,11 +247,13 @@ function RecentNotes({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const { data, error } = useScopedRequest(
+  const { data: loadedData, error } = useScopedRequest(
     JSON.stringify([userId, id, revision]),
     true,
     () => getNotes(id),
   );
+  // While loading, the skeleton is measured from sample content.
+  const data = loadedData ?? (error ? undefined : NOTES_SKELETON_SAMPLE);
   async function save() {
     if (!text.trim()) return;
     const submitted = text;
@@ -272,7 +275,8 @@ function RecentNotes({
     <Panel title="Advising notes" description="Recent notes" flush>
       <AccountSkeleton
         id="AdviseeAdvising-1"
-        loading={!data && !error}
+        loading={!loadedData && !error}
+        measured
         label="Loading notes…"
       >
         {error && (
@@ -455,6 +459,7 @@ function AdvisingContent({
         <AccountSkeleton
           id="AdviseeAdvising-2"
           loading={!terms.data && !terms.error}
+          measured
           label="Loading terms…"
         >
           {terms.data && terms.data.length === 0 && (
@@ -462,7 +467,7 @@ function AdvisingContent({
               No school terms available.
             </p>
           )}
-          {!term && terms.data && terms.data.length > 0 && (
+          {!term && (terms.data ? terms.data.length > 0 : !terms.error) && (
             <div className="flex flex-wrap items-center gap-3 p-5">
               <span className="text-sm">0 selected</span>
               <Button className="ml-auto" disabled>

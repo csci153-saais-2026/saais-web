@@ -1,4 +1,5 @@
-import type { ComponentProps } from "react";
+import { Suspense, type ComponentProps } from "react";
+import { PageSkeleton } from "@/components/features/loading-skeletons";
 import { Outlet, useLocation } from "react-router";
 import { AppShell } from "@/components/features/app-shell";
 import type { AppSidebar } from "@/components/features/sidebar";
@@ -35,7 +36,10 @@ export function AuthenticatedLayout({
       crumbs={crumbs}
       topbarTrailing={topbarTrailing}
     >
-      <Outlet />
+      {/* Keep the shell on screen while a lazy portal chunk loads. */}
+      <Suspense fallback={<PageSkeleton label="Loading…" className="p-0" />}>
+        <Outlet />
+      </Suspense>
     </AppShell>
   );
 }

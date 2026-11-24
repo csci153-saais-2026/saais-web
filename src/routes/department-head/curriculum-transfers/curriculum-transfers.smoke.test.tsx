@@ -7,6 +7,7 @@ import CurriculumTransfersPage from "./CurriculumTransfersPage";
 import {
   renderDepartmentHead,
   setupDepartmentHeadMockApi,
+  waitForLoaded,
 } from "../test-utils";
 
 setupDepartmentHeadMockApi();
@@ -63,6 +64,7 @@ describe("Curriculum Transfers", () => {
   it("supports ?history=1 tab selection", async () => {
     renderDepartmentHead(<CurriculumTransfersPage />, `${route}?history=1`);
     expect(await screen.findByText("Transfer decision history")).toBeDefined();
+    await waitForLoaded();
     expect(screen.getByText("Decision history (0)")).toBeDefined();
     expect(
       screen.getByText("No transfer decisions have been recorded."),

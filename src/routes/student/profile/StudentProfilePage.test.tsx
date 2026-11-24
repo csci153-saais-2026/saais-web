@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -218,7 +219,9 @@ describe("StudentProfilePage", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    const input = await screen.findByLabelText("Upload profile photo");
+    await screen.findByLabelText("Upload profile photo");
+    await waitForLoaded();
+    const input = screen.getByLabelText("Upload profile photo");
     const file = new File(
       [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
       "photo.png",

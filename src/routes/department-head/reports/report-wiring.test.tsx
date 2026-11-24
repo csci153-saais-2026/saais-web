@@ -6,6 +6,7 @@ import { saaisMockServer } from "@/mocks/node";
 import {
   renderDepartmentHead,
   setupDepartmentHeadMockApi,
+  waitForLoaded,
 } from "../test-utils";
 
 vi.mock("../shared/department-pdf", () => ({
@@ -18,6 +19,7 @@ setupDepartmentHeadMockApi();
 async function openCohort() {
   renderDepartmentHead(<DepartmentReportsPage />);
   await screen.findByLabelText("Selected department report");
+    await waitForLoaded();
   const [opener] = screen.getAllByRole("button", { name: /View students for/ });
   opener.focus();
   fireEvent.click(opener);
@@ -46,6 +48,7 @@ describe("Department report shared-component wiring", () => {
     saaisMockServer.resetHandlers();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await screen.findByLabelText("Selected department report");
+    await waitForLoaded();
     expect(
       (screen.getByRole("button", { name: "Export PDF" }) as HTMLButtonElement)
         .disabled,
@@ -55,6 +58,7 @@ describe("Department report shared-component wiring", () => {
   it("filters shared cohort views by program and keeps student names read-only", async () => {
     renderDepartmentHead(<DepartmentReportsPage />);
     await screen.findByLabelText("Selected department report");
+    await waitForLoaded();
     fireEvent.keyDown(
       screen.getByRole("combobox", { name: "Degree program" }),
       { key: "ArrowDown" },

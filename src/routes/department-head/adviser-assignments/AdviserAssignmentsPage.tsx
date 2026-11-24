@@ -1,5 +1,6 @@
 import { AdviserAssignmentsTable } from "@/components/features/adviser-assignments-table";
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { DIRECTORY_SKELETON_SAMPLE } from "../shared/directory.skeleton-sample";
 import { useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
@@ -41,7 +42,8 @@ export default function AdviserAssignmentsPage() {
   const adviserQuery = useDepartmentAdvisers();
   const reassign = useReassignStudents();
   const notify = useNotify();
-  const students = directory.data ?? [];
+  // While loading, the skeleton is measured from sample rows.
+  const students = directory.data ?? DIRECTORY_SKELETON_SAMPLE;
   const [filters, setFilters] = useState<Filters>({
     search: "",
     curriculum: "all",
@@ -125,6 +127,7 @@ export default function AdviserAssignmentsPage() {
     <AccountSkeleton
       id="dh-adviser-assignments"
       data={directory.data}
+      sample={DIRECTORY_SKELETON_SAMPLE}
       label="Loading adviser assignments…"
     >
       {() => (

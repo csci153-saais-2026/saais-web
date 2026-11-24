@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { GRADES_SKELETON_SAMPLE } from "./grades.skeleton-sample";
 import { notify } from "@/lib/notify";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -430,7 +431,7 @@ export function StudentGradesView({
   );
 }
 
-interface GradesPageData {
+export interface GradesPageData {
   readonly terms: readonly TermGradesSection[];
   readonly flags: readonly GradeFlagDisplayItem[];
   readonly courseDetails: Readonly<
@@ -655,6 +656,7 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
     <AccountSkeleton
       id="student-grades"
       data={isPending ? null : data}
+      sample={GRADES_SKELETON_SAMPLE}
       label="Loading..."
     >
       {(data) => (

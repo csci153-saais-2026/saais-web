@@ -25,6 +25,7 @@ import {
   type CourseRecommendationRow,
 } from "./CourseRecommendationsPanel";
 import { IncRadarPanel, type IncRadarDeficiencyItem } from "./IncRadarPanel";
+import { DASHBOARD_SKELETON_SAMPLE } from "./dashboard.skeleton-sample";
 import { useStudentDashboard } from "./use-student-dashboard";
 
 export interface StudentDashboardViewProps {
@@ -305,6 +306,28 @@ async function fetchDashboardMeta(
   };
 }
 
+type DashboardMeta = Awaited<ReturnType<typeof fetchDashboardMeta>>;
+
+export type StudentDashboardSkeletonData = NonNullable<
+  ReturnType<typeof useStudentDashboard>["data"]
+> & { meta?: DashboardMeta };
+
+function buildRecommendations(
+  planItems: readonly ApiSchema<"AdvisingPlanItem">[],
+  meta: DashboardMeta | undefined,
+): CourseRecommendationRow[] {
+  return planItems.map((item) => {
+    const offering = meta?.offeringMap.get(item.course_offering_id);
+    const course = offering ? meta?.courseMap.get(offering.course_id) : undefined;
+    return {
+      ...item,
+      code: course?.code ?? null,
+      title: course?.title ?? null,
+      units: course?.units ?? null,
+    };
+  });
+}
+
 /**
  * Student Dashboard page container handling loading, error/retry, and data hydration.
  */
@@ -315,22 +338,6 @@ export function StudentDashboardPage({ studentId }: { studentId: string }) {
     queryFn: () => fetchDashboardMeta(studentId),
     enabled: Boolean(studentId),
   });
-
-  const recommendations = React.useMemo<CourseRecommendationRow[]>(() => {
-    const planItems = dashboard.data?.planItems ?? [];
-    const offeringMap = metaQuery.data?.offeringMap;
-    const courseMap = metaQuery.data?.courseMap;
-    return planItems.map((item) => {
-      const offering = offeringMap?.get(item.course_offering_id);
-      const course = offering ? courseMap?.get(offering.course_id) : undefined;
-      return {
-        ...item,
-        code: course?.code ?? null,
-        title: course?.title ?? null,
-        units: course?.units ?? null,
-      };
-    });
-  }, [dashboard.data?.planItems, metaQuery.data]);
 
   if (
     !(dashboard.isPending || metaQuery.isPending) &&
@@ -357,20 +364,28 @@ export function StudentDashboardPage({ studentId }: { studentId: string }) {
   return (
     <AccountSkeleton
       id="student-dashboard"
-      data={dashboard.isPending || metaQuery.isPending ? null : dashboard.data}
+      data={
+        dashboard.isPending || metaQuery.isPending || !dashboard.data
+          ? null
+          : { ...dashboard.data, meta: metaQuery.data }
+      }
+      sample={DASHBOARD_SKELETON_SAMPLE}
       label="Loading..."
     >
       {(dashboardData) => (
         <StudentDashboardView
           summary={dashboardData.summary}
-          studentName={metaQuery.data?.studentName ?? null}
-          programName={metaQuery.data?.programName ?? "Unassigned program"}
-          curriculumLabel={metaQuery.data?.curriculumLabel ?? "—"}
+          studentName={dashboardData.meta?.studentName ?? null}
+          programName={dashboardData.meta?.programName ?? "Unassigned program"}
+          curriculumLabel={dashboardData.meta?.curriculumLabel ?? "—"}
           delinquencyThresholdUnits={
-            metaQuery.data?.delinquencyThresholdUnits ?? null
+            dashboardData.meta?.delinquencyThresholdUnits ?? null
           }
           adviserAssignments={dashboardData.adviserAssignments}
-          recommendations={recommendations}
+          recommendations={buildRecommendations(
+            dashboardData.planItems,
+            dashboardData.meta,
+          )}
           notes={dashboardData.notes}
         />
       )}

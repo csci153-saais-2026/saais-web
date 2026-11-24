@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { NOTES_SKELETON_SAMPLE } from "../../adviser.skeleton-samples";
 import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { useParams } from "react-router";
@@ -33,11 +34,13 @@ function NotesContent({
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState("");
   const [writing, setWriting] = useState(false);
-  const { data, error } = useScopedRequest(
+  const { data: loadedData, error } = useScopedRequest(
     JSON.stringify([userId, id, revision]),
     true,
     () => getNotes(id),
   );
+  // While loading, the skeleton is measured from sample content.
+  const data = loadedData ?? (error ? undefined : NOTES_SKELETON_SAMPLE);
   const canEdit = !!data && (data.isCurrent || isAdmin);
   const notes =
     data?.notes.filter((note) => note.is_archived === archived) ?? [];
@@ -76,7 +79,8 @@ function NotesContent({
     <>
       <AccountSkeleton
         id="AdviseeNotes-1"
-        loading={!data && !error}
+        loading={!loadedData && !error}
+        measured
         label="Loading notes…"
       >
         {error && (

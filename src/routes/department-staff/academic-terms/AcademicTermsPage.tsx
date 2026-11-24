@@ -1,4 +1,5 @@
-import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { STAFF_TERMS_SKELETON_SAMPLE } from "./academic-terms.skeleton-sample";
 import { notify } from "@/lib/notify";
 import { useState } from "react";
 import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons";
@@ -233,16 +234,6 @@ export default function AcademicTermsPage() {
         </AlertDescription>
       </Alert>
 
-      {academicTerms.isPending && (
-        <Panel title="Academic term history">
-          <TableSkeleton
-            rows={4}
-            columns={4}
-            label="Loading academic terms and department encoding status…"
-          />
-        </Panel>
-      )}
-
       {academicTerms.isError && (
         <Panel title="Academic term history">
           <div className="space-y-4 p-6">
@@ -261,29 +252,38 @@ export default function AcademicTermsPage() {
         </Panel>
       )}
 
-      {academicTerms.isSuccess && (
-        <DataTablePanel
-          title="Academic term history"
-          description="Encoding windows are tracked separately for each semester."
-          columns={columns}
-          rows={[...academicTerms.data.terms].sort(
-            (left, right) =>
-              right.chronological_key - left.chronological_key ||
-              left.id.localeCompare(right.id),
-          )}
-          rowKey={(term) => term.id}
-          empty="No academic terms are available."
-          footer={
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p role="status">
-                {openTerms} open term{openTerms === 1 ? "" : "s"} ·{" "}
-                {closedTerms} closed term{closedTerms === 1 ? "" : "s"}
-              </p>
-              <span>Department scope</span>
-            </div>
-          }
-        />
-      )}
+      <AccountSkeleton
+        id="staff-academic-terms"
+        loading={academicTerms.isPending}
+        measured
+        label="Loading academic terms and department encoding status…"
+      >
+        {(academicTerms.isSuccess || academicTerms.isPending) && (
+          <DataTablePanel
+            title="Academic term history"
+            description="Encoding windows are tracked separately for each semester."
+            columns={columns}
+            rows={[
+              ...(academicTerms.data?.terms ?? STAFF_TERMS_SKELETON_SAMPLE),
+            ].sort(
+              (left, right) =>
+                right.chronological_key - left.chronological_key ||
+                left.id.localeCompare(right.id),
+            )}
+            rowKey={(term) => term.id}
+            empty="No academic terms are available."
+            footer={
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p role="status">
+                  {openTerms} open term{openTerms === 1 ? "" : "s"} ·{" "}
+                  {closedTerms} closed term{closedTerms === 1 ? "" : "s"}
+                </p>
+                <span>Department scope</span>
+              </div>
+            }
+          />
+        )}
+      </AccountSkeleton>
 
       {termToView &&
         (() => {

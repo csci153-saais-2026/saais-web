@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { TERMS_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
 import * as React from "react";
 import { AlertIcon, DownloadIcon, PlusIcon } from "@/components/icons";
 import { FormField } from "@/components/features/form-field";
@@ -39,7 +40,7 @@ export default function AcademicTermsPage() {
   const termsQuery = useAcademicTerms();
   const createTerm = useCreateTerm();
   const closeEncoding = useCloseEncoding();
-  const terms = termsQuery.data ?? [];
+  const terms = termsQuery.data ?? TERMS_SKELETON_SAMPLE;
   const [formError, setFormError] = React.useState("");
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
     {},
@@ -169,6 +170,7 @@ export default function AcademicTermsPage() {
     <AccountSkeleton
       id="dh-academic-terms"
       data={termsQuery.data}
+      sample={TERMS_SKELETON_SAMPLE}
       label="Loading academic terms…"
     >
       {() => (

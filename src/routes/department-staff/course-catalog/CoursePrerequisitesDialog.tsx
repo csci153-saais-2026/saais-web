@@ -1,4 +1,4 @@
-import { TableSkeleton } from "@/components/features/loading-skeletons";
+import { SkeletonBox } from "skullet/react";
 import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -204,11 +204,16 @@ export function CoursePrerequisitesDialog({
               </div>
             ))}
           {isLoading && (
-            <TableSkeleton
-              rows={4}
-              columns={4}
-              label="Loading department courses and prerequisites…"
-            />
+            <div role="status">
+              <span className="sr-only">
+                Loading department courses and prerequisites…
+              </span>
+              <div aria-hidden="true" className="space-y-2">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <SkeletonBox key={i} height={46} />
+                ))}
+              </div>
+            </div>
           )}
           {loadError && (
             <div className="space-y-2 py-3">

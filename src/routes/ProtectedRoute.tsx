@@ -1,4 +1,4 @@
-import { PageSkeleton } from "@/components/features/loading-skeletons";
+import { ShellSkeleton } from "@/components/features/shell-skeleton";
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,11 +31,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <PageSkeleton label="Verifying session…" />
-      </div>
-    );
+    return <ShellSkeleton label="Verifying session…" />;
   }
 
   if (authError && !user) {

@@ -1,4 +1,8 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import {
+  DEPARTMENTS_SKELETON_SAMPLE,
+  FACULTIES_SKELETON_SAMPLE,
+} from "../catalog.skeleton-sample";
 import { notify } from "@/lib/notify";
 import { useEffect, useMemo, useState } from "react";
 import { DataTablePanel } from "@/components/features/data-table-panel";
@@ -249,6 +253,7 @@ export default function AdminFacultiesPage() {
       <AccountSkeleton
         id="admin-faculties-1"
         loading={loading}
+        measured
         label="Loading faculties…"
       >
         <DataTablePanel
@@ -256,7 +261,9 @@ export default function AdminFacultiesPage() {
           title="Faculties"
           description="Institutional colleges and divisions, with department totals."
           columns={facultyColumns}
-          rows={!loading && !error ? faculties : []}
+          rows={
+            error ? [] : loading ? FACULTIES_SKELETON_SAMPLE : faculties
+          }
           rowKey={(faculty) => faculty.id}
           empty={
             loading
@@ -271,6 +278,7 @@ export default function AdminFacultiesPage() {
       <AccountSkeleton
         id="admin-faculties-2"
         loading={loading}
+        measured
         label="Loading departments…"
       >
         <DataTablePanel
@@ -278,7 +286,9 @@ export default function AdminFacultiesPage() {
           title="Departments"
           description="Academic departments and their parent faculties."
           columns={departmentColumns}
-          rows={!loading && !error ? departments : []}
+          rows={
+            error ? [] : loading ? DEPARTMENTS_SKELETON_SAMPLE : departments
+          }
           rowKey={(department) => department.id}
           empty={
             loading

@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { DASHBOARD_SKELETON_SAMPLE } from "../adviser.skeleton-samples";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { AdviserPage } from "../Adviser";
@@ -69,6 +70,8 @@ export default function AdviserDashboard() {
     termId,
     revision,
   );
+  // While loading, the skeleton is measured from sample content.
+  const view = report ?? (loading && !error ? DASHBOARD_SKELETON_SAMPLE : null);
   const selectedTerm = terms.find((term) => term.id === termId);
   const fallbackDeficiencies = useScopedRequest(
     JSON.stringify([user?.id, revision]),
@@ -121,6 +124,7 @@ export default function AdviserDashboard() {
       <AccountSkeleton
         id="AdviserDashboard-1"
         loading={loading}
+        measured
         label="Loading adviser dashboard…"
       >
         {error && (
@@ -136,22 +140,20 @@ export default function AdviserDashboard() {
             </div>
           </div>
         )}
-        {report && (
+        {view && (
           <>
             <div className="grid gap-6">
               <ReportStatsSection
                 stats={[
                   {
                     label: "Students",
-                    value: String(report.total_advisees),
+                    value: String(view.total_advisees),
                     note: "Assigned to you",
                   },
                   {
                     label: "Mean GWA",
                     value:
-                      report.mean_gwa == null
-                        ? "—"
-                        : report.mean_gwa.toFixed(2),
+                      view.mean_gwa == null ? "—" : view.mean_gwa.toFixed(2),
                     note: "Across your advisees",
                   },
                   deficientStudents
@@ -172,8 +174,8 @@ export default function AdviserDashboard() {
                 distribution={{
                   title: "Final grade distribution",
                   description: `${selectedTerm ? `${selectedTerm.school_year} · ${selectedTerm.term_type} · ` : ""}Share of final grades across your advisees`,
-                  bands: report.grade_distribution
-                    ? distributionBands(report.grade_distribution)
+                  bands: view.grade_distribution
+                    ? distributionBands(view.grade_distribution)
                     : [],
                   emptyMessage:
                     "Grade distribution is not available in this report.",
@@ -245,7 +247,8 @@ export default function AdviserDashboard() {
                 <AdviserCohorts
                   key={user.id}
                   userId={user.id}
-                  rows={report.batch_curriculum_gwa ?? []}
+                  rows={view.batch_curriculum_gwa ?? []}
+                  sample={!report}
                 />
               )}
             </div>

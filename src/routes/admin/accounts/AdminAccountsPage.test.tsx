@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -169,6 +170,7 @@ describe("AdminAccountsPage", () => {
     renderPage();
 
     expect(await screen.findByText("Alex Adviser")).toBeTruthy();
+    await waitForLoaded();
     expect(screen.getByText("alex@vsu.edu.ph")).toBeTruthy();
     expect(screen.getByText("Faculty of Computing")).toBeTruthy();
     expect(screen.getByText("Computer Science")).toBeTruthy();

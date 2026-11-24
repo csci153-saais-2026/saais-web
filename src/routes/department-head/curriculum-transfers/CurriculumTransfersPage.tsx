@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { TRANSFERS_SKELETON_SAMPLE } from "../shared/dh.skeleton-samples";
 import * as React from "react";
 import { useSearchParams } from "react-router";
 import { AlertIcon } from "@/components/icons";
@@ -32,8 +33,8 @@ export default function CurriculumTransfersPage() {
 
   const transfers = useTransfers();
   const decide = useDecideTransfer();
-  const pendingRequests = transfers.data?.pending ?? [];
-  const decisionHistory = transfers.data?.history ?? [];
+  const pendingRequests = (transfers.data ?? TRANSFERS_SKELETON_SAMPLE).pending;
+  const decisionHistory = (transfers.data ?? TRANSFERS_SKELETON_SAMPLE).history;
   const [selectedRequest, setSelectedRequest] =
     React.useState<TransferRequest | null>(null);
   const [decisionReason, setDecisionReason] = React.useState("");
@@ -107,6 +108,7 @@ export default function CurriculumTransfersPage() {
     <AccountSkeleton
       id="dh-curriculum-transfers"
       data={transfers.data}
+      sample={TRANSFERS_SKELETON_SAMPLE}
       label="Loading curriculum transfers…"
     >
       {() => (

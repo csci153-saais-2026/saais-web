@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { TERM_OFFERINGS_SKELETON_SAMPLE } from "../adviser.skeleton-samples";
 import { notify } from "@/lib/notify";
 import { GradeSelect } from "../GradeSelect";
 import { useState } from "react";
@@ -73,11 +74,14 @@ function TermEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
-  const { data, error: loadError } = useScopedRequest(
+  const { data: loadedData, error: loadError } = useScopedRequest(
     JSON.stringify([userId, studentId, termId, revision, workspaceRevision]),
     true,
     () => getTermOfferings(studentId, termId),
   );
+  // While loading, the skeleton is measured from sample content.
+  const data =
+    loadedData ?? (loadError ? undefined : TERM_OFFERINGS_SKELETON_SAMPLE);
   const { data: electiveSlots } = useScopedRequest(
     JSON.stringify(["slots", userId, studentId, workspaceRevision]),
     true,
@@ -178,7 +182,8 @@ function TermEditor({
       >
         <AccountSkeleton
           id="AdviserEncodeGrades-1"
-          loading={!data && !loadError}
+          loading={!loadedData && !loadError}
+          measured
           label="Loading offerings…"
         >
           {loadError && (

@@ -104,7 +104,7 @@ function fillForm() {
 }
 async function chooseOption(label: string, option: string) {
   Element.prototype.scrollIntoView = () => {};
-  fireEvent.keyDown(screen.getByRole("combobox", { name: label }), {
+  fireEvent.keyDown(await screen.findByRole("combobox", { name: label }), {
     key: "ArrowDown",
   });
   fireEvent.click(await screen.findByRole("option", { name: option }));

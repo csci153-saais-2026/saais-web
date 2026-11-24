@@ -27,6 +27,7 @@ import {
   resetMockDatabase,
 } from "@/mocks";
 import { saaisMockServer } from "@/mocks/node";
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import DepartmentStaffPortal from "../DepartmentStaffPortal";
 
 const staffPersona = MOCK_PERSONAS.department_staff;
@@ -114,7 +115,7 @@ afterAll(() => saaisMockServer.close());
 
 async function chooseOption(label: string, option: string) {
   Element.prototype.scrollIntoView = () => {};
-  fireEvent.keyDown(screen.getByRole("combobox", { name: label }), {
+  fireEvent.keyDown(await screen.findByRole("combobox", { name: label }), {
     key: "ArrowDown",
   });
   fireEvent.click(await screen.findByRole("option", { name: option }));
@@ -134,6 +135,7 @@ describe("Department Staff curricula", () => {
         { timeout: 5000 },
       ),
     ).toBeTruthy();
+    await waitForLoaded();
     expect(
       screen.getByText(
         "Versioned requirements keep past and present curricula distinct.",
@@ -147,10 +149,10 @@ describe("Department Staff curricula", () => {
     expect(screen.getByRole("button", { name: "Add term" })).toBeTruthy();
 
     await chooseOption("Curriculum version", "BSCS 2024-2025 v1");
-    expect(await screen.findByText("Year 1 · Semester 1")).toBeTruthy();
     expect(
-      screen.getByText("CSCI 101 — Introduction to Computing"),
+      await screen.findByText("CSCI 101 — Introduction to Computing"),
     ).toBeTruthy();
+    expect(screen.getByText("Year 1 · Semester 1")).toBeTruthy();
     expect(screen.getAllByText("Required units").length).toBeGreaterThan(0);
     expect(screen.getByText("Enrolled students")).toBeTruthy();
     expect(screen.getByText("Effective from")).toBeTruthy();

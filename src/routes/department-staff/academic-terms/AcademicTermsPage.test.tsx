@@ -250,8 +250,10 @@ describe("Department Staff academic terms", () => {
         "Encoding windows are tracked separately for each semester.",
       ),
     ).toBeTruthy();
+    // Skeleton sample rows are hidden from the accessibility tree, so this
+    // waits for the loaded table.
     expect(
-      screen.getByRole("columnheader", { name: "Academic year" }),
+      await screen.findByRole("columnheader", { name: "Academic year" }),
     ).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Semester" })).toBeTruthy();
     expect(

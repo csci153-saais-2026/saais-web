@@ -26,6 +26,7 @@ import {
   resetMockDatabase,
 } from "@/mocks";
 import { saaisMockServer } from "@/mocks/node";
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import DepartmentStaffPortal from "../DepartmentStaffPortal";
 
 const staffPersona = MOCK_PERSONAS.department_staff;
@@ -138,6 +139,7 @@ describe("Department Staff adviser assignments", () => {
   it("includes department advisers in the filter and shows their assigned students", async () => {
     renderPage();
     await screen.findByText(/^Showing \d+ of \d+ assignments$/);
+    await waitForLoaded();
     fireEvent.keyDown(screen.getByRole("combobox", { name: "Adviser" }), {
       key: "ArrowDown",
     });
@@ -203,13 +205,15 @@ describe("Department Staff adviser assignments", () => {
   });
   it("loads the staff department directory and removes hidden selections on filtering", async () => {
     renderPage();
-    const total = (await screen.findByText(/^Showing \d+ of \d+ assignments$/))
+    // Only loaded rows are exposed to the accessibility tree; the skeleton's
+    // sample rows are hidden.
+    const studentCheckbox = await screen.findByRole("checkbox", {
+      name: "Select " + MOCK_PERSONAS.student.fullName,
+    });
+    await waitForLoaded();
+    const total = screen.getByText(/^Showing \d+ of \d+ assignments$/)
       .textContent;
-    fireEvent.click(
-      screen.getByRole("checkbox", {
-        name: "Select " + MOCK_PERSONAS.student.fullName,
-      }),
-    );
+    fireEvent.click(studentCheckbox);
     expect(screen.getByText("1 student selected (maximum 500)")).toBeTruthy();
     expect(
       screen

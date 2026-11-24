@@ -1,3 +1,4 @@
+import { waitForLoaded } from "@/test/wait-for-loaded";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -70,6 +71,7 @@ describe("selected checklist", () => {
     vi.mocked(getChecklist).mockResolvedValue(data);
     render(page());
     await screen.findByText("Cumulative GWA");
+    await waitForLoaded();
     expect(screen.getByText("Cumulative GWA")).toBeTruthy();
     expect(screen.getByText("Year Standing")).toBeTruthy();
     expect(screen.getByText("2nd year")).toBeTruthy();

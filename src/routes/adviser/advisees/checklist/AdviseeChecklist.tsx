@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { CHECKLIST_SKELETON_SAMPLE } from "../../adviser.skeleton-samples";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AdviserPage } from "../../Adviser";
@@ -102,9 +103,13 @@ export default function AdviseeChecklist() {
   const [revision, setRevision] = useState(0);
   const [selected, setSelected] = useState<CourseInfoSlotRecord | null>(null);
   const key = JSON.stringify([user?.id, id, revision]);
-  const { data, error } = useScopedRequest(key, !!user?.id && !!id, () =>
-    getChecklist(id!),
+  const { data: loadedData, error } = useScopedRequest(
+    key,
+    !!user?.id && !!id,
+    () => getChecklist(id!),
   );
+  // While loading, the skeleton is measured from sample content.
+  const data = loadedData ?? (error ? undefined : CHECKLIST_SKELETON_SAMPLE);
   const matchesFilter = (row: ApiSchema<"ChecklistSlotResult">) =>
     filter === "all" || row.status === filter;
   const groups = new Map<string, ApiSchema<"ChecklistSlotResult">[]>();
@@ -187,7 +192,8 @@ export default function AdviseeChecklist() {
     <AdviserPage title="Checklist" tab="checklist" sample={false}>
       <AccountSkeleton
         id="AdviseeChecklist-1"
-        loading={!data && !error}
+        loading={!loadedData && !error}
+        measured
         label="Loading checklist…"
       >
         {error && (

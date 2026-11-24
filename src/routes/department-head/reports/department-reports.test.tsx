@@ -4,6 +4,7 @@ import DepartmentReportsPage from "./DepartmentReportsPage";
 import {
   renderDepartmentHead,
   setupDepartmentHeadMockApi,
+  waitForLoaded,
 } from "../test-utils";
 
 vi.mock("../shared/department-pdf", () => ({
@@ -23,6 +24,7 @@ async function choose(label: string, option: string) {
 async function openReport() {
   renderDepartmentHead(<DepartmentReportsPage />);
   await screen.findByLabelText("Selected department report");
+  await waitForLoaded();
 }
 
 describe("Department Reports", () => {

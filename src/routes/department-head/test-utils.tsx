@@ -42,3 +42,5 @@ export function renderDepartmentHead(
     </QueryClientProvider>,
   );
 }
+
+export { waitForLoaded } from "@/test/wait-for-loaded";

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { slotChildren } from "@/lib/slot-children";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
@@ -9,13 +10,13 @@ function DropdownMenu({
 }
 
 function DropdownMenuTrigger({
+  children,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
   return (
-    <DropdownMenuPrimitive.Trigger
-      data-slot="dropdown-menu-trigger"
-      {...props}
-    />
+    <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props}>
+      {slotChildren(children)}
+    </DropdownMenuPrimitive.Trigger>
   );
 }
 

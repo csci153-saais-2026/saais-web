@@ -1,4 +1,5 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
+import { COURSE_CATALOG_SKELETON_SAMPLE } from "./course-catalog.skeleton-sample";
 import "../shared/staff-filters.css";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -216,7 +217,8 @@ export default function CourseCatalogPage() {
     },
   ];
 
-  const data = catalog.data;
+  // While loading, the skeleton is measured from sample rows.
+  const data = catalog.data ?? COURSE_CATALOG_SKELETON_SAMPLE;
   const start = data?.total ? filters.page * courseCatalogPageSize + 1 : 0;
   const end = data
     ? filters.page * courseCatalogPageSize + data.courses.length
@@ -326,6 +328,7 @@ export default function CourseCatalogPage() {
               !catalog.isError &&
               (references.isPending || catalog.isPending)
             }
+            measured
             label="Loading courses and department references..."
           >
             {(references.isError || catalog.isError) && (
@@ -349,7 +352,9 @@ export default function CourseCatalogPage() {
               </div>
             )}
 
-            {references.isSuccess && catalog.isSuccess && !searchError && (
+            {(references.isSuccess || references.isPending) &&
+              (catalog.isSuccess || catalog.isPending) &&
+              !searchError && (
               <DataTablePanel
                 title="Course records"
                 columns={columns}
