@@ -76,24 +76,24 @@ describe("selected checklist", () => {
     expect(screen.getByText("Counted units")).toBeTruthy();
     expect(screen.getByText("9")).toBeTruthy();
     const term = screen.getByRole("button", { name: /Semester 1/ });
-    expect(term.getAttribute("aria-expanded")).toBe("false");
+    expect(term.getAttribute("aria-expanded")).toBe("true");
     expect(within(term).getByText("3/3")).toBeTruthy();
-    expect(
-      within(term).getByLabelText("Semester GWA unavailable"),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Expand All" }));
-    await waitFor(() =>
-      expect(term.getAttribute("aria-expanded")).toBe("true"),
-    );
+    expect(screen.queryByText("Semester GWA")).toBeNull();
     expect(await screen.findByText("CS 1")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Collapse All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
     await waitFor(() =>
       expect(term.getAttribute("aria-expanded")).toBe("false"),
     );
     expect(within(term).getByText("3/3")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Show requirements"), {
-      target: { value: "inc" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    await waitFor(() =>
+      expect(term.getAttribute("aria-expanded")).toBe("true"),
+    );
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "Show requirements" }),
+    );
+    fireEvent.click(screen.getByRole("option", { name: "INC" }));
     expect(screen.getByText("No requirements match this filter.")).toBeTruthy();
   });
   it("shows an unavailable year when the summary has no year level", async () => {
@@ -183,25 +183,30 @@ describe("selected checklist", () => {
     render(page());
     const first = await screen.findByRole("button", { name: /Semester 1/ });
     const second = screen.getByRole("button", { name: /Semester 2/ });
-    fireEvent.click(screen.getByRole("button", { name: "Expand All" }));
-    await waitFor(() =>
-      expect(first.getAttribute("aria-expanded")).toBe("true"),
-    );
+    expect(first.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(first);
     await waitFor(() =>
       expect(first.getAttribute("aria-expanded")).toBe("false"),
     );
-    expect(screen.getByRole("button", { name: "Collapse All" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Collapse All" }));
+    expect(screen.getByRole("button", { name: "Collapse all" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
     await waitFor(() =>
       expect(second.getAttribute("aria-expanded")).toBe("false"),
     );
-    expect(screen.getByRole("button", { name: "Expand All" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Expand All" }));
+    expect(screen.getByRole("button", { name: "Expand all" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
     await waitFor(() => {
       expect(first.getAttribute("aria-expanded")).toBe("true");
       expect(second.getAttribute("aria-expanded")).toBe("true");
     });
+  });
+  it("opens the shared course info dialog for a requirement", async () => {
+    vi.mocked(getChecklist).mockResolvedValue(data);
+    render(page());
+    fireEvent.click(await screen.findByRole("button", { name: /Course info/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/CS 1/)).toBeTruthy();
+    expect(within(dialog).getByText(/grade fixed 5\.00 → 2\.00/)).toBeTruthy();
   });
   it("clears data when account changes", async () => {
     vi.mocked(getChecklist)

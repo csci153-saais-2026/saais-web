@@ -5,34 +5,13 @@ import { AdviserPage } from "../../Adviser";
 import { getChecklist } from "./record.api";
 import { useScopedRequest } from "../use-scoped-request";
 import { useAuth } from "@/hooks/use-auth";
-import { StatGrid } from "@/components/features/stat-tile";
+import { ChecklistView } from "@/components/features/checklist-view";
+import {
+  CourseInfoDialog,
+  type CourseInfoSlotRecord,
+} from "@/components/features/course-info-dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronDownIcon, XIcon } from "@/components/icons";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Kicker } from "@/components/ui/kicker";
-import { StatusBadge, type Status } from "@/components/ui/status-badge";
-import { Truncate } from "@/components/ui/truncate";
-import {
-  Dialog,
-  DialogClose,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { Status } from "@/components/ui/status-badge";
 import type { ApiSchema } from "@/lib/api";
 
 const statusMap: Record<ApiSchema<"ChecklistSlotResult">["status"], Status> = {
@@ -108,149 +87,20 @@ function ordinal(n: number) {
   const suffix = new Intl.PluralRules("en", { type: "ordinal" }).select(n);
   return `${n}${suffix === "one" ? "st" : suffix === "two" ? "nd" : suffix === "few" ? "rd" : "th"}`;
 }
-const attemptHeaders = [
-  "Attempt",
-  "Term",
-  "Midterm",
-  "Final",
-  "Completion",
-  "Instructor",
-  "Result",
+const FILTER_OPTIONS = [
+  { value: "all", label: "All statuses" },
+  { value: "not_taken", label: "Not yet taken" },
+  { value: "passed", label: "Passed / credited" },
+  { value: "inc", label: "INC" },
+  { value: "currently_enrolled", label: "Currently enrolled" },
+  { value: "failed", label: "Failed" },
 ];
-const grade = (value: number | null | undefined) =>
-  value == null ? null : value.toFixed(2);
-function AttemptDetails({
-  row,
-  title,
-  meta,
-}: {
-  row: ApiSchema<"ChecklistSlotResult">;
-  title: string;
-  meta: string;
-}) {
-  const attempts = row.attempts ?? [];
-  const fixes = row.grade_fix_history ?? [];
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-auto rounded-lg px-3 py-1.5 text-[13px] font-semibold"
-        >
-          Course info
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        showCloseButton={false}
-        className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0 sm:max-w-240"
-      >
-        <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border px-5 pt-4.5 pb-4">
-          <div>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription className="mt-1.5 text-[13px]">
-              {meta}
-            </DialogDescription>
-          </div>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8.5 shrink-0 text-muted-foreground"
-              aria-label="Close"
-            >
-              <XIcon className="size-4.5" aria-hidden />
-            </Button>
-          </DialogClose>
-        </DialogHeader>
-        <div className="p-5">
-          <div className="flex items-center gap-2.5 text-sm">
-            <span>Status:</span>
-            <StatusBadge status={statusMap[row.status]} />
-            <span className="text-muted-foreground">
-              · {attempts.length}{" "}
-              {attempts.length === 1 ? "attempt" : "attempts"}
-            </span>
-          </div>
-          {attempts.length ? (
-            <Table className="mt-4">
-              <TableHeader className="bg-secondary">
-                <TableRow>
-                  {attemptHeaders.map((header) => (
-                    <TableHead
-                      key={header}
-                      className="px-3.5 text-[11.5px] font-semibold tracking-[0.09em] whitespace-nowrap text-muted-2 uppercase"
-                    >
-                      {header}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {attempts.map((a, index) => (
-                  <TableRow key={a.attempt_id}>
-                    <TableCell className="px-3.5 py-2.75">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="px-3.5 py-2.75 whitespace-normal">
-                      {a.term_label}
-                    </TableCell>
-                    <TableCell className="px-3.5 py-2.75">
-                      {grade(a.midterm_grade) ??
-                        (a.midterm_status === "dr" ? "DR" : "—")}
-                    </TableCell>
-                    <TableCell className="px-3.5 py-2.75">
-                      {grade(a.final_grade) ?? "—"}
-                    </TableCell>
-                    <TableCell className="px-3.5 py-2.75">
-                      {grade(a.completion_grade) ?? "—"}
-                    </TableCell>
-                    <TableCell className="px-3.5 py-2.75">
-                      <Truncate
-                        text={a.instructor || "—"}
-                        className="max-w-48"
-                      />
-                    </TableCell>
-                    <TableCell className="px-3.5 py-2.75">
-                      <StatusBadge status={statusMap[a.effective_status]} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="mt-4 text-[13.5px] text-muted-foreground">
-              No attempts recorded yet.
-            </p>
-          )}
-          <h3 className="mt-5.5 text-[15.5px] font-semibold">
-            Grade fix history
-          </h3>
-          {fixes.length ? (
-            <ul className="mt-2.5 grid gap-1.5 text-[13.5px] text-muted-foreground">
-              {fixes.map((entry, index) => (
-                <li key={`${entry.changed_at}:${index}`}>
-                  {new Date(entry.changed_at).toLocaleString()} ·{" "}
-                  {entry.old_grade ?? "—"} → {entry.new_grade ?? "—"}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-[13.5px] text-muted-foreground">
-              No grade fixes recorded.
-            </p>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 export default function AdviseeChecklist() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [filter, setFilter] = useState("all");
   const [revision, setRevision] = useState(0);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [selected, setSelected] = useState<CourseInfoSlotRecord | null>(null);
   const key = JSON.stringify([user?.id, id, revision]);
   const { data, error } = useScopedRequest(key, !!user?.id && !!id, () =>
     getChecklist(id!),
@@ -271,9 +121,68 @@ export default function AdviseeChecklist() {
   const visibleGroups = [...groups]
     .filter(([, items]) => items.some(matchesFilter))
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
-  const allCollapsed =
-    visibleGroups.length > 0 &&
-    visibleGroups.every(([label]) => !expanded.has(label));
+
+  function describe(r: ApiSchema<"ChecklistSlotResult">) {
+    const slot = data?.slots.find((s) => s.id === r.curriculum_term_course_id);
+    const course = data?.courses.find((c) => c.id === slot?.course_id);
+    const term = data?.terms.find((t) => t.id === slot?.curriculum_term_id);
+    const meta = [
+      `${r.required_units} ${r.required_units === 1 ? "unit" : "units"}`,
+      course?.category ? categoryLabels[course.category] : null,
+      term
+        ? `${ordinal(term.year_level)} Year, ${ordinal(term.term_sequence)} Semester`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const code = course?.code ?? slot?.slot_label ?? "Requirement unavailable";
+    return {
+      slot,
+      course,
+      code,
+      meta,
+      dialogSlot: {
+        ...r,
+        code,
+        title: course?.title ?? null,
+        meta,
+      } satisfies CourseInfoSlotRecord,
+    };
+  }
+
+  const terms = visibleGroups.map(([label, items]) => ({
+    id: label,
+    title: label,
+    passedUnits: items.reduce((sum, item) => sum + item.earned_units, 0),
+    totalUnits: items.reduce((sum, item) => sum + item.required_units, 0),
+    rows: items.filter(matchesFilter).map((r) => {
+      const { slot, course, code } = describe(r);
+      const sourceAttempt = r.attempts?.find(
+        (attempt) => attempt.attempt_id === r.source_attempt_id,
+      );
+      const sourceGrade =
+        sourceAttempt?.completion_grade ?? sourceAttempt?.final_grade;
+      const sourceDetail = [
+        r.credited_course_code,
+        sourceGrade != null ? `grade ${sourceGrade.toFixed(2)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return {
+        code,
+        title:
+          course?.title ??
+          (slot ? "Elective requirement" : r.curriculum_term_course_id),
+        unitsEarned: r.earned_units,
+        unitsRequired: r.required_units,
+        status: statusMap[r.status],
+        source: r.satisfaction_source ?? "—",
+        sourceDetail: sourceDetail || undefined,
+        attempts: r.attempts?.length ?? 0,
+      };
+    }),
+  }));
+
   return (
     <AdviserPage title="Checklist" tab="checklist" sample={false}>
       <AccountSkeleton
@@ -291,8 +200,8 @@ export default function AdviseeChecklist() {
         )}
         {data && (
           <>
-            <StatGrid
-              items={[
+            <ChecklistView
+              stats={[
                 {
                   label: "Cumulative GWA",
                   value: data.summary.gwa?.toFixed(2) ?? "—",
@@ -315,254 +224,26 @@ export default function AdviseeChecklist() {
                   note: deficiencyNote(data),
                 },
               ]}
+              filter={{
+                value: filter,
+                onChange: setFilter,
+                options: FILTER_OPTIONS,
+              }}
+              terms={terms}
+              onCourseInfo={(termId, code) => {
+                const items = groups.get(termId) ?? [];
+                const match = items.find((r) => describe(r).code === code);
+                if (match) setSelected(describe(match).dialogSlot);
+              }}
+              emptyMessage="No requirements match this filter."
             />
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <label className="grid w-56 gap-1 text-sm">
-                Show requirements
-                <select
-                  className="rounded-md border border-input bg-card px-3 py-2"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                >
-                  <option value="all">All statuses</option>
-                  <option value="not_taken">Not yet taken</option>
-                  <option value="passed">Passed / credited</option>
-                  <option value="inc">INC</option>
-                  <option value="currently_enrolled">Currently enrolled</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </label>
-              <Button
-                variant="outline"
-                className="ml-auto"
-                disabled={visibleGroups.length === 0}
-                onClick={() =>
-                  setExpanded((previous) => {
-                    const next = new Set(previous);
-                    for (const [label] of visibleGroups) {
-                      if (allCollapsed) next.add(label);
-                      else next.delete(label);
-                    }
-                    return next;
-                  })
-                }
-              >
-                {allCollapsed ? "Expand All" : "Collapse All"}
-              </Button>
-            </div>
-            {!visibleGroups.length && <p>No requirements match this filter.</p>}
-            {visibleGroups.map(([label, items]) => {
-              const passedUnits = items.reduce(
-                (sum, item) => sum + item.earned_units,
-                0,
-              );
-              const totalUnits = items.reduce(
-                (sum, item) => sum + item.required_units,
-                0,
-              );
-              return (
-                <Collapsible
-                  key={label}
-                  open={expanded.has(label)}
-                  onOpenChange={(open) =>
-                    setExpanded((previous) => {
-                      const next = new Set(previous);
-                      if (open) next.add(label);
-                      else next.delete(label);
-                      return next;
-                    })
-                  }
-                  className="mb-4 min-w-0 overflow-hidden rounded-md border border-border bg-card"
-                >
-                  <CollapsibleTrigger
-                    className={`flex w-full flex-wrap items-start justify-between gap-4 px-5 py-4 text-left hover:bg-secondary/40 ${expanded.has(label) ? "border-b border-line-soft" : ""}`}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15.5px] font-semibold">
-                        {label}
-                      </span>
-                      <span className="mt-0.75 block text-[13px] text-muted-foreground">
-                        Curriculum position · course availability depends on the
-                        school term.
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-5 text-right sm:gap-7">
-                      <span>
-                        <Kicker className="block text-[10px]">
-                          Passed units
-                        </Kicker>
-                        <span className="font-heading font-bold text-primary">
-                          {passedUnits}/{totalUnits}
-                        </span>
-                      </span>
-                      <span>
-                        <Kicker className="block text-[10px]">
-                          Total units
-                        </Kicker>
-                        <span className="font-heading font-bold text-primary">
-                          {totalUnits}
-                        </span>
-                      </span>
-                      <span>
-                        <Kicker className="block text-[10px]">
-                          Semester GWA
-                        </Kicker>
-                        <span
-                          className="font-heading font-bold text-primary"
-                          aria-label="Semester GWA unavailable"
-                        >
-                          —
-                        </span>
-                      </span>
-                      <ChevronDownIcon
-                        className={`size-4 text-muted-foreground transition-transform ${expanded.has(label) ? "" : "-rotate-90"}`}
-                        aria-hidden
-                      />
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <Table responsive className="table-auto">
-                      <colgroup>
-                        {[27, 15, 13, 21, 11, 13].map((w, i) => (
-                          <col key={i} style={{ width: `${w}%` }} />
-                        ))}
-                      </colgroup>
-                      <TableHeader>
-                        <TableRow className="border-b border-border hover:bg-secondary">
-                          {[
-                            "Requirement",
-                            "Units earned / required",
-                            "Status",
-                            "Satisfaction source",
-                            "Attempts",
-                            "Course info",
-                          ].map((header) => (
-                            <TableHead
-                              key={header}
-                              className="h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase"
-                            >
-                              {header}
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {items.filter(matchesFilter).map((r) => {
-                          const slot = data.slots.find(
-                            (s) => s.id === r.curriculum_term_course_id,
-                          );
-                          const course = data.courses.find(
-                            (c) => c.id === slot?.course_id,
-                          );
-                          const title = course
-                            ? `${course.code} · ${course.title}`
-                            : (slot?.slot_label ?? "Requirement");
-                          const term = data.terms.find(
-                            (t) => t.id === slot?.curriculum_term_id,
-                          );
-                          const meta = [
-                            `${r.required_units} ${r.required_units === 1 ? "unit" : "units"}`,
-                            course?.category
-                              ? categoryLabels[course.category]
-                              : null,
-                            term
-                              ? `${ordinal(term.year_level)} Year, ${ordinal(term.term_sequence)} Semester`
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ");
-                          const sourceAttempt = r.attempts?.find(
-                            (attempt) =>
-                              attempt.attempt_id === r.source_attempt_id,
-                          );
-                          const sourceGrade =
-                            sourceAttempt?.completion_grade ??
-                            sourceAttempt?.final_grade;
-                          return (
-                            <TableRow
-                              key={r.curriculum_term_course_id}
-                              className="border-line-soft"
-                            >
-                              <TableCell
-                                label="Requirement"
-                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                              >
-                                <b className="block font-semibold">
-                                  {course?.code ??
-                                    slot?.slot_label ??
-                                    "Requirement unavailable"}
-                                </b>
-                                <Truncate
-                                  text={
-                                    course?.title ??
-                                    (slot
-                                      ? "Elective requirement"
-                                      : r.curriculum_term_course_id)
-                                  }
-                                  className="mt-0.5 max-w-64 text-[12.5px] text-muted-foreground"
-                                />
-                              </TableCell>
-                              <TableCell
-                                label="Units earned / required"
-                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                              >
-                                {r.earned_units} / {r.required_units}
-                              </TableCell>
-                              <TableCell
-                                label="Status"
-                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                              >
-                                <StatusBadge status={statusMap[r.status]} />
-                              </TableCell>
-                              <TableCell
-                                label="Satisfaction source"
-                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                              >
-                                <Truncate
-                                  text={r.satisfaction_source ?? "—"}
-                                  className="max-w-56"
-                                />
-                                {(r.credited_course_code ||
-                                  sourceGrade != null) && (
-                                  <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                                    {r.credited_course_code}
-                                    {r.credited_course_code &&
-                                    sourceGrade != null
-                                      ? " · "
-                                      : ""}
-                                    {sourceGrade != null
-                                      ? `grade ${sourceGrade.toFixed(2)}`
-                                      : ""}
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell
-                                label="Attempts"
-                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                              >
-                                {r.attempts?.length
-                                  ? `${r.attempts.length} ${r.attempts.length === 1 ? "attempt" : "attempts"}`
-                                  : "—"}
-                              </TableCell>
-                              <TableCell
-                                label="Course info"
-                                className="px-3.5 py-2.75 text-[13.5px] whitespace-normal"
-                              >
-                                <AttemptDetails
-                                  row={r}
-                                  title={title}
-                                  meta={meta}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            })}
+            <CourseInfoDialog
+              open={selected !== null}
+              onOpenChange={(open) => {
+                if (!open) setSelected(null);
+              }}
+              slot={selected}
+            />
           </>
         )}
       </AccountSkeleton>
