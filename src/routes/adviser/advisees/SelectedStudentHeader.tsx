@@ -42,16 +42,22 @@ export function SelectedStudentHeader({ id }: { id: string }) {
       yearLabel={`Year ${data.year_level}`}
       email={data.email}
       standing={
-        data.is_delinquent
+        data.is_delinquent ||
+        data.standing === "probation" ||
+        data.standing === "dismissed"
           ? "delinquent"
-          : data.standing === "good_standing"
-            ? "good"
-            : "flagged"
+          : data.open_flags_count > 0 || data.standing === "warning"
+            ? "flagged"
+            : "good"
       }
       standingLabel={
-        data.is_delinquent
+        data.is_delinquent ||
+        data.standing === "probation" ||
+        data.standing === "dismissed"
           ? "Delinquency flag"
-          : data.standing.replaceAll("_", " ")
+          : data.open_flags_count > 0
+            ? "Open grade flag"
+            : data.standing.replaceAll("_", " ")
       }
     />
   );

@@ -139,6 +139,14 @@ describe("advisee identity", () => {
     expect(await screen.findByText("Second Student")).toBeTruthy();
     expect(getRoster).toHaveBeenCalledWith("past", "");
   });
+  it("shows an advisee with an open grade flag as flagged in the student header", async () => {
+    vi.mocked(getSelectedStudent).mockResolvedValue({
+      ...first,
+      open_flags_count: 1,
+    });
+    render(<SelectedStudentHeader id={first.student_id} />);
+    expect(await screen.findByText("Open grade flag")).toBeTruthy();
+  });
   it("clears the previous identity on student and account changes", async () => {
     vi.mocked(getSelectedStudent)
       .mockResolvedValueOnce(first)
@@ -223,7 +231,7 @@ describe("advisee identity", () => {
     expect(screen.getByText("First Student")).toBeTruthy();
     expect(screen.queryByText("Second Student")).toBeNull();
   });
-  it("keeps a student with an open grade flag in good standing", async () => {
+  it("shows a student with an open grade flag as flagged", async () => {
     vi.mocked(getRoster).mockResolvedValue([
       first,
       { ...second, open_flags_count: 1, deficiencies_count: 1 },
@@ -236,18 +244,19 @@ describe("advisee identity", () => {
     const row = await screen.findByRole("row", {
       name: "Open Second Student's record",
     });
-    expect(row.querySelector('[data-status="good"]')?.textContent).toBe(
-      "Good standing",
+    expect(row.querySelector('[data-status="flagged"]')?.textContent).toBe(
+      "Flagged",
     );
     expect(row.textContent).toContain("CS 101");
     fireEvent.change(screen.getByLabelText("Standing"), {
       target: { value: "flagged" },
     });
     expect(screen.queryByText("First Student")).toBeNull();
-    expect(screen.queryByText("Second Student")).toBeNull();
+    expect(screen.getByText("Second Student")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Standing"), {
       target: { value: "good" },
     });
-    expect(screen.getByText("Second Student")).toBeTruthy();
+    expect(screen.queryByText("Second Student")).toBeNull();
+    expect(screen.getByText("First Student")).toBeTruthy();
   });
 });

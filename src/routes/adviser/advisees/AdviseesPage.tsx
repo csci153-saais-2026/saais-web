@@ -37,7 +37,15 @@ export default function AdviseesPage() {
     getRoster(scope, search),
   );
   const isFlagged = (row: NonNullable<typeof data>[number]) =>
-    row.standing !== "good_standing";
+    row.open_flags_count > 0 || row.standing !== "good_standing";
+  const displayStanding = (row: NonNullable<typeof data>[number]) =>
+    row.is_delinquent ||
+    row.standing === "probation" ||
+    row.standing === "dismissed"
+      ? "delinquent"
+      : isFlagged(row)
+        ? "flagged"
+        : "good";
   const rows = data?.filter(
     (row) =>
       standing === "all" ||
@@ -195,7 +203,7 @@ export default function AdviseesPage() {
               {
                 header: "Standing",
                 cell: (r) => (
-                  <StatusBadge status={isFlagged(r) ? "flagged" : "good"} />
+                  <StatusBadge status={displayStanding(r)} />
                 ),
               },
               {
