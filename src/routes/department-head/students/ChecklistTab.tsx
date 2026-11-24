@@ -4,13 +4,13 @@ import {
   ChecklistTermGroup,
   type ChecklistRow,
 } from "@/components/features/checklist-term-group";
+import { CourseInfoDialog } from "@/components/features/course-info-dialog";
 import type { Status } from "@/components/ui/status-badge";
 import type { ApiSchema } from "@/lib/api";
 import { getChecklist } from "@/routes/adviser/advisees/checklist/record.api";
 import { QueryMessage } from "../shared/dh-ui";
 import type { DirectoryStudent } from "../shared/students-types";
 import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
-import { CourseInfoDialog, type CourseInfo } from "./CourseInfoDialog";
 
 const STATUS: Record<ApiSchema<"AttemptStatus">, Status> = {
   na: "na",
@@ -40,9 +40,14 @@ function ordinal(n: number) {
 }
 
 type Checklist = Awaited<ReturnType<typeof getChecklist>>;
+type ChecklistCourse = {
+  result: Checklist["results"][number];
+  title: string;
+  meta: string;
+};
 type TermGroup = {
   title: string;
-  rows: (ChecklistRow & { info: CourseInfo })[];
+  rows: (ChecklistRow & { course: ChecklistCourse })[];
 };
 
 function toTerms(data: Checklist): TermGroup[] {
@@ -83,14 +88,12 @@ function toTerms(data: Checklist): TermGroup[] {
       ...(groups.get(title) ?? []),
       {
         ...row,
-        info: {
+        course: {
+          result,
           title: course
             ? `${course.code} · ${course.title}`
             : (slot?.slot_label ?? "Requirement"),
           meta,
-          status: row.status,
-          attempts,
-          gradeFixes: result.grade_fix_history ?? [],
         },
       },
     ]);
@@ -101,7 +104,7 @@ function toTerms(data: Checklist): TermGroup[] {
 }
 
 export function ChecklistTab({ student }: { student: DirectoryStudent }) {
-  const [selected, setSelected] = useState<CourseInfo | null>(null);
+  const [selected, setSelected] = useState<ChecklistCourse | null>(null);
   const checklist = useQuery({
     queryKey: [
       ...useDepartmentHeadQueryKey(["department-head", "checklist"]),
@@ -112,9 +115,6 @@ export function ChecklistTab({ student }: { student: DirectoryStudent }) {
   if (!checklist.data)
     return <QueryMessage query={checklist} label="the checklist" />;
   const terms = toTerms(checklist.data);
-  const find = (code: string) =>
-    terms.flatMap((term) => term.rows).find((row) => row.code === code)?.info ??
-    null;
   return (
     <div className="min-w-0 **:data-[slot=collapsible-trigger]:flex-wrap [&_[data-slot=collapsible-trigger]>span:first-child]:basis-full sm:**:data-[slot=collapsible-trigger]:flex-nowrap sm:[&_[data-slot=collapsible-trigger]>span:first-child]:basis-auto">
       {terms.map((term) => (
@@ -130,14 +130,26 @@ export function ChecklistTab({ student }: { student: DirectoryStudent }) {
             (total, row) => total + row.unitsRequired,
             0,
           )}
-          onCourseInfo={(code) => setSelected(find(code))}
+          onCourseInfo={(code) =>
+            setSelected(
+              term.rows.find((row) => row.code === code)?.course ?? null,
+            )
+          }
         />
       ))}
       {terms.length === 0 && (
         <p>No checklist is available for this curriculum.</p>
       )}
       {selected && (
-        <CourseInfoDialog course={selected} onClose={() => setSelected(null)} />
+        <CourseInfoDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelected(null);
+          }}
+          slot={selected.result}
+          title={selected.title}
+          meta={selected.meta}
+        />
       )}
     </div>
   );
