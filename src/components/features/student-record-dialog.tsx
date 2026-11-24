@@ -4,6 +4,7 @@ import {
   StudentRecordHeader,
 } from "@/components/features/student-record-header";
 import { Button } from "@/components/ui/button";
+import { TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogClose,
@@ -35,6 +36,8 @@ function StudentRecordDialog({
   tabs = DEFAULT_TABS,
   activeTab,
   onActiveTabChange,
+  recordLabel = "Academic record",
+  returnFocusTo,
   children,
 }: {
   open: boolean;
@@ -44,20 +47,37 @@ function StudentRecordDialog({
   tabs?: StudentRecordDialogTab[];
   activeTab: string;
   onActiveTabChange: (value: string) => void;
+  recordLabel?: string;
+  returnFocusTo?: HTMLElement | null;
   /** Content of the active tab. */
   children?: React.ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(85dvh,760px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+      <DialogContent
+        className="flex h-[min(85dvh,760px)] w-[calc(100%-2rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl"
+        onCloseAutoFocus={(event) => {
+          if (returnFocusTo?.isConnected) {
+            event.preventDefault();
+            returnFocusTo.focus();
+          }
+        }}
+      >
         {/* The visible name lives in the record header; these give the dialog its accessible name. */}
         <DialogHeader className="sr-only">
           <DialogTitle>
-            {student ? `${student.name} · Academic record` : "Student record"}
+            {student ? `${student.name} · ${recordLabel}` : "Student record"}
           </DialogTitle>
           <DialogDescription>
             {student
-              ? `${student.studentNumber} · ${student.program} · ${student.yearLabel}`
+              ? [
+                  student.studentNumber,
+                  student.program,
+                  student.curriculum,
+                  student.yearLabel,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               : ""}
           </DialogDescription>
         </DialogHeader>
@@ -70,8 +90,10 @@ function StudentRecordDialog({
                 tabs={tabs}
                 value={activeTab}
                 onValueChange={onActiveTabChange}
-              />
-              {children}
+                label="Student record sections"
+              >
+                <TabsContent value={activeTab}>{children}</TabsContent>
+              </RecordTabs>
             </>
           )}
         </div>

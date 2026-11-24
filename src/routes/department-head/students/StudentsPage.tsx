@@ -18,7 +18,10 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [curriculum, setCurriculum] = useState("all");
   const [adviser, setAdviser] = useState("all");
-  const [selected, setSelected] = useState<DirectoryStudent | null>(null);
+  const [selected, setSelected] = useState<{
+    student: DirectoryStudent;
+    trigger: HTMLButtonElement | null;
+  } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const query = search.trim().toLowerCase();
   const filtered = students.filter(
@@ -81,13 +84,16 @@ export default function StudentsPage() {
               variant="department-head"
               students={filtered}
               totalCount={students.length}
-              onSelectStudent={setSelected}
+              onSelectStudent={(student, trigger) =>
+                setSelected({ student, trigger })
+              }
             />
           </Panel>
           {selected && (
             <StudentRecordDialog
-              key={selected.id}
-              student={selected}
+              key={selected.student.id}
+              student={selected.student}
+              returnFocusTo={selected.trigger}
               onClose={() => setSelected(null)}
             />
           )}
