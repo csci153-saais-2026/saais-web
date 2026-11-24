@@ -208,17 +208,17 @@ export function readAssistantConfig(
   };
 }
 
-async function readBoundedJson(response: Response): Promise<unknown> {
-  if (!response.ok) {
-    try {
-      void response.body?.cancel().catch(() => {});
-    } catch {
-      // Cleanup must not prevent fallback to another provider.
-    }
-    throw new Error("Assistant provider unavailable.");
-  }
+async function readBoundedJson(
+  response: Response,
+  signal: AbortSignal,
+): Promise<unknown> {
   if (!response.body) throw new Error("Assistant provider unavailable.");
   const reader = response.body.getReader();
+  const cancel = () => {
+    void reader.cancel().catch(() => {});
+  };
+  if (signal.aborted) cancel();
+  else signal.addEventListener("abort", cancel, { once: true });
   const decoder = new TextDecoder();
   let raw = "";
   let bytes = 0;
@@ -228,12 +228,13 @@ async function readBoundedJson(response: Response): Promise<unknown> {
       if (done) break;
       bytes += value.byteLength;
       if (bytes > 65536) {
-        await reader.cancel();
+        cancel();
         throw new Error("Assistant response exceeds the byte limit.");
       }
       raw += decoder.decode(value, { stream: true });
     }
   } finally {
+    signal.removeEventListener("abort", cancel);
     reader.releaseLock();
   }
   return JSON.parse(raw + decoder.decode());
@@ -401,14 +402,31 @@ async function requestProviderAnswer(
           ],
         };
 
+  const signal = AbortSignal.timeout(timeoutMs);
   const response = await fetcher(url.href, {
     method: "POST",
     redirect: "error",
     headers,
-    signal: AbortSignal.timeout(timeoutMs),
+    signal,
     body: JSON.stringify(body),
   });
-  const result = await readBoundedJson(response);
+  if (!response.ok) {
+    if (response.body) {
+      let errorBody: unknown;
+      try {
+        errorBody = await readBoundedJson(response, signal);
+      } catch {
+        // Malformed or oversized error payloads remain ordinary failures.
+      }
+      const error = (errorBody as { error?: { code?: unknown } } | null)?.error;
+      if (error?.code === "content_filter")
+        throw new ProviderSafetyError(
+          "Assistant request was blocked by the provider.",
+        );
+    }
+    throw new Error("Assistant provider unavailable.");
+  }
+  const result = await readBoundedJson(response, signal);
   const answer = extractAnswer(protocol, result);
   if (!answer) throw new Error("Assistant provider returned no answer.");
   return answer;

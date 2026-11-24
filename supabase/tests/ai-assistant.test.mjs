@@ -667,34 +667,44 @@ test("non-OK response streams are cancelled without blocking fallback", async ()
       endpoint: "https://fallback.example.test/chat/completions",
     },
   ];
-  for (const failCleanup of [false, true]) {
-    let calls = 0;
-    let cancelled = false;
-    const result = await assistantAnswer(
-      { ...settings.assistant, providers },
-      async () => {
-        calls++;
-        if (calls === 1)
-          return new Response(
-            new ReadableStream({
-              cancel() {
-                cancelled = true;
-                return failCleanup
-                  ? Promise.reject(new Error("cancel failed"))
-                  : new Promise(() => {});
-              },
-            }),
-            { status: 429 },
-          );
-        assert.equal(cancelled, true);
-        return Response.json({
-          choices: [{ message: { content: "Fallback answer" } }],
-        });
-      },
-      context,
-    );
-    assert.equal(result.answer, "Fallback answer");
-    assert.equal(calls, 2);
+  const originalTimeout = AbortSignal.timeout;
+  try {
+    AbortSignal.timeout = () => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 10);
+      return controller.signal;
+    };
+    for (const failCleanup of [false, true]) {
+      let calls = 0;
+      let cancelled = false;
+      const result = await assistantAnswer(
+        { ...settings.assistant, providers },
+        async () => {
+          calls++;
+          if (calls === 1)
+            return new Response(
+              new ReadableStream({
+                cancel() {
+                  cancelled = true;
+                  return failCleanup
+                    ? Promise.reject(new Error("cancel failed"))
+                    : new Promise(() => {});
+                },
+              }),
+              { status: 429 },
+            );
+          assert.equal(cancelled, true);
+          return Response.json({
+            choices: [{ message: { content: "Fallback answer" } }],
+          });
+        },
+        context,
+      );
+      assert.equal(result.answer, "Fallback answer");
+      assert.equal(calls, 2);
+    }
+  } finally {
+    AbortSignal.timeout = originalTimeout;
   }
 });
 
@@ -718,4 +728,124 @@ test("an empty unfiltered Gemini response can still fall back", async () => {
   );
   assert.equal(result.answer, "Fallback");
   assert.equal(calls, 2);
+});
+
+test("HTTP content-filter errors stop fallback without exposing provider details", async () => {
+  const providers = [
+    settings.assistant,
+    {
+      ...settings.assistant,
+      endpoint: "https://fallback.example.test/chat/completions",
+    },
+  ];
+  for (const status of [400, 403, 429, 503]) {
+    let calls = 0;
+    await assert.rejects(
+      assistantAnswer(
+        { ...settings.assistant, providers },
+        async () => {
+          calls++;
+          return Response.json(
+            {
+              error: {
+                code: "content_filter",
+                message: "private filtering details",
+              },
+            },
+            { status },
+          );
+        },
+        context,
+      ),
+      /blocked by the provider/,
+    );
+    assert.equal(calls, 1);
+  }
+  const response = await assistantHandler(() =>
+    Response.json(
+      {
+        error: { code: "content_filter", message: "private filtering details" },
+      },
+      { status: 400 },
+    ),
+  )(ask());
+  assert.equal(response.status, 500);
+  assert.equal(
+    (await response.json()).message,
+    "The operation could not be completed.",
+  );
+});
+
+test("ordinary, malformed, and oversized HTTP 400 errors allow fallback", async () => {
+  const providers = [
+    settings.assistant,
+    {
+      ...settings.assistant,
+      endpoint: "https://fallback.example.test/chat/completions",
+    },
+  ];
+  for (const makeError of [
+    () =>
+      Response.json({ error: { code: "invalid_request" } }, { status: 400 }),
+    () => new Response("not json", { status: 400 }),
+    () => new Response("x".repeat(65537), { status: 400 }),
+  ]) {
+    let calls = 0;
+    const result = await assistantAnswer(
+      { ...settings.assistant, providers },
+      async () => {
+        calls++;
+        return calls === 1
+          ? makeError()
+          : Response.json({ choices: [{ message: { content: "Fallback" } }] });
+      },
+      context,
+    );
+    assert.equal(result.answer, "Fallback");
+    assert.equal(calls, 2);
+  }
+});
+
+test("a stalled HTTP error body respects the attempt timeout and falls back", async () => {
+  const providers = [
+    settings.assistant,
+    {
+      ...settings.assistant,
+      endpoint: "https://fallback.example.test/chat/completions",
+    },
+  ];
+  const originalTimeout = AbortSignal.timeout;
+  let calls = 0;
+  try {
+    AbortSignal.timeout = () => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 10);
+      return controller.signal;
+    };
+    const answer = await assistantAnswer(
+      { ...settings.assistant, providers },
+      async (_url, options) => {
+        calls++;
+        if (calls === 1)
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                options.signal.addEventListener("abort", () =>
+                  controller.error(new Error("timeout")),
+                );
+              },
+            }),
+            { status: 400 },
+          );
+        return Response.json({
+          choices: [{ message: { content: "Fallback" } }],
+        });
+      },
+      context,
+    );
+    assert.equal(answer.answer, "Fallback");
+    assert.equal(calls, 2);
+  } finally {
+    AbortSignal.timeout = originalTimeout;
+  }
 });
