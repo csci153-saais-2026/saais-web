@@ -1,6 +1,7 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useRef, useState } from "react";
 import { ReportStatsSection } from "@/components/features/report-stats-section";
+import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
 import { CohortGwaTable } from "@/components/features/cohort-gwa-table";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
@@ -16,7 +17,7 @@ import {
   getCohortStudents,
 } from "./report-model";
 import type { DepartmentPdfDocument } from "../shared/department-pdf";
-import { PdfViewerDialog } from "../shared/PdfViewerDialog";
+import { useDepartmentPdfUrl } from "../shared/useDepartmentPdfUrl";
 import { buildReportPdf } from "./report-pdf";
 import { useReportSource } from "./reports-api";
 import {
@@ -32,6 +33,7 @@ export default function DepartmentReportsPage() {
   const cohortOpener = useRef<HTMLButtonElement | null>(null);
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<DepartmentPdfDocument | null>(null);
+  const pdfPreview = useDepartmentPdfUrl(pdf);
   const data = source.data;
   const term = pickedTerm || data?.currentTermId || data?.terms[0]?.value || "";
   const termLabel =
@@ -180,7 +182,16 @@ export default function DepartmentReportsPage() {
               />
             </div>
           )}
-          <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
+          <PdfViewerDialog
+            open={pdf !== null}
+            onOpenChange={(open) => {
+              if (!open) setPdf(null);
+            }}
+            title={pdf?.title ?? ""}
+            filename={pdf?.filename ?? ""}
+            url={pdfPreview.url}
+            error={pdfPreview.error}
+          />
           <CohortStudentsDialog
             open={cohort !== null}
             onOpenChange={(open) => {
