@@ -42,4 +42,11 @@ describe("department PDF metadata", () => {
     });
     expect(await loadDepartmentPdfMetadata("department-a")).toBeUndefined();
   });
+
+  it("forwards cancellation to the metadata request", async () => {
+    api.read.mockResolvedValue({ data: [], response: new Response() });
+    const { signal } = new AbortController();
+    await loadDepartmentPdfMetadata("department-a", signal);
+    expect(api.read.mock.calls[0][1].signal).toBe(signal);
+  });
 });
