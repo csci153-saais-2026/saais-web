@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 /** Mockup dialog: 680px wide, title row, body and footer separated by hairlines. */
 export function TermDialog({
@@ -32,4 +39,3 @@ export function TermDialog({
     </Dialog>
   );
 }
-

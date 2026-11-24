@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TermDialog } from "./TermDialog";
+import { TermDetailsDialog } from "./TermDetailsDialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -44,8 +45,6 @@ const SEMESTER_OPTIONS = ["1st semester", "2nd semester", "Midyear"] as const;
 const TH =
   "h-auto bg-secondary px-3.5 py-2.5 text-[11.5px] font-semibold tracking-[0.09em] text-muted-2 uppercase";
 const TD = "px-3.5 py-[11px] text-[13.5px] leading-normal";
-const DETAIL_LABEL = "text-xs text-muted-2";
-const DETAIL_VALUE = "mt-1 text-[13.5px] font-medium text-foreground";
 
 export default function AcademicTermsPage() {
   const termsQuery = useAcademicTerms();
@@ -470,64 +469,10 @@ export default function AcademicTermsPage() {
             )}
           </TermDialog>
 
-          {/* Term Details Dialog */}
-          <TermDialog
-            open={!!termToView}
-            onOpenChange={(open) => !open && setTermToView(null)}
-            title="Academic term details"
-            footer={
-              <Button variant="outline" onClick={() => setTermToView(null)}>
-                Close
-              </Button>
-            }
-          >
-            {termToView && (
-              <dl className="grid grid-cols-2 gap-5">
-                <div>
-                  <dt className={DETAIL_LABEL}>Academic year</dt>
-                  <dd className={DETAIL_VALUE}>{termToView.academicYear}</dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Semester</dt>
-                  <dd className={DETAIL_VALUE}>{termToView.semester}</dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Term dates</dt>
-                  <dd className={DETAIL_VALUE}>{termToView.termDates}</dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Encoding deadline</dt>
-                  <dd className={DETAIL_VALUE}>
-                    {termToView.encodingDeadline}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Status</dt>
-                  <dd className="mt-1">
-                    <StatusBadge
-                      status={
-                        termToView.status === "Open" ? "current" : "archived"
-                      }
-                    >
-                      {termToView.status}
-                    </StatusBadge>
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DETAIL_LABEL}>Closed by</dt>
-                  <dd className={DETAIL_VALUE}>
-                    {termToView.closedBy ?? "Dr. Andrea Dela Cruz"}
-                  </dd>
-                </div>
-                {termToView.closureNote && (
-                  <div className="col-span-2">
-                    <dt className={DETAIL_LABEL}>Closure note</dt>
-                    <dd className={DETAIL_VALUE}>{termToView.closureNote}</dd>
-                  </div>
-                )}
-              </dl>
-            )}
-          </TermDialog>
+          <TermDetailsDialog
+            term={termToView}
+            onClose={() => setTermToView(null)}
+          />
 
           <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
         </div>
