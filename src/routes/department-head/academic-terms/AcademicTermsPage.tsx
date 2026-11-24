@@ -5,6 +5,7 @@ import { FormField } from "@/components/features/form-field";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { AcademicTermsTable } from "@/components/features/academic-terms-table";
+import { PdfViewerDialog } from "@/components/features/pdf-viewer-dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TermDialog } from "./TermDialog";
@@ -22,7 +23,7 @@ import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { QueryMessage } from "../shared/dh-ui";
 import { useNotify } from "../shared/notify-context";
 import type { DepartmentPdfDocument } from "../shared/department-pdf";
-import { PdfViewerDialog } from "../shared/PdfViewerDialog";
+import { useDepartmentPdfUrl } from "../shared/useDepartmentPdfUrl";
 import {
   useAcademicTerms,
   useCloseEncoding,
@@ -61,6 +62,7 @@ export default function AcademicTermsPage() {
   const [newStatus, setNewStatus] = React.useState<"Open" | "Closed">("Open");
 
   const [pdf, setPdf] = React.useState<DepartmentPdfDocument | null>(null);
+  const pdfPreview = useDepartmentPdfUrl(pdf);
   const handleExportPdf = () => setPdf(buildTermsPdf(terms));
 
   const handleCreateTerm = async () => {
@@ -400,7 +402,16 @@ export default function AcademicTermsPage() {
             onClose={() => setTermToView(null)}
           />
 
-          <PdfViewerDialog document={pdf} onClose={() => setPdf(null)} />
+          <PdfViewerDialog
+            open={pdf !== null}
+            onOpenChange={(open) => {
+              if (!open) setPdf(null);
+            }}
+            title={pdf?.title ?? ""}
+            filename={pdf?.filename ?? ""}
+            url={pdfPreview.url}
+            error={pdfPreview.error}
+          />
         </div>
       )}
     </AccountSkeleton>
