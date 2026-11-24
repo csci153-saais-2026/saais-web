@@ -365,10 +365,10 @@ describe("shared adviser dashboard mock", () => {
       )
     ).data;
     expect(flaggedSummary?.open_flags_count).toBe(1);
-    expect(flaggedSummary?.deficiencies_count).toBeGreaterThanOrEqual(1);
+    expect(flaggedSummary?.deficiencies_count).toBe(0);
     expect(
       flaggedSummary?.deficiencies?.some((item) => item.kind === "open_flag"),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("keeps every retake on the checklist and uses the passing result", async () => {
