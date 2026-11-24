@@ -10,6 +10,7 @@ import {
 import { MemoryRouter } from "react-router";
 import { apiClient, type ApiSchema } from "@/lib/api";
 import { StudentProfilePage, StudentProfileView } from "./StudentProfilePage";
+import * as photoApi from "./student-profile.api";
 
 afterEach(() => {
   cleanup();
@@ -167,6 +168,84 @@ describe("StudentProfileView", () => {
 });
 
 describe("StudentProfilePage", () => {
+  it("updates and removes the photo and refreshes sidebar data", async () => {
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn().mockResolvedValue({ width: 2, height: 2, close: vi.fn() }),
+    );
+    const upload = vi
+      .spyOn(photoApi, "uploadStudentPhotoObject")
+      .mockResolvedValue({
+        storagePath: "students/stu-1/upload-one.png",
+        avatarUrl: "/student-photos/students/stu-1/upload-one.png",
+      });
+    const cleanupStaging = vi
+      .spyOn(photoApi, "removeStudentPhotoStagingObject")
+      .mockResolvedValue(undefined);
+    let current = mockProfile;
+    vi.spyOn(apiClient, "GET").mockImplementation(
+      (path: string) =>
+        Promise.resolve({
+          data: path === "/rest/v1/profile" ? [current] : [],
+          response: new Response(),
+        }) as never,
+    );
+    const put = vi.spyOn(apiClient, "PUT").mockImplementation(() => {
+      current = {
+        ...mockProfile,
+        avatar_url:
+          "/storage/v1/object/authenticated/student-photos/students/stu-1/validated-one.png",
+      };
+      return Promise.resolve({
+        data: current,
+        response: new Response(),
+      }) as never;
+    });
+    vi.spyOn(apiClient, "DELETE").mockImplementation(() => {
+      current = mockProfile;
+      return Promise.resolve({
+        data: current,
+        response: new Response(),
+      }) as never;
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <StudentProfilePage studentId="stu-1" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const input = await screen.findByLabelText("Upload profile photo");
+    const file = new File(
+      [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
+      "photo.png",
+      { type: "image/png" },
+    );
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(upload).toHaveBeenCalledWith("stu-1", file, "image/png");
+    await waitFor(() =>
+      expect(cleanupStaging).toHaveBeenCalledWith(
+        "students/stu-1/upload-one.png",
+      ),
+    );
+    expect(queryClient.getQueryData(["sidebar-student-photo", "stu-1"])).toBe(
+      current.avatar_url,
+    );
+    const remove = screen.getByRole("button", {
+      name: "Remove photo",
+    }) as HTMLButtonElement;
+    await waitFor(() => expect(remove.disabled).toBe(false));
+    fireEvent.click(remove);
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData(["sidebar-student-photo", "stu-1"]),
+      ).toBeNull(),
+    );
+  });
   it("shows Loading... while pending, Try again on error, and recovers on retry", async () => {
     let callCount = 0;
     vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {

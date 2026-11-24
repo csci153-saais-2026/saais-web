@@ -1,10 +1,11 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /** Avatar, name, meta line and standing badge for a single student record. */
 function StudentRecordHeader({
   name,
+  avatarUrl,
   initials,
   studentNumber,
   program,
@@ -14,6 +15,7 @@ function StudentRecordHeader({
   standingLabel,
 }: {
   name: string;
+  avatarUrl?: string | null;
   initials: string;
   studentNumber: string;
   program: string;
@@ -25,6 +27,7 @@ function StudentRecordHeader({
   return (
     <div className="mb-5 flex items-center gap-4">
       <Avatar className="size-[52px] shrink-0">
+        {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
         <AvatarFallback className="bg-primary font-heading text-lg font-bold text-primary-foreground">
           {initials}
         </AvatarFallback>

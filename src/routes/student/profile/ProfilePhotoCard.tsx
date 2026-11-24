@@ -4,6 +4,7 @@ import { Panel } from "@/components/features/panel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useStudentPhotoUrl } from "@/hooks/use-student-photo-url";
 import { studentPhotoFileSchema } from "./student-photo-schema";
 import { validateStudentPhotoImage } from "./student-photo-image";
 
@@ -31,6 +32,7 @@ export function ProfilePhotoCard({
   className,
 }: ProfilePhotoCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const displayUrl = useStudentPhotoUrl(avatarUrl);
   const [errorMessage, setErrorMessage] = React.useState<string>("");
   const [isValidating, setIsValidating] = React.useState(false);
   const mounted = React.useRef(true);
@@ -118,9 +120,9 @@ export function ProfilePhotoCard({
           aria-label="Profile photo preview"
           className="size-24 shrink-0 rounded-full"
         >
-          {avatarUrl ? (
+          {displayUrl ? (
             <AvatarImage
-              src={avatarUrl}
+              src={displayUrl}
               alt={fullName ? `${fullName} profile photo` : "Profile photo"}
               className="object-cover"
             />
