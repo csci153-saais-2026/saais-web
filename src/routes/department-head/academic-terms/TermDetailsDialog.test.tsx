@@ -15,6 +15,19 @@ const term: AcademicTermRecord = {
 };
 
 describe("Department Head term details", () => {
+  it("keeps closed term details read-only", () => {
+    render(<TermDetailsDialog term={term} onClose={() => {}} />);
+    expect(
+      screen.getByRole("dialog", { name: "Academic term details" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", {
+        name: /reopen|edit term|close encoding/i,
+      }),
+    ).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
   it("preserves the actual closure actor and note", () => {
     render(
       <TermDetailsDialog
