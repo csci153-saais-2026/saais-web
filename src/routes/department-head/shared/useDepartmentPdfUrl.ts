@@ -40,9 +40,13 @@ export function useDepartmentPdfUrl(document: DepartmentPdfDocument | null): {
     if (!document || !selectedHere) return;
     let active = true;
     let objectUrl: string | undefined;
+    const controller = new AbortController();
 
     const build = async () => {
-      const department = await loadDepartmentPdfMetadata(departmentId);
+      const department = await loadDepartmentPdfMetadata(
+        departmentId,
+        controller.signal,
+      );
       if (!active) return;
       const blob = await createDepartmentPdf(document, department);
       if (!active) return;
@@ -56,6 +60,7 @@ export function useDepartmentPdfUrl(document: DepartmentPdfDocument | null): {
 
     return () => {
       active = false;
+      controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [document, departmentId, scope, selectedHere]);

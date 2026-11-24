@@ -8,10 +8,12 @@ import {
 /** Read the selected department's letterhead without guessing organizational data. */
 export async function loadDepartmentPdfMetadata(
   departmentId: string | undefined,
+  signal?: AbortSignal,
 ): Promise<ApiSchema<"Department"> | undefined> {
   if (!departmentId) return undefined;
   const rows = unwrapApiResult(
     await apiClient.GET("/rest/v1/department", {
+      ...(signal ? { signal } : {}),
       params: {
         query: {
           id: postgrestFilter.eq(departmentId),
