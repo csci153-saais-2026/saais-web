@@ -26,6 +26,15 @@ async function openCohort() {
 }
 
 describe("Department report shared-component wiring", () => {
+  it("restores cohort action focus after keyboard dismissal", async () => {
+    const { opener, dialog } = await openCohort();
+    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(opener);
+    });
+  });
+
   it("returns keyboard focus to the selected cohort action after closing", async () => {
     const { opener, dialog } = await openCohort();
     const footer = dialog.querySelector<HTMLElement>(
