@@ -131,8 +131,8 @@ export function AcademicTermsTable({
       </Table>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-5 py-3 text-xs text-muted-2">
         <span>
-          {openCount} open {openCount === 1 ? "term" : "terms"} ·{" "}
-          {closedCount} closed {closedCount === 1 ? "term" : "terms"}
+          {openCount} open {openCount === 1 ? "term" : "terms"} · {closedCount}{" "}
+          closed {closedCount === 1 ? "term" : "terms"}
         </span>
         <span>{scopeLabel}</span>
       </div>
