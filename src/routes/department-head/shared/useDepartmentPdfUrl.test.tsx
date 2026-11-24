@@ -135,4 +135,20 @@ describe("useDepartmentPdfUrl", () => {
     expect(pdf.build).toHaveBeenCalledWith(report, department);
     expect(result.current.error).toBe(false);
   });
+
+  it("shows a safe error when department metadata cannot be read", async () => {
+    pdf.metadata.mockRejectedValue(new Error("Department request denied"));
+    const { result } = mountPdf(report);
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.url).toBeUndefined();
+    expect(pdf.build).not.toHaveBeenCalled();
+  });
+
+  it("shows a safe error when PDF creation fails", async () => {
+    pdf.build.mockRejectedValue(new Error("PDF generation failed"));
+    const { result } = mountPdf(report);
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.url).toBeUndefined();
+    expect(createUrl).not.toHaveBeenCalled();
+  });
 });
