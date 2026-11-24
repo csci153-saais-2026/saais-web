@@ -25,7 +25,6 @@ import { CurriculumTermDialog } from "./CurriculumTermDialog";
 import { CurriculumTermDeleteDialog } from "./CurriculumTermDeleteDialog";
 import { CurriculumSlotDialog } from "./CurriculumSlotDialog";
 import { CurriculumSlotDeleteDialog } from "./CurriculumSlotDeleteDialog";
-import { CurriculumNewCourseDialog } from "./CurriculumNewCourseDialog";
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -51,7 +50,6 @@ export default function CurriculaPage() {
     version: CurriculumVersion;
   } | null>(null);
   const [addingTerm, setAddingTerm] = useState<CurriculumVersion | null>(null);
-  const [addingNewCourse, setAddingNewCourse] = useState(false);
   const [termMessage, setTermMessage] = useState("");
   const [termAction, setTermAction] = useState<{
     action: "edit" | "delete";
@@ -189,18 +187,6 @@ export default function CurriculaPage() {
           }}
         />
       )}
-      {addingNewCourse && version && (
-        <CurriculumNewCourseDialog
-          key={version.id}
-          selectedVersion={version}
-          onClose={() => setAddingNewCourse(false)}
-          onCreated={(id) => {
-            setSelection(id);
-            setAddingNewCourse(false);
-            setTermMessage("New course was added to the curriculum.");
-          }}
-        />
-      )}
       {lifecycle && (
         <CurriculumVersionLifecycleDialog
           key={`${lifecycle.action}:${lifecycle.version.id}`}
@@ -270,6 +256,11 @@ export default function CurriculaPage() {
             </Button>
           </Panel>
         )}
+        {catalog.isSuccess && !version && (
+          <Panel title="Curriculum versions">
+            <p>No curriculum versions are available for your department.</p>
+          </Panel>
+        )}
         {catalog.isSuccess && version && (
           <>
             <Panel title="Curriculum versions">
@@ -316,17 +307,6 @@ export default function CurriculaPage() {
                   }}
                 >
                   Add term
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!detail.isSuccess || detail.isFetching}
-                  onClick={() => {
-                    setTermMessage("");
-                    setAddingNewCourse(true);
-                  }}
-                >
-                  New course
                 </Button>
               </div>
             </Panel>

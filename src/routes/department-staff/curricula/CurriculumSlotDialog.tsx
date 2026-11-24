@@ -20,11 +20,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ApiClientError } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import {
   useCreateCurriculumSlot,
   useCurriculumCourses,
   useManageCurriculumSlot,
 } from "@/hooks/use-curricula";
+import { useStaffScope } from "../shared/use-staff-scope";
+import { CourseDialog } from "../course-catalog/CourseDialog";
 import type {
   CurriculumSlot,
   CurriculumTerm,
@@ -82,14 +85,16 @@ export function CurriculumSlotDialog({
 }: CurriculumSlotDialogProps) {
   const creation = useCreateCurriculumSlot();
   const update = useManageCurriculumSlot();
+  const scope = useStaffScope();
   const editing = slot !== undefined;
-  const courseOptions = useCurriculumCourses(!editing);
+  const courseOptions = useCurriculumCourses();
   const mutation = editing ? update : creation;
   const submitting = useRef(false);
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CurriculumSlotValues>({
     resolver: zodResolver(curriculumSlotSchema),
@@ -172,90 +177,95 @@ export function CurriculumSlotDialog({
             disabled={pending}
             className="grid min-w-0 gap-4 sm:grid-cols-2"
           >
-            {editing ? (
-              <FormField
-                label="Course / slot"
-                htmlFor="curriculum-slot-label"
-                className="sm:col-span-2"
-                error={errors.slot_label?.message}
-              >
-                <Input
-                  id="curriculum-slot-label"
-                  maxLength={150}
-                  placeholder={courseLabel}
-                  aria-invalid={!!errors.slot_label}
-                  {...register("slot_label")}
+            <FormField
+              label="Course / slot"
+              htmlFor="curriculum-slot-label"
+              className="sm:col-span-2"
+              error={errors.slot_label?.message}
+            >
+              <Input
+                id="curriculum-slot-label"
+                maxLength={150}
+                placeholder={courseLabel}
+                aria-invalid={!!errors.slot_label}
+                {...register("slot_label")}
+              />
+              {scope.status === "ready" && (
+                <CourseDialog
+                  departmentId={scope.departmentId}
+                  triggerLabel="Create catalog course"
+                  onCreated={(course) => {
+                    setValue("course_id", course.id, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    notify.success(
+                      `Course ${course.code} created. Save this requirement to attach it.`,
+                    );
+                  }}
                 />
-              </FormField>
-            ) : (
-              <FormField
-                label="Course / slot"
-                htmlFor="curriculum-slot-course"
-                className="sm:col-span-2"
-                error={errors.course_id?.message ?? errors.slot_label?.message}
-              >
-                <Controller
-                  name="course_id"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={(courseId) => {
-                        field.onChange(courseId);
-                      }}
-                      disabled={
-                        pending ||
-                        courseOptions.isPending ||
-                        courseOptions.isError
-                      }
-                    >
-                      <SelectTrigger
-                        id="curriculum-slot-course"
-                        className="w-full"
-                        aria-invalid={!!errors.course_id}
-                      >
-                        <SelectValue placeholder="Select an active course" />
-                      </SelectTrigger>
-                      <SelectContent
-                        position="popper"
-                        side="bottom"
-                        avoidCollisions={false}
-                      >
-                        {(courseOptions.data ?? []).map((course) => (
-                          <SelectItem key={course.id} value={course.id}>
-                            {course.code} — {course.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {courseOptions.isPending && (
-                  <p role="status" className="text-xs text-muted-foreground">
-                    Loading active courses...
-                  </p>
+              )}
+            </FormField>
+            <FormField
+              label="Active course (optional)"
+              htmlFor="curriculum-slot-course"
+              className="sm:col-span-2"
+              error={errors.course_id?.message}
+            >
+              <Controller
+                name="course_id"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    {...field}
+                    id="curriculum-slot-course"
+                    className="w-full rounded-sm border border-input bg-card px-3 py-[9px] text-sm"
+                    aria-invalid={!!errors.course_id}
+                    disabled={pending || courseOptions.isError}
+                  >
+                    <option value="">Select an active course</option>
+                    {editing &&
+                      slot.course_id &&
+                      !(courseOptions.data ?? []).some(
+                        (course) => course.id === slot.course_id,
+                      ) && (
+                        <option value={slot.course_id}>
+                          Current course reference unavailable or inactive
+                        </option>
+                      )}
+                    {(courseOptions.data ?? []).map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.code} — {course.title}
+                      </option>
+                    ))}
+                  </select>
                 )}
-                {courseOptions.isError && (
-                  <div className="text-xs text-destructive">
-                    <p role="alert">{slotError(courseOptions.error, false)}</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={courseOptions.isFetching}
-                      onClick={() => void courseOptions.refetch()}
-                    >
-                      Retry courses
-                    </Button>
-                  </div>
-                )}
-                {courseOptions.isSuccess && courseOptions.data.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    No active courses are available in this department.
-                  </p>
-                )}
-              </FormField>
-            )}
+              />
+              {courseOptions.isPending && (
+                <p role="status" className="text-xs text-muted-foreground">
+                  Loading active courses...
+                </p>
+              )}
+              {courseOptions.isError && (
+                <div className="text-xs text-destructive">
+                  <p role="alert">{slotError(courseOptions.error, false)}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={courseOptions.isFetching}
+                    onClick={() => void courseOptions.refetch()}
+                  >
+                    Retry courses
+                  </Button>
+                </div>
+              )}
+              {courseOptions.isSuccess && courseOptions.data.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No active courses are available in this department.
+                </p>
+              )}
+            </FormField>
             <FormField
               label="Required units"
               htmlFor="curriculum-slot-units"

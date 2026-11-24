@@ -755,6 +755,7 @@ export function useCurriculumVersionLifecycle() {
     },
     onSuccess: async ({ action, id, retired, profileId, departmentId }) => {
       const key = staffQueryKeys.resource(profileId, departmentId, "curricula");
+      await queryClient.cancelQueries({ queryKey: key });
       const detailKey = staffQueryKeys.resource(
         profileId,
         departmentId,
@@ -781,7 +782,6 @@ export function useCurriculumVersionLifecycle() {
         },
       );
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: key }),
         queryClient.invalidateQueries({
           queryKey: staffQueryKeys.resource(
             profileId,
