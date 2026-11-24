@@ -23,3 +23,7 @@ export function toReportStats(report: DepartmentReport): ReportStat[] {
     },
   ];
 }
+
+export function reportDistributionFootnote(report: DepartmentReport): string {
+  return `${report.gwaStudents.toLocaleString("en-US")} of ${report.enrolled.toLocaleString("en-US")} students have a cumulative GWA · Percentages sum to 100%.`;
+}
