@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext, type AuthContextValue } from "@/context/auth-context";
 import type { DepartmentPdfDocument } from "./department-pdf";
@@ -165,5 +165,31 @@ describe("useDepartmentPdfUrl", () => {
     await waitFor(() => expect(view.result.current.url).toBeDefined());
     view.unmount();
     expect(revokeUrl).toHaveBeenCalledExactlyOnceWith("blob:department-report");
+  });
+
+  it("hides the previous URL while preparing a different document", async () => {
+    const view = mountPdf(report);
+    await waitFor(() => expect(view.result.current.url).toBeDefined());
+    let finish!: (blob: Blob) => void;
+    pdf.build.mockImplementationOnce(
+      () =>
+        new Promise<Blob>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const replacement = {
+      ...report,
+      title: "Another report",
+      filename: "another.pdf",
+    };
+    view.select(replacement);
+    expect(view.result.current).toEqual({ url: undefined, error: false });
+    expect(revokeUrl).toHaveBeenCalledExactlyOnceWith("blob:department-report");
+    await waitFor(() => expect(pdf.build).toHaveBeenCalledTimes(2));
+    createUrl.mockReturnValueOnce("blob:replacement");
+    await act(async () => finish(new Blob(["%PDF replacement"])));
+    await waitFor(() =>
+      expect(view.result.current.url).toBe("blob:replacement"),
+    );
   });
 });
