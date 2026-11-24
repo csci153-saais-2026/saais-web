@@ -77,6 +77,16 @@ describe("DeanStudentChecklistTab", () => {
     expect(await screen.findByText("36 units earned")).toBeTruthy();
     expect(await screen.findByText(/Year 1 · Semester 1/)).toBeTruthy();
     expect(screen.queryByText(/Read-only/i)).toBeNull();
+    expect(screen.queryByLabelText("Show requirements")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
+    expect(
+      screen.getByRole("button", { name: "Expand all" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    expect(
+      screen.getByRole("button", { name: "Collapse all" }),
+    ).toBeTruthy();
 
     const infoButtons = screen.getAllByRole("button", { name: "Course info" });
     fireEvent.click(infoButtons[0]);
