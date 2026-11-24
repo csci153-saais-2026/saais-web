@@ -412,7 +412,9 @@ export default function CurriculaPage() {
           version.status !== "retired",
       );
       if (!targetVersion) {
-        setFormError("No active or draft curriculum is available for this department.");
+        setFormError(
+          "No active or draft curriculum is available for this department.",
+        );
         return;
       }
       const match = /^Year (\d) \u00b7 (.+)$/.exec(ncTerm);
@@ -803,13 +805,11 @@ export default function CurriculaPage() {
             open={!!dialog}
             onOpenChange={(open) => !open && closeDialog()}
           >
-              <DialogContent
-                className={
-                  dialog?.kind === "new-course"
-                    ? "max-w-[640px]"
-                    : "max-w-lg"
-                }
-              >
+            <DialogContent
+              className={
+                dialog?.kind === "new-course" ? "max-w-[640px]" : "max-w-lg"
+              }
+            >
               <DialogHeader>
                 <DialogTitle>{dialogMeta.title}</DialogTitle>
               </DialogHeader>
@@ -1013,7 +1013,10 @@ export default function CurriculaPage() {
                     </FormField>
 
                     <FormField label="Department" htmlFor="nc-department">
-                      <Select value={ncDepartmentId} onValueChange={setNcDepartmentId}>
+                      <Select
+                        value={ncDepartmentId}
+                        onValueChange={setNcDepartmentId}
+                      >
                         <SelectTrigger id="nc-department" className="w-full">
                           <SelectValue placeholder="Select a department" />
                         </SelectTrigger>
@@ -1023,8 +1026,14 @@ export default function CurriculaPage() {
                           avoidCollisions={false}
                         >
                           {departments.map((department) => (
-                            <SelectItem key={department.id} value={department.id}>
-                              <span className="block max-w-full truncate" title={department.name}>
+                            <SelectItem
+                              key={department.id}
+                              value={department.id}
+                            >
+                              <span
+                                className="block max-w-full truncate"
+                                title={department.name}
+                              >
                                 {department.name}
                               </span>
                             </SelectItem>
@@ -1080,13 +1089,28 @@ export default function CurriculaPage() {
                 {(dialog?.kind === "add-slot" ||
                   dialog?.kind === "edit-slot") && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <FormField label="Active course" htmlFor="cu-scourse" className="sm:col-span-2">
-                      <Select value={sCourseId || "none"} onValueChange={(value) => setSCourseId(value === "none" ? "" : value)}>
+                    <FormField
+                      label="Active course"
+                      htmlFor="cu-scourse"
+                      className="sm:col-span-2"
+                    >
+                      <Select
+                        value={sCourseId || "none"}
+                        onValueChange={(value) =>
+                          setSCourseId(value === "none" ? "" : value)
+                        }
+                      >
                         <SelectTrigger id="cu-scourse" className="w-full">
                           <SelectValue placeholder="Select an active course" />
                         </SelectTrigger>
-                        <SelectContent position="popper" side="bottom" avoidCollisions={false}>
-                          <SelectItem value="none">Select an active course</SelectItem>
+                        <SelectContent
+                          position="popper"
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          <SelectItem value="none">
+                            Select an active course
+                          </SelectItem>
                           {activeCourses.map((course) => (
                             <SelectItem key={course.id} value={course.id}>
                               {course.code} — {course.title}

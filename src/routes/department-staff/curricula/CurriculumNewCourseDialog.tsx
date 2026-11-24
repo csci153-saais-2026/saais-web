@@ -110,7 +110,8 @@ export function CurriculumNewCourseDialog({
     setSaveError("");
     try {
       const { term_position, ...courseFields } = values;
-      const department_id = courseFields.department_id || authorizedDepartmentId;
+      const department_id =
+        courseFields.department_id || authorizedDepartmentId;
       delete courseFields.department_id;
       const parsed = courseSchema.parse(courseFields);
       const position =
@@ -118,8 +119,13 @@ export function CurriculumNewCourseDialog({
       const selectedDepartment = (departments.data?.departments ?? []).find(
         (department) => department.id === department_id,
       );
-      if (!selectedDepartment || selectedDepartment.id !== authorizedDepartmentId) {
-        throw new Error("You can create courses only in your assigned department.");
+      if (
+        !selectedDepartment ||
+        selectedDepartment.id !== authorizedDepartmentId
+      ) {
+        throw new Error(
+          "You can create courses only in your assigned department.",
+        );
       }
       const catalogEntry =
         createdCourse ?? (await catalogCourse.mutateAsync(parsed));
@@ -214,7 +220,10 @@ export function CurriculumNewCourseDialog({
                 {...register("units", { valueAsNumber: true })}
               />
             </FormField>
-            <FormField label="Department" htmlFor="new-curriculum-course-department">
+            <FormField
+              label="Department"
+              htmlFor="new-curriculum-course-department"
+            >
               <Controller
                 name="department_id"
                 control={control}
@@ -222,19 +231,29 @@ export function CurriculumNewCourseDialog({
                   <Select
                     value={field.value || authorizedDepartmentId}
                     onValueChange={field.onChange}
-                    disabled={pending || departments.isError || departments.isPending}
+                    disabled={
+                      pending || departments.isError || departments.isPending
+                    }
                   >
-                    <SelectTrigger id="new-curriculum-course-department" className="w-full">
+                    <SelectTrigger
+                      id="new-curriculum-course-department"
+                      className="w-full"
+                    >
                       <SelectValue placeholder="Select a department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(departments.data?.departments ?? []).map((department) => (
-                        <SelectItem key={department.id} value={department.id}>
-                          <span className="block max-w-full truncate" title={department.name}>
-                            {department.name}
-                          </span>
-                        </SelectItem>
-                      ))}
+                      {(departments.data?.departments ?? []).map(
+                        (department) => (
+                          <SelectItem key={department.id} value={department.id}>
+                            <span
+                              className="block max-w-full truncate"
+                              title={department.name}
+                            >
+                              {department.name}
+                            </span>
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 )}

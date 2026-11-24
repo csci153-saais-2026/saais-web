@@ -49,7 +49,13 @@ export interface CurriculaData {
   versions: CurriculumVersionRecord[];
   programs: { id: string; code: string }[];
   departments: { id: string; name: string }[];
-  courses: { id: string; departmentId: string; code: string; title: string; status: string }[];
+  courses: {
+    id: string;
+    departmentId: string;
+    code: string;
+    title: string;
+    status: string;
+  }[];
 }
 
 const KEY = ["department-head", "curricula"] as const;
@@ -73,49 +79,59 @@ const SLOT_TYPE_API: Record<
 async function getCurricula(): Promise<CurriculaData> {
   const get = <T>(load: () => Promise<{ data?: T; error?: unknown }>) =>
     load().then(unwrapApiResult as (value: { data?: T; error?: unknown }) => T);
-  const [versions, programs, terms, slots, courses, departments, transfers, pairs] =
-    await Promise.all([
-      get(() =>
-        apiClient.GET("/rest/v1/curriculum_version", {
-          params: { query: { select: "*", limit: 100 } },
-        }),
-      ),
-      get(() =>
-        apiClient.GET("/rest/v1/program", {
-          params: { query: { select: "*", limit: 100 } },
-        }),
-      ),
-      get(() =>
-        apiClient.GET("/rest/v1/curriculum_term", {
-          params: { query: { select: "*", limit: 100 } },
-        }),
-      ),
-      get(() =>
-        apiClient.GET("/rest/v1/curriculum_term_course", {
-          params: { query: { select: "*", limit: 100 } },
-        }),
-      ),
-      get(() =>
-        apiClient.GET("/rest/v1/course", {
-          params: { query: { select: "*", limit: 100 } },
-        }),
-      ),
-      get(() =>
-        apiClient.GET("/rest/v1/department", {
-          params: { query: { select: "id,name", order: "name.asc", limit: 1000 } },
-        }),
-      ),
-      get(() =>
-        apiClient.GET("/rest/v1/curriculum_transfer_request", {
-          params: { query: { select: "*", limit: 100 } },
-        }),
-      ),
-      get(() =>
-        apiClient.GET("/rest/v1/curriculum_pair_equivalence", {
-          params: { query: { select: "*", limit: 100 } },
-        }),
-      ),
-    ]);
+  const [
+    versions,
+    programs,
+    terms,
+    slots,
+    courses,
+    departments,
+    transfers,
+    pairs,
+  ] = await Promise.all([
+    get(() =>
+      apiClient.GET("/rest/v1/curriculum_version", {
+        params: { query: { select: "*", limit: 100 } },
+      }),
+    ),
+    get(() =>
+      apiClient.GET("/rest/v1/program", {
+        params: { query: { select: "*", limit: 100 } },
+      }),
+    ),
+    get(() =>
+      apiClient.GET("/rest/v1/curriculum_term", {
+        params: { query: { select: "*", limit: 100 } },
+      }),
+    ),
+    get(() =>
+      apiClient.GET("/rest/v1/curriculum_term_course", {
+        params: { query: { select: "*", limit: 100 } },
+      }),
+    ),
+    get(() =>
+      apiClient.GET("/rest/v1/course", {
+        params: { query: { select: "*", limit: 100 } },
+      }),
+    ),
+    get(() =>
+      apiClient.GET("/rest/v1/department", {
+        params: {
+          query: { select: "id,name", order: "name.asc", limit: 1000 },
+        },
+      }),
+    ),
+    get(() =>
+      apiClient.GET("/rest/v1/curriculum_transfer_request", {
+        params: { query: { select: "*", limit: 100 } },
+      }),
+    ),
+    get(() =>
+      apiClient.GET("/rest/v1/curriculum_pair_equivalence", {
+        params: { query: { select: "*", limit: 100 } },
+      }),
+    ),
+  ]);
   const records = versions.map((version): CurriculumVersionRecord => {
     const program = programs.find((item) => item.id === version.program_id);
     const code = program?.code ?? "Program";
