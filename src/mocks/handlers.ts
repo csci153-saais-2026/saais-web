@@ -459,6 +459,73 @@ function authenticateRequest(
   return { persona };
 }
 
+function matchesLike(
+  value: string,
+  pattern: string,
+  caseInsensitive: boolean,
+): boolean {
+  const input = Array.from(caseInsensitive ? value.toLowerCase() : value);
+  const tokens = Array.from(caseInsensitive ? pattern.toLowerCase() : pattern);
+  let previous = Array(input.length + 1).fill(false) as boolean[];
+  previous[0] = true;
+  for (const token of tokens) {
+    const next = Array(input.length + 1).fill(false) as boolean[];
+    if (token === "*" || token === "%") {
+      next[0] = previous[0];
+      for (let i = 1; i <= input.length; i++)
+        next[i] = previous[i] || next[i - 1];
+    } else {
+      for (let i = 1; i <= input.length; i++)
+        next[i] = previous[i - 1] && (token === "_" || token === input[i - 1]);
+    }
+    previous = next;
+  }
+  return previous[input.length];
+}
+
+function comparePostgrestValues(value: unknown, target: string): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") {
+    const number = Number(target);
+    return Number.isFinite(number) ? value - number : null;
+  }
+  const text = String(value);
+  const iso = /^\d{4}-\d{2}-\d{2}(?:T|$)/;
+  if (iso.test(text) && iso.test(target)) {
+    const left = Date.parse(text);
+    const right = Date.parse(target);
+    return Number.isFinite(left) && Number.isFinite(right)
+      ? left - right
+      : null;
+  }
+  return text < target ? -1 : text > target ? 1 : 0;
+}
+
+function pagination(
+  url: URL,
+  defaultLimit: number,
+  maxLimit: number,
+): { offset: number; limit: number } | null {
+  const rawOffset = url.searchParams.get("offset");
+  const rawLimit = url.searchParams.get("limit");
+  if (
+    (rawOffset !== null && !/^\d+$/.test(rawOffset)) ||
+    (rawLimit !== null && !/^\d+$/.test(rawLimit))
+  )
+    return null;
+  const offset = rawOffset === null ? 0 : Number(rawOffset);
+  const limit = rawLimit === null ? defaultLimit : Number(rawLimit);
+  if (
+    !Number.isSafeInteger(offset) ||
+    offset > 100000 ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > maxLimit
+  )
+    return null;
+  return { offset, limit };
+}
+
 function matchesPostgrestOperator(
   fieldValue: unknown,
   filterExpr: string,
@@ -469,6 +536,7 @@ function matchesPostgrestOperator(
   if (filterExpr === "not.is.null") {
     return fieldValue !== null && fieldValue !== undefined;
   }
+  if (fieldValue === null || fieldValue === undefined) return false;
   if (filterExpr.startsWith("eq.")) {
     const target = filterExpr.slice(3);
     return String(fieldValue) === target;
@@ -485,35 +553,50 @@ function matchesPostgrestOperator(
     return items.includes(String(fieldValue));
   }
   if (filterExpr.startsWith("ilike.")) {
-    const pattern = filterExpr
-      .slice(6)
-      .replace(/^\*+|\*+$/g, "")
-      .replace(/^%+|%+$/g, "")
-      .toLowerCase();
-    return String(fieldValue ?? "")
-      .toLowerCase()
-      .includes(pattern);
+    return matchesLike(String(fieldValue), filterExpr.slice(6), true);
   }
   if (filterExpr.startsWith("like.")) {
-    const pattern = filterExpr
-      .slice(5)
-      .replace(/^\*+|\*+$/g, "")
-      .replace(/^%+|%+$/g, "");
-    return String(fieldValue ?? "").includes(pattern);
+    return matchesLike(String(fieldValue), filterExpr.slice(5), false);
   }
   if (filterExpr.startsWith("gte.")) {
-    return String(fieldValue ?? "") >= filterExpr.slice(4);
+    const comparison = comparePostgrestValues(fieldValue, filterExpr.slice(4));
+    return comparison !== null && comparison >= 0;
   }
   if (filterExpr.startsWith("lte.")) {
-    return String(fieldValue ?? "") <= filterExpr.slice(4);
+    const comparison = comparePostgrestValues(fieldValue, filterExpr.slice(4));
+    return comparison !== null && comparison <= 0;
   }
   if (filterExpr.startsWith("gt.")) {
-    return String(fieldValue ?? "") > filterExpr.slice(3);
+    const comparison = comparePostgrestValues(fieldValue, filterExpr.slice(3));
+    return comparison !== null && comparison > 0;
   }
   if (filterExpr.startsWith("lt.")) {
-    return String(fieldValue ?? "") < filterExpr.slice(3);
+    const comparison = comparePostgrestValues(fieldValue, filterExpr.slice(3));
+    return comparison !== null && comparison < 0;
   }
   return true;
+}
+
+const AUDIT_OR_FIELD_LIMITS: Record<string, number> = {
+  actor_name: 100,
+  student_name: 100,
+  student_number: 100,
+  target_label: 100,
+  action: 100,
+  details_summary: 100,
+  reason: 100,
+};
+
+const COURSE_OR_FIELD_LIMITS: Record<string, number> = {
+  code: 100,
+  title: 250,
+};
+
+function getOrFieldLimits(pathname: string): Record<string, number> | null {
+  if (pathname.endsWith("/rest/v1/course")) return COURSE_OR_FIELD_LIMITS;
+  if (pathname.endsWith("/rest/v1/audit_log_entry"))
+    return AUDIT_OR_FIELD_LIMITS;
+  return null;
 }
 
 function applyPostgrestQuery<T extends object>(
@@ -540,30 +623,99 @@ function applyPostgrestQuery<T extends object>(
 
   const andParam = url.searchParams.get("and");
   if (andParam) {
-    const m = /^\(created_at\.gte\.([^,]+),created_at\.lte\.([^)]+)\)$/.exec(
-      andParam,
-    );
-    if (m && m[1] && m[2]) {
-      const from = m[1];
-      const to = m[2];
+    const m =
+      /^\(created_at\.(gte|gt)\.([^,]+),created_at\.(lte|lt)\.([^)]+)\)$/.exec(
+        andParam,
+      );
+    if (m) {
+      const [, lowerOp, from, upperOp, to] = m;
       filtered = filtered.filter((row) => {
-        const createdAt = String(
-          (row as Record<string, unknown>).created_at ?? "",
+        const createdAt = (row as Record<string, unknown>).created_at;
+        return (
+          matchesPostgrestOperator(createdAt, `${lowerOp}.${from}`) &&
+          matchesPostgrestOperator(createdAt, `${upperOp}.${to}`)
         );
-        return createdAt >= from && createdAt <= to;
       });
-    }
+    } else
+      return errorJson(400, "INVALID_FILTER", "Invalid date range filter.");
   }
 
-  const limitParam = url.searchParams.get("limit");
-  const offsetParam = url.searchParams.get("offset");
+  const orParam = url.searchParams.get("or");
+  if (orParam) {
+    const fieldLimits = getOrFieldLimits(url.pathname);
+    if (!fieldLimits || !orParam.startsWith("(") || !orParam.endsWith(")"))
+      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
+    const rawTerms = orParam.slice(1, -1).split(",");
+    if (rawTerms.length > 7)
+      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
+    const terms = rawTerms.map((term) => {
+      const match = term.match(/^([a-z_]+)\.(ilike|like|eq)\.([^,()]+)$/);
+      if (!match) return null;
+      const [, field, op, operand] = match;
+      const maxLen = Object.hasOwn(fieldLimits, field) ? fieldLimits[field] : 0;
+      if (
+        !maxLen ||
+        operand.length > maxLen ||
+        Array.from(operand).some((char) => char.charCodeAt(0) < 32)
+      )
+        return null;
+      return { field, op, operand };
+    });
+    if (terms.some((term) => !term))
+      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
+    filtered = filtered.filter((row) =>
+      terms.some(
+        (term) =>
+          term &&
+          matchesPostgrestOperator(
+            (row as Record<string, unknown>)[term.field],
+            `${term.op}.${term.operand}`,
+          ),
+      ),
+    );
+  }
+
+  const order = url.searchParams.get("order");
+  if (order) {
+    const terms = order
+      .split(",")
+      .map((term) =>
+        /^([a-z_][a-z0-9_]*)(?:\.(asc|desc))?(?:\.nulls(first|last))?$/i.exec(
+          term,
+        ),
+      );
+    if (
+      terms.some((term) => !term) ||
+      (filtered.length > 0 &&
+        terms.some((term) => term && !(term[1] in filtered[0])))
+    )
+      return errorJson(400, "INVALID_ORDER", "Invalid ordering.");
+    filtered.sort((left, right) => {
+      for (const term of terms) {
+        if (!term) continue;
+        const [, key, direction = "asc", nulls] = term;
+        const a = (left as Record<string, unknown>)[key];
+        const b = (right as Record<string, unknown>)[key];
+        if (a == null || b == null) {
+          if (a == null && b == null) continue;
+          const nullsFirst = nulls
+            ? nulls.toLowerCase() === "first"
+            : direction.toLowerCase() === "desc";
+          return a == null ? (nullsFirst ? -1 : 1) : nullsFirst ? 1 : -1;
+        }
+        const comparison = comparePostgrestValues(a, String(b)) ?? 0;
+        if (comparison)
+          return direction.toLowerCase() === "desc" ? -comparison : comparison;
+      }
+      return 0;
+    });
+  }
+
+  const page = pagination(url, 20, 1000);
+  if (!page)
+    return errorJson(400, "INVALID_PAGINATION", "Invalid limit or offset.");
   const total = filtered.length;
-  const offset = offsetParam
-    ? Math.max(0, Number.parseInt(offsetParam, 10))
-    : 0;
-  const limit = limitParam
-    ? Math.max(1, Number.parseInt(limitParam, 10))
-    : Math.max(total, 20);
+  const { offset, limit } = page;
 
   const paged = filtered.slice(offset, offset + limit);
   const contentRange =
@@ -585,9 +737,8 @@ function canAccessStudentRecord(
   allowHistoric = false,
 ): boolean {
   if (persona.roles.includes("admin")) return true;
-  if (persona.roles.includes("student")) {
-    return persona.profileId === studentId;
-  }
+  if (persona.roles.includes("student") && persona.profileId === studentId)
+    return true;
   const db = getMockDatabase();
   const adviserAssignment = db.adviserAssignments.find(
     (a) =>
@@ -597,7 +748,6 @@ function canAccessStudentRecord(
   );
   if (persona.roles.includes("adviser") && adviserAssignment) return true;
   if (
-    persona.roles.includes("adviser") &&
     !persona.roles.some((role) =>
       ["department_head", "department_staff", "dean"].includes(role),
     )
@@ -605,10 +755,26 @@ function canAccessStudentRecord(
     return false;
   const org = db.studentOrganizations.find((s) => s.student_id === studentId);
   if (!org) return false;
-  if (persona.roles.includes("dean")) {
-    return canAccessFaculty(persona, org.faculty_id);
-  }
-  return canAccessDepartment(persona, org.department_id);
+  return (
+    (persona.roles.includes("dean") &&
+      canAccessFaculty(persona, org.faculty_id)) ||
+    (persona.roles.some((role) =>
+      ["department_head", "department_staff"].includes(role),
+    ) &&
+      canAccessDepartment(persona, org.department_id))
+  );
+}
+
+function isCurrentAdviser(persona: MockPersona, studentId: string): boolean {
+  return (
+    persona.roles.includes("adviser") &&
+    getMockDatabase().adviserAssignments.some(
+      (assignment) =>
+        assignment.student_id === studentId &&
+        assignment.adviser_id === persona.profileId &&
+        assignment.end_date === null,
+    )
+  );
 }
 
 export const saaisMswHandlers = [
@@ -2436,6 +2602,9 @@ export const saaisMswHandlers = [
     ]);
     if ("response" in auth) return auth.response;
     const url = new URL(request.url);
+    const page = pagination(url, 100, 1000);
+    if (!page)
+      return errorJson(400, "INVALID_PAGINATION", "Invalid limit or offset.");
     const scope = url.searchParams.get("assignment_scope") ?? "all";
 
     const db = getMockDatabase();
@@ -2575,9 +2744,8 @@ export const saaisMswHandlers = [
         dismissed: filtered.filter((i) => i.standing === "dismissed").length,
       },
       items: filtered.slice(
-        Number(url.searchParams.get("offset") ?? 0),
-        Number(url.searchParams.get("offset") ?? 0) +
-          Math.min(100, Number(url.searchParams.get("limit") ?? 100)),
+        page.offset,
+        page.offset + Math.min(100, page.limit),
       ),
     };
     return HttpResponse.json(response, { status: 200 });
@@ -2861,7 +3029,11 @@ export const saaisMswHandlers = [
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       }
       const db = getMockDatabase();
-      const query = new URL(request.url).searchParams;
+      const url = new URL(request.url);
+      const page = pagination(url, 100, 1000);
+      if (!page)
+        return errorJson(400, "INVALID_PAGINATION", "Invalid limit or offset.");
+      const query = url.searchParams;
       const schoolTermId = query.get("school_term_id");
       const search = query.get("search")?.trim().toLowerCase();
       const organization = db.studentOrganizations.find(
@@ -2976,11 +3148,12 @@ export const saaisMswHandlers = [
           Number(a.group === "cross_program") -
             Number(b.group === "cross_program") || a.code.localeCompare(b.code),
       );
-      const offset = Number(query.get("offset") ?? 0);
-      const limit = Math.min(100, Number(query.get("limit") ?? 100));
-      return HttpResponse.json(options.slice(offset, offset + limit), {
-        status: 200,
-      });
+      return HttpResponse.json(
+        options.slice(page.offset, page.offset + Math.min(100, page.limit)),
+        {
+          status: 200,
+        },
+      );
     },
   ),
 
@@ -3157,15 +3330,10 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/students/:student_id/record-grades",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (!isCurrentAdviser(auth.persona, studentId)) {
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       }
       const body = (await request
@@ -3272,12 +3440,7 @@ export const saaisMswHandlers = [
   http.post(
     "*/functions/v1/students/:student_id/encode-grades",
     async ({ request, params }) => {
-      const auth = authenticateRequest(request, [
-        "admin",
-        "dean",
-        "department_head",
-        "adviser",
-      ]);
+      const auth = authenticateRequest(request, ["adviser"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
       const body = (await request
@@ -3290,7 +3453,7 @@ export const saaisMswHandlers = [
           "school_term_id and rows are required.",
         );
       }
-      if (!canAccessStudentRecord(auth.persona, studentId))
+      if (!isCurrentAdviser(auth.persona, studentId))
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
       if (departmentEncodingClosed(studentId, body.school_term_id))
         return encodingClosedResponse();
@@ -3710,7 +3873,10 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ["student", "admin"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (
+        !auth.persona.roles.includes("admin") &&
+        auth.persona.profileId !== studentId
+      ) {
         return errorJson(
           403,
           "INSUFFICIENT_PRIVILEGE",
@@ -4806,7 +4972,10 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ["student", "admin"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (
+        !auth.persona.roles.includes("admin") &&
+        auth.persona.profileId !== studentId
+      ) {
         return errorJson(
           403,
           "INSUFFICIENT_PRIVILEGE",
@@ -4848,7 +5017,10 @@ export const saaisMswHandlers = [
       const auth = authenticateRequest(request, ["student", "admin"]);
       if ("response" in auth) return auth.response;
       const studentId = String(params.student_id);
-      if (!canAccessStudentRecord(auth.persona, studentId)) {
+      if (
+        !auth.persona.roles.includes("admin") &&
+        auth.persona.profileId !== studentId
+      ) {
         return errorJson(
           403,
           "INSUFFICIENT_PRIVILEGE",
