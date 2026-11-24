@@ -30,28 +30,26 @@ afterEach(() => {
 
 describe("getTermOfferings", () => {
   it("uses bounded pages instead of the failing limit=1000 request", async () => {
-    mocks.get.mockImplementation(
-      (path: string) => {
-        if (path === "/rest/v1/course") {
-          return Promise.resolve({
-            data: [{ id: "course-one", is_elective: false }],
-            error: undefined,
-            response: new Response(null, { status: 200 }),
-          });
-        }
+    mocks.get.mockImplementation((path: string) => {
+      if (path === "/rest/v1/course") {
         return Promise.resolve({
-          data: [
-            {
-              offering: { id: "offering-one", course_id: "course-one" },
-              code: "CS 1",
-              title: "Computing",
-            },
-          ],
+          data: [{ id: "course-one", is_elective: false }],
           error: undefined,
           response: new Response(null, { status: 200 }),
         });
-      },
-    );
+      }
+      return Promise.resolve({
+        data: [
+          {
+            offering: { id: "offering-one", course_id: "course-one" },
+            code: "CS 1",
+            title: "Computing",
+          },
+        ],
+        error: undefined,
+        response: new Response(null, { status: 200 }),
+      });
+    });
 
     await expect(getTermOfferings("student-one", "term-one")).resolves.toEqual([
       expect.objectContaining({

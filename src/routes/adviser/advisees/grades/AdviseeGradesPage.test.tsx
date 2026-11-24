@@ -212,9 +212,9 @@ describe("selected grade actions", () => {
     );
     expect(screen.getAllByRole("option", { name: "4.75" })).toHaveLength(1);
     expect(screen.getAllByRole("option", { name: "5.00" })).toHaveLength(2);
-    expect(screen.getAllByRole("option", { name: "DR" }).length).toBeGreaterThan(
-      0,
-    );
+    expect(
+      screen.getAllByRole("option", { name: "DR" }).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("option", { name: "INC" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Midterm grade"), {
       target: { value: "1.75" },

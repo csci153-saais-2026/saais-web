@@ -238,8 +238,7 @@ function FlagList({ userId }: { userId: string }) {
     .slice()
     .sort(
       (a, b) =>
-        new Date(b.created_at).getTime() -
-          new Date(a.created_at).getTime() ||
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime() ||
         b.id.localeCompare(a.id),
     );
   return (

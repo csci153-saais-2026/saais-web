@@ -39,7 +39,5 @@ it("does not render the fixed 19 September 2026 sample footer", () => {
     </MemoryRouter>,
   );
 
-  expect(
-    screen.queryByText(/Reference date: 19 September 2026/i),
-  ).toBeNull();
+  expect(screen.queryByText(/Reference date: 19 September 2026/i)).toBeNull();
 });

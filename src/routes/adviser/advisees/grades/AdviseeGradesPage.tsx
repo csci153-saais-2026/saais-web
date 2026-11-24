@@ -117,14 +117,12 @@ function GradeAction({
       );
       return;
     }
-    const midtermGrade =
-      parsedGrades[0]?.success
-        ? (parsedGrades[0].data as number | "inc" | "dr")
-        : undefined;
-    const finalGradeValue =
-      parsedGrades[1]?.success
-        ? (parsedGrades[1].data as number | "inc" | "dr")
-        : undefined;
+    const midtermGrade = parsedGrades[0]?.success
+      ? (parsedGrades[0].data as number | "inc" | "dr")
+      : undefined;
+    const finalGradeValue = parsedGrades[1]?.success
+      ? (parsedGrades[1].data as number | "inc" | "dr")
+      : undefined;
     setSaving(true);
     try {
       if (inc) {
