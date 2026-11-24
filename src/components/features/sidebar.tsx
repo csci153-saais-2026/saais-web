@@ -7,7 +7,7 @@ import {
 } from "@/components/icons";
 import * as React from "react";
 import { Link, NavLink } from "react-router";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BrandMark } from "@/components/ui/brand-mark";
 import {
   Collapsible,
@@ -48,7 +48,12 @@ export type NavSection = {
   items: NavItem[];
 };
 
-export type SidebarUser = { name: string; subtitle: string; initials: string };
+export type SidebarUser = {
+  name: string;
+  subtitle: string;
+  initials: string;
+  avatarUrl?: string | null;
+};
 
 function matchesNavPath(pathname: string, item: NavItem): boolean {
   return (
@@ -215,6 +220,7 @@ function AccountMenu({
     <Popover>
       <PopoverTrigger className="flex w-full items-center gap-3 rounded-lg border border-transparent px-2.5 py-2.5 text-left text-sidebar-foreground hover:bg-sidebar-accent focus-visible:outline-gold">
         <Avatar size="lg">
+          {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
           <AvatarFallback className="bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
             {user.initials}
           </AvatarFallback>

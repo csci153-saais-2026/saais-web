@@ -4,7 +4,9 @@ import { Panel } from "@/components/features/panel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useStudentPhotoUrl } from "@/hooks/use-student-photo-url";
 import { studentPhotoFileSchema } from "./student-photo-schema";
+import { validateStudentPhotoImage } from "./student-photo-image";
 
 export interface ProfilePhotoCardProps {
   readonly initials: string;
@@ -18,7 +20,7 @@ export interface ProfilePhotoCardProps {
 
 /**
  * Student Profile photo card with 96px circular avatar/initials,
- * client-side 2 MB JPG/PNG validation, and accessible status feedback.
+ * client-side JPG/PNG validation, and accessible status feedback.
  */
 export function ProfilePhotoCard({
   initials,
@@ -30,12 +32,26 @@ export function ProfilePhotoCard({
   className,
 }: ProfilePhotoCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const displayUrl = useStudentPhotoUrl(avatarUrl);
   const [errorMessage, setErrorMessage] = React.useState<string>("");
+  const [isValidating, setIsValidating] = React.useState(false);
+  const mounted = React.useRef(true);
+  const validationId = React.useRef(0);
+
+  React.useEffect(() => {
+    mounted.current = true;
+    const sequence = validationId;
+    return () => {
+      mounted.current = false;
+      sequence.current++;
+    };
+  }, []);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const currentId = ++validationId.current;
 
     const validation = studentPhotoFileSchema.safeParse({
       mime_type: file.type,
@@ -45,17 +61,38 @@ export function ProfilePhotoCard({
     if (!validation.success) {
       const firstIssue = validation.error.issues[0];
       setErrorMessage(firstIssue?.message ?? "Invalid image file.");
+      setIsValidating(false);
       return;
     }
 
     setErrorMessage("");
+    setIsValidating(true);
     try {
+      try {
+        await validateStudentPhotoImage(file);
+      } catch (err) {
+        if (mounted.current && currentId === validationId.current) {
+          setErrorMessage(
+            err instanceof Error && err.message.includes("16 megapixels")
+              ? err.message
+              : "Invalid image file.",
+          );
+        }
+        return;
+      }
+      if (!mounted.current || currentId !== validationId.current) return;
       await onUpload?.(file);
-      notify.success("Photo updated.");
+      if (mounted.current && currentId === validationId.current)
+        notify.success("Photo updated.");
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Could not update photo.",
-      );
+      if (mounted.current && currentId === validationId.current) {
+        setErrorMessage(
+          err instanceof Error ? err.message : "Could not update photo.",
+        );
+      }
+    } finally {
+      if (mounted.current && currentId === validationId.current)
+        setIsValidating(false);
     }
   }
 
@@ -75,7 +112,7 @@ export function ProfilePhotoCard({
   return (
     <Panel
       title="Profile photo"
-      description="Shown in the sidebar and to your adviser. JPG or PNG, up to 2 MB."
+      description="Shown in the sidebar and to your adviser. JPG or PNG, up to 5 MB."
       className={cn(className)}
     >
       <div className="flex flex-wrap items-center gap-5">
@@ -83,9 +120,9 @@ export function ProfilePhotoCard({
           aria-label="Profile photo preview"
           className="size-24 shrink-0 rounded-full"
         >
-          {avatarUrl ? (
+          {displayUrl ? (
             <AvatarImage
-              src={avatarUrl}
+              src={displayUrl}
               alt={fullName ? `${fullName} profile photo` : "Profile photo"}
               className="object-cover"
             />
@@ -99,7 +136,7 @@ export function ProfilePhotoCard({
           <div className="flex flex-wrap gap-2.5">
             <Button
               type="button"
-              disabled={isBusy}
+              disabled={isBusy || isValidating}
               onClick={() => inputRef.current?.click()}
               className="min-h-11 md:min-h-[38px]"
             >
@@ -109,7 +146,7 @@ export function ProfilePhotoCard({
             <Button
               type="button"
               variant="outline"
-              disabled={!avatarUrl || isBusy}
+              disabled={!avatarUrl || isBusy || isValidating}
               onClick={() => void handleRemove()}
               className="min-h-11 md:min-h-[38px]"
             >
@@ -122,9 +159,16 @@ export function ProfilePhotoCard({
             type="file"
             accept="image/png,image/jpeg"
             aria-label="Upload profile photo"
+            disabled={isBusy || isValidating}
             className="sr-only"
             onChange={(e) => void handleFileChange(e)}
           />
+
+          {isValidating && (
+            <p role="status" className="mt-2.5 text-cell">
+              Checking and uploading photo…
+            </p>
+          )}
 
           {errorMessage && (
             <p role="alert" className="mt-2.5 text-cell text-destructive">

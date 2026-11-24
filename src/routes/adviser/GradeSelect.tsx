@@ -9,6 +9,8 @@ export function GradeSelect({
   allowDrop = false,
   disableDrop = false,
   vsuScale = false,
+  minGrade,
+  maxGrade,
   placeholder = "Select grade",
   className = "",
   ...props
@@ -17,6 +19,8 @@ export function GradeSelect({
   allowDrop?: boolean;
   disableDrop?: boolean;
   vsuScale?: boolean;
+  minGrade?: number;
+  maxGrade?: number;
   placeholder?: string;
 }) {
   return (
@@ -26,7 +30,12 @@ export function GradeSelect({
     >
       <option value="">{placeholder}</option>
       {grades
-        .filter((grade) => !vsuScale || Number(grade) <= 3 || grade === "5.00")
+        .filter(
+          (grade) =>
+            (!vsuScale || Number(grade) <= 3 || grade === "5.00") &&
+            (minGrade == null || Number(grade) >= minGrade) &&
+            (maxGrade == null || Number(grade) <= maxGrade),
+        )
         .map((grade) => (
           <option key={grade} value={grade}>
             {grade}

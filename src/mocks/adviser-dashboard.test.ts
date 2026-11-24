@@ -345,19 +345,30 @@ describe("shared adviser dashboard mock", () => {
     );
     expect(summary.data?.slots_satisfied).toBe(1);
     expect(summary.data?.gwa).toBe(row?.gwa);
+    const passedAttempt = db.attemptResults.find(
+      (attempt) =>
+        attempt.student_id === student.id &&
+        attempt.course_offering_id === MOCK_IDS.offeringCsci101 &&
+        attempt.effective_status === "passed",
+    );
+    expect(passedAttempt).toBeDefined();
     db.gradeFlags.push({
       ...db.gradeFlags[0]!,
       id: "89000000-0000-4000-8001-000000000001",
       student_id: student.id,
+      attempt_id: passedAttempt!.id,
     });
+    const flaggedSummary = (
+      await client().GET(
+        "/functions/v1/students/{student_id}/academic-summary",
+        { params: { path } },
+      )
+    ).data;
+    expect(flaggedSummary?.open_flags_count).toBe(1);
+    expect(flaggedSummary?.deficiencies_count).toBe(0);
     expect(
-      (
-        await client().GET(
-          "/functions/v1/students/{student_id}/academic-summary",
-          { params: { path } },
-        )
-      ).data?.open_flags_count,
-    ).toBe(1);
+      flaggedSummary?.deficiencies?.some((item) => item.kind === "open_flag"),
+    ).toBe(false);
   });
 
   it("keeps every retake on the checklist and uses the passing result", async () => {

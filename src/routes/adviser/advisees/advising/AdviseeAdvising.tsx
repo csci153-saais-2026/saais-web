@@ -16,6 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/features/panel";
 
+const RECOMMENDATION_TERM_TYPES = [
+  "1st Semester",
+  "2nd Semester",
+  "Summer",
+] as const;
+
 type PlanData = Awaited<ReturnType<typeof getAdvisingData>>;
 function PlanEditor({
   data,
@@ -73,7 +79,7 @@ function PlanEditor({
         : items.filter((item) => item.course_offering_id !== offering),
     );
   }
-  async function save() {
+  async function savePlan(items: typeof selected) {
     if (!data.assignmentId) return;
     setBusy(true);
     setError("");
@@ -83,7 +89,7 @@ function PlanEditor({
         term,
         data.plan?.revision ?? null,
         data.assignmentId,
-        selected,
+        items,
       );
       onSaved();
     } catch (e) {
@@ -91,6 +97,10 @@ function PlanEditor({
     } finally {
       setBusy(false);
     }
+  }
+  async function removeAll() {
+    setSelected([]);
+    await savePlan([]);
   }
   return (
     <>
@@ -185,9 +195,20 @@ function PlanEditor({
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm">{selected.length} selected</span>
               <Button
+                variant="outline"
+                disabled={
+                  busy ||
+                  !data.assignmentId ||
+                  (selected.length === 0 && data.items.length === 0)
+                }
+                onClick={() => void removeAll()}
+              >
+                {busy ? "Removing…" : "Remove all"}
+              </Button>
+              <Button
                 className="ml-auto"
-                disabled={busy || !data.assignmentId}
-                onClick={() => void save()}
+                disabled={busy || !data.assignmentId || selected.length === 0}
+                onClick={() => void savePlan(selected)}
               >
                 {busy ? "Saving…" : "Add selected to plan"}
               </Button>
@@ -366,7 +387,23 @@ function AdvisingContent({
     !!term,
     () => getAdvisingData(id, term),
   );
-  const selectedTerm = terms.data?.find((item) => item.id === term);
+  const recommendationTerms = terms.data
+    ? RECOMMENDATION_TERM_TYPES.flatMap((termType) => {
+        const latestTerm = terms.data
+          .filter((item) => item.term_type === termType)
+          .reduce<(typeof terms.data)[number] | undefined>(
+            (latest, candidate) =>
+              !latest ||
+              (candidate.chronological_key ?? 0) >
+                (latest.chronological_key ?? 0)
+                ? candidate
+                : latest,
+            undefined,
+          );
+        return latestTerm ? [latestTerm] : [];
+      })
+    : undefined;
+  const selectedTerm = recommendationTerms?.find((item) => item.id === term);
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(280px,1fr)]">
       <Panel
@@ -391,11 +428,20 @@ function AdvisingContent({
                 }}
               >
                 <option value="">Select term</option>
-                {terms.data.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.school_year} · {t.term_type}
-                  </option>
-                ))}
+                {RECOMMENDATION_TERM_TYPES.map((termType) => {
+                  const term = recommendationTerms?.find(
+                    (item) => item.term_type === termType,
+                  );
+                  return (
+                    <option
+                      key={termType}
+                      value={term?.id ?? `unavailable-${termType}`}
+                      disabled={!term}
+                    >
+                      {termType === "Summer" ? "Midyear" : termType}
+                    </option>
+                  );
+                })}
               </select>
             </label>
           )

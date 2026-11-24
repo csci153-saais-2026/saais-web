@@ -1,10 +1,14 @@
 import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { useMemo, useState } from "react";
 import { PageHeading } from "@/components/features/page-heading";
+import { StudentRecordDialog } from "@/components/features/student-record-dialog";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
-import { DeanStudentRecordDialog } from "@/routes/dean/students/DeanStudentRecordDialog";
+import { DeanStudentAuditTab } from "@/routes/dean/students/DeanStudentAuditTab";
+import { DeanStudentChecklistTab } from "@/routes/dean/students/DeanStudentChecklistTab";
+import { DeanStudentGradesTab } from "@/routes/dean/students/DeanStudentGradesTab";
 import { StudentDirectoryFilters } from "@/routes/dean/students/StudentDirectoryFilters";
 import { StudentDirectoryTable } from "@/routes/dean/students/StudentDirectoryTable";
+import { useDeanStudentRecordDialog } from "@/routes/dean/students/use-dean-student-record-dialog";
 import { useDeanStudents } from "@/routes/dean/students/use-dean-students";
 import type { DeanStudentSummary } from "@/routes/dean/types";
 
@@ -14,6 +18,7 @@ export default function DeanStudentsPage() {
   const [adviser, setAdviser] = useState("all");
   const [selectedStudent, setSelectedStudent] =
     useState<DeanStudentSummary | null>(null);
+  const recordDialog = useDeanStudentRecordDialog(selectedStudent);
 
   const {
     students,
@@ -98,11 +103,25 @@ export default function DeanStudentsPage() {
         </AccountSkeleton>
       )}
 
-      <DeanStudentRecordDialog
-        key={selectedStudent?.studentId ?? "closed"}
-        student={selectedStudent}
-        onClose={() => setSelectedStudent(null)}
-      />
+      <StudentRecordDialog
+        open={selectedStudent !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedStudent(null);
+        }}
+        student={recordDialog.headerStudent}
+        activeTab={recordDialog.activeTab}
+        onActiveTabChange={recordDialog.setActiveTab}
+      >
+        {selectedStudent && recordDialog.activeTab === "checklist" && (
+          <DeanStudentChecklistTab student={selectedStudent} />
+        )}
+        {selectedStudent && recordDialog.activeTab === "grades" && (
+          <DeanStudentGradesTab student={selectedStudent} />
+        )}
+        {selectedStudent && recordDialog.activeTab === "audit" && (
+          <DeanStudentAuditTab student={selectedStudent} />
+        )}
+      </StudentRecordDialog>
     </div>
   );
 }

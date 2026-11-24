@@ -234,6 +234,13 @@ function FlagList({ userId }: { userId: string }) {
     getFlags,
     true,
   );
+  const openFlags = data?.flags
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime() ||
+        b.id.localeCompare(a.id),
+    );
   return (
     <>
       <PageHeading
@@ -256,10 +263,10 @@ function FlagList({ userId }: { userId: string }) {
             title="Open flags"
             action={
               <span className="text-sm leading-6 text-muted-foreground">
-                {data.flags.length} open
+                {openFlags?.length ?? 0} open
               </span>
             }
-            rows={data.flags}
+            rows={openFlags ?? []}
             rowKey={(r) => r.id}
             columns={[
               {

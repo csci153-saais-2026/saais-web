@@ -22,3 +22,22 @@ it("does not show sample data for a non-UUID student route", () => {
   expect(screen.queryByText("Old fixed record")).toBeNull();
   expect(screen.queryByText("Maria Isabel Bautista")).toBeNull();
 });
+
+it("does not render the fixed 19 September 2026 sample footer", () => {
+  render(
+    <MemoryRouter initialEntries={["/adviser/dashboard"]}>
+      <Routes>
+        <Route
+          path="/adviser/dashboard"
+          element={
+            <AdviserPage title="Dashboard">
+              <p>Dashboard</p>
+            </AdviserPage>
+          }
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  expect(screen.queryByText(/Reference date: 19 September 2026/i)).toBeNull();
+});

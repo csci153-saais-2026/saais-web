@@ -38,7 +38,7 @@ export default function AdviseesPage() {
     getRoster(scope, search),
   );
   const isFlagged = (row: NonNullable<typeof data>[number]) =>
-    row.standing !== "good_standing";
+    row.open_flags_count > 0 || row.standing !== "good_standing";
   const rows = data?.filter(
     (row) =>
       standing === "all" ||

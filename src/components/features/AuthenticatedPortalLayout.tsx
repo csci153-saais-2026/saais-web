@@ -7,6 +7,7 @@ import { getPortalBreadcrumbs } from "@/navigation/portal-breadcrumbs";
 import { ROLE_DEFAULT_ROUTE } from "@/lib/auth/auth-service";
 import type { SaaisRole } from "@/mocks/personas";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useSidebarStudentPhoto } from "@/hooks/use-sidebar-student-photo";
 import { NotificationBell } from "@/components/features/notification-bell";
 
 const ROLE_PORTAL_LABELS: Readonly<Record<SaaisRole, string>> = {
@@ -92,6 +93,11 @@ export function AuthenticatedPortalLayout() {
     roles,
     activeRole ?? roles[0] ?? user?.primaryRole ?? "student",
   );
+  const sidebarPhoto = useSidebarStudentPhoto(
+    !isLoading && isAllowedToEnter !== false && currentRole === "student"
+      ? user?.id
+      : undefined,
+  );
   const notificationRoute = "/notifications";
   const notifications = useNotifications(
     user?.id,
@@ -161,6 +167,7 @@ export function AuthenticatedPortalLayout() {
           name: user.fullName,
           subtitle: user.email,
           initials: getInitials(user.fullName),
+          avatarUrl: sidebarPhoto,
         },
         profileHref: "/settings",
         onSignOut: () => void handleSignOut(),

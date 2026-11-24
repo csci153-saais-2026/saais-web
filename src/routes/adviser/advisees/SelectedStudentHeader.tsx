@@ -5,6 +5,7 @@ import { StudentRecordHeader } from "@/components/features/student-record-header
 import { Button } from "@/components/ui/button";
 import { getSelectedStudent } from "./advisees.api";
 import { useScopedRequest } from "./use-scoped-request";
+import { useStudentPhotoUrl } from "@/hooks/use-student-photo-url";
 
 export function SelectedStudentHeader({ id }: { id: string }) {
   const { user } = useAuth();
@@ -13,6 +14,7 @@ export function SelectedStudentHeader({ id }: { id: string }) {
   const { data, error } = useScopedRequest(key, !!user?.id, () =>
     getSelectedStudent(id),
   );
+  const photoUrl = useStudentPhotoUrl(data?.avatar_url, user?.id);
   if (error)
     return (
       <div role="alert" className="mb-5">
@@ -29,6 +31,7 @@ export function SelectedStudentHeader({ id }: { id: string }) {
   return (
     <StudentRecordHeader
       name={data.full_name}
+      avatarUrl={photoUrl}
       initials={data.full_name
         .split(/\s+/)
         .filter(Boolean)
@@ -41,16 +44,22 @@ export function SelectedStudentHeader({ id }: { id: string }) {
       yearLabel={`Year ${data.year_level}`}
       email={data.email}
       standing={
-        data.is_delinquent
+        data.is_delinquent ||
+        data.standing === "probation" ||
+        data.standing === "dismissed"
           ? "delinquent"
-          : data.standing === "good_standing"
-            ? "good"
-            : "flagged"
+          : data.open_flags_count > 0 || data.standing === "warning"
+            ? "flagged"
+            : "good"
       }
       standingLabel={
-        data.is_delinquent
+        data.is_delinquent ||
+        data.standing === "probation" ||
+        data.standing === "dismissed"
           ? "Delinquency flag"
-          : data.standing.replaceAll("_", " ")
+          : data.open_flags_count > 0
+            ? "Open grade flag"
+            : data.standing.replaceAll("_", " ")
       }
     />
   );

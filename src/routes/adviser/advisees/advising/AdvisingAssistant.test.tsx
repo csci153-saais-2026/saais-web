@@ -34,7 +34,7 @@ describe("AdvisingAssistant", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Simulated answer")).toBeTruthy();
-    expect(screen.getByText("AI can make mistakes.")).toBeTruthy();
+    expect(screen.getByText("Verify the official record.")).toBeTruthy();
     expect(askAdvisingAssistant).toHaveBeenCalledWith(
       student,
       "First question",
@@ -55,7 +55,7 @@ describe("AdvisingAssistant", () => {
       ),
     );
   });
-  it("does not send requests without a UUID or outside mock mode", () => {
+  it("does not send requests without a valid student UUID", () => {
     const view = render(
       <AdvisingAssistant studentId="2023-04412" isMockMode />,
     );
@@ -66,12 +66,45 @@ describe("AdvisingAssistant", () => {
       (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
-    view.rerender(<AdvisingAssistant studentId={student} isMockMode={false} />);
+    view.rerender(
+      <AdvisingAssistant studentId="2023-04412" isMockMode={false} />,
+    );
     expect(
       (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
     expect(askAdvisingAssistant).not.toHaveBeenCalled();
+  });
+  it("calls the existing API in Supabase mode and displays its verification notice", async () => {
+    vi.mocked(askAdvisingAssistant).mockResolvedValue({
+      answer: "Record-grounded answer",
+      verification_notice: "Verify this response against the student record.",
+      grounded_at: "2026-11-10T09:00:00Z",
+      mutates_records: false,
+    });
+    render(<AdvisingAssistant studentId={student} isMockMode={false} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open advising assistant" }),
+    );
+    expect(screen.queryByText("Demo preview")).toBeNull();
+    expect(
+      screen.queryByText(
+        "The assistant is not available outside mock mode yet.",
+      ),
+    ).toBeNull();
+    fireEvent.change(screen.getByLabelText("Message the advising assistant"), {
+      target: { value: "What is the student's standing?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Record-grounded answer")).toBeTruthy();
+    expect(
+      screen.getByText("Verify this response against the student record."),
+    ).toBeTruthy();
+    expect(askAdvisingAssistant).toHaveBeenCalledWith(
+      student,
+      "What is the student's standing?",
+      [],
+    );
   });
   it("preserves the question and shows an error if the request fails", async () => {
     vi.mocked(askAdvisingAssistant).mockRejectedValue(new Error("Unavailable"));

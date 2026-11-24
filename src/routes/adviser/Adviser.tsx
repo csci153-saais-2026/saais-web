@@ -1,7 +1,6 @@
 import { lazy, type ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useParams } from "react-router";
 import { AdviserLayout } from "./AdviserLayout";
-import { SampleFooter } from "@/components/features/sample-footer";
 import { FormField } from "@/components/features/form-field";
 import {
   Select,
@@ -37,7 +36,6 @@ export function AdviserPage({
   title,
   tab,
   children,
-  sample = true,
 }: {
   title: string;
   tab?: string;
@@ -93,11 +91,6 @@ export function AdviserPage({
         <p>This section is not yet connected to this student record.</p>
       ) : (
         children
-      )}
-      {sample && !tab && (
-        <SampleFooter>
-          Sample records for presentation · Reference date: 19 September 2026
-        </SampleFooter>
       )}
     </section>
   );
