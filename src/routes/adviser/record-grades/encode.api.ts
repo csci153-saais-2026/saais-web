@@ -1,4 +1,4 @@
-import { apiClient, unwrapApiResult } from "@/lib/api";
+import { ApiClientError, apiClient, unwrapApiResult } from "@/lib/api";
 import type { ApiSchema } from "@/lib/api";
 import { getRoster } from "../advisees/advisees.api";
 import { getChecklist } from "../advisees/checklist/record.api";
@@ -12,30 +12,28 @@ export async function getEncodingChoices() {
   return { students, terms };
 }
 export async function getTermOfferings(studentId: string, termId: string) {
-  const pageSize = 100;
-  const maxOfferings = 1000;
-  const fetchOfferings = async () => {
-    const all = [];
-    for (let offset = 0; offset < maxOfferings; offset += pageSize) {
-      const page = await apiClient
-        .GET("/functions/v1/students/{student_id}/course-offerings", {
-          params: {
-            path: { student_id: studentId },
-            // F-01: do not issue the known-failing limit=1000 request. Paginate
-            // in bounded pages so all offerings remain available to code/title
-            // search and elective selection.
-            query: { school_term_id: termId, limit: pageSize, offset },
-          },
-        })
-        .then(unwrapApiResult);
-      all.push(...page);
-      if (page.length < pageSize) break;
-    }
-    return all;
-  };
+  const fetchOfferings = (limit: number) => 
+    apiClient
+      .GET("/functions/v1/students/{student_id}/course-offerings", {
+        params: {
+          path: { student_id: studentId },
+          query: { school_term_id: termId, limit },
+        },
+      })
+      .then(unwrapApiResult);
+
+// Try with limit=1000 first. If the server returns 5xx (edge-function error),
+  // fall back to limit=100 so a partial list is still usable.  If both fail
+  // (F-01: backend bug for a specific term), re-throw so the UI can display the
+  // "could not be completed" error panel rather than showing an empty course list.
 
   const [offerings, courses] = await Promise.all([
-    fetchOfferings(),
+    fetchOfferings(1000).catch((error: unknown) => {
+      if (error instanceof ApiClientError && error.status >= 500) {
+        return fetchOfferings(100);
+      }
+      throw error;
+    }),
     apiClient
       .GET("/rest/v1/course", {
         params: { query: { select: "id,is_elective", limit: 1000 } },
