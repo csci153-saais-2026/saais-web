@@ -127,7 +127,9 @@ export default function CurriculaPage() {
   const currentVersion =
     versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null;
   const departments = (query.data ?? CURRICULA_SKELETON_SAMPLE).departments;
-  const activeCourses = (query.data ?? CURRICULA_SKELETON_SAMPLE).courses.filter(
+  const activeCourses = (
+    query.data ?? CURRICULA_SKELETON_SAMPLE
+  ).courses.filter(
     (course) =>
       course.departmentId === currentVersion?.departmentId &&
       course.status === "active",

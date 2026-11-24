@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { StudentProfileData } from "./student-profile.api";
 
 /** Layout-only stand-in so the profile skeleton can be measured on first visit. */

@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { ChecklistSkeletonData } from "./StudentChecklistPage";
 
 /** Layout-only stand-in so the checklist skeleton can be measured on first visit. */

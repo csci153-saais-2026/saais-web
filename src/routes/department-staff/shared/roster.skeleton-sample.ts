@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { ApiSchema } from "@/lib/api";
 
 type RosterItem = ApiSchema<"StudentRosterItem">;

@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { ApiSchema } from "@/lib/api";
 
 /** Layout-only roster so the admin students table can be measured on first visit. */

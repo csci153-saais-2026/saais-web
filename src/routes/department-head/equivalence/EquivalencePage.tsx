@@ -58,7 +58,8 @@ export default function EquivalencePage() {
   const showToast = useNotify();
   const curricula = (query.data ?? EQUIVALENCE_SKELETON_SAMPLE).curricula;
   const courses = (query.data ?? EQUIVALENCE_SKELETON_SAMPLE).courses;
-  const equivalencies = (query.data ?? EQUIVALENCE_SKELETON_SAMPLE).equivalencies;
+  const equivalencies = (query.data ?? EQUIVALENCE_SKELETON_SAMPLE)
+    .equivalencies;
   const [pickedFromId, setFromCurriculumId] = React.useState("");
   const [pickedToId, setToCurriculumId] = React.useState("");
   // Start on a curriculum pair that already has equivalencies, otherwise on the first two curricula.

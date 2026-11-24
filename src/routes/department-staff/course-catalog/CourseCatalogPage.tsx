@@ -355,52 +355,52 @@ export default function CourseCatalogPage() {
             {(references.isSuccess || references.isPending) &&
               (catalog.isSuccess || catalog.isPending) &&
               !searchError && (
-              <DataTablePanel
-                title="Course records"
-                columns={columns}
-                rows={data.courses}
-                rowKey={(course) => course.id}
-                spacious
-                empty="No courses match these filters."
-                footer={
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm" aria-live="polite">
-                      {data.total != null
-                        ? `${start} - ${end} of ${data.total}`
-                        : `Page ${filters.page + 1}`}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          updateFilters(
-                            { page: String(filters.page - 1) },
-                            false,
-                          )
-                        }
-                        disabled={filters.page === 0 || catalog.isFetching}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          updateFilters(
-                            { page: String(filters.page + 1) },
-                            false,
-                          )
-                        }
-                        disabled={!hasNext || catalog.isFetching}
-                      >
-                        Next
-                      </Button>
+                <DataTablePanel
+                  title="Course records"
+                  columns={columns}
+                  rows={data.courses}
+                  rowKey={(course) => course.id}
+                  spacious
+                  empty="No courses match these filters."
+                  footer={
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm" aria-live="polite">
+                        {data.total != null
+                          ? `${start} - ${end} of ${data.total}`
+                          : `Page ${filters.page + 1}`}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            updateFilters(
+                              { page: String(filters.page - 1) },
+                              false,
+                            )
+                          }
+                          disabled={filters.page === 0 || catalog.isFetching}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            updateFilters(
+                              { page: String(filters.page + 1) },
+                              false,
+                            )
+                          }
+                          disabled={!hasNext || catalog.isFetching}
+                        >
+                          Next
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-            )}
+                  }
+                />
+              )}
           </AccountSkeleton>
         </Panel>
         <CoursePrerequisitesDialog

@@ -19,7 +19,7 @@ setupDepartmentHeadMockApi();
 async function openCohort() {
   renderDepartmentHead(<DepartmentReportsPage />);
   await screen.findByLabelText("Selected department report");
-    await waitForLoaded();
+  await waitForLoaded();
   const [opener] = screen.getAllByRole("button", { name: /View students for/ });
   opener.focus();
   fireEvent.click(opener);

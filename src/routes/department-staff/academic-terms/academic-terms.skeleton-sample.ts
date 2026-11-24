@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { SchoolTerm } from "./academic-terms.api";
 
 /** Layout-only term rows so the term history table can be measured on first visit. */

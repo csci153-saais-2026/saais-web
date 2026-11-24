@@ -318,7 +318,9 @@ function buildRecommendations(
 ): CourseRecommendationRow[] {
   return planItems.map((item) => {
     const offering = meta?.offeringMap.get(item.course_offering_id);
-    const course = offering ? meta?.courseMap.get(offering.course_id) : undefined;
+    const course = offering
+      ? meta?.courseMap.get(offering.course_id)
+      : undefined;
     return {
       ...item,
       code: course?.code ?? null,

@@ -245,11 +245,7 @@ export default function AdminAuditLogPage() {
 
   // While loading, the skeleton is measured from sample rows.
   const visibleEntries =
-    error || filterError
-      ? []
-      : loading
-        ? ADMIN_AUDIT_SKELETON_SAMPLE
-        : entries;
+    error || filterError ? [] : loading ? ADMIN_AUDIT_SKELETON_SAMPLE : entries;
   const pageNumber = Math.floor(offset / AUDIT_PAGE_SIZE) + 1;
 
   return (

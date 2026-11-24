@@ -211,8 +211,9 @@ describe("Department Staff adviser assignments", () => {
       name: "Select " + MOCK_PERSONAS.student.fullName,
     });
     await waitForLoaded();
-    const total = screen.getByText(/^Showing \d+ of \d+ assignments$/)
-      .textContent;
+    const total = screen.getByText(
+      /^Showing \d+ of \d+ assignments$/,
+    ).textContent;
     fireEvent.click(studentCheckbox);
     expect(screen.getByText("1 student selected (maximum 500)")).toBeTruthy();
     expect(

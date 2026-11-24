@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { DepartmentAccount } from "./accounts.api";
 
 /** Layout-only account rows so the accounts table can be measured on first visit. */

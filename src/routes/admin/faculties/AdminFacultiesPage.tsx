@@ -261,9 +261,7 @@ export default function AdminFacultiesPage() {
           title="Faculties"
           description="Institutional colleges and divisions, with department totals."
           columns={facultyColumns}
-          rows={
-            error ? [] : loading ? FACULTIES_SKELETON_SAMPLE : faculties
-          }
+          rows={error ? [] : loading ? FACULTIES_SKELETON_SAMPLE : faculties}
           rowKey={(faculty) => faculty.id}
           empty={
             loading

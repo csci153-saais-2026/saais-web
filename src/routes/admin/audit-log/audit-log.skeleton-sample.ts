@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { AuditLogRow } from "./admin-audit-model";
 
 /** Layout-only audit rows so the table can be measured on first visit. */

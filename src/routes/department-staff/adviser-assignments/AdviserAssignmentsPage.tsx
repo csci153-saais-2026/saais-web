@@ -144,8 +144,7 @@ export default function AdviserAssignmentsPage() {
       return listDepartmentAssignmentAdvisers(active.departmentId, signal);
     },
   });
-  const directoryData =
-    directory.data ?? ASSIGNMENTS_DIRECTORY_SKELETON_SAMPLE;
+  const directoryData = directory.data ?? ASSIGNMENTS_DIRECTORY_SKELETON_SAMPLE;
   const students = useMemo(() => {
     const historyByStudent = new Map<
       string,

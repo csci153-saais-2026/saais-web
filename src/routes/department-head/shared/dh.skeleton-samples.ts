@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { AcademicTermRecord } from "../academic-terms/terms-api";
 import type { AuditEvent } from "../audit-log/audit-types";
 import type { CurriculaData } from "../curricula/curricula-api";
@@ -24,14 +27,17 @@ import type { SettingsState } from "../settings/settings-types";
  * the first visit. They are never shown as content.
  */
 
-export const TERMS_SKELETON_SAMPLE: AcademicTermRecord[] = sampleRows(5, (i) => ({
-  id: `term-${i}`,
-  academicYear: "2025–2026",
-  semester: "1st Semester",
-  termDates: "Aug 4, 2025 – Dec 12, 2025",
-  encodingDeadline: "Dec 19, 2025",
-  status: i === 0 ? "Open" : "Closed",
-}));
+export const TERMS_SKELETON_SAMPLE: AcademicTermRecord[] = sampleRows(
+  5,
+  (i) => ({
+    id: `term-${i}`,
+    academicYear: "2025–2026",
+    semester: "1st Semester",
+    termDates: "Aug 4, 2025 – Dec 12, 2025",
+    encodingDeadline: "Dec 19, 2025",
+    status: i === 0 ? "Open" : "Closed",
+  }),
+);
 
 export const AUDIT_SKELETON_SAMPLE: AuditEvent[] = sampleRows(10, (i) => ({
   id: `event-${i}`,

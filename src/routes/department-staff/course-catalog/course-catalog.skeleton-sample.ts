@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { CatalogCourse } from "./course-catalog.api";
 
 /** Layout-only course rows so the catalog table can be measured on first visit. */

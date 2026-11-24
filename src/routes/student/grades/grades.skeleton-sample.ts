@@ -1,4 +1,7 @@
-import { layoutSample, sampleRows } from "@/components/features/skeleton-sample";
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
 import type { GradesPageData } from "./StudentGradesPage";
 
 /** Layout-only stand-in so the grades skeleton can be measured on first visit. */
