@@ -9,7 +9,7 @@ import { NotFoundPage } from "@/routes/NotFoundPage";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/context/QueryProvider";
 import { SkulletProvider } from "skullet/react";
-import { PageSkeleton } from "@/components/features/loading-skeletons";
+import { RouteFallback } from "@/components/features/route-fallback";
 
 const LandingPage = lazy(() => import("@/routes/landing/LandingPage"));
 const StyleguidePage = lazy(() => import("@/routes/styleguide/StyleguidePage"));
@@ -83,7 +83,7 @@ function App() {
       <QueryProvider>
         <AuthProvider>
           <BrowserRouter>
-            <Suspense fallback={<PageSkeleton label="Loading…" />}>
+            <Suspense fallback={<RouteFallback />}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<LandingPage />} />
