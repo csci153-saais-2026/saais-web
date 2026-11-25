@@ -4,7 +4,7 @@ import { AlertIcon, BellIcon, CheckIcon, XIcon } from "@/components/icons";
 const Toaster = ({ ...props }: ToasterProps) => (
   <Sonner
     theme="light"
-    position="bottom-right"
+    position="top-right"
     className="toaster group"
     icons={{
       success: <CheckIcon className="size-4" />,
