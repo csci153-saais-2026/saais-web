@@ -237,6 +237,8 @@ describe("AdviserDashboard", () => {
       await waitFor(() =>
         expect((exportButton as HTMLButtonElement).disabled).toBe(false),
       );
+      // The deficiency count loads after the report, and export snapshots it.
+      await screen.findByText(/View list/);
       fireEvent.click(exportButton);
       const download = await screen.findByRole("link", {
         name: "Download PDF",
