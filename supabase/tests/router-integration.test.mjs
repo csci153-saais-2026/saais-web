@@ -9,6 +9,7 @@ const id = "00000005-0000-4000-8000-000000000000";
 const env = {
   url: "https://supabase.example.test",
   publicKey: "test-public-key",
+  serviceKey: "test-service-key",
   origins: [],
   assistant: {
     endpoint: "https://assistant.example.test/chat/completions",
@@ -57,6 +58,13 @@ test("the shared router registers all 81 operations once and forwards to the cor
       fetch: async (url, options) => {
         if (url.endsWith("/auth/v1/user")) return Response.json({ id });
         calls.push({ url, body: JSON.parse(options.body) });
+        if (url.endsWith("/saais_record_assistant_turn")) {
+          assert.equal(
+            options.headers.Authorization,
+            `Bearer ${env.serviceKey}`,
+          );
+          return new Response(null, { status: 204 });
+        }
         if (url === env.assistant.endpoint) {
           return Response.json({
             choices: [{ message: { content: "Sample academic answer." } }],
@@ -89,7 +97,7 @@ test("the shared router registers all 81 operations once and forwards to the cor
         ? "matt_operation"
         : "jerome_operation";
     assert.equal(calls[0].url, `${env.url}/rest/v1/rpc/${rpc}`, operation.id);
-    assert.equal(calls.length, assistant ? 2 : 1, operation.id);
+    assert.equal(calls.length, assistant ? 3 : 1, operation.id);
     if (!assistant) assert.equal(calls[0].body.p_operation, operation.id);
     if (operation.id === "listRecommendations") {
       assert.equal(response.headers.get("X-Excluded-Count"), "2");
