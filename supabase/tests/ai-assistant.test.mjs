@@ -12,6 +12,7 @@ test("checks record scope before contacting the assistant provider", async () =>
   const env = {
     url: "https://example.supabase.co",
     publicKey: "test",
+    serviceKey: "test-service-key",
     origins: [],
     assistant: { endpoint, key: "provider-test-key", model: "test" },
   };
@@ -21,6 +22,8 @@ test("checks record scope before contacting the assistant provider", async () =>
     env,
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context")) {
         if (!allowed)
           return Response.json(
@@ -66,6 +69,7 @@ const student = "00000005-0000-4000-8000-000000000000";
 const settings = {
   url: "https://supabase.example.test",
   publicKey: "test-public-key",
+  serviceKey: "test-service-key",
   origins: [],
   assistant: {
     endpoint: "https://assistant.example.test/chat/completions",
@@ -95,6 +99,8 @@ function assistantHandler(provider, upstreamContext = context) {
     env: settings,
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json(upstreamContext);
       return provider(url, options);
@@ -108,6 +114,8 @@ test("assistant requires authentication and current-adviser scope before any pro
     env: settings,
     fetch: async (url) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json(
           { code: "PT403", message: "Current adviser required." },
@@ -227,6 +235,8 @@ test("supports native Google Gemini generateContent requests and filters interna
     env: { ...settings, assistant },
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json({
           grounded_at: "2026-11-21T12:00:00Z",
@@ -262,7 +272,19 @@ test("supports native Google Gemini generateContent requests and filters interna
   assert.equal(capturedUrl, assistant.endpoint);
   assert.equal(capturedHeaders["x-goog-api-key"], "gemini-secret-key");
   assert.equal(capturedHeaders.Authorization, undefined);
-  assert.equal(capturedBody.generationConfig.maxOutputTokens, 800);
+  assert.equal(capturedBody.generationConfig.maxOutputTokens, 2048);
+  assert.match(
+    capturedBody.systemInstruction.parts[0].text,
+    /Address the adviser, not the student/,
+  );
+  assert.match(
+    capturedBody.systemInstruction.parts[0].text,
+    /current and future terms/,
+  );
+  assert.match(
+    capturedBody.systemInstruction.parts[0].text,
+    /draft advising notes/,
+  );
   assert.equal(capturedBody.contents.length, 3);
   assert.equal(capturedBody.contents[0].role, "user");
   assert.equal(capturedBody.contents[1].role, "model");
@@ -297,6 +319,8 @@ test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and 
     env: { ...settings, assistant },
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json(context);
       attempted.push({ url, options });
@@ -477,7 +501,7 @@ test("distinct legacy and provider-specific keys remain usable during key rotati
   assert.equal(readAssistantConfig((name) => vars[name]).providers.length, 1);
 });
 
-test("the complete fallback chain shares one 12-second budget", async () => {
+test("the complete fallback chain shares one 30-second budget", async () => {
   const vars = {
     SAAIS_ASSISTANT_GEMINI_API_KEY: "a",
     SAAIS_ASSISTANT_GEMINI_MODEL: "m",
@@ -512,8 +536,8 @@ test("the complete fallback chain shares one 12-second budget", async () => {
         context,
       ),
     );
-    assert.deepEqual(limits, [4000, 4000, 4000]);
-    assert.equal(clock, 112000);
+    assert.deepEqual(limits, [10000, 10000, 10000]);
+    assert.equal(clock, 130000);
   } finally {
     if (originalNow) Object.defineProperty(performance, "now", originalNow);
     else delete performance.now;
@@ -553,8 +577,8 @@ test("the time budget adapts to one or four configured candidates", async () => 
           context,
         ),
       );
-      assert.deepEqual(limits, Array(count).fill(12000 / count));
-      assert.equal(clock, 112000);
+      assert.deepEqual(limits, Array(count).fill(30000 / count));
+      assert.equal(clock, 130000);
     } finally {
       if (originalNow) Object.defineProperty(performance, "now", originalNow);
       else delete performance.now;
@@ -848,4 +872,106 @@ test("a stalled HTTP error body respects the attempt timeout and falls back", as
   } finally {
     AbortSignal.timeout = originalTimeout;
   }
+});
+
+test("stores a successful adviser turn through the server-only RPC", async () => {
+  const previous = Array.from({ length: 20 }, (_, index) => ({
+    role: index % 2 ? "assistant" : "user",
+    content: `message ${index}`,
+  }));
+  const adviser = "00000004-0000-4000-8000-000000000000";
+  let save;
+  let providerBody;
+  const handler = createHandler("students", {
+    env: settings,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: adviser });
+      if (url.endsWith("/matt_assistant_context"))
+        return Response.json({
+          ...context,
+          request: { ...context.request, history: previous },
+        });
+      if (url.endsWith("/saais_record_assistant_turn")) {
+        assert.equal(
+          options.headers.Authorization,
+          `Bearer ${settings.serviceKey}`,
+        );
+        assert.equal(options.headers.apikey, settings.serviceKey);
+        save = JSON.parse(options.body);
+        return new Response(null, { status: 204 });
+      }
+      providerBody = JSON.parse(options.body);
+      return Response.json({
+        choices: [{ message: { content: "Draft adviser response" } }],
+      });
+    },
+  });
+  const response = await handler(ask());
+  assert.equal(response.status, 200);
+  assert.equal(providerBody.messages.length, 22);
+  assert.deepEqual(providerBody.messages.slice(1, 21), previous);
+  assert.deepEqual(save, {
+    p_adviser_id: adviser,
+    p_student_id: student,
+    p_question: context.request.message,
+    p_answer: "Draft adviser response",
+  });
+});
+
+test("does not return a successful response if conversation storage fails", async () => {
+  const handler = createHandler("students", {
+    env: settings,
+    fetch: async (url) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_assistant_context"))
+        return Response.json(context);
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return Response.json({}, { status: 403 });
+      return Response.json({ choices: [{ message: { content: "Draft" } }] });
+    },
+  });
+  const response = await handler(ask());
+  assert.equal(response.status, 500);
+  assert.equal(
+    (await response.json()).message,
+    "The assistant conversation could not be saved.",
+  );
+});
+
+test("provider failure diagnostics never include prompts, records, URLs, or credentials", async () => {
+  const previousWarn = console.warn;
+  const logs = [];
+  console.warn = (...args) => logs.push(args);
+  try {
+    await assert.rejects(
+      assistantAnswer(
+        settings.assistant,
+        async () => {
+          throw new Error(
+            "provider-secret user-academic-record private-prompt",
+          );
+        },
+        context,
+      ),
+    );
+    const serialized = JSON.stringify(logs);
+    assert.match(serialized, /provider_error/);
+    assert.doesNotMatch(
+      serialized,
+      /provider-secret|user-academic-record|private-prompt|assistant\.example\.test|private-test-provider-key/,
+    );
+  } finally {
+    console.warn = previousWarn;
+  }
+});
+
+test("caps provider answers without splitting Unicode code points", async () => {
+  const text = "a".repeat(7999) + "😀" + "x";
+  const answer = await assistantAnswer(
+    settings.assistant,
+    async () => Response.json({ choices: [{ message: { content: text } }] }),
+    context,
+  );
+  assert.equal(answer.answer, "a".repeat(7999) + "😀");
+  assert.equal(Array.from(answer.answer).length, 8000);
 });
