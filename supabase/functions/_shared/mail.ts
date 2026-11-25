@@ -1,3 +1,5 @@
+import type { Database } from "./database.types.ts";
+
 type MailEnvironment = {
   url: string;
   serviceKey: string;
@@ -7,12 +9,9 @@ type MailEnvironment = {
   siteUrl: string;
   recipients: Set<string> | null;
 };
-type Mail = {
-  id: string;
-  lease: string;
+type ClaimedMail = Database["public"]["Functions"]["saais_claim_email"]["Returns"][number];
+type Mail = Omit<ClaimedMail, "kind" | "message" | "token"> & {
   kind: "invitation" | "notification";
-  email: string;
-  subject: string;
   message: string | null;
   token: string | null;
 };
