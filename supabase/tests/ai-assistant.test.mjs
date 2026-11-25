@@ -263,6 +263,18 @@ test("supports native Google Gemini generateContent requests and filters interna
   assert.equal(capturedHeaders["x-goog-api-key"], "gemini-secret-key");
   assert.equal(capturedHeaders.Authorization, undefined);
   assert.equal(capturedBody.generationConfig.maxOutputTokens, 800);
+  assert.match(
+    capturedBody.systemInstruction.parts[0].text,
+    /Address the adviser, not the student/,
+  );
+  assert.match(
+    capturedBody.systemInstruction.parts[0].text,
+    /current and future terms/,
+  );
+  assert.match(
+    capturedBody.systemInstruction.parts[0].text,
+    /draft advising notes/,
+  );
   assert.equal(capturedBody.contents.length, 3);
   assert.equal(capturedBody.contents[0].role, "user");
   assert.equal(capturedBody.contents[1].role, "model");
