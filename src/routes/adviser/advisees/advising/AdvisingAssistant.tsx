@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatIcon, ChevronRightIcon, XIcon } from "@/components/icons";
 import { askAdvisingAssistant } from "./advising-assistant.api";
+import { AssistantReply } from "./AssistantReply";
 
 type Message = ApiSchema<"AdvisingAIMessage">;
 const UUID =
@@ -134,15 +135,15 @@ export function AdvisingAssistant({
                     : "flex justify-start"
                 }
               >
-                <p
-                  className={
-                    item.role === "user"
-                      ? "max-w-[82%] whitespace-pre-wrap rounded-[12px_12px_3px_12px] bg-[#2F4A12] px-[13px] py-[9px] text-[13.5px] leading-[1.55] text-[#FBF8EF]"
-                      : "max-w-[82%] whitespace-pre-wrap rounded-[12px_12px_12px_3px] bg-[#F2EDDC] px-[13px] py-[9px] text-[13.5px] leading-[1.55] text-[#16200C]"
-                  }
-                >
-                  {item.content}
-                </p>
+                {item.role === "user" ? (
+                  <p className="max-w-[82%] whitespace-pre-wrap rounded-[12px_12px_3px_12px] bg-[#2F4A12] px-[13px] py-[9px] text-[13.5px] leading-[1.55] text-[#FBF8EF]">
+                    {item.content}
+                  </p>
+                ) : (
+                  <div className="min-w-0 max-w-[82%] rounded-[12px_12px_12px_3px] bg-[#F2EDDC] px-[13px] py-[9px] text-[13.5px] leading-[1.55] text-[#16200C]">
+                    <AssistantReply content={item.content} />
+                  </div>
+                )}
               </div>
             ))}
             {pending && (
