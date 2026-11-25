@@ -272,7 +272,7 @@ test("supports native Google Gemini generateContent requests and filters interna
   assert.equal(capturedUrl, assistant.endpoint);
   assert.equal(capturedHeaders["x-goog-api-key"], "gemini-secret-key");
   assert.equal(capturedHeaders.Authorization, undefined);
-  assert.equal(capturedBody.generationConfig.maxOutputTokens, 800);
+  assert.equal(capturedBody.generationConfig.maxOutputTokens, 2048);
   assert.match(
     capturedBody.systemInstruction.parts[0].text,
     /Address the adviser, not the student/,
@@ -501,7 +501,7 @@ test("distinct legacy and provider-specific keys remain usable during key rotati
   assert.equal(readAssistantConfig((name) => vars[name]).providers.length, 1);
 });
 
-test("the complete fallback chain shares one 12-second budget", async () => {
+test("the complete fallback chain shares one 30-second budget", async () => {
   const vars = {
     SAAIS_ASSISTANT_GEMINI_API_KEY: "a",
     SAAIS_ASSISTANT_GEMINI_MODEL: "m",
@@ -536,8 +536,8 @@ test("the complete fallback chain shares one 12-second budget", async () => {
         context,
       ),
     );
-    assert.deepEqual(limits, [4000, 4000, 4000]);
-    assert.equal(clock, 112000);
+    assert.deepEqual(limits, [10000, 10000, 10000]);
+    assert.equal(clock, 130000);
   } finally {
     if (originalNow) Object.defineProperty(performance, "now", originalNow);
     else delete performance.now;
@@ -577,8 +577,8 @@ test("the time budget adapts to one or four configured candidates", async () => 
           context,
         ),
       );
-      assert.deepEqual(limits, Array(count).fill(12000 / count));
-      assert.equal(clock, 112000);
+      assert.deepEqual(limits, Array(count).fill(30000 / count));
+      assert.equal(clock, 130000);
     } finally {
       if (originalNow) Object.defineProperty(performance, "now", originalNow);
       else delete performance.now;
@@ -935,4 +935,31 @@ test("does not return a successful response if conversation storage fails", asyn
     (await response.json()).message,
     "The assistant conversation could not be saved.",
   );
+});
+
+test("provider failure diagnostics never include prompts, records, URLs, or credentials", async () => {
+  const previousWarn = console.warn;
+  const logs = [];
+  console.warn = (...args) => logs.push(args);
+  try {
+    await assert.rejects(
+      assistantAnswer(
+        settings.assistant,
+        async () => {
+          throw new Error(
+            "provider-secret user-academic-record private-prompt",
+          );
+        },
+        context,
+      ),
+    );
+    const serialized = JSON.stringify(logs);
+    assert.match(serialized, /provider_error/);
+    assert.doesNotMatch(
+      serialized,
+      /provider-secret|user-academic-record|private-prompt|assistant\.example\.test|private-test-provider-key/,
+    );
+  } finally {
+    console.warn = previousWarn;
+  }
 });
