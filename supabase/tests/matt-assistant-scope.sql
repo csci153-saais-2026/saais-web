@@ -8,6 +8,7 @@ declare
   result jsonb;
   previous_budget bigint;
   denied boolean;
+  expected_course text;
 begin
   perform test.login(4);
   result := public.matt_assistant_context(student, request_body);
@@ -16,6 +17,19 @@ begin
   perform test.assert(not (result->'record' ? 'student_id') and not (result->'record' ? 'full_name')
     and not (result->'record' ? 'email') and not (result->'record' ? 'notes'),
     'Assistant context excludes identity and private notes.');
+  select c.code into expected_course
+  from public.curriculum_term_course s
+  join public.curriculum_term t on t.id=s.curriculum_term_id
+  join public.course c on c.id=s.course_id
+  where t.curriculum_version_id=(saais_private.organization(student)->>'curriculum_version_id')::uuid
+  order by t.year_level, t.term_sequence, c.code limit 1;
+  perform test.assert(expected_course is not null and exists (
+    select 1 from jsonb_array_elements(result->'record'->'curriculum'->'courses') course
+    where course->>'course_code'=expected_course and course ? 'prerequisites'
+  ), 'Assistant context must include the assigned curriculum and prerequisites.');
+  perform test.assert(jsonb_typeof(result->'record'->'available_terms')='array'
+    and result->'record' ? 'attempts_truncated',
+    'Assistant context must include offering information and data completeness.');
 
   perform test.login(2);
   perform public.matt_operation('reassignAdviser', jsonb_build_object('student_id', student),
