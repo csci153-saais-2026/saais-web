@@ -12,7 +12,7 @@ export async function createDashboardPdf(
   department?: ApiSchema<"Department">,
 ) {
   const { jsPDF } = await import("jspdf");
-  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const green = "#29450e";
   const cream = "#f8f6ed";
   const clean = (value: string) =>
@@ -47,30 +47,32 @@ export async function createDashboardPdf(
       },
     ),
   );
-  if (logos[0]) pdf.addImage(logos[0], "PNG", margin, 12, 20, 20);
-  if (logos[1]) pdf.addImage(logos[1], "PNG", margin + 24, 12, 56, 20);
+  // Same letterhead measurements as the other portrait PDF exports.
+  if (logos[0]) pdf.addImage(logos[0], "PNG", margin, 12, 17, 17);
+  if (logos[1]) pdf.addImage(logos[1], "PNG", margin + 20, 12, 48, 17);
   if (logos[2])
-    pdf.addImage(logos[2], "PNG", pageWidth - margin - 45, 10, 20, 24);
+    pdf.addImage(logos[2], "PNG", pageWidth - margin - 40, 10, 18, 21);
   if (logos[3])
-    pdf.addImage(logos[3], "PNG", pageWidth - margin - 22, 10, 22, 24);
+    pdf.addImage(logos[3], "PNG", pageWidth - margin - 20, 10, 20, 21);
+  const dividerX = margin + 72;
   pdf.setDrawColor(green);
-  pdf.line(96, 10, 96, 34);
+  pdf.line(dividerX, 10, dividerX, 31);
   pdf.setTextColor(green);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(7.5);
-  text(department?.letterhead_prefix ?? "Department", 100, 17);
+  text(department?.letterhead_prefix ?? "Department", dividerX + 4, 17);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(10);
   const departmentLines = pdf.splitTextToSize(
     department?.letterhead_name ?? department?.name ?? "Department unavailable",
-    pageWidth - 143,
+    pageWidth - margin - 43 - (dividerX + 4),
   ) as string[];
-  pdf.text(departmentLines, 100, 25);
+  pdf.text(departmentLines, dividerX + 4, 24);
   pdf.setTextColor("#111111");
-  pdf.setFontSize(12);
+  pdf.setFontSize(13);
   text("DASHBOARD", pageWidth / 2, 44, { align: "center" });
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
+  pdf.setFontSize(8.5);
   text("Adviser dashboard | Your advisees at a glance.", pageWidth / 2, 50, {
     align: "center",
   });
@@ -149,24 +151,26 @@ export async function createDashboardPdf(
           row.mean_gwa?.toFixed(2) ?? "Not available",
         ])
       : [["Not available", "-", "-", "-"]],
-    [17, 78, 165, 225],
+    [17, 55, 120, 160],
   );
 
-  pdf.addPage();
-  topStripe();
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  text("Dashboard (continued)", margin, 16);
+  // Signatures follow the content, moving to a new page only when they don't fit.
+  if (y + 36 > pageHeight - 16) {
+    pdf.addPage();
+    topStripe();
+    y = 16;
+  }
   pdf.setDrawColor("#888888");
-  pdf.line(40, 43, 125, 43);
-  pdf.line(172, 43, 257, 43);
+  pdf.line(24, y + 16, 89, y + 16);
+  pdf.line(121, y + 16, 186, y + 16);
   pdf.setFont("helvetica", "bold");
-  if (adviserName) text(adviserName, 82.5, 49, { align: "center" });
+  pdf.setFontSize(8);
+  if (adviserName) text(adviserName, 56.5, y + 21, { align: "center" });
   if (department?.department_head_name)
-    text(department.department_head_name, 214.5, 49, { align: "center" });
+    text(department.department_head_name, 153.5, y + 21, { align: "center" });
   pdf.setFont("helvetica", "normal");
-  text("Prepared by: Academic Adviser", 82.5, 55, { align: "center" });
-  text("Noted by: Department Head", 214.5, 55, { align: "center" });
+  text("Prepared by: Academic Adviser", 56.5, y + 26, { align: "center" });
+  text("Noted by: Department Head", 153.5, y + 26, { align: "center" });
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page);
