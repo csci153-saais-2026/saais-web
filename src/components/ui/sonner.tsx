@@ -4,7 +4,8 @@ import { AlertIcon, BellIcon, CheckIcon, XIcon } from "@/components/icons";
 const Toaster = ({ ...props }: ToasterProps) => (
   <Sonner
     theme="light"
-    position="bottom-right"
+    position="top-right"
+    richColors
     className="toaster group"
     icons={{
       success: <CheckIcon className="size-4" />,
@@ -18,6 +19,16 @@ const Toaster = ({ ...props }: ToasterProps) => (
         "--normal-text": "var(--popover-foreground)",
         "--normal-border": "var(--border)",
         "--border-radius": "var(--radius)",
+        "--success-bg": "var(--notice-success-bg)",
+        "--success-text": "var(--notice-success)",
+        "--success-border": "var(--notice-success-border)",
+        "--error-bg": "var(--notice-danger-bg)",
+        "--error-text": "var(--notice-danger)",
+        "--error-border": "var(--notice-danger-border)",
+        // richColors would otherwise tint info toasts blue.
+        "--info-bg": "var(--popover)",
+        "--info-text": "var(--popover-foreground)",
+        "--info-border": "var(--border)",
       } as React.CSSProperties
     }
     {...props}
