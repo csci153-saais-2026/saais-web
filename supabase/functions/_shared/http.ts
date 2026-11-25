@@ -406,12 +406,13 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       const data = await result.json();
       if (assistant && env.assistant) {
         const answer = await assistantAnswer(env.assistant, fetcher, data);
-        const turn: Database["public"]["Functions"]["saais_record_assistant_turn"]["Args"] = {
-          p_adviser_id: identity.id,
-          p_student_id: String(params.student_id),
-          p_question: data.request.message,
-          p_answer: answer.answer,
-        };
+        const turn: Database["public"]["Functions"]["saais_record_assistant_turn"]["Args"] =
+          {
+            p_adviser_id: identity.id,
+            p_student_id: String(params.student_id),
+            p_question: data.request.message,
+            p_answer: answer.answer,
+          };
         const saved = await fetcher(
           `${env.url}/rest/v1/rpc/saais_record_assistant_turn`,
           {

@@ -9,7 +9,8 @@ type MailEnvironment = {
   siteUrl: string;
   recipients: Set<string> | null;
 };
-type ClaimedMail = Database["public"]["Functions"]["saais_claim_email"]["Returns"][number];
+type ClaimedMail =
+  Database["public"]["Functions"]["saais_claim_email"]["Returns"][number];
 type Mail = Omit<ClaimedMail, "kind" | "message" | "token"> & {
   kind: "invitation" | "notification";
   message: string | null;
