@@ -333,7 +333,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       // Use the caller JWT, never a service-role credential. SQL rechecks active
       // session/profile/role/scope at commit and makes the operation atomic.
       const assistant = operation.id === "askAdvisingAssistant";
-      if (assistant && !env.assistant)
+      if (assistant && (!env.assistant || !env.serviceKey))
         return error(
           500,
           "XX000",
@@ -404,10 +404,33 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         return new Response(null, { status: 204, headers });
       const data = await result.json();
       if (assistant && env.assistant) {
-        return Response.json(
-          await assistantAnswer(env.assistant, fetcher, data),
-          { status: operation.status, headers },
+        const answer = await assistantAnswer(env.assistant, fetcher, data);
+        const saved = await fetcher(
+          `${env.url}/rest/v1/rpc/saais_record_assistant_turn`,
+          {
+            method: "POST",
+            headers: {
+              apikey: env.serviceKey!,
+              Authorization: `Bearer ${env.serviceKey!}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              p_adviser_id: identity.id,
+              p_student_id: params.student_id,
+              p_question: data.request.message,
+              p_answer: answer.answer,
+            }),
+            signal: AbortSignal.timeout(10000),
+          },
         );
+        if (!saved.ok)
+          return error(
+            500,
+            "XX000",
+            "The assistant conversation could not be saved.",
+            headers,
+          );
+        return Response.json(answer, { status: operation.status, headers });
       }
       if (operation.id === "listRecommendations") {
         headers.set("X-Excluded-Count", String(data.excluded_count));

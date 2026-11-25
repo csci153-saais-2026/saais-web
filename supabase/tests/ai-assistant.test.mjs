@@ -12,6 +12,7 @@ test("checks record scope before contacting the assistant provider", async () =>
   const env = {
     url: "https://example.supabase.co",
     publicKey: "test",
+    serviceKey: "test-service-key",
     origins: [],
     assistant: { endpoint, key: "provider-test-key", model: "test" },
   };
@@ -21,6 +22,8 @@ test("checks record scope before contacting the assistant provider", async () =>
     env,
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context")) {
         if (!allowed)
           return Response.json(
@@ -66,6 +69,7 @@ const student = "00000005-0000-4000-8000-000000000000";
 const settings = {
   url: "https://supabase.example.test",
   publicKey: "test-public-key",
+  serviceKey: "test-service-key",
   origins: [],
   assistant: {
     endpoint: "https://assistant.example.test/chat/completions",
@@ -95,6 +99,8 @@ function assistantHandler(provider, upstreamContext = context) {
     env: settings,
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json(upstreamContext);
       return provider(url, options);
@@ -108,6 +114,8 @@ test("assistant requires authentication and current-adviser scope before any pro
     env: settings,
     fetch: async (url) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json(
           { code: "PT403", message: "Current adviser required." },
@@ -227,6 +235,8 @@ test("supports native Google Gemini generateContent requests and filters interna
     env: { ...settings, assistant },
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json({
           grounded_at: "2026-11-21T12:00:00Z",
@@ -309,6 +319,8 @@ test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and 
     env: { ...settings, assistant },
     fetch: async (url, options) => {
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return new Response(null, { status: 204 });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json(context);
       attempted.push({ url, options });
@@ -860,4 +872,67 @@ test("a stalled HTTP error body respects the attempt timeout and falls back", as
   } finally {
     AbortSignal.timeout = originalTimeout;
   }
+});
+
+test("stores a successful adviser turn through the server-only RPC", async () => {
+  const previous = Array.from({ length: 20 }, (_, index) => ({
+    role: index % 2 ? "assistant" : "user",
+    content: `message ${index}`,
+  }));
+  let save;
+  let providerBody;
+  const handler = createHandler("students", {
+    env: settings,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_assistant_context"))
+        return Response.json({
+          ...context,
+          request: { ...context.request, history: previous },
+        });
+      if (url.endsWith("/saais_record_assistant_turn")) {
+        assert.equal(
+          options.headers.Authorization,
+          `Bearer ${settings.serviceKey}`,
+        );
+        assert.equal(options.headers.apikey, settings.serviceKey);
+        save = JSON.parse(options.body);
+        return new Response(null, { status: 204 });
+      }
+      providerBody = JSON.parse(options.body);
+      return Response.json({
+        choices: [{ message: { content: "Draft adviser response" } }],
+      });
+    },
+  });
+  const response = await handler(ask());
+  assert.equal(response.status, 200);
+  assert.equal(providerBody.messages.length, 22);
+  assert.deepEqual(providerBody.messages.slice(1, 21), previous);
+  assert.deepEqual(save, {
+    p_adviser_id: student,
+    p_student_id: student,
+    p_question: context.request.message,
+    p_answer: "Draft adviser response",
+  });
+});
+
+test("does not return a successful response if conversation storage fails", async () => {
+  const handler = createHandler("students", {
+    env: settings,
+    fetch: async (url) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_assistant_context"))
+        return Response.json(context);
+      if (url.endsWith("/saais_record_assistant_turn"))
+        return Response.json({}, { status: 403 });
+      return Response.json({ choices: [{ message: { content: "Draft" } }] });
+    },
+  });
+  const response = await handler(ask());
+  assert.equal(response.status, 500);
+  assert.equal(
+    (await response.json()).message,
+    "The assistant conversation could not be saved.",
+  );
 });
