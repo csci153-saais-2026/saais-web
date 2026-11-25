@@ -16,6 +16,7 @@ declare
   now_at timestamptz := clock_timestamp();
   project uuid := '00000000-0000-0000-0000-000000000000';
   accepted integer;
+  context_result jsonb;
 begin
   perform 1 from public.profile p where p.id = caller for share;
   perform 1 from public.role_assignment r where r.profile_id = caller for share;
@@ -46,21 +47,6 @@ begin
   if organization is null then
     perform saais_private.fail(409, 'Student has no current curriculum assignment.');
   end if;
-
-  -- These counters are reserved before context leaves PostgreSQL. A failed
-  -- provider call consumes its reservation, and clients cannot reset limits.
-  with reservations as (
-    insert into saais_private.matt_assistant_budget(actor_id, window_type, window_start, request_count)
-    values (caller, 'minute', date_trunc('minute', now_at), 1),
-      (caller, 'day', date_trunc('day', now_at, 'UTC'), 1),
-      (project, 'project_day', date_trunc('day', now_at, 'UTC'), 1)
-    on conflict (actor_id, window_type, window_start) do update
-    set request_count = matt_assistant_budget.request_count + 1
-    where matt_assistant_budget.request_count < case excluded.window_type when 'minute' then 5 when 'day' then 50 else 300 end
-    returning 1
-  )
-  select count(*) into accepted from reservations;
-  if accepted <> 3 then perform saais_private.fail(429, 'The advising assistant request budget is exhausted.'); end if;
 
   curriculum_id := (organization->>'curriculum_version_id')::uuid;
   summary := saais_private.matt_student_summary(
@@ -113,7 +99,8 @@ begin
   ) order by item.chronological_key), '[]'::jsonb) into available_terms
   from (
     select t.school_year, t.term_type, t.ends_on, t.is_locked, t.chronological_key,
-      (select count(*) > 200 from public.course_offering o where o.school_term_id=t.id) as offerings_truncated,
+      (select count(*) > 200 from public.course_offering o join public.course c on c.id=o.course_id
+        where o.school_term_id=t.id and c.status='active') as offerings_truncated,
       coalesce((select jsonb_agg(to_jsonb(offered) order by offered.course_code)
         from (select left(c.code,100) as course_code, left(c.title,200) as course_title,
           c.units, o.is_by_request from public.course_offering o join public.course c on c.id=o.course_id
@@ -123,7 +110,7 @@ begin
   ) item;
 
   -- No student names, identifiers, account details, notes or raw records leave the database.
-  return jsonb_build_object(
+  context_result := jsonb_build_object(
     'grounded_at', now_at, 'request', p_body,
     'record', jsonb_build_object(
       'gwa', summary->'gwa', 'standing', summary->'standing', 'earned_units', summary->'earned_units',
@@ -135,6 +122,23 @@ begin
         where t.ends_on >= (now_at at time zone 'Asia/Manila')::date)
     )
   );
+
+  -- These counters are reserved before context leaves PostgreSQL. A failed
+  -- provider call consumes its reservation, and clients cannot reset limits.
+  with reservations as (
+    insert into saais_private.matt_assistant_budget(actor_id, window_type, window_start, request_count)
+    values (caller, 'minute', date_trunc('minute', now_at), 1),
+      (caller, 'day', date_trunc('day', now_at, 'UTC'), 1),
+      (project, 'project_day', date_trunc('day', now_at, 'UTC'), 1)
+    on conflict (actor_id, window_type, window_start) do update
+    set request_count = matt_assistant_budget.request_count + 1
+    where matt_assistant_budget.request_count < case excluded.window_type when 'minute' then 5 when 'day' then 50 else 300 end
+    returning 1
+  )
+  select count(*) into accepted from reservations;
+  if accepted <> 3 then perform saais_private.fail(429, 'The advising assistant request budget is exhausted.'); end if;
+
+  return context_result;
 end
 $$;
 
