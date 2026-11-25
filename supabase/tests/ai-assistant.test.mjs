@@ -879,12 +879,13 @@ test("stores a successful adviser turn through the server-only RPC", async () =>
     role: index % 2 ? "assistant" : "user",
     content: `message ${index}`,
   }));
+  const adviser = "00000004-0000-4000-8000-000000000000";
   let save;
   let providerBody;
   const handler = createHandler("students", {
     env: settings,
     fetch: async (url, options) => {
-      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: adviser });
       if (url.endsWith("/matt_assistant_context"))
         return Response.json({
           ...context,
@@ -910,7 +911,7 @@ test("stores a successful adviser turn through the server-only RPC", async () =>
   assert.equal(providerBody.messages.length, 22);
   assert.deepEqual(providerBody.messages.slice(1, 21), previous);
   assert.deepEqual(save, {
-    p_adviser_id: student,
+    p_adviser_id: adviser,
     p_student_id: student,
     p_question: context.request.message,
     p_answer: "Draft adviser response",
@@ -962,4 +963,15 @@ test("provider failure diagnostics never include prompts, records, URLs, or cred
   } finally {
     console.warn = previousWarn;
   }
+});
+
+test("caps provider answers without splitting Unicode code points", async () => {
+  const text = "a".repeat(7999) + "😀" + "x";
+  const answer = await assistantAnswer(
+    settings.assistant,
+    async () => Response.json({ choices: [{ message: { content: text } }] }),
+    context,
+  );
+  assert.equal(answer.answer, "a".repeat(7999) + "😀");
+  assert.equal(Array.from(answer.answer).length, 8000);
 });

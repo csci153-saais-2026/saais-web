@@ -482,7 +482,7 @@ export async function assistantAnswer(
         timeoutMs,
       );
       return {
-        answer: answer.trim().slice(0, 8000),
+        answer: Array.from(answer.trim()).slice(0, 8000).join(""),
         verification_notice:
           "Verify this response against the student record and applicable academic rules.",
         grounded_at: payload.grounded_at,
