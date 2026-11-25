@@ -360,6 +360,33 @@ test("orders configured Gemini, NVIDIA NIM, and OpenAI-compatible providers and 
   assert.match(attempted[1].url, /generativelanguage/);
 });
 
+test("NVIDIA reasoning models receive an extended output allowance", async () => {
+  const env = {
+    SAAIS_ASSISTANT_NVIDIA_API_KEY: "test-key",
+    SAAIS_ASSISTANT_NVIDIA_MODEL:
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  };
+  const config = readAssistantConfig((name) => env[name]);
+  let body;
+  const result = await assistantAnswer(
+    config,
+    async (_url, options) => {
+      body = JSON.parse(options.body);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: { content: "Review the student's prerequisites." },
+          },
+        ],
+      });
+    },
+    context,
+  );
+  assert.equal(body.max_tokens, 4096);
+  assert.equal(result.answer, "Review the student's prerequisites.");
+});
+
 test("rejects non-HTTPS, credential-bearing, or path-injecting provider configs", () => {
   assert.equal(
     readAssistantConfig(
@@ -536,8 +563,8 @@ test("the complete fallback chain shares one 30-second budget", async () => {
         context,
       ),
     );
-    assert.deepEqual(limits, [10000, 10000, 10000]);
-    assert.equal(clock, 130000);
+    assert.deepEqual(limits, [40000, 40000, 40000]);
+    assert.equal(clock, 220000);
   } finally {
     if (originalNow) Object.defineProperty(performance, "now", originalNow);
     else delete performance.now;
@@ -577,8 +604,8 @@ test("the time budget adapts to one or four configured candidates", async () => 
           context,
         ),
       );
-      assert.deepEqual(limits, Array(count).fill(30000 / count));
-      assert.equal(clock, 130000);
+      assert.deepEqual(limits, Array(count).fill(120000 / count));
+      assert.equal(clock, 220000);
     } finally {
       if (originalNow) Object.defineProperty(performance, "now", originalNow);
       else delete performance.now;
