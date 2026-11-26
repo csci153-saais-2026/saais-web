@@ -63,6 +63,21 @@ describe("student-profile API helpers and hooks (MSW)", () => {
     expect(cleared.avatar_url).toBeNull();
   });
 
+  it("accepts photos up to 5 MiB and rejects larger ones", async () => {
+    loginAsMockPersona("student");
+    const studentId = MOCK_PERSONAS.student.profileId;
+    const upload = (file_size_bytes: number) =>
+      api.updateStudentPhoto(studentId, {
+        storage_object_path: `students/${studentId}/avatar.png`,
+        avatar_url: "data:image/png;base64,iVBORw0KGgo=",
+        mime_type: "image/png",
+        file_size_bytes,
+      });
+
+    await expect(upload(5_242_880)).resolves.toBeTruthy();
+    await expect(upload(5_242_881)).rejects.toThrow("5 MiB");
+  });
+
   it("hydrates useStudentProfile and executes photo mutations", async () => {
     loginAsMockPersona("student");
     const wrapper = createQueryWrapper();

@@ -249,6 +249,56 @@ describe("StudentProfilePage", () => {
       ).toBeNull(),
     );
   });
+  it("removes the staging upload when saving the photo fails", async () => {
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn().mockResolvedValue({ width: 2, height: 2, close: vi.fn() }),
+    );
+    vi.spyOn(photoApi, "uploadStudentPhotoObject").mockResolvedValue({
+      storagePath: "students/stu-1/upload-one.png",
+      avatarUrl: "/student-photos/students/stu-1/upload-one.png",
+    });
+    const cleanupStaging = vi
+      .spyOn(photoApi, "removeStudentPhotoStagingObject")
+      .mockResolvedValue(undefined);
+    vi.spyOn(apiClient, "GET").mockImplementation(
+      (path: string) =>
+        Promise.resolve({
+          data: path === "/rest/v1/profile" ? [mockProfile] : [],
+          response: new Response(),
+        }) as never,
+    );
+    vi.spyOn(apiClient, "PUT").mockRejectedValue(new Error("Save failed"));
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <MemoryRouter>
+          <StudentProfilePage studentId="stu-1" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByLabelText("Upload profile photo");
+    await waitForLoaded();
+    fireEvent.change(screen.getByLabelText("Upload profile photo"), {
+      target: {
+        files: [
+          new File(
+            [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
+            "photo.png",
+            { type: "image/png" },
+          ),
+        ],
+      },
+    });
+    await waitFor(() =>
+      expect(cleanupStaging).toHaveBeenCalledWith(
+        "students/stu-1/upload-one.png",
+      ),
+    );
+  });
   it("shows Loading... while pending, Try again on error, and recovers on retry", async () => {
     let callCount = 0;
     vi.spyOn(apiClient, "GET").mockImplementation((path: string) => {

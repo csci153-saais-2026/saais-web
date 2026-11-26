@@ -23,6 +23,7 @@ import {
   buildAuditListQuery,
   type AuditFilters,
   type AuditLogRow,
+  AUDIT_WILDCARD_SEARCH_MAX_LENGTH,
 } from "./admin-audit-model";
 import type { Column } from "@/components/features/data-table-panel";
 
@@ -300,7 +301,7 @@ export default function AdminAuditLogPage() {
                 <SearchInput
                   id="audit-student"
                   value={filters.student}
-                  maxLength={100}
+                  maxLength={AUDIT_WILDCARD_SEARCH_MAX_LENGTH}
                   placeholder="Search student name or ID"
                   onChange={(event) =>
                     updateFilter("student", event.target.value)
