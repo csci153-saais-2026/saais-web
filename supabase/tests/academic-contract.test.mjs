@@ -10,7 +10,7 @@ const { withPinnedContract } = require("../tools/snapshot-contract.cjs");
 const {
   buildSnapshot,
   migration,
-} = require("../tools/snapshot-matt-contract.cjs");
+} = require("../tools/snapshot-academic-contract.cjs");
 
 test("student and account runtime matches the approved 0.3.1 contract", () => {
   assert.deepEqual(snapshot, withPinnedContract(buildSnapshot));

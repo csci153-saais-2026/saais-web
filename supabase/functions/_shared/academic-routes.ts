@@ -1,5 +1,5 @@
 // Register routes here as their migrations and tests are added.
-export const mattRoutes = new Set([
+export const academicRoutes = new Set([
   "getHealthStatus",
   "listAccounts",
   "uploadStudentPhoto",

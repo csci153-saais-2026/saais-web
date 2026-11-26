@@ -6,8 +6,8 @@ const cp = require("node:child_process");
 const bin = process.env.PG_BINARY_DIR || "C:/Program Files/PostgreSQL/18/bin";
 const executable = (name) =>
   path.join(bin, process.platform === "win32" ? name + ".exe" : name);
-const data = path.resolve("supabase/.temp/jerome-pg");
-const database = "saais_jerome_" + Date.now();
+const data = path.resolve("supabase/.temp/backend-pg");
+const database = "saais_backend_test_" + Date.now();
 const args = ["-h", "127.0.0.1", "-p", "55432", "-U", "postgres"];
 function run(name, options, quiet = false) {
   return cp.execFileSync(executable(name), options, {
@@ -34,7 +34,7 @@ try {
     "-D",
     data,
     "-l",
-    path.resolve("supabase/.temp/jerome-pg.log"),
+    path.resolve("supabase/.temp/backend-pg.log"),
     "-o",
     // Every client uses TCP. The CI user cannot write the Linux package's
     // default Unix-socket directory under /var/run/postgresql.
@@ -62,11 +62,11 @@ try {
   const suites = [
     {
       name: "domain",
-      tests: testFiles.filter((name) => !name.startsWith("matt-")),
+      tests: testFiles.filter((name) => !name.startsWith("application-")),
     },
     {
       name: "application",
-      tests: testFiles.filter((name) => name.startsWith("matt-")),
+      tests: testFiles.filter((name) => name.startsWith("application-")),
     },
   ];
   for (const suite of suites) {

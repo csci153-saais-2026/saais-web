@@ -5,8 +5,8 @@ import {
   runInvitation,
 } from "./invitations.ts";
 import contract from "./contract.json" with { type: "json" };
-import mattContract from "./academic-contract.json" with { type: "json" };
-import { mattRoutes } from "./academic-routes.ts";
+import academicContract from "./academic-contract.json" with { type: "json" };
+import { academicRoutes } from "./academic-routes.ts";
 import { assistantAnswer, type AssistantConfig } from "./ai-assistant.ts";
 import { PhotoError } from "./photo-error.ts";
 
@@ -20,7 +20,7 @@ export type Operation = {
   input: unknown;
   status: number | null;
   errors: number[];
-  matt?: boolean;
+  usesAcademicRpc?: boolean;
   public?: boolean;
 };
 export type Environment = {
@@ -108,20 +108,20 @@ async function readJson(request: Request): Promise<unknown> {
   return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
 }
 
-// Each prefix owns its route list. Matt can compose his students routes with
-// jeromeStudentOperations without replacing handlers or registering duplicates.
+// Each prefix combines the routes from both contract snapshots.
 export function operationsFor(group: RouteGroup): Operation[] {
   const matchesGroup = (operation: Operation) =>
     operation.path.split("/")[3] === group;
   return [
     ...contract.operations.filter(matchesGroup),
-    ...mattContract.operations
+    ...academicContract.operations
       .filter(
         (operation) =>
-          (mattRoutes.has(operation.id) || isInvitationRoute(operation.id)) &&
+          (academicRoutes.has(operation.id) ||
+            isInvitationRoute(operation.id)) &&
           matchesGroup(operation),
       )
-      .map((operation) => ({ ...operation, matt: true })),
+      .map((operation) => ({ ...operation, usesAcademicRpc: true })),
   ];
 }
 
@@ -355,7 +355,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         );
       const rpc = assistant
         ? "matt_assistant_context"
-        : operation.matt
+        : operation.usesAcademicRpc
           ? "matt_operation"
           : "jerome_operation";
       const rpcBody = assistant
@@ -393,7 +393,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         );
         if (status === 429) headers.set("Retry-After", "60");
         const conflict =
-          operation.matt &&
+          operation.usesAcademicRpc &&
           status === 409 &&
           controlled &&
           [
