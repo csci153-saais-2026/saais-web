@@ -12,6 +12,9 @@ declare
   value public.attempt;
   result jsonb;
   blocked boolean;
+  flag_id uuid;
+  org jsonb;
+  attempt_params jsonb;
 begin
   insert into public.school_term(start_year,end_year,term_type,ends_on)
     values(2094,2095,'1st Semester','2094-12-01') returning * into term;
@@ -36,6 +39,32 @@ begin
     exception when sqlstate 'PT409' then blocked := true; end;
     perform test.assert(blocked,'Numeric or nonnumeric rewrites of recorded INC are rejected');
   end loop;
+  org := saais_private.matt_grade_student(student);
+  attempt_params := jsonb_build_object('student_id',student,'attempt_id',prior);
+  blocked := false;
+  begin
+    perform public.matt_operation('correctGrades',attempt_params,
+      jsonb_build_object('expected_revision',attempt_row.revision,'reason','Regression test','final_grade',5));
+  exception when sqlstate 'PT409' then blocked := true; end;
+  perform test.assert(blocked,'Correction endpoint rejects INC final grade rewrite');
+  for result in select x from jsonb_array_elements('["encodeTermGrades","importGradesBatch"]'::jsonb) x loop
+    blocked := false;
+    begin
+      perform saais_private.matt_record_grade_row(student,org,term,
+        jsonb_build_object('course_offering_id',prerequisite_offering,'final_grade',1),result#>>'{}');
+    exception when sqlstate 'PT409' then blocked := true; end;
+    perform test.assert(blocked,'Encode and import grade paths reject INC rewrites');
+  end loop;
+  insert into public.grade_flag(student_id,attempt_id,reported_stage,issue_type,details)
+    values(student,prior,'final','wrong_grade','Review flag') returning id into flag_id;
+  blocked := false;
+  begin
+    perform saais_private.matt_resolvegradeflag(jsonb_build_object('flag_id',flag_id),
+      jsonb_build_object('resolution_action','correct','resolution_note','Review flag',
+        'expected_revision',attempt_row.revision,'corrected_grade',1));
+  exception when sqlstate 'PT409' then blocked := true; end;
+  perform test.assert(blocked and (select status='open' from public.grade_flag where id=flag_id),
+    'Flag resolution cannot rewrite INC or close the rejected flag');
   value := saais_private.matt_grade_values(attempt_row,'{"instructor":"Updated"}',term);
   perform test.assert(value.status='inc' and value.inc_deadline=attempt_row.inc_deadline,
     'Non-grade metadata changes retain INC and deadline');

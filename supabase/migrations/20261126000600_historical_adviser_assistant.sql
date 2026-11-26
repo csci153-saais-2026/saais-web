@@ -39,14 +39,19 @@ begin
   perform 1 from auth.sessions s where s.id::text = auth.jwt()->>'session_id' and s.user_id = caller for share;
   caller := saais_private.actor();
   perform saais_private.require_scope(array['adviser']);
-  if p_student_id is null or p_body is null or octet_length(p_body::text) > 12000 then
+  if p_student_id is null or p_body is null or jsonb_typeof(p_body) <> 'object'
+    or octet_length(p_body::text) > 1048576 then
     perform saais_private.fail(400, 'The assistant question and conversation exceed the input budget.');
   end if;
   select operation->'input' into query_schema
   from saais_private.matt_contract c
   cross join lateral jsonb_array_elements(c.document->'operations') operation
   where operation->>'id' = 'askAdvisingAssistant';
-  if query_schema is null or not saais_private.valid(p_body, query_schema) then
+  if query_schema is null or not saais_private.valid(p_body - 'history', query_schema)
+    or (case when p_body ? 'history' then
+      case when jsonb_typeof(p_body->'history') = 'array'
+        then jsonb_array_length(p_body->'history') > 20 else true end
+      else false end) then
     perform saais_private.fail(400, 'Request does not match the assistant schema.');
   end if;
   if not exists (select 1 from public.profile p where p.id = p_student_id and p.status <> 'disabled'
@@ -127,7 +132,8 @@ begin
 
   -- No student names, identifiers, account details, notes or raw records leave the database.
   context_result := jsonb_build_object(
-    'grounded_at', now_at, 'request', p_body,
+    'grounded_at', now_at, 'request', jsonb_build_object(
+      'message', p_body->>'message', 'history', public.saais_get_assistant_history(p_student_id)),
     'record', jsonb_build_object(
       'gwa', summary->'gwa', 'standing', summary->'standing', 'earned_units', summary->'earned_units',
       'required_units', summary->'required_units', 'open_inc_count', summary->'open_inc_count',
@@ -160,6 +166,7 @@ $$;
 
 revoke all on function public.matt_assistant_context(uuid, jsonb) from public, anon, authenticated;
 grant execute on function public.matt_assistant_context(uuid, jsonb) to authenticated;
+
 
 -- Saving an assistant turn must not wait on the global writer lock, which bulk
 -- grade imports hold. Lock only this adviser/student pair, and share-lock the
