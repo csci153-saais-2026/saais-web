@@ -23,8 +23,8 @@ begin
   insert into public.prerequisite(course_id,prerequisite_course_id,type) values(target,prerequisite,'strict');
   insert into public.course_offering(school_term_id,course_id) values(term.id,target) returning id into target_offering;
   insert into public.course_offering(school_term_id,course_id) values(term.id,prerequisite) returning id into prerequisite_offering;
-  insert into public.attempt(student_id,course_offering_id,status,final_grade,units_attempted)
-    values(student,prerequisite_offering,'passed',2,3) returning id into prior;
+  insert into public.attempt(student_id,course_offering_id,status,final_grade,units_attempted,created_by,updated_by)
+    values(student,prerequisite_offering,'passed',2,3,'00000004-0000-4000-8000-000000000000','00000004-0000-4000-8000-000000000000') returning id into prior;
   perform test.assert(not exists(select 1 from saais_private.matt_unmet_prerequisites(student,target,term.chronological_key)),
     'Same-term passed prerequisite is satisfied and never yields an invalid passed status');
   perform test.login(4);

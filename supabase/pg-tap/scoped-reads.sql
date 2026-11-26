@@ -246,6 +246,9 @@ select lives_ok($cmd$
     '{"adviser_id":"00000008-0000-4000-8000-000000000000","start_date":"2026-02-01","reason":"Scoped handoff"}')
 $cmd$, 'Head can reassign an eligible adviser');
 set constraints all immediate;
+select is((select reason from saais_api.audit_log_entry where action='reassignAdviser'
+  and student_id='00000005-0000-4000-8000-000000000000'),
+  'Scoped handoff'::text, 'Department head retains access to the scoped reassignment reason');
 reset role;
 select is((select count(*) from public.adviser_assignment
   where student_id = '00000005-0000-4000-8000-000000000000' and end_date is null),

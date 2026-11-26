@@ -13,3 +13,6 @@ The Security Advisor on project `jssexxjbgzrknlptddkg` showed 0 errors and 8 war
 | Leaked password protection disabled | The production project is on Free; Supabase documents leaked-password protection as Pro or higher: https://supabase.com/docs/guides/auth/password-security. | Project owner must choose a supported paid plan and enable the feature, or explicitly accept the residual risk. Do not claim the warning is fixed by the password-length rules. |
 
 These are proposed explanations, not evidence of owner acceptance. The five authenticated functions remain security-definer endpoints reachable by signed-in clients and deserve review as such; changing their `security definer` flag or revoking their grants without redesign would break the caller-scoped architecture. Do not silence the warnings by moving the same privileges behind an equivalent public wrapper.
+
+
+In the [26 November backend review](https://github.com/csci153-saais-2026/saais-web/pull/132#pullrequestreview-6070054552), the reviewer said the five authenticated RPC warnings could be documented as accepted because the functions check session, role and scope. This records the reviewer's assessment; it does not by itself assert a separate project security-owner sign-off or that hosted Advisor warnings have disappeared.

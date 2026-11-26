@@ -22,6 +22,16 @@ begin
   perform test.assert((select status='invited' from public.profile where id=target), 'Unverified Google email is not accepted');
   update auth.identities set identity_data='{"email":"other@vsu.edu.ph","email_verified":true}' where id=identity_id;
   perform test.assert((select status='invited' from public.profile where id=target), 'Mismatched Google email is not accepted');
+  update public.profile set invitation_status='revoked' where id=target;
+  update auth.identities set identity_data='{"email":"google-fixture@vsu.edu.ph","email_verified":true}' where id=identity_id;
+  perform test.assert((select status='invited' from public.profile where id=target), 'A revoked invitation is not activated');
+  update public.profile set invitation_status='pending',invitation_expires_at=clock_timestamp()-interval '1 second' where id=target;
+  update auth.identities set identity_data=identity_data where id=identity_id;
+  perform test.assert((select status='invited' from public.profile where id=target), 'An expired invitation is not activated');
+  update public.profile set invitation_expires_at=clock_timestamp()+interval '1 day',status='disabled' where id=target;
+  update auth.identities set identity_data=identity_data where id=identity_id;
+  perform test.assert((select status='disabled' from public.profile where id=target), 'A disabled account is not reactivated');
+  update public.profile set status='invited' where id=target;
   update auth.identities set identity_data='{"email":"GOOGLE-fixture@vsu.edu.ph","email_verified":true}' where id=identity_id;
   perform test.assert((select status='active' and invitation_status='accepted' from public.profile where id=target), 'Verified Google identity activates invited profile');
   perform test.assert(not exists(select 1 from saais_private.account_invitation where profile_id=target)
