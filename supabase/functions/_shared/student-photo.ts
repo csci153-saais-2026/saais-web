@@ -288,10 +288,10 @@ export async function reconcileDeletedPhotos(
     if (!listed.ok) return;
     const raw = (await listed.json()) as unknown;
     if (!Array.isArray(raw)) return;
-    const prefix = `students/${student}/`;
+    const prefix = `students/${student.toLowerCase()}/`;
     const pending = raw.filter(
       (item): item is string =>
-        typeof item === "string" && item.startsWith(prefix),
+        typeof item === "string" && item.toLowerCase().startsWith(prefix),
     );
     if (pending.length === 0) return;
     const removed = await fetcher(

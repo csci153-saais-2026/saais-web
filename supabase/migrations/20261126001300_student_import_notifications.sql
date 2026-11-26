@@ -1,31 +1,34 @@
--- Service-only caller supplies the successfully provisioned profiles after all
--- batch workers finish. Scope is rechecked for every student in the database.
-create function saais_private.notify_student_import(p_body jsonb) returns jsonb
-language plpgsql security definer set search_path=pg_catalog as $$
-declare student uuid; org jsonb; recipients uuid[] := '{}'::uuid[]; profiles uuid[]; digest text;
+-- Record student_import_committed notifications atomically when an imported
+-- student row commits, keyed by a deterministic batch key so retries and
+-- multi-row batches never duplicate notices or lose committed row results.
+create function saais_private.notify_student_import_row(p_student uuid, p_batch_key text default null) returns void
+language plpgsql security definer set search_path = pg_catalog as $$
+declare
+  v_org jsonb;
+  v_recipients uuid[];
+  v_key text;
 begin
-  if jsonb_typeof(p_body->'profile_ids') is distinct from 'array'
-    or jsonb_array_length(p_body->'profile_ids') not between 1 and 500
-    or exists (select 1 from jsonb_array_elements(p_body->'profile_ids') e where jsonb_typeof(e) <> 'string') then
-    perform saais_private.fail(400, 'Invalid imported student list.');
+  v_org := saais_private.organization(p_student);
+  if v_org is null then
+    return;
   end if;
-  select array_agg(distinct x::uuid order by x::uuid) into profiles
-    from jsonb_array_elements_text(p_body->'profile_ids') x;
-  foreach student in array profiles loop
-    org := saais_private.student_access(student,array['department_head','department_staff','admin']);
-    recipients := recipients || array[(org->>'adviser_id')::uuid]
-      || saais_private.recipients((org->>'department_id')::uuid,array['department_head','admin']);
-  end loop;
-  digest := md5(array_to_string(profiles,','));
-  insert into public.notification(recipient_id,event_type,kind,title,body,actor_id,entity_type,dedupe_key,email_delivery_status)
-    select distinct p.id,'student_import_committed','import','Student Import Committed',
-      'A student import has completed.',auth.uid(),'student_import',
-      'student-import:'||digest||':'||p.id,'pending'
-    from public.profile p where p.id=any(recipients) and p.status='active'
-    on conflict(dedupe_key) do nothing;
-  return '{}'::jsonb;
+  v_recipients := array[(v_org->>'adviser_id')::uuid]
+    || saais_private.recipients((v_org->>'department_id')::uuid, array['department_head', 'admin']);
+  v_key := case
+    when p_batch_key is not null and p_batch_key ~ '^[0-9a-f]{32,64}$' then p_batch_key
+    else md5(p_student::text)
+  end;
+  insert into public.notification(
+    recipient_id, event_type, kind, title, body, actor_id, entity_type, dedupe_key, email_delivery_status
+  )
+  select distinct p.id, 'student_import_committed', 'import', 'Student Import Committed',
+    'A student import has completed.', auth.uid(), 'student_import',
+    'student-import:' || v_key || ':' || p.id, 'pending'
+  from public.profile p
+  where p.id = any(v_recipients) and p.status = 'active'
+  on conflict (dedupe_key) do nothing;
 end $$;
-revoke all on function saais_private.notify_student_import(jsonb) from public, anon, authenticated;
+revoke all on function saais_private.notify_student_import_row(uuid, text) from public, anon, authenticated;
 
 create or replace function public.saais_invitation_service(
   p_operation text, p_stage text, p_body jsonb, p_actor uuid default null,
@@ -39,6 +42,8 @@ declare
   actor_id uuid;
   budget integer;
   admitted_at timestamptz := statement_timestamp();
+  v_batch_key text;
+  v_result jsonb;
 begin
   if is_public then
     if p_stage = 'admit' then
@@ -100,24 +105,26 @@ begin
   if not coalesce(
     (p_operation = 'inviteUser' and p_stage in ('prepare','finish'))
     or (p_operation in ('resendAccountInvite','revokeAccountInvite') and p_stage = 'start')
-    or (p_operation = 'importStudentsBatch' and p_stage in ('validate','preview','prepare','finish','notifyBatch')), false
+    or (p_operation = 'importStudentsBatch' and p_stage in ('validate','preview','prepare','finish')), false
   ) then
     perform saais_private.fail(400, 'Unsupported invitation operation or stage.');
-  end if;
-  if p_operation = 'importStudentsBatch' and p_stage = 'notifyBatch' then
-    return saais_private.notify_student_import(p_body);
   end if;
   if p_operation = 'importStudentsBatch' and p_stage = 'validate' then
     perform saais_private.invitation_schema(p_operation, p_body);
     return '{}'::jsonb;
   elsif p_operation = 'importStudentsBatch' then
-    request := (p_body - 'row_number') || '{"role":"student"}'::jsonb;
+    v_batch_key := p_body->>'batch_key';
+    request := (p_body - 'row_number' - 'batch_key') || '{"role":"student"}'::jsonb;
   elsif p_operation in ('resendAccountInvite','revokeAccountInvite') then
     perform saais_private.invitation_schema(p_operation, p_body);
     return saais_private.manage_invitation(p_operation, p_profile, p_body, p_token);
   end if;
   perform saais_private.invitation_schema('inviteUser', request);
-  return saais_private.provision_invitee(p_stage, request, p_token);
+  v_result := saais_private.provision_invitee(p_stage, request, p_token);
+  if p_operation = 'importStudentsBatch' and p_stage = 'finish' and (v_result->>'profile_id') is not null then
+    perform saais_private.notify_student_import_row((v_result->>'profile_id')::uuid, v_batch_key);
+  end if;
+  return v_result;
 exception
   when unique_violation or foreign_key_violation then
     perform saais_private.fail(409, 'An identity conflicts with an existing account or assignment.');

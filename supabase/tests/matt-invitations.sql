@@ -90,6 +90,10 @@ begin
   hash := encode(sha256(convert_to(new_token, 'UTF8')), 'hex');
   result := public.saais_invitation_service('declineInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash);
   perform test.assert(result->>'invitation_status' = 'declined', 'A pending recipient can decline');
+  begin
+    perform public.saais_invitation_service('declineInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash);
+    raise exception 'Closed token returned 404 or succeeded instead of 409 on decline start';
+  exception when sqlstate 'PT409' then null; end;
   perform public.saais_invitation_service('resendAccountInvite', 'start', '{}', staff, staff_session, target, token);
   result := public.saais_invitation_service('revokeAccountInvite', 'start', '{}', staff, staff_session, target);
   perform test.assert(result->>'invitation_status' = 'revoked', 'Staff can revoke a pending invitation within scope');
@@ -112,27 +116,42 @@ begin
   exception when sqlstate 'PT409' then null; end;
   perform test.assert((select count(*) = 1 from public.audit_log_entry where entity_id = target and action = 'invitation_accepted'),
     'Redemption retry never duplicates the audit event');
-  perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
-    jsonb_build_object('profile_ids', jsonb_build_array(target)), staff, staff_session);
-  perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
-    jsonb_build_object('profile_ids', jsonb_build_array(target)), staff, staff_session);
-  perform test.assert((select count(*) = 3 from public.notification where event_type = 'student_import_committed'
-    and recipient_id in ('00000001-0000-4000-8000-000000000000','00000002-0000-4000-8000-000000000000','00000004-0000-4000-8000-000000000000')),
-    'Student import notifies adviser, department head, and admin once without duplicates');
-  perform test.assert(not exists(select 1 from public.notification where event_type = 'student_import_committed'
-    and recipient_id = '00000006-0000-4000-8000-000000000000'),
-    'Student import notifications stay within the student department');
+
+  -- Atomic student_import_committed notifications with deterministic batch_key deduplication (#179)
+  declare
+    imp1 uuid := gen_random_uuid();
+    imp2 uuid := gen_random_uuid();
+    batch_key text := repeat('f', 64);
+    imp_req1 jsonb := jsonb_build_object('row_number',1,'full_name','Imported One','email','imp1-fixture@vsu.edu.ph',
+      'student_number','26-1-99351','program_id',(select value->>'id' from test.records where name='program'),
+      'curriculum_version_id',(select value->>'id' from test.records where name='version'),
+      'adviser_id','00000004-0000-4000-8000-000000000000');
+    imp_req2 jsonb := jsonb_build_object('row_number',2,'full_name','Imported Two','email','imp2-fixture@vsu.edu.ph',
+      'student_number','26-1-99352','program_id',(select value->>'id' from test.records where name='program'),
+      'curriculum_version_id',(select value->>'id' from test.records where name='version'),
+      'adviser_id','00000004-0000-4000-8000-000000000000');
+    res1 jsonb;
+    res2 jsonb;
   begin
-    perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
-      jsonb_build_object('profile_ids', jsonb_build_array(target)),
-      '00000006-0000-4000-8000-000000000000', '00000006-0000-4000-8000-000000000001');
-    raise exception 'Out-of-scope caller notified student import';
-  exception when sqlstate 'PT403' then null; end;
-  begin
-    perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
-      '{"profile_ids":[]}'::jsonb, staff, staff_session);
-    raise exception 'Empty student import list was accepted';
-  exception when sqlstate 'PT400' then null; end;
+    res1 := public.saais_invitation_service('importStudentsBatch', 'prepare', imp_req1, staff, staff_session);
+    insert into auth.users(id, email, raw_app_meta_data)
+      values (imp1, imp_req1->>'email', jsonb_build_object('saais_provisioning_id', res1->>'reservation_id'));
+    perform public.saais_invitation_service('importStudentsBatch', 'finish',
+      imp_req1 || jsonb_build_object('batch_key', batch_key), staff, staff_session, null, repeat('c', 64));
+
+    res2 := public.saais_invitation_service('importStudentsBatch', 'prepare', imp_req2, staff, staff_session);
+    insert into auth.users(id, email, raw_app_meta_data)
+      values (imp2, imp_req2->>'email', jsonb_build_object('saais_provisioning_id', res2->>'reservation_id'));
+    perform public.saais_invitation_service('importStudentsBatch', 'finish',
+      imp_req2 || jsonb_build_object('batch_key', batch_key), staff, staff_session, null, repeat('d', 64));
+
+    perform test.assert((select count(*) = 3 from public.notification where event_type = 'student_import_committed'
+      and recipient_id in ('00000001-0000-4000-8000-000000000000','00000002-0000-4000-8000-000000000000','00000004-0000-4000-8000-000000000000')),
+      'Multi-row student import notifies adviser, department head, and admin once per batch');
+    perform test.assert(not exists(select 1 from public.notification where event_type = 'student_import_committed'
+      and recipient_id = '00000006-0000-4000-8000-000000000000'),
+      'Student import notifications stay within the student department');
+  end;
   perform test.assert(not has_function_privilege('authenticated',
     'public.saais_invitation_service(text,text,jsonb,uuid,uuid,uuid,text,uuid)', 'EXECUTE'), 'Browser cannot enter provisioning RPC');
 end;

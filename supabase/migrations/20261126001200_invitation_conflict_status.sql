@@ -31,13 +31,7 @@ begin
       perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
     end if;
     if v_reservation.profile_id is not null then
-      if exists(select 1 from public.profile p where p.id=v_reservation.profile_id and p.invitation_status='accepted') then
-        perform saais_private.fail(409, 'This account has already accepted its invitation.');
-      end if;
-      if v_reservation.request <> v_request then
-        perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
-      end if;
-      -- Recheck current actor scope without requiring a retired curriculum or adviser to become active again.
+      -- Recheck current actor scope before disclosing whether the account already accepted.
       if not saais_private.has_role('admin') then
         v_department := coalesce((saais_private.organization(v_reservation.profile_id)->>'department_id')::uuid,
           (select department_id from public.profile where id = v_reservation.profile_id));
@@ -49,6 +43,12 @@ begin
           and (a.role in ('admin','dean') or (a.role <> 'student' and a.department_id is distinct from v_department))) then
           perform saais_private.fail(403, 'This invitation is outside your authorized scope.');
         end if;
+      end if;
+      if exists(select 1 from public.profile p where p.id=v_reservation.profile_id and p.invitation_status='accepted') then
+        perform saais_private.fail(409, 'This account has already accepted its invitation.');
+      end if;
+      if v_reservation.request <> v_request then
+        perform saais_private.fail(409, 'An account with that identifier already exists or is being provisioned.');
       end if;
       return jsonb_build_object('success', true, 'message', 'Account already provisioned.',
         'profile_id', v_reservation.profile_id);
@@ -119,7 +119,12 @@ begin
   -- Serialize with resend/revoke while the password update lease is issued.
   perform pg_advisory_xact_lock(531201, 1);
   select i.* into v_invite from saais_private.account_invitation i where i.token_hash = p_hash for update;
-  if not found then perform saais_private.fail(404, 'Invitation not found.'); end if;
+  if not found then
+    if p_stage = 'declineInviteToken' and exists(select 1 from saais_private.closed_invitation_token t where t.token_hash = p_hash) then
+      perform saais_private.fail(409, 'This invitation is no longer pending.');
+    end if;
+    perform saais_private.fail(404, 'Invitation not found.');
+  end if;
   select * into v_profile from public.profile where id = v_invite.profile_id for update;
   v_state := case when v_profile.invitation_status = 'pending' and v_profile.invitation_expires_at <= clock_timestamp()
                    then 'expired' else v_profile.invitation_status end;

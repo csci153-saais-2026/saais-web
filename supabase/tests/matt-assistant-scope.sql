@@ -73,6 +73,17 @@ begin
       and jsonb_array_length(term->'offered_courses')=200),
     'More than 200 active offerings must be marked truncated.');
 
+  perform test.login(8);
+  select coalesce(sum(request_count), 0) into previous_budget from saais_private.matt_assistant_budget;
+  denied := false;
+  begin
+    perform public.matt_assistant_context(student, request_body);
+  exception when sqlstate 'PT403' then denied := true;
+  end;
+  perform test.assert(denied, 'An unrelated active adviser must be denied assistant context.');
+  perform test.assert((select coalesce(sum(request_count), 0) = previous_budget from saais_private.matt_assistant_budget),
+    'Denied unrelated adviser calls must not consume assistant budget.');
+
   perform test.login(2);
   perform public.matt_operation('reassignAdviser', jsonb_build_object('student_id', student),
     jsonb_build_object('adviser_id', incoming, 'start_date', '2026-02-01', 'reason', 'Assistant authorization handoff'));

@@ -33,6 +33,7 @@ begin
     if found and (
       (previous.midterm_grade is not null and p_row ? 'midterm_grade'
         and previous.midterm_grade is distinct from (p_row->>'midterm_grade')::numeric)
+      or (previous.midterm_status = 'dr' and (p_row ? 'midterm_grade' or p_row ? 'midterm_status'))
       or (previous.final_grade is not null and p_row ? 'final_grade'
         and previous.final_grade is distinct from (p_row->>'final_grade')::numeric)
       or (previous.midterm_status is not null and p_row ? 'midterm_status'

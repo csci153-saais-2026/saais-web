@@ -104,6 +104,43 @@ async function verifyWebhookSignature(
   return false;
 }
 
+async function readBoundedText(
+  request: Request,
+  limitBytes: number,
+): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limitBytes) return null;
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > limitBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
 export function createAuthHookHandler(
   env: AuthHookEnvironment,
   fetcher: typeof fetch = fetch,
@@ -117,8 +154,8 @@ export function createAuthHookHandler(
         { status: 503 },
       );
     }
-    const rawBody = await request.text();
-    if (rawBody.length > maxHookBodyBytes) {
+    const rawBody = await readBoundedText(request, maxHookBodyBytes);
+    if (rawBody === null) {
       return Response.json(
         { error: { http_code: 400, message: "Auth hook payload too large." } },
         { status: 400 },

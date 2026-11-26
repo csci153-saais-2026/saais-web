@@ -115,7 +115,7 @@ export async function runInvitation(
     return result as Json;
   }
 
-  async function provision(input: Json) {
+  async function provision(input: Json, batchKey?: string) {
     const prepared = await rpc("prepare", input);
     if (prepared.profile_id) return prepared;
     if (
@@ -142,7 +142,11 @@ export async function runInvitation(
       // A duplicate can also mean a concurrent or previously interrupted request
       // finished the Auth step. The database only attaches the reserved identity.
     }
-    return rpc("finish", input, newToken());
+    return rpc(
+      "finish",
+      batchKey ? { ...input, batch_key: batchKey } : input,
+      newToken(),
+    );
   }
 
   // Protected operations use the authenticated actor budget.
@@ -155,7 +159,29 @@ export async function runInvitation(
     await rpc("validate", data);
     const rows = data.rows as Json[];
     const results: Json[] = [];
-    const importedProfiles: string[] = [];
+    const batchKey =
+      data.mode === "commit"
+        ? bytesToHex(
+            new Uint8Array(
+              await crypto.subtle.digest(
+                "SHA-256",
+                new TextEncoder().encode(
+                  rows
+                    .map(
+                      (row) =>
+                        `${String(row.email ?? "")
+                          .trim()
+                          .toLowerCase()}|${String(row.student_number ?? "")
+                          .trim()
+                          .toLowerCase()}`,
+                    )
+                    .sort()
+                    .join("\n"),
+                ),
+              ),
+            ),
+          )
+        : undefined;
     const seenRows = new Set<unknown>();
     const seenEmails = new Set<string>();
     const seenNumbers = new Set<unknown>();
@@ -190,13 +216,12 @@ export async function runInvitation(
               );
             if (data.mode === "preview") await rpc("preview", row);
             else {
-              const provisioned = await provision(row);
+              const provisioned = await provision(row, batchKey);
               if (typeof provisioned.profile_id !== "string")
                 throw new InvitationError(
                   500,
                   "Provisioned student was not returned.",
                 );
-              importedProfiles.push(provisioned.profile_id);
             }
             results[index] = {
               ...result,
@@ -217,8 +242,6 @@ export async function runInvitation(
       },
     );
     await Promise.all(workers);
-    if (data.mode === "commit" && importedProfiles.length > 0)
-      await rpc("notifyBatch", { profile_ids: importedProfiles });
     return {
       mode: data.mode,
       valid_count: results.filter(

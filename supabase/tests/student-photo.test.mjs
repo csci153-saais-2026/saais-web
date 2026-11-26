@@ -452,7 +452,7 @@ test("deleteStudentPhoto removes queued storage objects and acknowledges reconci
     },
   });
   const response = await handler(
-    new Request(env.url + `/students/${student}/photo`, {
+    new Request(env.url + `/students/${student.toUpperCase()}/photo`, {
       method: "DELETE",
       headers,
     }),

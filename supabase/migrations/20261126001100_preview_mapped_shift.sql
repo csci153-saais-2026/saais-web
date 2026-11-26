@@ -22,8 +22,11 @@ $$;
 create or replace function saais_private.assign_curriculum(student uuid, target uuid, program uuid, start_date date, reason text) returns jsonb
 language plpgsql set search_path=pg_catalog,public as $$
 #variable_conflict use_variable
-declare previous public.student_curriculum_assignment; version public.curriculum_version; org jsonb; matches jsonb; m jsonb; record_id uuid;
+declare previous public.student_curriculum_assignment; version public.curriculum_version; org jsonb; matches jsonb; has_active_mapping boolean; m jsonb; record_id uuid;
 begin
+  -- Serialize against concurrent credit/elective-mapping writers using the same
+  -- profile -> assignment lock order enforced by credit_guard and student_access.
+  perform 1 from public.profile p where p.id=student for update;
   select a.* into previous from public.student_curriculum_assignment a where a.student_id=student and a.end_date is null for update;
   if not found then perform saais_private.fail(409,'Student has no current curriculum.'); end if;
   select v.* into version from public.curriculum_version v where v.id=target for share;
@@ -33,11 +36,20 @@ begin
   if start_date<=previous.start_date or start_date>(now() at time zone 'Asia/Manila')::date or version.status<>'active' or
     start_date<version.effective_start or (version.effective_end is not null and start_date>version.effective_end) then
     perform saais_private.fail(409,'The requested assignment date or curriculum lifecycle is invalid.'); end if;
-  if exists(select 1 from saais_private.shift_preview_matches(student,target) m
-    join public.elective_mapping e on e.attempt_id=m.attempt_id and e.revoked_at is null) then
+  with preview as (
+    select m.*, exists(
+      select 1 from public.elective_mapping e
+      where e.attempt_id=m.attempt_id and e.revoked_at is null
+    ) as has_mapping
+    from saais_private.shift_preview_matches(student,target) m
+  )
+  select coalesce(bool_or(has_mapping),false),
+    coalesce(jsonb_agg(jsonb_build_object('attempt_id',attempt_id,'slot_id',slot_id,'units',units,'grade',grade)),'[]')
+    into has_active_mapping, matches
+    from preview;
+  if has_active_mapping then
     perform saais_private.fail(409,'A matched course has an active elective mapping. Resolve it before transferring credit.');
   end if;
-  select coalesce(jsonb_agg(to_jsonb(mm)),'[]') into matches from saais_private.shift_matches(student,target) mm;
   update public.student_curriculum_assignment a set end_date=start_date where a.id=previous.id;
   insert into public.student_curriculum_assignment(student_id,curriculum_version_id,start_date,reason)
     values(student,target,start_date,reason) returning id into record_id;

@@ -72,6 +72,15 @@ test("auth-hook rejects unsigned, tampered, or stale webhook requests before tou
     }),
   );
   assert.equal(tamperedRes.status, 401);
+
+  const oversized = await handler(
+    new Request(env.url + "/auth-hook/before-user-created", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pad: "€".repeat(25_000) }),
+    }),
+  );
+  assert.equal(oversized.status, 400);
   assert.equal(dbCalls, 0);
 });
 
