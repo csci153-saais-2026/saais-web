@@ -368,6 +368,14 @@ test("an expired session at save time returns 401 and removes the new copy", asy
   assert.deepEqual(deleted, [raw, newKey]);
 });
 
+test("an ambiguous 408 RPC timeout preserves the new copy", async () => {
+  const { response, deleted, newKey } = await upload(
+    () => new Response(null, { status: 408 }),
+  );
+  assert.equal(response.status, 500);
+  assert.ok(!deleted.includes(newKey));
+});
+
 test("dot-segment staging filenames are rejected before any request", async () => {
   for (const name of [".", ".."]) {
     await assert.rejects(

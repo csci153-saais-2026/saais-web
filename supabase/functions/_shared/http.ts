@@ -375,7 +375,11 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           message?: string;
           details?: string;
         };
-        if (photoCleanup && (result.status < 500 || Boolean(upstream.code))) {
+        if (
+          photoCleanup &&
+          result.status !== 408 &&
+          (result.status < 500 || Boolean(upstream.code))
+        ) {
           await photoCleanup();
         }
         // The user check passed, but the session expired before the database call.
