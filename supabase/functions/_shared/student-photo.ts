@@ -118,7 +118,7 @@ export async function preparePhoto(
     env.url + "/rest/v1/rpc/saais_photo_upload_authorize",
     {
       method: "POST",
-      headers,
+      headers: { ...headers, "Content-Profile": "public" },
       body: JSON.stringify({ p_student: student, p_path: raw }),
       signal: AbortSignal.timeout(10000),
     },
@@ -168,7 +168,10 @@ export async function preparePhoto(
     try {
       const response = await fetcher(
         `${env.url}/rest/v1/profile?id=eq.${student}&select=avatar_url`,
-        { headers, signal: AbortSignal.timeout(10000) },
+        {
+          headers: { ...headers, "Accept-Profile": "saais_api" },
+          signal: AbortSignal.timeout(10000),
+        },
       );
       if (!response.ok) return undefined;
       const rows = (await response.json()) as { avatar_url?: unknown }[];
@@ -202,7 +205,11 @@ export async function preparePhoto(
       env.url + "/rest/v1/rpc/saais_register_verified_photo",
       {
         method: "POST",
-        headers: { ...serviceHeaders, "Content-Type": "application/json" },
+        headers: {
+          ...serviceHeaders,
+          "Content-Type": "application/json",
+          "Content-Profile": "public",
+        },
         body: JSON.stringify({
           p_student: student,
           p_actor: actor,
@@ -232,7 +239,11 @@ export async function preparePhoto(
           env.url + "/rest/v1/rpc/saais_abandon_verified_photo",
           {
             method: "POST",
-            headers: { ...serviceHeaders, "Content-Type": "application/json" },
+            headers: {
+              ...serviceHeaders,
+              "Content-Type": "application/json",
+              "Content-Profile": "public",
+            },
             body: JSON.stringify({ p_path: path }),
             signal: AbortSignal.timeout(10000),
           },
@@ -248,4 +259,62 @@ export async function preparePhoto(
         await remove(previous);
     },
   };
+}
+
+// Reconcile private Storage objects queued by deleteStudentPhoto after the
+// database transaction commits. Best effort: failed deletions stay queued.
+export async function reconcileDeletedPhotos(
+  env: { url: string; serviceKey?: string },
+  fetcher: typeof fetch,
+  student: string,
+): Promise<void> {
+  if (!env.serviceKey) return;
+  const serviceHeaders = {
+    apikey: env.serviceKey,
+    Authorization: `Bearer ${env.serviceKey}`,
+    "Content-Type": "application/json",
+    "Content-Profile": "public",
+  };
+  try {
+    const listed = await fetcher(
+      env.url + "/rest/v1/rpc/saais_reconcile_deleted_photos",
+      {
+        method: "POST",
+        headers: serviceHeaders,
+        body: JSON.stringify({ p_student: student }),
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    if (!listed.ok) return;
+    const raw = (await listed.json()) as unknown;
+    if (!Array.isArray(raw)) return;
+    const prefix = `students/${student.toLowerCase()}/`;
+    const pending = raw.filter(
+      (item): item is string =>
+        typeof item === "string" && item.toLowerCase().startsWith(prefix),
+    );
+    if (pending.length === 0) return;
+    const removed = await fetcher(
+      env.url + "/storage/v1/object/student-photos",
+      {
+        method: "DELETE",
+        headers: {
+          apikey: env.serviceKey,
+          Authorization: `Bearer ${env.serviceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prefixes: pending }),
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    if (!removed.ok) return;
+    await fetcher(env.url + "/rest/v1/rpc/saais_reconcile_deleted_photos", {
+      method: "POST",
+      headers: serviceHeaders,
+      body: JSON.stringify({ p_student: student, p_removed: pending }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    // Keep queued paths in the database for retry on a later reconciliation.
+  }
 }

@@ -246,6 +246,9 @@ select lives_ok($cmd$
     '{"adviser_id":"00000008-0000-4000-8000-000000000000","start_date":"2026-02-01","reason":"Scoped handoff"}')
 $cmd$, 'Head can reassign an eligible adviser');
 set constraints all immediate;
+select is((select reason from saais_api.audit_log_entry where action='reassignAdviser'
+  and student_id='00000005-0000-4000-8000-000000000000'),
+  'Scoped handoff'::text, 'Department head retains access to the scoped reassignment reason');
 reset role;
 select is((select count(*) from public.adviser_assignment
   where student_id = '00000005-0000-4000-8000-000000000000' and end_date is null),
@@ -261,6 +264,10 @@ select is((select before.end_date from public.adviser_assignment before
 select test.login(4);
 set local role authenticated;
 select is((select count(*) from saais_api.advising_note), 2::bigint, 'Former adviser retains historical read access');
+select ok((select count(*) = 1 and bool_and(reason is null and details_summary <> 'Scoped handoff')
+  from saais_api.audit_log_entry where action='reassignAdviser' and student_id='00000005-0000-4000-8000-000000000000'),
+  'Former adviser cannot read the private reassignment reason');
+select throws_ok('select reason from public.audit_log_entry', '42501', null, 'Base table cannot bypass reason redaction');
 select throws_ok($cmd$
   select public.matt_operation('addAdvisingNote', '{"student_id":"00000005-0000-4000-8000-000000000000"}',
     '{"body_text":"Former adviser edit"}')
@@ -268,8 +275,88 @@ $cmd$, 'PT403', null, 'Former adviser cannot add a note for the handed-over stud
 reset role;
 select test.login(8);
 set local role authenticated;
+select ok((select count(*) = 1 and bool_and(reason is null and details_summary <> 'Scoped handoff')
+  from saais_api.audit_log_entry where action='reassignAdviser' and student_id='00000005-0000-4000-8000-000000000000'),
+  'Incoming adviser cannot read the private reassignment reason');
 select is((select count(*) from saais_api.adviser_assignment where end_date is null), 2::bigint,
   'New adviser can read their current advisees in both departments');
+reset role;
+
+-- Scoped non-student catalog and term audit entries (#182)
+select set_config('test.faculty', (select value->>'id' from test.records where name = 'faculty'), true);
+select set_config('test.department', (select value->>'id' from test.records where name = 'department'), true);
+select set_config('test.program', (select value->>'id' from test.records where name = 'program'), true);
+select set_config('test.course', (select value->>'id' from test.records where name = 'course'), true);
+select set_config('test.version', (select value->>'id' from test.records where name = 'version'), true);
+select set_config('test.faculty_b', (select value->>'id' from test.records where name = 'faculty_b'), true);
+select set_config('test.department_b', (select value->>'id' from test.records where name = 'department_b'), true);
+select set_config('test.program_b', (select value->>'id' from test.records where name = 'program_b'), true);
+select set_config('test.version_b', (select value->>'id' from test.records where name = 'version_b'), true);
+
+select test.login(1);
+select public.jerome_operation('closeSchoolTermEncoding',
+  jsonb_build_object('school_term_id', (select value->>'id' from test.records where name = 'school_term')),
+  jsonb_build_object('scope', 'department', 'department_id', (select value->>'id' from test.records where name = 'department'), 'closure_note', 'Dept A closure'));
+select public.jerome_operation('closeSchoolTermEncoding',
+  jsonb_build_object('school_term_id', (select value->>'id' from test.records where name = 'school_term')),
+  jsonb_build_object('scope', 'department', 'department_id', (select value->>'id' from test.records where name = 'department_b'), 'closure_note', 'Dept B closure'));
+
+select test.login(2);
+set local role authenticated;
+select ok(exists(select 1 from saais_api.audit_log_entry where student_id is null and entity_type = 'course'
+  and entity_id = current_setting('test.course')::uuid),
+  'Department head sees in-department catalog audit entries authored by another role');
+select ok(exists(select 1 from saais_api.audit_log_entry where student_id is null and action = 'deleteCourse'),
+  'Department head sees deleted in-department catalog audit entries');
+select ok(exists(select 1 from saais_api.audit_log_entry where student_id is null and entity_type = 'school_term'),
+  'Department head sees shared school-term audit entries');
+select is((select count(*) from saais_api.audit_log_entry where student_id is null and entity_type = 'department_term_encoding'), 1::bigint,
+  'Department head sees only their own department term-encoding closure audit entry');
+select is_empty($cmd$select id from saais_api.audit_log_entry where student_id is null and entity_id in (
+  current_setting('test.faculty_b')::uuid,
+  current_setting('test.department_b')::uuid,
+  current_setting('test.program_b')::uuid,
+  current_setting('test.version_b')::uuid)$cmd$,
+  'Department head cannot see another department or faculty catalog audit entries');
+reset role;
+
+select test.login(6);
+set local role authenticated;
+select ok(exists(select 1 from saais_api.audit_log_entry where student_id is null and entity_type = 'curriculum_version'
+  and entity_id = current_setting('test.version_b')::uuid),
+  'Other department head sees their own department curriculum audit entries');
+select is((select count(*) from saais_api.audit_log_entry where student_id is null and entity_type = 'department_term_encoding'), 1::bigint,
+  'Other department head sees only Dept B term-encoding audit entry');
+select is_empty($cmd$select id from saais_api.audit_log_entry where student_id is null and entity_id in (
+  current_setting('test.department')::uuid,
+  current_setting('test.program')::uuid,
+  current_setting('test.course')::uuid,
+  current_setting('test.version')::uuid)$cmd$,
+  'Other department head cannot see Dept A catalog audit entries');
+reset role;
+
+select test.login(7);
+set local role authenticated;
+select ok(exists(select 1 from saais_api.audit_log_entry where student_id is null and entity_type = 'faculty'
+  and entity_id = current_setting('test.faculty')::uuid),
+  'Dean sees own-faculty audit entries');
+select ok(exists(select 1 from saais_api.audit_log_entry where student_id is null and entity_type = 'course'
+  and entity_id = current_setting('test.course')::uuid),
+  'Dean sees catalog audit entries for departments in their faculty');
+select is((select count(*) from saais_api.audit_log_entry where student_id is null and entity_type = 'department_term_encoding'), 1::bigint,
+  'Dean sees only their faculty department term-encoding audit entry');
+select is_empty($cmd$select id from saais_api.audit_log_entry where student_id is null and entity_id in (
+  current_setting('test.faculty_b')::uuid,
+  current_setting('test.department_b')::uuid,
+  current_setting('test.program_b')::uuid,
+  current_setting('test.version_b')::uuid)$cmd$,
+  'Dean cannot see another faculty catalog audit entries');
+reset role;
+
+select test.login(4);
+set local role authenticated;
+select is_empty($cmd$select id from saais_api.audit_log_entry where student_id is null and actor_id <> auth.uid()$cmd$,
+  'Adviser cannot read non-student catalog or term audit entries authored by others');
 reset role;
 
 select * from finish();

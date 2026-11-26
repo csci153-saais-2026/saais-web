@@ -47,6 +47,17 @@ begin
   end;
   profile := public.matt_operation('deleteStudentPhoto',params);
   perform test.assert(profile->>'avatar_url' is null,'photo cleared');
+  perform test.assert(public.saais_reconcile_deleted_photos(student) = array[verified],
+    'deleted student photo path is queued for storage reconciliation');
+  perform test.assert(public.saais_reconcile_deleted_photos(student, array[verified]) = '{}'::text[],
+    'acknowledged storage removal clears the reconciliation queue');
+  -- Simulate a delete followed by a concurrent upload referencing the same path:
+  -- reconciliation must never return an actively referenced avatar.
+  update public.profile set avatar_url = '/storage/v1/object/authenticated/student-photos/' || verified where id = student;
+  insert into saais_private.deleted_student_photo(object_path, student_id) values (verified, student);
+  perform test.assert(public.saais_reconcile_deleted_photos(student) = '{}'::text[],
+    'reconciliation never returns an actively referenced avatar');
+  update public.profile set avatar_url = null where id = student;
   perform test.login(9);
   begin
     perform public.matt_operation('deleteStudentPhoto',params);
@@ -92,6 +103,9 @@ do $$begin
   end if;
   if has_function_privilege(current_user, 'public.saais_register_verified_photo(uuid,uuid,text)', 'EXECUTE') then
     raise exception 'Student can forge photo validation';
+  end if;
+  if has_function_privilege(current_user, 'public.saais_reconcile_deleted_photos(uuid,text[])', 'EXECUTE') then
+    raise exception 'Student can access service-only photo reconciliation';
   end if;
   begin
     insert into storage.objects(bucket_id, name) values

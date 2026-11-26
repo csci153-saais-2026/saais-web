@@ -29,6 +29,17 @@ begin
   exception when sqlstate 'PT400' then denied := true; end;
   perform test.assert(denied, 'Invalid client history must be rejected as a bad request.');
 
+  denied := false;
+  begin
+    perform public.matt_assistant_context(student, '{"message":"hello","history":[{"role":"admin","content":"bad"}]}'::jsonb);
+  exception when sqlstate 'PT400' then denied := true; end;
+  perform test.assert(denied, 'Invalid history roles are rejected.');
+  denied := false;
+  begin
+    perform public.matt_assistant_context(student, '{"message":"hello","history":[{"role":"user","content":"ok","extra":true}]}'::jsonb);
+  exception when sqlstate 'PT400' then denied := true; end;
+  perform test.assert(denied, 'Unknown history fields are rejected.');
+
   insert into auth.sessions(id,user_id) values('00000004-0000-4000-8000-000000000002',adviser);
   perform set_config('request.jwt.claims',jsonb_build_object('sub',adviser,'session_id',
     '00000004-0000-4000-8000-000000000002')::text,true);
@@ -54,10 +65,11 @@ begin
     jsonb_build_object('adviser_id', '00000008-0000-4000-8000-000000000000',
       'start_date','2026-02-01','reason','History authorization test'));
   perform test.login(4);
-  denied := false;
-  begin perform public.saais_get_assistant_history(student);
-  exception when sqlstate 'PT403' then denied := true; end;
-  perform test.assert(denied, 'A former adviser cannot read saved history.');
+  perform test.assert(public.saais_get_assistant_history(student)=history,
+    'A former adviser can read their own saved conversation.');
+  perform public.saais_record_assistant_turn(adviser, student, 'former question', 'former answer');
+  perform test.assert(public.saais_get_assistant_history(student)->19->>'content'='former answer',
+    'A former adviser can continue their own conversation.');
   perform test.login(8);
   perform test.assert(public.saais_get_assistant_history(student)='[]'::jsonb,
     'A new adviser does not inherit another adviser conversation.');

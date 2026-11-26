@@ -5,6 +5,7 @@ import { randomFillSync } from "node:crypto";
 import {
   PhotoError,
   preparePhoto,
+  reconcileDeletedPhotos,
   validatePhoto,
 } from "../functions/_shared/student-photo.ts";
 import { createHandler } from "../functions/_shared/http.ts";
@@ -420,4 +421,99 @@ test("dot-segment staging filenames are rejected before any request", async () =
       PhotoError,
     );
   }
+});
+
+test("deleteStudentPhoto removes queued storage objects and acknowledges reconciliation", async () => {
+  const deleted = [];
+  const acknowledged = [];
+  const handler = createHandler("students", {
+    env,
+    photoDelete: reconcileDeletedPhotos,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_operation"))
+        return Response.json({ id: student, avatar_url: null });
+      if (url.endsWith("/saais_reconcile_deleted_photos")) {
+        const rpc = JSON.parse(options.body);
+        assert.equal(options.headers.Authorization, "Bearer service-key");
+        assert.equal(options.headers["Content-Profile"], "public");
+        if (rpc.p_removed) {
+          acknowledged.push(...rpc.p_removed);
+          return Response.json([]);
+        }
+        return Response.json([oldKey]);
+      }
+      if (url.endsWith("/object/student-photos")) {
+        assert.equal(options.method, "DELETE");
+        deleted.push(...JSON.parse(options.body).prefixes);
+        return Response.json([]);
+      }
+      throw new Error(url);
+    },
+  });
+  const response = await handler(
+    new Request(env.url + `/students/${student.toUpperCase()}/photo`, {
+      method: "DELETE",
+      headers,
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(deleted, [oldKey]);
+  assert.deepEqual(acknowledged, [oldKey]);
+});
+
+test("deleteStudentPhoto skips storage removal when the profile RPC fails and retains queue on storage error", async () => {
+  let storageCalls = 0;
+  const deniedHandler = createHandler("students", {
+    env,
+    photoDelete: reconcileDeletedPhotos,
+    fetch: async (url) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_operation"))
+        return Response.json(
+          { code: "PT403", message: "Forbidden." },
+          { status: 403 },
+        );
+      storageCalls++;
+      throw new Error("Should not reconcile after failed RPC");
+    },
+  });
+  const denied = await deniedHandler(
+    new Request(env.url + `/students/${student}/photo`, {
+      method: "DELETE",
+      headers,
+    }),
+  );
+  assert.equal(denied.status, 403);
+  assert.equal(storageCalls, 0);
+
+  let ackCalls = 0;
+  const retryHandler = createHandler("students", {
+    env,
+    photoDelete: reconcileDeletedPhotos,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+      if (url.endsWith("/matt_operation"))
+        return Response.json({ id: student, avatar_url: null });
+      if (url.endsWith("/saais_reconcile_deleted_photos")) {
+        const rpc = JSON.parse(options.body);
+        if (rpc.p_removed) {
+          ackCalls++;
+          return Response.json([]);
+        }
+        return Response.json([oldKey]);
+      }
+      if (url.endsWith("/object/student-photos"))
+        return new Response(null, { status: 503 });
+      throw new Error(url);
+    },
+  });
+  const retryable = await retryHandler(
+    new Request(env.url + `/students/${student}/photo`, {
+      method: "DELETE",
+      headers,
+    }),
+  );
+  assert.equal(retryable.status, 200);
+  assert.equal(ackCalls, 0);
 });

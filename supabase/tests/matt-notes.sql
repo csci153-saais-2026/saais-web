@@ -12,6 +12,7 @@ begin
     where a.student_id=target and a.end_date is null limit 1;
   note := public.matt_operation('addAdvisingNote',path,'{"body_text":"Discuss next term."}');
   perform test.assert(note->>'student_id'=target::text,'note student');
+  perform test.assert(exists(select 1 from public.notification where recipient_id=target and event_type='advising_note_added' and entity_id=(note->>'id')::uuid), 'A new advising note notifies the student');
   path := path || jsonb_build_object('note_id',note->>'id');
   note := public.matt_operation('updateAdvisingNoteArchiveState',path,'{"is_archived":true}');
   perform test.assert(note->>'body_text'='Discuss next term.' and note->>'is_archived'='true','archive without changing body');

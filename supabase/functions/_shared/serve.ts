@@ -1,6 +1,7 @@
 import {
   createHandler,
   type Environment,
+  type PhotoCleaner,
   type PhotoPreparer,
   type RouteGroup,
 } from "./http.ts";
@@ -36,7 +37,11 @@ export function environment(
   };
 }
 
-export function serve(group: RouteGroup, photoUpload?: PhotoPreparer) {
+export function serve(
+  group: RouteGroup,
+  photoUpload?: PhotoPreparer,
+  photoDelete?: PhotoCleaner,
+) {
   const runtime = (
     globalThis as unknown as {
       Deno: {
@@ -46,5 +51,5 @@ export function serve(group: RouteGroup, photoUpload?: PhotoPreparer) {
     }
   ).Deno;
   const env = environment((name) => runtime.env.get(name));
-  runtime.serve(createHandler(group, { env, photoUpload }));
+  runtime.serve(createHandler(group, { env, photoUpload, photoDelete }));
 }
