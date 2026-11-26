@@ -229,5 +229,11 @@ export async function preparePhoto(
       if (previous?.startsWith(`students/${student}/validated-`))
         await remove(previous);
     },
+    // Call when the save may or may not have happened. Keeps the new file
+    // unless the profile is confirmed not to use it.
+    abandon: async () => {
+      const saved = await currentAvatar();
+      if (saved !== undefined && saved !== path) await cleanup();
+    },
   };
 }
