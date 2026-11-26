@@ -28,6 +28,9 @@ begin
   update public.profile set invitation_status='pending',invitation_expires_at=clock_timestamp()-interval '1 second' where id=target;
   update auth.identities set identity_data=identity_data where id=identity_id;
   perform test.assert((select status='invited' from public.profile where id=target), 'An expired invitation is not activated');
+  update public.profile set invitation_expires_at=null where id=target;
+  update auth.identities set identity_data=identity_data where id=identity_id;
+  perform test.assert((select status='invited' from public.profile where id=target), 'An invitation without an expiry is not activated');
   update public.profile set invitation_expires_at=clock_timestamp()+interval '1 day',status='disabled' where id=target;
   update auth.identities set identity_data=identity_data where id=identity_id;
   perform test.assert((select status='disabled' from public.profile where id=target), 'A disabled account is not reactivated');

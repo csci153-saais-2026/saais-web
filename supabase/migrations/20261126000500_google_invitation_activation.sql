@@ -17,7 +17,7 @@ begin
   if not found then return new; end if;
   select * into v_profile from public.profile where id = new.user_id for update;
   if not found or v_profile.status <> 'invited' or v_profile.invitation_status <> 'pending'
-    or v_profile.invitation_expires_at <= clock_timestamp()
+    or v_profile.invitation_expires_at is null or v_profile.invitation_expires_at <= clock_timestamp()
     or lower(btrim(v_profile.email)) is distinct from v_google_email
     or not exists (select 1 from auth.users u where u.id = new.user_id and lower(btrim(u.email)) = v_google_email)
     or v_invite.redemption_until > clock_timestamp() then
