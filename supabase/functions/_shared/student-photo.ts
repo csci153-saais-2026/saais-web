@@ -108,6 +108,8 @@ export async function preparePhoto(
     parts[0] !== "students" ||
     parts[1] !== student ||
     !/^[a-zA-Z0-9._-]+$/.test(parts[2]) ||
+    parts[2] === "." ||
+    parts[2] === ".." ||
     parts[2].startsWith("validated-")
   )
     throw new PhotoError(400, "Invalid staging photo path.");
@@ -130,8 +132,9 @@ export async function preparePhoto(
         ? "The student is outside your authorized scope."
         : "Photo authorization failed.",
     );
+  const staged = `students/${student}/${encodeURIComponent(parts[2])}`;
   const source = await fetcher(
-    env.url + "/storage/v1/object/authenticated/student-photos/" + raw,
+    env.url + "/storage/v1/object/authenticated/student-photos/" + staged,
     {
       headers,
       signal: AbortSignal.timeout(15000),
@@ -150,14 +153,35 @@ export async function preparePhoto(
     apikey: env.serviceKey,
     Authorization: `Bearer ${env.serviceKey}`,
   };
-  const cleanup = async () => {
+  // Deletion is best effort: a leftover file must not fail the request.
+  const remove = async (key: string) => {
     await fetcher(env.url + "/storage/v1/object/student-photos", {
       method: "DELETE",
       headers: { ...serviceHeaders, "Content-Type": "application/json" },
-      body: JSON.stringify({ prefixes: [path] }),
+      body: JSON.stringify({ prefixes: [key] }),
       signal: AbortSignal.timeout(10000),
     }).catch(() => {});
   };
+  const cleanup = () => remove(path);
+  // Reads the saved avatar key as the caller. Undefined means unknown.
+  const currentAvatar = async (): Promise<string | null | undefined> => {
+    try {
+      const response = await fetcher(
+        `${env.url}/rest/v1/profile?id=eq.${student}&select=avatar_url`,
+        { headers, signal: AbortSignal.timeout(10000) },
+      );
+      if (!response.ok) return undefined;
+      const rows = (await response.json()) as { avatar_url?: unknown }[];
+      if (!Array.isArray(rows) || !rows[0]) return undefined;
+      const url = rows[0].avatar_url;
+      return typeof url === "string"
+        ? (url.split("/student-photos/")[1] ?? null)
+        : null;
+    } catch {
+      return undefined;
+    }
+  };
+  const previous = await currentAvatar();
   const uploaded = await fetcher(
     env.url + "/storage/v1/object/student-photos/" + path,
     {
@@ -192,6 +216,7 @@ export async function preparePhoto(
     await cleanup();
     throw new PhotoError(500, "The validated photo could not be saved.");
   }
+  await remove(raw);
   return {
     body: {
       ...body,
@@ -199,5 +224,16 @@ export async function preparePhoto(
       avatar_url: "/student-photos/" + path,
     },
     cleanup,
+    // Call once the profile points at the new photo.
+    commit: async () => {
+      if (previous?.startsWith(`students/${student}/validated-`))
+        await remove(previous);
+    },
+    // Call when the save may or may not have happened. Keeps the new file
+    // unless the profile is confirmed not to use it.
+    abandon: async () => {
+      const saved = await currentAvatar();
+      if (saved !== undefined && saved !== path) await cleanup();
+    },
   };
 }

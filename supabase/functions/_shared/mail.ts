@@ -110,7 +110,10 @@ export function createMailHandler(
                 throw new Error("Claimed recipient is not allowed.");
               }
               let outcome = "retry";
-              const link = new URL("/invite", site);
+              // A trailing slash keeps the site's base path in the link.
+              const base = new URL(site);
+              base.pathname = base.pathname.replace(/\/*$/, "/");
+              const link = new URL("invite", base);
               link.hash = `token=${mail.token ?? ""}`;
               const message =
                 mail.kind === "invitation"

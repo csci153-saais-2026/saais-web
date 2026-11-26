@@ -103,7 +103,7 @@ Audit and credit history reject update/delete/truncate. Credit edits retain the 
 ## Student, advising and account operations
 
 The shared `students/index.ts` serves both sets of student routes. The additional route
-registry in `functions/_shared/matt-routes.ts` lists the active operations.
+registry in `functions/_shared/academic-routes.ts` lists the active operations.
 `matt_operation` verifies the active profile and role, validates requests and
 responses against the pinned contract, and calls private SQL handlers.
 
@@ -139,7 +139,5 @@ Notification rows with `email_delivery_status='pending'` form the delivery queue
 - Sources already used by live credit decisions are excluded from automatic reassignment matches. Earlier decisions remain intact; conflicting old decisions require explicit review/revocation before reusing the source. No historical decision is silently overwritten.
 - Assignment dates must follow the previous assignment's start, match the target's effectivity, and use an active target version. Future-dated assignment changes are rejected because the current-assignment model is end-date based. The contract's lifecycle/effectivity descriptions do not fully enumerate these transitions; confirm the eligibility policy with the team.
 - School-term catalog writes cannot be used by Head/Staff to bypass the explicit Admin-only institution-lock rule. Reopening a department leaves the institution lock intact.
-
-See `docs/backend/jerome-implementation-report.md` for the operation-by-operation status, actual verification results and Git contribution inventory.
 
 The current integration registers 81 operations across both contributions, including the saved-attempt rejection endpoint. Both runtime snapshots now use the approved OpenAPI 0.3.1 version and hash. See [integration follow-up](../docs/backend/integration-follow-up.md) for the deferred operations, affected application workflows and remaining provider/deployment work.

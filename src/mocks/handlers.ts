@@ -592,8 +592,14 @@ const COURSE_OR_FIELD_LIMITS: Record<string, number> = {
   title: 250,
 };
 
+const PROGRAM_OR_FIELD_LIMITS: Record<string, number> = {
+  code: 100,
+  name: 150,
+};
+
 function getOrFieldLimits(pathname: string): Record<string, number> | null {
   if (pathname.endsWith("/rest/v1/course")) return COURSE_OR_FIELD_LIMITS;
+  if (pathname.endsWith("/rest/v1/program")) return PROGRAM_OR_FIELD_LIMITS;
   if (pathname.endsWith("/rest/v1/audit_log_entry"))
     return AUDIT_OR_FIELD_LIMITS;
   return null;

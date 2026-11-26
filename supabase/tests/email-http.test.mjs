@@ -68,6 +68,50 @@ test("mail delivery retries transient failures with the same provider idempotenc
   assert.deepEqual(outcomes, ["retry", "sent"]);
 });
 
+test("invitation links keep the site's base path", async () => {
+  const mail = {
+    id,
+    lease: session,
+    kind: "invitation",
+    email: "mail-fixture@example.test",
+    subject: "Invitation",
+    message: null,
+    token,
+  };
+  for (const [site, expected] of [
+    ["https://host.example.test", "https://host.example.test/invite"],
+    [
+      "https://host.example.test/saais",
+      "https://host.example.test/saais/invite",
+    ],
+    [
+      "https://host.example.test/saais/",
+      "https://host.example.test/saais/invite",
+    ],
+  ]) {
+    let text = "";
+    const handler = createMailHandler(
+      readMailEnvironment(
+        (name) =>
+          ({
+            ...settings,
+            SAAIS_SITE_URL: site,
+            SAAIS_MAIL_ALLOWED_RECIPIENTS: mail.email,
+          })[name],
+      ),
+      async (url, options) => {
+        if (url.endsWith("/saais_claim_email")) return Response.json([mail]);
+        if (url.endsWith("/saais_finish_email"))
+          return new Response(null, { status: 204 });
+        text = JSON.parse(options.body).text;
+        return new Response(null, { status: 200 });
+      },
+    );
+    assert.equal((await send(handler)).status, 200);
+    assert.ok(text.includes(`${expected}#token=${token}`), text);
+  }
+});
+
 test("missing or empty recipient configuration blocks claims and provider calls", async () => {
   for (const environment of [undefined, "staging", "test", "production"]) {
     for (const recipients of [undefined, "", " , "]) {

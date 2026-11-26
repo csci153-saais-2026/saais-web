@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHandler, operationsFor } from "../functions/_shared/http.ts";
 import catalog from "../functions/_shared/contract.json" with { type: "json" };
-import academic from "../functions/_shared/matt-contract.json" with { type: "json" };
-import { mattRoutes } from "../functions/_shared/matt-routes.ts";
+import academic from "../functions/_shared/academic-contract.json" with { type: "json" };
+import { mattRoutes } from "../functions/_shared/academic-routes.ts";
 
 const id = "00000005-0000-4000-8000-000000000000";
 const env = {

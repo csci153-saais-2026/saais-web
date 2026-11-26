@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import snapshot from "../functions/_shared/matt-contract.json" with { type: "json" };
+import snapshot from "../functions/_shared/academic-contract.json" with { type: "json" };
 import catalog from "../functions/_shared/contract.json" with { type: "json" };
 
 const require = createRequire(import.meta.url);
