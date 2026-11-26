@@ -6,6 +6,7 @@ declare
   student uuid := '00000005-0000-4000-8000-000000000000';
   path text := 'students/'||student||'/avatar.png';
   verified text := 'students/'||student||'/validated-00000000-0000-4000-8000-000000000001.png';
+  unused text := 'students/'||student||'/validated-00000000-0000-4000-8000-000000000002.png';
   url text := 'https://supabase.test/storage/v1/object/sign/student-photos/'||path;
   params jsonb := jsonb_build_object('student_id',student);
   body jsonb := jsonb_build_object('avatar_url',url,'storage_object_path',path,'mime_type','image/png','file_size_bytes',11);
@@ -27,10 +28,21 @@ begin
   perform public.saais_register_verified_photo(student,student,verified);
   body := jsonb_build_object('avatar_url','/student-photos/'||verified,'storage_object_path',verified,'mime_type','image/png','file_size_bytes',5242880);
   profile := public.matt_operation('uploadStudentPhoto',params,body);
+  perform test.assert(not public.saais_abandon_verified_photo(verified),'committed photo token cannot be abandoned');
   perform test.assert(profile->>'avatar_url'='/storage/v1/object/authenticated/student-photos/'||verified,'verified 5 MiB photo saved');
   begin
     perform public.matt_operation('uploadStudentPhoto',params,body);
     raise exception 'validation was reused';
+  exception when sqlstate 'PT400' then null;
+  end;
+  insert into storage.objects(bucket_id,name,metadata) values('student-photos',unused,'{"mimetype":"image/png","size":5242880}');
+  perform public.saais_register_verified_photo(student,student,unused);
+  perform test.assert(public.saais_abandon_verified_photo(unused),'unused photo token can be abandoned');
+  perform test.assert(not public.saais_abandon_verified_photo(unused),'abandoned token cannot be reused');
+  body := jsonb_build_object('avatar_url','/student-photos/'||unused,'storage_object_path',unused,'mime_type','image/png','file_size_bytes',5242880);
+  begin
+    perform public.matt_operation('uploadStudentPhoto',params,body);
+    raise exception 'abandoned validation was accepted';
   exception when sqlstate 'PT400' then null;
   end;
   profile := public.matt_operation('deleteStudentPhoto',params);
@@ -74,6 +86,9 @@ do $$begin
   end if;
   if saais_private.can_use_student_photo('students/' || auth.uid() || '/validated-00000000-0000-4000-8000-000000000001.png', true) then
     raise exception 'Student can overwrite a validated photo';
+  end if;
+  if has_function_privilege(current_user, 'public.saais_abandon_verified_photo(text)', 'EXECUTE') then
+    raise exception 'Student can abandon photo validation';
   end if;
   if has_function_privilege(current_user, 'public.saais_register_verified_photo(uuid,uuid,text)', 'EXECUTE') then
     raise exception 'Student can forge photo validation';

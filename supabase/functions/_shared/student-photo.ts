@@ -224,6 +224,24 @@ export async function preparePhoto(
       avatar_url: "/student-photos/" + path,
     },
     cleanup,
+    // Invalidate the one-use token before deleting. This waits for a pending
+    // save to commit or roll back, preventing deletion of a committed avatar.
+    abandon: async () => {
+      try {
+        const result = await fetcher(
+          env.url + "/rest/v1/rpc/saais_abandon_verified_photo",
+          {
+            method: "POST",
+            headers: { ...serviceHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify({ p_path: path }),
+            signal: AbortSignal.timeout(10000),
+          },
+        );
+        if (result.ok && (await result.json()) === true) await cleanup();
+      } catch {
+        // Keep the object if the database decision is unknown.
+      }
+    },
     // Call once the profile points at the new photo.
     commit: async () => {
       if (previous?.startsWith(`students/${student}/validated-`))

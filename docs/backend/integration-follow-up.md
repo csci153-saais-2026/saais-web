@@ -102,4 +102,4 @@ The assistant stores the last 20 individual messages per current adviser and stu
 
 ### Photo cleanup after uncertain saves
 
-If the profile update times out or its network result is unknown, the validated object is retained: the database transaction may still commit after the response is lost. This can leave an unreferenced object. Reconcile old unreferenced validated objects only after the database operation is known to have finished, and verify that no profile references the object before removal. Storage deletion is best effort and needs hosted monitoring.
+If the profile update times out or its network result is unknown, the Edge Function asks a service-only RPC to invalidate the one-use validation token. The RPC serializes against a concurrent save: it returns true only when the token was removed without a committed save, allowing safe deletion. If that decision or Storage deletion fails, the object is retained; reconcile old unreferenced objects only after confirming no profile references them. Storage deletion is best effort and needs hosted monitoring.

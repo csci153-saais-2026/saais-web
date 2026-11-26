@@ -250,6 +250,8 @@ test("photo HTTP route cleans up the validated object when the profile RPC rejec
         return Response.json({ Key: "ok" });
       if (url.endsWith("/saais_register_verified_photo"))
         return new Response(null, { status: 204 });
+      if (url.endsWith("/saais_abandon_verified_photo"))
+        return Response.json(true);
       if (url.endsWith("/matt_operation"))
         return Response.json(
           { code: "PT403", message: "Access revoked." },
@@ -300,7 +302,7 @@ const stored = (key) => [
 ];
 
 // Runs one upload and returns the response and every deleted storage key.
-async function upload(save) {
+async function upload(save, abandon = () => Response.json(true)) {
   const deleted = [];
   let newKey;
   const handler = createHandler("students", {
@@ -323,6 +325,7 @@ async function upload(save) {
         newKey = JSON.parse(options.body).p_path;
         return new Response(null, { status: 204 });
       }
+      if (url.endsWith("/saais_abandon_verified_photo")) return abandon();
       if (url.endsWith("/matt_operation")) return save();
       throw new Error(url);
     },
@@ -345,18 +348,32 @@ test("a saved photo removes the staging file and the previous avatar", async () 
   assert.deepEqual(deleted, [raw, oldKey]);
 });
 
-test("a network failure retains the new copy while the database outcome is unknown", async () => {
+test("a failed save deletes the new copy only after invalidating its token", async () => {
   const { response, deleted, newKey } = await upload(() => {
     throw new TypeError("network");
   });
+  assert.equal(response.status, 500);
+  assert.deepEqual(deleted, [raw, newKey]);
+});
+
+test("an already consumed token retains the committed photo after a lost response", async () => {
+  const { response, deleted, newKey } = await upload(
+    () => {
+      throw new TypeError("network");
+    },
+    () => Response.json(false),
+  );
   assert.equal(response.status, 500);
   assert.ok(newKey);
   assert.deepEqual(deleted, [raw]);
 });
 
-test("a gateway error retains the new copy even when the response has an error code", async () => {
-  const { response, deleted, newKey } = await upload(() =>
-    Response.json({ code: "GATEWAY_TIMEOUT" }, { status: 504 }),
+test("an unavailable cleanup decision retains the new photo", async () => {
+  const { response, deleted, newKey } = await upload(
+    () => Response.json({ code: "GATEWAY_TIMEOUT" }, { status: 504 }),
+    () => {
+      throw new TypeError("network");
+    },
   );
   assert.equal(response.status, 500);
   assert.ok(newKey);
