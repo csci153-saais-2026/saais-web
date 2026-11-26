@@ -99,4 +99,17 @@ describe("buildAuditListQuery", () => {
     expect(query).toBeNull();
     expect(error).toBe("Person search must be 100 characters or fewer.");
   });
+
+  it.each(["student", "action"] as const)(
+    "leaves room for the wildcards in the %s search",
+    (field) => {
+      const build = (length: number) =>
+        buildAuditListQuery(
+          { ...emptyFilters, [field]: "a".repeat(length) },
+          0,
+        );
+      expect(build(98).query).not.toBeNull();
+      expect(build(99).error).toMatch("98 characters or fewer");
+    },
+  );
 });

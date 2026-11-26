@@ -5,6 +5,9 @@ import {
 } from "@/lib/api";
 
 export const AUDIT_PAGE_SIZE = 25;
+export const AUDIT_SEARCH_MAX_LENGTH = 100;
+// The contract counts the two `%` wildcards toward these filters' 100 characters.
+export const AUDIT_WILDCARD_SEARCH_MAX_LENGTH = AUDIT_SEARCH_MAX_LENGTH - 2;
 export const MAX_AUDIT_OFFSET = 1_000_000;
 
 export const AUDIT_LOG_SELECT =
@@ -75,16 +78,16 @@ export function buildAuditListQuery(
   const action = filters.action.trim();
   const entityType = filters.entityType.trim();
 
-  for (const [label, value] of [
-    ["Person", person],
-    ["Student", student],
-    ["Action", action],
-    ["Entity type", entityType],
+  for (const [label, value, maxLength] of [
+    ["Person", person, AUDIT_SEARCH_MAX_LENGTH],
+    ["Student", student, AUDIT_WILDCARD_SEARCH_MAX_LENGTH],
+    ["Action", action, AUDIT_WILDCARD_SEARCH_MAX_LENGTH],
+    ["Entity type", entityType, AUDIT_SEARCH_MAX_LENGTH],
   ] as const) {
-    if (value.length > 100) {
+    if (value.length > maxLength) {
       return {
         query: null,
-        error: `${label} search must be 100 characters or fewer.`,
+        error: `${label} search must be ${maxLength} characters or fewer.`,
       };
     }
     if (
