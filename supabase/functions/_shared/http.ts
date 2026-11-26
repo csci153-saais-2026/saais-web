@@ -139,7 +139,6 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
     if (origin) headers.set("Access-Control-Allow-Origin", origin);
     if (request.method === "OPTIONS")
       return new Response(null, { status: 204, headers });
-    // Set while a validated photo is waiting for the profile update.
     let abandonPhoto: (() => Promise<void>) | undefined;
     try {
       const url = new URL(request.url);
@@ -366,7 +365,6 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         signal: AbortSignal.timeout(30000),
       });
       if (!result.ok) {
-        abandonPhoto = undefined;
         const status = operation.errors.includes(result.status)
           ? result.status
           : 500;
@@ -375,10 +373,13 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           message?: string;
           details?: string;
         };
-        if (
+        if (abandonPhoto) {
+          await abandonPhoto();
+          abandonPhoto = undefined;
+        } else if (
           photoCleanup &&
-          result.status !== 408 &&
-          (result.status < 500 || Boolean(upstream.code))
+          result.status < 500 &&
+          result.status !== 408
         ) {
           await photoCleanup();
         }

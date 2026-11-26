@@ -250,6 +250,8 @@ test("photo HTTP route cleans up the validated object when the profile RPC rejec
         return Response.json({ Key: "ok" });
       if (url.endsWith("/saais_register_verified_photo"))
         return new Response(null, { status: 204 });
+      if (url.endsWith("/saais_abandon_verified_photo"))
+        return Response.json(true);
       if (url.endsWith("/matt_operation"))
         return Response.json(
           { code: "PT403", message: "Access revoked." },
@@ -300,10 +302,9 @@ const stored = (key) => [
 ];
 
 // Runs one upload and returns the response and every deleted storage key.
-async function upload(save, savedAfter = () => oldKey) {
+async function upload(save, abandon = () => Response.json(true)) {
   const deleted = [];
   let newKey;
-  let reads = 0;
   const handler = createHandler("students", {
     env,
     photoUpload: preparePhoto,
@@ -313,9 +314,7 @@ async function upload(save, savedAfter = () => oldKey) {
         return Response.json(true);
       if (url.includes("/object/authenticated/")) return new Response(image);
       if (url.includes("/rest/v1/profile"))
-        return Response.json(
-          stored(reads++ === 0 ? oldKey : savedAfter(newKey)),
-        );
+        return Response.json(stored(oldKey));
       if (url.endsWith("/object/student-photos")) {
         deleted.push(...JSON.parse(options.body).prefixes);
         return Response.json([]);
@@ -326,6 +325,7 @@ async function upload(save, savedAfter = () => oldKey) {
         newKey = JSON.parse(options.body).p_path;
         return new Response(null, { status: 204 });
       }
+      if (url.endsWith("/saais_abandon_verified_photo")) return abandon();
       if (url.endsWith("/matt_operation")) return save();
       throw new Error(url);
     },
@@ -348,15 +348,53 @@ test("a saved photo removes the staging file and the previous avatar", async () 
   assert.deepEqual(deleted, [raw, oldKey]);
 });
 
-test("a network failure preserves the new copy when the save outcome is uncertain", async () => {
-  const fail = () => {
+test("a failed save deletes the new copy only after invalidating its token", async () => {
+  const { response, deleted, newKey } = await upload(() => {
     throw new TypeError("network");
-  };
-  const unsaved = await upload(fail);
-  assert.equal(unsaved.response.status, 500);
-  assert.deepEqual(unsaved.deleted, [raw]);
-  const saved = await upload(fail, (newKey) => newKey);
-  assert.deepEqual(saved.deleted, [raw]);
+  });
+  assert.equal(response.status, 500);
+  assert.deepEqual(deleted, [raw, newKey]);
+});
+
+test("an already consumed token retains the committed photo after a lost response", async () => {
+  const { response, deleted, newKey } = await upload(
+    () => {
+      throw new TypeError("network");
+    },
+    () => Response.json(false),
+  );
+  assert.equal(response.status, 500);
+  assert.ok(newKey);
+  assert.deepEqual(deleted, [raw]);
+});
+
+test("an unavailable cleanup decision retains the new photo", async () => {
+  const { response, deleted, newKey } = await upload(
+    () => Response.json({ code: "GATEWAY_TIMEOUT" }, { status: 504 }),
+    () => {
+      throw new TypeError("network");
+    },
+  );
+  assert.equal(response.status, 500);
+  assert.ok(newKey);
+  assert.deepEqual(deleted, [raw]);
+});
+
+test("an HTTP 408 only removes the new copy when its token is invalidated", async () => {
+  const timedOut = () => new Response(null, { status: 408 });
+  const abandoned = await upload(timedOut);
+  assert.equal(abandoned.response.status, 500);
+  assert.deepEqual(abandoned.deleted, [raw, abandoned.newKey]);
+});
+
+test("an HTTP 408 retains a photo whose token was already consumed", async () => {
+  const { response, deleted, newKey } = await upload(
+    () => new Response(null, { status: 408 }),
+    () => Response.json(false),
+  );
+  assert.equal(response.status, 500);
+  assert.ok(newKey);
+  assert.deepEqual(deleted, [raw]);
 });
 
 test("an expired session at save time returns 401 and removes the new copy", async () => {
@@ -366,14 +404,6 @@ test("an expired session at save time returns 401 and removes the new copy", asy
   assert.equal(response.status, 401);
   assert.equal((await response.json()).code, "PGRST301");
   assert.deepEqual(deleted, [raw, newKey]);
-});
-
-test("an ambiguous 408 RPC timeout preserves the new copy", async () => {
-  const { response, deleted, newKey } = await upload(
-    () => new Response(null, { status: 408 }),
-  );
-  assert.equal(response.status, 500);
-  assert.ok(!deleted.includes(newKey));
 });
 
 test("dot-segment staging filenames are rejected before any request", async () => {
