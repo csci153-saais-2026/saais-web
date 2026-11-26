@@ -37,13 +37,13 @@ begin
 
   -- Durable rejected-login audit RPCs (#189)
   perform test.assert(
-    not has_function_privilege('anon','public.saais_record_rejected_login(text,text,uuid)','execute')
-    and not has_function_privilege('authenticated','public.saais_record_rejected_login(text,text,uuid)','execute')
-    and has_function_privilege('service_role','public.saais_record_rejected_login(text,text,uuid)','execute')
-    and not has_function_privilege('authenticated','public.saais_evaluate_before_user_created(jsonb)','execute')
-    and has_function_privilege('service_role','public.saais_evaluate_before_user_created(jsonb)','execute')
-    and not has_function_privilege('authenticated','public.saais_evaluate_access_token(jsonb)','execute')
-    and has_function_privilege('service_role','public.saais_evaluate_access_token(jsonb)','execute'),
+    not has_function_privilege('anon','public.saais_record_rejected_login(text,text,uuid,text)','execute')
+    and not has_function_privilege('authenticated','public.saais_record_rejected_login(text,text,uuid,text)','execute')
+    and has_function_privilege('service_role','public.saais_record_rejected_login(text,text,uuid,text)','execute')
+    and not has_function_privilege('authenticated','public.saais_evaluate_before_user_created(jsonb,text)','execute')
+    and has_function_privilege('service_role','public.saais_evaluate_before_user_created(jsonb,text)','execute')
+    and not has_function_privilege('authenticated','public.saais_evaluate_access_token(jsonb,text)','execute')
+    and has_function_privilege('service_role','public.saais_evaluate_access_token(jsonb,text)','execute'),
     'Rejected-login audit RPCs are restricted to the service role');
 
   result := public.saais_evaluate_before_user_created(event);
@@ -78,6 +78,28 @@ begin
       and entity_id = '00000010-0000-4000-8000-000000000000'
       and new_value->>'rejection_reason' = 'disabled_account'),
     'Disabled account rejection links only the disabled profile id');
+
+  declare
+    signup jsonb := '{"user":{"email":"replay@example.net"}}';
+    token_event jsonb := '{"user_id":"00000010-0000-4000-8000-000000000000","claims":{"email":"person10@example.test"}}';
+    before_count bigint := (select count(*) from public.audit_log_entry where action='login_rejected');
+  begin
+    result := public.saais_evaluate_before_user_created(signup, 'msg_replayed_signup');
+    perform test.assert(result->>'allowed'='false', 'The original signup delivery is denied');
+    result := public.saais_evaluate_before_user_created(signup, 'msg_replayed_signup');
+    perform test.assert(result->>'allowed'='false', 'Replayed signup delivery still receives a denial');
+
+    result := public.saais_evaluate_access_token(token_event, 'msg_replayed_token');
+    perform test.assert(result->>'allowed'='false', 'The original token delivery is denied');
+    result := public.saais_evaluate_access_token(token_event, 'msg_replayed_token');
+    perform test.assert(result->>'allowed'='false', 'Replayed token delivery still receives a denial');
+    perform test.assert((select count(*)=before_count+2 from public.audit_log_entry where action='login_rejected'),
+      'Each signed delivery writes one rejection audit row');
+
+    perform public.saais_evaluate_before_user_created(signup, 'msg_new_signup');
+    perform test.assert((select count(*)=before_count+3 from public.audit_log_entry where action='login_rejected'),
+      'A fresh delivery with the same event is audited independently');
+  end;
 
   result := public.saais_evaluate_access_token('{"user_id":"00000005-0000-4000-8000-000000000000","claims":{"email":"person5@example.test"}}');
   perform test.assert(result->>'allowed' = 'true', 'Active provisioned profile passes access-token hook');

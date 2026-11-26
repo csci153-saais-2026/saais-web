@@ -73,6 +73,12 @@ test("auth-hook rejects unsigned, tampered, or stale webhook requests before tou
   );
   assert.equal(tamperedRes.status, 401);
 
+  const changedId = await signedRequest("/auth-hook/before-user-created", {
+    user: { email: "user@vsu.edu.ph" },
+  });
+  changedId.headers.set("webhook-id", "msg_replaced");
+  assert.equal((await handler(changedId)).status, 401);
+
   const oversized = await handler(
     new Request(env.url + "/auth-hook/before-user-created", {
       method: "POST",
@@ -92,7 +98,8 @@ test("auth-hook durably evaluates before-user-created and custom-access-token vi
       calls.push({ url, options });
       assert.equal(options.headers.Authorization, "Bearer service-key");
       assert.equal(options.headers["Content-Profile"], "public");
-      const { p_event } = JSON.parse(options.body);
+      const { p_event, p_webhook_id } = JSON.parse(options.body);
+      assert.equal(p_webhook_id, "msg_test_1");
       if (url.endsWith("/saais_evaluate_before_user_created")) {
         if (p_event.user?.email === "outsider@gmail.com") {
           return Response.json({

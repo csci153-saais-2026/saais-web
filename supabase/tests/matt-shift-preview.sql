@@ -35,10 +35,14 @@ begin
     jsonb_build_object('attempt_id', source_attempt, 'curriculum_term_course_id', elective_slot,
       'justification', 'Count passed course toward current elective slot'));
 
-  preview := test.call('previewCurriculumShift', jsonb_build_object('student_id', student),
-    jsonb_build_object('curriculum_version_id', target));
-  perform test.assert(preview = '{"carried_units":3,"lost_units":0,"projected_gwa":2,"mutates_records":false}'::jsonb,
-    'Shift preview must include passed courses currently bound to an active elective mapping');
+  begin
+    perform test.call('previewCurriculumShift', jsonb_build_object('student_id', student),
+      jsonb_build_object('curriculum_version_id', target));
+    raise exception 'A preview was returned for a shift blocked by an active elective mapping';
+  exception when sqlstate 'PT409' then
+    perform test.assert(sqlerrm = 'Revoke the active elective mapping before shifting this curriculum.',
+      'Shift preview tells the caller how to resolve the conflict');
+  end;
 
   perform test.login(2);
   perform test.expect('PT409', 'assignStudentCurriculum', jsonb_build_object('student_id', student),
@@ -53,6 +57,11 @@ begin
   perform test.call('revokeElectiveMapping',
     jsonb_build_object('student_id', student, 'decision_id', mapping->>'id'),
     jsonb_build_object('reason', 'Revoke before shifting curriculum', 'expected_updated_at', mapping->>'updated_at'));
+
+  preview := test.call('previewCurriculumShift', jsonb_build_object('student_id', student),
+    jsonb_build_object('curriculum_version_id', target));
+  perform test.assert(preview = '{"carried_units":3,"lost_units":0,"projected_gwa":2,"mutates_records":false}'::jsonb,
+    'Shift preview shows the expected carryover after the mapping is revoked');
 
   perform test.login(2);
   assigned := test.call('assignStudentCurriculum', jsonb_build_object('student_id', student),

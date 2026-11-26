@@ -12,6 +12,9 @@ declare
   result jsonb;
   hash text;
   lease uuid := gen_random_uuid();
+  original_assignment uuid;
+  current_assignment uuid;
+  incoming_adviser uuid := '00000008-0000-4000-8000-000000000000';
 begin
   request := jsonb_build_object('role','student','full_name','Provisioned fixture',
     'email','backend-fixture@vsu.edu.ph','student_number','26-1-99342',
@@ -58,6 +61,26 @@ begin
     and exists(select 1 from public.student_curriculum_assignment where student_id = target and end_date is null)
     and exists(select 1 from public.audit_log_entry where entity_id = target and action = 'inviteUser'),
     'Initial adviser, curriculum, and audit commit together');
+  select a.id into original_assignment from public.adviser_assignment a
+    where a.student_id=target and a.end_date is null;
+  perform test.assert((select count(*) = 1 from public.notification
+    where event_type='adviser_assigned' and entity_id=original_assignment
+      and recipient_id=(request->>'adviser_id')::uuid),
+    'Initial provisioning notifies the assigned adviser once');
+
+  update public.adviser_assignment set start_date=start_date-1 where id=original_assignment;
+  perform test.login(3);
+  result := public.matt_operation('reassignAdviser', jsonb_build_object('student_id', target),
+    jsonb_build_object('adviser_id', incoming_adviser,
+      'start_date', (now() at time zone 'Asia/Manila')::date, 'reason', 'Initial provisioning'));
+  current_assignment := (result->1->>'id')::uuid;
+  perform test.assert((select count(*) = 1 from public.notification
+    where event_type='adviser_assigned' and entity_id=current_assignment and recipient_id=incoming_adviser),
+    'A reassignment using the provisioning reason notifies the incoming adviser once');
+  perform test.assert(not exists(select 1 from public.notification
+    where event_type='adviser_assigned' and target_student_id=target and recipient_id=target),
+    'The student assignment notice waits for activation');
+
   perform public.saais_invitation_service('inviteUser', 'finish', request, staff, staff_session, null, token);
   perform test.assert((select count(*) = 1 from saais_private.invite_email where profile_id = target),
     'Identical retries do not queue another invitation');
@@ -109,7 +132,9 @@ begin
   perform test.assert((select status = 'active' and invitation_status = 'accepted' from public.profile where id = target),
     'Auth completion activates the profile once');
   perform test.assert(exists(select 1 from public.notification where event_type='invitation_accepted' and entity_id=target), 'Activation notifies the administrative recipients');
-  perform test.assert(exists(select 1 from public.notification where event_type='adviser_assigned' and target_student_id=target and recipient_id=target), 'Initial student receives adviser notification when activated');
+  perform test.assert((select count(*) = 1 and bool_and(entity_id=current_assignment) from public.notification
+    where event_type='adviser_assigned' and target_student_id=target and recipient_id=target),
+    'Activation notifies the student once about their current adviser');
   begin
     perform public.saais_invitation_service('inviteUser', 'prepare', request, staff, staff_session);
     raise exception 'Accepted account was reinvited as an idempotent success';
