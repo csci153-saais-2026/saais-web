@@ -41,7 +41,6 @@ export type PhotoPreparer = (
   body: unknown,
 ) => Promise<{
   body: unknown;
-  cleanup?: () => Promise<void>;
   commit?: () => Promise<void>;
   abandon?: () => Promise<void>;
 }>;
@@ -309,7 +308,6 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           authorization: authorization!,
         });
       }
-      let photoCleanup: (() => Promise<void>) | undefined;
       let photoCommit: (() => Promise<void>) | undefined;
       if (operation.id === "uploadStudentPhoto") {
         try {
@@ -324,7 +322,6 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
             body,
           );
           body = validated.body;
-          photoCleanup = validated.cleanup;
           photoCommit = validated.commit;
           abandonPhoto = validated.abandon;
         } catch (failure) {
@@ -379,16 +376,8 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           message?: string;
           details?: string;
         };
-        if (abandonPhoto) {
-          await abandonPhoto();
-          abandonPhoto = undefined;
-        } else if (
-          photoCleanup &&
-          result.status < 500 &&
-          result.status !== 408
-        ) {
-          await photoCleanup();
-        }
+        await abandonPhoto?.();
+        abandonPhoto = undefined;
         // The user check passed, but the session expired before the database call.
         if (result.status === 401)
           return error(

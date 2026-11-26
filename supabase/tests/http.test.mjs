@@ -195,6 +195,28 @@ test("hosted named publishable keys and legacy anon keys are accepted without se
   }
 });
 
+test("non-object named key settings fall back to the singular and legacy keys", () => {
+  for (const setting of [
+    "null",
+    "false",
+    "42",
+    '"unexpected"',
+    '["unexpected"]',
+    "{",
+  ]) {
+    const configured = environment(
+      (name) =>
+        ({
+          SUPABASE_PUBLISHABLE_KEYS: setting,
+          SUPABASE_PUBLISHABLE_KEY: "singular-key",
+          SUPABASE_ANON_KEY: "legacy-anon",
+        })[name],
+    );
+    assert.equal(configured.publicKey, "singular-key");
+    assert.deepEqual(configured.publicKeys, ["singular-key", "legacy-anon"]);
+  }
+});
+
 test("expired Auth credentials, SQL conflict, rate limit and internal detail sanitization", async () => {
   for (const [status, code, expected] of [
     [409, "PT409", "Reviewed conflict"],

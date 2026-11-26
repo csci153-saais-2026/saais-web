@@ -10,7 +10,7 @@ import {
 } from "../functions/_shared/student-photo.ts";
 import { createHandler } from "../functions/_shared/http.ts";
 
-const student = "00000005-0000-4000-8000-000000000000";
+const student = "00000005-0000-4000-8000-000000000abc";
 const raw = `students/${student}/avatar.png`;
 const env = {
   url: "https://supabase.example.test",
@@ -82,7 +82,6 @@ test("photo preparation authorizes, decodes, copies, and registers with the serv
     if (url.includes("saais_photo_upload_authorize"))
       return Response.json(true);
     if (url.includes("/object/authenticated/")) return new Response(image);
-    if (url.includes("/rest/v1/profile")) return Response.json([{}]);
     if (url.endsWith("/object/student-photos")) return Response.json([]);
     if (url.includes("/object/student-photos/"))
       return Response.json({ Key: "ok" });
@@ -95,18 +94,20 @@ test("photo preparation authorizes, decodes, copies, and registers with the serv
     result.body.storage_object_path,
     /^students\/.+\/validated-[0-9a-f-]+\.png$/,
   );
-  assert.equal(calls.length, 6);
+  assert.equal(calls.length, 4);
   assert.equal(calls[0].options.headers.Authorization, "Bearer student");
-  assert.equal(calls[2].options.headers.Authorization, "Bearer student");
-  assert.equal(calls[3].options.headers.Authorization, "Bearer service-key");
-  assert.equal(JSON.parse(calls[4].options.body).p_actor, student);
+  assert.equal(calls[1].options.headers.Authorization, "Bearer student");
+  assert.equal(calls[2].options.headers.Authorization, "Bearer service-key");
+  assert.deepEqual(JSON.parse(calls[3].options.body), {
+    p_student: student,
+    p_actor: student,
+    p_path: result.body.storage_object_path,
+    p_staging_path: raw,
+  });
   assert.deepEqual(
-    new Uint8Array(await calls[3].options.body.arrayBuffer()),
+    new Uint8Array(await calls[2].options.body.arrayBuffer()),
     image,
   );
-  // The staging upload is removed once the validated copy is registered.
-  assert.equal(calls[5].options.method, "DELETE");
-  assert.deepEqual(JSON.parse(calls[5].options.body).prefixes, [raw]);
 });
 
 test("registration failure removes the trusted copy before returning an error", async () => {
@@ -116,7 +117,6 @@ test("registration failure removes the trusted copy before returning an error", 
     if (url.includes("saais_photo_upload_authorize"))
       return Response.json(true);
     if (url.includes("/object/authenticated/")) return new Response(image);
-    if (url.includes("/rest/v1/profile")) return Response.json([{}]);
     if (url.endsWith("/object/student-photos")) return Response.json({});
     if (url.includes("/object/student-photos/")) return Response.json({});
     if (url.includes("saais_register_verified_photo"))
@@ -207,7 +207,6 @@ test("photo HTTP route sends only the validated object to the caller-scoped RPC"
       if (url.endsWith("/saais_photo_upload_authorize"))
         return Response.json(true);
       if (url.includes("/object/authenticated/")) return new Response(image);
-      if (url.includes("/rest/v1/profile")) return Response.json([{}]);
       if (url.endsWith("/object/student-photos")) return Response.json([]);
       if (url.includes("/object/student-photos/"))
         return Response.json({ Key: "ok" });
@@ -219,13 +218,20 @@ test("photo HTTP route sends only the validated object to the caller-scoped RPC"
     },
   });
   const response = await handler(
-    new Request(env.url + `/students/${student}/photo`, {
+    new Request(env.url + `/students/${student.toUpperCase()}/photo`, {
       method: "PUT",
       headers,
       body: JSON.stringify(body),
     }),
   );
   assert.equal(response.status, 200);
+  const authorization = calls.find((call) =>
+    call.url.endsWith("/saais_photo_upload_authorize"),
+  );
+  assert.deepEqual(JSON.parse(authorization.options.body), {
+    p_student: student,
+    p_path: raw,
+  });
   const rpc = calls.find((call) => call.url.endsWith("/matt_operation"));
   const forwarded = JSON.parse(rpc.options.body);
   assert.equal(rpc.options.headers.Authorization, "Bearer student");
@@ -245,7 +251,6 @@ test("photo HTTP route cleans up the validated object when the profile RPC rejec
       if (url.endsWith("/saais_photo_upload_authorize"))
         return Response.json(true);
       if (url.includes("/object/authenticated/")) return new Response(image);
-      if (url.includes("/rest/v1/profile")) return Response.json([{}]);
       if (url.endsWith("/object/student-photos")) return Response.json({});
       if (url.includes("/object/student-photos/"))
         return Response.json({ Key: "ok" });
@@ -298,12 +303,9 @@ test("a validation budget rejection returns 429 before retrieving the object", a
 });
 
 const oldKey = `students/${student}/validated-old.png`;
-const stored = (key) => [
-  { avatar_url: `/storage/v1/object/authenticated/student-photos/${key}` },
-];
-
 // Runs one upload and returns the response and every deleted storage key.
 async function upload(save, abandon = () => Response.json(true)) {
+  const events = [];
   const deleted = [];
   let newKey;
   const handler = createHandler("students", {
@@ -314,9 +316,14 @@ async function upload(save, abandon = () => Response.json(true)) {
       if (url.endsWith("/saais_photo_upload_authorize"))
         return Response.json(true);
       if (url.includes("/object/authenticated/")) return new Response(image);
-      if (url.includes("/rest/v1/profile"))
-        return Response.json(stored(oldKey));
+      if (url.endsWith("/saais_reconcile_deleted_photos")) {
+        const { p_removed: removed } = JSON.parse(options.body);
+        events.push(removed ? "acknowledge" : "list");
+        if (removed) assert.deepEqual(removed, [raw, oldKey]);
+        return Response.json(removed ? [] : [raw, oldKey]);
+      }
       if (url.endsWith("/object/student-photos")) {
+        events.push("remove");
         deleted.push(...JSON.parse(options.body).prefixes);
         return Response.json([]);
       }
@@ -326,8 +333,14 @@ async function upload(save, abandon = () => Response.json(true)) {
         newKey = JSON.parse(options.body).p_path;
         return new Response(null, { status: 204 });
       }
-      if (url.endsWith("/saais_abandon_verified_photo")) return abandon();
-      if (url.endsWith("/matt_operation")) return save();
+      if (url.endsWith("/saais_abandon_verified_photo")) {
+        events.push("abandon");
+        return abandon();
+      }
+      if (url.endsWith("/matt_operation")) {
+        events.push("save");
+        return save();
+      }
       throw new Error(url);
     },
   });
@@ -338,15 +351,16 @@ async function upload(save, abandon = () => Response.json(true)) {
       body: JSON.stringify(body),
     }),
   );
-  return { response, deleted, newKey };
+  return { response, deleted, newKey, events };
 }
 
 test("a saved photo removes the staging file and the previous avatar", async () => {
-  const { response, deleted } = await upload(() =>
+  const { response, deleted, events } = await upload(() =>
     Response.json({ id: student }),
   );
   assert.equal(response.status, 200);
   assert.deepEqual(deleted, [raw, oldKey]);
+  assert.deepEqual(events, ["save", "list", "remove", "acknowledge"]);
 });
 
 test("a failed save deletes the new copy only after invalidating its token", async () => {
@@ -354,11 +368,11 @@ test("a failed save deletes the new copy only after invalidating its token", asy
     throw new TypeError("network");
   });
   assert.equal(response.status, 500);
-  assert.deepEqual(deleted, [raw, newKey]);
+  assert.deepEqual(deleted, [newKey]);
 });
 
-test("an already consumed token retains the committed photo after a lost response", async () => {
-  const { response, deleted, newKey } = await upload(
+test("a lost response retains the committed photo and reconciles its queued paths", async () => {
+  const { response, deleted, newKey, events } = await upload(
     () => {
       throw new TypeError("network");
     },
@@ -366,7 +380,14 @@ test("an already consumed token retains the committed photo after a lost respons
   );
   assert.equal(response.status, 500);
   assert.ok(newKey);
-  assert.deepEqual(deleted, [raw]);
+  assert.deepEqual(deleted, [raw, oldKey]);
+  assert.deepEqual(events, [
+    "save",
+    "abandon",
+    "list",
+    "remove",
+    "acknowledge",
+  ]);
 });
 
 test("an unavailable cleanup decision retains the new photo", async () => {
@@ -378,14 +399,14 @@ test("an unavailable cleanup decision retains the new photo", async () => {
   );
   assert.equal(response.status, 500);
   assert.ok(newKey);
-  assert.deepEqual(deleted, [raw]);
+  assert.deepEqual(deleted, []);
 });
 
 test("an HTTP 408 only removes the new copy when its token is invalidated", async () => {
   const timedOut = () => new Response(null, { status: 408 });
   const abandoned = await upload(timedOut);
   assert.equal(abandoned.response.status, 500);
-  assert.deepEqual(abandoned.deleted, [raw, abandoned.newKey]);
+  assert.deepEqual(abandoned.deleted, [abandoned.newKey]);
 });
 
 test("an HTTP 408 retains a photo whose token was already consumed", async () => {
@@ -395,7 +416,7 @@ test("an HTTP 408 retains a photo whose token was already consumed", async () =>
   );
   assert.equal(response.status, 500);
   assert.ok(newKey);
-  assert.deepEqual(deleted, [raw]);
+  assert.deepEqual(deleted, [raw, oldKey]);
 });
 
 test("an expired session at save time returns 401 and removes the new copy", async () => {
@@ -404,7 +425,7 @@ test("an expired session at save time returns 401 and removes the new copy", asy
   );
   assert.equal(response.status, 401);
   assert.equal((await response.json()).code, "PGRST301");
-  assert.deepEqual(deleted, [raw, newKey]);
+  assert.deepEqual(deleted, [newKey]);
 });
 
 test("dot-segment staging filenames are rejected before any request", async () => {

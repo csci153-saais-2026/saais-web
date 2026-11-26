@@ -284,3 +284,56 @@ test("importStudentsBatch passes a deterministic batch_key on commit finish with
   assert.equal(finishKeys.length, 2);
   assert.equal(finishKeys[0], finishKeys[1]);
 });
+
+test("student imports reject whitespace variants of a student number before provisioning", async () => {
+  const first = {
+    row_number: 1,
+    email: "first@vsu.edu.ph",
+    full_name: "Student One",
+    student_number: "26-1-00001",
+    program_id: id,
+    curriculum_version_id: id,
+    adviser_id: id,
+  };
+  const second = {
+    ...first,
+    row_number: 2,
+    email: "second@vsu.edu.ph",
+    student_number: " 26-1-00001 ",
+  };
+  for (const mode of ["preview", "commit"]) {
+    const stages = [];
+    const handler = createHandler("students", {
+      env,
+      fetch: async (url, options) => {
+        if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+        const rpc = JSON.parse(options.body);
+        stages.push(rpc.p_stage);
+        if (rpc.p_stage === "preview" || rpc.p_stage === "prepare")
+          assert.equal(rpc.p_body.row_number, 1);
+        if (rpc.p_stage === "prepare")
+          return Response.json({ reservation_id: id, auth_ready: true });
+        if (rpc.p_stage === "finish")
+          return Response.json({ profile_id: id, success: true });
+        return Response.json({});
+      },
+    });
+    const response = await handler(
+      request("/students/import", { mode, rows: [first, second] }, true),
+    );
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.error_count, 1);
+    assert.equal(payload.results[1].row_number, 2);
+    assert.match(
+      payload.results[1].message,
+      /Duplicate row, email, or student number/,
+    );
+    assert.deepEqual(
+      stages,
+      mode === "preview"
+        ? ["admit", "validate", "preview"]
+        : ["admit", "validate", "prepare", "finish"],
+    );
+  }
+});

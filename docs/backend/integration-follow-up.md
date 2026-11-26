@@ -102,9 +102,9 @@ The assistant stores the last 20 individual messages per adviser and student. Th
 
 ### Photo cleanup after uncertain saves and deletion
 
-If the profile update times out or its network result is unknown, the Edge Function asks a service-only RPC to invalidate the one-use validation token. The RPC serializes against a concurrent save: it returns true only when the token was removed without a committed save, allowing safe deletion. If that decision or Storage deletion fails, the object is retained; reconcile old unreferenced objects only after confirming no profile references them. Storage deletion is best effort and needs hosted monitoring.
+When a photo upload commits, the database queues the staging path and the avatar it replaced while holding the profile row lock. A rejected upload keeps the staging file so it can be retried. If the save result is unknown, the Edge Function asks a service-only RPC to invalidate the one-use token. An invalidated token permits removal of the abandoned validated copy. If the token was already consumed, the Edge Function reconciles the committed cleanup queue.
 
-On `deleteStudentPhoto`, the database transaction clears `profile.avatar_url` and queues the previous private object path in `saais_private.deleted_student_photo`. After commit, `students` calls the service-only `saais_reconcile_deleted_photos` RPC, which locks the profile `FOR SHARE`, drops any path currently referenced by `profile.avatar_url`, and returns only unreferenced queued paths for Storage removal before acknowledging completion. Failed profile RPCs skip Storage deletion, and transient Storage failures remain queued for retry.
+Photo uploads and deletions use the same cleanup queue, `saais_private.deleted_student_photo`. The service-only reconciliation RPC skips any path still referenced by the profile. The Edge Function acknowledges queued paths after Storage deletes them. Failed removals stay queued for a later photo reconciliation. Apply migration `20261126001700` before deploying the updated `students` function.
 
 ### Data API controls and durable rejected-login audit
 
