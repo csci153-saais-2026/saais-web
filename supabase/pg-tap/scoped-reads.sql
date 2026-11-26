@@ -261,6 +261,10 @@ select is((select before.end_date from public.adviser_assignment before
 select test.login(4);
 set local role authenticated;
 select is((select count(*) from saais_api.advising_note), 2::bigint, 'Former adviser retains historical read access');
+select ok((select count(*) = 1 and bool_and(reason is null and details_summary <> 'Scoped handoff')
+  from saais_api.audit_log_entry where action='reassignAdviser' and student_id='00000005-0000-4000-8000-000000000000'),
+  'Former adviser cannot read the private reassignment reason');
+select throws_ok('select reason from public.audit_log_entry', '42501', null, 'Base table cannot bypass reason redaction');
 select throws_ok($cmd$
   select public.matt_operation('addAdvisingNote', '{"student_id":"00000005-0000-4000-8000-000000000000"}',
     '{"body_text":"Former adviser edit"}')
@@ -268,6 +272,9 @@ $cmd$, 'PT403', null, 'Former adviser cannot add a note for the handed-over stud
 reset role;
 select test.login(8);
 set local role authenticated;
+select ok((select count(*) = 1 and bool_and(reason is null and details_summary <> 'Scoped handoff')
+  from saais_api.audit_log_entry where action='reassignAdviser' and student_id='00000005-0000-4000-8000-000000000000'),
+  'Incoming adviser cannot read the private reassignment reason');
 select is((select count(*) from saais_api.adviser_assignment where end_date is null), 2::bigint,
   'New adviser can read their current advisees in both departments');
 reset role;

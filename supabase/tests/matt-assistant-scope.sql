@@ -78,15 +78,8 @@ begin
     jsonb_build_object('adviser_id', incoming, 'start_date', '2026-02-01', 'reason', 'Assistant authorization handoff'));
 
   perform test.login(4);
-  select coalesce(sum(request_count), 0) into previous_budget from saais_private.matt_assistant_budget;
-  denied := false;
-  begin
-    perform public.matt_assistant_context(student, request_body);
-  exception when sqlstate 'PT403' then denied := true;
-  end;
-  perform test.assert(denied, 'A former adviser retained assistant context access after reassignment.');
-  perform test.assert((select coalesce(sum(request_count), 0) from saais_private.matt_assistant_budget) = previous_budget,
-    'An unauthorized adviser consumed provider budget.');
+  result := public.matt_assistant_context(student, request_body);
+  perform test.assert(result->'record' ? 'gwa', 'A former adviser retains assistant context access.');
 
   perform test.login(8);
   result := public.matt_assistant_context(student, request_body);

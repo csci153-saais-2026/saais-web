@@ -54,10 +54,11 @@ begin
     jsonb_build_object('adviser_id', '00000008-0000-4000-8000-000000000000',
       'start_date','2026-02-01','reason','History authorization test'));
   perform test.login(4);
-  denied := false;
-  begin perform public.saais_get_assistant_history(student);
-  exception when sqlstate 'PT403' then denied := true; end;
-  perform test.assert(denied, 'A former adviser cannot read saved history.');
+  perform test.assert(public.saais_get_assistant_history(student)=history,
+    'A former adviser can read their own saved conversation.');
+  perform public.saais_record_assistant_turn(adviser, student, 'former question', 'former answer');
+  perform test.assert(public.saais_get_assistant_history(student)->19->>'content'='former answer',
+    'A former adviser can continue their own conversation.');
   perform test.login(8);
   perform test.assert(public.saais_get_assistant_history(student)='[]'::jsonb,
     'A new adviser does not inherit another adviser conversation.');
