@@ -5,12 +5,14 @@ do $$
 declare
   student uuid := '00000005-0000-4000-8000-000000000000';
   path text := 'students/'||student||'/avatar.png';
+  staging_path text := 'students/'||student||'/upload-00000000-0000-4000-8000-000000000001.png';
   verified text := 'students/'||student||'/validated-00000000-0000-4000-8000-000000000001.png';
   unused text := 'students/'||student||'/validated-00000000-0000-4000-8000-000000000002.png';
   url text := 'https://supabase.test/storage/v1/object/sign/student-photos/'||path;
   params jsonb := jsonb_build_object('student_id',student);
   body jsonb := jsonb_build_object('avatar_url',url,'storage_object_path',path,'mime_type','image/png','file_size_bytes',11);
   profile jsonb;
+  pending text[];
 begin
   insert into storage.objects(bucket_id,name,metadata) values('student-photos',path,'{"mimetype":"image/png","size":11}');
   perform test.login(5);
@@ -25,7 +27,21 @@ begin
   exception when sqlstate 'PT400' then null;
   end;
   insert into storage.objects(bucket_id,name,metadata) values('student-photos',verified,'{"mimetype":"image/png","size":5242880}');
-  perform public.saais_register_verified_photo(student,student,verified);
+  update public.profile set avatar_url = url where id = student;
+  insert into storage.objects(bucket_id,name,metadata) values('student-photos',unused,'{"mimetype":"image/png","size":5242880}');
+  perform public.saais_register_verified_photo(student,student,verified,path);
+  perform public.saais_register_verified_photo(student,student,unused);
+  begin
+    perform public.matt_operation('uploadStudentPhoto',params,jsonb_build_object(
+      'avatar_url','/student-photos/'||verified,'storage_object_path',verified,'mime_type','image/png','file_size_bytes',1
+    ));
+    raise exception 'incorrect validated photo metadata accepted';
+  exception when sqlstate 'PT400' then null;
+  end;
+  perform test.assert((select avatar_url from public.profile where id = student) = url,
+    'a rejected save preserves the legacy avatar');
+  perform test.assert(public.saais_reconcile_deleted_photos(student) = '{}'::text[],
+    'a rejected save does not queue its staging path');
   body := jsonb_build_object('avatar_url','/student-photos/'||verified,'storage_object_path',verified,'mime_type','image/png','file_size_bytes',5242880);
   profile := public.matt_operation('uploadStudentPhoto',params,body);
   perform test.assert(not public.saais_abandon_verified_photo(verified),'committed photo token cannot be abandoned');
@@ -35,8 +51,13 @@ begin
     raise exception 'validation was reused';
   exception when sqlstate 'PT400' then null;
   end;
-  insert into storage.objects(bucket_id,name,metadata) values('student-photos',unused,'{"mimetype":"image/png","size":5242880}');
-  perform public.saais_register_verified_photo(student,student,unused);
+  update storage.objects set metadata = '{"mimetype":"image/png","size":19}'
+    where bucket_id='student-photos' and name=path;
+  perform test.assert(public.saais_reconcile_deleted_photos(student) = '{}'::text[],
+    'a shared staging key stays out of the cleanup queue even when it was also the previous avatar');
+  perform test.assert(exists(select 1 from storage.objects
+    where bucket_id='student-photos' and name=path and metadata->>'size'='19'),
+    'the newer upload at the shared staging key remains available');
   perform test.assert(public.saais_abandon_verified_photo(unused),'unused photo token can be abandoned');
   perform test.assert(not public.saais_abandon_verified_photo(unused),'abandoned token cannot be reused');
   body := jsonb_build_object('avatar_url','/student-photos/'||unused,'storage_object_path',unused,'mime_type','image/png','file_size_bytes',5242880);
@@ -45,12 +66,25 @@ begin
     raise exception 'abandoned validation was accepted';
   exception when sqlstate 'PT400' then null;
   end;
+  insert into storage.objects(bucket_id,name,metadata)
+    values('student-photos',staging_path,'{"mimetype":"image/png","size":11}');
+  perform public.saais_register_verified_photo(student,student,unused,staging_path);
+  profile := public.matt_operation('uploadStudentPhoto',params,body);
+  perform test.assert(profile->>'avatar_url'='/storage/v1/object/authenticated/student-photos/'||unused,
+    'replacement becomes the current avatar');
+  perform test.assert(not public.saais_abandon_verified_photo(unused),
+    'a committed replacement survives an uncertain save response');
+  pending := public.saais_reconcile_deleted_photos(student);
+  perform test.assert(cardinality(pending) = 2 and pending @> array[staging_path, verified],
+    'a replacement queues the current previous avatar and preserves the pending staging key');
+  perform test.assert(public.saais_reconcile_deleted_photos(student, pending) = '{}'::text[],
+    'acknowledged storage removal clears the reconciliation queue');
   profile := public.matt_operation('deleteStudentPhoto',params);
   perform test.assert(profile->>'avatar_url' is null,'photo cleared');
-  perform test.assert(public.saais_reconcile_deleted_photos(student) = array[verified],
+  perform test.assert(public.saais_reconcile_deleted_photos(student) = array[unused],
     'deleted student photo path is queued for storage reconciliation');
-  perform test.assert(public.saais_reconcile_deleted_photos(student, array[verified]) = '{}'::text[],
-    'acknowledged storage removal clears the reconciliation queue');
+  perform test.assert(public.saais_reconcile_deleted_photos(student, array[unused]) = '{}'::text[],
+    'acknowledged storage removal clears the delete queue');
   -- Simulate a delete followed by a concurrent upload referencing the same path:
   -- reconciliation must never return an actively referenced avatar.
   update public.profile set avatar_url = '/storage/v1/object/authenticated/student-photos/' || verified where id = student;
@@ -79,7 +113,24 @@ end;
 $$;
 select test.login(5);
 set local role authenticated;
-do $$begin
+do $$
+declare
+  disposable text := 'students/' || auth.uid() || '/upload-00000000-0000-4000-8000-000000000022.jpg';
+begin
+  insert into storage.objects(bucket_id, name) values ('student-photos', disposable);
+  update storage.objects set metadata = '{"size":99}' where bucket_id='student-photos' and name=disposable;
+  if found then
+    raise exception 'A single-use staging path can be overwritten';
+  end if;
+  delete from storage.objects where bucket_id='student-photos' and name=disposable;
+  if not found then
+    raise exception 'A student cannot delete an abandoned staging photo';
+  end if;
+  begin
+    insert into storage.objects(bucket_id, name) values ('student-photos', disposable);
+    raise exception 'A retired staging path can be reused';
+  exception when unique_violation then null;
+  end;
   if not public.saais_photo_upload_authorize(auth.uid(), 'students/' || auth.uid() || '/new.png') then
     raise exception 'Student could not authorize their own staged photo';
   end if;
@@ -101,7 +152,7 @@ do $$begin
   if has_function_privilege(current_user, 'public.saais_abandon_verified_photo(text)', 'EXECUTE') then
     raise exception 'Student can abandon photo validation';
   end if;
-  if has_function_privilege(current_user, 'public.saais_register_verified_photo(uuid,uuid,text)', 'EXECUTE') then
+  if has_function_privilege(current_user, 'public.saais_register_verified_photo(uuid,uuid,text,text)', 'EXECUTE') then
     raise exception 'Student can forge photo validation';
   end if;
   if has_function_privilege(current_user, 'public.saais_reconcile_deleted_photos(uuid,text[])', 'EXECUTE') then

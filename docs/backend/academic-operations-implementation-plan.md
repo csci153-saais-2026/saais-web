@@ -1,4 +1,4 @@
-# Jerome Edge Function implementation checklist
+# Academic operations Edge Function implementation checklist
 
 Baseline: `cfa620c97c2a506537825edc1323f37ee5f843b3` (OpenAPI 0.3.0). The checked-in contract remains 0.2.1, by explicit user direction. This implementation must be integrated with the approved 0.3.0 contract, generated client and frontend before deployment. No frontend or contract files are changed.
 
@@ -69,7 +69,7 @@ All 47 operations now have domain implementations and successful local SQL cover
 7. Implement recipient-owned mark-read and scoped, idempotent scheduled alerts, including dry-run and Asia/Manila dates.
 8. Add HTTP, SQL, contract, authorization, conflict, rollback and complete workflow tests; record actual results.
 
-## Matt integration
+## Integration with student and account routes
 
 No students entry point or handlers exist in the initial checkout. Jerome supplies a separate route module and an extensible router. Matt can register his routes in the same entry point; do not replace either route set. Matt owns reads, provisioning, grades, advising, reports, audit view endpoints and settings endpoints. Shared database dependencies and cache invalidation must be integrated with those implementations. No Matt handlers are implemented here.
 

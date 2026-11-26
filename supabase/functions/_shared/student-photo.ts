@@ -101,6 +101,7 @@ export async function preparePhoto(
     Number(body.file_size_bytes) > limit
   )
     throw new PhotoError(400, "Invalid photo request.");
+  student = student.toLowerCase();
   const raw = body.storage_object_path;
   const parts = raw.split("/");
   if (
@@ -163,28 +164,6 @@ export async function preparePhoto(
     }).catch(() => {});
   };
   const cleanup = () => remove(path);
-  // Reads the saved avatar key as the caller. Undefined means unknown.
-  const currentAvatar = async (): Promise<string | null | undefined> => {
-    try {
-      const response = await fetcher(
-        `${env.url}/rest/v1/profile?id=eq.${student}&select=avatar_url`,
-        {
-          headers: { ...headers, "Accept-Profile": "saais_api" },
-          signal: AbortSignal.timeout(10000),
-        },
-      );
-      if (!response.ok) return undefined;
-      const rows = (await response.json()) as { avatar_url?: unknown }[];
-      if (!Array.isArray(rows) || !rows[0]) return undefined;
-      const url = rows[0].avatar_url;
-      return typeof url === "string"
-        ? (url.split("/student-photos/")[1] ?? null)
-        : null;
-    } catch {
-      return undefined;
-    }
-  };
-  const previous = await currentAvatar();
   const uploaded = await fetcher(
     env.url + "/storage/v1/object/student-photos/" + path,
     {
@@ -214,6 +193,7 @@ export async function preparePhoto(
           p_student: student,
           p_actor: actor,
           p_path: path,
+          p_staging_path: raw,
         }),
         signal: AbortSignal.timeout(10000),
       },
@@ -223,14 +203,13 @@ export async function preparePhoto(
     await cleanup();
     throw new PhotoError(500, "The validated photo could not be saved.");
   }
-  await remove(raw);
+  const reconcile = () => reconcileDeletedPhotos(env, fetcher, student);
   return {
     body: {
       ...body,
       storage_object_path: path,
       avatar_url: "/student-photos/" + path,
     },
-    cleanup,
     // Invalidate the one-use token before deleting. This waits for a pending
     // save to commit or roll back, preventing deletion of a committed avatar.
     abandon: async () => {
@@ -248,21 +227,20 @@ export async function preparePhoto(
             signal: AbortSignal.timeout(10000),
           },
         );
-        if (result.ok && (await result.json()) === true) await cleanup();
+        if (!result.ok) return;
+        const abandoned = await result.json();
+        if (abandoned === true) await cleanup();
+        if (abandoned === false) await reconcile();
       } catch {
         // Keep the object if the database decision is unknown.
       }
     },
-    // Call once the profile points at the new photo.
-    commit: async () => {
-      if (previous?.startsWith(`students/${student}/validated-`))
-        await remove(previous);
-    },
+    commit: reconcile,
   };
 }
 
-// Reconcile private Storage objects queued by deleteStudentPhoto after the
-// database transaction commits. Best effort: failed deletions stay queued.
+// Remove queued Storage objects after a photo write commits. Failed removals
+// stay queued for the next reconciliation.
 export async function reconcileDeletedPhotos(
   env: { url: string; serviceKey?: string },
   fetcher: typeof fetch,

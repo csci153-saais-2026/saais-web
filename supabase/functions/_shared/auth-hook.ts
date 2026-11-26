@@ -71,25 +71,25 @@ async function verifyWebhookSignature(
   rawBody: string,
   secret: string,
   nowSeconds: number,
-): Promise<boolean> {
+): Promise<string | null> {
   const webhookId = request.headers.get("webhook-id") || "";
   const timestampHeader = request.headers.get("webhook-timestamp") || "";
   const signatureHeader = request.headers.get("webhook-signature") || "";
   if (!webhookId || !/^\d+$/.test(timestampHeader) || !signatureHeader) {
-    return false;
+    return null;
   }
   const timestamp = Number(timestampHeader);
   if (
     !Number.isSafeInteger(timestamp) ||
     Math.abs(nowSeconds - timestamp) > maxSkewSeconds
   ) {
-    return false;
+    return null;
   }
   let expected: string;
   try {
     expected = await signStandardWebhook(secret, webhookId, timestamp, rawBody);
   } catch {
-    return false;
+    return null;
   }
   const expectedBytes = new TextEncoder().encode(expected);
   const candidates = signatureHeader
@@ -98,10 +98,10 @@ async function verifyWebhookSignature(
     .filter(Boolean);
   for (const candidate of candidates) {
     if (constantTimeEqual(new TextEncoder().encode(candidate), expectedBytes)) {
-      return true;
+      return webhookId;
     }
   }
-  return false;
+  return null;
 }
 
 async function readBoundedText(
@@ -161,9 +161,13 @@ export function createAuthHookHandler(
         { status: 400 },
       );
     }
-    if (
-      !(await verifyWebhookSignature(request, rawBody, env.hookSecret, now()))
-    ) {
+    const webhookId = await verifyWebhookSignature(
+      request,
+      rawBody,
+      env.hookSecret,
+      now(),
+    );
+    if (!webhookId) {
       return Response.json(
         { error: { http_code: 401, message: "Invalid webhook signature." } },
         { status: 401 },
@@ -203,7 +207,7 @@ export function createAuthHookHandler(
           "Content-Type": "application/json",
           "Content-Profile": "public",
         },
-        body: JSON.stringify({ p_event: payload }),
+        body: JSON.stringify({ p_event: payload, p_webhook_id: webhookId }),
         signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) {

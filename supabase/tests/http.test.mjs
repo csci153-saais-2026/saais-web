@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHandler, operationsFor } from "../functions/_shared/http.ts";
 import { environment } from "../functions/_shared/serve.ts";
-import { jeromeStudentOperations } from "../functions/students/credit-transfer-routes.ts";
+import { creditTransferOperations } from "../functions/students/credit-transfer-routes.ts";
 import snapshot from "../functions/_shared/contract.json" with { type: "json" };
 
 const env = {
@@ -51,12 +51,12 @@ test("all 47 exact contract methods and paths dispatch with declared success sta
   }
 });
 
-test("students exposes only Jerome operations through its separate list", () => {
-  assert.equal(jeromeStudentOperations.length, 11);
+test("the credit and transfer list contains eleven student operations", () => {
+  assert.equal(creditTransferOperations.length, 11);
   assert.ok(
-    operationsFor("students").includes(jeromeStudentOperations[0]) ||
+    operationsFor("students").includes(creditTransferOperations[0]) ||
       operationsFor("students").some(
-        (operation) => operation.id === jeromeStudentOperations[0].id,
+        (operation) => operation.id === creditTransferOperations[0].id,
       ),
   );
 });
@@ -192,6 +192,28 @@ test("hosted named publishable keys and legacy anon keys are accepted without se
       ).status,
       201,
     );
+  }
+});
+
+test("non-object named key settings fall back to the singular and legacy keys", () => {
+  for (const setting of [
+    "null",
+    "false",
+    "42",
+    '"unexpected"',
+    '["unexpected"]',
+    "{",
+  ]) {
+    const configured = environment(
+      (name) =>
+        ({
+          SUPABASE_PUBLISHABLE_KEYS: setting,
+          SUPABASE_PUBLISHABLE_KEY: "singular-key",
+          SUPABASE_ANON_KEY: "legacy-anon",
+        })[name],
+    );
+    assert.equal(configured.publicKey, "singular-key");
+    assert.deepEqual(configured.publicKeys, ["singular-key", "legacy-anon"]);
   }
 });
 

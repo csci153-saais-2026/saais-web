@@ -12,7 +12,11 @@ export function environment(
 ): Environment {
   let named: Record<string, unknown> = {};
   try {
-    named = JSON.parse(get("SUPABASE_PUBLISHABLE_KEYS") || "{}");
+    const parsed: unknown = JSON.parse(
+      get("SUPABASE_PUBLISHABLE_KEYS") || "{}",
+    );
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      named = parsed as Record<string, unknown>;
   } catch {
     /* Legacy deployments provide the single-key variables. */
   }

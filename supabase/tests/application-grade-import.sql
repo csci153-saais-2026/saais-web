@@ -6,6 +6,9 @@ declare
   offering jsonb;
   input jsonb;
   result jsonb;
+  terminal_status text;
+  course_code text;
+  mode text;
 begin
   perform test.login(1);
   course := test.call('createCourse','{}',jsonb_build_object('department_id',department,'code','IMPORT201','title','Import test','units',3));
@@ -43,4 +46,31 @@ begin
     'Importing a midterm grade over a recorded DR result is rejected');
   perform test.assert((select midterm_status='dr' and midterm_grade is null from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),
     'Rejected import preserves the recorded DR midterm');
+
+  foreach terminal_status in array array['dr','na'] loop
+    course_code := 'IMPORT-' || upper(terminal_status);
+    perform test.login(1);
+    course := test.call('createCourse','{}',jsonb_build_object(
+      'department_id',department,'code',course_code,'title','Import terminal status test','units',3));
+    offering := test.call('createCourseOffering','{}',jsonb_build_object('school_term_id',term,'course_id',course->>'id'));
+    perform test.login(4);
+    result := public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode','commit','school_term_id',term,
+      'rows',jsonb_build_array(jsonb_build_object(
+        'row_number',1,'student_number','TEST-5','course_code',course_code,'status',terminal_status))));
+    perform test.assert(result->>'imported_count'='1','An initial terminal status imports cleanly');
+
+    foreach mode in array array['preview','commit'] loop
+      result := public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode',mode,'school_term_id',term,
+        'rows',jsonb_build_array(
+          jsonb_build_object('row_number',1,'student_number','TEST-5','course_code',course_code,'final_grade',2),
+          jsonb_build_object('row_number',2,'student_number','TEST-5','course_code',course_code,'status',terminal_status))));
+      perform test.assert(result->>'error_count'='2' and result->>'valid_count'='0' and
+        (select bool_and(item->>'message'='Use grade correction with a reason for an existing result.')
+          from jsonb_array_elements(result->'results') as items(item)),
+        'Preview and commit reject both numeric and status edits to a recorded ' || upper(terminal_status));
+    end loop;
+    perform test.assert((select a.status::text=terminal_status and a.final_grade is null
+      from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),
+      'Rejected import preserves the recorded final status');
+  end loop;
 end $$;

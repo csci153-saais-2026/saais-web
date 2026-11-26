@@ -24,7 +24,7 @@ function canonicalize(value) {
 
 function withPinnedContract(callback) {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), "saais-jerome-contract-"),
+    path.join(os.tmpdir(), "saais-contract-snapshot-"),
   );
   try {
     const archive = cp.execFileSync("git", ["archive", revision, "contract"], {

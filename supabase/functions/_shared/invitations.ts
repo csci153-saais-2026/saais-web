@@ -159,6 +159,10 @@ export async function runInvitation(
     await rpc("validate", data);
     const rows = data.rows as Json[];
     const results: Json[] = [];
+    const normalizeIdentity = (value: unknown) =>
+      String(value ?? "")
+        .trim()
+        .toLowerCase();
     const batchKey =
       data.mode === "commit"
         ? bytesToHex(
@@ -169,11 +173,7 @@ export async function runInvitation(
                   rows
                     .map(
                       (row) =>
-                        `${String(row.email ?? "")
-                          .trim()
-                          .toLowerCase()}|${String(row.student_number ?? "")
-                          .trim()
-                          .toLowerCase()}`,
+                        `${normalizeIdentity(row.email)}|${normalizeIdentity(row.student_number)}`,
                     )
                     .sort()
                     .join("\n"),
@@ -184,16 +184,17 @@ export async function runInvitation(
         : undefined;
     const seenRows = new Set<unknown>();
     const seenEmails = new Set<string>();
-    const seenNumbers = new Set<unknown>();
+    const seenNumbers = new Set<string>();
     const eligible = rows.map((row) => {
-      const email = String(row.email).trim().toLowerCase();
+      const email = normalizeIdentity(row.email);
+      const number = normalizeIdentity(row.student_number);
       const duplicate =
         seenRows.has(row.row_number) ||
         seenEmails.has(email) ||
-        seenNumbers.has(row.student_number);
+        seenNumbers.has(number);
       seenRows.add(row.row_number);
       seenEmails.add(email);
-      seenNumbers.add(row.student_number);
+      seenNumbers.add(number);
       return !duplicate;
     });
     let next = 0;
