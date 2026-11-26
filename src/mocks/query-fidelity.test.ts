@@ -256,3 +256,28 @@ describe("PostgREST mock query fidelity", () => {
     expect(courseFieldOnAudit.status).toBe(400);
   });
 });
+
+describe("PostgREST mock disjunction search", () => {
+  it("searches programs by code or name", async () => {
+    const program = getMockDatabase().programs[0];
+    for (const or of [
+      `(code.ilike.*${program.code}*,name.ilike.*no-such-name*)`,
+      `(code.ilike.*no-such-code*,name.ilike.*${program.name}*)`,
+    ]) {
+      const response = await read("/rest/v1/program", { or });
+      expect(response.status).toBe(200);
+      const rows: { id: string }[] = await response.json();
+      expect(rows.map((row) => row.id)).toContain(program.id);
+    }
+  });
+
+  it("rejects too many terms and malformed terms", async () => {
+    for (const or of [
+      `(${Array(8).fill("code.eq.A").join(",")})`,
+      "(code.contains.A)",
+    ]) {
+      const response = await read("/rest/v1/program", { or });
+      expect(response.status).toBe(400);
+    }
+  });
+});

@@ -5,8 +5,8 @@ import {
   runInvitation,
 } from "./invitations.ts";
 import contract from "./contract.json" with { type: "json" };
-import mattContract from "./matt-contract.json" with { type: "json" };
-import { mattRoutes } from "./matt-routes.ts";
+import mattContract from "./academic-contract.json" with { type: "json" };
+import { mattRoutes } from "./academic-routes.ts";
 import { assistantAnswer, type AssistantConfig } from "./ai-assistant.ts";
 import { PhotoError } from "./photo-error.ts";
 
@@ -39,7 +39,12 @@ export type PhotoPreparer = (
   student: string,
   actor: string,
   body: unknown,
-) => Promise<{ body: unknown; cleanup?: () => Promise<void> }>;
+) => Promise<{
+  body: unknown;
+  cleanup?: () => Promise<void>;
+  commit?: () => Promise<void>;
+  abandon?: () => Promise<void>;
+}>;
 type Dependencies = {
   env: Environment;
   fetch?: typeof fetch;
@@ -134,6 +139,8 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
     if (origin) headers.set("Access-Control-Allow-Origin", origin);
     if (request.method === "OPTIONS")
       return new Response(null, { status: 204, headers });
+    // Set while a validated photo is waiting for the profile update.
+    let abandonPhoto: (() => Promise<void>) | undefined;
     try {
       const url = new URL(request.url);
       // Supabase hosted and local gateways forward /<function>/<route>.
@@ -298,6 +305,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         });
       }
       let photoCleanup: (() => Promise<void>) | undefined;
+      let photoCommit: (() => Promise<void>) | undefined;
       if (operation.id === "uploadStudentPhoto") {
         try {
           if (!dependencies.photoUpload)
@@ -312,6 +320,8 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           );
           body = validated.body;
           photoCleanup = validated.cleanup;
+          photoCommit = validated.commit;
+          abandonPhoto = validated.abandon;
         } catch (failure) {
           if (!(failure instanceof PhotoError)) throw failure;
           if (failure.status === 429) headers.set("Retry-After", "60");
@@ -356,6 +366,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         signal: AbortSignal.timeout(30000),
       });
       if (!result.ok) {
+        abandonPhoto = undefined;
         const status = operation.errors.includes(result.status)
           ? result.status
           : 500;
@@ -367,6 +378,14 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         if (photoCleanup && (result.status < 500 || Boolean(upstream.code))) {
           await photoCleanup();
         }
+        // The user check passed, but the session expired before the database call.
+        if (result.status === 401)
+          return error(
+            401,
+            "PGRST301",
+            "The user session could not be verified.",
+            headers,
+          );
         // Only controlled PT errors contain reviewed public messages. Database
         // constraint details and SQL row dumps never leave the function.
         const controlled = /^PT(400|401|403|404|409|429)$/.test(
@@ -394,6 +413,8 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           headers,
         );
       }
+      abandonPhoto = undefined;
+      await photoCommit?.();
       if (operation.status === null)
         return error(
           500,
@@ -441,6 +462,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       }
       return Response.json(data, { status: operation.status, headers });
     } catch {
+      await abandonPhoto?.();
       return error(
         500,
         "XX000",

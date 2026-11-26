@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHandler, operationsFor } from "../functions/_shared/http.ts";
 import { environment } from "../functions/_shared/serve.ts";
-import { jeromeStudentOperations } from "../functions/students/jerome-routes.ts";
+import { jeromeStudentOperations } from "../functions/students/credit-transfer-routes.ts";
 import snapshot from "../functions/_shared/contract.json" with { type: "json" };
 
 const env = {

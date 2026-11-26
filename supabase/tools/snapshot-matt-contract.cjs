@@ -80,7 +80,7 @@ function buildSnapshot(source) {
 
 if (require.main === module) {
   const snapshot = withPinnedContract(buildSnapshot);
-  const runtimePath = "supabase/functions/_shared/matt-contract.json";
+  const runtimePath = "supabase/functions/_shared/academic-contract.json";
   const formatted = execFileSync(
     process.execPath,
     [

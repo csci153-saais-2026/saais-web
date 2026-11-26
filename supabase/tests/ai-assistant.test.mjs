@@ -165,7 +165,7 @@ test("assistant provider failures return a sanitized declared error", async () =
 
 test("assistant response follows the approved schema and applies its output budget", async () => {
   const runtime = (
-    await import("../functions/_shared/matt-contract.json", {
+    await import("../functions/_shared/academic-contract.json", {
       with: { type: "json" },
     })
   ).default;
@@ -272,7 +272,10 @@ test("supports native Google Gemini generateContent requests and filters interna
   assert.equal(capturedUrl, assistant.endpoint);
   assert.equal(capturedHeaders["x-goog-api-key"], "gemini-secret-key");
   assert.equal(capturedHeaders.Authorization, undefined);
-  assert.equal(capturedBody.generationConfig.maxOutputTokens, 2048);
+  assert.equal(capturedBody.generationConfig.maxOutputTokens, 8192);
+  assert.deepEqual(capturedBody.generationConfig.thinkingConfig, {
+    thinkingBudget: 1024,
+  });
   assert.match(
     capturedBody.systemInstruction.parts[0].text,
     /Address the adviser, not the student/,
@@ -396,7 +399,7 @@ test("rejects non-HTTPS, credential-bearing, or path-injecting provider configs"
   );
 });
 
-test("safety blocks and incomplete answers stop rather than retry another provider", async () => {
+test("safety blocks stop rather than retry another provider", async () => {
   const vars = {
     SAAIS_ASSISTANT_GEMINI_API_KEY: "gemini-key",
     SAAIS_ASSISTANT_GEMINI_MODEL: "gemini-test",
@@ -410,22 +413,6 @@ test("safety blocks and incomplete answers stop rather than retry another provid
     {
       candidates: [
         { finishReason: "SAFETY", content: { parts: [{ text: "blocked" }] } },
-      ],
-    },
-    {
-      candidates: [
-        {
-          finishReason: "MAX_TOKENS",
-          content: { parts: [{ text: "partial" }] },
-        },
-      ],
-    },
-    {
-      candidates: [
-        {
-          finishReason: "CONTINUATION",
-          content: { parts: [{ text: "partial" }] },
-        },
       ],
     },
   ]) {
@@ -453,7 +440,6 @@ test("safety blocks and incomplete answers stop rather than retry another provid
   for (const choice of [
     { finish_reason: "content_filter", message: { content: "blocked" } },
     { message: { refusal: "I cannot answer" } },
-    { finish_reason: "length", message: { content: "partial" } },
   ]) {
     let calls = 0;
     const providers = [
@@ -536,7 +522,7 @@ test("the complete fallback chain shares one 30-second budget", async () => {
         context,
       ),
     );
-    assert.deepEqual(limits, [10000, 10000, 10000]);
+    assert.deepEqual(limits, [20000, 5000, 5000]);
     assert.equal(clock, 130000);
   } finally {
     if (originalNow) Object.defineProperty(performance, "now", originalNow);
@@ -577,7 +563,10 @@ test("the time budget adapts to one or four configured candidates", async () => 
           context,
         ),
       );
-      assert.deepEqual(limits, Array(count).fill(30000 / count));
+      assert.deepEqual(
+        limits,
+        count === 1 ? [30000] : [15000, 5000, 5000, 5000],
+      );
       assert.equal(clock, 130000);
     } finally {
       if (originalNow) Object.defineProperty(performance, "now", originalNow);
@@ -974,4 +963,59 @@ test("caps provider answers without splitting Unicode code points", async () => 
   );
   assert.equal(answer.answer, "a".repeat(7999) + "😀");
   assert.equal(Array.from(answer.answer).length, 8000);
+});
+
+test("an incomplete answer falls back to the next provider", async () => {
+  const providers = [
+    settings.assistant,
+    { ...settings.assistant, endpoint: "https://fallback.example.test" },
+  ];
+  for (const incomplete of [
+    { choices: [{ finish_reason: "length", message: { content: "part" } }] },
+    { candidates: [{ finishReason: "MAX_TOKENS" }] },
+  ]) {
+    let calls = 0;
+    const gemini = "candidates" in incomplete;
+    const result = await assistantAnswer(
+      {
+        ...settings.assistant,
+        providers: gemini
+          ? [{ ...providers[0], protocol: "gemini" }, providers[1]]
+          : providers,
+      },
+      async () => {
+        calls++;
+        return Response.json(
+          calls === 1
+            ? incomplete
+            : { choices: [{ message: { content: "Fallback" } }] },
+        );
+      },
+      context,
+    );
+    assert.equal(result.answer, "Fallback");
+    assert.equal(calls, 2);
+  }
+});
+
+test("reasoning limits are sent only to models that accept them", async () => {
+  for (const [model, effort] of [
+    ["gpt-5-mini", "low"],
+    ["o3", "low"],
+    ["openai/o4-mini", "low"],
+    ["gpt-4o-mini", undefined],
+    ["gpt-5-chat-latest", undefined],
+  ]) {
+    let sent;
+    await assistantAnswer(
+      { ...settings.assistant, model },
+      async (_url, options) => {
+        sent = JSON.parse(options.body);
+        return Response.json({ choices: [{ message: { content: "Answer" } }] });
+      },
+      context,
+    );
+    assert.equal(sent.reasoning_effort, effort, model);
+    assert.equal(sent.max_completion_tokens, 4096);
+  }
 });
