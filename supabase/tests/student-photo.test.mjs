@@ -300,10 +300,9 @@ const stored = (key) => [
 ];
 
 // Runs one upload and returns the response and every deleted storage key.
-async function upload(save, savedAfter = () => oldKey) {
+async function upload(save) {
   const deleted = [];
   let newKey;
-  let reads = 0;
   const handler = createHandler("students", {
     env,
     photoUpload: preparePhoto,
@@ -313,9 +312,7 @@ async function upload(save, savedAfter = () => oldKey) {
         return Response.json(true);
       if (url.includes("/object/authenticated/")) return new Response(image);
       if (url.includes("/rest/v1/profile"))
-        return Response.json(
-          stored(reads++ === 0 ? oldKey : savedAfter(newKey)),
-        );
+        return Response.json(stored(oldKey));
       if (url.endsWith("/object/student-photos")) {
         deleted.push(...JSON.parse(options.body).prefixes);
         return Response.json([]);
@@ -348,15 +345,22 @@ test("a saved photo removes the staging file and the previous avatar", async () 
   assert.deepEqual(deleted, [raw, oldKey]);
 });
 
-test("a network failure removes the new copy only if it was not saved", async () => {
-  const fail = () => {
+test("a network failure retains the new copy while the database outcome is unknown", async () => {
+  const { response, deleted, newKey } = await upload(() => {
     throw new TypeError("network");
-  };
-  const unsaved = await upload(fail);
-  assert.equal(unsaved.response.status, 500);
-  assert.deepEqual(unsaved.deleted, [raw, unsaved.newKey]);
-  const saved = await upload(fail, (newKey) => newKey);
-  assert.deepEqual(saved.deleted, [raw]);
+  });
+  assert.equal(response.status, 500);
+  assert.ok(newKey);
+  assert.deepEqual(deleted, [raw]);
+});
+
+test("a gateway error retains the new copy even when the response has an error code", async () => {
+  const { response, deleted, newKey } = await upload(() =>
+    Response.json({ code: "GATEWAY_TIMEOUT" }, { status: 504 }),
+  );
+  assert.equal(response.status, 500);
+  assert.ok(newKey);
+  assert.deepEqual(deleted, [raw]);
 });
 
 test("an expired session at save time returns 401 and removes the new copy", async () => {
