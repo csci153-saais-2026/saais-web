@@ -102,7 +102,7 @@ The assistant stores the last 20 individual messages per adviser and student. Th
 
 ### Photo cleanup after uncertain saves and deletion
 
-When a photo upload commits, the database queues the staging path and the avatar it replaced while holding the profile row lock. A rejected upload keeps the staging file so it can be retried. If the save result is unknown, the Edge Function asks a service-only RPC to invalidate the one-use token. An invalidated token permits removal of the abandoned validated copy. If the token was already consumed, the Edge Function reconciles the committed cleanup queue.
+When a photo upload commits, the database queues its single-use staging object and the superseded validated avatar while holding the profile row lock. Legacy paths that an older client can overwrite stay out of automatic replacement cleanup. A rejected upload keeps the staging file so it can be retried. If the save result is unknown, the Edge Function asks a service-only RPC to invalidate the one-use token. An invalidated token permits removal of the abandoned validated copy. If the token was already consumed, the Edge Function reconciles the committed cleanup queue.
 
 Photo uploads and deletions use the same cleanup queue, `saais_private.deleted_student_photo`. The service-only reconciliation RPC skips any path still referenced by the profile. The Edge Function acknowledges queued paths after Storage deletes them. Failed removals stay queued for a later photo reconciliation. Apply migration `20261126001700` before deploying the updated `students` function.
 

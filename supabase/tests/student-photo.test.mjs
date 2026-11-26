@@ -11,7 +11,7 @@ import {
 import { createHandler } from "../functions/_shared/http.ts";
 
 const student = "00000005-0000-4000-8000-000000000abc";
-const raw = `students/${student}/avatar.png`;
+const raw = `students/${student}/upload-00000000-0000-4000-8000-000000000001.png`;
 const env = {
   url: "https://supabase.example.test",
   publicKey: "public-key",

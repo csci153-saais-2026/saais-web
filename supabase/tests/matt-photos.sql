@@ -5,6 +5,7 @@ do $$
 declare
   student uuid := '00000005-0000-4000-8000-000000000000';
   path text := 'students/'||student||'/avatar.png';
+  staging_path text := 'students/'||student||'/upload-00000000-0000-4000-8000-000000000001.png';
   verified text := 'students/'||student||'/validated-00000000-0000-4000-8000-000000000001.png';
   unused text := 'students/'||student||'/validated-00000000-0000-4000-8000-000000000002.png';
   url text := 'https://supabase.test/storage/v1/object/sign/student-photos/'||path;
@@ -50,8 +51,13 @@ begin
     raise exception 'validation was reused';
   exception when sqlstate 'PT400' then null;
   end;
-  perform test.assert(public.saais_reconcile_deleted_photos(student) = array[path],
-    'a successful replacement queues a legacy avatar and staging path once');
+  update storage.objects set metadata = '{"mimetype":"image/png","size":19}'
+    where bucket_id='student-photos' and name=path;
+  perform test.assert(public.saais_reconcile_deleted_photos(student) = '{}'::text[],
+    'a shared staging key stays out of the cleanup queue even when it was also the previous avatar');
+  perform test.assert(exists(select 1 from storage.objects
+    where bucket_id='student-photos' and name=path and metadata->>'size'='19'),
+    'the newer upload at the shared staging key remains available');
   perform test.assert(public.saais_abandon_verified_photo(unused),'unused photo token can be abandoned');
   perform test.assert(not public.saais_abandon_verified_photo(unused),'abandoned token cannot be reused');
   body := jsonb_build_object('avatar_url','/student-photos/'||unused,'storage_object_path',unused,'mime_type','image/png','file_size_bytes',5242880);
@@ -60,14 +66,16 @@ begin
     raise exception 'abandoned validation was accepted';
   exception when sqlstate 'PT400' then null;
   end;
-  perform public.saais_register_verified_photo(student,student,unused);
+  insert into storage.objects(bucket_id,name,metadata)
+    values('student-photos',staging_path,'{"mimetype":"image/png","size":11}');
+  perform public.saais_register_verified_photo(student,student,unused,staging_path);
   profile := public.matt_operation('uploadStudentPhoto',params,body);
   perform test.assert(profile->>'avatar_url'='/storage/v1/object/authenticated/student-photos/'||unused,
     'replacement becomes the current avatar');
   perform test.assert(not public.saais_abandon_verified_photo(unused),
     'a committed replacement survives an uncertain save response');
   pending := public.saais_reconcile_deleted_photos(student);
-  perform test.assert(cardinality(pending) = 2 and pending @> array[path, verified],
+  perform test.assert(cardinality(pending) = 2 and pending @> array[staging_path, verified],
     'a replacement queues the current previous avatar and preserves the pending staging key');
   perform test.assert(public.saais_reconcile_deleted_photos(student, pending) = '{}'::text[],
     'acknowledged storage removal clears the reconciliation queue');
@@ -105,7 +113,24 @@ end;
 $$;
 select test.login(5);
 set local role authenticated;
-do $$begin
+do $$
+declare
+  disposable text := 'students/' || auth.uid() || '/upload-00000000-0000-4000-8000-000000000022.jpg';
+begin
+  insert into storage.objects(bucket_id, name) values ('student-photos', disposable);
+  update storage.objects set metadata = '{"size":99}' where bucket_id='student-photos' and name=disposable;
+  if found then
+    raise exception 'A single-use staging path can be overwritten';
+  end if;
+  delete from storage.objects where bucket_id='student-photos' and name=disposable;
+  if not found then
+    raise exception 'A student cannot delete an abandoned staging photo';
+  end if;
+  begin
+    insert into storage.objects(bucket_id, name) values ('student-photos', disposable);
+    raise exception 'A retired staging path can be reused';
+  exception when unique_violation then null;
+  end;
   if not public.saais_photo_upload_authorize(auth.uid(), 'students/' || auth.uid() || '/new.png') then
     raise exception 'Student could not authorize their own staged photo';
   end if;
