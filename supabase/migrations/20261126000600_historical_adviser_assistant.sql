@@ -47,11 +47,7 @@ begin
   from saais_private.matt_contract c
   cross join lateral jsonb_array_elements(c.document->'operations') operation
   where operation->>'id' = 'askAdvisingAssistant';
-  if query_schema is null or not saais_private.valid(p_body - 'history', query_schema)
-    or (case when p_body ? 'history' then
-      case when jsonb_typeof(p_body->'history') = 'array'
-        then jsonb_array_length(p_body->'history') > 20 else true end
-      else false end) then
+  if query_schema is null or not saais_private.valid(p_body, query_schema) then
     perform saais_private.fail(400, 'Request does not match the assistant schema.');
   end if;
   if not exists (select 1 from public.profile p where p.id = p_student_id and p.status <> 'disabled'

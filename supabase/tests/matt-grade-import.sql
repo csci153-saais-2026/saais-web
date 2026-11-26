@@ -21,4 +21,12 @@ begin
   result := public.matt_operation('importGradesBatch','{}',input||'{"mode":"commit"}');
   perform test.assert(result->>'imported_count'='1' and result->>'error_count'='2','commit saves only valid rows');
   perform test.assert((select count(*) from public.attempt a where a.course_offering_id=(offering->>'id')::uuid and a.final_grade=2)=1,'grade is persisted');
+  perform test.assert(exists(select 1 from public.notification where event_type='grade_import_committed' and recipient_id=auth.uid()),
+    'Committed import notifies the adviser');
+  result := public.matt_operation('importGradesBatch','{}',input||'{"mode":"commit"}'::jsonb ||
+    jsonb_build_object('rows',jsonb_build_array('{"row_number":1,"student_number":"TEST-5","course_code":"IMPORT201","final_grade":3}'::jsonb)));
+  perform test.assert(result->>'error_count'='1' and result->>'imported_count'='0',
+    'A different existing grade is rejected on import');
+  perform test.assert((select final_grade=2 from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),
+    'Rejected import preserves the recorded grade');
 end $$;

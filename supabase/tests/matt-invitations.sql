@@ -104,6 +104,12 @@ begin
   perform public.saais_invitation_service('verifyInviteToken', 'finishRedemption', '{}', p_token => hash, p_redemption => lease);
   perform test.assert((select status = 'active' and invitation_status = 'accepted' from public.profile where id = target),
     'Auth completion activates the profile once');
+  perform test.assert(exists(select 1 from public.notification where event_type='invitation_accepted' and entity_id=target), 'Activation notifies the administrative recipients');
+  perform test.assert(exists(select 1 from public.notification where event_type='adviser_assigned' and target_student_id=target and recipient_id=target), 'Initial student receives adviser notification when activated');
+  begin
+    perform public.saais_invitation_service('inviteUser', 'prepare', request, staff, staff_session);
+    raise exception 'Accepted account was reinvited as an idempotent success';
+  exception when sqlstate 'PT409' then null; end;
   perform test.assert((select count(*) = 1 from public.audit_log_entry where entity_id = target and action = 'invitation_accepted'),
     'Redemption retry never duplicates the audit event');
   perform test.assert(not has_function_privilege('authenticated',

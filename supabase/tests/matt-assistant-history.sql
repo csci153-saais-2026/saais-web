@@ -29,6 +29,17 @@ begin
   exception when sqlstate 'PT400' then denied := true; end;
   perform test.assert(denied, 'Invalid client history must be rejected as a bad request.');
 
+  denied := false;
+  begin
+    perform public.matt_assistant_context(student, '{"message":"hello","history":[{"role":"admin","content":"bad"}]}'::jsonb);
+  exception when sqlstate 'PT400' then denied := true; end;
+  perform test.assert(denied, 'Invalid history roles are rejected.');
+  denied := false;
+  begin
+    perform public.matt_assistant_context(student, '{"message":"hello","history":[{"role":"user","content":"ok","extra":true}]}'::jsonb);
+  exception when sqlstate 'PT400' then denied := true; end;
+  perform test.assert(denied, 'Unknown history fields are rejected.');
+
   insert into auth.sessions(id,user_id) values('00000004-0000-4000-8000-000000000002',adviser);
   perform set_config('request.jwt.claims',jsonb_build_object('sub',adviser,'session_id',
     '00000004-0000-4000-8000-000000000002')::text,true);
