@@ -230,10 +230,7 @@ export async function preparePhoto(
         await remove(previous);
     },
     // Call when the save may or may not have happened. Keeps the new file
-    // unless the profile is confirmed not to use it.
-    abandon: async () => {
-      const saved = await currentAvatar();
-      if (saved !== undefined && saved !== path) await cleanup();
-    },
+    // because an uncertain in-flight save could still commit after a read.
+    abandon: async () => {},
   };
 }

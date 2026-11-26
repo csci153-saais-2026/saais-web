@@ -348,13 +348,13 @@ test("a saved photo removes the staging file and the previous avatar", async () 
   assert.deepEqual(deleted, [raw, oldKey]);
 });
 
-test("a network failure removes the new copy only if it was not saved", async () => {
+test("a network failure preserves the new copy when the save outcome is uncertain", async () => {
   const fail = () => {
     throw new TypeError("network");
   };
   const unsaved = await upload(fail);
   assert.equal(unsaved.response.status, 500);
-  assert.deepEqual(unsaved.deleted, [raw, unsaved.newKey]);
+  assert.deepEqual(unsaved.deleted, [raw]);
   const saved = await upload(fail, (newKey) => newKey);
   assert.deepEqual(saved.deleted, [raw]);
 });
