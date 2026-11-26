@@ -45,11 +45,17 @@ export type PhotoPreparer = (
   commit?: () => Promise<void>;
   abandon?: () => Promise<void>;
 }>;
+export type PhotoCleaner = (
+  env: Environment,
+  fetcher: typeof fetch,
+  student: string,
+) => Promise<void>;
 type Dependencies = {
   env: Environment;
   fetch?: typeof fetch;
   operations?: Operation[];
   photoUpload?: PhotoPreparer;
+  photoDelete?: PhotoCleaner;
 };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 1024 * 1024;
@@ -360,7 +366,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         : { p_operation: operation.id, p_params: params, p_body: body ?? {} };
       const result = await fetcher(`${env.url}/rest/v1/rpc/${rpc}`, {
         method: "POST",
-        headers: upstreamHeaders,
+        headers: { ...upstreamHeaders, "Content-Profile": "public" },
         body: JSON.stringify(rpcBody),
         signal: AbortSignal.timeout(30000),
       });
@@ -420,6 +426,13 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       }
       abandonPhoto = undefined;
       await photoCommit?.();
+      if (operation.id === "deleteStudentPhoto") {
+        await dependencies.photoDelete?.(
+          env,
+          fetcher,
+          String(params.student_id),
+        );
+      }
       if (operation.status === null)
         return error(
           500,
@@ -447,6 +460,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
               apikey: env.serviceKey!,
               Authorization: `Bearer ${env.serviceKey!}`,
               "Content-Type": "application/json",
+              "Content-Profile": "public",
             },
             body: JSON.stringify(turn),
             signal: AbortSignal.timeout(10000),

@@ -34,5 +34,52 @@ begin
   perform test.login(1);
   result := test.call('updateCurriculumVersion', jsonb_build_object('id',version), '{"status":"retired"}');
   perform test.assert(result->>'status' = 'retired', 'The API accepts the approved retired curriculum status');
+
+  -- Durable rejected-login audit RPCs (#189)
+  perform test.assert(
+    not has_function_privilege('anon','public.saais_record_rejected_login(text,text,uuid)','execute')
+    and not has_function_privilege('authenticated','public.saais_record_rejected_login(text,text,uuid)','execute')
+    and has_function_privilege('service_role','public.saais_record_rejected_login(text,text,uuid)','execute')
+    and not has_function_privilege('authenticated','public.saais_evaluate_before_user_created(jsonb)','execute')
+    and has_function_privilege('service_role','public.saais_evaluate_before_user_created(jsonb)','execute')
+    and not has_function_privilege('authenticated','public.saais_evaluate_access_token(jsonb)','execute')
+    and has_function_privilege('service_role','public.saais_evaluate_access_token(jsonb)','execute'),
+    'Rejected-login audit RPCs are restricted to the service role');
+
+  result := public.saais_evaluate_before_user_created(event);
+  perform test.assert(result->>'allowed' = 'true', 'Valid reservation passes HTTP hook evaluation');
+  perform test.assert(not exists(select 1 from public.audit_log_entry where action = 'login_rejected'),
+    'Allowed signup does not write a rejected-login audit entry');
+
+  result := public.saais_evaluate_before_user_created('{"user":{"email":"outsider@gmail.com"}}');
+  perform test.assert(result->>'allowed' = 'false' and result->>'rejection_reason' = 'non_institutional_domain',
+    'Non-institutional attempt is rejected with category');
+  perform test.assert(exists(select 1 from public.audit_log_entry
+    where action = 'login_rejected' and action_category = 'auth_account'
+      and actor_id is null and entity_type = 'auth_attempt'
+      and new_value->>'rejection_reason' = 'non_institutional_domain'
+      and new_value->>'email_domain' = 'gmail.com'
+      and coalesce(new_value::text, '') not like '%outsider%'),
+    'Non-institutional rejection logs domain-only metadata without exposing the email local-part');
+
+  result := public.saais_evaluate_before_user_created('{"user":{"email":"unlisted-person@vsu.edu.ph"}}');
+  perform test.assert(result->>'allowed' = 'false' and result->>'rejection_reason' = 'unprovisioned_account',
+    'Unprovisioned institutional attempt is rejected and audited');
+  perform test.assert(exists(select 1 from public.audit_log_entry
+    where action = 'login_rejected' and new_value->>'rejection_reason' = 'unprovisioned_account'
+      and coalesce(new_value::text, '') not like '%unlisted-person%'),
+    'Unprovisioned rejection avoids storing sensitive identity data');
+
+  result := public.saais_evaluate_access_token('{"user_id":"00000010-0000-4000-8000-000000000000","claims":{"email":"person10@example.test"}}');
+  perform test.assert(result->>'allowed' = 'false' and result->>'rejection_reason' = 'disabled_account',
+    'Disabled account access-token attempt is rejected and audited');
+  perform test.assert(exists(select 1 from public.audit_log_entry
+    where action = 'login_rejected' and entity_type = 'profile'
+      and entity_id = '00000010-0000-4000-8000-000000000000'
+      and new_value->>'rejection_reason' = 'disabled_account'),
+    'Disabled account rejection links only the disabled profile id');
+
+  result := public.saais_evaluate_access_token('{"user_id":"00000005-0000-4000-8000-000000000000","claims":{"email":"person5@example.test"}}');
+  perform test.assert(result->>'allowed' = 'true', 'Active provisioned profile passes access-token hook');
 end;
 $$;

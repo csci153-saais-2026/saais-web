@@ -155,6 +155,7 @@ export async function runInvitation(
     await rpc("validate", data);
     const rows = data.rows as Json[];
     const results: Json[] = [];
+    const importedProfiles: string[] = [];
     const seenRows = new Set<unknown>();
     const seenEmails = new Set<string>();
     const seenNumbers = new Set<unknown>();
@@ -188,7 +189,12 @@ export async function runInvitation(
                 "Duplicate row, email, or student number in this batch.",
               );
             if (data.mode === "preview") await rpc("preview", row);
-            else await provision(row);
+            else {
+              const provisioned = await provision(row);
+              if (typeof provisioned.profile_id !== "string")
+                throw new InvitationError(500, "Provisioned student was not returned.");
+              importedProfiles.push(provisioned.profile_id);
+            }
             results[index] = {
               ...result,
               outcome: data.mode === "preview" ? "valid" : "imported",
@@ -208,6 +214,8 @@ export async function runInvitation(
       },
     );
     await Promise.all(workers);
+    if (data.mode === "commit" && importedProfiles.length > 0)
+      await rpc("notifyBatch", { profile_ids: importedProfiles });
     return {
       mode: data.mode,
       valid_count: results.filter(

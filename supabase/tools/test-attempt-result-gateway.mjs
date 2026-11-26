@@ -97,6 +97,52 @@ test("signed-in student sees only safe attempt results through PostgREST", async
   assert.equal(column.status, 400);
   assert.equal(column.body.code, "42703");
 
+  // Contracted views require Accept-Profile: saais_api; direct public reads
+  // cannot bypass row scope or restricted column grants (#185).
+  const withoutProfile = await fetch(`${api}/rest/v1/attempt_result?limit=1`, {
+    headers,
+    signal: AbortSignal.timeout(5000),
+  });
+  assert.equal(
+    withoutProfile.status,
+    404,
+    "Contracted attempt_result view is not exposed on the default public schema",
+  );
+  const crossProfile = await fetch(
+    `${api}/rest/v1/profile?id=neq.${studentId}&select=id`,
+    { headers, signal: AbortSignal.timeout(5000) },
+  );
+  assert.equal(crossProfile.status, 200);
+  assert.deepEqual(await crossProfile.json(), []);
+  for (const [resource, hiddenColumn] of [
+    ["profile", "entry_year"],
+    ["adviser_assignment", "reason"],
+    ["inc_resolution", "reason"],
+    ["audit_log_entry", "reason"],
+  ]) {
+    const denied = await fetch(
+      `${api}/rest/v1/${resource}?select=${hiddenColumn}&limit=1`,
+      { headers, signal: AbortSignal.timeout(5000) },
+    );
+    assert.equal(
+      denied.status,
+      403,
+      `Direct public.${resource} must reject hidden column ${hiddenColumn}`,
+    );
+  }
+  const nestedHidden = await fetch(
+    `${api}/rest/v1/attempt?select=id,profile(id,entry_year)&limit=1`,
+    {
+      headers: { ...headers, "Accept-Profile": "saais_api" },
+      signal: AbortSignal.timeout(5000),
+    },
+  );
+  assert.equal(
+    nestedHidden.status,
+    400,
+    "Nested embedding cannot select hidden or non-contracted columns",
+  );
+
   for (const [name, input] of [
     ["read_attempt_results", { p_student: studentId }],
     ["matt_grade_fix_history", { p_attempt_id: ordinary.body[0].id }],

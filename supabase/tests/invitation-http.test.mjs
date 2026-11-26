@@ -205,3 +205,75 @@ for (const [group, path, operation] of [
     ]);
   });
 }
+
+test("importStudentsBatch notifies committed profiles once and skips notifyBatch on preview", async () => {
+  const row1 = {
+    row_number: 1,
+    email: "import-1@vsu.edu.ph",
+    full_name: "Student One",
+    student_number: "26-1-00001",
+    program_id: id,
+    curriculum_version_id: id,
+    adviser_id: id,
+  };
+  const row2 = {
+    row_number: 2,
+    email: "import-2@vsu.edu.ph",
+    full_name: "Student Two",
+    student_number: "26-1-00002",
+    program_id: id,
+    curriculum_version_id: id,
+    adviser_id: id,
+  };
+  const profile1 = "00000001-0000-4000-8000-000000000101";
+
+  const previewStages = [];
+  const previewHandler = createHandler("students", {
+    env,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      const rpc = JSON.parse(options.body);
+      previewStages.push(rpc.p_stage);
+      return Response.json({});
+    },
+  });
+  const previewRes = await previewHandler(
+    request("/students/import", { mode: "preview", rows: [row1] }, true),
+  );
+  assert.equal(previewRes.status, 200);
+  assert.ok(!previewStages.includes("notifyBatch"));
+
+  const notified = [];
+  const commitHandler = createHandler("students", {
+    env,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      const rpc = JSON.parse(options.body);
+      if (rpc.p_stage === "admit" || rpc.p_stage === "validate")
+        return Response.json({});
+      if (rpc.p_stage === "prepare") {
+        if (rpc.p_body.row_number === 1)
+          return Response.json({ reservation_id: id, auth_ready: true });
+        return Response.json(
+          { code: "PT409", message: "Duplicate student." },
+          { status: 409 },
+        );
+      }
+      if (rpc.p_stage === "finish")
+        return Response.json({ profile_id: profile1, success: true });
+      if (rpc.p_stage === "notifyBatch") {
+        notified.push(rpc.p_body.profile_ids);
+        return Response.json({});
+      }
+      throw new Error(`Unexpected stage: ${rpc.p_stage}`);
+    },
+  });
+  const commitRes = await commitHandler(
+    request("/students/import", { mode: "commit", rows: [row1, row2] }, true),
+  );
+  assert.equal(commitRes.status, 200);
+  const commitJson = await commitRes.json();
+  assert.equal(commitJson.imported_count, 1);
+  assert.equal(commitJson.error_count, 1);
+  assert.deepEqual(notified, [[profile1]]);
+});

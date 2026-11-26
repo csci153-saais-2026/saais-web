@@ -112,6 +112,27 @@ begin
   exception when sqlstate 'PT409' then null; end;
   perform test.assert((select count(*) = 1 from public.audit_log_entry where entity_id = target and action = 'invitation_accepted'),
     'Redemption retry never duplicates the audit event');
+  perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
+    jsonb_build_object('profile_ids', jsonb_build_array(target)), staff, staff_session);
+  perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
+    jsonb_build_object('profile_ids', jsonb_build_array(target)), staff, staff_session);
+  perform test.assert((select count(*) = 3 from public.notification where event_type = 'student_import_committed'
+    and recipient_id in ('00000001-0000-4000-8000-000000000000','00000002-0000-4000-8000-000000000000','00000004-0000-4000-8000-000000000000')),
+    'Student import notifies adviser, department head, and admin once without duplicates');
+  perform test.assert(not exists(select 1 from public.notification where event_type = 'student_import_committed'
+    and recipient_id = '00000006-0000-4000-8000-000000000000'),
+    'Student import notifications stay within the student department');
+  begin
+    perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
+      jsonb_build_object('profile_ids', jsonb_build_array(target)),
+      '00000006-0000-4000-8000-000000000000', '00000006-0000-4000-8000-000000000001');
+    raise exception 'Out-of-scope caller notified student import';
+  exception when sqlstate 'PT403' then null; end;
+  begin
+    perform public.saais_invitation_service('importStudentsBatch', 'notifyBatch',
+      '{"profile_ids":[]}'::jsonb, staff, staff_session);
+    raise exception 'Empty student import list was accepted';
+  exception when sqlstate 'PT400' then null; end;
   perform test.assert(not has_function_privilege('authenticated',
     'public.saais_invitation_service(text,text,jsonb,uuid,uuid,uuid,text,uuid)', 'EXECUTE'), 'Browser cannot enter provisioning RPC');
 end;
