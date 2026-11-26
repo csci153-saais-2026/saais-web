@@ -138,12 +138,18 @@ test("auth-hook durably evaluates before-user-created and custom-access-token vi
   const activeLogin = await handler(
     await signedRequest("/auth-hook/custom-access-token", {
       user_id: "00000005-0000-4000-8000-000000000000",
-      claims: { sub: "00000005-0000-4000-8000-000000000000", role: "authenticated" },
+      claims: {
+        sub: "00000005-0000-4000-8000-000000000000",
+        role: "authenticated",
+      },
     }),
   );
   assert.equal(activeLogin.status, 200);
   assert.deepEqual(await activeLogin.json(), {
-    claims: { sub: "00000005-0000-4000-8000-000000000000", role: "authenticated" },
+    claims: {
+      sub: "00000005-0000-4000-8000-000000000000",
+      role: "authenticated",
+    },
   });
   assert.equal(calls.length, 4);
 });

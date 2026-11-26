@@ -294,16 +294,19 @@ export async function reconcileDeletedPhotos(
         typeof item === "string" && item.startsWith(prefix),
     );
     if (pending.length === 0) return;
-    const removed = await fetcher(env.url + "/storage/v1/object/student-photos", {
-      method: "DELETE",
-      headers: {
-        apikey: env.serviceKey,
-        Authorization: `Bearer ${env.serviceKey}`,
-        "Content-Type": "application/json",
+    const removed = await fetcher(
+      env.url + "/storage/v1/object/student-photos",
+      {
+        method: "DELETE",
+        headers: {
+          apikey: env.serviceKey,
+          Authorization: `Bearer ${env.serviceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prefixes: pending }),
+        signal: AbortSignal.timeout(10000),
       },
-      body: JSON.stringify({ prefixes: pending }),
-      signal: AbortSignal.timeout(10000),
-    });
+    );
     if (!removed.ok) return;
     await fetcher(env.url + "/rest/v1/rpc/saais_reconcile_deleted_photos", {
       method: "POST",

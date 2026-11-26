@@ -192,7 +192,10 @@ export async function runInvitation(
             else {
               const provisioned = await provision(row);
               if (typeof provisioned.profile_id !== "string")
-                throw new InvitationError(500, "Provisioned student was not returned.");
+                throw new InvitationError(
+                  500,
+                  "Provisioned student was not returned.",
+                );
               importedProfiles.push(provisioned.profile_id);
             }
             results[index] = {

@@ -124,7 +124,9 @@ export function createAuthHookHandler(
         { status: 400 },
       );
     }
-    if (!(await verifyWebhookSignature(request, rawBody, env.hookSecret, now()))) {
+    if (
+      !(await verifyWebhookSignature(request, rawBody, env.hookSecret, now()))
+    ) {
       return Response.json(
         { error: { http_code: 401, message: "Invalid webhook signature." } },
         { status: 401 },
@@ -184,10 +186,9 @@ export function createAuthHookHandler(
         message?: string;
       };
       if (decision.allowed === true) {
-        return Response.json(
-          isAccessToken ? { claims: payload.claims } : {},
-          { status: 200 },
-        );
+        return Response.json(isAccessToken ? { claims: payload.claims } : {}, {
+          status: 200,
+        });
       }
       const status = decision.http_code === 403 ? 403 : 403;
       return Response.json(

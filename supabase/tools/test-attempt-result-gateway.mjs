@@ -130,8 +130,20 @@ test("signed-in student sees only safe attempt results through PostgREST", async
       `Direct public.${resource} must reject hidden column ${hiddenColumn}`,
     );
   }
+  const nestedAmbiguous = await fetch(
+    `${api}/rest/v1/attempt?select=id,profile(id)&limit=1`,
+    {
+      headers: { ...headers, "Accept-Profile": "saais_api" },
+      signal: AbortSignal.timeout(5000),
+    },
+  );
+  assert.equal(
+    nestedAmbiguous.status,
+    300,
+    "Ambiguous nested embedding is rejected by PostgREST",
+  );
   const nestedHidden = await fetch(
-    `${api}/rest/v1/attempt?select=id,profile(id,entry_year)&limit=1`,
+    `${api}/rest/v1/attempt?select=id,profile!attempt_student_id_fkey(id,entry_year)&limit=1`,
     {
       headers: { ...headers, "Accept-Profile": "saais_api" },
       signal: AbortSignal.timeout(5000),
@@ -140,7 +152,7 @@ test("signed-in student sees only safe attempt results through PostgREST", async
   assert.equal(
     nestedHidden.status,
     400,
-    "Nested embedding cannot select hidden or non-contracted columns",
+    "Disambiguated nested embedding cannot select hidden or non-contracted columns",
   );
 
   for (const [name, input] of [
