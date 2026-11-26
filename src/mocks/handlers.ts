@@ -7435,11 +7435,11 @@ export const saaisMswHandlers = [
           "avatar_url, mime_type, and file_size_bytes are required.",
         );
       }
-      if (body.file_size_bytes > 2097152) {
+      if (body.file_size_bytes > 5_242_880) {
         return errorJson(
           400,
           "FILE_TOO_LARGE",
-          "Profile photo must not exceed 2 MB (2,097,152 bytes).",
+          "Profile photo must not exceed 5 MiB (5,242,880 bytes).",
         );
       }
       const db = getMockDatabase();
