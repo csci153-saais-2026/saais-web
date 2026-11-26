@@ -380,6 +380,23 @@ test("an unavailable cleanup decision retains the new photo", async () => {
   assert.deepEqual(deleted, [raw]);
 });
 
+test("an HTTP 408 only removes the new copy when its token is invalidated", async () => {
+  const timedOut = () => new Response(null, { status: 408 });
+  const abandoned = await upload(timedOut);
+  assert.equal(abandoned.response.status, 500);
+  assert.deepEqual(abandoned.deleted, [raw, abandoned.newKey]);
+});
+
+test("an HTTP 408 retains a photo whose token was already consumed", async () => {
+  const { response, deleted, newKey } = await upload(
+    () => new Response(null, { status: 408 }),
+    () => Response.json(false),
+  );
+  assert.equal(response.status, 500);
+  assert.ok(newKey);
+  assert.deepEqual(deleted, [raw]);
+});
+
 test("an expired session at save time returns 401 and removes the new copy", async () => {
   const { response, deleted, newKey } = await upload(() =>
     Response.json({ code: "PGRST303" }, { status: 401 }),
