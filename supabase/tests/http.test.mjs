@@ -271,6 +271,33 @@ test("expired Auth credentials, SQL conflict, rate limit and internal detail san
   );
 });
 
+test("a database permission error keeps a 403 status code", async () => {
+  const handler = createHandler("catalog", {
+    env,
+    fetch: async (url) =>
+      url.endsWith("/user")
+        ? identity()
+        : Response.json(
+            { code: "42501", message: "Private column" },
+            { status: 403 },
+          ),
+  });
+  const response = await handler(
+    new Request(env.url + "/catalog/faculty", {
+      method: "POST",
+      headers,
+      body: "{}",
+    }),
+  );
+  assert.equal(response.status, 403);
+  assert.deepEqual(await response.json(), {
+    code: "PT403",
+    message: "The operation could not be completed.",
+    details: null,
+    hint: null,
+  });
+});
+
 test("an undeclared controlled database error returns a generic 500", async () => {
   const handler = createHandler("catalog", {
     env,
