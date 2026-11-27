@@ -27,6 +27,7 @@ afterAll(() => saaisMockServer.close());
 describe("shared role scenarios", () => {
   it("uses unique identifiers within each shared mock table", () => {
     for (const [name, rows] of Object.entries(getMockDatabase())) {
+      if (!Array.isArray(rows)) continue;
       const ids = rows.flatMap((row: object) =>
         "id" in row && typeof row.id === "string" ? [row.id] : [],
       );
