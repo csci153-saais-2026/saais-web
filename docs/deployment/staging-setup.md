@@ -1,103 +1,112 @@
 # Staging setup and handoff
 
-This checklist records the SAAIS test environment. Confirm owners and team access
-before treating it as the team's shared staging environment. Never put passwords,
-service-role keys, OAuth client secrets or database credentials in this file.
+Keep [issue #51](https://github.com/csci153-saais-2026/saais-web/issues/51)
+open until the team records ownership and verifies the hosted flows below.
 
-## Current test environment
+## Hosting and ownership
 
-This status was refreshed on November 27, 2026. Keep the hosted verification
-checklist in #51 open until the remaining end-to-end and ownership checks pass.
+| Service | Confirmed setup | Remaining evidence |
+| --- | --- | --- |
+| Supabase | The active `SAAIS` project has ref `jssexxjbgzrknlptddkg`. The public Vercel site's browser bundle uses this project. | JakeNLelis confirmed ownership. Record any additional team access. |
+| Vercel | GitHub deployment checks for this repo report the `mhac-monteras-projects/saais-web` project. The approved staging origin is https://saais.plenums.app. | JakeNLelis confirmed ownership. Record the deployed commit and additional team access. |
+| Google Cloud | The active OAuth client points to Google Cloud project `elegant-theorem-450011-i1`. Google sign-in is enabled. | JakeNLelis has the Owner role. Record the External consent screen publishing and verification status. |
+| Secrets | Supabase lists mail worker and Google Apps Script relay secret names. | Confirm the approved secret stores and access owners for staging OAuth, Auth hooks, the mail relay and scheduled jobs. |
 
-- Supabase project: `jssexxjbgzrknlptddkg` (`SAAIS`). Its `main` branch is
-  labelled Production by Supabase, but the project has been designated for
-  synthetic testing by the project owner. Project owner and team access: **to be
-  confirmed**.
-- A Vercel deployment was observed at
-  `https://saais-akvazb1lb-mhac-monteras-projects.vercel.app`. This is a
-  deployment-specific URL, not a confirmed stable staging domain. Vercel project
-  owner, team access and Git integration: **to be confirmed**.
-- Google is enabled in Supabase Auth. The Google Cloud project, OAuth consent
-  screen status, authorized test users and any verification requirements still
-  need confirmation and an end-to-end sign-in test.
-- On November 22, 2026, no Supabase Auth hooks were configured and Auth settings
-  allowed new signups. The later Data API request hook is recorded under hosted
-  verification below. The institutional account eligibility hook and its
-  allowed/rejected account tests still need hosted confirmation; track ownership
-  and implementation with #3, #7 and #9.
+[PR #223](https://github.com/csci153-saais-2026/saais-web/pull/223) tracks promotion
+from `dev` to `staging`. The staging branch exists. The integration fixes still
+need to reach `dev` before the promotion includes them.
+
+Record any access or approval delays in issue #51 with the responsible person
+and next step. JakeNLelis owns the hosted rollout and records remaining provider checks in #51.
+The local Auth hook is configured in `supabase/config.toml` and
+tracked under [#9](https://github.com/csci153-saais-2026/saais-web/issues/9). The
+hosted access-token change is in
+[#218](https://github.com/csci153-saais-2026/saais-web/pull/218). See
+the hosted verification below.
 
 ## Redirects
 
-The frontend requests `/auth/callback` for Google sign-in and `/reset-password`
-for recovery, both on the current browser origin. The following exact URLs were
-added to the Supabase test project's redirect allowlist on November 22, 2026:
+The Supabase Site URL is `https://saais.plenums.app`. The hosted allowlist
+includes `https://saais.plenums.app/auth/callback`,
+`https://saais.plenums.app/reset-password`, and the local callback and recovery
+routes for `http://localhost:5173`. The frontend builds browser redirects from
+the current origin.
 
-- `http://localhost:5173/auth/callback`
-- `http://localhost:5173/reset-password`
-- `https://saais-akvazb1lb-mhac-monteras-projects.vercel.app/auth/callback`
-- `https://saais-akvazb1lb-mhac-monteras-projects.vercel.app/reset-password`
+The earlier deployment-specific preview used
+`https://saais-akvazb1lb-mhac-monteras-projects.vercel.app`. The allowlist
+previously included its callback and recovery routes and the localhost routes
+above. The approved staging origin entries were verified on November 28.
 
-The Supabase Site URL was still `http://localhost:3000` when inspected. Set it
-to the team's approved stable staging origin after confirming the domain. Add
-that origin's two routes to the allowlist, and review deployment-specific URLs
-as previews change. The Google Cloud OAuth client's authorized redirect URI is
-the Supabase callback `https://jssexxjbgzrknlptddkg.supabase.co/auth/v1/callback`;
-the app callback URLs above belong in Supabase's allowlist.
+The Google Cloud OAuth web client's authorized redirect URI is
+`https://jssexxjbgzrknlptddkg.supabase.co/auth/v1/callback`. Configure its
+External consent screen and add the authorized QA accounts if the app is in
+Testing. Record the consent and verification status without publishing client
+secrets or QA credentials.
 
 ## Vercel and secrets
 
-Confirm the repository and team in Vercel. For the appropriate preview/staging
-environment, configure `VITE_API_MODE=supabase`, `VITE_SUPABASE_URL`, and the
-public `VITE_SUPABASE_PUBLISHABLE_KEY`; see `.env.example` for optional values.
-The docs API additionally uses server-side `SUPABASE_URL` and
-`SUPABASE_PUBLISHABLE_KEY`. Redeploy after environment changes. Vite embeds
-`VITE_` values in the browser bundle: never use a secret or service-role key
-there. Configure Google client credentials in Supabase Auth and store secrets
-in the team's approved secret store; confirm the store and access owners.
+Set `VITE_API_MODE=supabase`, `VITE_SUPABASE_URL`, and
+`VITE_SUPABASE_PUBLISHABLE_KEY` for the staging deployment. The docs API uses
+`SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` server-side. Redeploy after changing
+the environment. Use the public project key for browser configuration.
 
-`vercel.json` routes SPA paths to `index.html` while preserving `/api/` paths.
-After deployment, directly open and refresh a client-side route and verify the
-docs endpoint independently.
+Keep OAuth secrets in Supabase Auth and worker/signing credentials in the
+approved Edge Function and scheduler secret stores. The
+[Google Apps Script mailer setup](../backend/google-apps-script-mailer.md)
+documents the mail relay. Use team-approved institutional test recipients for
+invitation and scheduled delivery smoke tests.
 
-## Hosted backend verification
+`vercel.json` serves `index.html` on SPA deep links and preserves API routes.
+Verify a direct load and refresh while signed in on the chosen staging domain.
 
-Observed on November 27, 2026:
+## Hosted verification on November 28, 2026
 
-- The hosted `authenticator` role reports
-  `pgrst.db_pre_request = public.saais_check_data_api_request`.
-- Supabase CLI listed `data-api` as ACTIVE version 2, and `mail-delivery` and
-  `photo-cleanup` as ACTIVE version 3.
-- The hosted secret list contained `SAAIS_MAIL_WORKER_SECRET`,
-  `SAAIS_RESEND_API_KEY`, `SAAIS_MAIL_FROM`, `SAAIS_SITE_URL`, and
-  `SAAIS_MAIL_ENVIRONMENT`. Secret values are not recorded here. The project is
-  configured for production mail; no recipient allowlist is configured.
-- Periodic worker execution is not verified. The hosted database did not expose
-  `cron.job`, and the checked function logs showed no invocation during the
-  preceding 24 hours. Configure a scheduler and record a successful run in #51.
-- A successful signed-in collection read through the deployed gateway has not
-  been confirmed. The latest observed Vercel login page displayed the gateway
-  collection-read warning; verify a successful read through the integrated
-  client, its default page size of 20, and a denied direct collection request
-  before marking this complete.
-- Hosted creation and behavior of the Google identity and student-photo storage
-  triggers still need explicit confirmation in #51.
+- Applied the five pending integration migrations from `3eae1b6` and deployed
+  the Auth hook, Data API and related functions. Both signed HTTP Auth hooks are
+  enabled. A synthetic password login recorded one `sign_in_succeeded` entry,
+  and a token refresh left that count at one. The fixture was disabled after the
+  check. JakeNLelis also signed in with Google and reloaded a dashboard. The
+  hosted audit contained one event for that session.
+- Migration `20261126002300` is recorded as applied. PostgREST loads
+  `pgrst.db_pre_request=public.saais_check_data_api_request` for
+  `authenticator`. A request with a synthetic session and the deployed
+  publishable key returned 20 course rows by default and 21 with an explicit
+  limit. The matching direct collection request returned `403 PT403`.
+  `data-api` is active with JWT verification enabled.
+- The hosted `auth.identities` trigger activated a synthetic invited profile
+  on the first verified Google identity insert. It invalidated the password
+  token, removed the queued email and wrote one acceptance audit event. The
+  test transaction rolled back. First-time activation through the Google
+  browser flow still needs an unused institutional mailbox.
+- A synthetic student uploaded a staged photo. The app saved its validated
+  copy and removed the original staging object.
+- Supabase Cron recorded the lapsed-INC smoke run at 02:38 and the scheduled
+  photo-cleanup run at 02:40 Asia/Manila. The photo worker returned HTTP 200.
+  The scheduled mail worker returned HTTP 200 at 02:50 with 12 sent and zero
+  failures. Mail runs every minute, photo cleanup every five minutes, and
+  lapsed INC daily at 00:01 Asia/Manila.
+- Direct requests to `/adviser/advisees` and `/docs/openapi` on the staging
+  domain served the app shell. A Playwright run signed in as a synthetic
+  student, reloaded the profile deep link, and observed 11 successful data
+  gateway collections using the expected schema header.
 
-## Acceptance checks still required
+## Hosted verification procedure
 
-1. Record the Supabase, Vercel and Google Cloud owners, team access, and any
-   account-approval delays and responsible person in the team's chosen tracker.
-2. Confirm the hosted Auth hooks enforce the agreed provisioned-account policy
-   without breaking invitations or recovery. Do not rely on frontend role
-   checks as the security boundary.
-3. Verify the Google OAuth consent screen, authorized redirect URI, test-user
-   access and verification requirements with the Cloud project owner; test
-   allowed and rejected accounts end to end.
-4. Confirm the stable staging URL, Site URL, allowlist, environment values and
-   secret ownership, then redeploy and exercise sign-in and password recovery.
-5. Complete the hosted backend checks in #51: verify both database triggers,
-   run a signed-in collection read through `data-api` with the default page size
-   of 20, confirm direct collection access is denied, and configure and observe
-   scheduled worker runs.
-
-References: [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls),
-[Vercel environment variables](https://vercel.com/docs/environment-variables).
+1. Sign in with a provisioned Google QA account and confirm its first identity
+   activates the invitation. Confirm an unregistered Google account is denied.
+2. Run first sign-in with password and Google. Verify one
+   `sign_in_succeeded` event per session, then refresh each session and verify the
+   count is unchanged.
+3. Upload and commit a synthetic student photo. Verify the staging path
+   reservation, queue processing, and cleanup while the committed photo remains
+   available.
+4. Capture a successful signed-in frontend collection request using
+   `Accept-Profile: saais_api`. On a collection with more than 20 visible rows,
+   verify the default page returns 20 and verify that the same signed-in session
+   is denied on a direct collection request.
+5. Record a successful scheduled run for the mail worker, photo cleanup, and
+   lapsed INC. For mail, use authorized test recipients and verify delivery to
+   a test mailbox. Check the scheduler run result and the corresponding
+   application outcome for each job.
+6. Record the staged commit, Vercel origin, role flows, and a signed-in deep-link
+   refresh. Put times, test results and redacted evidence links in issue #51.
