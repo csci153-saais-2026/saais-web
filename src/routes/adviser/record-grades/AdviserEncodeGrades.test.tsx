@@ -488,6 +488,70 @@ describe("encoding workspace identity", () => {
     );
   });
 
+  it("asks to continue or cancel when adding a course with an unmet prerequisite", async () => {
+    vi.mocked(getEncodingChoices).mockResolvedValue(choices);
+    vi.mocked(getGrades).mockResolvedValue(data);
+    vi.mocked(getTermOfferings).mockResolvedValue([
+      {
+        offering: { id: "offering-two", course_id: "course-two" },
+        code: "CS 2",
+        title: "Next course",
+        direct_curriculum_slot_id: "slot-two",
+        has_unmet_strict_prerequisites: true,
+        unmet_prerequisites: [{ code: "CS 1" }],
+      },
+    ] as Awaited<ReturnType<typeof getTermOfferings>>);
+    vi.mocked(saveTermGrades).mockResolvedValue([]);
+    render(
+      <MemoryRouter>
+        <Encode />
+      </MemoryRouter>,
+    );
+    fireEvent.change(await screen.findByLabelText("Advisee"), {
+      target: { value: "student-one" },
+    });
+    fireEvent.change(screen.getByLabelText("Term"), {
+      target: { value: "term-one" },
+    });
+    const addCourse = async () => {
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Add course" }),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("radio", { name: /CS 2/ }),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Add course",
+        }),
+      );
+      return screen.findByRole("dialog", { name: "Prerequisite not met" });
+    };
+
+    const first = await addCourse();
+    expect(first.textContent).toContain("CS 2 (missing CS 1)");
+    fireEvent.click(within(first).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByLabelText("Final for CS 2")).toBeNull();
+
+    const second = await addCourse();
+    fireEvent.change(within(second).getByLabelText("Override reason"), {
+      target: { value: "Taken together" },
+    });
+    fireEvent.click(
+      within(second).getByRole("button", { name: "Continue with override" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save grades" }));
+    await waitFor(() =>
+      expect(saveTermGrades).toHaveBeenCalledWith("student-one", "term-one", [
+        expect.objectContaining({
+          course_offering_id: "offering-two",
+          continue_with_prerequisite_override: true,
+          prerequisite_override_reason: "Taken together",
+        }),
+      ]),
+    );
+  });
+
   it("locks drafts while the save is pending", async () => {
     const offerings = [
       {
