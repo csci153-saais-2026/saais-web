@@ -55,3 +55,27 @@ it("shows an error if rendering the application fails", async () => {
   );
   vi.doUnmock("./App.tsx");
 });
+
+it.each([
+  ["a production build on the mock", false, "mock", true],
+  ["development on the mock", true, "mock", false],
+  ["a production build on Supabase", false, "supabase", false],
+])("shows the demo banner only in %s", async (_, dev, mode, shown) => {
+  vi.stubEnv("DEV", dev);
+  vi.stubEnv("VITE_API_MODE", "supabase");
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.doMock("@/lib/supabase/client", () => ({
+    resolveSaaisEnvConfig: () => ({ mode }),
+  }));
+  // Development starts the mock worker; keep that from raising its own warning.
+  vi.stubEnv("VITE_API_BASE_URL", "http://localhost:4010");
+  // Earlier tests unmock the app, so mock it again here.
+  vi.doMock("./App.tsx", () => ({
+    default: () => <div>Application content</div>,
+  }));
+  document.body.innerHTML = '<div id="root"></div>';
+  await import("./main");
+  expect(await screen.findByText("Application content")).toBeTruthy();
+  expect(screen.queryByText(/^DEMO:/) !== null).toBe(shown);
+  vi.doUnmock("@/lib/supabase/client");
+});
