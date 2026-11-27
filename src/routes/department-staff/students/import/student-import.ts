@@ -77,7 +77,12 @@ interface SourceRow {
 
 export interface ImportReferences {
   programs: { id: string; code: string }[];
-  curricula: { id: string; program_id: string; version_label: string }[];
+  curricula: {
+    id: string;
+    program_id: string;
+    version_label: string;
+    status?: string;
+  }[];
   advisers: { id: string; email: string }[];
 }
 
@@ -342,9 +347,11 @@ function parseDataRows(
         item.email.toLowerCase() ===
         textFor("adviser_email").trim().toLowerCase(),
     );
+    const inactive = !!curriculum?.status && curriculum.status !== "active";
     const referenceIssues = [
       !program ? "Unknown department program." : "",
       !curriculum ? "Unknown curriculum for this program." : "",
+      inactive ? "This curriculum version is not active." : "",
       !adviser ? "No active department adviser has this email." : "",
     ].filter(Boolean);
     const source: Record<string, unknown> = {
@@ -353,7 +360,7 @@ function parseDataRows(
       full_name: textFor("full_name"),
       email: textFor("email"),
       program_id: program?.id,
-      curriculum_version_id: curriculum?.id,
+      curriculum_version_id: inactive ? undefined : curriculum?.id,
       adviser_id: adviser?.id,
       ...(entryYear === undefined ? {} : { entry_year: entryYear }),
     };
