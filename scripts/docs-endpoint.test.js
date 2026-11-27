@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { tmpdir } from "node:os";
 import { parse } from "yaml";
 import handler from "../api/docs.js";
 import { clearBundledOpenApiCache } from "../api/openapi-bundle.js";
@@ -148,6 +149,26 @@ test("documentation endpoint verifies active users via Data API gateway and serv
     assert.equal(res.statusCode, 200);
     assert.equal(res.headers["Content-Type"], "text/markdown; charset=utf-8");
 
+    // A failure after the profile check says why.
+    const cwd = process.cwd();
+    clearBundledOpenApiCache();
+    process.chdir(tmpdir());
+    try {
+      res = response();
+      await handler(
+        {
+          method: "GET",
+          query: { document: "openapi" },
+          headers: { authorization: "Bearer valid-token" },
+        },
+        res,
+      );
+    } finally {
+      process.chdir(cwd);
+    }
+    assert.equal(res.statusCode, 503);
+    assert.match(res.body, /^could not build the document: .*openapi.yaml/);
+
     active = false;
     res = response();
     await handler(
@@ -159,7 +180,7 @@ test("documentation endpoint verifies active users via Data API gateway and serv
       res,
     );
     assert.equal(res.statusCode, 403);
-    assert.equal(gatewayCalls, 3);
+    assert.equal(gatewayCalls, 4);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldUrl === undefined) delete process.env.SUPABASE_URL;
