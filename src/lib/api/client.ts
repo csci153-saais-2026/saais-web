@@ -162,6 +162,14 @@ export function createSaaisApiClient(
         request.headers.set("Authorization", `Bearer ${trimmedToken}`);
       }
 
+      if (mode === "supabase" && schemaPath.startsWith("/rest/v1/")) {
+        const upstream = new URL(request.url);
+        upstream.pathname =
+          upstream.pathname.slice(0, -schemaPath.length) +
+          schemaPath.replace("/rest/v1/", "/functions/v1/data-api/");
+        return new Request(upstream, request);
+      }
+
       return request;
     },
 

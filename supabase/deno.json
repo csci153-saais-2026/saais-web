@@ -1,0 +1,5 @@
+{
+  "compilerOptions": { "strict": true },
+  "imports": { "imagescript": "npm:imagescript@3.20.5" },
+  "tasks": { "check": "deno check functions/*/index.ts" }
+}
