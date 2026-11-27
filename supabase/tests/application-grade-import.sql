@@ -32,6 +32,18 @@ begin
     'A different existing grade is rejected on import');
   perform test.assert((select final_grade=2 from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),
     'Rejected import preserves the recorded grade');
+  -- Verify importing midterm_status='dr' over a recorded final grade with no
+  -- midterm is rejected in both preview and commit without erasing the grade.
+  foreach mode in array array['preview','commit'] loop
+    result := public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode',mode,'school_term_id',term,
+      'rows',jsonb_build_array('{"row_number":1,"student_number":"TEST-5","course_code":"IMPORT201","midterm_status":"dr"}'::jsonb)));
+    perform test.assert(result->>'error_count'='1' and result->>'valid_count'='0' and result->>'imported_count'='0'
+      and result->'results'->0->>'message'='Use grade correction with a reason for an existing result.',
+      'Importing DR midterm over a recorded final grade is rejected in ' || mode);
+  end loop;
+  perform test.assert((select a.final_grade=2 and a.status='passed' and a.midterm_status is null and a.midterm_grade is null
+    from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),
+    'Rejected DR midterm import preserves the recorded final grade and passed status');
   -- Verify a recorded DR midterm cannot be replaced by an import row.
   perform test.login(1);
   course := test.call('createCourse','{}',jsonb_build_object('department_id',department,'code','IMPORT202','title','Import DR test','units',3));
@@ -63,11 +75,12 @@ begin
       result := public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode',mode,'school_term_id',term,
         'rows',jsonb_build_array(
           jsonb_build_object('row_number',1,'student_number','TEST-5','course_code',course_code,'final_grade',2),
-          jsonb_build_object('row_number',2,'student_number','TEST-5','course_code',course_code,'status',terminal_status))));
-      perform test.assert(result->>'error_count'='2' and result->>'valid_count'='0' and
+          jsonb_build_object('row_number',2,'student_number','TEST-5','course_code',course_code,'status',terminal_status),
+          jsonb_build_object('row_number',3,'student_number','TEST-5','course_code',course_code,'midterm_status','dr'))));
+      perform test.assert(result->>'error_count'='3' and result->>'valid_count'='0' and
         (select bool_and(item->>'message'='Use grade correction with a reason for an existing result.')
           from jsonb_array_elements(result->'results') as items(item)),
-        'Preview and commit reject both numeric and status edits to a recorded ' || upper(terminal_status));
+        'Preview and commit reject numeric, status, and DR midterm edits to a recorded ' || upper(terminal_status));
     end loop;
     perform test.assert((select a.status::text=terminal_status and a.final_grade is null
       from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),

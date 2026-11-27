@@ -53,6 +53,7 @@ function matchesSecret(supplied: string, secret: string) {
 export function createMailHandler(
   env: MailEnvironment,
   fetcher: typeof fetch = fetch,
+  maintenance?: { reconcilePhotos?: () => Promise<unknown> },
 ) {
   const site = URL.parse(env.siteUrl);
   async function rpc(name: string, body: object) {
@@ -172,6 +173,9 @@ export function createMailHandler(
       const interrupted = outcomes.filter(
         (item) => item.status === "rejected",
       ).length;
+      if (maintenance?.reconcilePhotos) {
+        await maintenance.reconcilePhotos().catch(() => {});
+      }
       return Response.json(
         {
           sent: count("sent"),

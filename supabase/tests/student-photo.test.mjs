@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import { Animation, Frame, Image } from "imagescript";
 import { randomFillSync } from "node:crypto";
 import {
+  createPhotoCleanupHandler,
   PhotoError,
   preparePhoto,
+  readPhotoCleanupEnvironment,
   reconcileDeletedPhotos,
   validatePhoto,
 } from "../functions/_shared/student-photo.ts";
@@ -547,4 +549,121 @@ test("deleteStudentPhoto skips storage removal when the profile RPC fails and re
   );
   assert.equal(retryable.status, 200);
   assert.equal(ackCalls, 0);
+});
+
+test("a transient Storage failure is cleared by scheduled photo cleanup without another user upload or deletion", async () => {
+  const queue = new Set();
+  const storage = new Set([oldKey]);
+  let storageAvailable = false;
+
+  const sharedFetch = async (url, options) => {
+    if (url.endsWith("/auth/v1/user")) return Response.json({ id: student });
+    if (url.endsWith("/matt_operation")) {
+      queue.add(oldKey);
+      return Response.json({ id: student, avatar_url: null });
+    }
+    if (url.endsWith("/saais_reconcile_deleted_photos")) {
+      const rpc = JSON.parse(options.body);
+      if (rpc.p_removed) {
+        for (const item of rpc.p_removed) queue.delete(item);
+        return Response.json([]);
+      }
+      return Response.json([...queue]);
+    }
+    if (url.endsWith("/saais_reconcile_pending_deleted_photos")) {
+      const rpc = JSON.parse(options.body);
+      assert.equal(options.headers.Authorization, "Bearer service-key");
+      assert.equal(options.headers["Content-Profile"], "public");
+      if (rpc.p_removed) {
+        for (const item of rpc.p_removed) queue.delete(item);
+      }
+      return Response.json(rpc.p_limit === 0 ? [] : [...queue]);
+    }
+    if (url.endsWith("/object/student-photos")) {
+      assert.equal(options.method, "DELETE");
+      if (!storageAvailable) return new Response(null, { status: 503 });
+      for (const prefix of JSON.parse(options.body).prefixes) {
+        storage.delete(prefix);
+      }
+      return Response.json([]);
+    }
+    throw new Error(url);
+  };
+
+  // User deletes their photo while Storage is temporarily unavailable.
+  const studentHandler = createHandler("students", {
+    env,
+    photoDelete: reconcileDeletedPhotos,
+    fetch: sharedFetch,
+  });
+  const deletedResponse = await studentHandler(
+    new Request(env.url + `/students/${student}/photo`, {
+      method: "DELETE",
+      headers,
+    }),
+  );
+  assert.equal(deletedResponse.status, 200);
+  assert.deepEqual([...queue], [oldKey]);
+  assert.equal(storage.has(oldKey), true);
+
+  const cleanupEnv = readPhotoCleanupEnvironment(
+    (name) =>
+      ({
+        SUPABASE_URL: env.url,
+        SUPABASE_SERVICE_ROLE_KEY: env.serviceKey,
+        SAAIS_MAINTENANCE_SECRET: "cleanup-secret",
+      })[name],
+  );
+  const cleanup = createPhotoCleanupHandler(cleanupEnv, sharedFetch);
+
+  // Reject wrong method and missing/invalid maintenance secret.
+  assert.equal(
+    (await cleanup(new Request(env.url, { method: "GET" }))).status,
+    405,
+  );
+  assert.equal(
+    (
+      await cleanup(
+        new Request(env.url, {
+          method: "POST",
+          headers: { "x-saais-maintenance-secret": "wrong" },
+        }),
+      )
+    ).status,
+    401,
+  );
+
+  // First scheduled sweep sees Storage still returning 503 -> returns 503 and keeps queue intact.
+  const failedSweep = await cleanup(
+    new Request(env.url, {
+      method: "POST",
+      headers: { "x-saais-maintenance-secret": "cleanup-secret" },
+    }),
+  );
+  assert.equal(failedSweep.status, 503);
+  assert.deepEqual([...queue], [oldKey]);
+  assert.equal(storage.has(oldKey), true);
+
+  // Storage recovers; next scheduled sweep removes the orphaned object with no user action.
+  storageAvailable = true;
+  const recoveredSweep = await cleanup(
+    new Request(env.url, {
+      method: "POST",
+      headers: { "x-saais-maintenance-secret": "cleanup-secret" },
+    }),
+  );
+  assert.equal(recoveredSweep.status, 200);
+  assert.deepEqual(await recoveredSweep.json(), { attempted: 1, removed: 1 });
+  assert.deepEqual([...queue], []);
+  assert.equal(storage.has(oldKey), false);
+
+  // Subsequent sweep finds nothing pending.
+  const idleSweep = await cleanup(
+    new Request(env.url, {
+      method: "POST",
+      headers: { "x-saais-maintenance-secret": "cleanup-secret" },
+    }),
+  );
+  assert.equal(idleSweep.status, 200);
+  assert.deepEqual(await idleSweep.json(), { attempted: 0, removed: 0 });
 });
