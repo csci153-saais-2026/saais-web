@@ -4311,19 +4311,34 @@ export const saaisMswHandlers = [
                   (item) => item.id === prerequisite.prerequisite_course_id,
                 );
                 if (!requiredCourse) return [];
-                const requiredAttempts = results.filter((item) =>
-                  db.courseOfferings.some(
-                    (row) =>
-                      row.id === item.course_offering_id &&
-                      row.course_id === requiredCourse.id,
-                  ),
+                const termKey = (offeringId: string) => {
+                  const row = db.courseOfferings.find(
+                    (item) => item.id === offeringId,
+                  );
+                  return (
+                    db.schoolTerms.find(
+                      (item) => item.id === row?.school_term_id,
+                    )?.chronological_key ?? 0
+                  );
+                };
+                const selectedKey = termKey(offering.id);
+                const requiredAttempts = results.filter(
+                  (item) =>
+                    termKey(item.course_offering_id) <= selectedKey &&
+                    db.courseOfferings.some(
+                      (row) =>
+                        row.id === item.course_offering_id &&
+                        row.course_id === requiredCourse.id,
+                    ),
                 );
                 const requiredSlots = slots.filter(
                   (item) => item.course_id === requiredCourse.id,
                 );
                 if (
                   requiredAttempts.some(
-                    (item) => item.effective_status === "passed",
+                    (item) =>
+                      item.effective_status === "passed" &&
+                      termKey(item.course_offering_id) < selectedKey,
                   ) ||
                   db.outsideCredits.some(
                     (item) =>
@@ -4356,12 +4371,14 @@ export const saaisMswHandlers = [
                     );
                   })
                   .at(-1);
+                // A pass in the selected term counts as concurrent enrollment.
                 const state = latest?.is_lapsed_inc
                   ? "lapsed_inc"
-                  : latest?.effective_status === "passed" ||
-                      latest?.effective_status === "na"
-                    ? "not_taken"
-                    : (latest?.effective_status ?? "not_taken");
+                  : latest?.effective_status === "passed"
+                    ? "currently_enrolled"
+                    : latest?.effective_status === "na"
+                      ? "not_taken"
+                      : (latest?.effective_status ?? "not_taken");
                 return [
                   {
                     prerequisite_course_id: requiredCourse.id,

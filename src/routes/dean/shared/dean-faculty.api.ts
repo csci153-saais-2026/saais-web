@@ -1,9 +1,10 @@
-import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import type { ApiSchema } from "@/lib/api";
+import { readAllFaculties } from "@/lib/api/catalog";
 
 export async function getDeanFaculties(
   signal?: AbortSignal,
 ): Promise<ApiSchema<"Faculty">[]> {
-  return unwrapApiResult(await apiClient.GET("/rest/v1/faculty", { signal }));
+  return readAllFaculties(signal);
 }
 
 export function resolveDeanFaculty(

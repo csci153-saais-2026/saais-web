@@ -73,7 +73,8 @@ export function ProfilePhotoCard({
       } catch (err) {
         if (mounted.current && currentId === validationId.current) {
           setErrorMessage(
-            err instanceof Error && err.message.includes("16 megapixels")
+            err instanceof Error &&
+              /16 megapixels|Animated PNG/.test(err.message)
               ? err.message
               : "Invalid image file.",
           );
