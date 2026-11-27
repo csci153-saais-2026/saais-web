@@ -52,10 +52,23 @@ describe("studentPhotoFileSchema & studentPhotoSchema", () => {
     }
   });
 
+  it("requires a nonblank staged Storage key", () => {
+    for (const path of [undefined, null, "", " ", "a".repeat(513)]) {
+      const result = studentPhotoSchema.safeParse({
+        mime_type: "image/png",
+        file_size_bytes: 1024,
+        storage_object_path: path,
+        avatar_url: "https://storage.example.test/photo.png",
+      });
+      expect(result.success).toBe(false);
+    }
+  });
+
   it("rejects missing avatar_url on full photo update payload", () => {
     const result = studentPhotoSchema.safeParse({
       mime_type: "image/png",
       file_size_bytes: 1024,
+      storage_object_path: "students/stu-1/avatar.png",
       avatar_url: "",
     });
 
