@@ -25,6 +25,7 @@ export const draftChanged = (
 export function draftPayload(
   attempt: ApiSchema<"AttemptResult">,
   draft: ExistingDraft,
+  overrideReason?: string,
 ): ApiSchema<"EncodeTermGradeRowInput"> {
   const remark = outcomeRemark(draft.final);
   return {
@@ -47,6 +48,7 @@ export function draftPayload(
       ? { instructor: draft.instructor.trim() }
       : {}),
     ...(remark ? { remark } : {}),
-    continue_with_prerequisite_override: false,
+    continue_with_prerequisite_override: !!overrideReason,
+    ...(overrideReason ? { prerequisite_override_reason: overrideReason } : {}),
   };
 }

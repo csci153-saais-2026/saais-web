@@ -950,6 +950,95 @@ function pagedResponse<T extends object>(request: Request, rows: T[]) {
   });
 }
 
+/** True when a strict prerequisite was not cleared before the given term. */
+function hasUnmetStrictPrerequisite(
+  studentId: string,
+  courseId: string,
+  term: ApiSchema<"SchoolTerm">,
+): boolean {
+  const db = getMockDatabase();
+  const required = db.prerequisites.filter(
+    (p) => p.course_id === courseId && p.type === "strict",
+  );
+  return required.some((prerequisite) => {
+    const slots = db.curriculumTermCourses
+      .filter((s) => s.course_id === prerequisite.prerequisite_course_id)
+      .map((s) => s.id);
+    const passed = (candidate: ApiSchema<"AttemptResult">) => {
+      const priorOffering = db.courseOfferings.find(
+        (o) => o.id === candidate.course_offering_id,
+      );
+      const priorTerm = db.schoolTerms.find(
+        (t) => t.id === priorOffering?.school_term_id,
+      );
+      return (
+        candidate.student_id === studentId &&
+        candidate.effective_status === "passed" &&
+        !!priorTerm &&
+        priorTerm.chronological_key < term.chronological_key
+      );
+    };
+    const direct = db.attemptResults.some(
+      (a) =>
+        passed(a) &&
+        db.courseOfferings.some(
+          (o) =>
+            o.id === a.course_offering_id &&
+            o.course_id === prerequisite.prerequisite_course_id,
+        ),
+    );
+    const credit = db.outsideCredits.some(
+      (c) =>
+        c.student_id === studentId &&
+        c.revoked_at == null &&
+        slots.includes(c.destination_curriculum_term_course_id) &&
+        c.decided_at.slice(0, 10) <= term.ends_on,
+    );
+    const equivalent = db.equivalencyDecisions.some(
+      (d) =>
+        d.student_id === studentId &&
+        d.revoked_at == null &&
+        slots.includes(d.destination_curriculum_term_course_id) &&
+        d.decided_at.slice(0, 10) <= term.ends_on &&
+        db.attemptResults.some((a) => a.id === d.attempt_id && passed(a)),
+    );
+    return !direct && !credit && !equivalent;
+  });
+}
+
+function prerequisiteNotMetResponse() {
+  return errorJson(
+    409,
+    "PREREQUISITE_NOT_MET",
+    "A strict prerequisite is not satisfied and this attempt has no override.",
+  );
+}
+
+/** The record/encode rule: new or regraded rows need an override with a reason. */
+function needsPrerequisiteOverride(
+  studentId: string,
+  termId: string,
+  row: {
+    course_offering_id: string;
+    continue_with_prerequisite_override?: boolean | null;
+    prerequisite_override_reason?: string | null;
+  },
+  existing: ApiSchema<"AttemptResult"> | undefined,
+): boolean {
+  const db = getMockDatabase();
+  const courseId = db.courseOfferings.find(
+    (o) => o.id === row.course_offering_id,
+  )?.course_id;
+  const term = db.schoolTerms.find((t) => t.id === termId);
+  if (!courseId || !term || existing?.prerequisite_override) return false;
+  if (
+    row.continue_with_prerequisite_override &&
+    row.prerequisite_override_reason?.trim()
+  )
+    return false;
+  return hasUnmetStrictPrerequisite(studentId, courseId, term);
+}
+
 function isCurrentAdviser(persona: MockPersona, studentId: string): boolean {
   return (
     persona.roles.includes("adviser") &&
@@ -4685,6 +4774,16 @@ export const saaisMswHandlers = [
         );
       }
 
+      if (
+        needsPrerequisiteOverride(
+          studentId,
+          body.school_term_id,
+          body,
+          existing,
+        )
+      )
+        return prerequisiteNotMetResponse();
+
       const recordedStatus: ApiSchema<"AttemptStatus"> =
         body.midterm_status === "dr"
           ? "dr"
@@ -4819,6 +4918,22 @@ export const saaisMswHandlers = [
           "GRADE_ALREADY_RECORDED",
           "Use grade correction for an existing final grade.",
         );
+      const lacksOverride = body.rows.some((row, index) => {
+        const old = existing[index];
+        const regraded =
+          !old ||
+          (row.status != null && row.status !== old.recorded_status) ||
+          (row.midterm_grade != null &&
+            row.midterm_grade !== old.midterm_grade) ||
+          (row.midterm_status != null &&
+            row.midterm_status !== old.midterm_status) ||
+          (row.final_grade != null && row.final_grade !== old.final_grade);
+        return (
+          regraded &&
+          needsPrerequisiteOverride(studentId, body.school_term_id, row, old)
+        );
+      });
+      if (lacksOverride) return prerequisiteNotMetResponse();
       const results: ApiSchema<"AttemptResult">[] = body.rows.map(
         (row, index) => {
           const old = existing[index];
@@ -4850,7 +4965,7 @@ export const saaisMswHandlers = [
             inc_deadline: old?.inc_deadline ?? null,
             instructor: row.instructor ?? old?.instructor ?? null,
             prerequisite_override: Boolean(
-              row.continue_with_prerequisite_override ??
+              row.continue_with_prerequisite_override ||
               old?.prerequisite_override,
             ),
             prerequisite_grade_override:
@@ -5014,62 +5129,11 @@ export const saaisMswHandlers = [
         );
       if (
         !currentAttempt.prerequisite_override &&
-        ("final_grade" in body || "status" in body)
-      ) {
-        const required = db.prerequisites.filter(
-          (p) => p.course_id === offering?.course_id && p.type === "strict",
-        );
-        const unmet = required.some((prerequisite) => {
-          const slots = db.curriculumTermCourses
-            .filter((s) => s.course_id === prerequisite.prerequisite_course_id)
-            .map((s) => s.id);
-          const passed = (candidate: ApiSchema<"AttemptResult">) => {
-            const priorOffering = db.courseOfferings.find(
-              (o) => o.id === candidate.course_offering_id,
-            );
-            const priorTerm = db.schoolTerms.find(
-              (t) => t.id === priorOffering?.school_term_id,
-            );
-            return (
-              candidate.student_id === studentId &&
-              candidate.effective_status === "passed" &&
-              !!priorTerm &&
-              priorTerm.chronological_key < term.chronological_key
-            );
-          };
-          const direct = db.attemptResults.some(
-            (a) =>
-              passed(a) &&
-              db.courseOfferings.some(
-                (o) =>
-                  o.id === a.course_offering_id &&
-                  o.course_id === prerequisite.prerequisite_course_id,
-              ),
-          );
-          const credit = db.outsideCredits.some(
-            (c) =>
-              c.student_id === studentId &&
-              c.revoked_at == null &&
-              slots.includes(c.destination_curriculum_term_course_id) &&
-              c.decided_at.slice(0, 10) <= term.ends_on,
-          );
-          const equivalent = db.equivalencyDecisions.some(
-            (d) =>
-              d.student_id === studentId &&
-              d.revoked_at == null &&
-              slots.includes(d.destination_curriculum_term_course_id) &&
-              d.decided_at.slice(0, 10) <= term.ends_on &&
-              db.attemptResults.some((a) => a.id === d.attempt_id && passed(a)),
-          );
-          return !direct && !credit && !equivalent;
-        });
-        if (unmet)
-          return errorJson(
-            409,
-            "PREREQUISITE_NOT_MET",
-            "A strict prerequisite is not satisfied and this attempt has no override.",
-          );
-      }
+        ("final_grade" in body || "status" in body) &&
+        offering &&
+        hasUnmetStrictPrerequisite(studentId, offering.course_id, term)
+      )
+        return prerequisiteNotMetResponse();
       let finalGrade = (
         "final_grade" in body ? body.final_grade : currentAttempt.final_grade
       ) as number | null;
