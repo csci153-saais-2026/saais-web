@@ -17,6 +17,12 @@ begin
   perform test.assert(result->>'department_id' is null, 'Admin defaults to institutional settings.');
 
   perform test.login(2);
+  result := public.matt_operation('updateSystemSettings', '{}',
+    '{"warning_pct":20.5,"probation_pct":40.5,"dismissal_pct":60.5,"sender_email":"alerts@example.org"}');
+  perform test.assert((result->>'warning_pct')::numeric=20.5 and result->>'sender_email'='alerts@example.org',
+    'Schema-valid decimals and non-VSU sender are accepted');
+  result := public.matt_operation('updateSystemSettings', '{}',
+    '{"warning_pct":20,"probation_pct":40,"dismissal_pct":60,"sender_email":"notification@vsu.edu.ph"}');
   select probation_pct into prior_probation from public.system_settings where department_id = department;
   result := public.matt_operation('updateSystemSettings', '{}',
     '{"warning_pct":26,"sender_email":"head-settings-test@vsu.edu.ph"}');

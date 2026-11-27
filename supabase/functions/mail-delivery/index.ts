@@ -1,4 +1,5 @@
 import { readMailEnvironment, createMailHandler } from "../_shared/mail.ts";
+import { reconcilePendingDeletedPhotos } from "../_shared/photo-cleanup.ts";
 
 const runtime = (
   globalThis as unknown as {
@@ -9,6 +10,10 @@ const runtime = (
   }
 ).Deno;
 
+const env = readMailEnvironment((name) => runtime.env.get(name));
+
 runtime.serve(
-  createMailHandler(readMailEnvironment((name) => runtime.env.get(name))),
+  createMailHandler(env, fetch, {
+    reconcilePhotos: () => reconcilePendingDeletedPhotos(env, fetch),
+  }),
 );

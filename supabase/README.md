@@ -8,7 +8,7 @@ This implementation targets approved OpenAPI **0.3.1 at `8df551183962d19ab724c9f
 | --- | --- |
 | `catalog` | 30 assigned writes; `20261112000500_jerome_catalog.sql` |
 | `school-terms` | Department closure/reopening and Admin override; `20261112000600_jerome_school_terms.sql` |
-| `students` | Jerome's 11 student routes; credit and curriculum migrations |
+| `students` | Student credit and curriculum routes |
 | `curriculum-transfers` | One approval/rejection route; curriculum migration |
 | `notifications` | Mark-read and scheduled evaluation; notification migration |
 
@@ -74,7 +74,7 @@ service-role key must remain server-side and provisioning must validate its own
 authorization. Hosted hook configuration and Google OAuth remain deployment
 tasks; RLS and active-profile checks continue to enforce data access.
 
-The database runner runs the domain suite, then rebuilds its disposable database for application fixtures and rolls back each application test. This keeps sample identities, transfer decisions and term locks isolated between the suites. It uses PostgreSQL binaries from `C:/Program Files/PostgreSQL/18/bin` by default. Set `PG_BINARY_DIR` for a different installation. It starts an isolated cluster under ignored `supabase/.temp/jerome-pg` on `127.0.0.1:55432`, creates a uniquely named temporary database, applies every migration, runs SQL tests plus a two-connection concurrency test, drops only that temporary database, and stops its server. Keep that port free. Its `bootstrap.sql` supplies a minimal **test-only** Auth schema; do not apply it to a Supabase project.
+The database runner runs the domain suite, then rebuilds its disposable database for application fixtures and rolls back each application test. This keeps sample identities, transfer decisions and term locks isolated between the suites. It uses PostgreSQL binaries from `C:/Program Files/PostgreSQL/18/bin` by default. Set `PG_BINARY_DIR` for a different installation. It starts an isolated cluster under ignored `supabase/.temp/backend-pg` on `127.0.0.1:55432`, creates a uniquely named temporary database, applies every migration, runs SQL tests plus a two-connection concurrency test, drops only that temporary database, and stops its server. Keep that port free. Its `bootstrap.sql` supplies a minimal **test-only** Auth schema; do not apply it to a Supabase project.
 
 The SQL suite checks successful execution of all 47 operations, curriculum-cloning Head/Staff permissions, Admin-only and cross-department denials with no partial writes, response validation, body/path validation, unauthenticated and forbidden requests, scope isolation, multi-role authorization, owned notifications, RLS/grants, stale updates, history, conflicts, late transaction rollback, Unicode duplicate normalization, zero-unit snapshots, INC/direct-credit collisions and concurrent writes. It uses synthetic accounts and data.
 
@@ -92,7 +92,7 @@ These checks do not emulate Supabase's gateway, cryptographic JWT verification, 
 
 ## Database integration
 
-The six `20261009...` migrations are copied unchanged from the existing team branch `origin/supabase/migrations` at `ec38495`. They remain the team's original schema contribution. Jerome's later migrations add required academic dependencies, relax obsolete positive-only constraints for empty drafts/zero-unit requirements, and implement the assigned workflows. Existing rows are retained. The November 21 migrations replace the catalog routine for the approved cloning rule and update the runtime contract snapshot. Apply these through migration history so existing databases receive both changes. Existing primary `student`, `adviser` and `admin` roles are backfilled into role assignments.
+The six `20261009...` migrations are copied unchanged from the existing team branch `origin/supabase/migrations` at `ec38495`. They remain the team's original schema contribution. The subsequent academic operations migrations add required academic dependencies, relax obsolete positive-only constraints for empty drafts/zero-unit requirements, and implement the assigned workflows. Existing rows are retained. The November 21 migrations replace the catalog routine for the approved cloning rule and update the runtime contract snapshot. Apply these through migration history so existing databases receive both changes. Existing primary `student`, `adviser` and `admin` roles are backfilled into role assignments.
 
 Review existing provisioning before enabling the new roles. The old three-role schema did not contain the required Head/Staff/Dean assignments. Provision their actual department/faculty scopes through the team's authorized account workflow, not through client payloads. Do not reapply copied base SQL manually to a project that already records those migration versions.
 
@@ -103,7 +103,7 @@ Audit and credit history reject update/delete/truncate. Credit edits retain the 
 ## Student, advising and account operations
 
 The shared `students/index.ts` serves both sets of student routes. The additional route
-registry in `functions/_shared/matt-routes.ts` lists the active operations.
+registry in `functions/_shared/academic-routes.ts` lists the active operations.
 `matt_operation` verifies the active profile and role, validates requests and
 responses against the pinned contract, and calls private SQL handlers.
 
@@ -117,7 +117,7 @@ responses against the pinned contract, and calls private SQL handlers.
 - The invitation lifecycle and student import need the shared Auth provisioning
   and invitation delivery workflow. Their contract entries are reserved.
 
-All student/credit writers must lock the student's profile row before changing decisions, attempts, assignments or completions. Jerome's public write boundary also takes transaction advisory lock `(531201, 1)` before domain writes. Preserve that lock order when composing multi-step transactions. Shared triggers prevent a passing direct attempt or INC completion from duplicating live credit. A conflicting decision must be resolved through the authorized audited workflow; grade routes must handle the resulting 409. These are shared integrity dependencies, not replacements for Matt's grade handlers.
+All student/credit writers must lock the student's profile row before changing decisions, attempts, assignments or completions. The catalog and curriculum RPC write boundary also takes transaction advisory lock `(531201, 1)` before domain writes. Preserve that lock order when composing multi-step transactions. Shared triggers prevent a passing direct attempt or INC completion from duplicating live credit. A conflicting decision must be resolved through the authorized audited workflow; grade routes must handle the resulting 409. The grade handlers rely on these shared integrity checks.
 
 ## Scheduled notifications and delivery
 
@@ -139,7 +139,5 @@ Notification rows with `email_delivery_status='pending'` form the delivery queue
 - Sources already used by live credit decisions are excluded from automatic reassignment matches. Earlier decisions remain intact; conflicting old decisions require explicit review/revocation before reusing the source. No historical decision is silently overwritten.
 - Assignment dates must follow the previous assignment's start, match the target's effectivity, and use an active target version. Future-dated assignment changes are rejected because the current-assignment model is end-date based. The contract's lifecycle/effectivity descriptions do not fully enumerate these transitions; confirm the eligibility policy with the team.
 - School-term catalog writes cannot be used by Head/Staff to bypass the explicit Admin-only institution-lock rule. Reopening a department leaves the institution lock intact.
-
-See `docs/backend/jerome-implementation-report.md` for the operation-by-operation status, actual verification results and Git contribution inventory.
 
 The current integration registers 81 operations across both contributions, including the saved-attempt rejection endpoint. Both runtime snapshots now use the approved OpenAPI 0.3.1 version and hash. See [integration follow-up](../docs/backend/integration-follow-up.md) for the deferred operations, affected application workflows and remaining provider/deployment work.

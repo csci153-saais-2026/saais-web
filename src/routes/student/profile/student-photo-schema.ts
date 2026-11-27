@@ -23,7 +23,7 @@ export const studentPhotoFileSchema = z.object({
  * mirroring `ApiSchema<'StudentPhotoUpdateRequest'>`.
  */
 export const studentPhotoSchema = studentPhotoFileSchema.extend({
-  storage_object_path: z.string().nullable().optional(),
+  storage_object_path: z.string().min(1).max(512).regex(/\S/),
   avatar_url: z.string().min(1, "Profile photo URL is required."),
 }) satisfies z.ZodType<ApiSchema<"StudentPhotoUpdateRequest">>;
 

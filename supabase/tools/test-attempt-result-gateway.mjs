@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
+import { createDataApiHandler } from "../functions/_shared/data-api.ts";
 
 test("signed-in student sees only safe attempt results through PostgREST", async () => {
   const {
@@ -51,16 +52,27 @@ test("signed-in student sees only safe attempt results through PostgREST", async
   assert.equal(user.id, studentId);
 
   const headers = { apikey: anon, Authorization: `Bearer ${token}` };
-  async function list(query) {
-    const response = await fetch(`${api}/rest/v1/attempt_result${query}`, {
-      headers: { ...headers, "Accept-Profile": "saais_api" },
-      signal: AbortSignal.timeout(5000),
-    });
+  const gateway = createDataApiHandler({
+    url: api,
+    publicKey: anon,
+    serviceKey: service,
+    origins: [],
+  });
+  async function list(
+    query,
+    resource = "attempt_result",
+    profile = "saais_api",
+  ) {
+    const response = await gateway(
+      new Request(`${api}/functions/v1/data-api/${resource}${query}`, {
+        headers: profile ? { ...headers, "Accept-Profile": profile } : headers,
+      }),
+    );
     return { status: response.status, body: await response.json() };
   }
 
   const approvedFields =
-    "?select=id,student_id,final_grade,effective_status&limit=100";
+    "?select=id,student_id,final_grade,effective_status&order=id.asc&limit=100";
   let ordinary = await list(approvedFields);
   // PostgREST may serve requests before the schema cache is loaded after a reset.
   for (
@@ -95,7 +107,53 @@ test("signed-in student sees only safe attempt results through PostgREST", async
   });
   const column = await list("?select=grade_fix_history");
   assert.equal(column.status, 400);
-  assert.equal(column.body.code, "42703");
+  assert.equal(column.body.code, "PT400");
+
+  assert.equal((await list("?limit=1", "attempt_result", null)).status, 400);
+  const crossProfile = await list(`?id=neq.${studentId}&select=id`, "profile");
+  assert.deepEqual(crossProfile, { status: 200, body: [] });
+
+  const nested = await list("?select=id,profile(id)&limit=1", "attempt");
+  assert.equal(
+    nested.status,
+    400,
+    "The Edge gateway rejects nested embeddings",
+  );
+  const unlistedOrder = await list("?order=reason.asc&limit=1");
+  assert.equal(
+    unlistedOrder.status,
+    400,
+    "The Edge gateway rejects unlisted ordering",
+  );
+
+  for (const [resource, profile] of [
+    ["profile", undefined],
+    ["profile", "public"],
+    ["attempt_result", "saais_api"],
+  ]) {
+    const direct = await fetch(`${api}/rest/v1/${resource}?select=id&limit=1`, {
+      headers: profile ? { ...headers, "Accept-Profile": profile } : headers,
+      signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(
+      direct.status,
+      403,
+      `Direct reads are denied through ${profile ?? "the default schema"}`,
+    );
+  }
+  const keyRead = await fetch(
+    `${api}/rest/v1/rpc/saais_read_data_api_gateway_key`,
+    {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Profile": "public",
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    },
+  );
+  assert.equal(keyRead.status, 403, "The gateway key is service-role only");
 
   for (const [name, input] of [
     ["read_attempt_results", { p_student: studentId }],

@@ -115,7 +115,7 @@ export async function runInvitation(
     return result as Json;
   }
 
-  async function provision(input: Json) {
+  async function provision(input: Json, batchKey?: string) {
     const prepared = await rpc("prepare", input);
     if (prepared.profile_id) return prepared;
     if (
@@ -142,7 +142,11 @@ export async function runInvitation(
       // A duplicate can also mean a concurrent or previously interrupted request
       // finished the Auth step. The database only attaches the reserved identity.
     }
-    return rpc("finish", input, newToken());
+    return rpc(
+      "finish",
+      batchKey ? { ...input, batch_key: batchKey } : input,
+      newToken(),
+    );
   }
 
   // Protected operations use the authenticated actor budget.
@@ -155,18 +159,42 @@ export async function runInvitation(
     await rpc("validate", data);
     const rows = data.rows as Json[];
     const results: Json[] = [];
+    const normalizeIdentity = (value: unknown) =>
+      String(value ?? "")
+        .trim()
+        .toLowerCase();
+    const batchKey =
+      data.mode === "commit"
+        ? bytesToHex(
+            new Uint8Array(
+              await crypto.subtle.digest(
+                "SHA-256",
+                new TextEncoder().encode(
+                  rows
+                    .map(
+                      (row) =>
+                        `${normalizeIdentity(row.email)}|${normalizeIdentity(row.student_number)}`,
+                    )
+                    .sort()
+                    .join("\n"),
+                ),
+              ),
+            ),
+          )
+        : undefined;
     const seenRows = new Set<unknown>();
     const seenEmails = new Set<string>();
-    const seenNumbers = new Set<unknown>();
+    const seenNumbers = new Set<string>();
     const eligible = rows.map((row) => {
-      const email = String(row.email).trim().toLowerCase();
+      const email = normalizeIdentity(row.email);
+      const number = normalizeIdentity(row.student_number);
       const duplicate =
         seenRows.has(row.row_number) ||
         seenEmails.has(email) ||
-        seenNumbers.has(row.student_number);
+        seenNumbers.has(number);
       seenRows.add(row.row_number);
       seenEmails.add(email);
-      seenNumbers.add(row.student_number);
+      seenNumbers.add(number);
       return !duplicate;
     });
     let next = 0;
@@ -188,7 +216,14 @@ export async function runInvitation(
                 "Duplicate row, email, or student number in this batch.",
               );
             if (data.mode === "preview") await rpc("preview", row);
-            else await provision(row);
+            else {
+              const provisioned = await provision(row, batchKey);
+              if (typeof provisioned.profile_id !== "string")
+                throw new InvitationError(
+                  500,
+                  "Provisioned student was not returned.",
+                );
+            }
             results[index] = {
               ...result,
               outcome: data.mode === "preview" ? "valid" : "imported",

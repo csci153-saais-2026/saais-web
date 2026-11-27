@@ -53,6 +53,7 @@ function matchesSecret(supplied: string, secret: string) {
 export function createMailHandler(
   env: MailEnvironment,
   fetcher: typeof fetch = fetch,
+  maintenance?: { reconcilePhotos?: () => Promise<unknown> },
 ) {
   const site = URL.parse(env.siteUrl);
   async function rpc(name: string, body: object) {
@@ -67,6 +68,17 @@ export function createMailHandler(
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(5000),
     });
+  }
+
+  async function finishMail(mail: Mail, outcome: string) {
+    const result = await rpc("saais_finish_email", {
+      p_id: mail.id,
+      p_kind: mail.kind,
+      p_lease: mail.lease,
+      p_outcome: outcome,
+    });
+    if (!result.ok) throw new Error("Could not record delivery.");
+    return outcome;
   }
 
   return async (request: Request) => {
@@ -107,10 +119,13 @@ export function createMailHandler(
                 env.recipients &&
                 !env.recipients.has(mail.email.trim().toLowerCase())
               ) {
-                throw new Error("Claimed recipient is not allowed.");
+                return finishMail(mail, "failed");
               }
               let outcome = "retry";
-              const link = new URL("/invite", site);
+              // A trailing slash keeps the site's base path in the link.
+              const base = new URL(site);
+              base.pathname = base.pathname.replace(/\/*$/, "/");
+              const link = new URL("invite", base);
               link.hash = `token=${mail.token ?? ""}`;
               const message =
                 mail.kind === "invitation"
@@ -146,14 +161,7 @@ export function createMailHandler(
               } catch {
                 /* Retry with the same provider idempotency key. */
               }
-              const result = await rpc("saais_finish_email", {
-                p_id: mail.id,
-                p_kind: mail.kind,
-                p_lease: mail.lease,
-                p_outcome: outcome,
-              });
-              if (!result.ok) throw new Error("Could not record delivery.");
-              return outcome;
+              return finishMail(mail, outcome);
             }),
           )),
         );
@@ -165,6 +173,9 @@ export function createMailHandler(
       const interrupted = outcomes.filter(
         (item) => item.status === "rejected",
       ).length;
+      if (maintenance?.reconcilePhotos) {
+        await maintenance.reconcilePhotos().catch(() => {});
+      }
       return Response.json(
         {
           sent: count("sent"),

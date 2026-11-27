@@ -1,4 +1,4 @@
-# Jerome implementation and contribution report
+# Academic operations implementation and contribution report
 
 Original implementation date: 12 November 2026 (Asia/Manila). Branch: `feat/jerome-edge-functions`. Initial checkout: `03ce7ac1764334deeee564601de8a68e6a4bdf00`, clean and matching `feat/backend`. No branch switch, push, PR creation, reset, stash, amend or history rewrite was performed.
 
@@ -88,7 +88,7 @@ Important files:
 | `supabase/functions/_shared/serve.ts` | Deno startup and named/singular/legacy public-key environment support. |
 | `supabase/functions/_shared/contract.json` | Generated 47-operation request/response snapshot from the assigned Git object. |
 | Five function `index.ts` files | Entry points for catalog, school-terms, students, curriculum-transfers and notifications. |
-| `supabase/functions/students/jerome-routes.ts` | Separate eleven-route integration list for the shared students function. |
+| `supabase/functions/students/credit-transfer-routes.ts` | Separate eleven-route integration list for the shared students function. |
 | `supabase/config.toml` | JWT verification for the five functions and bounded API rows. |
 | `supabase/tsconfig.json`, `supabase/deno.json` | Separate backend typecheck/runtime configuration. |
 | `supabase/tools/snapshot-contract.cjs` | Deterministically regenerates the HTTP and SQL contract snapshots without editing the working-tree contract. |
@@ -126,7 +126,7 @@ The inventory contains **19 migrations** (6 reused base migrations, 13 new migra
 
 Complete created-file inventory before this final documentation commit:
 
-- `docs/backend/jerome-implementation-plan.md`
+- `docs/backend/academic-operations-implementation-plan.md`
 - `supabase/config.toml`
 - `supabase/deno.json`
 - `supabase/functions/_shared/contract.json`
@@ -137,7 +137,7 @@ Complete created-file inventory before this final documentation commit:
 - `supabase/functions/notifications/index.ts`
 - `supabase/functions/school-terms/index.ts`
 - `supabase/functions/students/index.ts`
-- `supabase/functions/students/jerome-routes.ts`
+- `supabase/functions/students/credit-transfer-routes.ts`
 - `supabase/migrations/20261009000100_v3_identity.sql`
 - `supabase/migrations/20261009000110_v3_catalog.sql`
 - `supabase/migrations/20261009000120_v3_curriculum.sql`
@@ -183,7 +183,7 @@ Complete created-file inventory before this final documentation commit:
 - `supabase/tools/test-database.cjs`
 - `supabase/tsconfig.json`
 - `supabase/README.md` (this final documentation unit)
-- `docs/backend/jerome-implementation-report.md` (this report)
+- `docs/backend/academic-operations-implementation-report.md` (this report)
 
 ## Security and transaction implementation
 
@@ -217,7 +217,7 @@ Development failures were addressed rather than hidden: early SQL runs caught am
 
 Environment limits: Deno was not installed and no `deno check`/Edge runtime run was executed. Docker Desktop's Linux engine was unavailable. The Supabase CLI version probe encountered a sandbox-denied telemetry-profile write; no local full-stack Supabase test was claimed. Initial localhost database access needed sandbox escalation; the disposable runner then executed real PostgreSQL tests and stopped its server. No hosted credentials or external student data were used.
 
-## Matt integration requirements
+## Integration requirements for student and account routes
 
 Jerome owns these eleven students routes: `previewCurriculumShift`, `assignStudentCurriculum`, `endorseCurriculumTransfer`, `createOutsideCredit`, `revokeOutsideCredit`, `createElectiveMapping`, `updateElectiveMapping`, `revokeElectiveMapping`, `createEquivalencyDecision`, `updateEquivalencyDecision`, `revokeEquivalencyDecision`. The twelfth student-related operation, `decideCurriculumTransfer`, has its own function prefix.
 
@@ -249,7 +249,7 @@ Contribution: integrate team schema and add Jerome workflow dependencies.
 
 Files:
 
-- `docs/backend/jerome-implementation-plan.md`
+- `docs/backend/academic-operations-implementation-plan.md`
 - `supabase/migrations/20261009000100_v3_identity.sql`
 - `supabase/migrations/20261009000110_v3_catalog.sql`
 - `supabase/migrations/20261009000120_v3_curriculum.sql`
@@ -319,7 +319,7 @@ Files:
 
 - `supabase/functions/curriculum-transfers/index.ts`
 - `supabase/functions/students/index.ts`
-- `supabase/functions/students/jerome-routes.ts`
+- `supabase/functions/students/credit-transfer-routes.ts`
 - `supabase/migrations/20261112000700_jerome_credits.sql`
 - `supabase/migrations/20261112000750_jerome_curriculum.sql`
 - `supabase/tests/25_student_setup.sql`
@@ -467,6 +467,6 @@ Files:
 
 ### Final documentation contribution
 
-The final documentation commit records the reproducible commands, deployment/integration requirements, operation statuses, security limits and this verified contribution inventory. Its exact hash is supplied in the final response after Git creates it. Files: `supabase/README.md`, `docs/backend/jerome-implementation-plan.md`, `docs/backend/jerome-implementation-report.md`.
+The final documentation commit records the reproducible commands, deployment/integration requirements, operation statuses, security limits and this verified contribution inventory. Its exact hash is supplied in the final response after Git creates it. Files: `supabase/README.md`, `docs/backend/academic-operations-implementation-plan.md`, `docs/backend/academic-operations-implementation-report.md`.
 
 No implementation is deliberately left uncommitted. Ignored build output, pinned-check copies and the stopped disposable PostgreSQL cluster remain local test artifacts under ignored paths. No changes were pushed.
