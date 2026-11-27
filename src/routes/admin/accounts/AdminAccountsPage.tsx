@@ -118,12 +118,20 @@ function getOrganization(
   };
 }
 
-const RESENDABLE_INVITATION_STATUSES = new Set<ApiSchema<"InvitationStatus">>([
+const RESENDABLE_INVITATION_STATUSES = new Set([
   "pending",
   "expired",
   "revoked",
   "declined",
 ]);
+
+function isResendableInvitation(
+  profileStatus: ApiSchema<"ProfileStatus">,
+  invitationStatus: ApiSchema<"InvitationStatus"> | null | undefined,
+): boolean {
+  if (profileStatus !== "invited" || !invitationStatus) return false;
+  return RESENDABLE_INVITATION_STATUSES.has(invitationStatus);
+}
 
 function getInitials(fullName: string): string {
   const parts = fullName
@@ -473,12 +481,10 @@ export default function AdminAccountsPage() {
                   const hasPendingInvitation =
                     invitationStatus === "pending" &&
                     profile.status === "invited";
-                  const canResendInvitation =
-                    profile.status === "invited" &&
-                    Boolean(
-                      invitationStatus &&
-                        RESENDABLE_INVITATION_STATUSES.has(invitationStatus),
-                    );
+                  const canResendInvitation = isResendableInvitation(
+                    profile.status,
+                    invitationStatus,
+                  );
                   const isCurrentAccount =
                     profile.id === user?.id ||
                     profile.email.trim().toLowerCase() ===
