@@ -120,5 +120,47 @@ begin
 
   result := public.saais_evaluate_access_token('{"user_id":"00000005-0000-4000-8000-000000000000","claims":{"email":"person5@example.test"}}');
   perform test.assert(result->>'allowed' = 'true', 'Active provisioned profile passes access-token hook');
+
+  declare
+    target uuid := '00000005-0000-4000-8000-000000000000';
+    token_event jsonb := jsonb_build_object('user_id', target, 'authentication_method', 'password',
+      'claims', jsonb_build_object('session_id', '00000005-0000-4000-8000-000000000099'));
+    refresh_event jsonb := jsonb_set(token_event, '{authentication_method}', '"token_refresh"');
+    before_sign_ins bigint := (select count(*) from public.audit_log_entry where action = 'sign_in_succeeded');
+  begin
+    update public.profile set status = 'invited' where id = target;
+    result := public.saais_evaluate_access_token(token_event, 'msg_invited');
+    perform test.assert(result->>'allowed' = 'false' and result->>'http_code' = '403',
+      'Invited accounts cannot receive tokens');
+    perform test.assert(exists(select 1 from public.audit_log_entry
+      where action = 'login_rejected' and entity_id = target
+        and new_value->>'rejection_reason' = 'unprovisioned_account'), 'Invited denial is audited');
+
+    result := public.saais_evaluate_access_token(jsonb_set(token_event, '{user_id}',
+      '"12345678-0000-4000-8000-000000000000"'));
+    perform test.assert(result->>'allowed' = 'false' and result->>'rejection_reason' = 'unprovisioned_account',
+      'Missing profiles cannot receive tokens');
+
+    update public.profile set status = 'active' where id = target;
+    result := public.saais_evaluate_access_token(refresh_event, 'msg_refresh_first');
+    perform test.assert(result->>'allowed' = 'true' and
+      (select count(*) = before_sign_ins from public.audit_log_entry where action = 'sign_in_succeeded'),
+      'A refresh on a session with no audit record does not log a sign-in');
+    result := public.saais_evaluate_access_token(token_event, 'msg_first_sign_in');
+    perform test.assert(result->>'allowed' = 'true', 'The account can sign in after activation');
+    perform public.saais_evaluate_access_token(token_event, 'msg_sign_in_redelivered');
+    perform public.saais_evaluate_access_token(refresh_event, 'msg_refresh_after_sign_in');
+    perform test.assert((select count(*) = before_sign_ins + 1 from public.audit_log_entry
+      where action = 'sign_in_succeeded' and action_category = 'sign_in'
+        and actor_id = target and student_id = target), 'Only one audit event for the same session');
+
+    token_event := jsonb_set(jsonb_set(token_event, '{authentication_method}', '"oauth"'),
+      '{claims,session_id}', '"00000005-0000-4000-8000-000000000100"');
+    result := public.saais_evaluate_access_token(token_event, 'msg_google_sign_in');
+    perform test.assert(result->>'allowed' = 'true' and
+      (select count(*) = before_sign_ins + 2 from public.audit_log_entry
+       where action = 'sign_in_succeeded' and action_category = 'sign_in'),
+      'A separate OAuth sign-in writes its own event');
+  end;
 end;
 $$;

@@ -19,6 +19,52 @@ const env = {
 };
 const token = "a".repeat(64);
 
+test("only an Auth email_exists error can resume invitation provisioning", async () => {
+  for (const [code, expected] of [
+    ["email_exists", 409],
+    ["validation_failed", 500],
+  ]) {
+    const stages = [];
+    const handler = createHandler("auth", {
+      env,
+      fetch: async (url, options) => {
+        if (String(url).endsWith("/auth/v1/user")) return Response.json({ id });
+        if (String(url).endsWith("/auth/v1/admin/users")) {
+          return Response.json(
+            { code: 422, error_code: code },
+            { status: 422 },
+          );
+        }
+        const { p_stage } = JSON.parse(options.body);
+        stages.push(p_stage);
+        if (p_stage === "admit") return Response.json({});
+        if (p_stage === "prepare") return Response.json({ reservation_id: id });
+        assert.equal(p_stage, "finish");
+        return Response.json(
+          { code: "PT409", message: "Email is already in use." },
+          { status: 409 },
+        );
+      },
+    });
+    const response = await handler(
+      request(
+        "/auth/invite",
+        {
+          email: "synthetic@vsu.edu.ph",
+        },
+        true,
+      ),
+    );
+    assert.equal(response.status, expected);
+    assert.deepEqual(
+      stages,
+      code === "email_exists"
+        ? ["admit", "prepare", "finish"]
+        : ["admit", "prepare"],
+    );
+  }
+});
+
 function request(path, body, signedIn = false, extraHeaders = {}) {
   return new Request(env.url + path, {
     method: "POST",

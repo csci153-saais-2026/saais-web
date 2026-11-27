@@ -133,11 +133,17 @@ export async function runInvitation(
         email_confirm: true,
         app_metadata: { saais_provisioning_id: prepared.reservation_id },
       });
-      if (!response.ok && response.status !== 422 && response.status !== 409) {
-        throw new InvitationError(
-          500,
-          "Auth provisioning failed. Retry the same request.",
-        );
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null);
+        if (
+          ![409, 422].includes(response.status) ||
+          (failure?.error_code ?? failure?.code) !== "email_exists"
+        ) {
+          throw new InvitationError(
+            500,
+            "Auth provisioning failed. Retry the same request.",
+          );
+        }
       }
       // A duplicate can also mean a concurrent or previously interrupted request
       // finished the Auth step. The database only attaches the reserved identity.
