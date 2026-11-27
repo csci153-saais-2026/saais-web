@@ -71,6 +71,22 @@ describe("PostgREST mock query fidelity", () => {
     ).toEqual([]);
   });
 
+  it("returns 20 rows by default and reports the full total", async () => {
+    const db = getMockDatabase();
+    const course = db.courses[0];
+    db.courses.splice(
+      0,
+      db.courses.length,
+      ...Array.from({ length: 25 }, (_, index) => ({
+        ...course,
+        id: `course-${index}`,
+      })),
+    );
+    const response = await read("/rest/v1/course", {});
+    expect(await response.json()).toHaveLength(20);
+    expect(response.headers.get("Content-Range")).toBe("0-19/25");
+  });
+
   it("compares timestamp offsets and includes the entire UTC upper date", async () => {
     const db = getMockDatabase();
     const entry = db.auditLogEntries[0];

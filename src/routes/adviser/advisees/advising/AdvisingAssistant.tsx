@@ -3,7 +3,10 @@ import type { ApiSchema } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatIcon, ChevronRightIcon, XIcon } from "@/components/icons";
-import { askAdvisingAssistant } from "./advising-assistant.api";
+import {
+  askAdvisingAssistant,
+  getAdvisingAssistantHistory,
+} from "./advising-assistant.api";
 import { AssistantReply } from "./AssistantReply";
 
 type Message = ApiSchema<"AdvisingAIMessage">;
@@ -23,6 +26,10 @@ export function AdvisingAssistant({
   const [error, setError] = useState("");
   const [verificationNotice, setVerificationNotice] = useState("");
   const [pending, setPending] = useState(false);
+  // Mock mode has no saved conversations to load.
+  const [history, setHistory] = useState<"loading" | "ready" | "failed">(
+    isMockMode ? "ready" : "loading",
+  );
   const mounted = useRef(true);
   const chatLog = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -36,6 +43,23 @@ export function AdvisingAssistant({
       chatLog.current.scrollTop = chatLog.current.scrollHeight;
   }, [messages, pending, open]);
   const validStudent = !!studentId && UUID.test(studentId);
+  useEffect(() => {
+    if (!open || !validStudent || history !== "loading") return;
+    let active = true;
+    getAdvisingAssistantHistory(studentId).then(
+      (saved) => {
+        if (!active) return;
+        setMessages(saved);
+        setHistory("ready");
+      },
+      () => {
+        if (active) setHistory("failed");
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [open, validStudent, studentId, history]);
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,6 +68,7 @@ export function AdvisingAssistant({
       !studentId ||
       !validStudent ||
       pending ||
+      history === "loading" ||
       !text ||
       Array.from(text).length > 4000
     )
@@ -126,6 +151,16 @@ export function AdvisingAssistant({
                 Select a student record to use the assistant.
               </p>
             )}
+            {validStudent && history === "loading" && (
+              <p role="status" className="text-sm text-[#6E6C58]">
+                Loading earlier messages...
+              </p>
+            )}
+            {history === "failed" && (
+              <p role="status" className="text-sm text-[#6E6C58]">
+                Earlier messages could not be loaded.
+              </p>
+            )}
             {messages.map((item, index) => (
               <div
                 key={index}
@@ -199,6 +234,7 @@ export function AdvisingAssistant({
               disabled={
                 !validStudent ||
                 pending ||
+                history === "loading" ||
                 !message.trim() ||
                 Array.from(message.trim()).length > 4000
               }

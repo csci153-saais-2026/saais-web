@@ -27,6 +27,26 @@ describe("validateStudentPhotoImage", () => {
     expect(close).toHaveBeenCalledTimes(2);
   });
 
+  it("rejects an animated PNG before decoding", async () => {
+    const decode = vi.fn();
+    vi.stubGlobal("createImageBitmap", decode);
+    // PNG signature followed by an empty acTL chunk.
+    const animated = new File(
+      [
+        new Uint8Array([
+          137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0, 97, 99, 84, 76, 0, 0, 0,
+          0,
+        ]),
+      ],
+      "photo.png",
+      { type: "image/png" },
+    );
+    await expect(validateStudentPhotoImage(animated)).rejects.toThrow(
+      "Animated PNG photos are not supported.",
+    );
+    expect(decode).not.toHaveBeenCalled();
+  });
+
   it("rejects renamed text and mismatched MIME before decoding", async () => {
     const decode = vi.fn();
     vi.stubGlobal("createImageBitmap", decode);

@@ -5,6 +5,7 @@ import {
   type ImportPreviewRow,
 } from "@/components/features/student-import-modal";
 import { useNotify } from "../shared/notify-context";
+import { useHeadDepartmentIds } from "../shared/use-head-department-ids";
 import {
   readImportFile,
   submitStudentImport,
@@ -15,6 +16,7 @@ import {
 export function StudentImportDialog({ onClose }: { onClose: () => void }) {
   const client = useQueryClient();
   const notify = useNotify();
+  const departmentIds = useHeadDepartmentIds();
   const [error, setError] = useState("");
   const [lines, setLines] = useState<ImportLine[]>([]);
   const [results, setResults] = useState<ImportOutcome[] | null>(null);
@@ -35,7 +37,11 @@ export function StudentImportDialog({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       const parsed = await readImportFile(file);
-      const outcome = await submitStudentImport(parsed, "preview");
+      const outcome = await submitStudentImport(
+        parsed,
+        "preview",
+        departmentIds,
+      );
       setLines(parsed);
       setResults(outcome.results);
     } catch (failure) {
@@ -53,7 +59,7 @@ export function StudentImportDialog({ onClose }: { onClose: () => void }) {
     setError("");
     setBusy(true);
     try {
-      const outcome = await submitStudentImport(lines, "commit");
+      const outcome = await submitStudentImport(lines, "commit", departmentIds);
       setResults(outcome.results);
       await client.invalidateQueries({ queryKey: ["department-head"] });
       notify(

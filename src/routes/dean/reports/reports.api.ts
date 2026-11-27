@@ -1,5 +1,6 @@
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 import { fetchAllPages } from "@/routes/dean/shared/fetch-all-pages";
+import { readAllDepartments } from "@/lib/api/catalog";
 
 export async function getFacultyReport(
   signal?: AbortSignal,
@@ -12,9 +13,7 @@ export async function getFacultyReport(
 export async function getFacultyDepartments(
   signal?: AbortSignal,
 ): Promise<ApiSchema<"Department">[]> {
-  return unwrapApiResult(
-    await apiClient.GET("/rest/v1/department", { signal }),
-  );
+  return readAllDepartments(signal);
 }
 
 export async function getDeanAttemptResults(

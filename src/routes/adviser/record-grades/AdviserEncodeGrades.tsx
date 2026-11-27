@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { AdviserPage } from "../Adviser";
 import { useAuth } from "@/hooks/use-auth";
-import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { useScopedRequest } from "../advisees/use-scoped-request";
 import {
   getElectiveSlots,
@@ -14,7 +13,9 @@ import {
   getTermOfferings,
   saveTermGrades,
 } from "./encode.api";
-import type { ApiSchema } from "@/lib/api";
+import { isApiClientError, type ApiSchema } from "@/lib/api";
+import { PrerequisiteOverrideDialog } from "./PrerequisiteOverrideDialog";
+import { isOnGradeScale } from "@/lib/validation/grade-scale";
 import { getGrades } from "../advisees/checklist/record.api";
 import { PendingIncs, ExistingCourseRows } from "./ExistingGrades";
 import {
@@ -52,6 +53,15 @@ const emptyRow = (): Row => ({
   reason: "",
   remark: "",
 });
+type Offerings = Awaited<ReturnType<typeof getTermOfferings>>;
+
+/** Course code plus the prerequisites it is missing, for the override modal. */
+function overrideLabel(option: Offerings[number] | undefined) {
+  if (!option) return "an unlisted course";
+  const missing = option.unmet_prerequisites?.map((p) => p.code).join(", ");
+  return missing ? `${option.code} (missing ${missing})` : option.code;
+}
+
 function TermEditor({
   studentId,
   termId,
@@ -74,6 +84,16 @@ function TermEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  // Rows (attempt id, or offering id for new rows) waiting on an override.
+  const [blocked, setBlocked] = useState<{
+    keys: string[];
+    courses: string[];
+  } | null>(null);
+  // An added course waiting on the override modal.
+  const [adding, setAdding] = useState<{
+    offering: string;
+    slot?: string;
+  } | null>(null);
   const { data: loadedData, error: loadError } = useScopedRequest(
     JSON.stringify([userId, studentId, termId, revision, workspaceRevision]),
     true,
@@ -97,13 +117,38 @@ function TermEditor({
   const changedExisting = existingAttempts.filter((a) =>
     draftChanged(a, drafts[a.id] ?? emptyDraft(a)),
   );
-  async function save() {
+  /** The changed rows the server may have refused for an unmet prerequisite. */
+  function prerequisiteCandidates() {
+    const candidates = [
+      ...changedExisting
+        .filter((a) => {
+          const draft = drafts[a.id] ?? emptyDraft(a);
+          return !a.prerequisite_override && (draft.midterm || draft.final);
+        })
+        .map((a) => ({ key: a.id, offering: a.course_offering_id })),
+      ...rows
+        .filter((row) => !row.override)
+        .map((row) => ({ key: row.offering, offering: row.offering })),
+    ].map((item) => ({
+      ...item,
+      option: data?.find((o) => o.offering.id === item.offering),
+    }));
+    // The error does not name the row. If the preview flags none, it is stale,
+    // so ask about every candidate: the server ignores unneeded overrides.
+    const flagged = candidates.filter(
+      (item) => item.option?.has_unmet_strict_prerequisites,
+    );
+    return flagged.length ? flagged : candidates;
+  }
+  async function save(override?: { keys: string[]; reason: string }) {
+    const reasonFor = (key: string) =>
+      override?.keys.includes(key) ? override.reason : undefined;
     setError("");
     setBusy(true);
     try {
       await saveTermGrades(studentId, termId, [
         ...changedExisting.map((a) =>
-          draftPayload(a, drafts[a.id] ?? emptyDraft(a)),
+          draftPayload(a, drafts[a.id] ?? emptyDraft(a), reasonFor(a.id)),
         ),
         ...rows.map((row): ApiSchema<"EncodeTermGradeRowInput"> => {
           const offering = data!.find((o) => o.offering.id === row.offering)!;
@@ -123,16 +168,32 @@ function TermEditor({
             final_grade: row.final ? Number(row.final) : null,
             ...(row.status ? { status: row.status } : {}),
             remark: row.remark || null,
-            continue_with_prerequisite_override: row.override,
-            prerequisite_override_reason: row.override ? row.reason : null,
+            continue_with_prerequisite_override:
+              row.override || !!reasonFor(row.offering),
+            prerequisite_override_reason: row.override
+              ? row.reason
+              : (reasonFor(row.offering) ?? null),
           };
         }),
       ]);
       setRows([]);
       setDrafts({});
+      setBlocked(null);
       notify.success("Grades saved.");
       onSaved();
     } catch (e) {
+      const candidates =
+        !override && isApiClientError(e) && e.code === "PREREQUISITE_NOT_MET"
+          ? prerequisiteCandidates()
+          : [];
+      if (candidates.length) {
+        setBlocked({
+          keys: candidates.map((item) => item.key),
+          courses: candidates.map((item) => overrideLabel(item.option)),
+        });
+        return;
+      }
+      setBlocked(null);
       setError(e instanceof Error ? e.message : "Unable to save grades.");
     } finally {
       setBusy(false);
@@ -152,12 +213,7 @@ function TermEditor({
     data
       ?.filter((option) => takenCourseIds.has(option.offering.course_id))
       .map((option) => option.offering.id) ?? [];
-  const validGrade = (value: string) =>
-    !value ||
-    (Number.isFinite(Number(value)) &&
-      Number(value) >= 1 &&
-      Number(value) <= 5 &&
-      (Number(value) * 4) % 1 === 0);
+  const validGrade = (value: string) => !value || isOnGradeScale(Number(value));
   const invalid =
     !data ||
     rows.some(
@@ -167,14 +223,43 @@ function TermEditor({
         occupied.includes(row.offering) ||
         (row.midterm !== "dr" && !validGrade(row.midterm)) ||
         !validGrade(row.final) ||
-        (data?.find((o) => o.offering.id === row.offering)
-          ?.has_unmet_strict_prerequisites &&
-          (!row.override || !row.reason.trim())) ||
         (row.status && row.final) ||
         rows.filter((r) => r.offering === row.offering).length > 1,
     );
+  const addRow = (offering: string, slot?: string, reason?: string) => {
+    setRows((old) => [
+      ...old,
+      {
+        ...emptyRow(),
+        offering,
+        ...(slot ? { slot } : {}),
+        ...(reason ? { override: true, reason } : {}),
+      },
+    ]);
+  };
   return (
     <>
+      {adding && (
+        <PrerequisiteOverrideDialog
+          courses={[
+            overrideLabel(data?.find((o) => o.offering.id === adding.offering)),
+          ]}
+          busy={busy}
+          onCancel={() => setAdding(null)}
+          onContinue={(reason) => {
+            addRow(adding.offering, adding.slot, reason);
+            setAdding(null);
+          }}
+        />
+      )}
+      {blocked && (
+        <PrerequisiteOverrideDialog
+          courses={blocked.courses}
+          busy={busy}
+          onCancel={() => setBlocked(null)}
+          onContinue={(reason) => void save({ keys: blocked.keys, reason })}
+        />
+      )}
       <Panel
         title="Courses"
         description="Midterm and final grades use the VSU scale: 1.00 to 3.00 passes, 5.00 fails, INC and DR are special marks. Saved courses cannot be removed."
@@ -280,7 +365,6 @@ function TermEditor({
                     <label>
                       <span className="sr-only">Final for {option?.code}</span>
                       <GradeSelect
-                        vsuScale
                         includeStatuses
                         disableDrop={row.midterm !== "dr"}
                         disabled={busy || row.midterm === "dr"}
@@ -323,41 +407,10 @@ function TermEditor({
                     >
                       ×
                     </Button>
-                    {option?.has_unmet_strict_prerequisites && (
-                      <div className="rounded-md border p-3 sm:col-span-2 lg:col-span-6">
-                        <p>
-                          Unmet strict prerequisites:{" "}
-                          {option.unmet_prerequisites
-                            ?.map((p) => p.code)
-                            .join(", ") || "See course details"}
-                          .
-                        </p>
-                        <label>
-                          <input
-                            type="checkbox"
-                            disabled={busy}
-                            checked={row.override}
-                            onChange={(e) =>
-                              change(i, { override: e.target.checked })
-                            }
-                          />{" "}
-                          Continue with override
-                        </label>
-                        {row.override && (
-                          <label className="grid gap-1">
-                            Override reason
-                            <input
-                              disabled={busy}
-                              maxLength={REASON_MAX_LENGTH}
-                              className="rounded-md border p-2"
-                              value={row.reason}
-                              onChange={(e) =>
-                                change(i, { reason: e.target.value })
-                              }
-                            />
-                          </label>
-                        )}
-                      </div>
+                    {row.override && (
+                      <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-6">
+                        Prerequisite override: {row.reason}
+                      </p>
                     )}
                   </div>
                 );
@@ -374,19 +427,18 @@ function TermEditor({
                     unavailable={unavailableOfferings}
                     disabled={busy || !data.length || rows.length >= 100}
                     onAdd={(offering, slot) => {
-                      setRows((old) => [
-                        ...old,
-                        { ...emptyRow(), offering, ...(slot ? { slot } : {}) },
-                      ]);
+                      const option = data.find(
+                        (o) => o.offering.id === offering,
+                      );
+                      if (option?.has_unmet_strict_prerequisites)
+                        setAdding({ offering, slot });
+                      else addRow(offering, slot);
                     }}
                   />
                 </div>
                 {error && <p role="alert">{error}</p>}
                 {rows.length > 0 && invalid && (
-                  <p>
-                    Choose unique courses and provide any required override
-                    reasons.
-                  </p>
+                  <p>Choose unique courses and valid grades.</p>
                 )}
                 <div className="flex justify-end">
                   <Button
@@ -432,7 +484,7 @@ function SelectedWorkspace({
       <AccountSkeleton
         id="AdviserEncodeGrades-2"
         loading={!data && !error}
-        label="Loading student attempts?"
+        label="Loading student attempts…"
       >
         {error && (
           <div role="alert">

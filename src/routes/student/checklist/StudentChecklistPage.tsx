@@ -266,7 +266,8 @@ export function StudentChecklistView({
       faculty,
       earnedUnits: summary.earned_units,
       requiredUnits: summary.required_units,
-      sections: filteredTerms.map((term) => ({
+      // The signed report always lists every term, whatever filter is on.
+      sections: terms.map((term) => ({
         title: term.title,
         slots: term.slots.map((slot) => ({
           code: slot.code,
@@ -289,7 +290,7 @@ export function StudentChecklistView({
     faculty,
     summary.earned_units,
     summary.required_units,
-    filteredTerms,
+    terms,
   ]);
 
   const gwaDisplay =
@@ -438,8 +439,20 @@ async function fetchChecklistMeta(
         params: { query: { student_id: postgrestFilter.eq(studentId) } },
       })
       .then(unwrapApiResult),
-    apiClient.GET("/rest/v1/program").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/program", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/curriculum_version", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
     fetchAllPages(
       (limit, offset) =>
         apiClient.GET("/rest/v1/curriculum_term", {
@@ -454,7 +467,13 @@ async function fetchChecklistMeta(
         }),
       (row) => row.id,
     ),
-    apiClient.GET("/rest/v1/course").then(unwrapApiResult),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/course", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
     apiClient
       .GET("/rest/v1/adviser_assignment", {
         params: {
@@ -462,12 +481,25 @@ async function fetchChecklistMeta(
             student_id: postgrestFilter.eq(studentId),
             select: "id,adviser_id,adviser_name,start_date,end_date",
             order: "start_date.desc",
+            limit: 1000,
           },
         },
       })
       .then(unwrapApiResult),
-    apiClient.GET("/rest/v1/department").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/department", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/faculty", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
   ]);
 
   const profile = profiles[0] ?? null;
@@ -501,10 +533,16 @@ async function fetchChecklistMeta(
 function isLapsedIncAttempt(
   attempt: ReturnType<typeof pickSourceAttempt>,
 ): boolean {
+  if (attempt?.recorded_status !== "inc" || attempt.completion_grade != null)
+    return false;
+  // Checklist attempts carry no lapse flag: the contract may keep a lapsed INC
+  // as "inc", so compare the deadline with today in Manila.
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Manila",
+  });
   return (
-    attempt?.recorded_status === "inc" &&
-    attempt.effective_status === "failed" &&
-    attempt.completion_grade == null
+    attempt.effective_status === "failed" ||
+    (!!attempt.inc_deadline && attempt.inc_deadline < today)
   );
 }
 

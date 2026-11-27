@@ -23,6 +23,8 @@ import {
   buildAuditListQuery,
   type AuditFilters,
   type AuditLogRow,
+  AUDIT_WILDCARD_SEARCH_MAX_LENGTH,
+  MAX_AUDIT_OFFSET,
 } from "./admin-audit-model";
 import type { Column } from "@/components/features/data-table-panel";
 
@@ -83,9 +85,10 @@ export default function AdminAuditLogPage() {
   const loading = Boolean(query) && loadedRequestKey !== requestKey;
   const error = requestError?.key === requestKey ? requestError.message : null;
   const hasNextPage =
-    rangeTotal !== null
+    offset + AUDIT_PAGE_SIZE <= MAX_AUDIT_OFFSET &&
+    (rangeTotal !== null
       ? offset + AUDIT_PAGE_SIZE < rangeTotal
-      : entries.length === AUDIT_PAGE_SIZE;
+      : entries.length === AUDIT_PAGE_SIZE);
 
   useEffect(() => {
     if (!query) return;
@@ -300,7 +303,7 @@ export default function AdminAuditLogPage() {
                 <SearchInput
                   id="audit-student"
                   value={filters.student}
-                  maxLength={100}
+                  maxLength={AUDIT_WILDCARD_SEARCH_MAX_LENGTH}
                   placeholder="Search student name or ID"
                   onChange={(event) =>
                     updateFilter("student", event.target.value)

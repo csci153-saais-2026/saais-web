@@ -305,16 +305,14 @@ export async function listCourseCatalogPage(
     limit: PAGE_SIZE,
     offset,
     ...(departmentFilter ? { department_id: departmentFilter } : {}),
-    ...(filters.status
-      ? {
-          status:
-            filters.status === "active"
-              ? postgrestFilter.eq("active")
-              : postgrestFilter.neq("active"),
-        }
+    ...(filters.status === "active"
+      ? { status: postgrestFilter.eq("active") }
       : {}),
     ...(filters.search.trim() ? { or: searchFilter(filters.search) } : {}),
   };
+
+  if (filters.status === "inactive")
+    return listInactiveCoursePage(query, offset, signal);
 
   const result = await apiClient.GET("/rest/v1/course", {
     params: { query },
@@ -325,6 +323,46 @@ export async function listCourseCatalogPage(
     throw new Error("Course catalog returned invalid data.");
   const range = parseContentRange(result.response.headers.get("Content-Range"));
   return { courses, total: range?.total ?? null };
+}
+
+/**
+ * "Inactive" covers the `inactive` and `discontinued` statuses. The Data API
+ * accepts only one `eq.` status per request, so both are read in full and the
+ * page is cut from the merged list.
+ */
+async function listInactiveCoursePage(
+  query: OperationQuery<"listCourses">,
+  offset: number,
+  signal?: AbortSignal,
+): Promise<CourseCatalogPage> {
+  const groups = await Promise.all(
+    (["inactive", "discontinued"] as const).map(async (status) =>
+      completeRead<CatalogCourse>(
+        await apiClient.GET("/rest/v1/course", {
+          params: {
+            query: {
+              ...query,
+              status: postgrestFilter.eq(status),
+              limit: READ_LIMIT,
+              offset: 0,
+            },
+          },
+          signal,
+        }),
+        "Inactive courses",
+      ),
+    ),
+  );
+  const courses = groups
+    .flat()
+    .sort(
+      (a, b) =>
+        (a.code ?? "").localeCompare(b.code ?? "") || a.id.localeCompare(b.id),
+    );
+  return {
+    courses: courses.slice(offset, offset + PAGE_SIZE),
+    total: courses.length,
+  };
 }
 
 export const courseCatalogPageSize = PAGE_SIZE;

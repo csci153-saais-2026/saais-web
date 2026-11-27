@@ -28,6 +28,7 @@ export async function fetchStudentPlanItems(
       query: {
         student_id: postgrestFilter.eq(studentId),
         order: "display_order.asc",
+        limit: 1000,
       },
     },
   });
@@ -42,6 +43,7 @@ export async function fetchStudentAdvisingNotes(
       query: {
         student_id: postgrestFilter.eq(studentId),
         order: "created_at.desc",
+        limit: 1000,
       },
     },
   });
@@ -57,6 +59,7 @@ export async function fetchStudentAdviserAssignments(
         student_id: postgrestFilter.eq(studentId),
         select: ADVISER_ASSIGNMENT_SELECT,
         order: "start_date.desc",
+        limit: 1000,
       },
     },
   });

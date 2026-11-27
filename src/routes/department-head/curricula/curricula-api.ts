@@ -1,8 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import {
+  readAllCourses,
+  readAllCurriculumPairEquivalences,
+  readAllCurriculumTermCourses,
+  readAllCurriculumTerms,
+  readAllCurriculumTransferRequests,
+  readAllCurriculumVersions,
+  readAllDepartments,
+  readAllPrograms,
+} from "@/lib/api/catalog";
 import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
-export type CurriculumVersionStatus = "active" | "draft" | "retired";
+export type CurriculumVersionStatus = ApiSchema<"CurriculumVersionStatus">;
 export type CurriculumSemester = "Semester 1" | "Semester 2" | "Midyear";
 export type CurriculumSlotType =
   "Required course" | "Elective slot" | "GE slot";
@@ -77,8 +87,6 @@ const SLOT_TYPE_API: Record<
 };
 
 async function getCurricula(): Promise<CurriculaData> {
-  const get = <T>(load: () => Promise<{ data?: T; error?: unknown }>) =>
-    load().then(unwrapApiResult as (value: { data?: T; error?: unknown }) => T);
   const [
     versions,
     programs,
@@ -89,48 +97,14 @@ async function getCurricula(): Promise<CurriculaData> {
     transfers,
     pairs,
   ] = await Promise.all([
-    get(() =>
-      apiClient.GET("/rest/v1/curriculum_version", {
-        params: { query: { select: "*", limit: 100 } },
-      }),
-    ),
-    get(() =>
-      apiClient.GET("/rest/v1/program", {
-        params: { query: { select: "*", limit: 100 } },
-      }),
-    ),
-    get(() =>
-      apiClient.GET("/rest/v1/curriculum_term", {
-        params: { query: { select: "*", limit: 100 } },
-      }),
-    ),
-    get(() =>
-      apiClient.GET("/rest/v1/curriculum_term_course", {
-        params: { query: { select: "*", limit: 100 } },
-      }),
-    ),
-    get(() =>
-      apiClient.GET("/rest/v1/course", {
-        params: { query: { select: "*", limit: 100 } },
-      }),
-    ),
-    get(() =>
-      apiClient.GET("/rest/v1/department", {
-        params: {
-          query: { select: "id,name", order: "name.asc", limit: 1000 },
-        },
-      }),
-    ),
-    get(() =>
-      apiClient.GET("/rest/v1/curriculum_transfer_request", {
-        params: { query: { select: "*", limit: 100 } },
-      }),
-    ),
-    get(() =>
-      apiClient.GET("/rest/v1/curriculum_pair_equivalence", {
-        params: { query: { select: "*", limit: 100 } },
-      }),
-    ),
+    readAllCurriculumVersions(),
+    readAllPrograms(),
+    readAllCurriculumTerms(),
+    readAllCurriculumTermCourses(),
+    readAllCourses(),
+    readAllDepartments(),
+    readAllCurriculumTransferRequests(),
+    readAllCurriculumPairEquivalences(),
   ]);
   const records = versions.map((version): CurriculumVersionRecord => {
     const program = programs.find((item) => item.id === version.program_id);
@@ -163,10 +137,7 @@ async function getCurricula(): Promise<CurriculaData> {
       units: version.total_units,
       enrolled: version.enrolled_student_count ?? 0,
       from: version.effective_start,
-      status:
-        version.status === "active" || version.status === "draft"
-          ? version.status
-          : "retired",
+      status: version.status,
       references: references.length ? references : undefined,
       terms: terms
         .filter((term) => term.curriculum_version_id === version.id)
@@ -203,10 +174,9 @@ async function getCurricula(): Promise<CurriculaData> {
       id: program.id,
       code: program.code,
     })),
-    departments: departments.map((department) => ({
-      id: department.id,
-      name: department.name,
-    })),
+    departments: departments
+      .map((department) => ({ id: department.id, name: department.name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     courses: courses.map((course) => ({
       id: course.id,
       departmentId: course.department_id,
@@ -262,8 +232,11 @@ export async function createCurriculumVersion(
 
 export type UpdateCurriculumVersionInput = Omit<
   CreateCurriculumVersionInput,
-  "programId" | "cloneFromVersionId"
->;
+  "programId" | "cloneFromVersionId" | "status"
+> & {
+  /** Set only when the user changes it. */
+  status?: CurriculumVersionStatus;
+};
 
 export async function updateCurriculumVersion(
   id: string,
@@ -276,7 +249,7 @@ export async function updateCurriculumVersion(
         version_label: input.label,
         effective_start: input.start,
         total_units: input.units,
-        status: input.status,
+        ...(input.status ? { status: input.status } : {}),
       },
     }),
   );

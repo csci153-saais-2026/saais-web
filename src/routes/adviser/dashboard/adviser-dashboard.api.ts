@@ -1,4 +1,5 @@
 import { apiClient, unwrapApiResult } from "@/lib/api";
+import { readAllSchoolTerms } from "@/lib/api/catalog";
 
 export async function getAdviserDashboard(schoolTermId?: string) {
   return unwrapApiResult(
@@ -9,6 +10,6 @@ export async function getAdviserDashboard(schoolTermId?: string) {
 }
 
 export async function getSchoolTerms() {
-  const terms = unwrapApiResult(await apiClient.GET("/rest/v1/school_term"));
+  const terms = await readAllSchoolTerms();
   return [...terms].sort((a, b) => b.chronological_key - a.chronological_key);
 }

@@ -140,7 +140,6 @@ function PendingInc({
                 Completion grade
                 <GradeSelect
                   id="inc-completion-grade"
-                  vsuScale
                   required
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
@@ -331,7 +330,6 @@ function ExistingAttempt({
         <label>
           <span className="sr-only">New final grade</span>
           <GradeSelect
-            vsuScale
             includeStatuses
             disableDrop={midterm !== "dr"}
             disabled={disabled || midterm === "dr"}

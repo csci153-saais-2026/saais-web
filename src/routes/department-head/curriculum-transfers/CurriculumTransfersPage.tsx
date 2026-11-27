@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { REASON_MAX_LENGTH, REASON_MAX_MESSAGE } from "@/lib/validation/limits";
 import { QueryMessage } from "../shared/dh-ui";
 import { useNotify } from "../shared/notify-context";
+import { isApiClientError } from "@/lib/api";
 import type { TransferRequest } from "./transfers-api";
 import { useDecideTransfer, useTransfers } from "./use-transfers";
 
@@ -76,6 +77,11 @@ export default function CurriculumTransfersPage() {
       showToast(`Request for ${selectedRequest.studentName} ${decision}.`);
       setSelectedRequest(null);
     } catch (failure) {
+      if (isApiClientError(failure) && failure.isConflict) {
+        showToast(`${failure.message} The list has been refreshed.`);
+        setSelectedRequest(null);
+        return;
+      }
       setDecisionError(
         failure instanceof Error
           ? failure.message

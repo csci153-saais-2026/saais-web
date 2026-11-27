@@ -210,7 +210,7 @@ describe("selected grade actions", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Correct grade" }),
     );
-    expect(screen.getAllByRole("option", { name: "4.75" })).toHaveLength(1);
+    expect(screen.queryAllByRole("option", { name: "4.75" })).toHaveLength(0);
     expect(screen.getAllByRole("option", { name: "5.00" })).toHaveLength(2);
     expect(
       screen.getAllByRole("option", { name: "DR" }).length,

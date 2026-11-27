@@ -29,6 +29,7 @@ import {
   type PdfReportPayload,
 } from "@/lib/pdf/student-report-formatter";
 import { cn } from "@/lib/utils";
+import { fetchAllPages } from "../fetch-all-pages";
 import {
   useCreateGradeFlag,
   useRecordGradesExport,
@@ -126,7 +127,7 @@ function formatFinalOrCompletionGrade(attempt: TermGradesAttemptRow): string {
 function computeFailedUnits(attempts: readonly TermGradesAttemptRow[]): number {
   let failed = 0;
   for (const attempt of attempts) {
-    if (attempt.effective_status === "failed") {
+    if (attempt.effective_status === "failed" || attempt.is_lapsed_inc) {
       failed += attempt.units_attempted;
     }
   }
@@ -477,9 +478,27 @@ async function fetchStudentGradesMetadata(
     departments,
     faculties,
   ] = await Promise.all([
-    apiClient.GET("/rest/v1/school_term").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/course_offering").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/course").then(unwrapApiResult),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/school_term", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/course_offering", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/course", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
     apiClient
       .GET("/rest/v1/profile", {
         params: { query: { id: postgrestFilter.eq(studentId) } },
@@ -490,8 +509,20 @@ async function fetchStudentGradesMetadata(
         params: { query: { student_id: postgrestFilter.eq(studentId) } },
       })
       .then(unwrapApiResult),
-    apiClient.GET("/rest/v1/program").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/program", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/curriculum_version", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
     apiClient
       .GET("/rest/v1/adviser_assignment", {
         params: {
@@ -499,12 +530,25 @@ async function fetchStudentGradesMetadata(
             student_id: postgrestFilter.eq(studentId),
             select: "id,adviser_id,adviser_name,start_date,end_date",
             order: "start_date.desc",
+            limit: 1000,
           },
         },
       })
       .then(unwrapApiResult),
-    apiClient.GET("/rest/v1/department").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/department", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/faculty", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
   ]);
 
   return {

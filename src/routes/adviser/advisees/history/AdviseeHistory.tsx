@@ -36,13 +36,21 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const formatDate = (d: Date) =>
   `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 const formatTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// Advisers get the bare action name when a reassignment reason is redacted.
+const ACTION_LABELS: Record<string, string> = {
+  reassignAdviser: "Adviser reassigned",
+  bulkReassignAdvisers: "Advisers reassigned in bulk",
+};
 const humanizeAction = (action: string) => {
+  if (Object.hasOwn(ACTION_LABELS, action)) return ACTION_LABELS[action];
   const text = action.replace(/[._]+/g, " ").trim();
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 const formatAuditDetail = (detail?: string | null) => {
   const value = detail?.trim();
   if (!value) return "—";
+  if (Object.hasOwn(ACTION_LABELS, value))
+    return "Reason restricted to department heads";
   if (!/^[\w.-]+$/.test(value)) return value;
   return humanizeAction(value);
 };
