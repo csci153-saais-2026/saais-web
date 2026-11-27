@@ -9,3 +9,4 @@ mockup/
 contract/generated/
 contract/postman/
 contract/openapi.yaml
+supabase/functions/_shared/database.types.ts

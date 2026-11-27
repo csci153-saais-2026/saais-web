@@ -265,4 +265,114 @@ describe("PostgREST mock query fidelity", () => {
       );
     }
   });
+
+  it("supports documented OR search on /rest/v1/course and enforces per-endpoint OR allowlists", async () => {
+    const db = getMockDatabase();
+    const course = db.courses[0];
+    db.courses.splice(
+      0,
+      db.courses.length,
+      { ...course, id: "c1", code: "CSCI 101", title: "Intro to Computing" },
+      { ...course, id: "c2", code: "MATH 101", title: "Calculus I" },
+      { ...course, id: "c3", code: "PHYS 101", title: "Computing Physics" },
+    );
+
+    const matched = await read("/rest/v1/course", {
+      or: "(code.ilike.%CSCI%,title.ilike.%Physics%)",
+    });
+    expect(matched.status).toBe(200);
+    const matchedRows = await matched.json();
+    expect(matchedRows.map((row: { id: string }) => row.id)).toEqual([
+      "c1",
+      "c3",
+    ]);
+
+    const auditFieldOnCourse = await read("/rest/v1/course", {
+      or: "(actor_name.ilike.%Admin%)",
+    });
+    expect(auditFieldOnCourse.status).toBe(400);
+
+    const courseFieldOnAudit = await read("/rest/v1/audit_log_entry", {
+      or: "(title.ilike.%Computing%)",
+    });
+    expect(courseFieldOnAudit.status).toBe(400);
+  });
+});
+
+describe("PostgREST mock disjunction search", () => {
+  it("searches programs by code or name", async () => {
+    const program = getMockDatabase().programs[0];
+    for (const or of [
+      `(code.ilike.%${program.code}%,name.ilike.%no-such-name%)`,
+      `(code.ilike.%no-such-code%,name.ilike.%${program.name}%)`,
+    ]) {
+      const response = await read("/rest/v1/program", { or });
+      expect(response.status).toBe(200);
+      const rows: { id: string }[] = await response.json();
+      expect(rows.map((row) => row.id)).toContain(program.id);
+    }
+  });
+
+  it.each([
+    ["course", "title", 250],
+    ["program", "name", 150],
+  ] as const)(
+    "enforces the two-term filter and inner text limits for %s",
+    async (resource, field, maxText) => {
+      const path = `/rest/v1/${resource}`;
+      const search = (codeLength: number, textLength: number) =>
+        `(code.ilike.%${"a".repeat(codeLength)}%,${field}.ilike.%${"b".repeat(textLength)}%)`;
+
+      expect((await read(path, { or: search(100, maxText) })).status).toBe(200);
+      for (const or of [
+        search(101, maxText),
+        search(100, maxText + 1),
+        "(code.ilike.%A%)",
+        `(${field}.ilike.%B%,code.ilike.%A%)`,
+        `(code.ilike.%A%,${field}.ilike.%B%,code.ilike.%C%)`,
+        `(code.like.%A%,${field}.ilike.%B%)`,
+        `(code.ilike.A,${field}.ilike.%B%)`,
+        `(code.ilike.%%,${field}.ilike.%B%)`,
+      ]) {
+        const response = await read(path, { or });
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+          code: "INVALID_FILTER",
+        });
+      }
+    },
+  );
+});
+
+it("accepts mock student photos through the 5 MiB contract limit", async () => {
+  const student = MOCK_PERSONAS.student;
+  const url = `${base}/functions/v1/students/${student.profileId}/photo`;
+  const maxBytes = 5 * 1024 * 1024;
+  for (const [size, status] of [
+    [3 * 1024 * 1024, 200],
+    [maxBytes, 200],
+    [maxBytes + 1, 400],
+  ]) {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        ...headers,
+        Authorization: `Bearer ${student.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        storage_object_path: `students/${student.profileId}/avatar.png`,
+        avatar_url: "/student-photos/avatar.png",
+        mime_type: "image/png",
+        file_size_bytes: size,
+      }),
+    });
+    expect(response.status).toBe(status);
+    if (status === 400) {
+      await expect(response.json()).resolves.toMatchObject({
+        code: "FILE_TOO_LARGE",
+        message: "Profile photo must not exceed 5 MiB (5,242,880 bytes).",
+      });
+    }
+  }
 });

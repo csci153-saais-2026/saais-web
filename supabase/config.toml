@@ -1,0 +1,64 @@
+project_id = "saais"
+
+[api]
+enabled = true
+max_rows = 1000
+schemas = ["public", "saais_api", "graphql_public"]
+
+[functions.data-api]
+verify_jwt = true
+
+[functions.catalog]
+verify_jwt = true
+
+[functions.school-terms]
+verify_jwt = true
+
+[functions.students]
+verify_jwt = true
+
+[functions.curriculum-transfers]
+verify_jwt = true
+
+[functions.notifications]
+verify_jwt = true
+
+[functions.health]
+verify_jwt = true
+
+[functions.accounts]
+verify_jwt = true
+
+[functions.settings]
+verify_jwt = true
+
+[functions.audit]
+verify_jwt = true
+
+[functions.adviser-assignments]
+verify_jwt = true
+
+[functions.grade-flags]
+verify_jwt = true
+
+[functions.reports]
+verify_jwt = true
+
+[functions.grades]
+verify_jwt = true
+
+[functions.auth]
+verify_jwt = false
+
+[functions.mail-delivery]
+verify_jwt = false
+
+[functions.photo-cleanup]
+verify_jwt = false
+
+[functions.auth-hook]
+verify_jwt = false
+
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/saais_before_user_created"

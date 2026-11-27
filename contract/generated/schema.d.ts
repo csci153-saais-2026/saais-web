@@ -4249,10 +4249,10 @@ export interface components {
         };
         StudentPhotoUpdateRequest: {
             /** @description Object key inside the private `student-photos` Supabase Storage bucket (e.g. `students/<student_id>/avatar.png`). The backend checks its bytes, decodes the image, and stores a protected validated copy before updating the profile photo URL. */
-            storage_object_path?: string | null;
+            storage_object_path: string;
             avatar_url: string;
             /**
-             * @description Supported student profile photo MIME types (PNG or JPG only, matching the UI control).
+             * @description Supported student profile photo MIME types (static PNG or JPEG).
              * @enum {string}
              */
             mime_type: "image/jpeg" | "image/png";
