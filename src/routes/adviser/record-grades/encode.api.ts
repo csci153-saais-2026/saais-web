@@ -1,5 +1,6 @@
 import { ApiClientError, apiClient, unwrapApiResult } from "@/lib/api";
 import type { ApiSchema } from "@/lib/api";
+import { readAllCourses } from "@/lib/api/catalog";
 import { getRoster } from "../advisees/advisees.api";
 import { getChecklist } from "../advisees/checklist/record.api";
 export async function getEncodingChoices() {
@@ -49,11 +50,7 @@ export async function getTermOfferings(studentId: string, termId: string) {
       }
       throw error;
     }),
-    apiClient
-      .GET("/rest/v1/course", {
-        params: { query: { select: "id,is_elective", limit: 1000 } },
-      })
-      .then(unwrapApiResult),
+    readAllCourses(),
   ]);
   const electiveIds = new Set(
     courses.filter((course) => course.is_elective).map((course) => course.id),
