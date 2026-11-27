@@ -30,6 +30,7 @@ export type Environment = {
   origins: string[];
   assistant?: AssistantConfig;
   serviceKey?: string;
+  mailWorkerSecret?: string;
 };
 export type RouteGroup = string;
 export type PhotoPreparer = (
@@ -273,7 +274,11 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
             body,
             params.profile_id,
             caller,
-            { url: env.url, serviceKey: env.serviceKey || "" },
+            {
+              url: env.url,
+              serviceKey: env.serviceKey || "",
+              mailWorkerSecret: env.mailWorkerSecret,
+            },
             fetcher,
           );
           return Response.json(result, {

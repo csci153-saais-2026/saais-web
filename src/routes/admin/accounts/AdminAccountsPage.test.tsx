@@ -702,4 +702,64 @@ describe("AdminAccountsPage", () => {
 
     expect(screen.getByRole("combobox", { name: "Department" })).toBeTruthy();
   });
+
+  it("allows resending declined, expired, and revoked invitations while keeping revoke pending-only", async () => {
+    const declinedStudent = {
+      ...account,
+      profile: {
+        ...account.profile,
+        id: "profile-declined",
+        role: "student" as const,
+        roles: ["student"] as const,
+        full_name: "Declined Student",
+        email: "declined.student@vsu.edu.ph",
+        status: "invited" as const,
+        invitation_status: "declined" as const,
+      },
+      role_assignments: [
+        {
+          id: "role-declined",
+          profile_id: "profile-declined",
+          role: "student" as const,
+          faculty_id: "faculty-1",
+          department_id: "department-1",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+    };
+    getMock.mockImplementation((path: string) =>
+      Promise.resolve({
+        data:
+          path === "/functions/v1/accounts"
+            ? [declinedStudent]
+            : path === "/rest/v1/faculty"
+              ? faculties
+              : departments,
+        response: new Response(),
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Declined Student");
+    const trigger = screen.getByRole("button", {
+      name: "Actions for Declined Student",
+    });
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: "Enter", code: "Enter" });
+
+    const resendItem = await screen.findByRole("menuitem", { name: "Resend" });
+    const revokeItem = screen.getByRole("menuitem", { name: "Revoke" });
+    expect(resendItem.getAttribute("aria-disabled")).not.toBe("true");
+    expect(revokeItem.getAttribute("aria-disabled")).toBe("true");
+
+    fireEvent.click(resendItem);
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith(
+        "/functions/v1/accounts/{profile_id}/resend-invite",
+        expect.objectContaining({
+          params: { path: { profile_id: "profile-declined" } },
+        }),
+      );
+    });
+  });
 });

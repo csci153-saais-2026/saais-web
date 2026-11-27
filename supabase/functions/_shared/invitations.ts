@@ -22,7 +22,26 @@ export class InvitationError extends Error {
 
 type Json = Record<string, unknown>;
 type Caller = { id: string; authorization: string };
-type Services = { url: string; serviceKey: string };
+type Services = { url: string; serviceKey: string; mailWorkerSecret?: string };
+
+async function triggerMailDelivery(services: Services, fetcher: typeof fetch) {
+  if (!services.url || !services.mailWorkerSecret) return;
+  try {
+    const response = await fetcher(
+      `${services.url}/functions/v1/mail-delivery`,
+      {
+        method: "POST",
+        headers: {
+          "x-saais-mail-secret": services.mailWorkerSecret,
+        },
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    await response.body?.cancel();
+  } catch {
+    /* Leave the invitation queued for the scheduled mail-delivery worker. */
+  }
+}
 
 function bytesToHex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
@@ -158,8 +177,18 @@ export async function runInvitation(
   // Protected operations use the authenticated actor budget.
   if (caller) await rpc("admit", {});
 
-  if (id === "inviteUser") return provision(data);
-  if (id === "resendAccountInvite") return rpc("start", data, newToken());
+  if (id === "inviteUser") {
+    const result = await provision(data);
+    if (result.invitation_status === "pending") {
+      await triggerMailDelivery(services, fetcher);
+    }
+    return result;
+  }
+  if (id === "resendAccountInvite") {
+    const result = await rpc("start", data, newToken());
+    await triggerMailDelivery(services, fetcher);
+    return result;
+  }
   if (id === "revokeAccountInvite") return rpc("start", data);
   if (id === "importStudentsBatch") {
     await rpc("validate", data);
@@ -249,6 +278,12 @@ export async function runInvitation(
       },
     );
     await Promise.all(workers);
+    const importedCount = results.filter(
+      (row) => row.outcome === "imported",
+    ).length;
+    if (data.mode === "commit" && importedCount > 0) {
+      await triggerMailDelivery(services, fetcher);
+    }
     return {
       mode: data.mode,
       valid_count: results.filter(
@@ -256,8 +291,7 @@ export async function runInvitation(
       ).length,
       warning_count: 0,
       error_count: results.filter((row) => row.outcome === "error").length,
-      imported_count: results.filter((row) => row.outcome === "imported")
-        .length,
+      imported_count: importedCount,
       results,
     };
   }
