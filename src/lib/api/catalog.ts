@@ -54,3 +54,27 @@ export const readAllFaculties = (signal?: AbortSignal) =>
   readAll((query) =>
     apiClient.GET("/rest/v1/faculty", { params: { query }, signal }),
   );
+
+export const readAllCurriculumTerms = () =>
+  readAll((query) =>
+    apiClient.GET("/rest/v1/curriculum_term", { params: { query } }),
+  );
+
+export const readAllCurriculumTermCourses = () =>
+  readAll((query) =>
+    apiClient.GET("/rest/v1/curriculum_term_course", { params: { query } }),
+  );
+
+export const readAllCurriculumTransferRequests = () =>
+  readAll((query) =>
+    apiClient.GET("/rest/v1/curriculum_transfer_request", {
+      params: { query },
+    }),
+  );
+
+export const readAllCurriculumPairEquivalences = () =>
+  readAll((query) =>
+    apiClient.GET("/rest/v1/curriculum_pair_equivalence", {
+      params: { query },
+    }),
+  );
