@@ -457,13 +457,13 @@ describe("encoding workspace identity", () => {
     const mid = screen.getByLabelText("Midterm for CS 2") as HTMLSelectElement;
     const final = screen.getByLabelText("Final for CS 2") as HTMLSelectElement;
     const remark = screen.getByLabelText("Status for CS 2");
-    expect(within(mid).getByRole("option", { name: "4.75" })).toBeTruthy();
+    expect(within(mid).queryByRole("option", { name: "4.75" })).toBeNull();
     expect(within(final).queryByRole("option", { name: "4.75" })).toBeNull();
     fireEvent.change(mid, { target: { value: "dr" } });
     expect(final.value).toBe("dr");
     expect(final.disabled).toBe(true);
     expect(remark.textContent).toBe("Dropped");
-    fireEvent.change(mid, { target: { value: "4.75" } });
+    fireEvent.change(mid, { target: { value: "3.00" } });
     expect(final.disabled).toBe(false);
     expect(final.value).toBe("");
     fireEvent.change(final, { target: { value: "5.00" } });

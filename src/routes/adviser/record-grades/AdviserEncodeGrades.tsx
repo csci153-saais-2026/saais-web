@@ -16,6 +16,7 @@ import {
 } from "./encode.api";
 import { isApiClientError, type ApiSchema } from "@/lib/api";
 import { PrerequisiteOverrideDialog } from "./PrerequisiteOverrideDialog";
+import { isOnGradeScale } from "@/lib/validation/grade-scale";
 import { getGrades } from "../advisees/checklist/record.api";
 import { PendingIncs, ExistingCourseRows } from "./ExistingGrades";
 import {
@@ -201,12 +202,7 @@ function TermEditor({
     data
       ?.filter((option) => takenCourseIds.has(option.offering.course_id))
       .map((option) => option.offering.id) ?? [];
-  const validGrade = (value: string) =>
-    !value ||
-    (Number.isFinite(Number(value)) &&
-      Number(value) >= 1 &&
-      Number(value) <= 5 &&
-      (Number(value) * 4) % 1 === 0);
+  const validGrade = (value: string) => !value || isOnGradeScale(Number(value));
   const invalid =
     !data ||
     rows.some(
@@ -337,7 +333,6 @@ function TermEditor({
                     <label>
                       <span className="sr-only">Final for {option?.code}</span>
                       <GradeSelect
-                        vsuScale
                         includeStatuses
                         disableDrop={row.midterm !== "dr"}
                         disabled={busy || row.midterm === "dr"}
