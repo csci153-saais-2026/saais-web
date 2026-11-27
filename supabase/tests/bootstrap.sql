@@ -15,7 +15,9 @@ grant usage on schema auth to authenticated,anon;
 grant execute on function auth.uid(),auth.jwt() to authenticated,anon;
 
 create schema if not exists storage;
-create table if not exists storage.objects(bucket_id text, name text, metadata jsonb);
+create table if not exists storage.objects(
+  bucket_id text, name text, metadata jsonb, created_at timestamptz default now()
+);
 create table storage.buckets (
   id text primary key, name text not null, public boolean not null,
   file_size_limit bigint, allowed_mime_types text[]

@@ -43,7 +43,15 @@ describe("advising assistant contract mock", () => {
     expect(result.data?.answer).toContain("Simulated");
     expect(result.data?.verification_notice).toBeTruthy();
     expect(result.data?.mutates_records).toBe(false);
-    expect(db).toEqual(before);
+    const { assistantHistories: afterHistories, ...recordsAfter } = db;
+    const { assistantHistories: beforeHistories, ...recordsBefore } = before;
+    expect(recordsAfter).toEqual(recordsBefore);
+    expect(beforeHistories).toEqual({});
+    expect(
+      afterHistories[
+        `${MOCK_PERSONAS.adviser.profileId}:${MOCK_IDS.studentPrimary}`
+      ],
+    ).toHaveLength(2);
   });
 
   it("allows a historic assigned adviser but rejects an unrelated adviser and student", async () => {

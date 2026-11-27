@@ -1,3 +1,43 @@
+get:
+  tags:
+    - Advising & Exceptions
+  summary: Read the adviser's saved conversation
+  operationId: getAdvisingAssistantHistory
+  description: >-
+    Returns up to 20 saved messages, oldest first, for the authenticated adviser
+    and the requested student. Current and former advisers can read only their
+    own conversation. The request does not contact the model provider.
+  x-required-roles:
+    - adviser
+  x-access-scope: current-or-historic-assigned-students-read-only
+  x-atomic: false
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "200":
+      description: Saved messages, or an empty array for a new conversation.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 20
+            items:
+              $ref: "../../components/schemas/AdvisingAIMessage.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
 post:
   tags:
     - Advising & Exceptions

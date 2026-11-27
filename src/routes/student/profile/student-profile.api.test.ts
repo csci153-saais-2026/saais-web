@@ -12,6 +12,8 @@ import {
 } from "@/mocks";
 import { saaisMockServer } from "@/mocks/node";
 
+const uploadName = "upload-00000000-0000-4000-8000-000000000001";
+
 let api: typeof import("./student-profile.api");
 let photoHooks: typeof import("./use-student-photo");
 let profileHooks: typeof import("./use-student-profile");
@@ -53,7 +55,7 @@ describe("student-profile API helpers and hooks (MSW)", () => {
     expect(data.curriculumAssignments.length).toBeGreaterThan(0);
 
     const updated = await api.updateStudentPhoto(studentId, {
-      storage_object_path: `students/${studentId}/avatar.png`,
+      storage_object_path: `students/${studentId}/${uploadName}.png`,
       avatar_url: "data:image/png;base64,iVBORw0KGgo=",
       mime_type: "image/png",
       file_size_bytes: 128,
@@ -69,7 +71,7 @@ describe("student-profile API helpers and hooks (MSW)", () => {
     const studentId = MOCK_PERSONAS.student.profileId;
     const upload = (file_size_bytes: number) =>
       api.updateStudentPhoto(studentId, {
-        storage_object_path: `students/${studentId}/avatar.png`,
+        storage_object_path: `students/${studentId}/${uploadName}.png`,
         avatar_url: "data:image/png;base64,iVBORw0KGgo=",
         mime_type: "image/png",
         file_size_bytes,
@@ -101,7 +103,7 @@ describe("student-profile API helpers and hooks (MSW)", () => {
     });
 
     const updated = await updateHook.current.mutateAsync({
-      storage_object_path: `students/${MOCK_IDS.studentPrimary}/avatar.jpg`,
+      storage_object_path: `students/${MOCK_IDS.studentPrimary}/${uploadName}.jpg`,
       avatar_url: "data:image/jpeg;base64,/9j/4AAQ",
       mime_type: "image/jpeg",
       file_size_bytes: 256,

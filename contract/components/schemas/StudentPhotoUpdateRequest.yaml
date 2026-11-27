@@ -7,9 +7,10 @@ properties:
     maxLength: 512
     pattern: \S
     description: >-
-      Object key inside the private `student-photos` Supabase Storage bucket (e.g.
-      `students/<student_id>/avatar.png`). The backend checks its bytes, decodes the image,
-      and stores a protected validated copy before updating the profile photo URL.
+      Single-use staging key in the private `student-photos` bucket (e.g.
+      `students/00000000-0000-4000-8000-000000000001/upload-00000000-0000-4000-8000-000000000002.png`).
+      Use a fresh UUID for each upload and a .png, .jpg, or .jpeg extension that matches
+      the MIME type. The backend validates the image and saves a separate protected copy.
   avatar_url:
     type: string
     minLength: 1

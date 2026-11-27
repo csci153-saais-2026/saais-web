@@ -19,12 +19,6 @@ import {
   getAdvisingAssistantHistory,
 } from "./advising-assistant.api";
 
-const rpc = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/supabase/client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/supabase/client")>()),
-  getSupabaseClient: () => ({ rpc }),
-}));
-
 vi.mock("@/lib/api", async (importOriginal) => {
   const api = await importOriginal<typeof import("@/lib/api")>();
   return {
@@ -70,26 +64,28 @@ describe("advising assistant API", () => {
 });
 
 describe("advising assistant history", () => {
-  const respond = (result: { data: unknown; error: unknown }) =>
-    rpc.mockReturnValue({ abortSignal: () => Promise.resolve(result) });
-
   it("reads the saved messages for the selected student", async () => {
-    const saved = [
+    loginAsMockPersona("adviser");
+    await expect(
+      getAdvisingAssistantHistory(MOCK_IDS.studentPrimary),
+    ).resolves.toEqual([]);
+    const { answer } = await askAdvisingAssistant(
+      MOCK_IDS.studentPrimary,
+      "Question",
+      [],
+    );
+    await expect(
+      getAdvisingAssistantHistory(MOCK_IDS.studentPrimary),
+    ).resolves.toEqual([
       { role: "user", content: "Question" },
-      { role: "assistant", content: "Answer" },
-    ];
-    respond({ data: [...saved, { role: "system" }], error: null });
-    await expect(
-      getAdvisingAssistantHistory(MOCK_IDS.studentPrimary),
-    ).resolves.toEqual(saved);
-    expect(rpc).toHaveBeenCalledWith("saais_get_assistant_history", {
-      p_student_id: MOCK_IDS.studentPrimary,
-    });
+      { role: "assistant", content: answer },
+    ]);
   });
-  it("rejects when the database function fails", async () => {
-    respond({ data: null, error: { message: "denied" } });
+
+  it("rejects an unrelated adviser", async () => {
+    loginAsMockPersona("adviser_secondary");
     await expect(
       getAdvisingAssistantHistory(MOCK_IDS.studentPrimary),
-    ).rejects.toThrow("saved conversation");
+    ).rejects.toThrow("outside your adviser assignment");
   });
 });

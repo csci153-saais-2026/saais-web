@@ -361,7 +361,7 @@ it("accepts mock student photos through the 5 MiB contract limit", async () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        storage_object_path: `students/${student.profileId}/avatar.png`,
+        storage_object_path: `students/${student.profileId}/upload-00000000-0000-4000-8000-000000000001.png`,
         avatar_url: "/student-photos/avatar.png",
         mime_type: "image/png",
         file_size_bytes: size,

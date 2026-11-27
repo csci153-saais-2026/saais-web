@@ -30,6 +30,7 @@ export interface MockDatabaseState {
   advisingPlans: ApiSchema<"AdvisingPlan">[];
   advisingPlanItems: ApiSchema<"AdvisingPlanItem">[];
   advisingNotes: ApiSchema<"AdvisingNote">[];
+  assistantHistories: Record<string, ApiSchema<"AdvisingAIMessage">[]>;
   attemptRemarks: ApiSchema<"AttemptRemark">[];
   gradeFlags: ApiSchema<"GradeFlag">[];
   notifications: ApiSchema<"Notification">[];
@@ -992,6 +993,7 @@ function buildInitialMockDatabase(): MockDatabaseState {
         created_at: "2026-08-12T08:00:00Z",
       },
     ],
+    assistantHistories: {},
     advisingNotes: [
       {
         id: MOCK_IDS.advisingNote1,
