@@ -926,6 +926,30 @@ function applyPostgrestQuery<T extends object>(
   });
 }
 
+/** Applies the contract's limit/offset (default 20) to a function endpoint's rows. */
+function pagedResponse<T extends object>(request: Request, rows: T[]) {
+  const query = new URL(request.url).searchParams;
+  const limit = Number(query.get("limit") ?? 20);
+  const offset = Number(query.get("offset") ?? 0);
+  if (
+    !Number.isInteger(limit) ||
+    !Number.isInteger(offset) ||
+    limit < 1 ||
+    limit > 1000 ||
+    offset < 0 ||
+    offset > 100000
+  )
+    return errorJson(400, "INVALID_PAGINATION", "Invalid limit or offset.");
+  const page = rows.slice(offset, offset + limit);
+  return HttpResponse.json(page, {
+    headers: {
+      "Content-Range": page.length
+        ? `${offset}-${offset + page.length - 1}/${rows.length}`
+        : `*/${rows.length}`,
+    },
+  });
+}
+
 function isCurrentAdviser(persona: MockPersona, studentId: string): boolean {
   return (
     persona.roles.includes("adviser") &&
@@ -4170,7 +4194,7 @@ export const saaisMswHandlers = [
             ),
           };
         });
-      return HttpResponse.json(slots);
+      return pagedResponse(request, slots);
     },
   ),
 
@@ -4227,7 +4251,7 @@ export const saaisMswHandlers = [
           ];
         })
         .sort((a, b) => b.chronological_key - a.chronological_key);
-      return HttpResponse.json(termGrades, { status: 200 });
+      return pagedResponse(request, termGrades);
     },
   ),
 

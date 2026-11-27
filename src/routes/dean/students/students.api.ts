@@ -65,10 +65,12 @@ export async function getDeanStudentChecklist(studentId: string): Promise<{
 export async function getDeanStudentGrades(
   studentId: string,
 ): Promise<ApiSchema<"TermGrades">[]> {
-  return unwrapApiResult(
-    await apiClient.GET("/functions/v1/students/{student_id}/grades", {
-      params: { path: { student_id: studentId } },
-    }),
+  return fetchAllPages(
+    (limit, offset) =>
+      apiClient.GET("/functions/v1/students/{student_id}/grades", {
+        params: { path: { student_id: studentId }, query: { limit, offset } },
+      }),
+    "Student grades",
   );
 }
 

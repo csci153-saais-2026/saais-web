@@ -1,15 +1,16 @@
+import { fetchAllPages } from "../fetch-all-pages";
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 
 export async function fetchStudentChecklist(
   studentId: string,
 ): Promise<ApiSchema<"ChecklistSlotResult">[]> {
-  const res = await apiClient.GET(
-    "/functions/v1/students/{student_id}/checklist",
-    {
-      params: { path: { student_id: studentId } },
-    },
+  return fetchAllPages(
+    (limit, offset) =>
+      apiClient.GET("/functions/v1/students/{student_id}/checklist", {
+        params: { path: { student_id: studentId }, query: { limit, offset } },
+      }),
+    (slot) => slot.curriculum_term_course_id,
   );
-  return unwrapApiResult(res);
 }
 
 export async function recordChecklistExportEvent(
