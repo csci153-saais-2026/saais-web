@@ -42,6 +42,7 @@ function OpenApiContractViewer({
   const [viewerState, setViewerState] = React.useState<ViewerStatus>({
     status: 'loading',
   })
+  const [downloadError, setDownloadError] = React.useState<string | null>(null)
   const [attempt, setAttempt] = React.useState(0)
 
   React.useEffect(() => {
@@ -82,13 +83,22 @@ function OpenApiContractViewer({
   }, [attempt, mountRedoc, specUrl])
 
   const handleDownload = async () => {
+    setDownloadError(null)
     try {
       const content = await fetchDocumentation('openapi')
       const url = URL.createObjectURL(new Blob([content], { type: 'application/yaml' }))
-      const link = document.createElement('a'); link.href = url; link.download = 'saais-openapi.yaml'; link.click(); URL.revokeObjectURL(url)
-    } catch { setViewerState({ status: 'error', message: 'The document could not be downloaded.' }) }
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'saais-openapi.yaml'
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error: unknown) {
+      const detail = error instanceof Error && error.message ? ` ${error.message}` : ''
+      setDownloadError(`The document could not be downloaded.${detail}`)
+    }
   }
   const handleRetry = () => {
+    setDownloadError(null)
     setViewerState({ status: 'loading' })
     setAttempt((prev) => prev + 1)
   }
@@ -112,6 +122,16 @@ function OpenApiContractViewer({
         </div>
       }
     >
+      {downloadError && (
+        <div className="max-w-2xl px-gutter-sm pt-6 md:px-gutter">
+          <Alert variant="destructive">
+            <AlertIcon />
+            <AlertTitle>Download failed</AlertTitle>
+            <AlertDescription>{downloadError}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {viewerState.status === 'loading' && (
         <div
           role="status"

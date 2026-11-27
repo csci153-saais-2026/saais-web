@@ -372,4 +372,33 @@ describe('App lazy-loaded /docs route integration', () => {
     ).toBeTruthy()
     window.history.pushState({}, '', '/')
   })
+
+  it('keeps the mounted OpenAPI viewer visible when downloading YAML fails', async () => {
+    vi.stubEnv('DEV', false)
+    setAccessTokenResolver(() => 'real-session')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('', { status: 403 })),
+    )
+    const mountRedoc = vi.fn<MountRedocFn>().mockResolvedValue(() => {})
+
+    render(
+      <MemoryRouter initialEntries={['/docs/openapi']}>
+        <OpenApiDocsPage
+          isDev={false}
+          checkAuthenticated={async () => true}
+          mountRedoc={mountRedoc}
+        />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(mountRedoc).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('button', { name: /Download YAML/i }))
+
+    expect(await screen.findByText('Download failed')).toBeTruthy()
+    expect(
+      screen.getByText(/The document could not be downloaded\./),
+    ).toBeTruthy()
+    expect(screen.queryByText('Contract viewer unavailable')).toBeNull()
+  })
 })
