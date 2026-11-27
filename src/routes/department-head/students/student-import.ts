@@ -210,11 +210,13 @@ export async function submitStudentImport(
             ? `Unknown program "${line.program}".`
             : !version
               ? `Unknown curriculum "${line.curriculum}" for ${program.code}.`
-              : !adviser
-                ? `No active department adviser has the email "${line.adviser_email}".`
-                : year !== null && !Number.isInteger(year)
-                  ? "Entry year must be a whole number."
-                  : "";
+              : version.status !== "active"
+                ? `Curriculum "${line.curriculum}" for ${program.code} is not active.`
+                : !adviser
+                  ? `No active department adviser has the email "${line.adviser_email}".`
+                  : year !== null && !Number.isInteger(year)
+                    ? "Entry year must be a whole number."
+                    : "";
     if (problem || !program || !version || !adviser) {
       local.set(line.rowNumber, problem);
       continue;
