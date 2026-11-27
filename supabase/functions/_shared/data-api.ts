@@ -4,6 +4,10 @@ import type { Environment } from "./http.ts";
 const profile = "saais_api";
 const proofHeader = "x-saais-data-api-key";
 const maxQueryLength = 16_384;
+const pagination = {
+  limit: { minimum: 1, maximum: 1000, default: 20 },
+  offset: { minimum: 0, maximum: 100000 },
+} as const;
 
 const resources = new Map(
   Object.entries(snapshot).map(([name, resource]) => [
@@ -76,7 +80,7 @@ export function createDataApiHandler(
       Vary: "Origin",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers":
-        "authorization, apikey, accept-profile, prefer, range, range-unit, x-client-info",
+        "authorization, apikey, accept-profile, prefer, x-client-info",
       "Access-Control-Expose-Headers":
         "Content-Range, Range-Unit, Preference-Applied, Retry-After",
     });
@@ -145,6 +149,28 @@ export function createDataApiHandler(
         return error(headers, 400, "PT400", `Unsupported Data API ${name}.`);
       }
     }
+    for (const [name, { minimum, maximum }] of Object.entries(pagination)) {
+      const values = url.searchParams.getAll(name);
+      if (values.length === 0) continue;
+      const value = values[0];
+      if (
+        values.length !== 1 ||
+        !value ||
+        /\D/.test(value) ||
+        Number(value) < minimum ||
+        Number(value) > maximum
+      ) {
+        return error(
+          headers,
+          400,
+          "PT400",
+          `Data API ${name} must be an integer between ${minimum} and ${maximum}.`,
+        );
+      }
+    }
+    if (!url.searchParams.has("limit")) {
+      url.searchParams.set("limit", String(pagination.limit.default));
+    }
     const selection = url.searchParams.get("select");
     if (selection === null || selection === "*") {
       url.searchParams.set("select", resource.projection);
@@ -162,10 +188,8 @@ export function createDataApiHandler(
         "Accept-Profile": profile,
         [proofHeader]: await gatewayKey,
       });
-      for (const name of ["Prefer", "Range", "Range-Unit"]) {
-        const value = request.headers.get(name);
-        if (value !== null) upstreamHeaders.set(name, value);
-      }
+      const prefer = request.headers.get("Prefer");
+      if (prefer !== null) upstreamHeaders.set("Prefer", prefer);
       const upstream = await fetcher(
         `${env.url}/rest/v1/${resourceName}?${url.searchParams.toString()}`,
         {

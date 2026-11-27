@@ -1,4 +1,4 @@
-import { decode, Image } from "imagescript";
+import { Image } from "imagescript";
 import { PhotoError } from "./photo-error.ts";
 export { PhotoError } from "./photo-error.ts";
 
@@ -55,10 +55,26 @@ export async function validatePhoto(
     bytes[2] === 255;
   if ((type !== "image/png" || !png) && (type !== "image/jpeg" || !jpeg))
     throw new PhotoError(400, "Invalid image file.");
+  if (png) {
+    const chunks = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+    for (let offset = 8; offset + 12 <= bytes.length;) {
+      const next = offset + 12 + chunks.getUint32(offset);
+      if (next > bytes.length) break;
+      const kind = chunks.getUint32(offset + 4);
+      if (kind === 0x6163544c) {
+        // acTL
+        throw new PhotoError(400, "Animated PNG photos are not supported.");
+      }
+      if (kind === 0x49444154) break; // IDAT
+      offset = next;
+    }
+  }
   try {
-    const image = await decode(bytes, { maxPixels, applyColorProfile: false });
-    if (!(image instanceof Image) || !image.width || !image.height)
-      throw new Error("Invalid image");
+    const image = await Image.decode(bytes, {
+      maxPixels,
+      applyColorProfile: false,
+    });
+    if (!image.width || !image.height) throw new Error("Invalid image");
   } catch {
     throw new PhotoError(
       400,

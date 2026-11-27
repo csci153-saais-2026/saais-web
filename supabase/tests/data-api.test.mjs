@@ -34,6 +34,10 @@ function read(query = "", override = headers) {
 test("Data API rules match the approved contract", () => {
   assert.deepEqual(contract, withPinnedContract(buildDataApiSnapshot));
   assert.equal(Object.keys(contract).length, 32);
+  for (const resource of Object.values(contract)) {
+    assert.ok(resource.query.includes("limit"));
+    assert.ok(resource.query.includes("offset"));
+  }
 });
 
 test("Data API rejects additional schema profiles and non-contract query shapes before forwarding", async () => {
@@ -54,6 +58,18 @@ test("Data API rejects additional schema profiles and non-contract query shapes 
     "?order=id.asc&order=created_at.asc",
     "?select=id&select=final_grade",
     "?profile.order=id.asc",
+    "?limit=0",
+    "?limit=1001",
+    "?limit=1&limit=2",
+    "?limit=1.5",
+    "?limit=2%0A",
+    "?limit=1e2",
+    "?limit=",
+    "?offset=-1",
+    "?offset=100001",
+    "?offset=99999999999999999999999",
+    "?offset=1&offset=2",
+    "?offset=%202",
   ]) {
     assert.equal((await handle(read(query))).status, 400, query);
   }
@@ -99,7 +115,18 @@ test("valid Data API reads keep the caller's JWT and strip private gateway heade
   assert.equal(response.headers.get("X-Saais-Data-Api-Key"), null);
   assert.equal(response.headers.get("Set-Cookie"), null);
 
-  await handle(read("?select=*&limit=1"));
+  const defaultPage = await handle(
+    read("?select=*", {
+      ...headers,
+      Range: "500000-500019",
+      "Range-Unit": "items",
+    }),
+  );
+  assert.equal(defaultPage.status, 206);
+  assert.equal(requests[2].url.searchParams.get("limit"), "20");
+  assert.equal(requests[2].url.searchParams.has("offset"), false);
+  assert.equal(requests[2].headers.get("Range"), null);
+  assert.equal(requests[2].headers.get("Range-Unit"), null);
   assert.equal(requests.length, 3, "The gateway key is cached between reads");
   assert.equal(requests[1].url.pathname, "/rest/v1/attempt_result");
   assert.equal(
@@ -114,4 +141,25 @@ test("valid Data API reads keep the caller's JWT and strip private gateway heade
     requests[2].url.searchParams.get("select"),
     contract.attempt_result.projection,
   );
+});
+
+test("Data API forwards pagination values at the contract boundaries", async () => {
+  const requests = [];
+  const handle = createDataApiHandler(env, async (url) => {
+    if (String(url).endsWith("/saais_read_data_api_gateway_key")) {
+      return Response.json(gatewayKey);
+    }
+    requests.push(new URL(url).searchParams);
+    return Response.json([]);
+  });
+  for (const [limit, offset] of [
+    [1, 0],
+    [1000, 100000],
+  ]) {
+    const response = await handle(read(`?limit=${limit}&offset=${offset}`));
+    assert.equal(response.status, 200);
+    const sent = requests.at(-1);
+    assert.equal(sent.get("limit"), String(limit));
+    assert.equal(sent.get("offset"), String(offset));
+  }
 });

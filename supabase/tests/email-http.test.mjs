@@ -208,3 +208,32 @@ test("explicit production mode preserves unrestricted claims when no list is sup
   });
   assert.equal((await send(handler)).status, 200);
 });
+
+test("a claimed disallowed recipient is marked failed without sending email", async () => {
+  const config = readMailEnvironment(
+    (name) =>
+      ({ ...settings, SAAIS_MAIL_ALLOWED_RECIPIENTS: "allowed@example.test" })[
+        name
+      ],
+  );
+  const finished = [];
+  const handler = createMailHandler(config, async (url, options) => {
+    if (url.endsWith("/saais_claim_email")) {
+      return Response.json([
+        {
+          id,
+          lease: session,
+          kind: "notification",
+          email: "blocked@example.test",
+        },
+      ]);
+    }
+    assert.ok(url.endsWith("/saais_finish_email"));
+    finished.push(JSON.parse(options.body));
+    return new Response(null, { status: 204 });
+  });
+  assert.equal((await send(handler)).status, 200);
+  assert.deepEqual(finished, [
+    { p_id: id, p_kind: "notification", p_lease: session, p_outcome: "failed" },
+  ]);
+});

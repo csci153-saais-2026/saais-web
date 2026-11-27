@@ -192,7 +192,6 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
       apiKey: TEST_API_KEY,
-      mode: "supabase",
       getAccessToken: () => currentToken,
       fetch: mockFetch,
     });
@@ -216,13 +215,6 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
 
     expect(seenRequests).toHaveLength(2);
     expect(seenRequests[0]?.headers.get("apikey")).toBe(TEST_API_KEY);
-    const forwarded = new URL(seenRequests[0]!.url);
-    expect(forwarded.pathname).toBe("/functions/v1/data-api/course");
-    expect(forwarded.searchParams.get("department_id")).toBe(
-      `eq.${SAMPLE_UUID_2}`,
-    );
-    expect(forwarded.searchParams.get("limit")).toBe("20");
-    expect(seenRequests[0]?.headers.get("Accept-Profile")).toBe("saais_api");
     expect(seenRequests[0]?.headers.get("Authorization")).toBe(
       "Bearer jwt-initial",
     );

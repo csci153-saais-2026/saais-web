@@ -69,6 +69,17 @@ export function createMailHandler(
     });
   }
 
+  async function finishMail(mail: Mail, outcome: string) {
+    const result = await rpc("saais_finish_email", {
+      p_id: mail.id,
+      p_kind: mail.kind,
+      p_lease: mail.lease,
+      p_outcome: outcome,
+    });
+    if (!result.ok) throw new Error("Could not record delivery.");
+    return outcome;
+  }
+
   return async (request: Request) => {
     if (request.method !== "POST") return new Response(null, { status: 405 });
     if (
@@ -107,7 +118,7 @@ export function createMailHandler(
                 env.recipients &&
                 !env.recipients.has(mail.email.trim().toLowerCase())
               ) {
-                throw new Error("Claimed recipient is not allowed.");
+                return finishMail(mail, "failed");
               }
               let outcome = "retry";
               // A trailing slash keeps the site's base path in the link.
@@ -149,14 +160,7 @@ export function createMailHandler(
               } catch {
                 /* Retry with the same provider idempotency key. */
               }
-              const result = await rpc("saais_finish_email", {
-                p_id: mail.id,
-                p_kind: mail.kind,
-                p_lease: mail.lease,
-                p_outcome: outcome,
-              });
-              if (!result.ok) throw new Error("Could not record delivery.");
-              return outcome;
+              return finishMail(mail, outcome);
             }),
           )),
         );

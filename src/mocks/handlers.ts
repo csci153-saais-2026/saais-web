@@ -4988,11 +4988,18 @@ export const saaisMswHandlers = [
       const body = (await request
         .json()
         .catch(() => null)) as ApiSchema<"StudentPhotoUpdateRequest"> | null;
-      if (!body?.avatar_url || !body?.mime_type || !body?.file_size_bytes) {
+      if (
+        typeof body?.storage_object_path !== "string" ||
+        !body.storage_object_path.trim() ||
+        body.storage_object_path.length > 512 ||
+        !body.avatar_url ||
+        !body.mime_type ||
+        !body.file_size_bytes
+      ) {
         return errorJson(
           400,
           "INVALID_INPUT",
-          "avatar_url, mime_type, and file_size_bytes are required.",
+          "storage_object_path, avatar_url, mime_type, and file_size_bytes are required.",
         );
       }
       if (body.file_size_bytes > 5 * 1024 * 1024) {
