@@ -118,6 +118,21 @@ function getOrganization(
   };
 }
 
+const RESENDABLE_INVITATION_STATUSES = new Set([
+  "pending",
+  "expired",
+  "revoked",
+  "declined",
+]);
+
+function isResendableInvitation(
+  profileStatus: ApiSchema<"ProfileStatus">,
+  invitationStatus: ApiSchema<"InvitationStatus"> | null | undefined,
+): boolean {
+  if (profileStatus !== "invited" || !invitationStatus) return false;
+  return RESENDABLE_INVITATION_STATUSES.has(invitationStatus);
+}
+
 function getInitials(fullName: string): string {
   const parts = fullName
     .replace(/\b(Dr|Prof)\.?\s+/gi, "")
@@ -466,6 +481,10 @@ export default function AdminAccountsPage() {
                   const hasPendingInvitation =
                     invitationStatus === "pending" &&
                     profile.status === "invited";
+                  const canResendInvitation = isResendableInvitation(
+                    profile.status,
+                    invitationStatus,
+                  );
                   const isCurrentAccount =
                     profile.id === user?.id ||
                     profile.email.trim().toLowerCase() ===
@@ -584,7 +603,7 @@ export default function AdminAccountsPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={
-                                  !hasPendingInvitation ||
+                                  !canResendInvitation ||
                                   accountActionId === profile.id
                                 }
                                 onSelect={() =>

@@ -383,3 +383,74 @@ test("student imports reject whitespace variants of a student number before prov
     );
   }
 });
+
+test("inviteUser and resendAccountInvite trigger mail-delivery best-effort when worker secret is configured", async () => {
+  const mailEnv = { ...env, mailWorkerSecret: "worker-secret" };
+  let mailTriggers = 0;
+
+  const authHandler = createHandler("auth", {
+    env: mailEnv,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      if (url.endsWith("/functions/v1/mail-delivery")) {
+        mailTriggers++;
+        assert.equal(options.method, "POST");
+        assert.equal(options.headers["x-saais-mail-secret"], "worker-secret");
+        return Response.json({ sent: 1 });
+      }
+      const rpc = JSON.parse(options.body);
+      if (rpc.p_stage === "admit") return Response.json({});
+      if (rpc.p_stage === "prepare") {
+        return Response.json({ reservation_id: id, auth_ready: true });
+      }
+      return Response.json({
+        profile_id: id,
+        success: true,
+        invitation_status: "pending",
+      });
+    },
+  });
+
+  const inviteResponse = await authHandler(
+    request(
+      "/auth/invite",
+      {
+        email: "student-invite@vsu.edu.ph",
+        role: "student",
+        full_name: "Student Fixture",
+        student_number: "26-1-00010",
+        program_id: id,
+        curriculum_version_id: id,
+        adviser_id: id,
+      },
+      true,
+    ),
+  );
+  assert.equal(inviteResponse.status, 200);
+  assert.equal(mailTriggers, 1);
+
+  const accountsHandler = createHandler("accounts", {
+    env: mailEnv,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      if (url.endsWith("/functions/v1/mail-delivery")) {
+        mailTriggers++;
+        assert.equal(options.headers["x-saais-mail-secret"], "worker-secret");
+        throw new Error("Transient mail worker timeout");
+      }
+      const rpc = JSON.parse(options.body);
+      if (rpc.p_stage === "admit") return Response.json({});
+      return Response.json({
+        profile_id: id,
+        success: true,
+        invitation_status: "pending",
+      });
+    },
+  });
+
+  const resendResponse = await accountsHandler(
+    request(`/accounts/${id}/resend-invite`, undefined, true),
+  );
+  assert.equal(resendResponse.status, 200);
+  assert.equal(mailTriggers, 2);
+});
