@@ -9,7 +9,7 @@ open until the team records ownership and verifies the hosted flows below.
 | --- | --- | --- |
 | Supabase | The active `SAAIS` project has ref `jssexxjbgzrknlptddkg`. The public Vercel site's browser bundle uses this project. | JakeNLelis confirmed ownership. Record any additional team access. |
 | Vercel | GitHub deployment checks for this repo report the `mhac-monteras-projects/saais-web` project. The approved staging origin is https://saais.plenums.app. | JakeNLelis confirmed ownership. Record the deployed commit and additional team access. |
-| Google Cloud | The active OAuth client points to Google Cloud project `elegant-theorem-450011-i1`. Google sign-in is enabled. | JakeNLelis has the Owner role. Record the External consent screen publishing and verification status. |
+| Google Cloud | The active OAuth client points to Google Cloud project `elegant-theorem-450011-i1`. Google sign-in is enabled. | JakeNLelis has the Owner role. The consent screen is External and in Testing. |
 | Secrets | Supabase lists mail worker and Google Apps Script relay secret names. | Confirm the approved secret stores and access owners for staging OAuth, Auth hooks, the mail relay and scheduled jobs. |
 
 [PR #223](https://github.com/csci153-saais-2026/saais-web/pull/223) tracks promotion
@@ -38,10 +38,15 @@ previously included its callback and recovery routes and the localhost routes
 above. The approved staging origin entries were verified on November 28.
 
 The Google Cloud OAuth web client's authorized redirect URI is
-`https://jssexxjbgzrknlptddkg.supabase.co/auth/v1/callback`. Configure its
-External consent screen and add the authorized QA accounts if the app is in
-Testing. Record the consent and verification status without publishing client
-secrets or QA credentials.
+`https://jssexxjbgzrknlptddkg.supabase.co/auth/v1/callback`. On November 28,
+Google Auth Platform showed an **External** audience and **Testing**
+publishing status. Verification Center reports that verification is
+unnecessary while the app is in Testing.
+
+Google blocks production publishing until Branding is complete and HTTP
+development origins and redirect URIs are removed from a separate web client
+in the shared Google Cloud project. The staging Supabase redirect identifies
+the live SAAIS client and its HTTPS callback.
 
 ## Vercel and secrets
 
