@@ -14,12 +14,6 @@ const pagination = {
   offset: { minimum: 0, maximum: 100000 },
 } as const;
 
-function compilePattern(pattern: string) {
-  // The frozen contract's created_at/and patterns use [0-9:.+-Z] where +-Z
-  // would otherwise form a range including commas and uppercase letters.
-  return new RegExp(pattern.replaceAll("[0-9:.+-Z]", "[0-9:.+\\-Z]"));
-}
-
 function hasControlCharacter(value: string) {
   for (let index = 0; index < value.length; index++) {
     if (value.charCodeAt(index) < 32) return true;
@@ -45,7 +39,7 @@ const resources = new Map(
         Object.entries(resource.filters).map(([filterName, rule]) => [
           filterName,
           {
-            pattern: compilePattern(rule.pattern),
+            pattern: new RegExp(rule.pattern),
             maxLength: rule.maxLength,
           },
         ]),

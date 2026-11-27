@@ -293,6 +293,14 @@ test("Data API forwards valid contract filters and allowlisted Prefer values", a
     assert.equal(response.status, 200, `${resource}${query}`);
     const sent = requests.at(-1);
     assert.equal(sent.url.pathname, `/rest/v1/${resource}`);
+    const expectedParams = new URLSearchParams(query.slice(1));
+    for (const [key, value] of expectedParams) {
+      assert.deepEqual(
+        sent.url.searchParams.getAll(key),
+        [value],
+        `${resource} forwarded ${key}`,
+      );
+    }
     assert.equal(
       sent.headers.get("Prefer"),
       prefer === null ? null : prefer.trim(),

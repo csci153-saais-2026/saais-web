@@ -46,8 +46,10 @@ function buildDataApiSnapshot(contract) {
           `Data API resource ${resource} declares duplicate filter ${parameter.name}.`,
         );
       }
+      // The frozen contract's created_at/and patterns use [0-9:.+-Z] where +-Z
+      // would otherwise form a range including commas and uppercase letters.
       filters[parameter.name] = {
-        pattern: schema.pattern,
+        pattern: schema.pattern.replaceAll("[0-9:.+-Z]", "[0-9:.+\\-Z]"),
         maxLength: schema.maxLength,
       };
     }

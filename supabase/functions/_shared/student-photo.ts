@@ -75,7 +75,7 @@ export async function validatePhoto(
   try {
     image = await Image.decode(bytes, {
       maxPixels,
-      applyColorProfile: false,
+      applyColorProfile: true,
       gainMap: false,
     });
     if (!image.width || !image.height) throw new Error("Invalid image");
