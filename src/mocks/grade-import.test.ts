@@ -57,14 +57,16 @@ describe("grade import safeguards", () => {
       db.attemptResults.find((a) => a.id === attempt.id)?.final_grade,
     ).toBe(2.5);
     for (const mode of ["preview", "commit"] as const) {
-      const result = await client().POST("/functions/v1/grades/import", {
-        body: {
-          mode,
-          school_term_id: term.id,
-          rows: [{ ...row, final_grade: 2.1 }],
-        },
-      });
-      expect(result.data?.error_count).toBe(1);
+      for (const badGrade of [2.1, 3.25, 4.75]) {
+        const result = await client().POST("/functions/v1/grades/import", {
+          body: {
+            mode,
+            school_term_id: term.id,
+            rows: [{ ...row, final_grade: badGrade }],
+          },
+        });
+        expect(result.data?.error_count).toBe(1);
+      }
     }
   });
   it("uses the selected term deadline for an imported INC", async () => {

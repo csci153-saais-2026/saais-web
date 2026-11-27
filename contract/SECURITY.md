@@ -22,7 +22,7 @@ The supplied audit predates some existing pagination, role metadata and assignme
 ## Workflow requirements
 
 - Record Grades enrolls a new offering or fills missing grades. An existing populated grade rejects the entire request, including identical re-entry; corrections use Grades instead. New enrollment with a midterm requires confirmation.
-- Only the final grade determines Passed (`<= 3.0`) or Failed (`> 3.0`). Weighted GWA can have values between the quarter-step grades accepted for individual courses.
+- Numeric course grade writes accept `1.00` through `3.00` in `0.25` steps (Passed) and `5.00` (Failed); `3.25`–`4.75` are rejected on new entries and corrections while historical records remain readable. Only the final grade determines Passed (`<= 3.0`) or Failed (`> 3.0`). Weighted GWA can have values between the quarter-step grades accepted for individual courses.
 - Prerequisite clearance corrects the original failed prerequisite to a passing final grade with a reason. It affects GWA and downstream clearance; it does not assign grades to dependent courses or require admin approval.
 - First INC completion remains allowed on or before its deadline during an institution-wide lock or department encoding closure. Later corrections obey both applicable closures. Original INC and the effective Passed/Failed result remain distinct. Default deadlines use the actual term end date.
 - College/department relationships derive through the student's assigned curriculum/program. Account provisioning includes the required adviser/program/curriculum for students and college for advisers.

@@ -86,4 +86,60 @@ begin
       from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),
       'Rejected import preserves the recorded final status');
   end loop;
+
+  -- Verify VSU numeric grade scale enforcement (1.00-3.00 in 0.25 steps, plus 5.00)
+  -- across grade import preview and commit.
+  declare
+    scale_grade numeric;
+    scale_code text;
+    scale_blocked boolean;
+  begin
+    foreach scale_grade in array array[1.00, 3.00, 5.00] loop
+      scale_code := 'IMPSCALE-' || replace(scale_grade::text, '.', '_');
+      perform test.login(1);
+      course := test.call('createCourse','{}',jsonb_build_object(
+        'department_id',department,'code',scale_code,'title','Scale accept test','units',3));
+      offering := test.call('createCourseOffering','{}',jsonb_build_object('school_term_id',term,'course_id',course->>'id'));
+      perform test.login(4);
+      result := public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode','preview','school_term_id',term,
+        'rows',jsonb_build_array(jsonb_build_object(
+          'row_number',1,'student_number','TEST-5','course_code',scale_code,'final_grade',scale_grade))));
+      perform test.assert(result->>'valid_count'='1' and result->>'error_count'='0',
+        'Grade import preview accepts valid scale grade ' || scale_grade);
+      result := public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode','commit','school_term_id',term,
+        'rows',jsonb_build_array(jsonb_build_object(
+          'row_number',1,'student_number','TEST-5','course_code',scale_code,'final_grade',scale_grade))));
+      perform test.assert(result->>'imported_count'='1' and result->>'error_count'='0',
+        'Grade import commit accepts valid scale grade ' || scale_grade);
+    end loop;
+
+    perform test.login(1);
+    course := test.call('createCourse','{}',jsonb_build_object(
+      'department_id',department,'code','IMPSCALE-BAD','title','Scale reject test','units',3));
+    offering := test.call('createCourseOffering','{}',jsonb_build_object('school_term_id',term,'course_id',course->>'id'));
+    perform test.login(4);
+    foreach mode in array array['preview','commit'] loop
+      foreach scale_grade in array array[3.25, 4.75] loop
+        scale_blocked := false;
+        begin
+          perform public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode',mode,'school_term_id',term,
+            'rows',jsonb_build_array(jsonb_build_object(
+              'row_number',1,'student_number','TEST-5','course_code','IMPSCALE-BAD','final_grade',scale_grade))));
+        exception when sqlstate 'PT400' then scale_blocked := true; end;
+        perform test.assert(scale_blocked,
+          'Grade import ' || mode || ' rejects off-scale final grade ' || scale_grade);
+
+        scale_blocked := false;
+        begin
+          perform public.matt_operation('importGradesBatch','{}',jsonb_build_object('mode',mode,'school_term_id',term,
+            'rows',jsonb_build_array(jsonb_build_object(
+              'row_number',1,'student_number','TEST-5','course_code','IMPSCALE-BAD','midterm_grade',scale_grade))));
+        exception when sqlstate 'PT400' then scale_blocked := true; end;
+        perform test.assert(scale_blocked,
+          'Grade import ' || mode || ' rejects off-scale midterm grade ' || scale_grade);
+      end loop;
+    end loop;
+    perform test.assert(not exists(select 1 from public.attempt a where a.course_offering_id=(offering->>'id')::uuid),
+      'Rejected off-scale grade imports write no attempt rows');
+  end;
 end $$;

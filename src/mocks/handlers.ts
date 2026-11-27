@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 import type { ApiSchema } from "@/lib/api/types";
+import { isOnGradeScale } from "@/lib/validation/grade-scale";
 import {
   canAccessDepartment,
   canAccessFaculty,
@@ -513,9 +514,7 @@ function isIncCompletionCorrectionRequest(
   return (
     typeof grade === "number" &&
     Number.isFinite(grade) &&
-    grade >= 1 &&
-    grade <= 5 &&
-    (grade * 4) % 1 === 0 &&
+    isOnGradeScale(grade) &&
     typeof reason === "string" &&
     reason.trim().length > 0 &&
     reason.length <= 4000 &&
@@ -4738,6 +4737,22 @@ export const saaisMswHandlers = [
           "school_term_id and course_offering_id are required.",
         );
       }
+      if (
+        (body.midterm_grade != null &&
+          (typeof body.midterm_grade !== "number" ||
+            !Number.isFinite(body.midterm_grade) ||
+            !isOnGradeScale(body.midterm_grade))) ||
+        (body.final_grade != null &&
+          (typeof body.final_grade !== "number" ||
+            !Number.isFinite(body.final_grade) ||
+            !isOnGradeScale(body.final_grade)))
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Use a numeric grade from 1.00 to 3.00 in 0.25 steps, or 5.00.",
+        );
+      }
       if (departmentEncodingClosed(studentId, body.school_term_id))
         return encodingClosedResponse();
       const db = getMockDatabase();
@@ -4864,6 +4879,25 @@ export const saaisMswHandlers = [
           400,
           "INVALID_INPUT",
           "school_term_id and rows are required.",
+        );
+      }
+      if (
+        body.rows.some(
+          (row) =>
+            (row.midterm_grade != null &&
+              (typeof row.midterm_grade !== "number" ||
+                !Number.isFinite(row.midterm_grade) ||
+                !isOnGradeScale(row.midterm_grade))) ||
+            (row.final_grade != null &&
+              (typeof row.final_grade !== "number" ||
+                !Number.isFinite(row.final_grade) ||
+                !isOnGradeScale(row.final_grade))),
+        )
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Use a numeric grade from 1.00 to 3.00 in 0.25 steps, or 5.00.",
         );
       }
       if (!canAccessStudentRecord(auth.persona, studentId))
@@ -5069,9 +5103,7 @@ export const saaisMswHandlers = [
         value === null ||
         (typeof value === "number" &&
           Number.isFinite(value) &&
-          value >= 1 &&
-          value <= 5 &&
-          (value * 4) % 1 === 0);
+          isOnGradeScale(value));
       if (
         !body ||
         Object.keys(body).some((key) => !allowed.includes(key)) ||
@@ -5425,9 +5457,7 @@ export const saaisMswHandlers = [
       if (
         !body.reason?.trim() ||
         !Number.isFinite(body.completion_grade) ||
-        body.completion_grade < 1 ||
-        body.completion_grade > 5 ||
-        (body.completion_grade * 4) % 1 !== 0
+        !isOnGradeScale(body.completion_grade)
       )
         return errorJson(
           400,
@@ -5723,9 +5753,7 @@ export const saaisMswHandlers = [
           if (
             body.corrected_grade != null &&
             (!Number.isFinite(body.corrected_grade) ||
-              body.corrected_grade < 1 ||
-              body.corrected_grade > 5 ||
-              (body.corrected_grade * 4) % 1 !== 0)
+              !isOnGradeScale(body.corrected_grade))
           )
             return errorJson(
               400,
@@ -5782,9 +5810,7 @@ export const saaisMswHandlers = [
           if (body.corrected_grade != null) {
             if (
               !Number.isFinite(body.corrected_grade) ||
-              body.corrected_grade < 1 ||
-              body.corrected_grade > 5 ||
-              (body.corrected_grade * 4) % 1 !== 0
+              !isOnGradeScale(body.corrected_grade)
             )
               return errorJson(
                 400,
@@ -5935,9 +5961,7 @@ export const saaisMswHandlers = [
         grade == null ||
         (typeof grade === "number" &&
           Number.isFinite(grade) &&
-          grade >= 1 &&
-          grade <= 5 &&
-          (grade * 4) % 1 === 0);
+          isOnGradeScale(grade));
       const invalid =
         !validGrade(row.midterm_grade) ||
         !validGrade(row.final_grade) ||

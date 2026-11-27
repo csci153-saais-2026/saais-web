@@ -102,4 +102,151 @@ begin
     'Non-grade metadata changes retain INC and deadline');
   perform test.assert((select status='inc' and final_grade is null from public.attempt where id=same_term_attempt),
     'Rejected corrections leave the original attempt unchanged');
+
+  -- Verify VSU numeric grade scale enforcement (1.00-3.00 in 0.25 steps, plus 5.00)
+  -- across recordGrades, encodeTermGrades, correctGrades, correctPrerequisiteGrade,
+  -- resolveGradeFlag, completeINC, correctINCCompletion, and DB CHECK constraints.
+  declare
+    scale_course uuid;
+    scale_offering uuid;
+    scale_attempt uuid;
+    scale_inc_offering uuid;
+    scale_inc_attempt uuid;
+    scale_flag uuid;
+    scale_res jsonb;
+    scale_bad numeric;
+    scale_good numeric;
+    scale_rev bigint;
+    scale_updated_at text;
+    scale_rejected boolean;
+  begin
+    insert into public.course(department_id,code,title,units) values(department,'SCALE101','Scale test course',3) returning id into scale_course;
+    insert into public.course_offering(school_term_id,course_id) values(term.id,scale_course) returning id into scale_offering;
+    insert into public.course(department_id,code,title,units) values(department,'SCALE102','Scale INC course',3) returning id into scale_course;
+    insert into public.course_offering(school_term_id,course_id) values(term.id,scale_course) returning id into scale_inc_offering;
+
+    -- recordGrades rejects 3.25 and 4.75, accepts 5.00
+    foreach scale_bad in array array[3.25, 4.75] loop
+      scale_rejected := false;
+      begin
+        perform public.matt_operation('recordGrades',jsonb_build_object('student_id',student),
+          jsonb_build_object('school_term_id',term.id,'course_offering_id',scale_offering,'final_grade',scale_bad));
+      exception when sqlstate 'PT400' then scale_rejected := true; end;
+      perform test.assert(scale_rejected,'recordGrades rejects off-scale final_grade ' || scale_bad);
+
+      scale_rejected := false;
+      begin
+        perform public.matt_operation('encodeTermGrades',jsonb_build_object('student_id',student),
+          jsonb_build_object('school_term_id',term.id,'rows',jsonb_build_array(
+            jsonb_build_object('course_offering_id',scale_offering,'midterm_grade',scale_bad))));
+      exception when sqlstate 'PT400' then scale_rejected := true; end;
+      perform test.assert(scale_rejected,'encodeTermGrades rejects off-scale midterm_grade ' || scale_bad);
+    end loop;
+
+    scale_res := public.matt_operation('recordGrades',jsonb_build_object('student_id',student),
+      jsonb_build_object('school_term_id',term.id,'course_offering_id',scale_offering,'final_grade',5));
+    scale_attempt := (scale_res->>'id')::uuid;
+    perform test.assert(scale_res->>'recorded_status'='failed' and (scale_res->>'final_grade')::numeric=5,
+      'recordGrades accepts 5.00 as failing');
+
+    -- encodeTermGrades accepts 1.00 and 3.00 on midterm/final
+    scale_res := public.matt_operation('encodeTermGrades',jsonb_build_object('student_id',student),
+      jsonb_build_object('school_term_id',term.id,'rows',jsonb_build_array(
+        jsonb_build_object('attempt_id',scale_attempt,'course_offering_id',scale_offering,'midterm_grade',1,'final_grade',3))));
+    perform test.assert((scale_res->0->>'midterm_grade')::numeric=1 and (scale_res->0->>'final_grade')::numeric=3,
+      'encodeTermGrades accepts 1.00 and 3.00');
+
+    -- correctGrades rejects 3.25 and 4.75, accepts 5.00 and 1.00
+    select revision into scale_rev from public.attempt where id=scale_attempt;
+    foreach scale_bad in array array[3.25, 4.75] loop
+      scale_rejected := false;
+      begin
+        perform public.matt_operation('correctGrades',jsonb_build_object('student_id',student,'attempt_id',scale_attempt),
+          jsonb_build_object('expected_revision',scale_rev,'reason','Off-scale test','final_grade',scale_bad));
+      exception when sqlstate 'PT400' then scale_rejected := true; end;
+      perform test.assert(scale_rejected,'correctGrades rejects off-scale final_grade ' || scale_bad);
+    end loop;
+
+    foreach scale_good in array array[5.00, 1.00] loop
+      select revision into scale_rev from public.attempt where id=scale_attempt;
+      scale_res := public.matt_operation('correctGrades',jsonb_build_object('student_id',student,'attempt_id',scale_attempt),
+        jsonb_build_object('expected_revision',scale_rev,'reason','Valid scale test','final_grade',scale_good));
+      perform test.assert((scale_res->>'final_grade')::numeric=scale_good,
+        'correctGrades accepts valid scale grade ' || scale_good);
+    end loop;
+
+    -- resolveGradeFlag rejects 3.25 and 4.75, accepts 3.00
+    insert into public.grade_flag(student_id,attempt_id,reported_stage,issue_type,details)
+      values(student,scale_attempt,'final','wrong_grade','Scale flag') returning id into scale_flag;
+    select revision into scale_rev from public.attempt where id=scale_attempt;
+    foreach scale_bad in array array[3.25, 4.75] loop
+      scale_rejected := false;
+      begin
+        perform public.matt_operation('resolveGradeFlag',jsonb_build_object('flag_id',scale_flag),
+          jsonb_build_object('resolution_action','correct','resolution_note','Scale check',
+            'expected_revision',scale_rev,'corrected_grade',scale_bad));
+      exception when sqlstate 'PT400' then scale_rejected := true; end;
+      perform test.assert(scale_rejected,'resolveGradeFlag rejects off-scale grade ' || scale_bad);
+    end loop;
+    scale_res := public.matt_operation('resolveGradeFlag',jsonb_build_object('flag_id',scale_flag),
+      jsonb_build_object('resolution_action','correct','resolution_note','Valid scale fix',
+        'expected_revision',scale_rev,'corrected_grade',3));
+    perform test.assert((scale_res->>'corrected_grade')::numeric=3,'resolveGradeFlag accepts 3.00');
+
+    -- completeINC and correctINCCompletion reject 3.25 and 4.75, accept 5.00 and 1.00
+    scale_res := public.matt_operation('recordGrades',jsonb_build_object('student_id',student),
+      jsonb_build_object('school_term_id',term.id,'course_offering_id',scale_inc_offering,'status','inc'));
+    scale_inc_attempt := (scale_res->>'id')::uuid;
+    update public.attempt set inc_deadline=current_date+30 where id=scale_inc_attempt;
+    foreach scale_bad in array array[3.25, 4.75] loop
+      scale_rejected := false;
+      begin
+        perform public.matt_operation('completeINC',jsonb_build_object('student_id',student,'attempt_id',scale_inc_attempt),
+          jsonb_build_object('completion_grade',scale_bad,'reason','Off-scale INC'));
+      exception when sqlstate 'PT400' then scale_rejected := true; end;
+      perform test.assert(scale_rejected,'completeINC rejects off-scale grade ' || scale_bad);
+    end loop;
+    scale_res := public.matt_operation('completeINC',jsonb_build_object('student_id',student,'attempt_id',scale_inc_attempt),
+      jsonb_build_object('completion_grade',5,'reason','Valid failing completion'));
+    perform test.assert((scale_res->>'completion_grade')::numeric=5 and scale_res->>'effective_status'='failed',
+      'completeINC accepts 5.00');
+    scale_updated_at := scale_res->>'updated_at';
+    foreach scale_bad in array array[3.25, 4.75] loop
+      scale_rejected := false;
+      begin
+        perform public.matt_operation('correctINCCompletion',jsonb_build_object('student_id',student,'attempt_id',scale_inc_attempt),
+          jsonb_build_object('completion_grade',scale_bad,'reason','Off-scale INC fix','expected_updated_at',scale_updated_at));
+      exception when sqlstate 'PT400' then scale_rejected := true; end;
+      perform test.assert(scale_rejected,'correctINCCompletion rejects off-scale grade ' || scale_bad);
+    end loop;
+    scale_res := public.matt_operation('correctINCCompletion',jsonb_build_object('student_id',student,'attempt_id',scale_inc_attempt),
+      jsonb_build_object('completion_grade',1,'reason','Valid passing completion','expected_updated_at',scale_updated_at));
+    perform test.assert((scale_res->>'completion_grade')::numeric=1 and scale_res->>'effective_status'='passed',
+      'correctINCCompletion accepts 1.00');
+
+    -- Direct database CHECK constraints reject 3.25 and 4.75 on attempt, inc_resolution, grade_flag
+    scale_rejected := false;
+    begin
+      update public.attempt set final_grade=3.25, status='failed' where id=scale_attempt;
+    exception when check_violation then scale_rejected := true; end;
+    perform test.assert(scale_rejected,'attempt CHECK constraint rejects 3.25 final_grade');
+
+    scale_rejected := false;
+    begin
+      update public.attempt set midterm_grade=4.75, midterm_status='graded' where id=scale_attempt;
+    exception when check_violation then scale_rejected := true; end;
+    perform test.assert(scale_rejected,'attempt CHECK constraint rejects 4.75 midterm_grade');
+
+    scale_rejected := false;
+    begin
+      update public.inc_resolution set completion_grade=3.25 where attempt_id=scale_inc_attempt;
+    exception when check_violation then scale_rejected := true; end;
+    perform test.assert(scale_rejected,'inc_resolution CHECK constraint rejects 3.25 completion_grade');
+
+    scale_rejected := false;
+    begin
+      update public.grade_flag set corrected_grade=4.75 where id=scale_flag;
+    exception when check_violation then scale_rejected := true; end;
+    perform test.assert(scale_rejected,'grade_flag CHECK constraint rejects 4.75 corrected_grade');
+  end;
 end $$;
