@@ -34,6 +34,12 @@ export default async function handler(req, res) {
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !key) return res.status(503).end();
+  // Which step is running, so a 503 can say what failed.
+  let step = "sign-in";
+  const unavailable = (reason) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.status(503).send(reason);
+  };
   try {
     const client = createClient(url, key, {
       auth: {
@@ -46,6 +52,7 @@ export default async function handler(req, res) {
     const { data, error } = await client.auth.getUser(match[1]);
     if (error || !data.user) return res.status(401).end();
 
+    step = "profile";
     const profileUrl = new URL("/functions/v1/data-api/profile", url);
     profileUrl.searchParams.set("select", "id,status");
     profileUrl.searchParams.set("id", `eq.${data.user.id}`);
@@ -61,7 +68,11 @@ export default async function handler(req, res) {
       },
     });
     if (profileResponse.status === 401) return res.status(401).end();
-    if (profileResponse.status >= 500) return res.status(503).end();
+    if (profileResponse.status >= 500) {
+      return unavailable(
+        `profile check failed (HTTP ${profileResponse.status})`,
+      );
+    }
     if (!profileResponse.ok) return res.status(403).end();
 
     const profiles = await profileResponse.json();
@@ -74,6 +85,7 @@ export default async function handler(req, res) {
       return res.status(403).end();
     }
 
+    step = "document";
     const filePath = resolve(process.cwd(), document.path);
     const content = document.bundleOpenApi
       ? await loadBundledOpenApiYaml(filePath)
@@ -81,11 +93,14 @@ export default async function handler(req, res) {
     res.setHeader("Content-Type", document.type);
     return res.status(200).send(content);
   } catch (error) {
-    // The response stays empty; the cause goes to the function log only.
-    console.error(
-      `docs: could not serve "${name}":`,
-      error instanceof Error ? error.message : String(error),
-    );
+    if (step === "profile") return unavailable("profile check failed");
+    // Temporary: only an active user reaches this step. Remove once the
+    // deployed failure is fixed.
+    if (step === "document") {
+      return unavailable(
+        `could not build the document: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     return res.status(503).end();
   }
 }
