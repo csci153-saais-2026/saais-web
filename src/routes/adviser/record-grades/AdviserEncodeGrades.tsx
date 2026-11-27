@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { AdviserPage } from "../Adviser";
 import { useAuth } from "@/hooks/use-auth";
-import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { useScopedRequest } from "../advisees/use-scoped-request";
 import {
   getElectiveSlots,
@@ -54,6 +53,15 @@ const emptyRow = (): Row => ({
   reason: "",
   remark: "",
 });
+type Offerings = Awaited<ReturnType<typeof getTermOfferings>>;
+
+/** Course code plus the prerequisites it is missing, for the override modal. */
+function overrideLabel(option: Offerings[number] | undefined) {
+  if (!option) return "an unlisted course";
+  const missing = option.unmet_prerequisites?.map((p) => p.code).join(", ");
+  return missing ? `${option.code} (missing ${missing})` : option.code;
+}
+
 function TermEditor({
   studentId,
   termId,
@@ -80,6 +88,11 @@ function TermEditor({
   const [blocked, setBlocked] = useState<{
     keys: string[];
     courses: string[];
+  } | null>(null);
+  // An added course waiting on the override modal.
+  const [adding, setAdding] = useState<{
+    offering: string;
+    slot?: string;
   } | null>(null);
   const { data: loadedData, error: loadError } = useScopedRequest(
     JSON.stringify([userId, studentId, termId, revision, workspaceRevision]),
@@ -176,9 +189,7 @@ function TermEditor({
       if (candidates.length) {
         setBlocked({
           keys: candidates.map((item) => item.key),
-          courses: candidates.map(
-            (item) => item.option?.code ?? "an unlisted course",
-          ),
+          courses: candidates.map((item) => overrideLabel(item.option)),
         });
         return;
       }
@@ -212,14 +223,35 @@ function TermEditor({
         occupied.includes(row.offering) ||
         (row.midterm !== "dr" && !validGrade(row.midterm)) ||
         !validGrade(row.final) ||
-        (data?.find((o) => o.offering.id === row.offering)
-          ?.has_unmet_strict_prerequisites &&
-          (!row.override || !row.reason.trim())) ||
         (row.status && row.final) ||
         rows.filter((r) => r.offering === row.offering).length > 1,
     );
+  const addRow = (offering: string, slot?: string, reason?: string) => {
+    setRows((old) => [
+      ...old,
+      {
+        ...emptyRow(),
+        offering,
+        ...(slot ? { slot } : {}),
+        ...(reason ? { override: true, reason } : {}),
+      },
+    ]);
+  };
   return (
     <>
+      {adding && (
+        <PrerequisiteOverrideDialog
+          courses={[
+            overrideLabel(data?.find((o) => o.offering.id === adding.offering)),
+          ]}
+          busy={busy}
+          onCancel={() => setAdding(null)}
+          onContinue={(reason) => {
+            addRow(adding.offering, adding.slot, reason);
+            setAdding(null);
+          }}
+        />
+      )}
       {blocked && (
         <PrerequisiteOverrideDialog
           courses={blocked.courses}
@@ -375,41 +407,10 @@ function TermEditor({
                     >
                       ×
                     </Button>
-                    {option?.has_unmet_strict_prerequisites && (
-                      <div className="rounded-md border p-3 sm:col-span-2 lg:col-span-6">
-                        <p>
-                          Unmet strict prerequisites:{" "}
-                          {option.unmet_prerequisites
-                            ?.map((p) => p.code)
-                            .join(", ") || "See course details"}
-                          .
-                        </p>
-                        <label>
-                          <input
-                            type="checkbox"
-                            disabled={busy}
-                            checked={row.override}
-                            onChange={(e) =>
-                              change(i, { override: e.target.checked })
-                            }
-                          />{" "}
-                          Continue with override
-                        </label>
-                        {row.override && (
-                          <label className="grid gap-1">
-                            Override reason
-                            <input
-                              disabled={busy}
-                              maxLength={REASON_MAX_LENGTH}
-                              className="rounded-md border p-2"
-                              value={row.reason}
-                              onChange={(e) =>
-                                change(i, { reason: e.target.value })
-                              }
-                            />
-                          </label>
-                        )}
-                      </div>
+                    {row.override && (
+                      <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-6">
+                        Prerequisite override: {row.reason}
+                      </p>
                     )}
                   </div>
                 );
@@ -426,19 +427,18 @@ function TermEditor({
                     unavailable={unavailableOfferings}
                     disabled={busy || !data.length || rows.length >= 100}
                     onAdd={(offering, slot) => {
-                      setRows((old) => [
-                        ...old,
-                        { ...emptyRow(), offering, ...(slot ? { slot } : {}) },
-                      ]);
+                      const option = data.find(
+                        (o) => o.offering.id === offering,
+                      );
+                      if (option?.has_unmet_strict_prerequisites)
+                        setAdding({ offering, slot });
+                      else addRow(offering, slot);
                     }}
                   />
                 </div>
                 {error && <p role="alert">{error}</p>}
                 {rows.length > 0 && invalid && (
-                  <p>
-                    Choose unique courses and provide any required override
-                    reasons.
-                  </p>
+                  <p>Choose unique courses and valid grades.</p>
                 )}
                 <div className="flex justify-end">
                   <Button

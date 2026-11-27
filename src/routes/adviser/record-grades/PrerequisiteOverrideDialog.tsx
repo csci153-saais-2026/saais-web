@@ -11,7 +11,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 
-/** The Continue/Cancel step for rows the server refused with PREREQUISITE_NOT_MET. */
+/**
+ * The Continue/Cancel step for unmet strict prerequisites (FR-ENR-12), used
+ * when a course is added and when the server refuses a save.
+ */
 export function PrerequisiteOverrideDialog({
   courses,
   busy,
@@ -31,8 +34,8 @@ export function PrerequisiteOverrideDialog({
           <DialogTitle>Prerequisite not met</DialogTitle>
           <DialogDescription>
             A strict prerequisite was not passed in an earlier term for:{" "}
-            {courses.join(", ")}. Nothing has been saved. Continue to record the
-            grades with an override, or cancel to edit them.
+            {courses.join(", ")}. Nothing has been saved. Continue with an
+            override, or cancel.
           </DialogDescription>
         </DialogHeader>
         <label className="grid gap-1.5">
