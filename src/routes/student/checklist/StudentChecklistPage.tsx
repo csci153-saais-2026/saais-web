@@ -480,6 +480,7 @@ async function fetchChecklistMeta(
             student_id: postgrestFilter.eq(studentId),
             select: "id,adviser_id,adviser_name,start_date,end_date",
             order: "start_date.desc",
+            limit: 1000,
           },
         },
       })
