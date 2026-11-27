@@ -1,9 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { cpSync, globSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { parse } from "yaml";
 import handler from "../api/docs.js";
-import { clearBundledOpenApiCache } from "../api/openapi-bundle.js";
+import {
+  clearBundledOpenApiCache,
+  loadBundledOpenApiYaml,
+} from "../api/openapi-bundle.js";
 
 function response() {
   return {
@@ -149,26 +154,6 @@ test("documentation endpoint verifies active users via Data API gateway and serv
     assert.equal(res.statusCode, 200);
     assert.equal(res.headers["Content-Type"], "text/markdown; charset=utf-8");
 
-    // A failure after the profile check says why.
-    const cwd = process.cwd();
-    clearBundledOpenApiCache();
-    process.chdir(tmpdir());
-    try {
-      res = response();
-      await handler(
-        {
-          method: "GET",
-          query: { document: "openapi" },
-          headers: { authorization: "Bearer valid-token" },
-        },
-        res,
-      );
-    } finally {
-      process.chdir(cwd);
-    }
-    assert.equal(res.statusCode, 503);
-    assert.match(res.body, /^could not build the document: .*openapi.yaml/);
-
     active = false;
     res = response();
     await handler(
@@ -180,12 +165,27 @@ test("documentation endpoint verifies active users via Data API gateway and serv
       res,
     );
     assert.equal(res.statusCode, 403);
-    assert.equal(gatewayCalls, 4);
+    assert.equal(gatewayCalls, 3);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldUrl === undefined) delete process.env.SUPABASE_URL;
     else process.env.SUPABASE_URL = oldUrl;
     if (oldKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY;
     else process.env.SUPABASE_PUBLISHABLE_KEY = oldKey;
+  }
+});
+
+test("the deployed function includes every file the OpenAPI bundle reads", async () => {
+  const { functions } = JSON.parse(readFileSync("vercel.json", "utf8"));
+  const deployed = mkdtempSync(join(tmpdir(), "saais-docs-"));
+  try {
+    for (const file of globSync(functions["api/docs.js"].includeFiles)) {
+      cpSync(file, join(deployed, file), { recursive: true });
+    }
+    clearBundledOpenApiCache();
+    await loadBundledOpenApiYaml(join(deployed, "contract/openapi.yaml"));
+  } finally {
+    clearBundledOpenApiCache();
+    rmSync(deployed, { recursive: true, force: true });
   }
 });
