@@ -1,15 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { loadBundledOpenApiYaml } from "./openapi-bundle.js";
 
 const documents = {
   openapi: {
     path: "contract/openapi.yaml",
     type: "application/yaml; charset=utf-8",
+    bundleOpenApi: true,
   },
   guide: {
     path: "docs/api-documentation.md",
     type: "text/markdown; charset=utf-8",
+    bundleOpenApi: false,
   },
 };
 
@@ -42,17 +45,39 @@ export default async function handler(req, res) {
     });
     const { data, error } = await client.auth.getUser(match[1]);
     if (error || !data.user) return res.status(401).end();
-    const { data: profile, error: profileError } = await client
-      .from("profile")
-      .select("id,status")
-      .eq("id", data.user.id)
-      .eq("status", "active")
-      .maybeSingle();
-    if (profileError || !profile) return res.status(403).end();
-    const content = await readFile(
-      resolve(process.cwd(), document.path),
-      "utf8",
-    );
+
+    const profileUrl = new URL("/functions/v1/data-api/profile", url);
+    profileUrl.searchParams.set("select", "id,status");
+    profileUrl.searchParams.set("id", `eq.${data.user.id}`);
+    profileUrl.searchParams.set("status", "eq.active");
+    profileUrl.searchParams.set("limit", "1");
+
+    const profileResponse = await fetch(profileUrl, {
+      method: "GET",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${match[1]}`,
+        "Accept-Profile": "saais_api",
+      },
+    });
+    if (profileResponse.status === 401) return res.status(401).end();
+    if (profileResponse.status >= 500) return res.status(503).end();
+    if (!profileResponse.ok) return res.status(403).end();
+
+    const profiles = await profileResponse.json();
+    const profile = Array.isArray(profiles) ? profiles[0] : profiles;
+    if (
+      !profile ||
+      profile.id !== data.user.id ||
+      profile.status !== "active"
+    ) {
+      return res.status(403).end();
+    }
+
+    const filePath = resolve(process.cwd(), document.path);
+    const content = document.bundleOpenApi
+      ? await loadBundledOpenApiYaml(filePath)
+      : await readFile(filePath, "utf8");
     res.setHeader("Content-Type", document.type);
     return res.status(200).send(content);
   } catch {

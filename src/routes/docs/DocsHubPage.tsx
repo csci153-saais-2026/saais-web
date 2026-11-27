@@ -39,11 +39,15 @@ function DocsHubContent() {
   }, [])
   const allGuideSections = docs.flatMap((doc) => doc.sections)
   async function downloadSpec() {
+    setError('')
     try {
       const content = await fetchDocumentation('openapi')
       const url = URL.createObjectURL(new Blob([content], { type: 'application/yaml' }))
-      const link = document.createElement('a'); link.href = url; link.download = 'saais-openapi.yaml'; link.click()
-      URL.revokeObjectURL(url)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'saais-openapi.yaml'
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch { setError('The OpenAPI document could not be downloaded.') }
   }
 
