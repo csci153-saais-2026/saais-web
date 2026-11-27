@@ -10,7 +10,7 @@ import type { BackupScope, SettingsState } from "../settings/settings-types";
 import { todayInManila } from "./dh-utils";
 import type { DirectoryStudent } from "./students-types";
 
-export type DepartmentAdviser = { id: string; name: string };
+export type DepartmentAdviser = { id: string; name: string; email: string };
 
 const PAGE = 100;
 
@@ -87,28 +87,61 @@ export async function getDirectoryStudents(): Promise<DirectoryStudent[]> {
   });
 }
 
-export async function getDepartmentAdvisers(): Promise<DepartmentAdviser[]> {
-  const [roster, profiles] = await Promise.all([
-    getRoster("all"),
-    allPages((offset) =>
-      apiClient
-        .GET("/rest/v1/profile", {
-          params: { query: { limit: PAGE, offset } },
-        })
-        .then(unwrapApiResult),
-    ),
-  ]);
-  const departments = new Set(roster.map((student) => student.department_id));
-  return profiles
-    .filter(
-      (profile) =>
-        profile.status === "active" &&
-        profile.roles?.includes("adviser") &&
-        !!profile.department_id &&
-        departments.has(profile.department_id),
-    )
-    .map((profile) => ({ id: profile.id, name: profile.full_name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+/**
+ * Active advisers of the head's own departments. The Data API never returns
+ * `profile.roles`, so the adviser role is read from `role_assignment`.
+ */
+export async function getDepartmentAdvisers(
+  departmentIds: readonly string[],
+): Promise<DepartmentAdviser[]> {
+  if (!departmentIds.length)
+    throw new Error("An active department head assignment is required.");
+  const assignments = await allPages((offset) =>
+    apiClient
+      .GET("/rest/v1/role_assignment", {
+        params: {
+          query: {
+            role: postgrestFilter.eq("adviser"),
+            department_id: postgrestFilter.inList(departmentIds),
+            select: "id,profile_id,role,department_id",
+            order: "id.asc",
+            limit: PAGE,
+            offset,
+          },
+        },
+      })
+      .then(unwrapApiResult),
+  );
+  const ids = [...new Set(assignments.map((row) => row.profile_id))];
+  const advisers: DepartmentAdviser[] = [];
+  for (let start = 0; start < ids.length; start += 50) {
+    const profiles = unwrapApiResult(
+      await apiClient.GET("/rest/v1/profile", {
+        params: {
+          query: {
+            id: postgrestFilter.inList(ids.slice(start, start + 50)),
+            status: postgrestFilter.eq("active"),
+            select: "id,full_name,email,status,department_id",
+            order: "id.asc",
+            limit: PAGE,
+          },
+        },
+      }),
+    );
+    for (const profile of profiles) {
+      // Reassignment is also authorized by the adviser's own department.
+      if (
+        profile.department_id &&
+        departmentIds.includes(profile.department_id)
+      )
+        advisers.push({
+          id: profile.id,
+          name: profile.full_name,
+          email: profile.email,
+        });
+    }
+  }
+  return advisers.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function reassignStudents(input: {
