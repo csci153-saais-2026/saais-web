@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHandler, operationsFor } from "../functions/_shared/http.ts";
 import { environment } from "../functions/_shared/serve.ts";
-import { jeromeStudentOperations } from "../functions/students/jerome-routes.ts";
+import { creditTransferOperations } from "../functions/students/credit-transfer-routes.ts";
 import snapshot from "../functions/_shared/contract.json" with { type: "json" };
 
 const env = {
@@ -51,12 +51,12 @@ test("all 47 exact contract methods and paths dispatch with declared success sta
   }
 });
 
-test("students exposes only Jerome operations through its separate list", () => {
-  assert.equal(jeromeStudentOperations.length, 11);
+test("the credit and transfer list contains eleven student operations", () => {
+  assert.equal(creditTransferOperations.length, 11);
   assert.ok(
-    operationsFor("students").includes(jeromeStudentOperations[0]) ||
+    operationsFor("students").includes(creditTransferOperations[0]) ||
       operationsFor("students").some(
-        (operation) => operation.id === jeromeStudentOperations[0].id,
+        (operation) => operation.id === creditTransferOperations[0].id,
       ),
   );
 });
@@ -195,6 +195,28 @@ test("hosted named publishable keys and legacy anon keys are accepted without se
   }
 });
 
+test("non-object named key settings fall back to the singular and legacy keys", () => {
+  for (const setting of [
+    "null",
+    "false",
+    "42",
+    '"unexpected"',
+    '["unexpected"]',
+    "{",
+  ]) {
+    const configured = environment(
+      (name) =>
+        ({
+          SUPABASE_PUBLISHABLE_KEYS: setting,
+          SUPABASE_PUBLISHABLE_KEY: "singular-key",
+          SUPABASE_ANON_KEY: "legacy-anon",
+        })[name],
+    );
+    assert.equal(configured.publicKey, "singular-key");
+    assert.deepEqual(configured.publicKeys, ["singular-key", "legacy-anon"]);
+  }
+});
+
 test("expired Auth credentials, SQL conflict, rate limit and internal detail sanitization", async () => {
   for (const [status, code, expected] of [
     [409, "PT409", "Reviewed conflict"],
@@ -247,4 +269,35 @@ test("expired Auth credentials, SQL conflict, rate limit and internal detail san
     ).status,
     401,
   );
+});
+
+test("an undeclared controlled database error returns a generic 500", async () => {
+  const handler = createHandler("catalog", {
+    env,
+    fetch: async (url) =>
+      url.endsWith("/user")
+        ? identity()
+        : Response.json(
+            {
+              code: "PT404",
+              message: "A database-only detail.",
+              details: "private metadata",
+            },
+            { status: 404 },
+          ),
+  });
+  const response = await handler(
+    new Request(env.url + "/catalog/faculty", {
+      method: "POST",
+      headers,
+      body: "{}",
+    }),
+  );
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), {
+    code: "XX000",
+    message: "The operation could not be completed.",
+    details: null,
+    hint: null,
+  });
 });

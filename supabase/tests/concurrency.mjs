@@ -230,3 +230,42 @@ await run(psql, [
 console.log(
   "Concurrent authenticated admissions fail after exhausting the shared budget.",
 );
+
+// A failed HTTP response may race the transaction that consumes the photo token.
+// The cleanup RPC must wait: a commit leaves no token, a rollback leaves one.
+for (const outcome of ["commit", "rollback"]) {
+  const photoPath = `students/00000005-0000-4000-8000-000000000000/validated-race-${outcome}.png`;
+  await run(psql, [
+    ...args,
+    "-c",
+    `insert into saais_private.verified_student_photo(object_path, student_id, actor_id)
+      values ('${photoPath}', '00000005-0000-4000-8000-000000000000', '00000005-0000-4000-8000-000000000000')`,
+  ]);
+  const saving = run(psql, [
+    ...args,
+    "-c",
+    `begin; set application_name = 'saais_photo_${outcome}';
+     delete from saais_private.verified_student_photo where object_path = '${photoPath}';
+     select pg_sleep(2); ${outcome};`,
+  ]);
+  let waiting = false;
+  for (let poll = 0; poll < 30 && !waiting; poll++) {
+    const observed = await run(psql, [
+      ...args,
+      "-c",
+      `select exists(select 1 from pg_stat_activity where application_name = 'saais_photo_${outcome}' and wait_event = 'PgSleep')`,
+    ]);
+    waiting = observed.stdout.trim() === "t";
+  }
+  assert.ok(waiting, `Photo ${outcome} transaction must hold the token first`);
+  const cleanup = run(psql, [
+    ...args,
+    "-c",
+    `select public.saais_abandon_verified_photo('${photoPath}')`,
+  ]);
+  const [, decision] = await Promise.all([saving, cleanup]);
+  assert.equal(decision.stdout.trim(), outcome === "commit" ? "f" : "t");
+}
+console.log(
+  "Photo cleanup waits for the save and only abandons a rolled-back token.",
+);

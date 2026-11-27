@@ -165,7 +165,7 @@ jobs:
         if: ${{ failure() && steps.postgres-regressions.outcome == 'failure' }}
         run: |
           log_dir=supabase/.temp
-          log="$log_dir/jerome-pg.log"
+          log="$log_dir/backend-pg.log"
           if [ -r "$log" ]; then
             cat "$log"
           else
@@ -173,7 +173,7 @@ jobs:
             if [ -d "$log_dir" ]; then
               find "$log_dir" -maxdepth 3 -type f \( -iname '*postgres*.log' -o -iname '*pg*.log' \) \
                 -print -exec tail -n 100 {} \;
-              ls -ld "$log_dir" "$log_dir/jerome-pg" 2>/dev/null || true
+              ls -ld "$log_dir" "$log_dir/backend-pg" 2>/dev/null || true
             else
               echo "PostgreSQL temporary directory was not created."
             fi

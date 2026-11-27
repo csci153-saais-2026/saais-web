@@ -68,6 +68,50 @@ test("mail delivery retries transient failures with the same provider idempotenc
   assert.deepEqual(outcomes, ["retry", "sent"]);
 });
 
+test("invitation links keep the site's base path", async () => {
+  const mail = {
+    id,
+    lease: session,
+    kind: "invitation",
+    email: "mail-fixture@example.test",
+    subject: "Invitation",
+    message: null,
+    token,
+  };
+  for (const [site, expected] of [
+    ["https://host.example.test", "https://host.example.test/invite"],
+    [
+      "https://host.example.test/saais",
+      "https://host.example.test/saais/invite",
+    ],
+    [
+      "https://host.example.test/saais/",
+      "https://host.example.test/saais/invite",
+    ],
+  ]) {
+    let text = "";
+    const handler = createMailHandler(
+      readMailEnvironment(
+        (name) =>
+          ({
+            ...settings,
+            SAAIS_SITE_URL: site,
+            SAAIS_MAIL_ALLOWED_RECIPIENTS: mail.email,
+          })[name],
+      ),
+      async (url, options) => {
+        if (url.endsWith("/saais_claim_email")) return Response.json([mail]);
+        if (url.endsWith("/saais_finish_email"))
+          return new Response(null, { status: 204 });
+        text = JSON.parse(options.body).text;
+        return new Response(null, { status: 200 });
+      },
+    );
+    assert.equal((await send(handler)).status, 200);
+    assert.ok(text.includes(`${expected}#token=${token}`), text);
+  }
+});
+
 test("missing or empty recipient configuration blocks claims and provider calls", async () => {
   for (const environment of [undefined, "staging", "test", "production"]) {
     for (const recipients of [undefined, "", " , "]) {
@@ -163,4 +207,51 @@ test("explicit production mode preserves unrestricted claims when no list is sup
     return Response.json([]);
   });
   assert.equal((await send(handler)).status, 200);
+});
+
+test("a claimed disallowed recipient is marked failed without sending email", async () => {
+  const config = readMailEnvironment(
+    (name) =>
+      ({ ...settings, SAAIS_MAIL_ALLOWED_RECIPIENTS: "allowed@example.test" })[
+        name
+      ],
+  );
+  const finished = [];
+  const handler = createMailHandler(config, async (url, options) => {
+    if (url.endsWith("/saais_claim_email")) {
+      return Response.json([
+        {
+          id,
+          lease: session,
+          kind: "notification",
+          email: "blocked@example.test",
+        },
+      ]);
+    }
+    assert.ok(url.endsWith("/saais_finish_email"));
+    finished.push(JSON.parse(options.body));
+    return new Response(null, { status: 204 });
+  });
+  assert.equal((await send(handler)).status, 200);
+  assert.deepEqual(finished, [
+    { p_id: id, p_kind: "notification", p_lease: session, p_outcome: "failed" },
+  ]);
+});
+
+test("mail delivery runs optional photo cleanup hook without failing mail responses", async () => {
+  const config = readMailEnvironment(
+    (name) =>
+      ({ ...settings, SAAIS_MAIL_ALLOWED_RECIPIENTS: "allowed@example.test" })[
+        name
+      ],
+  );
+  let sweeps = 0;
+  const handler = createMailHandler(config, async () => Response.json([]), {
+    reconcilePhotos: async () => {
+      sweeps++;
+      throw new Error("transient storage outage");
+    },
+  });
+  assert.equal((await send(handler)).status, 200);
+  assert.equal(sweeps, 1);
 });

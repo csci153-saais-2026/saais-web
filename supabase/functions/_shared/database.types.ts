@@ -1864,7 +1864,12 @@ export type Database = {
         Returns: undefined
       }
       saais_register_verified_photo: {
-        Args: { p_actor: string; p_path: string; p_student: string }
+        Args: {
+          p_actor: string
+          p_path: string
+          p_staging_path?: string
+          p_student: string
+        }
         Returns: undefined
       }
     }

@@ -5,8 +5,8 @@ import {
   runInvitation,
 } from "./invitations.ts";
 import contract from "./contract.json" with { type: "json" };
-import mattContract from "./matt-contract.json" with { type: "json" };
-import { mattRoutes } from "./matt-routes.ts";
+import academicContract from "./academic-contract.json" with { type: "json" };
+import { academicRoutes } from "./academic-routes.ts";
 import { assistantAnswer, type AssistantConfig } from "./ai-assistant.ts";
 import { PhotoError } from "./photo-error.ts";
 
@@ -20,7 +20,7 @@ export type Operation = {
   input: unknown;
   status: number | null;
   errors: number[];
-  matt?: boolean;
+  usesAcademicRpc?: boolean;
   public?: boolean;
 };
 export type Environment = {
@@ -39,12 +39,22 @@ export type PhotoPreparer = (
   student: string,
   actor: string,
   body: unknown,
-) => Promise<{ body: unknown; cleanup?: () => Promise<void> }>;
+) => Promise<{
+  body: unknown;
+  commit?: () => Promise<void>;
+  abandon?: () => Promise<void>;
+}>;
+export type PhotoCleaner = (
+  env: Environment,
+  fetcher: typeof fetch,
+  student: string,
+) => Promise<void>;
 type Dependencies = {
   env: Environment;
   fetch?: typeof fetch;
   operations?: Operation[];
   photoUpload?: PhotoPreparer;
+  photoDelete?: PhotoCleaner;
 };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 1024 * 1024;
@@ -98,20 +108,20 @@ async function readJson(request: Request): Promise<unknown> {
   return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
 }
 
-// Each prefix owns its route list. Matt can compose his students routes with
-// jeromeStudentOperations without replacing handlers or registering duplicates.
+// Each prefix combines the routes from both contract snapshots.
 export function operationsFor(group: RouteGroup): Operation[] {
   const matchesGroup = (operation: Operation) =>
     operation.path.split("/")[3] === group;
   return [
     ...contract.operations.filter(matchesGroup),
-    ...mattContract.operations
+    ...academicContract.operations
       .filter(
         (operation) =>
-          (mattRoutes.has(operation.id) || isInvitationRoute(operation.id)) &&
+          (academicRoutes.has(operation.id) ||
+            isInvitationRoute(operation.id)) &&
           matchesGroup(operation),
       )
-      .map((operation) => ({ ...operation, matt: true })),
+      .map((operation) => ({ ...operation, usesAcademicRpc: true })),
   ];
 }
 
@@ -134,6 +144,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
     if (origin) headers.set("Access-Control-Allow-Origin", origin);
     if (request.method === "OPTIONS")
       return new Response(null, { status: 204, headers });
+    let abandonPhoto: (() => Promise<void>) | undefined;
     try {
       const url = new URL(request.url);
       // Supabase hosted and local gateways forward /<function>/<route>.
@@ -297,7 +308,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           authorization: authorization!,
         });
       }
-      let photoCleanup: (() => Promise<void>) | undefined;
+      let photoCommit: (() => Promise<void>) | undefined;
       if (operation.id === "uploadStudentPhoto") {
         try {
           if (!dependencies.photoUpload)
@@ -311,7 +322,8 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
             body,
           );
           body = validated.body;
-          photoCleanup = validated.cleanup;
+          photoCommit = validated.commit;
+          abandonPhoto = validated.abandon;
         } catch (failure) {
           if (!(failure instanceof PhotoError)) throw failure;
           if (failure.status === 429) headers.set("Retry-After", "60");
@@ -343,7 +355,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         );
       const rpc = assistant
         ? "matt_assistant_context"
-        : operation.matt
+        : operation.usesAcademicRpc
           ? "matt_operation"
           : "jerome_operation";
       const rpcBody = assistant
@@ -351,7 +363,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         : { p_operation: operation.id, p_params: params, p_body: body ?? {} };
       const result = await fetcher(`${env.url}/rest/v1/rpc/${rpc}`, {
         method: "POST",
-        headers: upstreamHeaders,
+        headers: { ...upstreamHeaders, "Content-Profile": "public" },
         body: JSON.stringify(rpcBody),
         signal: AbortSignal.timeout(30000),
       });
@@ -364,17 +376,24 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           message?: string;
           details?: string;
         };
-        if (photoCleanup && (result.status < 500 || Boolean(upstream.code))) {
-          await photoCleanup();
-        }
+        await abandonPhoto?.();
+        abandonPhoto = undefined;
+        // The user check passed, but the session expired before the database call.
+        if (status === 401)
+          return error(
+            401,
+            "PGRST301",
+            "The user session could not be verified.",
+            headers,
+          );
         // Only controlled PT errors contain reviewed public messages. Database
         // constraint details and SQL row dumps never leave the function.
-        const controlled = /^PT(400|401|403|404|409|429)$/.test(
-          upstream.code || "",
-        );
+        const controlled =
+          status !== 500 &&
+          /^PT(400|401|403|404|409|429)$/.test(upstream.code || "");
         if (status === 429) headers.set("Retry-After", "60");
         const conflict =
-          operation.matt &&
+          operation.usesAcademicRpc &&
           status === 409 &&
           controlled &&
           [
@@ -392,6 +411,15 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
             ? (upstream.message || "Request rejected.").slice(0, 1000)
             : "The operation could not be completed.",
           headers,
+        );
+      }
+      abandonPhoto = undefined;
+      await photoCommit?.();
+      if (operation.id === "deleteStudentPhoto") {
+        await dependencies.photoDelete?.(
+          env,
+          fetcher,
+          String(params.student_id),
         );
       }
       if (operation.status === null)
@@ -421,6 +449,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
               apikey: env.serviceKey!,
               Authorization: `Bearer ${env.serviceKey!}`,
               "Content-Type": "application/json",
+              "Content-Profile": "public",
             },
             body: JSON.stringify(turn),
             signal: AbortSignal.timeout(10000),
@@ -441,6 +470,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       }
       return Response.json(data, { status: operation.status, headers });
     } catch {
+      await abandonPhoto?.();
       return error(
         500,
         "XX000",

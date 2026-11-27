@@ -1,6 +1,7 @@
 import {
   createHandler,
   type Environment,
+  type PhotoCleaner,
   type PhotoPreparer,
   type RouteGroup,
 } from "./http.ts";
@@ -11,7 +12,11 @@ export function environment(
 ): Environment {
   let named: Record<string, unknown> = {};
   try {
-    named = JSON.parse(get("SUPABASE_PUBLISHABLE_KEYS") || "{}");
+    const parsed: unknown = JSON.parse(
+      get("SUPABASE_PUBLISHABLE_KEYS") || "{}",
+    );
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      named = parsed as Record<string, unknown>;
   } catch {
     /* Legacy deployments provide the single-key variables. */
   }
@@ -36,7 +41,11 @@ export function environment(
   };
 }
 
-export function serve(group: RouteGroup, photoUpload?: PhotoPreparer) {
+export function serve(
+  group: RouteGroup,
+  photoUpload?: PhotoPreparer,
+  photoDelete?: PhotoCleaner,
+) {
   const runtime = (
     globalThis as unknown as {
       Deno: {
@@ -46,5 +55,5 @@ export function serve(group: RouteGroup, photoUpload?: PhotoPreparer) {
     }
   ).Deno;
   const env = environment((name) => runtime.env.get(name));
-  runtime.serve(createHandler(group, { env, photoUpload }));
+  runtime.serve(createHandler(group, { env, photoUpload, photoDelete }));
 }
