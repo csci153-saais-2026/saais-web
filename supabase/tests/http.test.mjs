@@ -270,3 +270,34 @@ test("expired Auth credentials, SQL conflict, rate limit and internal detail san
     401,
   );
 });
+
+test("an undeclared controlled database error returns a generic 500", async () => {
+  const handler = createHandler("catalog", {
+    env,
+    fetch: async (url) =>
+      url.endsWith("/user")
+        ? identity()
+        : Response.json(
+            {
+              code: "PT404",
+              message: "A database-only detail.",
+              details: "private metadata",
+            },
+            { status: 404 },
+          ),
+  });
+  const response = await handler(
+    new Request(env.url + "/catalog/faculty", {
+      method: "POST",
+      headers,
+      body: "{}",
+    }),
+  );
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), {
+    code: "XX000",
+    message: "The operation could not be completed.",
+    details: null,
+    hint: null,
+  });
+});

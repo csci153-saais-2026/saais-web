@@ -5,6 +5,9 @@ enabled = true
 max_rows = 1000
 schemas = ["public", "saais_api", "graphql_public"]
 
+[functions.data-api]
+verify_jwt = true
+
 [functions.catalog]
 verify_jwt = true
 

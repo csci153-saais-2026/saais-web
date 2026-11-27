@@ -223,7 +223,6 @@ export function createAuthHookHandler(
       }
       const decision = (await response.json()) as {
         allowed?: boolean;
-        http_code?: number;
         message?: string;
       };
       if (decision.allowed === true) {
@@ -231,7 +230,7 @@ export function createAuthHookHandler(
           status: 200,
         });
       }
-      const status = decision.http_code === 403 ? 403 : 403;
+      const status = 403;
       return Response.json(
         {
           error: {

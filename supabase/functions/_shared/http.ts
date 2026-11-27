@@ -379,7 +379,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
         await abandonPhoto?.();
         abandonPhoto = undefined;
         // The user check passed, but the session expired before the database call.
-        if (result.status === 401)
+        if (status === 401)
           return error(
             401,
             "PGRST301",
@@ -388,9 +388,9 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           );
         // Only controlled PT errors contain reviewed public messages. Database
         // constraint details and SQL row dumps never leave the function.
-        const controlled = /^PT(400|401|403|404|409|429)$/.test(
-          upstream.code || "",
-        );
+        const controlled =
+          status !== 500 &&
+          /^PT(400|401|403|404|409|429)$/.test(upstream.code || "");
         if (status === 429) headers.set("Retry-After", "60");
         const conflict =
           operation.usesAcademicRpc &&

@@ -587,23 +587,10 @@ const AUDIT_OR_FIELD_LIMITS: Record<string, number> = {
   reason: 100,
 };
 
-const COURSE_OR_FIELD_LIMITS: Record<string, number> = {
-  code: 100,
-  title: 250,
-};
-
-const PROGRAM_OR_FIELD_LIMITS: Record<string, number> = {
-  code: 100,
-  name: 150,
-};
-
-function getOrFieldLimits(pathname: string): Record<string, number> | null {
-  if (pathname.endsWith("/rest/v1/course")) return COURSE_OR_FIELD_LIMITS;
-  if (pathname.endsWith("/rest/v1/program")) return PROGRAM_OR_FIELD_LIMITS;
-  if (pathname.endsWith("/rest/v1/audit_log_entry"))
-    return AUDIT_OR_FIELD_LIMITS;
-  return null;
-}
+const COURSE_OR_PATTERN =
+  /^\(code\.ilike\.%[^,()]{1,100}%,title\.ilike\.%[^,()]{1,250}%\)$/u;
+const PROGRAM_OR_PATTERN =
+  /^\(code\.ilike\.%[^,()]{1,100}%,name\.ilike\.%[^,()]{1,150}%\)$/u;
 
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
@@ -647,9 +634,19 @@ function applyPostgrestQuery<T extends object>(
   }
 
   const orParam = url.searchParams.get("or");
-  if (orParam) {
-    const fieldLimits = getOrFieldLimits(url.pathname);
-    if (!fieldLimits || !orParam.startsWith("(") || !orParam.endsWith(")"))
+  if (orParam !== null) {
+    const pattern = url.pathname.endsWith("/rest/v1/course")
+      ? COURSE_OR_PATTERN
+      : url.pathname.endsWith("/rest/v1/program")
+        ? PROGRAM_OR_PATTERN
+        : null;
+    const isAudit = url.pathname.endsWith("/rest/v1/audit_log_entry");
+    if (
+      (!pattern && !isAudit) ||
+      !orParam.startsWith("(") ||
+      !orParam.endsWith(")") ||
+      (pattern && !pattern.test(orParam))
+    )
       return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
     const rawTerms = orParam.slice(1, -1).split(",");
     if (rawTerms.length > 7)
@@ -658,10 +655,10 @@ function applyPostgrestQuery<T extends object>(
       const match = term.match(/^([a-z_]+)\.(ilike|like|eq)\.([^,()]+)$/);
       if (!match) return null;
       const [, field, op, operand] = match;
-      const maxLen = Object.hasOwn(fieldLimits, field) ? fieldLimits[field] : 0;
       if (
-        !maxLen ||
-        operand.length > maxLen ||
+        (isAudit &&
+          (!Object.hasOwn(AUDIT_OR_FIELD_LIMITS, field) ||
+            operand.length > AUDIT_OR_FIELD_LIMITS[field])) ||
         Array.from(operand).some((char) => char.charCodeAt(0) < 32)
       )
         return null;
@@ -4998,11 +4995,11 @@ export const saaisMswHandlers = [
           "avatar_url, mime_type, and file_size_bytes are required.",
         );
       }
-      if (body.file_size_bytes > 2097152) {
+      if (body.file_size_bytes > 5 * 1024 * 1024) {
         return errorJson(
           400,
           "FILE_TOO_LARGE",
-          "Profile photo must not exceed 2 MB (2,097,152 bytes).",
+          "Profile photo must not exceed 5 MiB (5,242,880 bytes).",
         );
       }
       const db = getMockDatabase();
