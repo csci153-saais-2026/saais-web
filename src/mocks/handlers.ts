@@ -636,15 +636,20 @@ function matchesLike(
   const tokens = Array.from(insensitive ? pattern.toLowerCase() : pattern);
   let previous = Array(input.length + 1).fill(false) as boolean[];
   previous[0] = true;
-  for (const token of tokens) {
+  for (let index = 0; index < tokens.length; index++) {
+    // A backslash makes the next character literal.
+    const escaped = tokens[index] === "\\" && index + 1 < tokens.length;
+    const token = tokens[escaped ? ++index : index]!;
     const next = Array(input.length + 1).fill(false) as boolean[];
-    if (token === "*" || token === "%") {
+    if (!escaped && (token === "*" || token === "%")) {
       next[0] = previous[0]!;
       for (let i = 1; i <= input.length; i++)
         next[i] = previous[i]! || next[i - 1]!;
     } else {
       for (let i = 1; i <= input.length; i++)
-        next[i] = previous[i - 1]! && (token === "_" || token === input[i - 1]);
+        next[i] =
+          previous[i - 1]! &&
+          ((!escaped && token === "_") || token === input[i - 1]);
     }
     previous = next;
   }
