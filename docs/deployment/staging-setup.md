@@ -6,6 +6,9 @@ service-role keys, OAuth client secrets or database credentials in this file.
 
 ## Current test environment
 
+This status was refreshed on November 27, 2026. Keep the hosted verification
+checklist in #51 open until the remaining end-to-end and ownership checks pass.
+
 - Supabase project: `jssexxjbgzrknlptddkg` (`SAAIS`). Its `main` branch is
   labelled Production by Supabase, but the project has been designated for
   synthetic testing by the project owner. Project owner and team access: **to be
@@ -17,10 +20,11 @@ service-role keys, OAuth client secrets or database credentials in this file.
 - Google is enabled in Supabase Auth. The Google Cloud project, OAuth consent
   screen status, authorized test users and any verification requirements still
   need confirmation and an end-to-end sign-in test.
-- On November 22, 2026, no Supabase Auth hooks were configured. Auth settings
-  allowed new signups. This does not satisfy the server-enforced institutional
-  account eligibility requirement; track implementation and testing with the
-  authentication owner and backend work in #3, #7 and #9.
+- On November 22, 2026, no Supabase Auth hooks were configured and Auth settings
+  allowed new signups. The later Data API request hook is recorded under hosted
+  verification below. The institutional account eligibility hook and its
+  allowed/rejected account tests still need hosted confirmation; track ownership
+  and implementation with #3, #7 and #9.
 
 ## Redirects
 
@@ -55,18 +59,45 @@ in the team's approved secret store; confirm the store and access owners.
 After deployment, directly open and refresh a client-side route and verify the
 docs endpoint independently.
 
+## Hosted backend verification
+
+Observed on November 27, 2026:
+
+- The hosted `authenticator` role reports
+  `pgrst.db_pre_request = public.saais_check_data_api_request`.
+- Supabase CLI listed `data-api` as ACTIVE version 2, and `mail-delivery` and
+  `photo-cleanup` as ACTIVE version 3.
+- The hosted secret list contained `SAAIS_MAIL_WORKER_SECRET`,
+  `SAAIS_RESEND_API_KEY`, `SAAIS_MAIL_FROM`, `SAAIS_SITE_URL`, and
+  `SAAIS_MAIL_ENVIRONMENT`. Secret values are not recorded here. The project is
+  configured for production mail; no recipient allowlist is configured.
+- Periodic worker execution is not verified. The hosted database did not expose
+  `cron.job`, and the checked function logs showed no invocation during the
+  preceding 24 hours. Configure a scheduler and record a successful run in #51.
+- A successful signed-in collection read through the deployed gateway has not
+  been confirmed. The latest observed Vercel login page displayed the gateway
+  collection-read warning; verify a successful read through the integrated
+  client, its default page size of 20, and a denied direct collection request
+  before marking this complete.
+- Hosted creation and behavior of the Google identity and student-photo storage
+  triggers still need explicit confirmation in #51.
+
 ## Acceptance checks still required
 
 1. Record the Supabase, Vercel and Google Cloud owners, team access, and any
    account-approval delays and responsible person in the team's chosen tracker.
-2. Assign the server-side Auth hook and its local and hosted tests. Confirm it
-   enforces the agreed provisioned-account policy without breaking invitations
-   or recovery. Do not rely on frontend role checks as the security boundary.
+2. Confirm the hosted Auth hooks enforce the agreed provisioned-account policy
+   without breaking invitations or recovery. Do not rely on frontend role
+   checks as the security boundary.
 3. Verify the Google OAuth consent screen, authorized redirect URI, test-user
    access and verification requirements with the Cloud project owner; test
    allowed and rejected accounts end to end.
 4. Confirm the stable staging URL, Site URL, allowlist, environment values and
-   secret storage, then redeploy and exercise sign-in and password recovery.
+   secret ownership, then redeploy and exercise sign-in and password recovery.
+5. Complete the hosted backend checks in #51: verify both database triggers,
+   run a signed-in collection read through `data-api` with the default page size
+   of 20, confirm direct collection access is denied, and configure and observe
+   scheduled worker runs.
 
 References: [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls),
 [Vercel environment variables](https://vercel.com/docs/environment-variables).
