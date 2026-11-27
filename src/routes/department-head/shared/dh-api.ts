@@ -39,7 +39,7 @@ export async function getDirectoryStudents(): Promise<DirectoryStudent[]> {
           params: {
             query: {
               select: "*",
-              order: "start_date.asc",
+              order: "start_date.asc,id.asc",
               limit: PAGE,
               offset,
             },
@@ -180,7 +180,7 @@ export async function getAuditEvents(
         params: {
           query: {
             ...(studentId ? { student_id: postgrestFilter.eq(studentId) } : {}),
-            order: "created_at.desc",
+            order: "created_at.desc,id.desc",
             limit: PAGE,
             offset,
           },
