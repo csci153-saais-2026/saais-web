@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Image } from "imagescript";
+import { Animation, Frame, Image } from "imagescript";
 import { randomFillSync } from "node:crypto";
 import {
   PhotoError,
@@ -44,6 +44,16 @@ test("photo decoder accepts actual PNG and JPEG and rejects spoofed or truncated
     PhotoError,
   );
   await assert.rejects(validatePhoto(jpeg, "image/png"), PhotoError);
+});
+
+test("animated PNGs get an explicit validation error", async () => {
+  const bytes = await new Animation([
+    new Frame(2, 2),
+    new Frame(2, 2),
+  ]).encodeAPNG();
+  await assert.rejects(validatePhoto(bytes, "image/png"), {
+    message: "Animated PNG photos are not supported.",
+  });
 });
 
 test("a real image larger than 2 MiB is accepted and files above 5 MiB are rejected", async () => {
