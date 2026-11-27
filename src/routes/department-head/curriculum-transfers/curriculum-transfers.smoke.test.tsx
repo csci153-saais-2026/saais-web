@@ -93,8 +93,8 @@ describe("Curriculum Transfers", () => {
           writes++;
           await delay(250);
           return HttpResponse.json(
-            { code: "CONFLICT", message: "Decision could not be saved." },
-            { status: 409 },
+            { code: "UNAVAILABLE", message: "Decision could not be saved." },
+            { status: 500 },
           );
         },
       ),
@@ -115,6 +115,25 @@ describe("Curriculum Transfers", () => {
     );
     expect(writes).toBe(1);
     expect(screen.getByText("Pending review (2)")).toBeDefined();
+  });
+
+  it("closes the dialog when the request was already decided", async () => {
+    saaisMockServer.use(
+      http.post("*/functions/v1/curriculum-transfers/:id/decision", () =>
+        HttpResponse.json(
+          { code: "CONFLICT", message: "Already decided." },
+          { status: 409 },
+        ),
+      ),
+    );
+    renderDepartmentHead(<CurriculumTransfersPage />, route);
+    await reviewPrimaryStudent();
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Approve request",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("shows loading, a failed read, and a successful retry", async () => {

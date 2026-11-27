@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient, unwrapApiResult } from "@/lib/api";
+import { apiClient, isApiClientError, unwrapApiResult } from "@/lib/api";
 import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 import { getTransfers, TRANSFER_QUERY_KEY } from "./transfers-api";
 
@@ -33,6 +33,11 @@ export function useDecideTransfer() {
           },
         ),
       ),
+    onError: (error) => {
+      // Someone else already decided it: drop the stale request.
+      if (isApiClientError(error) && error.isConflict)
+        return client.invalidateQueries({ queryKey: TRANSFER_QUERY_KEY });
+    },
     onSuccess: () =>
       Promise.all([
         client.invalidateQueries({ queryKey: TRANSFER_QUERY_KEY }),
