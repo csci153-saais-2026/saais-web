@@ -49,6 +49,8 @@ const humanizeAction = (action: string) => {
 const formatAuditDetail = (detail?: string | null) => {
   const value = detail?.trim();
   if (!value) return "—";
+  if (Object.hasOwn(ACTION_LABELS, value))
+    return "Reason restricted to department heads";
   if (!/^[\w.-]+$/.test(value)) return value;
   return humanizeAction(value);
 };
