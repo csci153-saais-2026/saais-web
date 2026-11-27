@@ -7,7 +7,7 @@
   ],
   "functions": {
     "api/docs.js": {
-      "includeFiles": "{contract/openapi.yaml,contract/paths/**/*.yaml,contract/components/**/*.yaml,docs/api-documentation.md}"
+      "includeFiles": "{contract/**/*.yaml,docs/api-documentation.md}"
     }
   }
 }
