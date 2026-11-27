@@ -57,7 +57,7 @@ export interface CurriculumVersionRecord {
 
 export interface CurriculaData {
   versions: CurriculumVersionRecord[];
-  programs: { id: string; code: string }[];
+  programs: { id: string; code: string; departmentId: string }[];
   departments: { id: string; name: string }[];
   courses: {
     id: string;
@@ -173,6 +173,7 @@ async function getCurricula(): Promise<CurriculaData> {
     programs: programs.map((program) => ({
       id: program.id,
       code: program.code,
+      departmentId: program.department_id,
     })),
     departments: departments
       .map((department) => ({ id: department.id, name: department.name }))
@@ -198,7 +199,6 @@ export type CreateCurriculumVersionInput = {
   programId: string;
   label: string;
   start: string;
-  units: number;
   status: CurriculumVersionStatus;
   cloneFromVersionId?: string;
 };
@@ -212,7 +212,6 @@ export async function createCurriculumVersion(
         program_id: input.programId,
         version_label: input.label,
         effective_start: input.start,
-        total_units: input.units,
         ...(input.cloneFromVersionId
           ? { clone_from_version_id: input.cloneFromVersionId }
           : {}),
@@ -248,7 +247,6 @@ export async function updateCurriculumVersion(
       body: {
         version_label: input.label,
         effective_start: input.start,
-        total_units: input.units,
         ...(input.status ? { status: input.status } : {}),
       },
     }),
