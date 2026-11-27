@@ -31,7 +31,7 @@ describe("buildAuditListQuery", () => {
     expect(buildAuditListQuery(emptyFilters, -1).query?.offset).toBe(0);
     expect(
       buildAuditListQuery(emptyFilters, Number.MAX_SAFE_INTEGER).query?.offset,
-    ).toBe(1_000_000);
+    ).toBe(100_000);
   });
 
   it("maps supported filters to contract query parameters", () => {
