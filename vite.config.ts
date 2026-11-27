@@ -1,11 +1,31 @@
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
+import * as openApi from "./api/openapi-bundle.js";
+
+// Local development has no /api/docs function, so bundle the contract here.
+function bundledOpenApi(): Plugin {
+  const query = "?bundled";
+  return {
+    name: "saais-bundled-openapi",
+    apply: "serve",
+    enforce: "pre",
+    async load(id) {
+      if (!id.endsWith(`contract/openapi.yaml${query}`)) return;
+      openApi.clearBundledOpenApiCache();
+      const yaml = await openApi.loadBundledOpenApiYaml(
+        id.slice(0, -query.length),
+      );
+      return `export default ${JSON.stringify(yaml)};`;
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [bundledOpenApi(), react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

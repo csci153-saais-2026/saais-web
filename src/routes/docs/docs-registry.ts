@@ -12,6 +12,8 @@ export interface AllowlistedDocEntry {
 }
 
 export const CANONICAL_OPENAPI_SPEC_URL = '/api/docs?document=openapi'
+/** Typed here so the protected contract stays out of the bundle; a test keeps it current. */
+export const CONTRACT_VERSION = '0.4.0'
 export const ALLOWLISTED_DOCS: readonly AllowlistedDocEntry[] = [{
   slug: 'api-documentation', title: 'API & Developer Documentation Guide', category: 'Contract & CI',
   summary: 'How SAAIS serves and publishes API documentation.', sourcePath: 'docs/api-documentation.md', blocks: [], sections: [],
@@ -20,7 +22,7 @@ export const ALLOWLISTED_DOCS: readonly AllowlistedDocEntry[] = [{
 export async function fetchDocumentation(document: 'openapi' | 'guide', signal?: AbortSignal): Promise<string> {
   if (import.meta.env.DEV) {
     return document === 'openapi'
-      ? (await import('../../../contract/openapi.yaml?raw')).default
+      ? (await import('../../../contract/openapi.yaml?bundled')).default
       : (await import('../../../docs/api-documentation.md?raw')).default
   }
   const token = await resolveCurrentAccessToken()

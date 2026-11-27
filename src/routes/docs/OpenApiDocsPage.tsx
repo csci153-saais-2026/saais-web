@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { DocsAuthGate } from '@/routes/docs/DocsAuthGate'
 import { DocsShell } from '@/routes/docs/DocsShell'
 import type { SessionCheckFn } from '@/routes/docs/docs-auth'
-import { CANONICAL_OPENAPI_SPEC_URL, fetchDocumentation } from '@/routes/docs/docs-registry'
+import { CANONICAL_OPENAPI_SPEC_URL, CONTRACT_VERSION, fetchDocumentation } from '@/routes/docs/docs-registry'
 import {
   mountRedocStandalone,
   type MountRedocOptions,
@@ -113,7 +113,7 @@ function OpenApiContractViewer({
       topbarTrailing={
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status="current" className="hidden sm:inline-flex">
-            OpenAPI 3.1 · v0.3.0
+            OpenAPI 3.1 · v{CONTRACT_VERSION}
           </StatusBadge>
           <code className="hidden rounded-sm bg-secondary px-2 py-0.5 font-mono text-caption text-muted-2 lg:inline-block">
             contract/openapi.yaml

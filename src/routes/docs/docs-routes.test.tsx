@@ -14,6 +14,7 @@ import { AuthProvider } from '@/context/AuthProvider'
 import { QueryProvider } from '@/context/QueryProvider'
 import { getSupabaseClient, resetSupabaseClientForTests } from '@/lib/supabase/client'
 import { parseMarkdownBlocks } from '@/routes/docs/markdown-blocks'
+import { parse } from 'yaml'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -26,6 +27,7 @@ import OpenApiDocsPage, {
 import { checkDocsSessionAuthenticated } from '@/routes/docs/docs-auth'
 import {
   ALLOWLISTED_DOCS,
+  CONTRACT_VERSION,
   CANONICAL_OPENAPI_SPEC_URL,
   loadGuide,
   fetchDocumentation,
@@ -406,5 +408,15 @@ describe('App lazy-loaded /docs route integration', () => {
       screen.getByText(/The document could not be downloaded\./),
     ).toBeTruthy()
     expect(screen.queryByText('Contract viewer unavailable')).toBeNull()
+  })
+})
+
+describe('local contract loading', () => {
+  it('loads one self-contained document that matches the shown version', async () => {
+    vi.stubEnv('DEV', true)
+    const spec = parse(await fetchDocumentation('openapi'))
+    expect(spec.info.version).toBe(CONTRACT_VERSION)
+    expect(JSON.stringify(spec)).not.toMatch(/"$ref":"(?!#)/)
+    vi.unstubAllEnvs()
   })
 })
