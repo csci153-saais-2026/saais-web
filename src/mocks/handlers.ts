@@ -902,7 +902,7 @@ function applyPostgrestQuery<T extends object>(
     return errorJson(400, "INVALID_PAGINATION", "Invalid limit or offset.");
   const total = filtered.length;
   const offset = offsetParam === null ? 0 : Number(offsetParam);
-  const limit = limitParam === null ? Math.max(total, 20) : Number(limitParam);
+  const limit = limitParam === null ? 20 : Number(limitParam);
   if (
     !Number.isSafeInteger(offset) ||
     offset > 100000 ||
