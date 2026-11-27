@@ -3,6 +3,7 @@ import type { Environment } from "./http.ts";
 
 const profile = "saais_api";
 const proofHeader = "x-saais-data-api-key";
+const proofRejected = "Use the SAAIS Data API gateway for collection reads.";
 const maxQueryLength = 16_384;
 const allowedPrefer = new Set([
   "count=exact",
@@ -222,32 +223,86 @@ export function createDataApiHandler(
     if (!url.searchParams.has("limit")) {
       url.searchParams.set("limit", String(pagination.limit.default));
     }
+    if (!url.searchParams.has("order")) {
+      url.searchParams.set(
+        "order",
+        resourceName === "student_organization" ? "student_id.asc" : "id.asc",
+      );
+    }
     const selection = url.searchParams.get("select");
     if (selection === null || selection === "*") {
       url.searchParams.set("select", resource.projection);
     }
 
     try {
-      gatewayKey ??= loadGatewayKey().catch((failure) => {
-        gatewayKey = undefined;
-        throw failure;
-      });
+      const getGatewayKey = () => {
+        gatewayKey ??= loadGatewayKey().catch((failure) => {
+          gatewayKey = undefined;
+          throw failure;
+        });
+        return gatewayKey;
+      };
+      const usedKey = getGatewayKey();
       const upstreamHeaders = new Headers({
         apikey: key,
         Authorization: authorization,
         Accept: "application/json",
         "Accept-Profile": profile,
-        [proofHeader]: await gatewayKey,
+        [proofHeader]: await usedKey,
       });
       if (prefer !== null) upstreamHeaders.set("Prefer", prefer);
-      const upstream = await fetcher(
-        `${env.url}/rest/v1/${resourceName}?${url.searchParams.toString()}`,
-        {
-          headers: upstreamHeaders,
-          redirect: "error",
-          signal: AbortSignal.timeout(15000),
-        },
-      );
+      const forward = () =>
+        fetcher(
+          `${env.url}/rest/v1/${resourceName}?${url.searchParams.toString()}`,
+          {
+            headers: upstreamHeaders,
+            redirect: "error",
+            signal: AbortSignal.timeout(15000),
+          },
+        );
+      let upstream = await forward();
+      let failure = upstream.ok ? null : await readUpstreamError(upstream);
+      if (
+        upstream.status === 403 &&
+        failure?.code === "PT403" &&
+        failure.message === proofRejected
+      ) {
+        if (gatewayKey === usedKey) gatewayKey = undefined;
+        upstreamHeaders.set(proofHeader, await getGatewayKey());
+        upstream = await forward();
+        failure = upstream.ok ? null : await readUpstreamError(upstream);
+      }
+      if (!upstream.ok) {
+        if (upstream.status === 401) {
+          return error(
+            headers,
+            401,
+            "PGRST301",
+            "The user session could not be verified.",
+          );
+        }
+        if (upstream.status === 429) {
+          const retryAfter = upstream.headers.get("Retry-After");
+          if (retryAfter !== null && /^\d+$/.test(retryAfter)) {
+            headers.set("Retry-After", retryAfter);
+          }
+        }
+        const status = [400, 403, 429].includes(upstream.status)
+          ? upstream.status
+          : 500;
+        const controlled =
+          failure?.code === `PT${status}` &&
+          status !== 500 &&
+          failure.message !== proofRejected;
+        return error(
+          headers,
+          status,
+          status === 500 ? "XX000" : `PT${status}`,
+          controlled && typeof failure?.message === "string" && failure.message
+            ? failure.message.slice(0, 1000)
+            : "The collection read could not be completed.",
+        );
+      }
       for (const name of [
         "Content-Type",
         "Content-Range",
@@ -263,4 +318,11 @@ export function createDataApiHandler(
       return error(headers, 503, "XX000", "Data API gateway is unavailable.");
     }
   };
+}
+
+async function readUpstreamError(
+  response: Response,
+): Promise<{ code?: unknown; message?: unknown } | null> {
+  const body: unknown = await response.json().catch(() => null);
+  return body !== null && typeof body === "object" ? body : null;
 }

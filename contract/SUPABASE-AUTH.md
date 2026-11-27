@@ -96,6 +96,12 @@ On the authenticated Change Password routes (`/student/change-password`, `/advis
 
 Authentication and invitation lifecycle audit events (`sign_in_succeeded`, `login_rejected`, `password_changed`, `invitation_accepted`, `invitation_declined`, `invitation_resent`, `invitation_revoked`) are written exclusively by server-side Supabase Auth hooks and Edge Functions—never via client-called `POST /functions/v1/audit/view-event`.
 
+The custom access token hook requires an active provisioned profile. It records
+`sign_in_succeeded` in the `sign_in` category once per new sign-in session.
+Token refresh checks profile eligibility again and does not create a sign-in audit event.
+The Google PKCE flow commits invitation activation before the code exchange.
+Password invitations activate through `verifyInviteToken` before password sign-in.
+
 ## Invitation exception
 
 Invitation links use `/invite#token=...`; the browser reads the fragment client-side and sends the token only in the JSON body of an invitation function. The token must never appear in the initial request path or query string, access logs, analytics, or referrer data. Remove the fragment from browser history after capturing it.
