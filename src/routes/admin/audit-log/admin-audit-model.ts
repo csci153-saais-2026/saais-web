@@ -5,7 +5,10 @@ import {
 } from "@/lib/api";
 
 export const AUDIT_PAGE_SIZE = 25;
-export const MAX_AUDIT_OFFSET = 1_000_000;
+export const AUDIT_SEARCH_MAX_LENGTH = 100;
+// The contract counts the two `%` wildcards toward these filters' 100 characters.
+export const AUDIT_WILDCARD_SEARCH_MAX_LENGTH = AUDIT_SEARCH_MAX_LENGTH - 2;
+export const MAX_AUDIT_OFFSET = 100_000;
 
 export const AUDIT_LOG_SELECT =
   "id,actor_name,actor_role,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at";
@@ -75,21 +78,23 @@ export function buildAuditListQuery(
   const action = filters.action.trim();
   const entityType = filters.entityType.trim();
 
-  for (const [label, value] of [
-    ["Person", person],
-    ["Student", student],
-    ["Action", action],
-    ["Entity type", entityType],
+  for (const [label, value, maxLength] of [
+    ["Person", person, AUDIT_SEARCH_MAX_LENGTH],
+    ["Student", student, AUDIT_WILDCARD_SEARCH_MAX_LENGTH],
+    ["Action", action, AUDIT_WILDCARD_SEARCH_MAX_LENGTH],
+    ["Entity type", entityType, AUDIT_SEARCH_MAX_LENGTH],
   ] as const) {
-    if (value.length > 100) {
+    const sent =
+      label === "Entity type" ? value : postgrestFilter.likeLiteral(value);
+    if (sent.length > maxLength) {
       return {
         query: null,
-        error: `${label} search must be 100 characters or fewer.`,
+        error: `${label} search must be ${maxLength} characters or fewer.`,
       };
     }
     if (
       [...value].some((character) => character.charCodeAt(0) <= 0x1f) ||
-      /[(),."\\]/.test(value)
+      /[(),]/.test(value)
     ) {
       return {
         query: null,
@@ -98,11 +103,15 @@ export function buildAuditListQuery(
     }
   }
 
-  if (person) query.actor_name = postgrestFilter.ilike(`%${person}%`);
+  // postgrestFilter.ilike rejects the backslashes that escaping adds.
+  const contains = (text: string) =>
+    `%${postgrestFilter.likeLiteral(text)}%` as const;
+  if (person) query.actor_name = `ilike.${contains(person)}`;
   if (student) {
-    query.or = `(student_name.ilike.%${student}%,student_number.ilike.%${student}%,target_label.ilike.%${student}%)`;
+    const match = contains(student);
+    query.or = `(student_name.ilike.${match},student_number.ilike.${match},target_label.ilike.${match})`;
   }
-  if (action) query.action = postgrestFilter.ilike(`%${action}%`);
+  if (action) query.action = `ilike.${contains(action)}`;
   if (filters.category) {
     if (
       !AUDIT_ACTION_CATEGORIES.some(

@@ -37,6 +37,9 @@ function matches(student: DirectoryStudent, filters: Filters) {
   );
 }
 
+/** Contract limit for one bulk reassignment. */
+const MAX_BULK_REASSIGN = 500;
+
 export default function AdviserAssignmentsPage() {
   const directory = useDirectoryStudents();
   const adviserQuery = useDepartmentAdvisers();
@@ -92,6 +95,12 @@ export default function AdviserAssignmentsPage() {
   function openReassignment() {
     if (selectedVisible.length === 0) {
       notify("Select at least one student to reassign.");
+      return;
+    }
+    if (selectedVisible.length > MAX_BULK_REASSIGN) {
+      notify(
+        `Reassign at most ${MAX_BULK_REASSIGN} students at a time. Narrow the selection.`,
+      );
       return;
     }
     setDialogOpen(true);

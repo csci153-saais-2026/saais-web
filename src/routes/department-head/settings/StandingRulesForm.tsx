@@ -9,13 +9,14 @@ import { useSaveThresholds } from "../shared/dh-queries";
 import { useNotify } from "../shared/notify-context";
 import type { SettingsState } from "./settings-types";
 
+const PERCENTAGE_MESSAGE = "Enter a percentage from 0 to 100.";
 const percentage = z
   .string()
   .trim()
-  .min(1, "Enter a whole percentage from 0 to 100.")
-  .regex(/^\d+$/, "Enter a whole percentage from 0 to 100.")
+  .min(1, PERCENTAGE_MESSAGE)
+  .regex(/^\d+(\.\d+)?$/, PERCENTAGE_MESSAGE)
   .transform(Number)
-  .refine((value) => value <= 100, "Enter a whole percentage from 0 to 100.");
+  .refine((value) => value <= 100, PERCENTAGE_MESSAGE);
 const rulesSchema = z
   .object({ warning: percentage, probation: percentage, dismissal: percentage })
   .refine((value) => value.warning < value.probation, {
@@ -93,8 +94,8 @@ export function StandingRulesForm({ settings }: { settings: SettingsState }) {
                 type="number"
                 min="0"
                 max="100"
-                step="1"
-                inputMode="numeric"
+                step="any"
+                inputMode="decimal"
                 aria-invalid={Boolean(errors[name])}
                 {...register(name)}
               />

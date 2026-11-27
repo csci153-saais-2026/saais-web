@@ -26,6 +26,7 @@ export async function fetchStudentGradeFlags(
       query: {
         student_id: postgrestFilter.eq(studentId),
         order: "created_at.desc",
+        limit: 1000,
       },
     },
   });

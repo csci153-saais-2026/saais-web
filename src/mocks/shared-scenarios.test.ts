@@ -549,7 +549,12 @@ describe("shared role scenarios", () => {
     const student = MOCK_PERSONAS.student_sample_29;
     const result = await client().GET(
       "/functions/v1/students/{student_id}/checklist",
-      { params: { path: { student_id: student.profileId } } },
+      {
+        params: {
+          path: { student_id: student.profileId },
+          query: { limit: 100 },
+        },
+      },
     );
     expect(result.data).toHaveLength(52);
     expect(result.data?.some((row) => row.status === "passed")).toBe(true);

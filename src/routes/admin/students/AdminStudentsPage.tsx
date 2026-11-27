@@ -39,6 +39,7 @@ import {
   type ApiSchema,
   type OperationQuery,
 } from "@/lib/api";
+import { readAllPrograms } from "@/lib/api/catalog";
 
 const PAGE_SIZE = 20;
 const ALL = "all";
@@ -211,13 +212,9 @@ export default function AdminStudentsPage() {
           },
         })
         .then(unwrapApiResult),
-      apiClient
-        .GET("/rest/v1/program", {
-          params: {
-            query: { select: "id,code,name", order: "name.asc", limit: 1000 },
-          },
-        })
-        .then(unwrapApiResult),
+      readAllPrograms().then((rows) =>
+        rows.sort((a, b) => a.name.localeCompare(b.name)),
+      ),
     ])
       .then(([faculties, programs]) => {
         if (!active) return;

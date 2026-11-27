@@ -58,28 +58,26 @@ export function validateThresholds(
   if (
     !values.warning.trim() ||
     !Number.isFinite(warning) ||
-    warning <= 0 ||
+    warning < 0 ||
     warning > 100
   ) {
-    errors.warning = "Warning must be greater than 0% and no more than 100%.";
+    errors.warning = "Warning must be from 0% to 100%.";
   }
   if (
     !values.probation.trim() ||
     !Number.isFinite(probation) ||
-    probation <= 0 ||
+    probation < 0 ||
     probation > 100
   ) {
-    errors.probation =
-      "Probation must be greater than 0% and no more than 100%.";
+    errors.probation = "Probation must be from 0% to 100%.";
   }
   if (
     !values.dismissal.trim() ||
     !Number.isFinite(dismissal) ||
-    dismissal <= 0 ||
+    dismissal < 0 ||
     dismissal > 100
   ) {
-    errors.dismissal =
-      "Dismissal must be greater than 0% and no more than 100%.";
+    errors.dismissal = "Dismissal must be from 0% to 100%.";
   }
   if (Object.keys(errors).length === 0) {
     if (warning >= probation) {

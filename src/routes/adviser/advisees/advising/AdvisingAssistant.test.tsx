@@ -7,9 +7,15 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { AdvisingAssistant } from "./AdvisingAssistant";
-import { askAdvisingAssistant } from "./advising-assistant.api";
+import {
+  askAdvisingAssistant,
+  getAdvisingAssistantHistory,
+} from "./advising-assistant.api";
 
-vi.mock("./advising-assistant.api", () => ({ askAdvisingAssistant: vi.fn() }));
+vi.mock("./advising-assistant.api", () => ({
+  askAdvisingAssistant: vi.fn(),
+  getAdvisingAssistantHistory: vi.fn(),
+}));
 const student = "00000000-0000-4000-8001-000000000001";
 afterEach(() => {
   cleanup();
@@ -76,6 +82,7 @@ describe("AdvisingAssistant", () => {
     expect(askAdvisingAssistant).not.toHaveBeenCalled();
   });
   it("calls the existing API in Supabase mode and displays its verification notice", async () => {
+    vi.mocked(getAdvisingAssistantHistory).mockResolvedValue([]);
     vi.mocked(askAdvisingAssistant).mockResolvedValue({
       answer: "Record-grounded answer",
       verification_notice: "Verify this response against the student record.",
@@ -95,6 +102,9 @@ describe("AdvisingAssistant", () => {
     fireEvent.change(screen.getByLabelText("Message the advising assistant"), {
       target: { value: "What is the student's standing?" },
     });
+    await waitFor(() =>
+      expect(screen.queryByText("Loading earlier messages...")).toBeNull(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Record-grounded answer")).toBeTruthy();
     expect(
@@ -105,6 +115,39 @@ describe("AdvisingAssistant", () => {
       "What is the student's standing?",
       [],
     );
+  });
+  it("shows the saved conversation in Supabase mode", async () => {
+    vi.mocked(getAdvisingAssistantHistory).mockResolvedValue([
+      { role: "user", content: "Earlier question" },
+      { role: "assistant", content: "Earlier answer" },
+    ]);
+    render(<AdvisingAssistant studentId={student} isMockMode={false} />);
+    expect(getAdvisingAssistantHistory).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open advising assistant" }),
+    );
+    expect(await screen.findByText("Earlier answer")).toBeTruthy();
+    expect(screen.getByText("Earlier question")).toBeTruthy();
+    expect(getAdvisingAssistantHistory).toHaveBeenCalledWith(student);
+  });
+  it("still accepts questions if the saved conversation cannot load", async () => {
+    vi.mocked(getAdvisingAssistantHistory).mockRejectedValue(
+      new Error("Unavailable"),
+    );
+    render(<AdvisingAssistant studentId={student} isMockMode={false} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open advising assistant" }),
+    );
+    expect(
+      await screen.findByText("Earlier messages could not be loaded."),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Message the advising assistant"), {
+      target: { value: "Question" },
+    });
+    expect(
+      (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
   });
   it("preserves the question and shows an error if the request fails", async () => {
     vi.mocked(askAdvisingAssistant).mockRejectedValue(new Error("Unavailable"));

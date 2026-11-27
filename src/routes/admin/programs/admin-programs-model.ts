@@ -1,3 +1,4 @@
+import { postgrestFilter } from "@/lib/api";
 import type { OperationQuery } from "@/lib/api";
 import type { ApiSchema } from "@/lib/api";
 
@@ -63,7 +64,9 @@ export function buildProgramListQuery(
   readonly error: string | null;
 } {
   const term = search.trim();
-  if (term.length > PROGRAM_SEARCH_MAX_LENGTH) {
+  const literal = postgrestFilter.likeLiteral(term);
+  // Escaping adds characters, and the contract bounds what is actually sent.
+  if (literal.length > PROGRAM_SEARCH_MAX_LENGTH) {
     return {
       query: null,
       error: `Search must be ${PROGRAM_SEARCH_MAX_LENGTH} characters or fewer.`,
@@ -91,7 +94,7 @@ export function buildProgramListQuery(
   };
 
   if (term) {
-    query.or = `(code.ilike.%${term}%,name.ilike.%${term}%)`;
+    query.or = `(code.ilike.%${literal}%,name.ilike.%${literal}%)`;
   }
   if (status !== "all") {
     query.status = `eq.${status}`;

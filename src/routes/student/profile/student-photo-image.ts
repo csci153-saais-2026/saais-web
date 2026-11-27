@@ -1,6 +1,6 @@
 const MAX_PHOTO_PIXELS = 16_000_000;
 
-function readHeader(file: File): Promise<Uint8Array> {
+function readBytes(file: File): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("Invalid image file."));
@@ -10,8 +10,22 @@ function readHeader(file: File): Promise<Uint8Array> {
         resolve(new Uint8Array(reader.result));
       else reject(new Error("Invalid image file."));
     };
-    reader.readAsArrayBuffer(file.slice(0, 8));
+    reader.readAsArrayBuffer(file);
   });
+}
+
+/** An `acTL` chunk ahead of the image data marks a PNG as animated. */
+function isAnimatedPng(bytes: Uint8Array): boolean {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+  for (let offset = 8; offset + 12 <= bytes.length;) {
+    const next = offset + 12 + view.getUint32(offset);
+    if (next > bytes.length) break;
+    const kind = view.getUint32(offset + 4);
+    if (kind === 0x6163544c) return true; // acTL
+    if (kind === 0x49444154) break; // IDAT
+    offset = next;
+  }
+  return false;
 }
 
 function readImageDimensions(
@@ -33,7 +47,7 @@ function readImageDimensions(
 }
 
 export async function validateStudentPhotoImage(file: File): Promise<void> {
-  const header = await readHeader(file);
+  const header = await readBytes(file);
   const png =
     header.length >= 8 &&
     [137, 80, 78, 71, 13, 10, 26, 10].every(
@@ -49,6 +63,9 @@ export async function validateStudentPhotoImage(file: File): Promise<void> {
     (file.type !== "image/jpeg" || !jpeg)
   ) {
     throw new Error("Invalid image file.");
+  }
+  if (png && isAnimatedPng(header)) {
+    throw new Error("Animated PNG photos are not supported.");
   }
 
   let dimensions: { width: number; height: number };

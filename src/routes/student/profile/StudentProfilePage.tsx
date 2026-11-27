@@ -292,14 +292,19 @@ export function StudentProfilePage({ studentId }: { studentId: string }) {
         file,
         mimeType,
       );
-      const payload: StudentPhotoValues = studentPhotoSchema.parse({
-        storage_object_path: storagePath,
-        avatar_url: avatarUrl,
-        mime_type: mimeType,
-        file_size_bytes: file.size,
-      });
-      await updatePhotoMutation.mutateAsync(payload);
-      void removeStudentPhotoStagingObject(storagePath).catch(() => {});
+      try {
+        const payload: StudentPhotoValues = studentPhotoSchema.parse({
+          storage_object_path: storagePath,
+          avatar_url: avatarUrl,
+          mime_type: mimeType,
+          file_size_bytes: file.size,
+        });
+        await updatePhotoMutation.mutateAsync(payload);
+      } finally {
+        // The saved photo is a separate validated copy, so the staging upload
+        // is disposable whether or not the save succeeded.
+        void removeStudentPhotoStagingObject(storagePath).catch(() => {});
+      }
     } finally {
       photoLockRef.current = false;
     }

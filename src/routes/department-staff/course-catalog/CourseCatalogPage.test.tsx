@@ -214,12 +214,14 @@ describe("Department Staff course catalog", () => {
       ...getMockDatabase().courses[0]!,
       status: "discontinued" as const,
     };
-    let requestedStatus = "";
+    const requestedStatuses = new Set<string>();
     saaisMockServer.use(
       http.get("*/rest/v1/course", ({ request }) => {
-        requestedStatus = new URL(request.url).searchParams.get("status") ?? "";
-        return HttpResponse.json([course], {
-          headers: { "Content-Range": "0-0/1" },
+        const status = new URL(request.url).searchParams.get("status") ?? "";
+        requestedStatuses.add(status);
+        const rows = status === "eq.discontinued" ? [course] : [];
+        return HttpResponse.json(rows, {
+          headers: { "Content-Range": rows.length ? "0-0/1" : "*/0" },
         });
       }),
     );
@@ -229,7 +231,11 @@ describe("Department Staff course catalog", () => {
       name: new RegExp(course.code),
     });
     expect(within(row).getByText("Inactive")).toBeTruthy();
-    expect(requestedStatus).toBe("neq.active");
+    // The gateway rejects neq. and in. on status, so each one is read with eq.
+    expect([...requestedStatuses].sort()).toEqual([
+      "eq.discontinued",
+      "eq.inactive",
+    ]);
     // Radix Select scrolls the highlighted option into view; jsdom does not implement this browser API.
     const scrollIntoView = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = vi.fn();

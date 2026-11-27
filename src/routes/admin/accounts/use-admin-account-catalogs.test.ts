@@ -18,7 +18,7 @@ describe("useAdminAccountCatalogs", () => {
     vi.clearAllMocks();
   });
 
-  it("loads faculty and department choices with bounded projections", async () => {
+  it("loads faculty and department choices and reads every program and curriculum page", async () => {
     const faculties = [{ id: "faculty-1", name: "Faculty of Computing" }];
     const departments = [
       {
@@ -67,18 +67,10 @@ describe("useAdminAccountCatalogs", () => {
         },
       }),
     );
-    expect(getMock).toHaveBeenCalledWith(
-      "/rest/v1/program",
-      expect.objectContaining({
-        params: {
-          query: {
-            select: "id,code,name,department_id,status",
-            order: "name.asc",
-            limit: 1000,
-          },
-        },
-      }),
-    );
+    for (const path of ["/rest/v1/program", "/rest/v1/curriculum_version"])
+      expect(getMock).toHaveBeenCalledWith(path, {
+        params: { query: { order: "id.asc", limit: 1000, offset: 0 } },
+      });
     expect(getMock).toHaveBeenCalledWith(
       "/functions/v1/accounts",
       expect.objectContaining({
