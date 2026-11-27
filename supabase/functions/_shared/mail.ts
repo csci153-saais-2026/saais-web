@@ -4,8 +4,9 @@ type MailEnvironment = {
   url: string;
   serviceKey: string;
   secret: string;
-  transportKey: string;
-  sender: string;
+  webhookUrl: string;
+  webhookSecret: string;
+  senderName: string;
   siteUrl: string;
   recipients: Set<string> | null;
 };
@@ -16,6 +17,38 @@ type Mail = Omit<ClaimedMail, "kind" | "message" | "token"> & {
   message: string | null;
   token: string | null;
 };
+
+type WebhookPayload = {
+  ok?: unknown;
+  retry?: unknown;
+};
+
+function parseSenderName(
+  explicitName: string | undefined,
+  mailFrom: string | undefined,
+) {
+  const cleanExplicit = (explicitName || "").trim();
+  if (cleanExplicit) return cleanExplicit;
+  const rawFrom = (mailFrom || "").trim();
+  if (!rawFrom) return "SAAIS";
+  const bracketed = rawFrom.match(/^(.+?)\s*<[^<>@\s]+@[^<>@\s]+>$/);
+  if (bracketed) {
+    return bracketed[1].replace(/^["']|["']$/g, "").trim() || "SAAIS";
+  }
+  if (/^[^<>@\s]+@[^<>@\s]+$/.test(rawFrom)) return "SAAIS";
+  return rawFrom;
+}
+
+function isValidAppsScriptUrl(raw: string) {
+  const url = URL.parse(raw);
+  if (!url || url.protocol !== "https:" || url.username || url.password) {
+    return false;
+  }
+  if (url.hostname !== "script.google.com") return false;
+  return /^\/(?:a\/macros\/[^/]+\/|macros\/)s\/[A-Za-z0-9_-]+\/exec$/.test(
+    url.pathname,
+  );
+}
 
 export function readMailEnvironment(
   get: (name: string) => string | undefined,
@@ -28,8 +61,12 @@ export function readMailEnvironment(
     url: (get("SUPABASE_URL") || "").replace(/\/$/, ""),
     serviceKey: get("SUPABASE_SERVICE_ROLE_KEY") || "",
     secret: get("SAAIS_MAIL_WORKER_SECRET") || "",
-    transportKey: get("SAAIS_RESEND_API_KEY") || "",
-    sender: get("SAAIS_MAIL_FROM") || "",
+    webhookUrl: (get("SAAIS_GOOGLE_MAILER_URL") || "").trim(),
+    webhookSecret: (get("SAAIS_GOOGLE_MAILER_SECRET") || "").trim(),
+    senderName: parseSenderName(
+      get("SAAIS_MAIL_FROM_NAME"),
+      get("SAAIS_MAIL_FROM"),
+    ),
     siteUrl: get("SAAIS_SITE_URL") || "",
     recipients: unrestricted
       ? null
@@ -98,8 +135,8 @@ export function createMailHandler(
       site.password ||
       !env.url ||
       !env.serviceKey ||
-      !env.transportKey ||
-      !env.sender ||
+      !isValidAppsScriptUrl(env.webhookUrl) ||
+      !env.webhookSecret ||
       env.recipients?.size === 0
     ) {
       return new Response(null, { status: 503 });
@@ -127,39 +164,49 @@ export function createMailHandler(
               base.pathname = base.pathname.replace(/\/*$/, "/");
               const link = new URL("invite", base);
               link.hash = `token=${mail.token ?? ""}`;
+              const bodyText = mail.message ?? "";
               const message =
                 mail.kind === "invitation"
                   ? `Set up your SAAIS account using this invitation link: ${link.href}`
-                  : mail.message;
+                  : bodyText;
               try {
-                const delivery = await fetcher(
-                  "https://api.resend.com/emails",
-                  {
-                    method: "POST",
-                    redirect: "error",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${env.transportKey}`,
-                      "Idempotency-Key": `saais/${mail.kind}/${mail.id}`,
-                    },
-                    body: JSON.stringify({
-                      from: env.sender,
-                      to: [mail.email],
-                      subject: mail.subject,
-                      text: message,
-                    }),
-                    signal: AbortSignal.timeout(5000),
+                // Google Apps Script responds to POST with a 302 redirect to
+                // script.googleusercontent.com carrying the doPost JSON output.
+                const delivery = await fetcher(env.webhookUrl, {
+                  method: "POST",
+                  redirect: "follow",
+                  headers: {
+                    "Content-Type": "application/json",
                   },
-                );
-                if (delivery.ok) outcome = "sent";
-                else if (
-                  delivery.status < 500 &&
-                  ![401, 403, 408, 409, 429].includes(delivery.status)
-                )
-                  outcome = "failed";
-                await delivery.body?.cancel();
+                  body: JSON.stringify({
+                    secret: env.webhookSecret,
+                    to: mail.email,
+                    subject: mail.subject,
+                    text: message,
+                    fromName: env.senderName,
+                    idempotencyKey: `saais/${mail.kind}/${mail.id}`,
+                  }),
+                  signal: AbortSignal.timeout(10000),
+                });
+                if (delivery.ok) {
+                  const parsed = await delivery.json().catch(() => null);
+                  const payload = parsed as WebhookPayload | null;
+                  if (payload?.ok === true) {
+                    outcome = "sent";
+                  } else if (payload?.ok === false && payload.retry === false) {
+                    outcome = "failed";
+                  }
+                } else {
+                  await delivery.body?.cancel();
+                  if (
+                    delivery.status < 500 &&
+                    ![401, 403, 408, 409, 429].includes(delivery.status)
+                  ) {
+                    outcome = "failed";
+                  }
+                }
               } catch {
-                /* Retry with the same provider idempotency key. */
+                /* Retry with the same idempotencyKey. */
               }
               return finishMail(mail, outcome);
             }),
