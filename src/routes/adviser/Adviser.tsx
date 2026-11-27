@@ -1,5 +1,12 @@
 import { lazy, type ReactNode } from "react";
-import { Link, Navigate, Route, Routes, useParams } from "react-router";
+import {
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from "react-router";
 import { AdviserLayout } from "./AdviserLayout";
 import { FormField } from "@/components/features/form-field";
 import {
@@ -128,6 +135,18 @@ export function StaticSelect({
   );
 }
 
+/** Sends the SRS `advisees/:id/*` URLs to the pages that serve them. */
+function AdviseeAliasRedirect() {
+  const { id = "", "*": rest = "" } = useParams();
+  const { search, hash } = useLocation();
+  const student = encodeURIComponent(id);
+  const to =
+    rest.replace(/\/$/, "") === "record-grades"
+      ? `/adviser/encode-grades?student=${student}`
+      : `/adviser/advisee/${student}${rest && `/${rest}`}${search}${hash}`;
+  return <Navigate to={to} replace />;
+}
+
 /** Mount at /adviser/* inside the host application's existing router. */
 export default function Adviser() {
   const Checklist = detailPages.checklist;
@@ -138,6 +157,11 @@ export default function Adviser() {
         {Object.entries(pages).map(([path, Page]) => (
           <Route key={path} path={path} element={<Page />} />
         ))}
+        <Route path="advisees/:id/*" element={<AdviseeAliasRedirect />} />
+        <Route
+          path="enrollment/new"
+          element={<Navigate to="/adviser/encode-grades" replace />}
+        />
         <Route path="advisee/:id">
           <Route index element={<Checklist />} />
           {Object.entries(detailPages).map(([path, Page]) => (

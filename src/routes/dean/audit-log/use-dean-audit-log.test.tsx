@@ -25,10 +25,11 @@ describe("dean audit action labels", () => {
       "override",
       "note_change",
       "record_view",
+      null,
     ];
     vi.mocked(getDeanAuditLogEntries).mockResolvedValue(
       categories.map((action_category) => ({
-        id: action_category,
+        id: String(action_category),
         action_category,
         created_at: "2026-11-20T00:00:00Z",
         actor_name: "Someone",
@@ -41,13 +42,14 @@ describe("dean audit action labels", () => {
         <QueryClientProvider client={client}>{children}</QueryClientProvider>
       ),
     });
-    await waitFor(() => expect(result.current.entries).toHaveLength(5));
+    await waitFor(() => expect(result.current.entries).toHaveLength(6));
     expect(result.current.entries.map((entry) => entry.action)).toEqual([
       "Sign-in",
       "Change",
       "Change",
       "Change",
       "View",
+      "Change",
     ]);
   });
 });

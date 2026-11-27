@@ -15,9 +15,9 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["src/test/setup.ts"],
-    // CI runners expose many cores; unbounded workers (plus coverage) starve
-    // Radix-heavy jsdom tests and cause spurious timeouts.
-    maxWorkers: process.env.CI ? 4 : undefined,
+    // Unbounded workers (plus coverage) starve Radix-heavy jsdom tests and cause
+    // spurious timeouts, on many-core CI runners and slower laptops alike.
+    maxWorkers: process.env.CI ? 4 : "50%",
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },

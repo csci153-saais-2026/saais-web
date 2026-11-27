@@ -123,11 +123,7 @@ describe("DeanPortal (MSW integration)", () => {
     renderDeanAt("/dean/reports");
 
     expect(
-      await screen.findByRole(
-        "heading",
-        { name: "Reports" },
-        { timeout: 5000 },
-      ),
+      await screen.findByRole("heading", { name: "Reports" }),
     ).toBeTruthy();
     expect(await screen.findByText("Faculty of Computing")).toBeTruthy();
     expect(screen.queryByText(/read-only/i)).toBeNull();
@@ -154,7 +150,7 @@ describe("DeanPortal (MSW integration)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
     expect(await screen.findByText("Preview: Faculty reports")).toBeTruthy();
-  }, 15000);
+  });
 
   it("shows error state and recovers on Retry when reports endpoint fails", async () => {
     loginAsMockPersona("dean");
@@ -166,11 +162,7 @@ describe("DeanPortal (MSW integration)", () => {
 
     renderDeanAt("/dean/reports");
     expect(
-      await screen.findByText(
-        /Unable to load faculty reports/i,
-        {},
-        { timeout: 5000 },
-      ),
+      await screen.findByText(/Unable to load faculty reports/i, {}),
     ).toBeTruthy();
 
     saaisMockServer.resetHandlers();
@@ -183,11 +175,7 @@ describe("DeanPortal (MSW integration)", () => {
     renderDeanAt("/dean/students");
 
     expect(
-      await screen.findByRole(
-        "heading",
-        { name: "Students" },
-        { timeout: 5000 },
-      ),
+      await screen.findByRole("heading", { name: "Students" }),
     ).toBeTruthy();
     expect(await screen.findByText("Faculty of Computing")).toBeTruthy();
     expect(screen.queryByText(/opening a record is logged/i)).toBeNull();
@@ -249,11 +237,7 @@ describe("DeanPortal (MSW integration)", () => {
     renderDeanAt("/dean/audit-log");
 
     expect(
-      await screen.findByRole(
-        "heading",
-        { name: "Audit log" },
-        { timeout: 5000 },
-      ),
+      await screen.findByRole("heading", { name: "Audit log" }),
     ).toBeTruthy();
     expect(await screen.findByText("Faculty of Computing")).toBeTruthy();
     expect(screen.queryByText(/read-only/i)).toBeNull();

@@ -1991,7 +1991,7 @@
                 "description": "Upload or update student profile photo\n\n- **Operation ID**: `uploadStudentPhoto`\n- **Authorized roles: student, admin**\nScope rules: `{\"student\":\"own-records\",\"admin\":\"institution-wide\"}`",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"storage_object_path\": \"student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
+                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"storage_object_path\": \"students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2059,7 +2059,7 @@
                 "description": "Verifies that role `adviser` is rejected with HTTP 403 Forbidden (`INSUFFICIENT_PRIVILEGE`) on `uploadStudentPhoto`.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"storage_object_path\": \"student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
+                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"storage_object_path\": \"students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
                   "options": {
                     "raw": {
                       "language": "json"
