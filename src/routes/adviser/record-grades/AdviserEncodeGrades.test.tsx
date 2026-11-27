@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import type { ApiSchema } from "@/lib/api";
+import { ApiClientError, type ApiSchema } from "@/lib/api";
 import Encode from "./AdviserEncodeGrades";
 import {
   getElectiveSlots,
@@ -288,6 +288,59 @@ describe("encoding workspace identity", () => {
       ]),
     );
   });
+  it("asks for an override reason when an existing row is refused", async () => {
+    const old = {
+      ...attempt,
+      recorded_status: "currently_enrolled",
+      effective_status: "currently_enrolled",
+    } as ApiSchema<"AttemptResult">;
+    vi.mocked(getEncodingChoices).mockResolvedValue(choices);
+    vi.mocked(getGrades).mockResolvedValue({
+      ...data,
+      terms: data.terms.map((t) => ({ ...t, attempts: [old] })),
+    });
+    vi.mocked(getTermOfferings).mockResolvedValue([]);
+    vi.mocked(saveTermGrades)
+      .mockRejectedValueOnce(
+        new ApiClientError({
+          status: 409,
+          code: "PREREQUISITE_NOT_MET",
+          message: "A strict prerequisite is not satisfied.",
+        } as ConstructorParameters<typeof ApiClientError>[0]),
+      )
+      .mockResolvedValue([]);
+    render(
+      <MemoryRouter>
+        <Encode />
+      </MemoryRouter>,
+    );
+    fireEvent.change(await screen.findByLabelText("Advisee"), {
+      target: { value: "student-one" },
+    });
+    fireEvent.change(screen.getByLabelText("Term"), {
+      target: { value: "term-one" },
+    });
+    fireEvent.change(await screen.findByLabelText("New final grade"), {
+      target: { value: "2.25" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save grades" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Override reason"), {
+      target: { value: "Taken together" },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Continue with override" }),
+    );
+    await waitFor(() => expect(saveTermGrades).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(saveTermGrades).mock.calls[1]![2]).toEqual([
+      expect.objectContaining({
+        attempt_id: "attempt-one",
+        continue_with_prerequisite_override: true,
+        prerequisite_override_reason: "Taken together",
+      }),
+    ]);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
   it("never sends an existing final grade as a silent overwrite", async () => {
     auth.isMockMode = false;
     const old = {
@@ -404,13 +457,13 @@ describe("encoding workspace identity", () => {
     const mid = screen.getByLabelText("Midterm for CS 2") as HTMLSelectElement;
     const final = screen.getByLabelText("Final for CS 2") as HTMLSelectElement;
     const remark = screen.getByLabelText("Status for CS 2");
-    expect(within(mid).getByRole("option", { name: "4.75" })).toBeTruthy();
+    expect(within(mid).queryByRole("option", { name: "4.75" })).toBeNull();
     expect(within(final).queryByRole("option", { name: "4.75" })).toBeNull();
     fireEvent.change(mid, { target: { value: "dr" } });
     expect(final.value).toBe("dr");
     expect(final.disabled).toBe(true);
     expect(remark.textContent).toBe("Dropped");
-    fireEvent.change(mid, { target: { value: "4.75" } });
+    fireEvent.change(mid, { target: { value: "3.00" } });
     expect(final.disabled).toBe(false);
     expect(final.value).toBe("");
     fireEvent.change(final, { target: { value: "5.00" } });

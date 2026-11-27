@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import {
+  apiClient,
+  postgrestFilter,
+  unwrapApiResult,
+  type ApiSchema,
+} from "@/lib/api";
+import { useHeadDepartmentIds } from "../shared/use-head-department-ids";
 import { formatDisplayDate, formatTermDateRange } from "../shared/dh-utils";
 import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 import { schoolTermFormSchema } from "@/lib/validation/school-term.schema";
@@ -39,7 +45,9 @@ const SEMESTER_LABEL: Record<ApiSchema<"SchoolTermType">, string> = {
 
 const KEY = ["department-head", "terms"] as const;
 
-async function getAcademicTerms(): Promise<AcademicTermRecord[]> {
+export async function getAcademicTerms(
+  departmentIds: readonly string[],
+): Promise<AcademicTermRecord[]> {
   const [terms, closures] = await Promise.all([
     apiClient
       .GET("/rest/v1/school_term", {
@@ -48,19 +56,35 @@ async function getAcademicTerms(): Promise<AcademicTermRecord[]> {
         },
       })
       .then(unwrapApiResult),
-    apiClient
-      .GET("/rest/v1/department_term_encoding", {
-        params: { query: { select: "*", limit: 100 } },
-      })
-      .then(unwrapApiResult),
+    // Every department's rows are readable, so scope the read to the head's.
+    departmentIds.length
+      ? apiClient
+          .GET("/rest/v1/department_term_encoding", {
+            params: {
+              query: {
+                select: "*",
+                department_id: postgrestFilter.inList(departmentIds),
+                order: "school_term_id.asc,id.asc",
+                limit: 1000,
+              },
+            },
+          })
+          .then(unwrapApiResult)
+      : [],
   ]);
   // Latest term first, whatever order the server returns.
   return [...terms]
     .sort((a, b) => b.chronological_key - a.chronological_key)
     .map((term) => {
-      const closure = closures.find(
+      // Closed only once every department the user heads has closed it, so the
+      // close action stays available for the ones still open.
+      const termClosures = closures.filter(
         (row) => row.school_term_id === term.id && row.is_closed,
       );
+      const closure =
+        departmentIds.length > 0 && termClosures.length >= departmentIds.length
+          ? termClosures[0]
+          : undefined;
       const closed = Boolean(closure) || term.is_locked;
       return {
         id: term.id,
@@ -81,11 +105,13 @@ async function getAcademicTerms(): Promise<AcademicTermRecord[]> {
     });
 }
 
-export const useAcademicTerms = () =>
-  useQuery({
+export const useAcademicTerms = () => {
+  const departmentIds = useHeadDepartmentIds();
+  return useQuery({
     queryKey: useDepartmentHeadQueryKey(KEY),
-    queryFn: getAcademicTerms,
+    queryFn: () => getAcademicTerms(departmentIds),
   });
+};
 
 export function useCreateTerm() {
   const client = useQueryClient();

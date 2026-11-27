@@ -92,6 +92,7 @@ export default function CurriculaPage() {
   const [selectedVersionId, setSelectedVersionId] = React.useState<string>("");
   const [dialog, setDialog] = React.useState<CurriculaDialogState>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   // Version form state
   const [vProg, setVProg] = React.useState("");
@@ -267,7 +268,8 @@ export default function CurriculaPage() {
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dialog || deleteBlockReason) return;
+    if (!dialog || deleteBlockReason || saving) return;
+    setSaving(true);
     try {
       await confirmDialog(dialog);
     } catch (failure) {
@@ -276,6 +278,8 @@ export default function CurriculaPage() {
           ? failure.message
           : "The change could not be saved.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -316,7 +320,10 @@ export default function CurriculaPage() {
           label,
           start: vFrom,
           units,
-          status: vStatus,
+          ...(vStatus !==
+          versions.find((v) => v.id === active.versionId)?.status
+            ? { status: vStatus }
+            : {}),
           ...(vCloneFrom ? { cloneFromVersionId: vCloneFrom } : {}),
         });
       } else {
@@ -409,11 +416,18 @@ export default function CurriculaPage() {
         setFormError("Choose a department.");
         return;
       }
-      const targetVersion = versions.find(
-        (version) =>
-          version.departmentId === department.id &&
-          version.status !== "retired",
-      );
+      const acceptsCourses = (version: CurriculumVersionRecord) =>
+        version.status === "active" || version.status === "draft";
+      // The version on screen wins. Another one is picked only when the user
+      // chose a different department in the dialog.
+      const targetVersion =
+        currentVersion?.departmentId === department.id
+          ? [currentVersion].find(acceptsCourses)
+          : versions.find(
+              (version) =>
+                version.departmentId === department.id &&
+                acceptsCourses(version),
+            );
       if (!targetVersion) {
         setFormError(
           "No active or draft curriculum is available for this department.",
@@ -662,7 +676,7 @@ export default function CurriculaPage() {
                   },
                   {
                     label: "Status",
-                    value: currentVersion.status,
+                    value: currentVersion.status.replace("_", " "),
                     note: "Curriculum lifecycle",
                   },
                 ]}
@@ -885,6 +899,8 @@ export default function CurriculaPage() {
                           <SelectItem value="active">active</SelectItem>
                           <SelectItem value="draft">draft</SelectItem>
                           <SelectItem value="retired">retired</SelectItem>
+                          <SelectItem value="teach_out">teach out</SelectItem>
+                          <SelectItem value="closed">closed</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormField>
@@ -1187,7 +1203,7 @@ export default function CurriculaPage() {
                   <Button
                     type="submit"
                     variant={dialogMeta.isDelete ? "destructive" : "default"}
-                    disabled={!!deleteBlockReason}
+                    disabled={!!deleteBlockReason || saving}
                   >
                     {dialogMeta.confirmLabel}
                   </Button>

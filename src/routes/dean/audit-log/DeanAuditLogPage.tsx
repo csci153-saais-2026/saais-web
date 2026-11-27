@@ -7,6 +7,7 @@ import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
 import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import { FacultyAuditFilters } from "@/routes/dean/audit-log/FacultyAuditFilters";
+import { DEAN_AUDIT_LIMIT } from "@/routes/dean/audit-log/audit-log.api";
 import { useDeanAuditLog } from "@/routes/dean/audit-log/use-dean-audit-log";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
 import type { DeanAuditAction, DeanAuditEntry } from "@/routes/dean/types";
@@ -146,7 +147,11 @@ export default function DeanAuditLogPage() {
         >
           <Panel
             title="Audit events"
-            description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}`}
+            description={`${filteredEntries.length} ${filteredEntries.length === 1 ? "record" : "records"}${
+              entries.length >= DEAN_AUDIT_LIMIT
+                ? ` · showing latest ${DEAN_AUDIT_LIMIT}`
+                : ""
+            }`}
             flush
           >
             <FacultyAuditFilters

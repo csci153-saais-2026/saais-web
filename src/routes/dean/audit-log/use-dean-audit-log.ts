@@ -15,11 +15,22 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
 });
 
-function mapCategoryToAction(category: string): DeanAuditAction {
-  if (category === "change" || category === "grade_change") return "Change";
-  if (category === "auth" || category === "login") return "Sign-in";
-  return "View";
-}
+const CATEGORY_ACTIONS: Record<
+  ApiSchema<"AuditActionCategory">,
+  DeanAuditAction
+> = {
+  view: "View",
+  record_view: "View",
+  export: "View",
+  sign_in: "Sign-in",
+  change: "Change",
+  grade_update: "Change",
+  plan_save: "Change",
+  note_change: "Change",
+  override: "Change",
+  auth_account: "Change",
+  catalog_term: "Change",
+};
 
 export type MappedDeanAuditEntry = DeanAuditEntry & { dayKey: string };
 
@@ -40,7 +51,7 @@ function toDeanAuditEntry(
       : dateFormatter.format(created),
     occurredAt: entry.created_at,
     actor: entry.actor_name,
-    action: mapCategoryToAction(entry.action_category),
+    action: CATEGORY_ACTIONS[entry.action_category],
     student: studentDisplay,
     studentId: entry.student_id,
     studentNumber: entry.student_number,

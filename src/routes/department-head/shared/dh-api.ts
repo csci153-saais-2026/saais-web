@@ -286,15 +286,21 @@ export async function recordBackup(backup: {
 }
 
 /** Most recent time the department closed grade encoding for a term, if ever. */
-export async function getLastEncodingClosure(): Promise<string | null> {
+export async function getLastEncodingClosure(
+  departmentIds: readonly string[],
+): Promise<string | null> {
+  if (!departmentIds.length) return null;
   const rows = unwrapApiResult(
     await apiClient.GET("/rest/v1/department_term_encoding", {
-      params: { query: { limit: PAGE } },
+      params: {
+        query: {
+          department_id: postgrestFilter.inList(departmentIds),
+          is_closed: postgrestFilter.eq(true),
+          order: "closed_at.desc.nullslast",
+          limit: 1,
+        },
+      },
     }),
   );
-  const closed = rows
-    .filter((row) => row.is_closed)
-    .map((row) => row.closed_at)
-    .filter((value): value is string => !!value);
-  return closed.sort().at(-1) ?? null;
+  return rows[0]?.closed_at ?? null;
 }

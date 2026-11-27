@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import { isOnGradeScale } from "@/lib/validation/grade-scale";
 
 const grades = Array.from({ length: 17 }, (_, index) =>
   (1 + index * 0.25).toFixed(2),
@@ -8,7 +9,6 @@ export function GradeSelect({
   includeStatuses = false,
   allowDrop = false,
   disableDrop = false,
-  vsuScale = false,
   minGrade,
   maxGrade,
   placeholder = "Select grade",
@@ -18,7 +18,6 @@ export function GradeSelect({
   includeStatuses?: boolean;
   allowDrop?: boolean;
   disableDrop?: boolean;
-  vsuScale?: boolean;
   minGrade?: number;
   maxGrade?: number;
   placeholder?: string;
@@ -32,7 +31,9 @@ export function GradeSelect({
       {grades
         .filter(
           (grade) =>
-            (!vsuScale || Number(grade) <= 3 || grade === "5.00") &&
+            // A stored off-scale grade stays visible; it cannot be newly picked.
+            (isOnGradeScale(Number(grade)) ||
+              (props.value != null && Number(props.value) === Number(grade))) &&
             (minGrade == null || Number(grade) >= minGrade) &&
             (maxGrade == null || Number(grade) <= maxGrade),
         )

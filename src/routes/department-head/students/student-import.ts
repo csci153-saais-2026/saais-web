@@ -1,6 +1,7 @@
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 import { readAllCurriculumVersions, readAllPrograms } from "@/lib/api/catalog";
 import { getDepartmentAdvisers } from "../shared/dh-api";
+import { MAX_STUDENT_IMPORT_ROWS } from "../../department-staff/students/import/student-import";
 
 export const IMPORT_COLUMNS = [
   "student_number",
@@ -39,7 +40,8 @@ export function parseCsv(text: string): string[][] {
       if (char === "\r" && input[index + 1] === "\n") index += 1;
       row.push(field);
       field = "";
-      if (row.some((cell) => cell.trim() !== "")) rows.push(row);
+      // Blank lines are kept so row numbers match the file.
+      rows.push(row);
       row = [];
     } else field += char;
   }
@@ -102,11 +104,7 @@ export async function readImportFile(file: File): Promise<ImportLine[]> {
       await readFile<ArrayBuffer>((reader) => reader.readAsArrayBuffer(file)),
       1,
     );
-    return readImportTable(
-      sheet
-        .map((cells) => cells.map(cellText))
-        .filter((cells) => cells.some((cell) => cell.trim() !== "")),
-    );
+    return readImportTable(sheet.map((cells) => cells.map(cellText)));
   } catch (failure) {
     if (
       failure instanceof Error &&
@@ -121,8 +119,14 @@ export async function readImportFile(file: File): Promise<ImportLine[]> {
 }
 
 function readImportTable(table: string[][]): ImportLine[] {
-  const [header, ...body] = table;
+  const filled = (cells: string[]) => cells.some((cell) => cell.trim() !== "");
+  const headerIndex = table.findIndex(filled);
+  const header = table[headerIndex];
   if (!header) throw new Error("The file is empty.");
+  const body = table
+    .map((cells, index) => ({ cells, rowNumber: index + 1 }))
+    .slice(headerIndex + 1)
+    .filter((row) => filled(row.cells));
   const columns = header.map((cell) => {
     const key = normalise(cell);
     return ALIASES[key] ?? key;
@@ -135,8 +139,12 @@ function readImportTable(table: string[][]): ImportLine[] {
       `Missing column${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}.`,
     );
   if (body.length === 0) throw new Error("The file has no student rows.");
-  return body.map((cells, index) => {
-    const line = { rowNumber: index + 2 } as ImportLine;
+  if (body.length > MAX_STUDENT_IMPORT_ROWS)
+    throw new Error(
+      `The file has more than ${MAX_STUDENT_IMPORT_ROWS} student rows. Split it into smaller files.`,
+    );
+  return body.map(({ cells, rowNumber }) => {
+    const line = { rowNumber } as ImportLine;
     for (const name of IMPORT_COLUMNS)
       line[name] = (cells[columns.indexOf(name)] ?? "").trim();
     return line;
@@ -167,6 +175,18 @@ export async function submitStudentImport(
   const { programs, versions, advisers } = await lookups(departmentIds);
   const rows: ApiSchema<"StudentBatchImportRowInput">[] = [];
   const local = new Map<number, string>();
+  const repeated = (key: "student_number" | "email") => {
+    const seen = new Set<string>();
+    const twice = new Set<string>();
+    for (const line of lines) {
+      const value = line[key].toLowerCase();
+      if (value && seen.has(value)) twice.add(value);
+      seen.add(value);
+    }
+    return twice;
+  };
+  const repeatedNumbers = repeated("student_number");
+  const repeatedEmails = repeated("email");
   for (const line of lines) {
     const program = programs.find(
       (item) => item.code.toLowerCase() === line.program.toLowerCase(),
@@ -183,15 +203,18 @@ export async function submitStudentImport(
     const problem =
       !line.student_number || !line.full_name || !line.email
         ? "Student ID, name and email are required."
-        : !program
-          ? `Unknown program "${line.program}".`
-          : !version
-            ? `Unknown curriculum "${line.curriculum}" for ${program.code}.`
-            : !adviser
-              ? `No active department adviser has the email "${line.adviser_email}".`
-              : year !== null && !Number.isInteger(year)
-                ? "Entry year must be a whole number."
-                : "";
+        : repeatedNumbers.has(line.student_number.toLowerCase()) ||
+            repeatedEmails.has(line.email.toLowerCase())
+          ? "Duplicate student number or email within this file."
+          : !program
+            ? `Unknown program "${line.program}".`
+            : !version
+              ? `Unknown curriculum "${line.curriculum}" for ${program.code}.`
+              : !adviser
+                ? `No active department adviser has the email "${line.adviser_email}".`
+                : year !== null && !Number.isInteger(year)
+                  ? "Entry year must be a whole number."
+                  : "";
     if (problem || !program || !version || !adviser) {
       local.set(line.rowNumber, problem);
       continue;

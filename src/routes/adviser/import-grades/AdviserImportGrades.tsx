@@ -2,7 +2,7 @@ import { notify } from "@/lib/notify";
 import { useRef, useState } from "react";
 import { AdviserPage } from "../Adviser";
 import { useAuth } from "@/hooks/use-auth";
-import { apiClient, unwrapApiResult } from "@/lib/api";
+import { apiClient, unwrapApiResult, isApiClientError } from "@/lib/api";
 import type { ApiSchema } from "@/lib/api";
 import { PageHeading } from "@/components/features/page-heading";
 import { Panel } from "@/components/features/panel";
@@ -58,6 +58,8 @@ function ImportForm() {
   const [preview, setPreview] = useState<ImportResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // True once the preview table shows what a save actually did.
+  const [committed, setCommitted] = useState(false);
   const fileRevision = useRef(0);
   const [uploadKey, setUploadKey] = useState(0);
 
@@ -67,6 +69,7 @@ function ImportForm() {
     setInput(null);
     setPreview(null);
     setError("");
+    setCommitted(false);
     setUploadKey((n) => n + 1);
   }
 
@@ -83,6 +86,7 @@ function ImportForm() {
     setInput(null);
     setPreview(null);
     setError("");
+    setCommitted(false);
     if (!file) return;
     setFileName(file.name);
     setBusy(true);
@@ -138,9 +142,18 @@ function ImportForm() {
       notify.success(
         `Saved ${result.imported_count} grade ${plural(result.imported_count, "row", "rows")}. GWA is recomputed for the affected advisees and the import is in the audit log.`,
       );
-      reset();
+      if (result.error_count > 0) {
+        setPreview(result);
+        setInput(null);
+        setCommitted(true);
+      } else reset();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Import failed.");
+      const message = e instanceof Error ? e.message : "Import failed.";
+      if (isApiClientError(e) && e.isConflict) {
+        // The records changed since the check, so the preview is out of date.
+        reset();
+        setError(`${message} Upload the file again to re-check it.`);
+      } else setError(message);
     } finally {
       setBusy(false);
     }
@@ -184,12 +197,18 @@ function ImportForm() {
             role="status"
           >
             <AlertDescription>
-              {preview.valid_count}{" "}
-              {plural(preview.valid_count, "row is", "rows are")} valid
-              {preview.valid_count ? " and ready to save." : "."}
+              {committed ? (
+                `Saved ${preview.imported_count} ${plural(preview.imported_count, "row", "rows")}. The rejected rows below were not saved.`
+              ) : (
+                <>
+                  {preview.valid_count}{" "}
+                  {plural(preview.valid_count, "row is", "rows are")} valid
+                  {preview.valid_count ? " and ready to save." : "."}
+                </>
+              )}
             </AlertDescription>
           </Alert>
-          {rejected.length > 0 && (
+          {!committed && rejected.length > 0 && (
             <Alert variant="advisory" className="mt-3" role="status">
               <AlertDescription>
                 {rejected.length}{" "}
@@ -223,7 +242,9 @@ function ImportForm() {
                       {row.outcome === "error" ? (
                         <StatusBadge status="failed">Rejected</StatusBadge>
                       ) : (
-                        <StatusBadge status="passed">Valid</StatusBadge>
+                        <StatusBadge status="passed">
+                          {committed ? "Saved" : "Valid"}
+                        </StatusBadge>
                       )}
                     </TableCell>
                     <TableCell className="whitespace-normal">
@@ -235,16 +256,18 @@ function ImportForm() {
             </Table>
           </div>
           <div className="mt-5 flex gap-2.5">
-            <Button
-              disabled={busy || preview.valid_count === 0}
-              onClick={() => void save()}
-            >
-              {busy
-                ? "Saving…"
-                : `Save the ${preview.valid_count} valid ${plural(preview.valid_count, "row", "rows")}`}
-            </Button>
+            {!committed && (
+              <Button
+                disabled={busy || preview.valid_count === 0}
+                onClick={() => void save()}
+              >
+                {busy
+                  ? "Saving…"
+                  : `Save the ${preview.valid_count} valid ${plural(preview.valid_count, "row", "rows")}`}
+              </Button>
+            )}
             <Button variant="outline" disabled={busy} onClick={reset}>
-              Cancel
+              {committed ? "Done" : "Cancel"}
             </Button>
           </div>
         </Panel>

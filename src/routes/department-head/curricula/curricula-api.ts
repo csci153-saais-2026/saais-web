@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/catalog";
 import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
 
-export type CurriculumVersionStatus = "active" | "draft" | "retired";
+export type CurriculumVersionStatus = ApiSchema<"CurriculumVersionStatus">;
 export type CurriculumSemester = "Semester 1" | "Semester 2" | "Midyear";
 export type CurriculumSlotType =
   "Required course" | "Elective slot" | "GE slot";
@@ -137,10 +137,7 @@ async function getCurricula(): Promise<CurriculaData> {
       units: version.total_units,
       enrolled: version.enrolled_student_count ?? 0,
       from: version.effective_start,
-      status:
-        version.status === "active" || version.status === "draft"
-          ? version.status
-          : "retired",
+      status: version.status,
       references: references.length ? references : undefined,
       terms: terms
         .filter((term) => term.curriculum_version_id === version.id)
@@ -235,8 +232,11 @@ export async function createCurriculumVersion(
 
 export type UpdateCurriculumVersionInput = Omit<
   CreateCurriculumVersionInput,
-  "programId" | "cloneFromVersionId"
->;
+  "programId" | "cloneFromVersionId" | "status"
+> & {
+  /** Set only when the user changes it. */
+  status?: CurriculumVersionStatus;
+};
 
 export async function updateCurriculumVersion(
   id: string,
@@ -249,7 +249,7 @@ export async function updateCurriculumVersion(
         version_label: input.label,
         effective_start: input.start,
         total_units: input.units,
-        status: input.status,
+        ...(input.status ? { status: input.status } : {}),
       },
     }),
   );

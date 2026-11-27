@@ -1,12 +1,16 @@
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
 
+export const DEAN_AUDIT_LIMIT = 1000;
+
 export async function getDeanAuditLogEntries(
   signal?: AbortSignal,
 ): Promise<ApiSchema<"AuditLogEntry">[]> {
   return unwrapApiResult(
     // The newest entries, up to the gateway's page maximum.
     await apiClient.GET("/rest/v1/audit_log_entry", {
-      params: { query: { order: "created_at.desc,id.desc", limit: 1000 } },
+      params: {
+        query: { order: "created_at.desc,id.desc", limit: DEAN_AUDIT_LIMIT },
+      },
       signal,
     }),
   );

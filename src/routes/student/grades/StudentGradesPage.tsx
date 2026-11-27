@@ -127,7 +127,7 @@ function formatFinalOrCompletionGrade(attempt: TermGradesAttemptRow): string {
 function computeFailedUnits(attempts: readonly TermGradesAttemptRow[]): number {
   let failed = 0;
   for (const attempt of attempts) {
-    if (attempt.effective_status === "failed") {
+    if (attempt.effective_status === "failed" || attempt.is_lapsed_inc) {
       failed += attempt.units_attempted;
     }
   }

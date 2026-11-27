@@ -84,7 +84,9 @@ export function buildAuditListQuery(
     ["Action", action, AUDIT_WILDCARD_SEARCH_MAX_LENGTH],
     ["Entity type", entityType, AUDIT_SEARCH_MAX_LENGTH],
   ] as const) {
-    if (value.length > maxLength) {
+    const sent =
+      label === "Entity type" ? value : postgrestFilter.likeLiteral(value);
+    if (sent.length > maxLength) {
       return {
         query: null,
         error: `${label} search must be ${maxLength} characters or fewer.`,
@@ -92,7 +94,7 @@ export function buildAuditListQuery(
     }
     if (
       [...value].some((character) => character.charCodeAt(0) <= 0x1f) ||
-      /[(),."\\]/.test(value)
+      /[(),]/.test(value)
     ) {
       return {
         query: null,
@@ -101,11 +103,15 @@ export function buildAuditListQuery(
     }
   }
 
-  if (person) query.actor_name = postgrestFilter.ilike(`%${person}%`);
+  // postgrestFilter.ilike rejects the backslashes that escaping adds.
+  const contains = (text: string) =>
+    `%${postgrestFilter.likeLiteral(text)}%` as const;
+  if (person) query.actor_name = `ilike.${contains(person)}`;
   if (student) {
-    query.or = `(student_name.ilike.%${student}%,student_number.ilike.%${student}%,target_label.ilike.%${student}%)`;
+    const match = contains(student);
+    query.or = `(student_name.ilike.${match},student_number.ilike.${match},target_label.ilike.${match})`;
   }
-  if (action) query.action = postgrestFilter.ilike(`%${action}%`);
+  if (action) query.action = `ilike.${contains(action)}`;
   if (filters.category) {
     if (
       !AUDIT_ACTION_CATEGORIES.some(

@@ -197,7 +197,6 @@ function GradeAction({
               <label className="grid gap-1">
                 Completion grade
                 <GradeSelect
-                  vsuScale
                   required
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
@@ -223,7 +222,6 @@ function GradeAction({
                   <label className="grid gap-1">
                     Final grade
                     <GradeSelect
-                      vsuScale
                       includeStatuses={!completedInc}
                       disableDrop={effectiveMidterm !== "dr"}
                       disabled={effectiveMidterm === "dr"}

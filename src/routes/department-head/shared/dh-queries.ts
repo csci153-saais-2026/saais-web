@@ -50,11 +50,13 @@ export const useDepartmentSettings = () => {
     queryFn: () => getSettings(departmentIds),
   });
 };
-export const useLastEncodingClosure = () =>
-  useQuery({
+export const useLastEncodingClosure = () => {
+  const departmentIds = useHeadDepartmentIds();
+  return useQuery({
     queryKey: useDepartmentHeadQueryKey(keys.closure),
-    queryFn: getLastEncodingClosure,
+    queryFn: () => getLastEncodingClosure(departmentIds),
   });
+};
 
 export function useReassignStudents() {
   const client = useQueryClient();
