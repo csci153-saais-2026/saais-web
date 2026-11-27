@@ -73,11 +73,23 @@ export async function getDeanStudentGrades(
 }
 
 export async function getDeanCourses(): Promise<ApiSchema<"Course">[]> {
-  return unwrapApiResult(await apiClient.GET("/rest/v1/course"));
+  return fetchAllPages(
+    (limit, offset) =>
+      apiClient.GET("/rest/v1/course", {
+        params: { query: { order: "id.asc", limit, offset } },
+      }),
+    "Course catalog",
+  );
 }
 
 export async function getDeanCourseOfferings(): Promise<
   ApiSchema<"CourseOffering">[]
 > {
-  return unwrapApiResult(await apiClient.GET("/rest/v1/course_offering"));
+  return fetchAllPages(
+    (limit, offset) =>
+      apiClient.GET("/rest/v1/course_offering", {
+        params: { query: { order: "id.asc", limit, offset } },
+      }),
+    "Course offerings",
+  );
 }

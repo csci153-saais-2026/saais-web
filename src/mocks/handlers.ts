@@ -718,23 +718,6 @@ function matchesPostgrestOperator(
   return true;
 }
 
-function matchesPostgrestDisjunction<T extends object>(
-  row: T,
-  filterExpr: string,
-): boolean {
-  if (!filterExpr.startsWith("(") || !filterExpr.endsWith(")")) return false;
-  const clauses = filterExpr.slice(1, -1).split(",");
-  if (clauses.length === 0 || clauses.length > 10) return false;
-
-  const record = row as Record<string, unknown>;
-  return clauses.some((clause) => {
-    const match = /^([a-z_]+)\.(ilike|like)\.(.*)$/.exec(clause);
-    if (!match) return false;
-    const [, field, operator, pattern] = match;
-    return matchesPostgrestOperator(record[field!], `${operator}.${pattern}`);
-  });
-}
-
 /** Appends a "change" row to the shared audit log, as the real backend does for department-head writes. */
 function recordMockAudit(
   persona: MockPersona,
@@ -772,6 +755,21 @@ function recordMockAudit(
   });
 }
 
+const AUDIT_OR_FIELD_LIMITS: Record<string, number> = {
+  actor_name: 100,
+  student_name: 100,
+  student_number: 100,
+  target_label: 100,
+  action: 100,
+  details_summary: 100,
+  reason: 100,
+};
+
+const COURSE_OR_PATTERN =
+  /^\(code\.ilike\.%[^,()]{1,100}%,title\.ilike\.%[^,()]{1,250}%\)$/u;
+const PROGRAM_OR_PATTERN =
+  /^\(code\.ilike\.%[^,()]{1,100}%,name\.ilike\.%[^,()]{1,150}%\)$/u;
+
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
   url: URL,
@@ -794,13 +792,6 @@ function applyPostgrestQuery<T extends object>(
     });
   });
 
-  const orParam = url.searchParams.get("or");
-  if (orParam) {
-    filtered = filtered.filter((row) =>
-      matchesPostgrestDisjunction(row, orParam),
-    );
-  }
-
   const andParam = url.searchParams.get("and");
   if (andParam) {
     const m =
@@ -816,6 +807,51 @@ function applyPostgrestQuery<T extends object>(
         matchesPostgrestOperator(value, `${m[3]}.${m[4]}`)
       );
     });
+  }
+
+  const orParam = url.searchParams.get("or");
+  if (orParam !== null) {
+    const pattern = url.pathname.endsWith("/rest/v1/course")
+      ? COURSE_OR_PATTERN
+      : url.pathname.endsWith("/rest/v1/program")
+        ? PROGRAM_OR_PATTERN
+        : null;
+    const isAudit = url.pathname.endsWith("/rest/v1/audit_log_entry");
+    if (
+      (!pattern && !isAudit) ||
+      !orParam.startsWith("(") ||
+      !orParam.endsWith(")") ||
+      (pattern && !pattern.test(orParam))
+    )
+      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
+    const rawTerms = orParam.slice(1, -1).split(",");
+    if (rawTerms.length > 7)
+      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
+    const terms = rawTerms.map((term) => {
+      const match = term.match(/^([a-z_]+)\.(ilike|like|eq)\.([^,()]+)$/);
+      if (!match) return null;
+      const [, field, op, operand] = match;
+      if (
+        (isAudit &&
+          (!Object.hasOwn(AUDIT_OR_FIELD_LIMITS, field) ||
+            operand.length > AUDIT_OR_FIELD_LIMITS[field])) ||
+        Array.from(operand).some((char) => char.charCodeAt(0) < 32)
+      )
+        return null;
+      return { field, op, operand };
+    });
+    if (terms.some((term) => !term))
+      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
+    filtered = filtered.filter((row) =>
+      terms.some(
+        (term) =>
+          term &&
+          matchesPostgrestOperator(
+            (row as Record<string, unknown>)[term.field],
+            `${term.op}.${term.operand}`,
+          ),
+      ),
+    );
   }
 
   const order = url.searchParams.get("order");
@@ -7428,14 +7464,21 @@ export const saaisMswHandlers = [
       const body = (await request
         .json()
         .catch(() => null)) as ApiSchema<"StudentPhotoUpdateRequest"> | null;
-      if (!body?.avatar_url || !body?.mime_type || !body?.file_size_bytes) {
+      if (
+        typeof body?.storage_object_path !== "string" ||
+        !body.storage_object_path.trim() ||
+        body.storage_object_path.length > 512 ||
+        !body.avatar_url ||
+        !body.mime_type ||
+        !body.file_size_bytes
+      ) {
         return errorJson(
           400,
           "INVALID_INPUT",
-          "avatar_url, mime_type, and file_size_bytes are required.",
+          "storage_object_path, avatar_url, mime_type, and file_size_bytes are required.",
         );
       }
-      if (body.file_size_bytes > 5_242_880) {
+      if (body.file_size_bytes > 5 * 1024 * 1024) {
         return errorJson(
           400,
           "FILE_TOO_LARGE",

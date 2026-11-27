@@ -9,6 +9,7 @@ import {
   unwrapApiResult,
   type ApiSchema,
 } from "@/lib/api";
+import { fetchAllPages } from "../fetch-all-pages";
 
 export interface StudentProfileData {
   readonly profile: ApiSchema<"Profile">;
@@ -49,44 +50,80 @@ export async function fetchStudentProfileData(
         params: { query: { student_id: postgrestFilter.eq(studentId) } },
       })
       .then(unwrapApiResult),
-    apiClient.GET("/rest/v1/program").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/department").then(unwrapApiResult),
-    apiClient.GET("/rest/v1/faculty").then(unwrapApiResult),
-    apiClient
-      .GET("/rest/v1/adviser_assignment", {
-        params: {
-          query: {
-            student_id: postgrestFilter.eq(studentId),
-            select:
-              "id,adviser_id,adviser_name,adviser_email,adviser_faculty_name,adviser_consultation_hours,student_id,start_date,end_date,handed_over_to_adviser_id,handed_over_to_name,handover_label,created_at",
-            order: "start_date.desc",
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/program", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/department", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/faculty", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/adviser_assignment", {
+          params: {
+            query: {
+              student_id: postgrestFilter.eq(studentId),
+              select:
+                "id,adviser_id,adviser_name,adviser_email,adviser_faculty_name,adviser_consultation_hours,student_id,start_date,end_date,handed_over_to_adviser_id,handed_over_to_name,handover_label,created_at",
+              order: "start_date.desc,id.desc",
+              limit,
+              offset,
+            },
           },
-        },
-      })
-      .then(unwrapApiResult),
-    apiClient
-      .GET("/rest/v1/student_curriculum_assignment", {
-        params: {
-          query: {
-            student_id: postgrestFilter.eq(studentId),
-            select:
-              "id,student_id,curriculum_version_id,start_date,end_date,change_note,created_at",
-            order: "start_date.desc",
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/student_curriculum_assignment", {
+          params: {
+            query: {
+              student_id: postgrestFilter.eq(studentId),
+              select:
+                "id,student_id,curriculum_version_id,start_date,end_date,change_note,created_at",
+              order: "start_date.desc,id.desc",
+              limit,
+              offset,
+            },
           },
-        },
-      })
-      .then(unwrapApiResult),
-    apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
-    apiClient
-      .GET("/rest/v1/curriculum_transfer_request", {
-        params: {
-          query: {
-            student_id: postgrestFilter.eq(studentId),
-            order: "created_at.desc",
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/curriculum_version", {
+          params: { query: { order: "id.asc", limit, offset } },
+        }),
+      (row) => row.id,
+    ),
+    fetchAllPages(
+      (limit, offset) =>
+        apiClient.GET("/rest/v1/curriculum_transfer_request", {
+          params: {
+            query: {
+              student_id: postgrestFilter.eq(studentId),
+              order: "created_at.desc,id.desc",
+              limit,
+              offset,
+            },
           },
-        },
-      })
-      .then(unwrapApiResult),
+        }),
+      (row) => row.id,
+    ),
   ]);
 
   const profile = profiles[0];

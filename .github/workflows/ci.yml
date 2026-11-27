@@ -80,6 +80,12 @@ jobs:
       - name: Run Typecheck
         run: npm run typecheck
 
+      - name: Check Edge Function types
+        run: node node_modules/typescript/bin/tsc -p supabase/tsconfig.json
+
+      - name: Run Edge Function HTTP and contract tests
+        run: node --test supabase/tests/*.test.mjs
+
       - name: Run ESLint
         run: npm run lint
 
@@ -105,6 +111,57 @@ jobs:
         run: npx vitest run --coverage --passWithNoTests
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  database:
+    name: Supabase database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: ".nvmrc"
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.111.0
+      - name: Start local Supabase Auth and Data API with synthetic seed
+        run: supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor >/dev/null
+      - name: Verify signed-in attempt-result projection through PostgREST
+        run: node --test supabase/tools/test-attempt-result-gateway.mjs
+      - name: Verify Auth signup hook and synthetic seed
+        run: node --test supabase/tools/test-auth-and-seed.mjs
+      - name: Reset local database without seed
+        run: supabase db reset --local --no-seed
+      - name: Run pgTAP
+        run: node supabase/tools/test-pgtap.cjs
+      - name: Run domain, application, and concurrency regression suites
+        id: postgres-regressions
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql
+          export PG_BINARY_DIR="$(pg_config --bindir)"
+          node supabase/tools/test-database.cjs
+      - name: Print PostgreSQL regression diagnostics
+        if: ${{ failure() && steps.postgres-regressions.outcome == 'failure' }}
+        run: |
+          log_dir=supabase/.temp
+          log="$log_dir/backend-pg.log"
+          if [ -r "$log" ]; then
+            cat "$log"
+          else
+            echo "::warning::Expected PostgreSQL log is missing or unreadable: $log"
+            if [ -d "$log_dir" ]; then
+              find "$log_dir" -maxdepth 3 -type f \( -iname '*postgres*.log' -o -iname '*pg*.log' \) \
+                -print -exec tail -n 100 {} \;
+              ls -ld "$log_dir" "$log_dir/backend-pg" 2>/dev/null || true
+            else
+              echo "PostgreSQL temporary directory was not created."
+            fi
+            postgres_bin="$(pg_config --bindir 2>/dev/null)" &&
+              "$postgres_bin/postgres" --version || true
+            ss -ltn '( sport = :55432 )' || true
+          fi

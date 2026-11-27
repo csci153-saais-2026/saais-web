@@ -1,0 +1,183 @@
+do $$
+declare
+  admin uuid := '00000001-0000-4000-8000-000000000000';
+  admin_session uuid := '00000001-0000-4000-8000-000000000001';
+  staff uuid := '00000003-0000-4000-8000-000000000000';
+  staff_session uuid := '00000003-0000-4000-8000-000000000001';
+  target uuid := gen_random_uuid();
+  token text := repeat('a', 64);
+  new_token text := repeat('b', 64);
+  reservation jsonb;
+  request jsonb;
+  result jsonb;
+  hash text;
+  lease uuid := gen_random_uuid();
+  original_assignment uuid;
+  current_assignment uuid;
+  incoming_adviser uuid := '00000008-0000-4000-8000-000000000000';
+begin
+  request := jsonb_build_object('role','student','full_name','Provisioned fixture',
+    'email','backend-fixture@vsu.edu.ph','student_number','26-1-99342',
+    'program_id',(select value->>'id' from test.records where name='program'),
+    'curriculum_version_id',(select value->>'id' from test.records where name='version'),
+    'adviser_id','00000004-0000-4000-8000-000000000000');
+
+  begin
+    perform public.saais_invitation_service('inviteUser', 'prepare',
+      '{"role":"admin","full_name":"Forbidden","email":"forbidden-fixture@vsu.edu.ph"}', staff, staff_session);
+    raise exception 'Staff invited an admin';
+  exception when sqlstate 'PT403' then null;
+  end;
+  begin
+    perform public.saais_invitation_service('inviteUser', 'prepare',
+      request || '{"adviser_id":"00000007-0000-4000-8000-000000000000"}', staff, staff_session);
+    raise exception 'Student invitation accepted an ineligible adviser';
+  exception when sqlstate 'PT409' then null;
+  end;
+
+  perform test.login(1);
+  select grants into result from saais_private.validate_invitee(jsonb_build_object(
+    'role', 'adviser', 'email', 'multirole-fixture@vsu.edu.ph', 'full_name', 'Multi-role fixture',
+    'department_id', (select value->>'id' from test.records where name = 'department'),
+    'faculty_id', (select value->>'id' from test.records where name = 'faculty'),
+    'role_assignments', jsonb_build_array(
+      jsonb_build_object('role', 'admin', 'department_id', (select value->>'id' from test.records where name = 'department')),
+      jsonb_build_object('role', 'dean', 'department_id', (select value->>'id' from test.records where name = 'department'))
+    )));
+  perform test.assert(result @> '[{"role":"admin","department_id":null,"faculty_id":null}]',
+    'Institution-wide secondary role normalizes the selected department');
+  perform test.assert(result @> jsonb_build_array(jsonb_build_object(
+    'role','dean','department_id',null,'faculty_id',(select value->>'id' from test.records where name = 'faculty')
+  )), 'Dean secondary role uses the selected faculty');
+
+  reservation := public.saais_invitation_service('inviteUser', 'prepare', request, staff, staff_session);
+  perform test.assert(reservation->>'reservation_id' is not null and reservation->>'auth_ready' = 'false',
+    'Prepare reserves a student without making academic writes');
+  insert into auth.users(id, email, raw_app_meta_data)
+  values (target, request->>'email', jsonb_build_object('saais_provisioning_id', reservation->>'reservation_id'));
+  result := public.saais_invitation_service('inviteUser', 'finish', request, staff, staff_session, null, token);
+  perform test.assert((result->>'profile_id')::uuid = target, 'Finish attaches the reserved Auth identity');
+  perform test.assert(exists(select 1 from public.adviser_assignment where student_id = target and end_date is null)
+    and exists(select 1 from public.student_curriculum_assignment where student_id = target and end_date is null)
+    and exists(select 1 from public.audit_log_entry where entity_id = target and action = 'inviteUser'),
+    'Initial adviser, curriculum, and audit commit together');
+  select a.id into original_assignment from public.adviser_assignment a
+    where a.student_id=target and a.end_date is null;
+  perform test.assert((select count(*) = 1 from public.notification
+    where event_type='adviser_assigned' and entity_id=original_assignment
+      and recipient_id=(request->>'adviser_id')::uuid),
+    'Initial provisioning notifies the assigned adviser once');
+
+  update public.adviser_assignment set start_date=start_date-1 where id=original_assignment;
+  perform test.login(3);
+  result := public.matt_operation('reassignAdviser', jsonb_build_object('student_id', target),
+    jsonb_build_object('adviser_id', incoming_adviser,
+      'start_date', (now() at time zone 'Asia/Manila')::date, 'reason', 'Initial provisioning'));
+  current_assignment := (result->1->>'id')::uuid;
+  perform test.assert((select count(*) = 1 from public.notification
+    where event_type='adviser_assigned' and entity_id=current_assignment and recipient_id=incoming_adviser),
+    'A reassignment using the provisioning reason notifies the incoming adviser once');
+  perform test.assert(not exists(select 1 from public.notification
+    where event_type='adviser_assigned' and target_student_id=target and recipient_id=target),
+    'The student assignment notice waits for activation');
+
+  perform public.saais_invitation_service('inviteUser', 'finish', request, staff, staff_session, null, token);
+  perform test.assert((select count(*) = 1 from saais_private.invite_email where profile_id = target),
+    'Identical retries do not queue another invitation');
+  perform test.assert(not exists(select 1 from public.saais_claim_email(array['unapproved@example.test'])
+    where kind = 'invitation'), 'Unapproved invitations do not reach the provider');
+  perform test.assert((select m.attempts = 0 and m.lease is null from saais_private.invite_email m where m.profile_id = target),
+    'An unapproved invitation retains its token and delivery attempts');
+  perform test.assert(exists(select 1 from public.saais_claim_email(array[request->>'email'])
+    where kind = 'invitation' and email = request->>'email'), 'Corrected allowlist can lease the held invitation');
+
+  begin
+    perform public.saais_invitation_service('inviteUser', 'prepare', request || '{"email":"other-fixture@vsu.edu.ph"}', staff, staff_session);
+    raise exception 'Duplicate student number was accepted';
+  exception when sqlstate 'PT409' then null;
+  end;
+
+  hash := encode(sha256(convert_to(token, 'UTF8')), 'hex');
+  result := public.saais_invitation_service('previewInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash);
+  perform test.assert(result->>'valid' = 'true' and result->>'email' = request->>'email', 'Preview can read a live invitation');
+  update public.profile set invitation_expires_at = now() - interval '1 second' where id = target;
+  result := public.saais_invitation_service('previewInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash);
+  perform test.assert(result->>'status' = 'expired' and result->>'valid' = 'false', 'Expired invitation is inactive');
+  perform test.assert(saais_private.matt_profile(target)->>'invitation_status' = 'expired', 'The account directory reports expired invitations');
+  perform public.saais_invitation_service('resendAccountInvite', 'start', '{}', staff, staff_session, target, new_token);
+  begin
+    perform public.saais_invitation_service('previewInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash);
+    raise exception 'Resend retained the old token';
+  exception when sqlstate 'PT404' then null;
+  end;
+  hash := encode(sha256(convert_to(new_token, 'UTF8')), 'hex');
+  result := public.saais_invitation_service('declineInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash);
+  perform test.assert(result->>'invitation_status' = 'declined', 'A pending recipient can decline');
+  begin
+    perform public.saais_invitation_service('declineInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash);
+    raise exception 'Closed token returned 404 or succeeded instead of 409 on decline start';
+  exception when sqlstate 'PT409' then null; end;
+  perform public.saais_invitation_service('resendAccountInvite', 'start', '{}', staff, staff_session, target, token);
+  result := public.saais_invitation_service('revokeAccountInvite', 'start', '{}', staff, staff_session, target);
+  perform test.assert(result->>'invitation_status' = 'revoked', 'Staff can revoke a pending invitation within scope');
+  perform public.saais_invitation_service('resendAccountInvite', 'start', '{}', staff, staff_session, target, new_token);
+  perform public.saais_invitation_service('verifyInviteToken', 'start', jsonb_build_object('token',hash), p_token => hash, p_redemption => lease);
+  begin
+    perform public.saais_invitation_service('revokeAccountInvite', 'start', '{}', admin, admin_session, target);
+    raise exception 'Revoked a leased invitation';
+  exception when sqlstate 'PT409' then null;
+  end;
+  perform public.saais_invitation_service('verifyInviteToken', 'finishRedemption', '{}', p_token => hash, p_redemption => lease);
+  perform public.saais_invitation_service('verifyInviteToken', 'finishRedemption', '{}', p_token => hash, p_redemption => lease);
+  perform test.assert((select status = 'active' and invitation_status = 'accepted' from public.profile where id = target),
+    'Auth completion activates the profile once');
+  perform test.assert(exists(select 1 from public.notification where event_type='invitation_accepted' and entity_id=target), 'Activation notifies the administrative recipients');
+  perform test.assert((select count(*) = 1 and bool_and(entity_id=current_assignment) from public.notification
+    where event_type='adviser_assigned' and target_student_id=target and recipient_id=target),
+    'Activation notifies the student once about their current adviser');
+  begin
+    perform public.saais_invitation_service('inviteUser', 'prepare', request, staff, staff_session);
+    raise exception 'Accepted account was reinvited as an idempotent success';
+  exception when sqlstate 'PT409' then null; end;
+  perform test.assert((select count(*) = 1 from public.audit_log_entry where entity_id = target and action = 'invitation_accepted'),
+    'Redemption retry never duplicates the audit event');
+
+  -- Atomic student_import_committed notifications with deterministic batch_key deduplication (#179)
+  declare
+    imp1 uuid := gen_random_uuid();
+    imp2 uuid := gen_random_uuid();
+    batch_key text := repeat('f', 64);
+    imp_req1 jsonb := jsonb_build_object('row_number',1,'full_name','Imported One','email','imp1-fixture@vsu.edu.ph',
+      'student_number','26-1-99351','program_id',(select value->>'id' from test.records where name='program'),
+      'curriculum_version_id',(select value->>'id' from test.records where name='version'),
+      'adviser_id','00000004-0000-4000-8000-000000000000');
+    imp_req2 jsonb := jsonb_build_object('row_number',2,'full_name','Imported Two','email','imp2-fixture@vsu.edu.ph',
+      'student_number','26-1-99352','program_id',(select value->>'id' from test.records where name='program'),
+      'curriculum_version_id',(select value->>'id' from test.records where name='version'),
+      'adviser_id','00000004-0000-4000-8000-000000000000');
+    res1 jsonb;
+    res2 jsonb;
+  begin
+    res1 := public.saais_invitation_service('importStudentsBatch', 'prepare', imp_req1, staff, staff_session);
+    insert into auth.users(id, email, raw_app_meta_data)
+      values (imp1, imp_req1->>'email', jsonb_build_object('saais_provisioning_id', res1->>'reservation_id'));
+    perform public.saais_invitation_service('importStudentsBatch', 'finish',
+      imp_req1 || jsonb_build_object('batch_key', batch_key), staff, staff_session, null, repeat('c', 64));
+
+    res2 := public.saais_invitation_service('importStudentsBatch', 'prepare', imp_req2, staff, staff_session);
+    insert into auth.users(id, email, raw_app_meta_data)
+      values (imp2, imp_req2->>'email', jsonb_build_object('saais_provisioning_id', res2->>'reservation_id'));
+    perform public.saais_invitation_service('importStudentsBatch', 'finish',
+      imp_req2 || jsonb_build_object('batch_key', batch_key), staff, staff_session, null, repeat('d', 64));
+
+    perform test.assert((select count(*) = 3 from public.notification where event_type = 'student_import_committed'
+      and recipient_id in ('00000001-0000-4000-8000-000000000000','00000002-0000-4000-8000-000000000000','00000004-0000-4000-8000-000000000000')),
+      'Multi-row student import notifies adviser, department head, and admin once per batch');
+    perform test.assert(not exists(select 1 from public.notification where event_type = 'student_import_committed'
+      and recipient_id = '00000006-0000-4000-8000-000000000000'),
+      'Student import notifications stay within the student department');
+  end;
+  perform test.assert(not has_function_privilege('authenticated',
+    'public.saais_invitation_service(text,text,jsonb,uuid,uuid,uuid,text,uuid)', 'EXECUTE'), 'Browser cannot enter provisioning RPC');
+end;
+$$;
