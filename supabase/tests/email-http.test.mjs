@@ -237,3 +237,21 @@ test("a claimed disallowed recipient is marked failed without sending email", as
     { p_id: id, p_kind: "notification", p_lease: session, p_outcome: "failed" },
   ]);
 });
+
+test("mail delivery runs optional photo cleanup hook without failing mail responses", async () => {
+  const config = readMailEnvironment(
+    (name) =>
+      ({ ...settings, SAAIS_MAIL_ALLOWED_RECIPIENTS: "allowed@example.test" })[
+        name
+      ],
+  );
+  let sweeps = 0;
+  const handler = createMailHandler(config, async () => Response.json([]), {
+    reconcilePhotos: async () => {
+      sweeps++;
+      throw new Error("transient storage outage");
+    },
+  });
+  assert.equal((await send(handler)).status, 200);
+  assert.equal(sweeps, 1);
+});

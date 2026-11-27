@@ -91,6 +91,26 @@ begin
   insert into saais_private.deleted_student_photo(object_path, student_id) values (verified, student);
   perform test.assert(public.saais_reconcile_deleted_photos(student) = '{}'::text[],
     'reconciliation never returns an actively referenced avatar');
+  -- Verify cross-student batch reconciliation drains pending deletions without
+  -- touching any actively referenced avatar.
+  declare
+    other_student uuid := '00000009-0000-4000-8000-000000000000';
+    other_old text := 'students/' || other_student || '/validated-00000000-0000-4000-8000-000000000099.png';
+    batch text[];
+  begin
+    insert into saais_private.deleted_student_photo(object_path, student_id)
+      values (verified, student), (unused, student), (other_old, other_student);
+    batch := public.saais_reconcile_pending_deleted_photos(1);
+    perform test.assert(cardinality(batch) = 1 and batch[1] <> verified,
+      'batch reconciliation honors p_limit and skips active avatars');
+    batch := public.saais_reconcile_pending_deleted_photos(10);
+    perform test.assert(cardinality(batch) = 2 and batch @> array[unused, other_old],
+      'batch reconciliation returns pending deletions across multiple students');
+    perform test.assert(public.saais_reconcile_pending_deleted_photos(0, batch) = '{}'::text[],
+      'ack-only batch reconciliation returns empty and removes acknowledged rows');
+    perform test.assert(public.saais_reconcile_pending_deleted_photos(10) = '{}'::text[],
+      'batch queue is empty after acknowledgement');
+  end;
   update public.profile set avatar_url = null where id = student;
   perform test.login(9);
   begin
@@ -157,6 +177,9 @@ begin
   end if;
   if has_function_privilege(current_user, 'public.saais_reconcile_deleted_photos(uuid,text[])', 'EXECUTE') then
     raise exception 'Student can access service-only photo reconciliation';
+  end if;
+  if has_function_privilege(current_user, 'public.saais_reconcile_pending_deleted_photos(integer,text[])', 'EXECUTE') then
+    raise exception 'Student can access service-only batch photo reconciliation';
   end if;
   begin
     insert into storage.objects(bucket_id, name) values

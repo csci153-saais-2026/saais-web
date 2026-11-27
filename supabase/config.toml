@@ -53,6 +53,9 @@ verify_jwt = false
 [functions.mail-delivery]
 verify_jwt = false
 
+[functions.photo-cleanup]
+verify_jwt = false
+
 [functions.auth-hook]
 verify_jwt = false
 

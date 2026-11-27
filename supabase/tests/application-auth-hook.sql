@@ -99,6 +99,23 @@ begin
     perform public.saais_evaluate_before_user_created(signup, 'msg_new_signup');
     perform test.assert((select count(*)=before_count+3 from public.audit_log_entry where action='login_rejected'),
       'A fresh delivery with the same event is audited independently');
+
+    -- Verify deduplication retention prunes expired hashes while keeping
+    -- recent hashes and leaving audit_log_entry untouched.
+    update saais_private.rejected_login_webhook
+      set recorded_at = clock_timestamp() - interval '8 days'
+      where id_hash = sha256(convert_to('msg_replayed_signup', 'UTF8'));
+    perform public.saais_evaluate_before_user_created(signup, 'msg_after_retention');
+    perform test.assert(not exists(
+      select 1 from saais_private.rejected_login_webhook
+      where id_hash = sha256(convert_to('msg_replayed_signup', 'UTF8'))
+    ), 'Expired deduplication hashes are pruned beyond the retention window');
+    perform test.assert(exists(
+      select 1 from saais_private.rejected_login_webhook
+      where id_hash = sha256(convert_to('msg_new_signup', 'UTF8'))
+    ), 'Recent deduplication hashes within the retention window are preserved');
+    perform test.assert((select count(*)=before_count+4 from public.audit_log_entry where action='login_rejected'),
+      'Pruning expired deduplication records preserves rejected-login audit entries');
   end;
 
   result := public.saais_evaluate_access_token('{"user_id":"00000005-0000-4000-8000-000000000000","claims":{"email":"person5@example.test"}}');
