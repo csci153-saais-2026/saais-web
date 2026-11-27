@@ -32,6 +32,13 @@ const CATEGORY_ACTIONS: Record<
   catalog_term: "Change",
 };
 
+/** A missing or unrecognised category counts as a change, so none is understated. */
+export function toDeanAuditAction(
+  category: ApiSchema<"AuditActionCategory"> | null | undefined,
+): DeanAuditAction {
+  return (category && CATEGORY_ACTIONS[category]) || "Change";
+}
+
 export type MappedDeanAuditEntry = DeanAuditEntry & { dayKey: string };
 
 function toDeanAuditEntry(
@@ -51,7 +58,7 @@ function toDeanAuditEntry(
       : dateFormatter.format(created),
     occurredAt: entry.created_at,
     actor: entry.actor_name,
-    action: CATEGORY_ACTIONS[entry.action_category],
+    action: toDeanAuditAction(entry.action_category),
     student: studentDisplay,
     studentId: entry.student_id,
     studentNumber: entry.student_number,

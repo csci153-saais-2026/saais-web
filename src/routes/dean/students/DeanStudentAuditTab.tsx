@@ -1,12 +1,9 @@
 import { DataTablePanel } from "@/components/features/data-table-panel";
 import { AuditActionPill } from "@/components/features/audit-action-pill";
+import { toDeanAuditAction } from "@/routes/dean/audit-log/use-dean-audit-log";
 import { DeanQueryState } from "@/routes/dean/shared/DeanQueryState";
 import { useDeanStudentAudit } from "@/routes/dean/students/use-dean-students";
-import type {
-  DeanAuditAction,
-  DeanAuditEntry,
-  DeanStudentSummary,
-} from "@/routes/dean/types";
+import type { DeanAuditEntry, DeanStudentSummary } from "@/routes/dean/types";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Manila",
@@ -16,12 +13,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-function mapCategoryToAction(category: string): DeanAuditAction {
-  if (category === "change" || category === "grade_change") return "Change";
-  if (category === "auth" || category === "login") return "Sign-in";
-  return "View";
-}
 
 export function DeanStudentAuditTab({
   student,
@@ -51,7 +42,7 @@ export function DeanStudentAuditTab({
       id: entry.id,
       timestamp: dateFormatter.format(new Date(entry.created_at)),
       actor: entry.actor_name,
-      action: mapCategoryToAction(entry.action_category),
+      action: toDeanAuditAction(entry.action_category),
       student: entry.student_name ?? student.name,
       studentId: entry.student_id,
       studentNumber: entry.student_number,
