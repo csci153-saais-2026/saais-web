@@ -106,19 +106,19 @@ export async function mountRedocStandalone({
       })()
   if (!rawYaml.trim()) throw new Error('Canonical OpenAPI contract asset is empty.')
   if (signal?.aborted) return () => {}
-  const { RedocStandalone } = await import('redoc')
+  const [{ RedocStandalone }, { parse }] = await Promise.all([import('redoc'), import('yaml')])
   if (signal?.aborted) return () => {}
 
+  // Pass the parsed document: Redoc reads any non-http(s) URL, including blob:, as a local file.
+  const spec = parse(rawYaml) as object
   const element = document.createElement('div')
   container.appendChild(element)
   const root = createRoot(element)
-  const objectUrl = URL.createObjectURL(new Blob([rawYaml], { type: 'application/yaml' }))
   let disposed = false
   const cleanup = () => {
     if (disposed) return
     disposed = true
     signal?.removeEventListener('abort', onAbort)
-    URL.revokeObjectURL(objectUrl)
     // React may be completing the parent route's cleanup; unmount after that commit.
     queueMicrotask(() => { root.unmount(); element.remove() })
   }
@@ -129,7 +129,7 @@ export async function mountRedocStandalone({
     await new Promise<void>((resolve, reject) => {
       rejectLoad = reject
       root.render(createElement(RedocStandalone, {
-        specUrl: objectUrl,
+        spec,
         options: buildSaaisRedocOptions(),
         onLoaded: (error?: Error) => error ? reject(error) : resolve(),
       }))

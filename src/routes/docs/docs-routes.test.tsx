@@ -1,7 +1,9 @@
-const redocLifecycle = vi.hoisted(() => ({ unmounted: vi.fn(), defer: false }))
+const redocLifecycle = vi.hoisted(() => ({ unmounted: vi.fn(), defer: false, props: {} as Record<string, unknown> }))
 vi.mock('redoc', async () => {
   const React = await import('react')
-  return { RedocStandalone: ({ onLoaded }: { onLoaded: () => void }) => {
+  return { RedocStandalone: (props: { onLoaded: () => void }) => {
+    const { onLoaded } = props
+    redocLifecycle.props = props
     React.useEffect(() => { if (!redocLifecycle.defer) onLoaded(); return redocLifecycle.unmounted }, [onLoaded])
     return React.createElement('div', { 'data-test-redoc': true })
   } }
@@ -321,10 +323,16 @@ describe('redoc-loader rendering & spec verification', () => {
     ).rejects.toThrow('Canonical OpenAPI contract asset is empty.')
   })
 
+  it('gives Redoc the parsed document, not a URL it would read as a file', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('openapi: 3.1.0'))
+    const dispose = await mountRedocStandalone({ specUrl: '/spec.yaml', container: document.createElement('div'), fetchImpl })
+    expect(redocLifecycle.props.spec).toEqual({ openapi: '3.1.0' })
+    expect(redocLifecycle.props.specUrl).toBeUndefined()
+    dispose()
+  })
+
   it('unmounts the owned Redoc root when the viewer is disposed', async () => {
     const container = document.createElement('div')
-    URL.createObjectURL = vi.fn(() => 'blob:contract')
-    URL.revokeObjectURL = vi.fn()
     const fetchImpl = vi.fn().mockResolvedValue(new Response('openapi: 3.1.0'))
     const controller = new AbortController()
     const dispose = await mountRedocStandalone({ specUrl: '/spec.yaml', container, fetchImpl, signal: controller.signal })
@@ -337,8 +345,6 @@ describe('redoc-loader rendering & spec verification', () => {
 
   it('cleans up a Redoc root when loading is aborted', async () => {
     redocLifecycle.defer = true
-    URL.createObjectURL = vi.fn(() => 'blob:contract')
-    URL.revokeObjectURL = vi.fn()
     const container = document.createElement('div')
     const controller = new AbortController()
     const loading = mountRedocStandalone({ specUrl: '/spec.yaml', container, fetchImpl: vi.fn().mockResolvedValue(new Response('openapi: 3.1.0')), signal: controller.signal })
