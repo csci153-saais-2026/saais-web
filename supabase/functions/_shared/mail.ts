@@ -4,9 +4,10 @@ type MailEnvironment = {
   url: string;
   serviceKey: string;
   secret: string;
-  webhookUrl: string;
-  webhookSecret: string;
-  senderName: string;
+  gmailClientId: string;
+  gmailClientSecret: string;
+  gmailRefreshToken: string;
+  sender: string;
   siteUrl: string;
   recipients: Set<string> | null;
 };
@@ -18,36 +19,78 @@ type Mail = Omit<ClaimedMail, "kind" | "message" | "token"> & {
   token: string | null;
 };
 
-type WebhookPayload = {
-  ok?: unknown;
-  retry?: unknown;
+type TokenPayload = {
+  access_token?: unknown;
 };
 
-function parseSenderName(
-  explicitName: string | undefined,
-  mailFrom: string | undefined,
-) {
-  const cleanExplicit = (explicitName || "").trim();
-  if (cleanExplicit) return cleanExplicit;
-  const rawFrom = (mailFrom || "").trim();
-  if (!rawFrom) return "SAAIS";
-  const bracketed = rawFrom.match(/^(.+?)\s*<[^<>@\s]+@[^<>@\s]+>$/);
-  if (bracketed) {
-    return bracketed[1].replace(/^["']|["']$/g, "").trim() || "SAAIS";
-  }
-  if (/^[^<>@\s]+@[^<>@\s]+$/.test(rawFrom)) return "SAAIS";
-  return rawFrom;
+const encoder = new TextEncoder();
+
+function cleanHeaderValue(value: string) {
+  return value.replace(/[\r\n\0]+/g, " ").trim();
 }
 
-function isValidAppsScriptUrl(raw: string) {
-  const url = URL.parse(raw);
-  if (!url || url.protocol !== "https:" || url.username || url.password) {
-    return false;
+function extractEmailAddress(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || /[\r\n\0]/.test(trimmed)) return "";
+  const bracketed = trimmed.match(/<([^<>@\s]+@[^<>@\s]+)>/);
+  if (bracketed) return bracketed[1];
+  return /^[^<>@\s]+@[^<>@\s]+$/.test(trimmed) ? trimmed : "";
+}
+
+function toBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   }
-  if (url.hostname !== "script.google.com") return false;
-  return /^\/(?:a\/macros\/[^/]+\/|macros\/)s\/[A-Za-z0-9_-]+\/exec$/.test(
-    url.pathname,
+  return btoa(binary);
+}
+
+function toBase64Url(bytes: Uint8Array) {
+  return toBase64(bytes)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function encodeHeaderSubject(subject: string) {
+  const clean = cleanHeaderValue(subject);
+  if (/^[\x20-\x7e]*$/.test(clean)) return clean;
+  return `=?UTF-8?B?${toBase64(encoder.encode(clean))}?=`;
+}
+
+function encodeFromHeader(sender: string) {
+  const clean = cleanHeaderValue(sender);
+  if (!clean) return "";
+  const bracketed = clean.match(/^(.+?)\s*<([^<>@\s]+@[^<>@\s]+)>$/);
+  if (!bracketed) return clean;
+  const displayName = bracketed[1].replace(/^["']|["']$/g, "").trim();
+  const address = bracketed[2];
+  if (!displayName) return address;
+  const encodedName = /^[\x20-\x7e]*$/.test(displayName)
+    ? `"${displayName.replace(/["\\]/g, "\\$&")}"`
+    : `=?UTF-8?B?${toBase64(encoder.encode(displayName))}?=`;
+  return `${encodedName} <${address}>`;
+}
+
+function buildRawMimeMessage(options: {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+}) {
+  const headers: string[] = [];
+  const fromHeader = encodeFromHeader(options.from);
+  if (fromHeader) headers.push(`From: ${fromHeader}`);
+  headers.push(
+    `To: ${options.to}`,
+    `Subject: ${encodeHeaderSubject(options.subject)}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
   );
+  const bodyBase64 = toBase64(encoder.encode(options.text));
+  const mime = `${headers.join("\r\n")}\r\n\r\n${bodyBase64}`;
+  return toBase64Url(encoder.encode(mime));
 }
 
 export function readMailEnvironment(
@@ -61,12 +104,10 @@ export function readMailEnvironment(
     url: (get("SUPABASE_URL") || "").replace(/\/$/, ""),
     serviceKey: get("SUPABASE_SERVICE_ROLE_KEY") || "",
     secret: get("SAAIS_MAIL_WORKER_SECRET") || "",
-    webhookUrl: (get("SAAIS_GOOGLE_MAILER_URL") || "").trim(),
-    webhookSecret: (get("SAAIS_GOOGLE_MAILER_SECRET") || "").trim(),
-    senderName: parseSenderName(
-      get("SAAIS_MAIL_FROM_NAME"),
-      get("SAAIS_MAIL_FROM"),
-    ),
+    gmailClientId: (get("SAAIS_GMAIL_CLIENT_ID") || "").trim(),
+    gmailClientSecret: (get("SAAIS_GMAIL_CLIENT_SECRET") || "").trim(),
+    gmailRefreshToken: (get("SAAIS_GMAIL_REFRESH_TOKEN") || "").trim(),
+    sender: (get("SAAIS_MAIL_FROM") || "").trim(),
     siteUrl: get("SAAIS_SITE_URL") || "",
     recipients: unrestricted
       ? null
@@ -118,6 +159,31 @@ export function createMailHandler(
     return outcome;
   }
 
+  async function refreshAccessToken() {
+    const tokenResponse = await fetcher("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: env.gmailClientId,
+        client_secret: env.gmailClientSecret,
+        refresh_token: env.gmailRefreshToken,
+        grant_type: "refresh_token",
+      }).toString(),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!tokenResponse.ok) {
+      await tokenResponse.body?.cancel();
+      return null;
+    }
+    const parsed = await tokenResponse.json().catch(() => null);
+    const data = parsed as TokenPayload | null;
+    return typeof data?.access_token === "string" && data.access_token
+      ? data.access_token
+      : null;
+  }
+
   return async (request: Request) => {
     if (request.method !== "POST") return new Response(null, { status: 405 });
     if (
@@ -135,8 +201,10 @@ export function createMailHandler(
       site.password ||
       !env.url ||
       !env.serviceKey ||
-      !isValidAppsScriptUrl(env.webhookUrl) ||
-      !env.webhookSecret ||
+      !env.gmailClientId ||
+      !env.gmailClientSecret ||
+      !env.gmailRefreshToken ||
+      (env.sender && !extractEmailAddress(env.sender)) ||
       env.recipients?.size === 0
     ) {
       return new Response(null, { status: 503 });
@@ -147,16 +215,32 @@ export function createMailHandler(
       });
       if (!response.ok) return new Response(null, { status: 503 });
       const messages = (await response.json()) as Mail[];
+      let accessToken: string | null = null;
+      let tokenChecked = false;
+      const hasEligibleRecipient = messages.some((mail) => {
+        const recipient = extractEmailAddress(mail.email);
+        if (!recipient) return false;
+        return !env.recipients || env.recipients.has(recipient.toLowerCase());
+      });
+      if (hasEligibleRecipient) {
+        accessToken = await refreshAccessToken().catch(() => null);
+        tokenChecked = true;
+      }
+
       const outcomes: PromiseSettledResult<string>[] = [];
       for (let offset = 0; offset < messages.length; offset += 4) {
         outcomes.push(
           ...(await Promise.allSettled(
             messages.slice(offset, offset + 4).map(async (mail) => {
+              const recipient = extractEmailAddress(mail.email);
               if (
-                env.recipients &&
-                !env.recipients.has(mail.email.trim().toLowerCase())
+                !recipient ||
+                (env.recipients && !env.recipients.has(recipient.toLowerCase()))
               ) {
                 return finishMail(mail, "failed");
+              }
+              if (tokenChecked && !accessToken) {
+                return finishMail(mail, "retry");
               }
               let outcome = "retry";
               // A trailing slash keeps the site's base path in the link.
@@ -170,43 +254,35 @@ export function createMailHandler(
                   ? `Set up your SAAIS account using this invitation link: ${link.href}`
                   : bodyText;
               try {
-                // Google Apps Script responds to POST with a 302 redirect to
-                // script.googleusercontent.com carrying the doPost JSON output.
-                const delivery = await fetcher(env.webhookUrl, {
-                  method: "POST",
-                  redirect: "follow",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    secret: env.webhookSecret,
-                    to: mail.email,
-                    subject: mail.subject,
-                    text: message,
-                    fromName: env.senderName,
-                    idempotencyKey: `saais/${mail.kind}/${mail.id}`,
-                  }),
-                  signal: AbortSignal.timeout(10000),
+                const raw = buildRawMimeMessage({
+                  from: env.sender,
+                  to: recipient,
+                  subject: mail.subject,
+                  text: message,
                 });
-                if (delivery.ok) {
-                  const parsed = await delivery.json().catch(() => null);
-                  const payload = parsed as WebhookPayload | null;
-                  if (payload?.ok === true) {
-                    outcome = "sent";
-                  } else if (payload?.ok === false && payload.retry === false) {
-                    outcome = "failed";
-                  }
-                } else {
-                  await delivery.body?.cancel();
-                  if (
-                    delivery.status < 500 &&
-                    ![401, 403, 408, 409, 429].includes(delivery.status)
-                  ) {
-                    outcome = "failed";
-                  }
+                const delivery = await fetcher(
+                  "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                  {
+                    method: "POST",
+                    redirect: "error",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: JSON.stringify({ raw }),
+                    signal: AbortSignal.timeout(5000),
+                  },
+                );
+                if (delivery.ok) outcome = "sent";
+                else if (
+                  delivery.status < 500 &&
+                  ![401, 403, 408, 409, 429].includes(delivery.status)
+                ) {
+                  outcome = "failed";
                 }
+                await delivery.body?.cancel();
               } catch {
-                /* Retry with the same idempotencyKey. */
+                /* Keep queued for exponential backoff retry. */
               }
               return finishMail(mail, outcome);
             }),
