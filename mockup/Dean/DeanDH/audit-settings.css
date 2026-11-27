@@ -1,0 +1,43 @@
+/* Shared Audit / Settings layout, using DesignSystem.dc.html measurements. */
+.portal-settings{display:grid;gap:18px;margin-top:18px}
+.portal-settings>.panel,.portal-settings section{margin-bottom:0}
+.settings-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:stretch}
+.settings-columns>section{display:flex;flex-direction:column;min-width:0;height:100%}
+.settings-columns>section>div{flex:1;display:flex;flex-direction:column}
+.settings-columns>section>div>div:last-child{margin-top:auto!important;padding-top:18px}
+.settings-columns>section>div>div:last-child button{max-width:100%;white-space:normal}
+.portal-settings .threshold-fields{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px}
+.portal-settings .settings-feedback{font-size:13px;color:#6e6c58;margin-top:16px}
+.portal-settings label{font-size:12.5px}
+.portal-audit .panel{background:white;border:1px solid #e1dbc6;border-radius:6px;overflow:hidden;margin-bottom:24px}
+.portal-audit .panel-head{padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid #efeadb}
+.portal-audit .panel-head h2{font-family:'IBM Plex Sans','Segoe UI',sans-serif;font-size:15.5px;font-weight:600;line-height:1.4}
+.portal-audit .panel-head p{font-size:13px;color:#8c8a76;margin-top:2px}
+.portal-audit .toolbar{display:grid;grid-template-columns:1.2fr 1.2fr 1fr 1fr 1fr;align-items:end;gap:12px;padding:16px 20px;border-bottom:1px solid #efeadb}
+.portal-audit .toolbar label,.portal-audit .toolbar label:first-child{min-width:0;display:block;font-size:12.5px;font-weight:600;color:#6e6c58}
+.portal-audit label>span{display:block;margin-bottom:6px}
+.portal-audit input,.portal-audit select{width:100%;min-width:0;border:1px solid #e1dbc6;border-radius:4px;padding:9px 12px;background:white;color:#16200c;font:14px/1.4 'IBM Plex Sans','Segoe UI',sans-serif;min-height:40px}
+.portal-audit .table-wrap{max-width:100%;overflow:auto}
+.portal-audit table{width:100%;border-collapse:collapse;text-align:left;table-layout:fixed}
+.portal-audit th:nth-child(1){width:12.4%}.portal-audit th:nth-child(2){width:18.8%}.portal-audit th:nth-child(3){width:11.5%}.portal-audit th:nth-child(4){width:25.5%}.portal-audit th:nth-child(5){width:31.8%}
+.portal-audit th{padding:10px 14px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:#8c8a76;font-weight:600;white-space:nowrap;background:#f2eddc;border-bottom:1px solid #e1dbc6}
+.portal-audit td{padding:11px 14px;font-size:13.5px;line-height:1.5;border-bottom:1px solid #efeadb;vertical-align:middle}
+.portal-audit tbody tr:last-child td{border-bottom:0}.portal-audit tbody tr:hover{background:#efeadb}
+.portal-audit td small{display:block;color:#6e6c58;font-size:12px;margin-top:2px;line-height:1.5}
+.portal-audit td:first-child{white-space:nowrap;font-family:'IBM Plex Sans','Segoe UI',sans-serif}
+.portal-audit .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 8px;border-radius:3px;font-size:12px;font-weight:600;line-height:1.5;letter-spacing:.01em;white-space:nowrap;color:#5c5a4c;background:#ece8da}
+.portal-audit .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.portal-audit .badge.blue{color:#2a4c6b;background:#e4edf4}.portal-audit .badge.green{color:#2c6430;background:#e7f0e2}
+.portal-audit .table-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;border-top:1px solid #efeadb;color:#8c8a76;font-size:12px}
+.portal-audit .empty{padding:30px 20px;text-align:center;color:#6e6c58;font-size:13px}
+.portal-audit [hidden],.portal-settings [hidden]{display:none!important}
+@media(max-width:1100px){.portal-audit .toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:768px){.settings-columns{grid-template-columns:1fr}.portal-settings .threshold-fields{grid-template-columns:1fr!important}.portal-audit .toolbar{padding:16px}.portal-audit .panel-head{padding:16px}}
+@media(max-width:768px){
+.portal-audit table{min-width:850px;display:table}
+.portal-audit table thead{display:table-header-group}.portal-audit table tbody{display:table-row-group}
+.portal-audit table tr{display:table-row;padding:0}
+.portal-audit table td{display:table-cell;width:auto;text-align:left;padding:11px 14px;border-bottom:1px solid #efeadb}
+.portal-audit table td::before{display:none;content:none}
+}
+@media(max-width:450px){.portal-audit .toolbar{grid-template-columns:1fr}}

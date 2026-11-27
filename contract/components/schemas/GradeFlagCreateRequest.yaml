@@ -1,0 +1,38 @@
+type: object
+additionalProperties: false
+properties:
+  attempt_id:
+    type: string
+    format: uuid
+  reported_stage:
+    type:
+      - string
+      - "null"
+    enum:
+      - midterm
+      - final
+      - null
+  reported_grade_text:
+    type:
+      - string
+      - "null"
+    maxLength: 64
+  issue_type:
+    type: string
+    enum:
+      - wrong_grade
+      - incorrect_grade
+      - missing_grade
+      - wrong_course_credited
+      - wrong_status
+      - missing_completion
+      - other
+  details:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+required:
+  - attempt_id
+  - issue_type
+  - details

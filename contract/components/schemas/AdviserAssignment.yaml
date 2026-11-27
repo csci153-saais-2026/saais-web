@@ -1,0 +1,82 @@
+type: object
+required:
+  - id
+  - adviser_id
+  - student_id
+  - start_date
+  - created_at
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  adviser_id:
+    type: string
+    format: uuid
+  adviser_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Adviser display name safe for Student Profile and advisee history views.
+  adviser_email:
+    type:
+      - string
+      - "null"
+    format: email
+    readOnly: true
+    description: Adviser institutional email safe for Student Dashboard and Mobile Student Home contact cards.
+  adviser_faculty_name:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+    readOnly: true
+    description: Adviser faculty/college display name safe for Student Dashboard contact cards.
+  adviser_consultation_hours:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+    readOnly: true
+    example: Tue & Thu, 13:00–16:00
+    description: Adviser consultation hours displayed on Student Dashboard and Mobile Student Home.
+  student_id:
+    type: string
+    format: uuid
+  start_date:
+    type: string
+    format: date
+    example: "2025-08-01"
+  end_date:
+    type:
+      - string
+      - "null"
+    format: date
+    example: null
+  handed_over_to_adviser_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+    readOnly: true
+    description: Succeeding adviser UUID when this assignment was closed by a handover.
+  handed_over_to_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+    readOnly: true
+    description: Succeeding adviser display name when this assignment was closed by a handover.
+  handover_label:
+    type:
+      - string
+      - "null"
+    maxLength: 200
+    readOnly: true
+    example: Handed over to Prof. Reyes (Jan 2026)
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true

@@ -1,73 +1,725 @@
 openapi: 3.1.0
 info:
   title: Student Academic Advising Information System (SAAIS) API
-  version: 0.1.0
-  description: >
-    Official OpenAPI contract and single source of truth for the SAAIS application.
-    Covers PostgREST data endpoints and Supabase Edge Function operations.
+  version: 0.3.1
+  description: >-
+    Target SAAIS API contract: read-only PostgREST projections and authenticated transactional Edge
+    Function writes. The confirmed SRS governs business rules across the six assignable roles
+    (student, adviser, department_head, department_staff, dean, admin) and multi-role account
+    assignments. This specification and its x-required-roles metadata do not implement
+    authorization, pagination, rate limiting or database guards: those must be enforced by the
+    gateway, RLS and verified server operations before deployment. Supabase Auth handles hosted
+    sessions and password/Google flows; this contract describes application provisioning and
+    academic operations. Daily scheduled alert and INC cache evaluation runs server-side via
+    pg_cron, while POST /functions/v1/notifications/evaluate-alerts exposes idempotent on-demand
+    alert evaluation for Department Heads, Admins, and deterministic mock testing. Email/password
+    and Google OAuth, PKCE callbacks, session refresh and logout are Supabase-managed SDK flows,
+    not custom application endpoints. See
+    x-supabase-auth-integration and contract/SUPABASE-AUTH.md for the client/gateway integration
+    contract.
   license:
     name: Proprietary
     url: https://github.com/csci153-saais-2026/saais-web/blob/main/LICENSE.md
 servers:
+  - url: https://{project_ref}.supabase.co
+    x-internal: false
+    description: >-
+      Hosted Supabase HTTPS gateway; configure the real project reference. Production requests
+      require HTTPS; no specific TLS version is assumed.
+    variables:
+      project_ref:
+        default: your-project-ref
+        description: Deployment Supabase project reference.
   - url: http://127.0.0.1:54321
-    description: Local Supabase Development
+    x-internal: true
+    description: Loopback-only local Supabase sandbox. HTTP is permitted only for local development.
+security:
+  - supabaseProjectKey: []
+    bearerAuth: []
+tags:
+  - name: System
+    description: System health and diagnostic endpoints
+  - name: Auth
+    description: User authentication, invitation provisioning, and password setup
+  - name: Profile
+    description: User profiles, multi-role assignments, and institutional accounts
+  - name: Faculty & Department
+    description: Academic divisions (Faculties/Colleges) and subordinate academic departments
+  - name: Program & Curriculum
+    description: Degree programs, versioned curricula, positional terms, checklist slots, and curriculum-pair equivalences
+  - name: Course Catalog
+    description: Master course catalog and prerequisite linkages
+  - name: Terms & Offerings
+    description: Calendar school terms, term locks, encoding closure, and course offerings
+  - name: Advising & Exceptions
+    description: >-
+      Student-scoped academic reads and transactional adviser/department operations including grade
+      encoding, prerequisite overrides, grade flags, batch grade import, curriculum transfers,
+      elective mappings, course equivalencies, and outside credits.
+  - name: Reports & Analytics
+    description: Cohort analytics, at-risk rosters, and department/faculty summary metrics
+  - name: Notifications & Settings
+    description: In-app notification center, configurable delinquency thresholds, and backup metadata
 paths:
-  /rest/v1/health:
-    get:
-      summary: Health check probe
-      operationId: getHealthStatus
-      description: Returns health status of the PostgREST / Supabase layer.
-      responses:
-        "200":
-          description: Service is healthy.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "ok"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "500":
-          $ref: "#/components/responses/500InternalError"
+  /functions/v1/auth/invite:
+    $ref: "./paths/functions/auth@invite.yaml"
+  /functions/v1/auth/verify-invite:
+    $ref: "./paths/functions/auth@verify-invite.yaml"
+  /functions/v1/auth/preview-invite:
+    $ref: "./paths/functions/auth@preview-invite.yaml"
+  /functions/v1/auth/decline-invite:
+    $ref: "./paths/functions/auth@decline-invite.yaml"
+  /rest/v1/profile:
+    $ref: "./paths/rest/profile.yaml"
+  /rest/v1/role_assignment:
+    $ref: "./paths/rest/role_assignment.yaml"
+  /rest/v1/faculty:
+    $ref: "./paths/rest/faculty.yaml"
+  /rest/v1/department:
+    $ref: "./paths/rest/department.yaml"
+  /rest/v1/program:
+    $ref: "./paths/rest/program.yaml"
+  /rest/v1/curriculum_version:
+    $ref: "./paths/rest/curriculum_version.yaml"
+  /rest/v1/curriculum_term:
+    $ref: "./paths/rest/curriculum_term.yaml"
+  /rest/v1/curriculum_term_course:
+    $ref: "./paths/rest/curriculum_term_course.yaml"
+  /rest/v1/course:
+    $ref: "./paths/rest/course.yaml"
+  /rest/v1/prerequisite:
+    $ref: "./paths/rest/prerequisite.yaml"
+  /rest/v1/school_term:
+    $ref: "./paths/rest/school_term.yaml"
+  /rest/v1/department_term_encoding:
+    $ref: "./paths/rest/department_term_encoding.yaml"
+  /rest/v1/course_offering:
+    $ref: "./paths/rest/course_offering.yaml"
+  /rest/v1/adviser_assignment:
+    $ref: "./paths/rest/adviser_assignment.yaml"
+  /rest/v1/student_curriculum_assignment:
+    $ref: "./paths/rest/student_curriculum_assignment.yaml"
+  /rest/v1/attempt:
+    $ref: "./paths/rest/attempt.yaml"
+  /rest/v1/elective_mapping:
+    $ref: "./paths/rest/elective_mapping.yaml"
+  /rest/v1/equivalency_decision:
+    $ref: "./paths/rest/equivalency_decision.yaml"
+  /functions/v1/health:
+    $ref: "./paths/functions/health.yaml"
+  /functions/v1/accounts/{profile_id}:
+    $ref: "./paths/functions/accounts@{profile_id}.yaml"
+  /functions/v1/accounts/{profile_id}/resend-invite:
+    $ref: "./paths/functions/accounts@{profile_id}@resend-invite.yaml"
+  /functions/v1/accounts/{profile_id}/revoke-invite:
+    $ref: "./paths/functions/accounts@{profile_id}@revoke-invite.yaml"
+  /functions/v1/catalog/faculty:
+    $ref: "./paths/functions/catalog@faculty.yaml"
+  /functions/v1/catalog/faculty/{id}:
+    $ref: "./paths/functions/catalog@faculty@{id}.yaml"
+  /functions/v1/catalog/department:
+    $ref: "./paths/functions/catalog@department.yaml"
+  /functions/v1/catalog/department/{id}:
+    $ref: "./paths/functions/catalog@department@{id}.yaml"
+  /functions/v1/catalog/program:
+    $ref: "./paths/functions/catalog@program.yaml"
+  /functions/v1/catalog/program/{id}:
+    $ref: "./paths/functions/catalog@program@{id}.yaml"
+  /functions/v1/catalog/curriculum_version:
+    $ref: "./paths/functions/catalog@curriculum_version.yaml"
+  /functions/v1/catalog/curriculum_version/{id}:
+    $ref: "./paths/functions/catalog@curriculum_version@{id}.yaml"
+  /functions/v1/catalog/curriculum_term:
+    $ref: "./paths/functions/catalog@curriculum_term.yaml"
+  /functions/v1/catalog/curriculum_term/{id}:
+    $ref: "./paths/functions/catalog@curriculum_term@{id}.yaml"
+  /functions/v1/catalog/curriculum_term_course:
+    $ref: "./paths/functions/catalog@curriculum_term_course.yaml"
+  /functions/v1/catalog/curriculum_term_course/{id}:
+    $ref: "./paths/functions/catalog@curriculum_term_course@{id}.yaml"
+  /functions/v1/catalog/course:
+    $ref: "./paths/functions/catalog@course.yaml"
+  /functions/v1/catalog/course/{id}:
+    $ref: "./paths/functions/catalog@course@{id}.yaml"
+  /functions/v1/catalog/prerequisite:
+    $ref: "./paths/functions/catalog@prerequisite.yaml"
+  /functions/v1/catalog/prerequisite/{id}:
+    $ref: "./paths/functions/catalog@prerequisite@{id}.yaml"
+  /functions/v1/catalog/school_term:
+    $ref: "./paths/functions/catalog@school_term.yaml"
+  /functions/v1/catalog/school_term/{id}:
+    $ref: "./paths/functions/catalog@school_term@{id}.yaml"
+  /functions/v1/catalog/course_offering:
+    $ref: "./paths/functions/catalog@course_offering.yaml"
+  /functions/v1/catalog/course_offering/{id}:
+    $ref: "./paths/functions/catalog@course_offering@{id}.yaml"
+  /functions/v1/school-terms/{school_term_id}/close-encoding:
+    $ref: "./paths/functions/school-terms@{school_term_id}@close-encoding.yaml"
+  /functions/v1/school-terms/{school_term_id}/reopen-encoding:
+    $ref: "./paths/functions/school-terms@{school_term_id}@reopen-encoding.yaml"
+  /functions/v1/school-terms/{school_term_id}/override:
+    $ref: "./paths/functions/school-terms@{school_term_id}@override.yaml"
+  /functions/v1/students/{student_id}/adviser:
+    $ref: "./paths/functions/students@{student_id}@adviser.yaml"
+  /functions/v1/adviser-assignments/bulk-reassign:
+    $ref: "./paths/functions/adviser-assignments@bulk-reassign.yaml"
+  /functions/v1/students/{student_id}/curriculum:
+    $ref: "./paths/functions/students@{student_id}@curriculum.yaml"
+  /functions/v1/students/{student_id}/record-grades:
+    $ref: "./paths/functions/students@{student_id}@record-grades.yaml"
+  /functions/v1/students/{student_id}/encode-grades:
+    $ref: "./paths/functions/students@{student_id}@encode-grades.yaml"
+  /functions/v1/students/{student_id}/attempts/{attempt_id}/grades:
+    $ref: "./paths/functions/students@{student_id}@attempts@{attempt_id}@grades.yaml"
+  /functions/v1/students/{student_id}/attempts/{attempt_id}:
+    $ref: "./paths/functions/students@{student_id}@attempts@{attempt_id}.yaml"
+  /functions/v1/students/{student_id}/attempts/{attempt_id}/prerequisite-grade:
+    $ref: "./paths/functions/students@{student_id}@attempts@{attempt_id}@prerequisite-grade.yaml"
+  /functions/v1/students/{student_id}/attempts/{attempt_id}/inc-completion:
+    $ref: "./paths/functions/students@{student_id}@attempts@{attempt_id}@inc-completion.yaml"
+  /functions/v1/students/{student_id}/elective-mappings:
+    $ref: "./paths/functions/students@{student_id}@elective-mappings.yaml"
+  /functions/v1/students/{student_id}/elective-mappings/{decision_id}:
+    $ref: "./paths/functions/students@{student_id}@elective-mappings@{decision_id}.yaml"
+  /functions/v1/students/{student_id}/elective-mappings/{decision_id}/revoke:
+    $ref: "./paths/functions/students@{student_id}@elective-mappings@{decision_id}@revoke.yaml"
+  /functions/v1/students/{student_id}/equivalencies:
+    $ref: "./paths/functions/students@{student_id}@equivalencies.yaml"
+  /functions/v1/students/{student_id}/equivalencies/{decision_id}:
+    $ref: "./paths/functions/students@{student_id}@equivalencies@{decision_id}.yaml"
+  /functions/v1/students/{student_id}/equivalencies/{decision_id}/revoke:
+    $ref: "./paths/functions/students@{student_id}@equivalencies@{decision_id}@revoke.yaml"
+  /functions/v1/students/{student_id}/plans/{school_term_id}:
+    $ref: "./paths/functions/students@{student_id}@plans@{school_term_id}.yaml"
+  /functions/v1/students/{student_id}/notes:
+    $ref: "./paths/functions/students@{student_id}@notes.yaml"
+  /functions/v1/students/{student_id}/notes/{note_id}:
+    $ref: "./paths/functions/students@{student_id}@notes@{note_id}.yaml"
+  /functions/v1/students/{student_id}/remarks:
+    $ref: "./paths/functions/students@{student_id}@remarks.yaml"
+  /functions/v1/students/{student_id}/shift-preview:
+    $ref: "./paths/functions/students@{student_id}@shift-preview.yaml"
+  /functions/v1/students/{student_id}/assistant:
+    $ref: "./paths/functions/students@{student_id}@assistant.yaml"
+  /functions/v1/students/{student_id}/academic-summary:
+    $ref: "./paths/functions/students@{student_id}@academic-summary.yaml"
+  /rest/v1/student_organization:
+    $ref: "./paths/rest/student_organization.yaml"
+  /rest/v1/attempt_result:
+    $ref: "./paths/rest/attempt_result.yaml"
+  /rest/v1/inc_resolution:
+    $ref: "./paths/rest/inc_resolution.yaml"
+  /rest/v1/advising_plan:
+    $ref: "./paths/rest/advising_plan.yaml"
+  /rest/v1/advising_plan_item:
+    $ref: "./paths/rest/advising_plan_item.yaml"
+  /rest/v1/advising_note:
+    $ref: "./paths/rest/advising_note.yaml"
+  /rest/v1/attempt_remark:
+    $ref: "./paths/rest/attempt_remark.yaml"
+  /rest/v1/audit_log_entry:
+    $ref: "./paths/rest/audit_log_entry.yaml"
+  /functions/v1/accounts:
+    $ref: "./paths/functions/accounts.yaml"
+  /functions/v1/students:
+    $ref: "./paths/functions/students.yaml"
+  /functions/v1/students/{student_id}/course-offerings:
+    $ref: "./paths/functions/students@{student_id}@course-offerings.yaml"
+  /functions/v1/students/{student_id}/recommendations:
+    $ref: "./paths/functions/students@{student_id}@recommendations.yaml"
+  /functions/v1/students/{student_id}/checklist:
+    $ref: "./paths/functions/students@{student_id}@checklist.yaml"
+  /functions/v1/students/{student_id}/grades:
+    $ref: "./paths/functions/students@{student_id}@grades.yaml"
+  /rest/v1/grade_flag:
+    $ref: "./paths/rest/grade_flag.yaml"
+  /functions/v1/students/{student_id}/grade-flags:
+    $ref: "./paths/functions/students@{student_id}@grade-flags.yaml"
+  /functions/v1/grade-flags/{flag_id}/resolve:
+    $ref: "./paths/functions/grade-flags@{flag_id}@resolve.yaml"
+  /functions/v1/grades/import:
+    $ref: "./paths/functions/grades@import.yaml"
+  /rest/v1/curriculum_transfer_request:
+    $ref: "./paths/rest/curriculum_transfer_request.yaml"
+  /functions/v1/students/{student_id}/curriculum-transfers:
+    $ref: "./paths/functions/students@{student_id}@curriculum-transfers.yaml"
+  /functions/v1/curriculum-transfers/{transfer_id}/decision:
+    $ref: "./paths/functions/curriculum-transfers@{transfer_id}@decision.yaml"
+  /rest/v1/curriculum_pair_equivalence:
+    $ref: "./paths/rest/curriculum_pair_equivalence.yaml"
+  /functions/v1/catalog/curriculum-pair-equivalences:
+    $ref: "./paths/functions/catalog@curriculum-pair-equivalences.yaml"
+  /functions/v1/catalog/curriculum-pair-equivalences/{id}:
+    $ref: "./paths/functions/catalog@curriculum-pair-equivalences@{id}.yaml"
+  /rest/v1/outside_credit:
+    $ref: "./paths/rest/outside_credit.yaml"
+  /functions/v1/students/{student_id}/outside-credits:
+    $ref: "./paths/functions/students@{student_id}@outside-credits.yaml"
+  /functions/v1/students/{student_id}/outside-credits/{credit_id}/revoke:
+    $ref: "./paths/functions/students@{student_id}@outside-credits@{credit_id}@revoke.yaml"
+  /functions/v1/students/import:
+    $ref: "./paths/functions/students@import.yaml"
+  /rest/v1/notification:
+    $ref: "./paths/rest/notification.yaml"
+  /functions/v1/notifications/mark-read:
+    $ref: "./paths/functions/notifications@mark-read.yaml"
+  /functions/v1/notifications/evaluate-alerts:
+    $ref: "./paths/functions/notifications@evaluate-alerts.yaml"
+  /functions/v1/reports/adviser-dashboard:
+    $ref: "./paths/functions/reports@adviser-dashboard.yaml"
+  /functions/v1/reports/department:
+    $ref: "./paths/functions/reports@department.yaml"
+  /functions/v1/reports/faculty:
+    $ref: "./paths/functions/reports@faculty.yaml"
+  /rest/v1/system_settings:
+    $ref: "./paths/rest/system_settings.yaml"
+  /functions/v1/settings:
+    $ref: "./paths/functions/settings.yaml"
+  /functions/v1/settings/record-backup:
+    $ref: "./paths/functions/settings@record-backup.yaml"
+  /functions/v1/audit/view-event:
+    $ref: "./paths/functions/audit@view-event.yaml"
+  /functions/v1/students/{student_id}/photo:
+    $ref: "./paths/functions/students@{student_id}@photo.yaml"
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Supabase Auth JWT Token
+      description: >-
+        Supabase Auth user session access JWT in Authorization: Bearer <access_token>, obtained and
+        refreshed by @supabase/supabase-js. Not the publishable/anon project key, refresh token,
+        Google provider token or invitation token. Server verifies the JWT using the configured
+        project issuer/signing keys and checks active profile/role/assignment; a valid JWT alone
+        does not grant application access. Implementations must follow JWT best current practices
+        (RFC8725): verify the signature with an explicit algorithm allowlist, and validate the
+        issuer, audience and expiry claims.
+    supabaseProjectKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: >-
+        Supabase project publishable key (or legacy anon key where supported), identifying the
+        public application. This is not a user identity or permission grant. Never send a
+        secret/service-role key from the SPA. Protected operations ALSO require the user session JWT
+        in Authorization; both schemes belong to the same security requirement (AND).
+  parameters:
+    limitQueryParam:
+      $ref: "./components/parameters/limitQueryParam.yaml"
+    offsetQueryParam:
+      $ref: "./components/parameters/offsetQueryParam.yaml"
+    idQueryParam:
+      $ref: "./components/parameters/idQueryParam.yaml"
+    emailQueryParam:
+      $ref: "./components/parameters/emailQueryParam.yaml"
+    roleQueryParam:
+      $ref: "./components/parameters/roleQueryParam.yaml"
+    departmentIdQueryParam:
+      $ref: "./components/parameters/departmentIdQueryParam.yaml"
+    facultyIdQueryParam:
+      $ref: "./components/parameters/facultyIdQueryParam.yaml"
+    programIdQueryParam:
+      $ref: "./components/parameters/programIdQueryParam.yaml"
+    curriculumVersionIdQueryParam:
+      $ref: "./components/parameters/curriculumVersionIdQueryParam.yaml"
+    curriculumTermIdQueryParam:
+      $ref: "./components/parameters/curriculumTermIdQueryParam.yaml"
+    curriculumTermCourseIdQueryParam:
+      $ref: "./components/parameters/curriculumTermCourseIdQueryParam.yaml"
+    courseIdQueryParam:
+      $ref: "./components/parameters/courseIdQueryParam.yaml"
+    prerequisiteCourseIdQueryParam:
+      $ref: "./components/parameters/prerequisiteCourseIdQueryParam.yaml"
+    schoolTermIdQueryParam:
+      $ref: "./components/parameters/schoolTermIdQueryParam.yaml"
+    adviserIdQueryParam:
+      $ref: "./components/parameters/adviserIdQueryParam.yaml"
+    studentIdQueryParam:
+      $ref: "./components/parameters/studentIdQueryParam.yaml"
+    attemptIdQueryParam:
+      $ref: "./components/parameters/attemptIdQueryParam.yaml"
+    destinationCurriculumTermCourseIdQueryParam:
+      $ref: "./components/parameters/destinationCurriculumTermCourseIdQueryParam.yaml"
+    courseOfferingIdQueryParam:
+      $ref: "./components/parameters/courseOfferingIdQueryParam.yaml"
+    studentNumberQueryParam:
+      $ref: "./components/parameters/studentNumberQueryParam.yaml"
+    nameQueryParam:
+      $ref: "./components/parameters/nameQueryParam.yaml"
+    codeQueryParam:
+      $ref: "./components/parameters/codeQueryParam.yaml"
+    versionLabelQueryParam:
+      $ref: "./components/parameters/versionLabelQueryParam.yaml"
+    schoolYearQueryParam:
+      $ref: "./components/parameters/schoolYearQueryParam.yaml"
+    isLockedQueryParam:
+      $ref: "./components/parameters/isLockedQueryParam.yaml"
+    isByRequestQueryParam:
+      $ref: "./components/parameters/isByRequestQueryParam.yaml"
+    schoolTermQuery:
+      $ref: "./components/parameters/schoolTermQuery.yaml"
+    searchQuery:
+      $ref: "./components/parameters/searchQuery.yaml"
+    advisingPlanIdQueryParam:
+      $ref: "./components/parameters/advisingPlanIdQueryParam.yaml"
+    recordedStatusQueryParam:
+      $ref: "./components/parameters/recordedStatusQueryParam.yaml"
+    profileIdQueryParam:
+      $ref: "./components/parameters/profileIdQueryParam.yaml"
+    isArchivedQueryParam:
+      $ref: "./components/parameters/isArchivedQueryParam.yaml"
   responses:
     400BadRequest:
-      description: Bad request or validation failure
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+      $ref: "./components/responses/400BadRequest.yaml"
+    401Unauthorized:
+      $ref: "./components/responses/401Unauthorized.yaml"
+    403Forbidden:
+      $ref: "./components/responses/403Forbidden.yaml"
+    404NotFound:
+      $ref: "./components/responses/404NotFound.yaml"
+    409Conflict:
+      $ref: "./components/responses/409Conflict.yaml"
     500InternalError:
-      description: Internal system error
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+      $ref: "./components/responses/500InternalError.yaml"
+    429TooManyRequests:
+      $ref: "./components/responses/429TooManyRequests.yaml"
   schemas:
     Error:
-      type: object
-      required:
-        - code
-        - message
-      properties:
-        code:
-          type: string
-          description: PostgREST or Edge Function error code
-        message:
-          type: string
-          description: Human-readable error message
-        details:
-          type: ["string", "null"]
-        hint:
-          type: ["string", "null"]
-security:
-  - bearerAuth: []
+      $ref: "./components/schemas/Error.yaml"
+    RoleType:
+      $ref: "./components/schemas/RoleType.yaml"
+    ProfileStatus:
+      $ref: "./components/schemas/ProfileStatus.yaml"
+    InvitationStatus:
+      $ref: "./components/schemas/InvitationStatus.yaml"
+    CourseCategory:
+      $ref: "./components/schemas/CourseCategory.yaml"
+    AuditActionCategory:
+      $ref: "./components/schemas/AuditActionCategory.yaml"
+    ProgramStatus:
+      $ref: "./components/schemas/ProgramStatus.yaml"
+    CurriculumVersionStatus:
+      $ref: "./components/schemas/CurriculumVersionStatus.yaml"
+    CurriculumSlotType:
+      $ref: "./components/schemas/CurriculumSlotType.yaml"
+    CourseStatus:
+      $ref: "./components/schemas/CourseStatus.yaml"
+    RepeatableType:
+      $ref: "./components/schemas/RepeatableType.yaml"
+    MidtermStatus:
+      $ref: "./components/schemas/MidtermStatus.yaml"
+    PrerequisiteType:
+      $ref: "./components/schemas/PrerequisiteType.yaml"
+    AttemptStatus:
+      $ref: "./components/schemas/AttemptStatus.yaml"
+    DecisionType:
+      $ref: "./components/schemas/DecisionType.yaml"
+    SchoolTermType:
+      $ref: "./components/schemas/SchoolTermType.yaml"
+    InviteRequest:
+      $ref: "./components/schemas/InviteRequest.yaml"
+    InviteResponse:
+      $ref: "./components/schemas/InviteResponse.yaml"
+    VerifyInviteRequest:
+      $ref: "./components/schemas/VerifyInviteRequest.yaml"
+    VerifyInviteResponse:
+      $ref: "./components/schemas/VerifyInviteResponse.yaml"
+    PreviewInviteRequest:
+      $ref: "./components/schemas/PreviewInviteRequest.yaml"
+    PreviewInviteResponse:
+      $ref: "./components/schemas/PreviewInviteResponse.yaml"
+    DeclineInviteRequest:
+      $ref: "./components/schemas/DeclineInviteRequest.yaml"
+    DeclineInviteResponse:
+      $ref: "./components/schemas/DeclineInviteResponse.yaml"
+    ResendInviteResponse:
+      $ref: "./components/schemas/ResendInviteResponse.yaml"
+    RevokeInviteRequest:
+      $ref: "./components/schemas/RevokeInviteRequest.yaml"
+    RoleAssignment:
+      $ref: "./components/schemas/RoleAssignment.yaml"
+    RoleAssignmentInput:
+      $ref: "./components/schemas/RoleAssignmentInput.yaml"
+    Profile:
+      $ref: "./components/schemas/Profile.yaml"
+    AdminProfileUpdate:
+      $ref: "./components/schemas/AdminProfileUpdate.yaml"
+    Faculty:
+      $ref: "./components/schemas/Faculty.yaml"
+    FacultyInsert:
+      $ref: "./components/schemas/FacultyInsert.yaml"
+    FacultyUpdate:
+      $ref: "./components/schemas/FacultyUpdate.yaml"
+    Department:
+      $ref: "./components/schemas/Department.yaml"
+    DepartmentInsert:
+      $ref: "./components/schemas/DepartmentInsert.yaml"
+    DepartmentUpdate:
+      $ref: "./components/schemas/DepartmentUpdate.yaml"
+    Program:
+      $ref: "./components/schemas/Program.yaml"
+    ProgramInsert:
+      $ref: "./components/schemas/ProgramInsert.yaml"
+    ProgramUpdate:
+      $ref: "./components/schemas/ProgramUpdate.yaml"
+    CurriculumVersion:
+      $ref: "./components/schemas/CurriculumVersion.yaml"
+    CurriculumVersionInsert:
+      $ref: "./components/schemas/CurriculumVersionInsert.yaml"
+    CurriculumVersionUpdate:
+      $ref: "./components/schemas/CurriculumVersionUpdate.yaml"
+    CurriculumTerm:
+      $ref: "./components/schemas/CurriculumTerm.yaml"
+    CurriculumTermInsert:
+      $ref: "./components/schemas/CurriculumTermInsert.yaml"
+    CurriculumTermUpdate:
+      $ref: "./components/schemas/CurriculumTermUpdate.yaml"
+    CurriculumTermCourse:
+      $ref: "./components/schemas/CurriculumTermCourse.yaml"
+    CurriculumTermCourseInsert:
+      $ref: "./components/schemas/CurriculumTermCourseInsert.yaml"
+    CurriculumTermCourseUpdate:
+      $ref: "./components/schemas/CurriculumTermCourseUpdate.yaml"
+    InitialCurriculumSlotInput:
+      $ref: "./components/schemas/InitialCurriculumSlotInput.yaml"
+    Course:
+      $ref: "./components/schemas/Course.yaml"
+    CourseInsert:
+      $ref: "./components/schemas/CourseInsert.yaml"
+    CourseUpdate:
+      $ref: "./components/schemas/CourseUpdate.yaml"
+    Prerequisite:
+      $ref: "./components/schemas/Prerequisite.yaml"
+    PrerequisiteInsert:
+      $ref: "./components/schemas/PrerequisiteInsert.yaml"
+    DepartmentTermEncodingClosure:
+      $ref: "./components/schemas/DepartmentTermEncodingClosure.yaml"
+    SchoolTerm:
+      $ref: "./components/schemas/SchoolTerm.yaml"
+    SchoolTermInsert:
+      $ref: "./components/schemas/SchoolTermInsert.yaml"
+    SchoolTermUpdate:
+      $ref: "./components/schemas/SchoolTermUpdate.yaml"
+    SchoolTermCloseEncodingRequest:
+      $ref: "./components/schemas/SchoolTermCloseEncodingRequest.yaml"
+    CourseOffering:
+      $ref: "./components/schemas/CourseOffering.yaml"
+    CourseOfferingInsert:
+      $ref: "./components/schemas/CourseOfferingInsert.yaml"
+    CourseOfferingUpdate:
+      $ref: "./components/schemas/CourseOfferingUpdate.yaml"
+    AdviserAssignment:
+      $ref: "./components/schemas/AdviserAssignment.yaml"
+    StudentCurriculumAssignment:
+      $ref: "./components/schemas/StudentCurriculumAssignment.yaml"
+    Attempt:
+      $ref: "./components/schemas/Attempt.yaml"
+    ElectiveMapping:
+      $ref: "./components/schemas/ElectiveMapping.yaml"
+    EquivalencyDecision:
+      $ref: "./components/schemas/EquivalencyDecision.yaml"
+    StudentInviteRequest:
+      $ref: "./components/schemas/StudentInviteRequest.yaml"
+    AdviserInviteRequest:
+      $ref: "./components/schemas/AdviserInviteRequest.yaml"
+    AdminInviteRequest:
+      $ref: "./components/schemas/AdminInviteRequest.yaml"
+    StaffRoleInviteRequest:
+      $ref: "./components/schemas/StaffRoleInviteRequest.yaml"
+    RecordGradesRequest:
+      $ref: "./components/schemas/RecordGradesRequest.yaml"
+    EncodeTermGradeRowInput:
+      $ref: "./components/schemas/EncodeTermGradeRowInput.yaml"
+    EncodeTermGradesRequest:
+      $ref: "./components/schemas/EncodeTermGradesRequest.yaml"
+    GradeCorrectionRequest:
+      $ref: "./components/schemas/GradeCorrectionRequest.yaml"
+    PrerequisiteGradeCorrectionRequest:
+      $ref: "./components/schemas/PrerequisiteGradeCorrectionRequest.yaml"
+    INCCompletionRequest:
+      $ref: "./components/schemas/INCCompletionRequest.yaml"
+    INCCompletionCorrectionRequest:
+      $ref: "./components/schemas/INCCompletionCorrectionRequest.yaml"
+    AdviserReassignmentRequest:
+      $ref: "./components/schemas/AdviserReassignmentRequest.yaml"
+    BulkAdviserReassignmentRequest:
+      $ref: "./components/schemas/BulkAdviserReassignmentRequest.yaml"
+    BulkAdviserReassignmentResponse:
+      $ref: "./components/schemas/BulkAdviserReassignmentResponse.yaml"
+    CurriculumAssignmentRequest:
+      $ref: "./components/schemas/CurriculumAssignmentRequest.yaml"
+    ElectiveMappingRequest:
+      $ref: "./components/schemas/ElectiveMappingRequest.yaml"
+    ElectiveMappingUpdate:
+      $ref: "./components/schemas/ElectiveMappingUpdate.yaml"
+    EquivalencyDecisionRequest:
+      $ref: "./components/schemas/EquivalencyDecisionRequest.yaml"
+    EquivalencyDecisionEdit:
+      $ref: "./components/schemas/EquivalencyDecisionEdit.yaml"
+    RevokeCreditDecisionRequest:
+      $ref: "./components/schemas/RevokeCreditDecisionRequest.yaml"
+    SchoolTermOverrideRequest:
+      $ref: "./components/schemas/SchoolTermOverrideRequest.yaml"
+    AdvisingPlanItemRequest:
+      $ref: "./components/schemas/AdvisingPlanItemRequest.yaml"
+    AdvisingPlanSaveRequest:
+      $ref: "./components/schemas/AdvisingPlanSaveRequest.yaml"
+    NoteRequest:
+      $ref: "./components/schemas/NoteRequest.yaml"
+    NoteArchiveUpdateRequest:
+      $ref: "./components/schemas/NoteArchiveUpdateRequest.yaml"
+    RemarkRequest:
+      $ref: "./components/schemas/RemarkRequest.yaml"
+    ShiftPreviewRequest:
+      $ref: "./components/schemas/ShiftPreviewRequest.yaml"
+    AdvisingAIMessage:
+      $ref: "./components/schemas/AdvisingAIMessage.yaml"
+    AdvisingAIRequest:
+      $ref: "./components/schemas/AdvisingAIRequest.yaml"
+    StudentOrganization:
+      $ref: "./components/schemas/StudentOrganization.yaml"
+    GradeFixHistoryEntry:
+      $ref: "./components/schemas/GradeFixHistoryEntry.yaml"
+    AttemptResult:
+      $ref: "./components/schemas/AttemptResult.yaml"
+    INCResolution:
+      $ref: "./components/schemas/INCResolution.yaml"
+    AdvisingPlan:
+      $ref: "./components/schemas/AdvisingPlan.yaml"
+    AdvisingPlanItem:
+      $ref: "./components/schemas/AdvisingPlanItem.yaml"
+    AdvisingPlanResponse:
+      $ref: "./components/schemas/AdvisingPlanResponse.yaml"
+    AdvisingNote:
+      $ref: "./components/schemas/AdvisingNote.yaml"
+    AttemptRemark:
+      $ref: "./components/schemas/AttemptRemark.yaml"
+    AuditLogEntry:
+      $ref: "./components/schemas/AuditLogEntry.yaml"
+    RecommendationExclusionSummary:
+      $ref: "./components/schemas/RecommendationExclusionSummary.yaml"
+    Recommendation:
+      $ref: "./components/schemas/Recommendation.yaml"
+    AcademicStanding:
+      $ref: "./components/schemas/AcademicStanding.yaml"
+    StudentDeficiencyItem:
+      $ref: "./components/schemas/StudentDeficiencyItem.yaml"
+    AcademicSummary:
+      $ref: "./components/schemas/AcademicSummary.yaml"
+    ChecklistSlotAttemptSummary:
+      $ref: "./components/schemas/ChecklistSlotAttemptSummary.yaml"
+    ChecklistSlotResult:
+      $ref: "./components/schemas/ChecklistSlotResult.yaml"
+    ShiftPreviewResponse:
+      $ref: "./components/schemas/ShiftPreviewResponse.yaml"
+    AdvisingAIResponse:
+      $ref: "./components/schemas/AdvisingAIResponse.yaml"
+    CurriculumSlotDefinition:
+      $ref: "./components/schemas/CurriculumSlotDefinition.yaml"
+    CurriculumTermDefinition:
+      $ref: "./components/schemas/CurriculumTermDefinition.yaml"
+    CurriculumDefinition:
+      $ref: "./components/schemas/CurriculumDefinition.yaml"
+    AccountSummary:
+      $ref: "./components/schemas/AccountSummary.yaml"
+    UnmetPrerequisitePreview:
+      $ref: "./components/schemas/UnmetPrerequisitePreview.yaml"
+    CourseOfferingOption:
+      $ref: "./components/schemas/CourseOfferingOption.yaml"
+    StudentRosterItem:
+      $ref: "./components/schemas/StudentRosterItem.yaml"
+    StudentRosterResponse:
+      $ref: "./components/schemas/StudentRosterResponse.yaml"
+    TermGrades:
+      $ref: "./components/schemas/TermGrades.yaml"
+    ElectiveSlotDefinition:
+      $ref: "./components/schemas/ElectiveSlotDefinition.yaml"
+    FixedSlotDefinition:
+      $ref: "./components/schemas/FixedSlotDefinition.yaml"
+    SupabaseGatewayAuthError:
+      $ref: "./components/schemas/SupabaseGatewayAuthError.yaml"
+    GradeFlag:
+      $ref: "./components/schemas/GradeFlag.yaml"
+    GradeFlagCreateRequest:
+      $ref: "./components/schemas/GradeFlagCreateRequest.yaml"
+    GradeFlagResolveRequest:
+      $ref: "./components/schemas/GradeFlagResolveRequest.yaml"
+    GradeBatchImportRowInput:
+      $ref: "./components/schemas/GradeBatchImportRowInput.yaml"
+    GradeBatchImportRequest:
+      $ref: "./components/schemas/GradeBatchImportRequest.yaml"
+    GradeBatchImportRowResult:
+      $ref: "./components/schemas/GradeBatchImportRowResult.yaml"
+    GradeBatchImportResponse:
+      $ref: "./components/schemas/GradeBatchImportResponse.yaml"
+    CurriculumTransferRequest:
+      $ref: "./components/schemas/CurriculumTransferRequest.yaml"
+    CurriculumTransferEndorseRequest:
+      $ref: "./components/schemas/CurriculumTransferEndorseRequest.yaml"
+    CurriculumTransferDecisionRequest:
+      $ref: "./components/schemas/CurriculumTransferDecisionRequest.yaml"
+    CurriculumPairEquivalence:
+      $ref: "./components/schemas/CurriculumPairEquivalence.yaml"
+    CurriculumPairEquivalenceInsert:
+      $ref: "./components/schemas/CurriculumPairEquivalenceInsert.yaml"
+    OutsideCredit:
+      $ref: "./components/schemas/OutsideCredit.yaml"
+    OutsideCreditCreateRequest:
+      $ref: "./components/schemas/OutsideCreditCreateRequest.yaml"
+    StudentBatchImportRowInput:
+      $ref: "./components/schemas/StudentBatchImportRowInput.yaml"
+    StudentBatchImportRequest:
+      $ref: "./components/schemas/StudentBatchImportRequest.yaml"
+    StudentBatchImportRowResult:
+      $ref: "./components/schemas/StudentBatchImportRowResult.yaml"
+    StudentBatchImportResponse:
+      $ref: "./components/schemas/StudentBatchImportResponse.yaml"
+    NotificationKind:
+      $ref: "./components/schemas/NotificationKind.yaml"
+    NotificationEventType:
+      $ref: "./components/schemas/NotificationEventType.yaml"
+    Notification:
+      $ref: "./components/schemas/Notification.yaml"
+    MarkNotificationsReadRequest:
+      $ref: "./components/schemas/MarkNotificationsReadRequest.yaml"
+    MarkNotificationsReadResponse:
+      $ref: "./components/schemas/MarkNotificationsReadResponse.yaml"
+    EvaluateAlertsRequest:
+      $ref: "./components/schemas/EvaluateAlertsRequest.yaml"
+    EvaluateAlertsResponse:
+      $ref: "./components/schemas/EvaluateAlertsResponse.yaml"
+    StandingCounts:
+      $ref: "./components/schemas/StandingCounts.yaml"
+    GradeDistributionBucket:
+      $ref: "./components/schemas/GradeDistributionBucket.yaml"
+    GradeDistributionBreakdown:
+      $ref: "./components/schemas/GradeDistributionBreakdown.yaml"
+    DeficiencyStudentSummary:
+      $ref: "./components/schemas/DeficiencyStudentSummary.yaml"
+    BatchCurriculumGwaRow:
+      $ref: "./components/schemas/BatchCurriculumGwaRow.yaml"
+    AdviserDashboardReport:
+      $ref: "./components/schemas/AdviserDashboardReport.yaml"
+    DepartmentReport:
+      $ref: "./components/schemas/DepartmentReport.yaml"
+    FacultyReport:
+      $ref: "./components/schemas/FacultyReport.yaml"
+    SystemSettings:
+      $ref: "./components/schemas/SystemSettings.yaml"
+    SystemSettingsUpdateRequest:
+      $ref: "./components/schemas/SystemSettingsUpdateRequest.yaml"
+    RecordBackupRequest:
+      $ref: "./components/schemas/RecordBackupRequest.yaml"
+    AuditViewEventRequest:
+      $ref: "./components/schemas/AuditViewEventRequest.yaml"
+    StudentPhotoUpdateRequest:
+      $ref: "./components/schemas/StudentPhotoUpdateRequest.yaml"
+x-saais-invariants:
+  $ref: "./extensions/saais-invariants.yaml"
+x-saais-notification-triggers:
+  $ref: "./extensions/saais-notification-triggers.yaml"
+x-resource-controls:
+  $ref: "./extensions/resource-controls.yaml"
+x-supabase-auth-integration:
+  $ref: "./extensions/supabase-auth-integration.yaml"

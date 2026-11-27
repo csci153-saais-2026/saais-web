@@ -1,0 +1,63 @@
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
+import type { ChecklistSkeletonData } from "./StudentChecklistPage";
+
+/** Layout-only stand-in so the checklist skeleton can be measured on first visit. */
+export const CHECKLIST_SKELETON_SAMPLE = layoutSample<ChecklistSkeletonData>({
+  meta: {
+    summary: {
+      student_id: "sample",
+      gwa: 1.75,
+      earned_units: 90,
+      required_units: 150,
+      counted_units: 90,
+      failed_units: 0,
+      in_progress_units: 18,
+      remaining_units: 60,
+      failure_pct: 0,
+      standing: "good",
+      year_level: 3,
+      slots_satisfied: 30,
+      total_slots: 50,
+      open_inc_count: 0,
+      lapsed_inc_count: 0,
+      open_flags_count: 0,
+      deficiencies_count: 0,
+      deficiencies: [],
+      is_delinquent: false,
+      computed_at: "2026-01-01T00:00:00Z",
+    },
+    studentName: "Sample Student Name",
+    studentNumber: "2021-00000",
+    programLabel: "Bachelor of Science in Sample Program",
+    curriculumLabel: "2024 Curriculum",
+    adviserName: "Sample Adviser Name",
+    department: null,
+    faculty: null,
+    curriculumVersionId: null,
+    currTerms: [],
+    currSlots: [],
+    courses: [],
+  },
+  terms: sampleRows(4, (t) => ({
+    id: `term-${t}`,
+    yearLevel: 1 + Math.floor(t / 2),
+    termSequence: 1 + (t % 2),
+    title: "Year 1 · Semester 1",
+    slots: sampleRows(6, (i) => ({
+      curriculum_term_course_id: `s${t}-${i}`,
+      status: "passed",
+      required_units: 3,
+      earned_units: 3,
+      source_attempt_id: null,
+      satisfaction_source: "Direct",
+      attempts: [],
+      code: "CSCI 000",
+      title: "Sample course title",
+      slotType: "fixed",
+      isLapsedInc: false,
+    })),
+  })),
+});

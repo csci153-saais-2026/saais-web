@@ -1,0 +1,301 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 7099 >>
+stream
+.184 .290 .071 rg 0.00 588.00 842.00 7.00 re f
+BT /F2 9 Tf .431 .424 .345 rg 1 0 0 1 40.00 563.00 Tm (SAAIS / STUDENT / DCST) Tj ET
+BT /F2 23 Tf .086 .125 .047 rg 1 0 0 1 40.00 533.00 Tm (Grade summary) Tj ET
+BT /F1 10 Tf .431 .424 .345 rg 1 0 0 1 40.00 513.00 Tm (BS Computer Science | Maria Isabel Bautista | 2023-04412 | Curriculum 2023-2024) Tj ET
+BT /F2 13 Tf .086 .125 .047 rg 1 0 0 1 40.00 485.00 Tm (2025 - 2026 | 1st Semester | Term GWA - | 0 failed units | Open term) Tj ET
+.184 .290 .071 rg 40.00 443.00 762.00 27.00 re f
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 48.00 457.00 Tm (Code) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 132.67 457.00 Tm (Title) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 429.00 457.00 Tm (Units) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 513.67 457.00 Tm (Midterm) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 598.33 457.00 Tm (Final / completion) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 725.33 457.00 Tm (Status) Tj ET
+1 1 1 rg 40.00 416.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 430.00 Tm (CSIT 103) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 430.00 Tm (Data Structures and Algorithms) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 430.00 Tm (4) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 430.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 430.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 430.00 Tm (Enrolled) Tj ET
+.984 .973 .937 rg 40.00 389.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 403.00 Tm (CSIT 104) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 403.00 Tm (Information Management) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 403.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 403.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 403.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 403.00 Tm (Enrolled) Tj ET
+1 1 1 rg 40.00 362.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 376.00 Tm (CSIT 105) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 376.00 Tm (Applications Development and Emerging Technologies) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 376.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 376.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 376.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 376.00 Tm (Enrolled) Tj ET
+.984 .973 .937 rg 40.00 335.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 349.00 Tm (CSci 103) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 349.00 Tm (Discrete Structures II) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 349.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 349.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 349.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 349.00 Tm (Enrolled) Tj ET
+1 1 1 rg 40.00 308.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 322.00 Tm (CSci 122) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 322.00 Tm (Human Computer Interaction) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 322.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 322.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 322.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 322.00 Tm (Enrolled) Tj ET
+.984 .973 .937 rg 40.00 281.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 295.00 Tm (CSci 182) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 295.00 Tm (Integral Calculus for CS) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 295.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 295.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 295.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 295.00 Tm (Enrolled) Tj ET
+1 1 1 rg 40.00 254.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 268.00 Tm (ScSc 13) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 268.00 Tm (The Contemporary World) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 268.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 268.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 268.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 268.00 Tm (Enrolled) Tj ET
+.984 .973 .937 rg 40.00 227.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 241.00 Tm (PhEd 13) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 132.67 241.00 Tm (PATHFit 3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 429.00 241.00 Tm (2) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 513.67 241.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 598.33 241.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 725.33 241.00 Tm (Enrolled) Tj ET
+BT /F2 13 Tf .086 .125 .047 rg 1 0 0 1 40.00 201.00 Tm (2024 - 2025 | 2nd Semester | Term GWA 1.58 | 0 failed units | Locked term) Tj ET
+.184 .290 .071 rg 40.00 159.00 762.00 27.00 re f
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 48.00 173.00 Tm (Code) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 128.21 173.00 Tm (Title) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 408.95 173.00 Tm (Units) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 489.16 173.00 Tm (Midterm) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 569.37 173.00 Tm (Final / completion) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 689.68 173.00 Tm (Status) Tj ET
+1 1 1 rg 40.00 132.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 146.00 Tm (CSIT 100) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 146.00 Tm (Introduction to Computing) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 146.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 146.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 146.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 146.00 Tm (Passed) Tj ET
+.984 .973 .937 rg 40.00 105.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 119.00 Tm (CSIT 101) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 119.00 Tm (Fundamentals of Programming) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 119.00 Tm (4) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 119.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 119.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 119.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 78.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 92.00 Tm (CSci 180) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 92.00 Tm (Pre-calculus for CS) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 92.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 92.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 92.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 92.00 Tm (Passed) Tj ET
+BT /F1 8 Tf .431 .424 .345 rg 1 0 0 1 40.00 22.00 Tm (Not an official record | Generated 28 Oct 2026) Tj ET
+BT /F1 8 Tf .431 .424 .345 rg 1 0 0 1 742.00 22.00 Tm (Page 1 of 3) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 8035 >>
+stream
+.184 .290 .071 rg 0.00 588.00 842.00 7.00 re f
+BT /F2 9 Tf .431 .424 .345 rg 1 0 0 1 40.00 563.00 Tm (SAAIS / STUDENT / DCST) Tj ET
+BT /F2 23 Tf .086 .125 .047 rg 1 0 0 1 40.00 533.00 Tm (Grade summary) Tj ET
+BT /F1 10 Tf .431 .424 .345 rg 1 0 0 1 40.00 513.00 Tm (BS Computer Science | Maria Isabel Bautista | 2023-04412 | Curriculum 2023-2024) Tj ET
+BT /F2 13 Tf .086 .125 .047 rg 1 0 0 1 40.00 485.00 Tm (2024 - 2025 | 2nd Semester | Term GWA 1.58 | 0 failed units | Locked term \(continued\)) Tj ET
+.184 .290 .071 rg 40.00 443.00 762.00 27.00 re f
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 48.00 457.00 Tm (Code) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 128.21 457.00 Tm (Title) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 408.95 457.00 Tm (Units) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 489.16 457.00 Tm (Midterm) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 569.37 457.00 Tm (Final / completion) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 689.68 457.00 Tm (Status) Tj ET
+.984 .973 .937 rg 40.00 416.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 430.00 Tm (Comm 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 430.00 Tm (Purposive Communication) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 430.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 430.00 Tm (1.25) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 430.00 Tm (1.25) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 430.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 389.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 403.00 Tm (Entr 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 403.00 Tm (Entrepreneurial Mind) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 403.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 403.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 403.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 403.00 Tm (Passed) Tj ET
+.984 .973 .937 rg 40.00 362.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 376.00 Tm (ITec 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 376.00 Tm (Living in the IT Era) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 376.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 376.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 376.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 376.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 335.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 349.00 Tm (ScSc 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 349.00 Tm (Understanding the Self) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 349.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 349.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 349.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 349.00 Tm (Passed) Tj ET
+.984 .973 .937 rg 40.00 308.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 322.00 Tm (PhEd 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 322.00 Tm (PATHFit 1 - Movement Competency Training) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 322.00 Tm (2) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 322.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 322.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 322.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 281.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 295.00 Tm (NSTP 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 295.00 Tm (National Service Training Program I) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 295.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 295.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 295.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 295.00 Tm (Passed) Tj ET
+.984 .973 .937 rg 40.00 254.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 268.00 Tm (CSIT 102) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 268.00 Tm (Intermediate Programming) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 268.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 268.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 268.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 268.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 227.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 241.00 Tm (CSci 102) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 241.00 Tm (Discrete Structures I) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 241.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 241.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 241.00 Tm (-) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 241.00 Tm (INCDue 26 Oct 2026) Tj ET
+.984 .973 .937 rg 40.00 200.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 214.00 Tm (CSci 121) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 214.00 Tm (Computer Organization and Architecture) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 214.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 214.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 214.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 214.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 173.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 187.00 Tm (CSci 181) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 187.00 Tm (Differential Calculus for CS) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 187.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 187.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 187.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 187.00 Tm (Passed) Tj ET
+.984 .973 .937 rg 40.00 146.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 160.00 Tm (Math 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 160.00 Tm (Mathematics in the Modern World) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 160.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 160.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 160.00 Tm (2.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 160.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 119.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 133.00 Tm (ScSc 12) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 133.00 Tm (Readings in Philippine History) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 133.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 133.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 133.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 133.00 Tm (Passed) Tj ET
+.984 .973 .937 rg 40.00 92.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 106.00 Tm (Envi 11) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 106.00 Tm (Environmental Science) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 106.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 106.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 106.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 106.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 65.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 79.00 Tm (PhEd 12) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 79.00 Tm (PATHFit 2 - Exercise-based Fitness Activities) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 79.00 Tm (2) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 79.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 79.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 79.00 Tm (Passed) Tj ET
+BT /F1 8 Tf .431 .424 .345 rg 1 0 0 1 40.00 22.00 Tm (Not an official record | Generated 28 Oct 2026) Tj ET
+BT /F1 8 Tf .431 .424 .345 rg 1 0 0 1 742.00 22.00 Tm (Page 2 of 3) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 2658 >>
+stream
+.184 .290 .071 rg 0.00 588.00 842.00 7.00 re f
+BT /F2 9 Tf .431 .424 .345 rg 1 0 0 1 40.00 563.00 Tm (SAAIS / STUDENT / DCST) Tj ET
+BT /F2 23 Tf .086 .125 .047 rg 1 0 0 1 40.00 533.00 Tm (Grade summary) Tj ET
+BT /F1 10 Tf .431 .424 .345 rg 1 0 0 1 40.00 513.00 Tm (BS Computer Science | Maria Isabel Bautista | 2023-04412 | Curriculum 2023-2024) Tj ET
+BT /F2 13 Tf .086 .125 .047 rg 1 0 0 1 40.00 485.00 Tm (2024 - 2025 | 2nd Semester | Term GWA 1.58 | 0 failed units | Locked term \(continued\)) Tj ET
+.184 .290 .071 rg 40.00 443.00 762.00 27.00 re f
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 48.00 457.00 Tm (Code) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 128.21 457.00 Tm (Title) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 408.95 457.00 Tm (Units) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 489.16 457.00 Tm (Midterm) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 569.37 457.00 Tm (Final / completion) Tj ET
+BT /F2 9.5 Tf .984 .973 .937 rg 1 0 0 1 689.68 457.00 Tm (Status) Tj ET
+.984 .973 .937 rg 40.00 416.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 430.00 Tm (NSTP 12) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 430.00 Tm (National Service Training Program II) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 430.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 430.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 430.00 Tm (1.00) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 430.00 Tm (Passed) Tj ET
+1 1 1 rg 40.00 389.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 403.00 Tm (CSci E-SC1) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 403.00 Tm (Computational Science 1) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 403.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 403.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 403.00 Tm (1.50) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 403.00 Tm (Passed) Tj ET
+.984 .973 .937 rg 40.00 362.00 762.00 27.00 re f
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 48.00 376.00 Tm (CSci E-WA1) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 128.21 376.00 Tm (Web Systems and Technologies 1) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 408.95 376.00 Tm (3) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 489.16 376.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 569.37 376.00 Tm (1.75) Tj ET
+BT /F1 9.5 Tf .086 .125 .047 rg 1 0 0 1 689.68 376.00 Tm (Passed) Tj ET
+BT /F1 8 Tf .431 .424 .345 rg 1 0 0 1 40.00 22.00 Tm (Not an official record | Generated 28 Oct 2026) Tj ET
+BT /F1 8 Tf .431 .424 .345 rg 1 0 0 1 742.00 22.00 Tm (Page 3 of 3) Tj ET
+endstream
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000272 00000 n 
+0000000408 00000 n 
+0000007558 00000 n 
+0000007694 00000 n 
+0000015780 00000 n 
+0000015917 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+18627
+%%EOF

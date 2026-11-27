@@ -1,0 +1,100 @@
+patch:
+  tags:
+    - Course Catalog
+  summary: Update course
+  operationId: updateCourse
+  description: >-
+    Department Staff, Department Head, or Admin validated transactional catalog operation.
+    Protect referenced history and required last children; lock parents and commit audit with
+    the mutation. Raw table writes are not exposed by the frontend contract.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/Course.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/CourseUpdate.yaml"
+delete:
+  tags:
+    - Course Catalog
+  summary: Delete unreferenced course
+  operationId: deleteCourse
+  description: >-
+    Department Staff, Department Head, or Admin operation to remove a course that has no
+    curriculum slots, offerings, prerequisites, or attempts referencing it; referenced courses
+    must be marked discontinued instead.
+  x-required-roles:
+    - department_head
+    - department_staff
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    department_staff: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role/ownership at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "204":
+      description: Removed unreferenced course. Referenced courses return 409 Conflict.
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "409":
+      $ref: "../../components/responses/409Conflict.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

@@ -1,0 +1,29 @@
+type: object
+properties:
+  faculty_id:
+    type: string
+    format: uuid
+  code:
+    type:
+      - string
+      - "null"
+    minLength: 1
+    maxLength: 50
+    pattern: \S
+  name:
+    type: string
+    minLength: 2
+    maxLength: 250
+    pattern: \S
+  letterhead_prefix:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  letterhead_name:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+additionalProperties: false
+minProperties: 1

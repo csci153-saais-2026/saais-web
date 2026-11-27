@@ -1,0 +1,95 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import {
+  loginAsMockPersona,
+  logoutMockPersona,
+  MOCK_IDS,
+  resetMockDatabase,
+} from "@/mocks";
+import { saaisMockServer } from "@/mocks/node";
+import {
+  askAdvisingAssistant,
+  getAdvisingAssistantHistory,
+} from "./advising-assistant.api";
+
+const rpc = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/supabase/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/client")>()),
+  getSupabaseClient: () => ({ rpc }),
+}));
+
+vi.mock("@/lib/api", async (importOriginal) => {
+  const api = await importOriginal<typeof import("@/lib/api")>();
+  return {
+    ...api,
+    apiClient: api.createSaaisApiClient({
+      baseUrl: "https://saais-mock.supabase.co",
+      apiKey: "sb_publishable_mock_key",
+      mode: "mock",
+      fetch: (request) => globalThis.fetch(request),
+    }),
+  };
+});
+
+beforeAll(() => saaisMockServer.listen());
+afterEach(() => {
+  saaisMockServer.resetHandlers();
+  resetMockDatabase();
+  logoutMockPersona();
+});
+afterAll(() => saaisMockServer.close());
+
+describe("advising assistant API", () => {
+  it("sends a request for the selected student to the shared handler", async () => {
+    loginAsMockPersona("adviser");
+    const result = await askAdvisingAssistant(
+      MOCK_IDS.studentPrimary,
+      "What should I review?",
+      [],
+    );
+    expect(result.answer).toContain("Simulated");
+    expect(result.mutates_records).toBe(false);
+  });
+  it("rejects a student outside the signed-in adviser assignment", async () => {
+    loginAsMockPersona("adviser_secondary");
+    await expect(
+      askAdvisingAssistant(
+        MOCK_IDS.studentPrimary,
+        "What should I review?",
+        [],
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+describe("advising assistant history", () => {
+  const respond = (result: { data: unknown; error: unknown }) =>
+    rpc.mockReturnValue({ abortSignal: () => Promise.resolve(result) });
+
+  it("reads the saved messages for the selected student", async () => {
+    const saved = [
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "Answer" },
+    ];
+    respond({ data: [...saved, { role: "system" }], error: null });
+    await expect(
+      getAdvisingAssistantHistory(MOCK_IDS.studentPrimary),
+    ).resolves.toEqual(saved);
+    expect(rpc).toHaveBeenCalledWith("saais_get_assistant_history", {
+      p_student_id: MOCK_IDS.studentPrimary,
+    });
+  });
+  it("rejects when the database function fails", async () => {
+    respond({ data: null, error: { message: "denied" } });
+    await expect(
+      getAdvisingAssistantHistory(MOCK_IDS.studentPrimary),
+    ).rejects.toThrow("saved conversation");
+  });
+});

@@ -1,0 +1,17 @@
+type: object
+additionalProperties: false
+properties:
+  profile:
+    $ref: "./Profile.yaml"
+  role_assignments:
+    type: array
+    maxItems: 6
+    items:
+      $ref: "./RoleAssignment.yaml"
+  student_organization:
+    anyOf:
+      - $ref: "./StudentOrganization.yaml"
+      - type: "null"
+required:
+  - profile
+  - student_organization

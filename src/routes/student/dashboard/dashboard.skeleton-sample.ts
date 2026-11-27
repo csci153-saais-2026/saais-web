@@ -1,0 +1,73 @@
+import {
+  layoutSample,
+  sampleRows,
+} from "@/components/features/skeleton-sample";
+import type { StudentDashboardSkeletonData } from "./StudentDashboardPage";
+
+/** Layout-only stand-in so the dashboard skeleton can be measured on first visit. */
+export const DASHBOARD_SKELETON_SAMPLE =
+  layoutSample<StudentDashboardSkeletonData>({
+    summary: {
+      student_id: "sample",
+      gwa: 1.75,
+      earned_units: 90,
+      required_units: 150,
+      counted_units: 90,
+      failed_units: 0,
+      in_progress_units: 18,
+      remaining_units: 60,
+      failure_pct: 0,
+      standing: "good",
+      year_level: 3,
+      slots_satisfied: 30,
+      total_slots: 50,
+      open_inc_count: 0,
+      lapsed_inc_count: 0,
+      open_flags_count: 0,
+      deficiencies_count: 2,
+      deficiencies: sampleRows(2, (i) => ({
+        kind: "failed",
+        course_code: "CSCI 000",
+        course_title: "Sample course title",
+        term_label: "2025-2026 · 1st Semester",
+        detail: `Sample ${i}`,
+      })),
+      is_delinquent: false,
+      computed_at: "2026-01-01T00:00:00Z",
+    },
+    planItems: sampleRows(5, (i) => ({
+      id: `p${i}`,
+      advising_plan_id: "plan",
+      student_id: "sample",
+      school_term_id: "term",
+      course_offering_id: `o${i}`,
+      display_order: i,
+      created_at: "2026-01-01T00:00:00Z",
+    })),
+    notes: sampleRows(3, (i) => ({
+      id: `n${i}`,
+      student_id: "sample",
+      authored_by: "adviser",
+      author_name: "Sample Adviser",
+      body_text: "Sample advising note text.",
+      is_archived: false,
+      created_at: "2026-01-01T00:00:00Z",
+    })),
+    adviserAssignments: sampleRows(1, (i) => ({
+      id: `a${i}`,
+      adviser_id: "adviser",
+      adviser_name: "Sample Adviser Name",
+      adviser_email: "adviser@example.edu",
+      adviser_faculty_name: "Sample Faculty",
+      start_date: "2025-08-01",
+      end_date: null,
+    })),
+    meta: {
+      studentName: "Sample Student Name",
+      programName: "Bachelor of Science in Sample Program",
+      curriculumLabel: "2024 Curriculum",
+      delinquencyThresholdUnits: 30,
+      offeringMap: new Map(),
+      courseMap: new Map(),
+    },
+  });

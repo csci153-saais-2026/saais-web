@@ -1,0 +1,96 @@
+put:
+  tags:
+    - Profile
+  summary: Upload or update student profile photo
+  operationId: uploadStudentPhoto
+  description: >-
+    Student (for own profile) or Admin updates the student's profile photo (FR-AUTH-15) after
+    uploading the image object to the private student-photo Supabase Storage bucket. Enforces
+    JPEG or PNG content types (`image/jpeg`, `image/png`) and a maximum file size of 5 MiB
+    (`5,242,880` bytes), with a maximum of 16 million pixels. Image contents are validated
+    server-side before committing the profile photo URL and audit entry.
+  x-required-roles:
+    - student
+    - admin
+  x-access-scope:
+    student: own-records
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT, ownership, Storage object existence, MIME type
+    (image/jpeg or image/png), and byte size (<= 5242880) at runtime; derive audit actor/time
+    server-side.
+  responses:
+    "200":
+      description: Profile photo updated.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/Profile.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/StudentPhotoUpdateRequest.yaml"
+delete:
+  tags:
+    - Profile
+  summary: Remove student profile photo
+  operationId: deleteStudentPhoto
+  description: >-
+    Student (for own profile) or Admin removes the student's profile photo (FR-AUTH-15).
+  x-required-roles:
+    - student
+    - admin
+  x-access-scope:
+    student: own-records
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Verify JWT and ownership at runtime.
+  responses:
+    "200":
+      description: Profile photo removed.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/Profile.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "404":
+      $ref: "../../components/responses/404NotFound.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  parameters:
+    - name: student_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

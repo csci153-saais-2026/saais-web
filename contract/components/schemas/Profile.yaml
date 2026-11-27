@@ -1,0 +1,81 @@
+type: object
+required:
+  - id
+  - role
+  - email
+  - full_name
+  - status
+  - created_at
+  - updated_at
+properties:
+  id:
+    type: string
+    format: uuid
+    readOnly: true
+  role:
+    $ref: "./RoleType.yaml"
+  roles:
+    type: array
+    maxItems: 6
+    uniqueItems: true
+    items:
+      $ref: "./RoleType.yaml"
+  email:
+    type: string
+    format: email
+  full_name:
+    type: string
+  student_number:
+    type:
+      - string
+      - "null"
+    maxLength: 64
+  status:
+    $ref: "./ProfileStatus.yaml"
+  invitation_status:
+    anyOf:
+      - $ref: "./InvitationStatus.yaml"
+      - type: "null"
+    readOnly: true
+    description: Token-free invitation lifecycle state for account directory views.
+  invitation_sent_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  invitation_expires_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    readOnly: true
+  created_at:
+    type: string
+    format: date-time
+    readOnly: true
+  updated_at:
+    type: string
+    format: date-time
+    readOnly: true
+  faculty_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  department_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  avatar_url:
+    type:
+      - string
+      - "null"
+    maxLength: 2048
+  consultation_hours:
+    type:
+      - string
+      - "null"
+    maxLength: 250
+    description: Adviser or faculty consultation schedule displayed on Student Dashboard / Mobile Student Home.

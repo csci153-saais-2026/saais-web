@@ -1,0 +1,40 @@
+post:
+  tags:
+    - Notifications & Settings
+  summary: Record completed database backup timestamp
+  operationId: recordCompletedBackup
+  description: >-
+    Department Head or Admin records a completed database backup timestamp and writes an audit
+    log entry (FR-SET-01).
+  x-required-roles:
+    - department_head
+    - admin
+  x-access-scope:
+    department_head: department-scoped
+    admin: institution-wide
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and role at runtime; derive audit actor/time server-side.
+  responses:
+    "200":
+      description: Operation completed atomically.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/SystemSettings.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/RecordBackupRequest.yaml"

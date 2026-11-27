@@ -1,0 +1,149 @@
+type: object
+additionalProperties: false
+required:
+  - student_id
+  - student_number
+  - full_name
+  - email
+  - status
+  - faculty_id
+  - faculty_name
+  - department_id
+  - department_name
+  - program_id
+  - program_code
+  - program_name
+  - curriculum_version_id
+  - curriculum_label
+  - year_level
+  - earned_units
+  - required_units
+  - standing
+  - deficiencies_count
+  - open_inc_count
+  - open_flags_count
+properties:
+  student_id:
+    type: string
+    format: uuid
+  student_number:
+    type: string
+    maxLength: 64
+  full_name:
+    type: string
+    maxLength: 150
+  email:
+    type: string
+    format: email
+  avatar_url:
+    type:
+      - string
+      - "null"
+    maxLength: 2048
+  status:
+    $ref: "./ProfileStatus.yaml"
+  faculty_id:
+    type: string
+    format: uuid
+  faculty_name:
+    type: string
+    maxLength: 250
+  department_id:
+    type: string
+    format: uuid
+  department_name:
+    type: string
+    maxLength: 250
+  program_id:
+    type: string
+    format: uuid
+  program_code:
+    type: string
+    maxLength: 100
+  program_name:
+    type: string
+    maxLength: 250
+  curriculum_version_id:
+    type: string
+    format: uuid
+  curriculum_label:
+    type: string
+    maxLength: 100
+  entry_year:
+    type:
+      - integer
+      - "null"
+    minimum: 1900
+    maximum: 3000
+  year_level:
+    type: integer
+    minimum: 1
+    maximum: 8
+  gwa:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+  earned_units:
+    type: number
+    minimum: 0
+  required_units:
+    type: number
+    minimum: 0
+  standing:
+    $ref: "./AcademicStanding.yaml"
+  is_delinquent:
+    type: boolean
+  deficiencies_count:
+    type: integer
+    minimum: 0
+  open_inc_count:
+    type: integer
+    minimum: 0
+  lapsed_inc_count:
+    type: integer
+    minimum: 0
+  nearest_inc_deadline:
+    type:
+      - string
+      - "null"
+    format: date
+  nearest_inc_days_remaining:
+    type:
+      - integer
+      - "null"
+  open_flags_count:
+    type: integer
+    minimum: 0
+  assignment_status:
+    type: string
+    enum:
+      - active
+      - past
+      - unassigned
+  adviser_id:
+    type:
+      - string
+      - "null"
+    format: uuid
+  adviser_name:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  adviser_assigned_since:
+    type:
+      - string
+      - "null"
+    format: date
+  handover_label:
+    type:
+      - string
+      - "null"
+    maxLength: 200
+  last_activity_at:
+    type:
+      - string
+      - "null"
+    format: date-time

@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 coverage
+playwright-report
+test-results
 *.local
 
 # Editor directories and files
@@ -29,3 +31,11 @@ coverage
 .env.*.local
 .supabase/local
 supabase/.temp
+supabase/.branches/
+
+# Agent and temporary teamwork metadata
+.agents/
+
+# Design tool cache
+.impeccable/
+.planning/

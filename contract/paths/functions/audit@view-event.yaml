@@ -1,0 +1,48 @@
+post:
+  tags:
+    - Advising & Exceptions
+  summary: Record sensitive student-record view, report view, or export audit event
+  operationId: recordAuditViewEvent
+  description: >-
+    Records an append-only audit log entry when an authorized user views a sensitive student
+    record, views a department/faculty/admin summary report (`report_viewed`), or confirms a
+    PDF/CSV export (FR-AUD-05). Students may log events only for their own authorized record
+    and exports; staff may log events only within their authorized record or report scope.
+    Pre-authentication or auth-lifecycle events (`login_rejected`,
+    `sign_in_succeeded`, `password_changed`) are recorded exclusively by server-side Supabase
+    Auth hooks and Edge Functions—never via this authenticated client endpoint.
+  x-required-roles:
+    - student
+    - adviser
+    - department_head
+    - department_staff
+    - dean
+    - admin
+  x-access-scope: authorized-record-viewer
+  x-atomic: true
+  x-request-validation: >-
+    Reject unknown fields; verify JWT and record/report access at runtime; reject auth-hook-only
+    event types; derive audit actor/time server-side.
+  responses:
+    "201":
+      description: Audit event recorded.
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/AuditLogEntry.yaml"
+    "400":
+      $ref: "../../components/responses/400BadRequest.yaml"
+    "401":
+      $ref: "../../components/responses/401Unauthorized.yaml"
+    "403":
+      $ref: "../../components/responses/403Forbidden.yaml"
+    "429":
+      $ref: "../../components/responses/429TooManyRequests.yaml"
+    "500":
+      $ref: "../../components/responses/500InternalError.yaml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/AuditViewEventRequest.yaml"

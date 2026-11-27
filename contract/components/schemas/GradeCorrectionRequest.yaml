@@ -1,0 +1,55 @@
+type: object
+additionalProperties: false
+properties:
+  expected_revision:
+    type: integer
+    minimum: 0
+  status:
+    $ref: "./AttemptStatus.yaml"
+  midterm_status:
+    anyOf:
+      - $ref: "./MidtermStatus.yaml"
+      - type: "null"
+  midterm_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  final_grade:
+    type:
+      - number
+      - "null"
+    minimum: 1
+    maximum: 5
+    multipleOf: 0.25
+  instructor:
+    type:
+      - string
+      - "null"
+    maxLength: 150
+  reason:
+    type: string
+    minLength: 1
+    maxLength: 2000
+    pattern: \S
+required:
+  - expected_revision
+  - reason
+anyOf:
+  - required:
+      - status
+  - required:
+      - midterm_status
+  - required:
+      - midterm_grade
+  - required:
+      - final_grade
+  - required:
+      - instructor
+description: >-
+  Current-adviser correction under term lock/revision guards. Omitted values preserve existing
+  data; explicit null clears an optional grade. The complete resulting record must satisfy
+  final-derived Passed/Failed and INC/DR/NA rules. INC defaults use actual term ends_on;
+  completed INC uses its completion-correction operation. Never bypass strict prerequisites.
