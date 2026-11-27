@@ -27,6 +27,7 @@ import {
 import { IncRadarPanel, type IncRadarDeficiencyItem } from "./IncRadarPanel";
 import { DASHBOARD_SKELETON_SAMPLE } from "./dashboard.skeleton-sample";
 import { useStudentDashboard } from "./use-student-dashboard";
+import { fetchAllPages } from "../fetch-all-pages";
 
 export interface StudentDashboardViewProps {
   readonly summary: ApiSchema<"AcademicSummary">;
@@ -284,10 +285,34 @@ async function fetchDashboardMeta(
           params: { query: { student_id: postgrestFilter.eq(studentId) } },
         })
         .then(unwrapApiResult),
-      apiClient.GET("/rest/v1/course_offering").then(unwrapApiResult),
-      apiClient.GET("/rest/v1/course").then(unwrapApiResult),
-      apiClient.GET("/rest/v1/program").then(unwrapApiResult),
-      apiClient.GET("/rest/v1/curriculum_version").then(unwrapApiResult),
+      fetchAllPages(
+        (limit, offset) =>
+          apiClient.GET("/rest/v1/course_offering", {
+            params: { query: { order: "id.asc", limit, offset } },
+          }),
+        (row) => row.id,
+      ),
+      fetchAllPages(
+        (limit, offset) =>
+          apiClient.GET("/rest/v1/course", {
+            params: { query: { order: "id.asc", limit, offset } },
+          }),
+        (row) => row.id,
+      ),
+      fetchAllPages(
+        (limit, offset) =>
+          apiClient.GET("/rest/v1/program", {
+            params: { query: { order: "id.asc", limit, offset } },
+          }),
+        (row) => row.id,
+      ),
+      fetchAllPages(
+        (limit, offset) =>
+          apiClient.GET("/rest/v1/curriculum_version", {
+            params: { query: { order: "id.asc", limit, offset } },
+          }),
+        (row) => row.id,
+      ),
     ]);
 
   const profile = profiles[0] ?? null;

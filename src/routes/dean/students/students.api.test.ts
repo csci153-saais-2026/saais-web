@@ -14,7 +14,11 @@ import {
   resetMockDatabase,
 } from "@/mocks";
 import { saaisMockServer } from "@/mocks/node";
-import { getDeanStudents } from "@/routes/dean/students/students.api";
+import {
+  getDeanCourseOfferings,
+  getDeanCourses,
+  getDeanStudents,
+} from "@/routes/dean/students/students.api";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const api = await importOriginal<typeof import("@/lib/api")>();
@@ -101,5 +105,83 @@ describe("students.api", () => {
     const response = await getDeanStudents();
     expect(seenOffsets).toEqual(["0", "100"]);
     expect(response.items).toHaveLength(101);
+  });
+
+  it("paginates courses and course offerings so page-two records resolve labels", async () => {
+    loginAsMockPersona("dean");
+    const total = 25;
+    const pageSize = 20;
+    const pageTwoCourseId = "00000025-0000-4000-8000-000000000010";
+    const pageTwoOfferingId = "00000025-0000-4000-8000-000000000011";
+    const courseOffsets: string[] = [];
+    const offeringOffsets: string[] = [];
+
+    const courses = Array.from({ length: total }, (_, i) => ({
+      id:
+        i === 24
+          ? pageTwoCourseId
+          : `00000010-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      department_id: "dept-1",
+      code: i === 24 ? "CSCI 299" : `CSCI ${100 + i}`,
+      title: i === 24 ? "Page Two Special Topics" : `Course ${i}`,
+      units: 3,
+      status: "active" as const,
+      repeatable_type: "none" as const,
+      is_elective: false,
+      category: "major" as const,
+    }));
+    const offerings = Array.from({ length: total }, (_, i) => ({
+      id:
+        i === 24
+          ? pageTwoOfferingId
+          : `00000011-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      school_term_id: "term-1",
+      course_id: i === 24 ? pageTwoCourseId : courses[i].id,
+      is_by_request: false,
+      section: `A${i}`,
+      schedule: null,
+      instructor: null,
+    }));
+
+    saaisMockServer.use(
+      http.get("*/rest/v1/course", ({ request }) => {
+        const offset = Number(
+          new URL(request.url).searchParams.get("offset") ?? "0",
+        );
+        courseOffsets.push(String(offset));
+        const slice = courses.slice(offset, offset + pageSize);
+        return HttpResponse.json(slice, {
+          headers: {
+            "Content-Range": `${offset}-${offset + slice.length - 1}/${courses.length}`,
+          },
+        });
+      }),
+      http.get("*/rest/v1/course_offering", ({ request }) => {
+        const offset = Number(
+          new URL(request.url).searchParams.get("offset") ?? "0",
+        );
+        offeringOffsets.push(String(offset));
+        const slice = offerings.slice(offset, offset + pageSize);
+        return HttpResponse.json(slice, {
+          headers: {
+            "Content-Range": `${offset}-${offset + slice.length - 1}/${offerings.length}`,
+          },
+        });
+      }),
+    );
+
+    const [loadedCourses, loadedOfferings] = await Promise.all([
+      getDeanCourses(),
+      getDeanCourseOfferings(),
+    ]);
+
+    expect(courseOffsets).toEqual(["0", "20"]);
+    expect(offeringOffsets).toEqual(["0", "20"]);
+    expect(loadedCourses).toHaveLength(total);
+    expect(loadedOfferings).toHaveLength(total);
+    const offering = loadedOfferings.find((o) => o.id === pageTwoOfferingId);
+    const course = loadedCourses.find((c) => c.id === offering?.course_id);
+    expect(course?.code).toBe("CSCI 299");
+    expect(course?.title).toBe("Page Two Special Topics");
   });
 });

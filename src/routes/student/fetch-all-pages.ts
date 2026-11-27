@@ -1,4 +1,4 @@
-import { unwrapApiResult } from "@/lib/api";
+import { parseContentRange, unwrapApiResult } from "@/lib/api";
 
 const PAGE_SIZE = 100;
 
@@ -15,8 +15,9 @@ export async function fetchAllPages<T>(
 ): Promise<T[]> {
   const rows: T[] = [];
   const seen = new Set<string>();
-  for (let offset = 0; ; offset += PAGE_SIZE) {
-    const page = unwrapApiResult(await fetchPage(PAGE_SIZE, offset));
+  for (let offset = 0; ;) {
+    const result = await fetchPage(PAGE_SIZE, offset);
+    const page = unwrapApiResult(result);
     for (const row of page) {
       const key = identify(row);
       if (seen.has(key)) {
@@ -25,6 +26,19 @@ export async function fetchAllPages<T>(
       seen.add(key);
       rows.push(row);
     }
-    if (page.length < PAGE_SIZE) return rows;
+    const range = parseContentRange(
+      result.response.headers.get("Content-Range"),
+    );
+    if (range?.total != null) {
+      if (rows.length >= range.total) return rows;
+      if (page.length === 0) {
+        throw new Error(
+          `Pagination was truncated before all ${range.total} records were read.`,
+        );
+      }
+    } else if (page.length < PAGE_SIZE) {
+      return rows;
+    }
+    offset += page.length;
   }
 }
