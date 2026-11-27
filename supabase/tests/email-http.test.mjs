@@ -9,12 +9,14 @@ const id = "00000001-0000-4000-8000-000000000000";
 const session = "00000001-0000-4000-8000-000000000001";
 const env = { url: "https://supabase.example.test", serviceKey: "service-key" };
 const token = "a".repeat(64);
+const webhookUrl = "https://script.google.com/macros/s/AKfycb_fixture/exec";
 const settings = {
   SUPABASE_URL: env.url,
   SUPABASE_SERVICE_ROLE_KEY: env.serviceKey,
   SAAIS_MAIL_WORKER_SECRET: "worker-secret",
-  SAAIS_RESEND_API_KEY: "transport-key",
-  SAAIS_MAIL_FROM: "fixture@example.test",
+  SAAIS_GOOGLE_MAILER_URL: webhookUrl,
+  SAAIS_GOOGLE_MAILER_SECRET: "gas-secret",
+  SAAIS_MAIL_FROM: "SAAIS Advising <fixture@vsu.edu.ph>",
   SAAIS_SITE_URL: "https://site.example.test",
 };
 
@@ -27,7 +29,7 @@ function send(handler, secret = "worker-secret") {
   );
 }
 
-test("mail delivery retries transient failures with the same provider idempotency key", async () => {
+test("mail delivery retries transient Apps Script errors with the same idempotencyKey", async () => {
   const mail = {
     id,
     lease: session,
@@ -41,6 +43,8 @@ test("mail delivery retries transient failures with the same provider idempotenc
     (name) =>
       ({ ...settings, SAAIS_MAIL_ALLOWED_RECIPIENTS: mail.email })[name],
   );
+  assert.equal(config.senderName, "SAAIS Advising");
+
   const keys = [];
   const outcomes = [];
   const handler = createMailHandler(config, async (url, options) => {
@@ -54,18 +58,100 @@ test("mail delivery retries transient failures with the same provider idempotenc
       outcomes.push(JSON.parse(options.body).p_outcome);
       return new Response(null, { status: 204 });
     }
-    assert.equal(url, "https://api.resend.com/emails");
-    keys.push(options.headers["Idempotency-Key"]);
+    assert.equal(url, webhookUrl);
+    assert.equal(options.redirect, "follow");
     const sent = JSON.parse(options.body);
-    assert.deepEqual(sent.to, [mail.email]);
+    keys.push(sent.idempotencyKey);
+    assert.equal(sent.secret, "gas-secret");
+    assert.equal(sent.to, mail.email);
+    assert.equal(sent.fromName, "SAAIS Advising");
     assert.ok(sent.text.includes("/invite#token="));
-    return new Response(null, { status: keys.length === 1 ? 429 : 200 });
+
+    if (keys.length === 1) {
+      return Response.json({ ok: false, retry: true, error: "quota" });
+    }
+    if (keys.length === 2) {
+      return new Response("<html>Apps Script error</html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+    return Response.json({ ok: true });
   });
+
   assert.equal((await send(handler, "wrong")).status, 401);
   assert.equal((await send(handler)).status, 200);
   assert.equal((await send(handler)).status, 200);
+  assert.equal((await send(handler)).status, 200);
   assert.equal(keys[0], keys[1]);
-  assert.deepEqual(outcomes, ["retry", "sent"]);
+  assert.equal(keys[1], keys[2]);
+  assert.deepEqual(outcomes, ["retry", "retry", "sent"]);
+});
+
+test("Apps Script permanent rejections mark mail failed and Workspace URLs are accepted", async () => {
+  const workspaceUrl =
+    "https://script.google.com/a/macros/vsu.edu.ph/s/AKfycb_ws/exec";
+  const mail = {
+    id,
+    lease: session,
+    kind: "notification",
+    email: "bad-recipient@example.test",
+    subject: "Notification",
+    message: "Check your account.",
+    token: null,
+  };
+  const finished = [];
+  const handler = createMailHandler(
+    readMailEnvironment(
+      (name) =>
+        ({
+          ...settings,
+          SAAIS_GOOGLE_MAILER_URL: workspaceUrl,
+          SAAIS_MAIL_FROM: undefined,
+          SAAIS_MAIL_ALLOWED_RECIPIENTS: mail.email,
+        })[name],
+    ),
+    async (url, options) => {
+      if (url.endsWith("/saais_claim_email")) return Response.json([mail]);
+      if (url.endsWith("/saais_finish_email")) {
+        finished.push(JSON.parse(options.body).p_outcome);
+        return new Response(null, { status: 204 });
+      }
+      assert.equal(url, workspaceUrl);
+      assert.equal(JSON.parse(options.body).fromName, "SAAIS");
+      return Response.json({ ok: false, retry: false, error: "invalid" });
+    },
+  );
+  assert.equal((await send(handler)).status, 200);
+  assert.deepEqual(finished, ["failed"]);
+});
+
+test("invalid Apps Script URLs fail closed with 503", async () => {
+  for (const badUrl of [
+    "",
+    "http://script.google.com/macros/s/AKfycb_fixture/exec",
+    "https://evil.example.test/macros/s/AKfycb_fixture/exec",
+    "https://script.google.com/macros/s/AKfycb_fixture/dev",
+    "https://user:pass@script.google.com/macros/s/AKfycb_fixture/exec",
+  ]) {
+    let calls = 0;
+    const handler = createMailHandler(
+      readMailEnvironment(
+        (name) =>
+          ({
+            ...settings,
+            SAAIS_GOOGLE_MAILER_URL: badUrl,
+            SAAIS_MAIL_ALLOWED_RECIPIENTS: "allowed@example.test",
+          })[name],
+      ),
+      async () => {
+        calls++;
+        throw new Error("Invalid mailer URL must make no upstream request");
+      },
+    );
+    assert.equal((await send(handler)).status, 503);
+    assert.equal(calls, 0);
+  }
 });
 
 test("invitation links keep the site's base path", async () => {
@@ -104,7 +190,7 @@ test("invitation links keep the site's base path", async () => {
         if (url.endsWith("/saais_finish_email"))
           return new Response(null, { status: 204 });
         text = JSON.parse(options.body).text;
-        return new Response(null, { status: 200 });
+        return Response.json({ ok: true });
       },
     );
     assert.equal((await send(handler)).status, 200);
@@ -175,10 +261,10 @@ test("an unapproved queued invitation is held, then sent after the allowlist is 
           state = "sent";
           return new Response(null, { status: 204 });
         }
-        assert.equal(url, "https://api.resend.com/emails");
-        assert.deepEqual(body.to, [mail.email]);
+        assert.equal(url, webhookUrl);
+        assert.equal(body.to, mail.email);
         providerCalls++;
-        return new Response(null, { status: 200 });
+        return Response.json({ ok: true });
       },
     );
 
