@@ -29,7 +29,7 @@ jobs:
     name: Semgrep Code Scanning
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep@sha256:6e1b04340e60e910fbb4ddbf3c857ab0918f064417ad5ac530014ccb3cf8c8f1 # latest, 2026-11-24
 
     steps:
       - name: Checkout code
