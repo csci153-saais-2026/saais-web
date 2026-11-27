@@ -7588,6 +7588,21 @@ export const saaisMswHandlers = [
           "storage_object_path, avatar_url, mime_type, and file_size_bytes are required.",
         );
       }
+      // The backend's staging path rule: students/<route student>/<file>.
+      const [folder, owner, name, ...extra] =
+        body.storage_object_path.split("/");
+      if (
+        extra.length ||
+        folder !== "students" ||
+        owner !== studentId.toLowerCase() ||
+        !name ||
+        !/^[a-zA-Z0-9._-]+$/.test(name) ||
+        name === "." ||
+        name === ".." ||
+        name.startsWith("validated-")
+      ) {
+        return errorJson(400, "INVALID_INPUT", "Invalid staging photo path.");
+      }
       if (body.file_size_bytes > 5 * 1024 * 1024) {
         return errorJson(
           400,

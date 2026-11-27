@@ -405,9 +405,9 @@ const SAMPLE_BODIES = {
   },
   uploadStudentPhoto: {
     avatar_url:
-      "https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/00000000-0000-4000-8000-000000000101/avatar.png",
+      "https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png",
     storage_object_path:
-      "student-photos/00000000-0000-4000-8000-000000000101/avatar.png",
+      "students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png",
     mime_type: "image/png",
     file_size_bytes: 204800,
   },
