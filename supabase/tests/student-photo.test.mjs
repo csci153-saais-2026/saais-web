@@ -114,10 +114,165 @@ test("photo preparation authorizes, decodes, copies, and registers with the serv
     p_path: result.body.storage_object_path,
     p_staging_path: raw,
   });
-  assert.deepEqual(
-    new Uint8Array(await calls[2].options.body.arrayBuffer()),
-    image,
+  const uploadedBytes = new Uint8Array(
+    await calls[2].options.body.arrayBuffer(),
   );
+  assert.equal(result.body.file_size_bytes, uploadedBytes.length);
+  const decoded = await Image.decode(uploadedBytes);
+  assert.equal(decoded.width, 2);
+  assert.equal(decoded.height, 2);
+  assert.equal(
+    new TextDecoder("latin1").decode(uploadedBytes).includes("ImageScript"),
+    false,
+  );
+});
+
+function withJpegMetadata(rawJpeg, marker, payloadText) {
+  const payload = new TextEncoder().encode(payloadText);
+  const length = payload.length + 2;
+  const segment = new Uint8Array(4 + payload.length);
+  segment[0] = 0xff;
+  segment[1] = marker;
+  segment[2] = (length >> 8) & 0xff;
+  segment[3] = length & 0xff;
+  segment.set(payload, 4);
+  const combined = new Uint8Array(rawJpeg.length + segment.length);
+  combined.set(rawJpeg.subarray(0, 2), 0);
+  combined.set(segment, 2);
+  combined.set(rawJpeg.subarray(2), 2 + segment.length);
+  return combined;
+}
+
+function withPngChunk(rawPng, type, payloadText) {
+  const payload = new TextEncoder().encode(payloadText);
+  const typeBytes = new TextEncoder().encode(type);
+  const chunk = new Uint8Array(12 + payload.length);
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, payload.length);
+  chunk.set(typeBytes, 4);
+  chunk.set(payload, 8);
+  let crc = 0xffffffff;
+  for (let i = 4; i < 8 + payload.length; i++) {
+    crc ^= chunk[i];
+    for (let bit = 0; bit < 8; bit++) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  view.setUint32(8 + payload.length, (crc ^ 0xffffffff) >>> 0);
+  const ihdrEnd =
+    8 + 12 + new DataView(rawPng.buffer, rawPng.byteOffset).getUint32(8);
+  const combined = new Uint8Array(rawPng.length + chunk.length);
+  combined.set(rawPng.subarray(0, ihdrEnd), 0);
+  combined.set(chunk, ihdrEnd);
+  combined.set(rawPng.subarray(ihdrEnd), ihdrEnd + chunk.length);
+  return combined;
+}
+
+test("photo validation re-encodes JPEG and PNG images to strip EXIF, GPS, and text metadata", async () => {
+  const jpegWithMeta = withJpegMetadata(
+    withJpegMetadata(
+      await new Image(4, 4).encodeJPEG({
+        metadata: {
+          author: "Student Phone",
+          comment: "GPS 10.7460,124.7946",
+          description: "Camera Serial 99999",
+        },
+      }),
+      0xfe,
+      "Home Address Comment",
+    ),
+    0xe1,
+    "http://ns.adobe.com/xap/1.0/\0<xmp>iPhone 16 Pro Max GPS 10.7460</xmp>",
+  );
+  const rawJpegText = new TextDecoder("latin1").decode(jpegWithMeta);
+  assert.ok(rawJpegText.includes("GPS 10.7460"));
+  assert.ok(rawJpegText.includes("iPhone 16 Pro Max"));
+  assert.ok(rawJpegText.includes("Camera Serial 99999"));
+  assert.ok(rawJpegText.includes("Home Address Comment"));
+
+  const jpegUploads = [];
+  const jpegResult = await preparePhoto(
+    env,
+    async (url, options) => {
+      if (url.includes("saais_photo_upload_authorize"))
+        return Response.json(true);
+      if (url.includes("/object/authenticated/"))
+        return new Response(jpegWithMeta);
+      if (url.includes("/object/student-photos/")) {
+        jpegUploads.push(new Uint8Array(await options.body.arrayBuffer()));
+        return Response.json({ Key: "ok" });
+      }
+      if (url.includes("saais_register_verified_photo"))
+        return new Response(null, { status: 204 });
+      throw new Error(url);
+    },
+    headers,
+    student,
+    student,
+    {
+      ...body,
+      storage_object_path: `students/${student}/upload-00000000-0000-4000-8000-000000000002.jpg`,
+      avatar_url: `https://storage.test/student-photos/students/${student}/upload-00000000-0000-4000-8000-000000000002.jpg`,
+      mime_type: "image/jpeg",
+      file_size_bytes: jpegWithMeta.length,
+    },
+  );
+  assert.equal(jpegUploads.length, 1);
+  assert.equal(jpegResult.body.file_size_bytes, jpegUploads[0].length);
+  assert.notEqual(jpegUploads[0].length, jpegWithMeta.length);
+  const cleanJpegText = new TextDecoder("latin1").decode(jpegUploads[0]);
+  for (const leaked of [
+    "GPS",
+    "10.7460",
+    "124.7946",
+    "iPhone 16 Pro Max",
+    "Student Phone",
+    "Camera Serial 99999",
+    "Home Address Comment",
+    "ImageScript",
+  ]) {
+    assert.equal(
+      cleanJpegText.includes(leaked),
+      false,
+      `JPEG leaked ${leaked}`,
+    );
+  }
+  const decodedJpeg = await Image.decode(jpegUploads[0]);
+  assert.equal(decodedJpeg.width, 4);
+  assert.equal(decodedJpeg.height, 4);
+
+  const pngWithMeta = withPngChunk(
+    await new Image(4, 4).encodePNG({
+      metadata: {
+        author: "Student Phone",
+        comment: "GPS 10.7460,124.7946",
+        description: "Device Model XYZ",
+      },
+    }),
+    "eXIf",
+    "MM\0*iPhone GPS 10.7460",
+  );
+  const rawPngText = new TextDecoder("latin1").decode(pngWithMeta);
+  assert.ok(rawPngText.includes("eXIf"));
+  assert.ok(rawPngText.includes("Device Model XYZ"));
+
+  const sanitizedPng = await validatePhoto(pngWithMeta, "image/png");
+  const cleanPngText = new TextDecoder("latin1").decode(sanitizedPng);
+  for (const leaked of [
+    "eXIf",
+    "GPS",
+    "10.7460",
+    "124.7946",
+    "Student Phone",
+    "Device Model XYZ",
+    "iPhone",
+    "ImageScript",
+  ]) {
+    assert.equal(cleanPngText.includes(leaked), false, `PNG leaked ${leaked}`);
+  }
+  const decodedPng = await Image.decode(sanitizedPng);
+  assert.equal(decodedPng.width, 4);
+  assert.equal(decodedPng.height, 4);
 });
 
 test("registration failure removes the trusted copy before returning an error", async () => {
