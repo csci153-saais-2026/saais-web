@@ -644,6 +644,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           redirectTo,
           queryParams: {
             hd: "vsu.edu.ph",
+            prompt: "select_account",
           },
         },
       });
