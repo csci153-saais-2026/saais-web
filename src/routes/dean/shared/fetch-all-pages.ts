@@ -14,7 +14,7 @@ export async function fetchAllPages<T>(
   resource: string,
 ): Promise<T[]> {
   const rows: T[] = [];
-  for (let offset = 0; ; offset += PAGE_SIZE) {
+  for (let offset = 0; ;) {
     const result = await fetchPage(PAGE_SIZE, offset);
     const page = unwrapApiResult<T[]>(result);
     if (!Array.isArray(page))
@@ -38,5 +38,6 @@ export async function fetchAllPages<T>(
     } else if (page.length < PAGE_SIZE) {
       return rows;
     }
+    offset += page.length;
   }
 }
