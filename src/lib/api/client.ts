@@ -116,6 +116,10 @@ export function createSaaisApiClient(
 
       request.headers.set("apikey", effectiveApiKey);
 
+      if (mode === "supabase" && schemaPath.startsWith("/rest/v1/")) {
+        request.headers.set("Accept-Profile", "saais_api");
+      }
+
       // Pre-login invitation verification uses `apikey` + body token only.
       if (isPublicContractPath(schemaPath)) {
         request.headers.delete("Authorization");
@@ -155,6 +159,14 @@ export function createSaaisApiClient(
         }
 
         request.headers.set("Authorization", `Bearer ${trimmedToken}`);
+      }
+
+      if (mode === "supabase" && schemaPath.startsWith("/rest/v1/")) {
+        const upstream = new URL(request.url);
+        upstream.pathname =
+          upstream.pathname.slice(0, -schemaPath.length) +
+          schemaPath.replace("/rest/v1/", "/functions/v1/data-api/");
+        return new Request(upstream, request);
       }
 
       return request;

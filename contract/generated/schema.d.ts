@@ -2231,7 +2231,7 @@ export interface paths {
         get?: never;
         /**
          * Upload or update student profile photo
-         * @description Student (for own profile) or Admin updates the student's profile photo (FR-AUTH-15) after uploading the image object to the private student-photo Supabase Storage bucket. Enforces JPEG or PNG content types (`image/jpeg`, `image/png`) and a maximum file size of 2 MB (`2,097,152` bytes), verifying the storage object metadata server-side before committing the profile photo URL and audit entry.
+         * @description Student (for own profile) or Admin updates the student's profile photo (FR-AUTH-15) after uploading the image object to the private student-photo Supabase Storage bucket. Enforces JPEG or PNG content types (`image/jpeg`, `image/png`) and a maximum file size of 5 MiB (`5,242,880` bytes), with a maximum of 16 million pixels. Image contents are validated server-side before committing the profile photo URL and audit entry.
          */
         put: operations["uploadStudentPhoto"];
         post?: never;
@@ -4248,15 +4248,15 @@ export interface components {
             details?: string | null;
         };
         StudentPhotoUpdateRequest: {
-            /** @description Object key inside the private `student-photos` Supabase Storage bucket (e.g. `students/<student_id>/avatar.png`) verified server-side for MIME type and byte size before updating the profile photo URL. */
-            storage_object_path?: string | null;
+            /** @description Object key inside the private `student-photos` Supabase Storage bucket (e.g. `students/<student_id>/avatar.png`). The backend checks its bytes, decodes the image, and stores a protected validated copy before updating the profile photo URL. */
+            storage_object_path: string;
             avatar_url: string;
             /**
-             * @description Supported student profile photo MIME types (PNG or JPG only, matching the UI control).
+             * @description Supported student profile photo MIME types (static PNG or JPEG).
              * @enum {string}
              */
             mime_type: "image/jpeg" | "image/png";
-            /** @description File size in bytes; maximum 2 MB (`2,097,152` bytes). */
+            /** @description File size in bytes; maximum 5 MiB (`5,242,880` bytes). */
             file_size_bytes: number;
         };
     };

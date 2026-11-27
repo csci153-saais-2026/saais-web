@@ -68,6 +68,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
+    "imagescript": "3.20.5",
     "jsdom": "^26.0.0",
     "msw": "^3.0.4",
     "openapi-typescript": "^7.6.1",

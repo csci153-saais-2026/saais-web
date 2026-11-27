@@ -1,0 +1,482 @@
+import type { Database } from "./database.types.ts";
+import {
+  InvitationError,
+  isInvitationRoute,
+  runInvitation,
+} from "./invitations.ts";
+import contract from "./contract.json" with { type: "json" };
+import academicContract from "./academic-contract.json" with { type: "json" };
+import { academicRoutes } from "./academic-routes.ts";
+import { assistantAnswer, type AssistantConfig } from "./ai-assistant.ts";
+import { PhotoError } from "./photo-error.ts";
+
+type Parameter = { name: string; in: string; schema: { type?: string } };
+export type Operation = {
+  id: string;
+  method: string;
+  path: string;
+  parameters: Parameter[];
+  bodyRequired: boolean;
+  input: unknown;
+  status: number | null;
+  errors: number[];
+  usesAcademicRpc?: boolean;
+  public?: boolean;
+};
+export type Environment = {
+  url: string;
+  publicKey: string;
+  publicKeys?: string[];
+  origins: string[];
+  assistant?: AssistantConfig;
+  serviceKey?: string;
+};
+export type RouteGroup = string;
+export type PhotoPreparer = (
+  env: Environment,
+  fetcher: typeof fetch,
+  headers: Record<string, string>,
+  student: string,
+  actor: string,
+  body: unknown,
+) => Promise<{
+  body: unknown;
+  commit?: () => Promise<void>;
+  abandon?: () => Promise<void>;
+}>;
+export type PhotoCleaner = (
+  env: Environment,
+  fetcher: typeof fetch,
+  student: string,
+) => Promise<void>;
+type Dependencies = {
+  env: Environment;
+  fetch?: typeof fetch;
+  operations?: Operation[];
+  photoUpload?: PhotoPreparer;
+  photoDelete?: PhotoCleaner;
+};
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const maxBodyBytes = 1024 * 1024;
+
+function error(
+  status: number,
+  code: string,
+  message: string,
+  headers: Headers,
+) {
+  return Response.json(
+    { code, message, details: null, hint: null },
+    { status, headers },
+  );
+}
+
+async function readJson(request: Request): Promise<unknown> {
+  if (Number(request.headers.get("content-length")) > maxBodyBytes)
+    throw new Error("BODY_SIZE");
+  const reader = request.body?.getReader();
+  if (!reader) return undefined;
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBodyBytes) {
+        await reader.cancel();
+        throw new Error("BODY_SIZE");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (!bytes) return undefined;
+  if (
+    !/^application\/json(?:\s*;|$)/i.test(
+      request.headers.get("content-type") || "",
+    )
+  )
+    throw new Error("JSON_REQUIRED");
+  const body = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
+}
+
+// Each prefix combines the routes from both contract snapshots.
+export function operationsFor(group: RouteGroup): Operation[] {
+  const matchesGroup = (operation: Operation) =>
+    operation.path.split("/")[3] === group;
+  return [
+    ...contract.operations.filter(matchesGroup),
+    ...academicContract.operations
+      .filter(
+        (operation) =>
+          (academicRoutes.has(operation.id) ||
+            isInvitationRoute(operation.id)) &&
+          matchesGroup(operation),
+      )
+      .map((operation) => ({ ...operation, usesAcademicRpc: true })),
+  ];
+}
+
+export function createHandler(group: RouteGroup, dependencies: Dependencies) {
+  const { env } = dependencies;
+  const fetcher = dependencies.fetch || fetch;
+  const operations = dependencies.operations || operationsFor(group);
+  return async (request: Request): Promise<Response> => {
+    const headers = new Headers({
+      "Cache-Control": "no-store",
+      Vary: "Origin",
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+      "Access-Control-Expose-Headers": "X-Excluded-Count, Retry-After",
+      "Access-Control-Allow-Headers":
+        "authorization, apikey, content-type, x-client-info",
+    });
+    const origin = request.headers.get("origin");
+    if (origin && !env.origins.includes(origin))
+      return error(403, "42501", "Origin is not allowed.", headers);
+    if (origin) headers.set("Access-Control-Allow-Origin", origin);
+    if (request.method === "OPTIONS")
+      return new Response(null, { status: 204, headers });
+    let abandonPhoto: (() => Promise<void>) | undefined;
+    try {
+      const url = new URL(request.url);
+      // Supabase hosted and local gateways forward /<function>/<route>.
+      const path = url.pathname.startsWith("/functions/v1/")
+        ? url.pathname
+        : "/functions/v1" + url.pathname;
+      const segments = path.split("/");
+      const operation = operations.find(
+        (candidate) =>
+          candidate.method === request.method &&
+          candidate.path.split("/").length === segments.length &&
+          candidate.path
+            .split("/")
+            .every((part, i) => part.startsWith("{") || part === segments[i]),
+      );
+      if (!operation)
+        return error(404, "NOT_FOUND", "Route not found.", headers);
+      const authorization = request.headers.get("authorization");
+      if (!env.url || !env.publicKey)
+        return error(
+          500,
+          "XX000",
+          "Server configuration is incomplete.",
+          headers,
+        );
+      const projectKey = request.headers.get("apikey") || "";
+      if (
+        !(env.publicKeys || [env.publicKey]).includes(projectKey) ||
+        (!operation.public &&
+          (!authorization || !/^Bearer \S+$/i.test(authorization)))
+      )
+        return error(
+          401,
+          "PGRST301",
+          "A project key and user session are required.",
+          headers,
+        );
+      const params: Record<string, string | number | boolean> =
+        Object.create(null);
+      for (const parameter of operation.parameters.filter(
+        (parameter) => parameter.in === "path",
+      )) {
+        const index = operation.path.split("/").indexOf(`{${parameter.name}}`);
+        let value: string;
+        try {
+          value = decodeURIComponent(segments[index]);
+        } catch {
+          return error(400, "22023", "Invalid resource identifier.", headers);
+        }
+        if (!uuid.test(value))
+          return error(400, "22023", "Invalid resource identifier.", headers);
+        params[parameter.name] = value;
+      }
+      for (const [name, value] of url.searchParams) {
+        const parameter = operation.parameters.find(
+          (candidate) => candidate.in === "query" && candidate.name === name,
+        );
+        if (!parameter || Object.hasOwn(params, name))
+          return error(
+            400,
+            "22023",
+            "Invalid or repeated query parameter.",
+            headers,
+          );
+        if (parameter.schema.type === "integer") {
+          const number = Number(value);
+          if (!/^-?\d+$/.test(value) || !Number.isSafeInteger(number))
+            return error(
+              400,
+              "22023",
+              "Invalid integer query parameter.",
+              headers,
+            );
+          params[name] = number;
+        } else if (parameter.schema.type === "boolean") {
+          if (value !== "true" && value !== "false")
+            return error(
+              400,
+              "22023",
+              "Invalid boolean query parameter.",
+              headers,
+            );
+          params[name] = value === "true";
+        } else params[name] = value;
+      }
+      let body: unknown;
+      try {
+        body = await readJson(request);
+      } catch {
+        return error(
+          400,
+          "22023",
+          "A bounded valid JSON body is required.",
+          headers,
+        );
+      }
+      if (
+        (operation.bodyRequired && body === undefined) ||
+        (!operation.input && body !== undefined)
+      )
+        return error(
+          400,
+          "22023",
+          "Request body does not match this operation.",
+          headers,
+        );
+      const runProvisioning = async (
+        caller: { id: string; authorization: string } | null,
+      ) => {
+        try {
+          const result = await runInvitation(
+            operation.id,
+            body,
+            params.profile_id,
+            caller,
+            { url: env.url, serviceKey: env.serviceKey || "" },
+            fetcher,
+          );
+          return Response.json(result, {
+            status: operation.status || 200,
+            headers,
+          });
+        } catch (failure) {
+          if (!(failure instanceof InvitationError)) throw failure;
+          const status = operation.errors.includes(failure.status)
+            ? failure.status
+            : 500;
+          if (status === 429) headers.set("Retry-After", "60");
+          return error(
+            status,
+            status === 500 ? "XX000" : "PT" + status,
+            failure.message,
+            headers,
+          );
+        }
+      };
+      if (operation.public) return await runProvisioning(null);
+      const upstreamHeaders = {
+        apikey: projectKey,
+        Authorization: authorization!,
+        "Content-Type": "application/json",
+      };
+      // Auth verifies the access token, independently of browser-provided claims.
+      const user = await fetcher(`${env.url}/auth/v1/user`, {
+        headers: upstreamHeaders,
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!user.ok)
+        return error(
+          user.status === 401 || user.status === 403 ? 401 : 500,
+          "PGRST301",
+          "The user session could not be verified.",
+          headers,
+        );
+      const identity = (await user.json()) as { id?: string };
+      if (!identity.id || !uuid.test(identity.id))
+        return error(401, "PGRST301", "Invalid user session.", headers);
+      if (isInvitationRoute(operation.id)) {
+        return await runProvisioning({
+          id: identity.id,
+          authorization: authorization!,
+        });
+      }
+      let photoCommit: (() => Promise<void>) | undefined;
+      if (operation.id === "uploadStudentPhoto") {
+        try {
+          if (!dependencies.photoUpload)
+            throw new PhotoError(500, "Photo validation is unavailable.");
+          const validated = await dependencies.photoUpload(
+            env,
+            fetcher,
+            upstreamHeaders,
+            String(params.student_id),
+            identity.id,
+            body,
+          );
+          body = validated.body;
+          photoCommit = validated.commit;
+          abandonPhoto = validated.abandon;
+        } catch (failure) {
+          if (!(failure instanceof PhotoError)) throw failure;
+          if (failure.status === 429) headers.set("Retry-After", "60");
+          return error(
+            failure.status,
+            failure.status === 400
+              ? "PT400"
+              : failure.status === 401
+                ? "PT401"
+                : failure.status === 403
+                  ? "PT403"
+                  : failure.status === 429
+                    ? "PT429"
+                    : "XX000",
+            failure.message,
+            headers,
+          );
+        }
+      }
+      // Use the caller JWT, never a service-role credential. SQL rechecks active
+      // session/profile/role/scope at commit and makes the operation atomic.
+      const assistant = operation.id === "askAdvisingAssistant";
+      if (assistant && (!env.assistant || !env.serviceKey))
+        return error(
+          500,
+          "XX000",
+          "The advising assistant is unavailable.",
+          headers,
+        );
+      const rpc = assistant
+        ? "matt_assistant_context"
+        : operation.usesAcademicRpc
+          ? "matt_operation"
+          : "jerome_operation";
+      const rpcBody = assistant
+        ? { p_student_id: params.student_id, p_body: body ?? {} }
+        : { p_operation: operation.id, p_params: params, p_body: body ?? {} };
+      const result = await fetcher(`${env.url}/rest/v1/rpc/${rpc}`, {
+        method: "POST",
+        headers: { ...upstreamHeaders, "Content-Profile": "public" },
+        body: JSON.stringify(rpcBody),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!result.ok) {
+        const status = operation.errors.includes(result.status)
+          ? result.status
+          : 500;
+        const upstream = (await result.json().catch(() => ({}))) as {
+          code?: string;
+          message?: string;
+          details?: string;
+        };
+        await abandonPhoto?.();
+        abandonPhoto = undefined;
+        // The user check passed, but the session expired before the database call.
+        if (status === 401)
+          return error(
+            401,
+            "PGRST301",
+            "The user session could not be verified.",
+            headers,
+          );
+        // Only controlled PT errors contain reviewed public messages. Database
+        // constraint details and SQL row dumps never leave the function.
+        const controlled =
+          status !== 500 &&
+          /^PT(400|401|403|404|409|429)$/.test(upstream.code || "");
+        if (status === 429) headers.set("Retry-After", "60");
+        const conflict =
+          operation.usesAcademicRpc &&
+          status === 409 &&
+          controlled &&
+          [
+            "ENROLLMENT_CONFIRMATION_REQUIRED",
+            "GRADE_ALREADY_RECORDED",
+            "ALREADY_ENROLLED",
+          ].includes(upstream.details || "")
+            ? upstream.details
+            : undefined;
+        return error(
+          status,
+          conflict ??
+            (controlled ? upstream.code! : status === 409 ? "23505" : "XX000"),
+          controlled
+            ? (upstream.message || "Request rejected.").slice(0, 1000)
+            : "The operation could not be completed.",
+          headers,
+        );
+      }
+      abandonPhoto = undefined;
+      await photoCommit?.();
+      if (operation.id === "deleteStudentPhoto") {
+        await dependencies.photoDelete?.(
+          env,
+          fetcher,
+          String(params.student_id),
+        );
+      }
+      if (operation.status === null)
+        return error(
+          500,
+          "XX000",
+          "The operation produced an undeclared success.",
+          headers,
+        );
+      if (operation.status === 204)
+        return new Response(null, { status: 204, headers });
+      const data = await result.json();
+      if (assistant && env.assistant) {
+        const answer = await assistantAnswer(env.assistant, fetcher, data);
+        const turn: Database["public"]["Functions"]["saais_record_assistant_turn"]["Args"] =
+          {
+            p_adviser_id: identity.id,
+            p_student_id: String(params.student_id),
+            p_question: data.request.message,
+            p_answer: answer.answer,
+          };
+        const saved = await fetcher(
+          `${env.url}/rest/v1/rpc/saais_record_assistant_turn`,
+          {
+            method: "POST",
+            headers: {
+              apikey: env.serviceKey!,
+              Authorization: `Bearer ${env.serviceKey!}`,
+              "Content-Type": "application/json",
+              "Content-Profile": "public",
+            },
+            body: JSON.stringify(turn),
+            signal: AbortSignal.timeout(10000),
+          },
+        );
+        if (!saved.ok)
+          return error(
+            500,
+            "XX000",
+            "The assistant conversation could not be saved.",
+            headers,
+          );
+        return Response.json(answer, { status: operation.status, headers });
+      }
+      if (operation.id === "listRecommendations") {
+        headers.set("X-Excluded-Count", String(data.excluded_count));
+        return Response.json(data.rows, { status: operation.status, headers });
+      }
+      return Response.json(data, { status: operation.status, headers });
+    } catch {
+      await abandonPhoto?.();
+      return error(
+        500,
+        "XX000",
+        "The operation could not be completed.",
+        headers,
+      );
+    }
+  };
+}

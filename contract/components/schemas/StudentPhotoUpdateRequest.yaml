@@ -2,16 +2,14 @@ type: object
 additionalProperties: false
 properties:
   storage_object_path:
-    type:
-      - string
-      - "null"
+    type: string
     minLength: 1
     maxLength: 512
     pattern: \S
     description: >-
       Object key inside the private `student-photos` Supabase Storage bucket (e.g.
-      `students/<student_id>/avatar.png`) verified server-side for MIME type and byte size
-      before updating the profile photo URL.
+      `students/<student_id>/avatar.png`). The backend checks its bytes, decodes the image,
+      and stores a protected validated copy before updating the profile photo URL.
   avatar_url:
     type: string
     minLength: 1
@@ -22,13 +20,14 @@ properties:
     enum:
       - image/jpeg
       - image/png
-    description: Supported student profile photo MIME types (PNG or JPG only, matching the UI control).
+    description: Supported student profile photo MIME types (static PNG or JPEG).
   file_size_bytes:
     type: integer
     minimum: 1
-    maximum: 2097152
-    description: File size in bytes; maximum 2 MB (`2,097,152` bytes).
+    maximum: 5242880
+    description: File size in bytes; maximum 5 MiB (`5,242,880` bytes).
 required:
+  - storage_object_path
   - avatar_url
   - mime_type
   - file_size_bytes
