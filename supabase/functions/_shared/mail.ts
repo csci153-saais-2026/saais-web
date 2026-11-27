@@ -18,6 +18,11 @@ type Mail = Omit<ClaimedMail, "kind" | "message" | "token"> & {
   token: string | null;
 };
 
+type WebhookPayload = {
+  ok?: unknown;
+  retry?: unknown;
+};
+
 function parseSenderName(
   explicitName: string | undefined,
   mailFrom: string | undefined,
@@ -36,15 +41,12 @@ function parseSenderName(
 
 function isValidAppsScriptUrl(raw: string) {
   const url = URL.parse(raw);
-  return Boolean(
-    url &&
-      url.protocol === "https:" &&
-      !url.username &&
-      !url.password &&
-      url.hostname === "script.google.com" &&
-      /^\/(?:a\/macros\/[^/]+\/|macros\/)s\/[A-Za-z0-9_-]+\/exec$/.test(
-        url.pathname,
-      ),
+  if (!url || url.protocol !== "https:" || url.username || url.password) {
+    return false;
+  }
+  if (url.hostname !== "script.google.com") return false;
+  return /^\/(?:a\/macros\/[^/]+\/|macros\/)s\/[A-Za-z0-9_-]+\/exec$/.test(
+    url.pathname,
   );
 }
 
@@ -162,10 +164,11 @@ export function createMailHandler(
               base.pathname = base.pathname.replace(/\/*$/, "/");
               const link = new URL("invite", base);
               link.hash = `token=${mail.token ?? ""}`;
+              const bodyText = mail.message ?? "";
               const message =
                 mail.kind === "invitation"
                   ? `Set up your SAAIS account using this invitation link: ${link.href}`
-                  : (mail.message ?? "");
+                  : bodyText;
               try {
                 // Google Apps Script responds to POST with a 302 redirect to
                 // script.googleusercontent.com carrying the doPost JSON output.
@@ -186,10 +189,8 @@ export function createMailHandler(
                   signal: AbortSignal.timeout(10000),
                 });
                 if (delivery.ok) {
-                  const payload = (await delivery.json().catch(() => null)) as {
-                    ok?: unknown;
-                    retry?: unknown;
-                  } | null;
+                  const parsed = await delivery.json().catch(() => null);
+                  const payload = parsed as WebhookPayload | null;
                   if (payload?.ok === true) {
                     outcome = "sent";
                   } else if (payload?.ok === false && payload.retry === false) {
