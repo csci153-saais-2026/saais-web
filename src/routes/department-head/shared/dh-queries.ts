@@ -43,11 +43,13 @@ export const useStudentAuditEvents = (studentId: string) =>
     queryKey: [...useDepartmentHeadQueryKey(keys.audit), studentId],
     queryFn: () => getAuditEvents(studentId),
   });
-export const useDepartmentSettings = () =>
-  useQuery({
+export const useDepartmentSettings = () => {
+  const departmentIds = useHeadDepartmentIds();
+  return useQuery({
     queryKey: useDepartmentHeadQueryKey(keys.settings),
-    queryFn: getSettings,
+    queryFn: () => getSettings(departmentIds),
   });
+};
 export const useLastEncodingClosure = () =>
   useQuery({
     queryKey: useDepartmentHeadQueryKey(keys.closure),

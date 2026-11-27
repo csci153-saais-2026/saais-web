@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "@/lib/api";
-import { getDepartmentAdvisers } from "./dh-api";
+import { getDepartmentAdvisers, getSettings } from "./dh-api";
 
 type Query = Record<string, unknown>;
 
@@ -46,5 +46,35 @@ describe("getDepartmentAdvisers", () => {
     await expect(getDepartmentAdvisers([])).rejects.toThrow(
       "department head assignment",
     );
+  });
+});
+
+describe("getSettings", () => {
+  const row = (department_id: string | null, warning_pct: number) => ({
+    department_id,
+    warning_pct,
+    probation_pct: 50,
+    dismissal_pct: 75,
+    sender_email: "a@x.test",
+  });
+
+  it("prefers the headed department over other visible rows", async () => {
+    stubReads({
+      "/rest/v1/system_settings": [
+        row("other", 10),
+        row("d1", 25.5),
+        row(null, 30),
+      ],
+    });
+
+    expect((await getSettings(["d1"])).thresholds.warning).toBe(25.5);
+  });
+
+  it("falls back to the institution default", async () => {
+    stubReads({
+      "/rest/v1/system_settings": [row("other", 10), row(null, 30)],
+    });
+
+    expect((await getSettings(["d1"])).thresholds.warning).toBe(30);
   });
 });

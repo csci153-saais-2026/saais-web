@@ -219,14 +219,26 @@ function toSettings(row: ApiSchema<"SystemSettings">): SettingsState {
   };
 }
 
-export async function getSettings(): Promise<SettingsState> {
+/** A head can read both their department's row and the institution default. */
+export async function getSettings(
+  departmentIds: readonly string[] = [],
+): Promise<SettingsState> {
   const rows = unwrapApiResult(
     await apiClient.GET("/rest/v1/system_settings", {
-      params: { query: { limit: 1 } },
+      params: {
+        query: { order: "department_id.asc.nullslast,id.asc", limit: 1000 },
+      },
     }),
   );
-  if (!rows[0]) throw new Error("Department settings are unavailable.");
-  return toSettings(rows[0]);
+  const row =
+    rows.find(
+      (item) =>
+        item.department_id && departmentIds.includes(item.department_id),
+    ) ??
+    rows.find((item) => item.department_id == null) ??
+    rows[0];
+  if (!row) throw new Error("Department settings are unavailable.");
+  return toSettings(row);
 }
 
 export async function saveThresholds(thresholds: SettingsState["thresholds"]) {
