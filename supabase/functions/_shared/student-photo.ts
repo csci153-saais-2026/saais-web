@@ -44,7 +44,9 @@ async function boundedBytes(response: Response): Promise<Uint8Array> {
 export async function validatePhoto(
   bytes: Uint8Array,
   type: unknown,
-): Promise<void> {
+): Promise<Uint8Array> {
+  if (bytes.length > limit)
+    throw new PhotoError(400, "The photo exceeds the size limit.");
   const png =
     bytes.length >= 8 &&
     [137, 80, 78, 71, 13, 10, 26, 10].every((b, i) => bytes[i] === b);
@@ -69,10 +71,12 @@ export async function validatePhoto(
       offset = next;
     }
   }
+  let image: Image;
   try {
-    const image = await Image.decode(bytes, {
+    image = await Image.decode(bytes, {
       maxPixels,
-      applyColorProfile: false,
+      applyColorProfile: true,
+      gainMap: false,
     });
     if (!image.width || !image.height) throw new Error("Invalid image");
   } catch {
@@ -81,6 +85,37 @@ export async function validatePhoto(
       "Invalid image file or image exceeds 16 megapixels.",
     );
   }
+  let encoded: Uint8Array;
+  try {
+    if (png) {
+      encoded = await image.encodePNG({ metadata: { software: "" } });
+      if (encoded.length > limit) {
+        encoded = await image.encodePNG({
+          compression: 9,
+          metadata: { software: "" },
+        });
+      }
+    } else {
+      encoded = await image.encodeJPEG({
+        quality: 90,
+        metadata: { software: "" },
+        gainMap: false,
+      });
+      for (const quality of [80, 70]) {
+        if (encoded.length <= limit) break;
+        encoded = await image.encodeJPEG({
+          quality,
+          metadata: { software: "" },
+          gainMap: false,
+        });
+      }
+    }
+  } catch {
+    throw new PhotoError(400, "Invalid image file.");
+  }
+  if (!encoded.length || encoded.length > limit)
+    throw new PhotoError(400, "The photo exceeds the size limit.");
+  return encoded;
 }
 
 export async function preparePhoto(
@@ -162,7 +197,7 @@ export async function preparePhoto(
   const bytes = await boundedBytes(source);
   if (bytes.length !== body.file_size_bytes)
     throw new PhotoError(400, "Stored photo size does not match the request.");
-  await validatePhoto(bytes, body.mime_type);
+  const sanitized = await validatePhoto(bytes, body.mime_type);
 
   const ext = body.mime_type === "image/png" ? "png" : "jpg";
   const path = `students/${student}/validated-${crypto.randomUUID()}.${ext}`;
@@ -189,7 +224,7 @@ export async function preparePhoto(
         "Content-Type": body.mime_type,
         "x-upsert": "false",
       },
-      body: new Blob([new Uint8Array(bytes).buffer]),
+      body: new Blob([new Uint8Array(sanitized).buffer]),
       signal: AbortSignal.timeout(15000),
     },
   );
@@ -225,6 +260,7 @@ export async function preparePhoto(
       ...body,
       storage_object_path: path,
       avatar_url: "/student-photos/" + path,
+      file_size_bytes: sanitized.length,
     },
     // Invalidate the one-use token before deleting. This waits for a pending
     // save to commit or roll back, preventing deletion of a committed avatar.

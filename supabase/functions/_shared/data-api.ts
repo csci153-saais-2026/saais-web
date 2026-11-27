@@ -4,10 +4,22 @@ import type { Environment } from "./http.ts";
 const profile = "saais_api";
 const proofHeader = "x-saais-data-api-key";
 const maxQueryLength = 16_384;
+const allowedPrefer = new Set([
+  "count=exact",
+  "count=planned",
+  "count=estimated",
+]);
 const pagination = {
   limit: { minimum: 1, maximum: 1000, default: 20 },
   offset: { minimum: 0, maximum: 100000 },
 } as const;
+
+function hasControlCharacter(value: string) {
+  for (let index = 0; index < value.length; index++) {
+    if (value.charCodeAt(index) < 32) return true;
+  }
+  return false;
+}
 
 const resources = new Map(
   Object.entries(snapshot).map(([name, resource]) => [
@@ -23,6 +35,15 @@ const resources = new Map(
         pattern: new RegExp(resource.order.pattern),
         maxLength: resource.order.maxLength,
       },
+      filters: new Map(
+        Object.entries(resource.filters).map(([filterName, rule]) => [
+          filterName,
+          {
+            pattern: new RegExp(rule.pattern),
+            maxLength: rule.maxLength,
+          },
+        ]),
+      ),
     },
   ]),
 );
@@ -120,6 +141,16 @@ export function createDataApiHandler(
     if (request.headers.get("accept-profile") !== profile) {
       return error(headers, 400, "PT400", "Use Accept-Profile: saais_api.");
     }
+    const rawPrefer = request.headers.get("prefer");
+    const prefer = rawPrefer === null ? null : rawPrefer.trim();
+    if (prefer !== null && !allowedPrefer.has(prefer)) {
+      return error(
+        headers,
+        400,
+        "PT400",
+        "Unsupported Data API Prefer header.",
+      );
+    }
     if (url.search.length > maxQueryLength) {
       return error(headers, 400, "PT400", "Data API query is too long.");
     }
@@ -168,6 +199,26 @@ export function createDataApiHandler(
         );
       }
     }
+    for (const name of new Set(url.searchParams.keys())) {
+      const rule = resource.filters.get(name);
+      if (!rule) continue;
+      const values = url.searchParams.getAll(name);
+      const value = values[0];
+      if (
+        values.length !== 1 ||
+        value === undefined ||
+        value.length > rule.maxLength ||
+        hasControlCharacter(value) ||
+        !rule.pattern.test(value)
+      ) {
+        return error(
+          headers,
+          400,
+          "PT400",
+          `Unsupported Data API ${name} filter.`,
+        );
+      }
+    }
     if (!url.searchParams.has("limit")) {
       url.searchParams.set("limit", String(pagination.limit.default));
     }
@@ -188,7 +239,6 @@ export function createDataApiHandler(
         "Accept-Profile": profile,
         [proofHeader]: await gatewayKey,
       });
-      const prefer = request.headers.get("Prefer");
       if (prefer !== null) upstreamHeaders.set("Prefer", prefer);
       const upstream = await fetcher(
         `${env.url}/rest/v1/${resourceName}?${url.searchParams.toString()}`,

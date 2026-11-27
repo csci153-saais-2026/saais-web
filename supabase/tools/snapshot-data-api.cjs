@@ -25,11 +25,40 @@ function buildDataApiSnapshot(contract) {
         `Data API resource ${resource} lacks projection or ordering rules.`,
       );
     }
+    const filters = {};
+    for (const parameter of query) {
+      if (["select", "order", "limit", "offset"].includes(parameter.name)) {
+        continue;
+      }
+      const schema = parameter.schema;
+      if (
+        schema?.type !== "string" ||
+        typeof schema.pattern !== "string" ||
+        !Number.isInteger(schema.maxLength) ||
+        schema.maxLength < 1
+      ) {
+        throw new Error(
+          `Data API resource ${resource} filter ${parameter.name} lacks string pattern or maxLength.`,
+        );
+      }
+      if (Object.hasOwn(filters, parameter.name)) {
+        throw new Error(
+          `Data API resource ${resource} declares duplicate filter ${parameter.name}.`,
+        );
+      }
+      // The frozen contract's created_at/and patterns use [0-9:.+-Z] where +-Z
+      // would otherwise form a range including commas and uppercase letters.
+      filters[parameter.name] = {
+        pattern: schema.pattern.replaceAll("[0-9:.+-Z]", "[0-9:.+\\-Z]"),
+        maxLength: schema.maxLength,
+      };
+    }
     resources[resource] = {
       projection: projection.join(","),
       query: [...new Set(query.map((parameter) => parameter.name))],
       select: { pattern: select.pattern, maxLength: select.maxLength },
       order: { pattern: order.pattern, maxLength: order.maxLength },
+      filters,
     };
   }
   if (!Object.keys(resources).length) throw new Error("No Data API resources.");

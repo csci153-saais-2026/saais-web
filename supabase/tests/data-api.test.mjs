@@ -37,6 +37,18 @@ test("Data API rules match the approved contract", () => {
   for (const resource of Object.values(contract)) {
     assert.ok(resource.query.includes("limit"));
     assert.ok(resource.query.includes("offset"));
+    const reserved = new Set(["select", "order", "limit", "offset"]);
+    const expectedFilters = resource.query.filter(
+      (name) => !reserved.has(name),
+    );
+    assert.deepEqual(
+      Object.keys(resource.filters).sort(),
+      expectedFilters.sort(),
+    );
+    for (const rule of Object.values(resource.filters)) {
+      assert.equal(typeof rule.pattern, "string");
+      assert.ok(Number.isInteger(rule.maxLength) && rule.maxLength > 0);
+    }
   }
 });
 
@@ -51,6 +63,25 @@ test("Data API rejects additional schema profiles and non-contract query shapes 
     (await handle(read("", { ...headers, "Accept-Profile": "public" }))).status,
     400,
   );
+  for (const prefer of [
+    "",
+    "tx=rollback",
+    "return=representation",
+    "count=exact, return=minimal",
+    "COUNT=EXACT",
+    "max-affected=1",
+  ]) {
+    assert.equal(
+      (await handle(read("", { ...headers, Prefer: prefer }))).status,
+      400,
+      `Prefer: ${prefer}`,
+    );
+  }
+  const uuid = "00000005-0000-4000-8000-000000000001";
+  const fiftyOneUuids = Array.from(
+    { length: 51 },
+    (_, i) => `00000005-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
+  ).join(",");
   for (const query of [
     "?select=id,profile(id)",
     "?select=grade_fix_history",
@@ -70,8 +101,62 @@ test("Data API rejects additional schema profiles and non-contract query shapes 
     "?offset=99999999999999999999999",
     "?offset=1&offset=2",
     "?offset=%202",
+    "?student_id=ilike.%25a%25",
+    "?student_id=not-a-uuid",
+    "?student_id=eq.not-a-uuid",
+    "?student_id=is.null",
+    "?student_id=in.()",
+    `?student_id=in.(${fiftyOneUuids})`,
+    `?student_id=eq.${uuid}&student_id=eq.${uuid}`,
+    "?recorded_status=neq.passed",
+    "?recorded_status=eq.invalid",
   ]) {
     assert.equal((await handle(read(query))).status, 400, query);
+  }
+
+  const readResource = (resource, query) =>
+    new Request(`${env.url}/functions/v1/data-api/${resource}${query}`, {
+      headers,
+    });
+  for (const [resource, query] of [
+    ["course", "?or=(code.ilike.%25CSCI%25)"],
+    ["course", "?or=(title.ilike.%25Intro%25,code.ilike.%25CSCI%25)"],
+    [
+      "course",
+      "?or=(code.ilike.%25CSCI%25,title.ilike.%25Intro%25,code.ilike.%25Extra%25)",
+    ],
+    ["course", "?or=(actor_name.ilike.%25Admin%25)"],
+    ["course", `?or=(code.ilike.%25${"a".repeat(101)}%25,title.ilike.%25b%25)`],
+    ["course", "?or=(code.ilike.%25a%25,or(title.ilike.%25b%25))"],
+    ["program", "?or=(code.ilike.%25BSCS%25)"],
+    ["program", "?or=(code.ilike.%25BSCS%25,title.ilike.%25CS%25)"],
+    ["audit_log_entry", "?or=(title.ilike.%25Computing%25)"],
+    [
+      "audit_log_entry",
+      `?or=(${Array.from({ length: 8 }, () => "action.eq.view").join(",")})`,
+    ],
+    ["audit_log_entry", "?or=(actor_name.ilike.%25a%25,or(action.eq.view))"],
+    ["audit_log_entry", "?and=(created_at.gte.2026-01-01,or(action.eq.view))"],
+    [
+      "audit_log_entry",
+      "?and=(created_at.gte.2026-01-01T00:00:00,ID.EQ.1,created_at.lte.2026-01-02)",
+    ],
+    ["audit_log_entry", "?created_at=gte.2026-01-01T00:00:00,ID.EQ.1"],
+    ["audit_log_entry", "?action_category=eq.unknown_category"],
+    [
+      "audit_log_entry",
+      `?action_category=in.(${Array.from({ length: 12 }, () => "view").join(",")})`,
+    ],
+    ["profile", "?email=eq.not-an-email"],
+    ["profile", "?email=eq.a%00@vsu.edu.ph"],
+    ["profile", "?status=eq.deleted"],
+    ["profile", "?role=neq.admin"],
+  ]) {
+    assert.equal(
+      (await handle(readResource(resource, query))).status,
+      400,
+      `${resource}${query}`,
+    );
   }
 });
 
@@ -161,5 +246,64 @@ test("Data API forwards pagination values at the contract boundaries", async () 
     const sent = requests.at(-1);
     assert.equal(sent.get("limit"), String(limit));
     assert.equal(sent.get("offset"), String(offset));
+  }
+});
+
+test("Data API forwards valid contract filters and allowlisted Prefer values", async () => {
+  const requests = [];
+  const handle = createDataApiHandler(env, async (url, options) => {
+    if (String(url).endsWith("/saais_read_data_api_gateway_key")) {
+      return Response.json(gatewayKey);
+    }
+    requests.push({
+      url: new URL(url),
+      headers: new Headers(options.headers),
+    });
+    return Response.json([]);
+  });
+  const uuid = "00000005-0000-4000-8000-000000000001";
+  const fiftyUuids = Array.from(
+    { length: 50 },
+    (_, i) => `00000005-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
+  ).join(",");
+  for (const [resource, query, prefer] of [
+    [
+      "attempt_result",
+      `?student_id=eq.${uuid}&recorded_status=eq.passed`,
+      "count=exact",
+    ],
+    ["attempt_result", `?student_id=neq.${uuid}`, " count=planned "],
+    ["attempt_result", `?student_id=in.(${fiftyUuids})`, "count=estimated"],
+    ["course", "?or=(code.ilike.%25CSCI%25,title.ilike.%25Physics%25)", null],
+    ["program", "?or=(code.ilike.%25BSCS%25,name.ilike.%25Computer%25)", null],
+    [
+      "audit_log_entry",
+      "?and=(created_at.gte.2026-01-31,created_at.lt.2026-02-01T00:00:00.000Z)&or=(action.ilike.*grade*,actor_name.ilike.*third*)&action_category=in.(view,grade_update)",
+      null,
+    ],
+    ["audit_log_entry", "?created_at=gte.2026-02-01T07:00:00%2B08:00", null],
+  ]) {
+    const requestHeaders =
+      prefer === null ? headers : { ...headers, Prefer: prefer };
+    const response = await handle(
+      new Request(`${env.url}/functions/v1/data-api/${resource}${query}`, {
+        headers: requestHeaders,
+      }),
+    );
+    assert.equal(response.status, 200, `${resource}${query}`);
+    const sent = requests.at(-1);
+    assert.equal(sent.url.pathname, `/rest/v1/${resource}`);
+    const expectedParams = new URLSearchParams(query.slice(1));
+    for (const [key, value] of expectedParams) {
+      assert.deepEqual(
+        sent.url.searchParams.getAll(key),
+        [value],
+        `${resource} forwarded ${key}`,
+      );
+    }
+    assert.equal(
+      sent.headers.get("Prefer"),
+      prefer === null ? null : prefer.trim(),
+    );
   }
 });

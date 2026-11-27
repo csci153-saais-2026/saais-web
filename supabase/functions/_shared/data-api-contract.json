@@ -21,6 +21,36 @@
     "order": {
       "pattern": "^(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "email": {
+        "pattern": "^eq\\.[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+        "maxLength": 257
+      },
+      "role": {
+        "pattern": "^eq\\.(student|adviser|department_head|department_staff|dean|admin)$",
+        "maxLength": 250
+      },
+      "status": {
+        "pattern": "^eq\\.(invited|active|disabled)$",
+        "maxLength": 40
+      },
+      "student_number": {
+        "pattern": "^eq\\.[^\\x00-\\x1f]{1,64}$",
+        "maxLength": 70
+      },
+      "faculty_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "department_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "role_assignment": {
@@ -43,6 +73,28 @@
     "order": {
       "pattern": "^(?:id|profile_id|role|faculty_id|department_id|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|profile_id|role|faculty_id|department_id|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "profile_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "role": {
+        "pattern": "^eq\\.(student|adviser|department_head|department_staff|dean|admin)$",
+        "maxLength": 250
+      },
+      "faculty_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "department_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "faculty": {
@@ -55,6 +107,16 @@
     "order": {
       "pattern": "^(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "name": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,150}$",
+        "maxLength": 156
+      }
     }
   },
   "department": {
@@ -67,6 +129,20 @@
     "order": {
       "pattern": "^(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "faculty_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "name": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,150}$",
+        "maxLength": 156
+      }
     }
   },
   "program": {
@@ -90,6 +166,32 @@
     "order": {
       "pattern": "^(?:id|code|name|nominal_duration|status|department_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|code|name|nominal_duration|status|department_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "code": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,100}$",
+        "maxLength": 106
+      },
+      "name": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,150}$",
+        "maxLength": 156
+      },
+      "or": {
+        "pattern": "^\\(code\\.ilike\\.%[^\\x00-\\x1f,()]{1,100}%,name\\.ilike\\.%[^\\x00-\\x1f,()]{1,150}%\\)$",
+        "maxLength": 320
+      },
+      "status": {
+        "pattern": "^eq\\.(active|inactive|archived)$",
+        "maxLength": 40
+      },
+      "department_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "curriculum_version": {
@@ -111,6 +213,24 @@
     "order": {
       "pattern": "^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "program_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "version_label": {
+        "pattern": "^eq\\.[^\\x00-\\x1f]{1,100}$",
+        "maxLength": 106
+      },
+      "status": {
+        "pattern": "^eq\\.(draft|active|retired|teach_out|closed)$",
+        "maxLength": 40
+      }
     }
   },
   "curriculum_term": {
@@ -130,6 +250,16 @@
     "order": {
       "pattern": "^(?:id|curriculum_version_id|year_level|term_sequence)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|curriculum_version_id|year_level|term_sequence)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "curriculum_version_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "curriculum_term_course": {
@@ -150,6 +280,20 @@
     "order": {
       "pattern": "^(?:id|curriculum_term_id|course_id|is_elective_slot|slot_type|slot_label|nominal_units)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|curriculum_term_id|course_id|is_elective_slot|slot_type|slot_label|nominal_units)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "curriculum_term_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "course": {
@@ -174,6 +318,36 @@
     "order": {
       "pattern": "^(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "department_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "code": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,100}$",
+        "maxLength": 106
+      },
+      "title": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,250}$",
+        "maxLength": 256
+      },
+      "category": {
+        "pattern": "^eq\\.(major|ge|elective|pe|nstp|foundation|service|Major|GE|Elective|NSTP|PE|Thesis|Internship|Other)$",
+        "maxLength": 40
+      },
+      "or": {
+        "pattern": "^\\(code\\.ilike\\.%[^\\x00-\\x1f,()]{1,100}%,title\\.ilike\\.%[^\\x00-\\x1f,()]{1,250}%\\)$",
+        "maxLength": 420
+      },
+      "status": {
+        "pattern": "^eq\\.(active|inactive|discontinued)$",
+        "maxLength": 40
+      }
     }
   },
   "prerequisite": {
@@ -194,6 +368,20 @@
     "order": {
       "pattern": "^(?:id|course_id|prerequisite_course_id|type)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|course_id|prerequisite_course_id|type)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "prerequisite_course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "school_term": {
@@ -214,6 +402,17 @@
     "order": {
       "pattern": "^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "school_year": {
+        "pattern": "^eq\\.[0-9]{4} - [0-9]{4}$",
+        "maxLength": 16
+      },
+      "is_locked": { "pattern": "^eq\\.(true|false)$", "maxLength": 250 }
     }
   },
   "department_term_encoding": {
@@ -235,6 +434,21 @@
     "order": {
       "pattern": "^(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "school_term_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "department_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "is_closed": { "pattern": "^eq\\.(true|false)$", "maxLength": 20 }
     }
   },
   "course_offering": {
@@ -256,6 +470,21 @@
     "order": {
       "pattern": "^(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "school_term_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "is_by_request": { "pattern": "^eq\\.(true|false)$", "maxLength": 250 }
     }
   },
   "adviser_assignment": {
@@ -276,6 +505,20 @@
     "order": {
       "pattern": "^(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "adviser_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "student_curriculum_assignment": {
@@ -296,6 +539,20 @@
     "order": {
       "pattern": "^(?:id|student_id|curriculum_version_id|start_date|end_date|change_note|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|curriculum_version_id|start_date|end_date|change_note|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "curriculum_version_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "attempt": {
@@ -317,6 +574,24 @@
     "order": {
       "pattern": "^(?:id|student_id|course_offering_id|curriculum_term_course_id|status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|created_by|updated_by|revision|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|created_by|updated_by|revision|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "course_offering_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "status": {
+        "pattern": "^eq\\.(passed|failed|currently_enrolled|inc|dr|na)$",
+        "maxLength": 40
+      }
     }
   },
   "elective_mapping": {
@@ -338,6 +613,24 @@
     "order": {
       "pattern": "^(?:id|attempt_id|curriculum_term_course_id|mapped_by|units_credited|created_at|updated_at|student_id|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|attempt_id|curriculum_term_course_id|mapped_by|units_credited|created_at|updated_at|student_id|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "attempt_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "curriculum_term_course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "equivalency_decision": {
@@ -359,6 +652,24 @@
     "order": {
       "pattern": "^(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "attempt_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "destination_curriculum_term_course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "student_organization": {
@@ -383,6 +694,33 @@
     "order": {
       "pattern": "^(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "program_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "department_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "faculty_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "adviser_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "entry_year": { "pattern": "^eq\\.[0-9]{4}$", "maxLength": 16 }
     }
   },
   "attempt_result": {
@@ -404,6 +742,24 @@
     "order": {
       "pattern": "^(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "course_offering_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "recorded_status": {
+        "pattern": "^eq\\.(passed|failed|currently_enrolled|inc|dr|na)$",
+        "maxLength": 32
+      }
     }
   },
   "inc_resolution": {
@@ -424,6 +780,20 @@
     "order": {
       "pattern": "^(?:id|student_id|attempt_id|completion_grade|resolved_by|resolved_at|updated_by|updated_at|effective_status)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|attempt_id|completion_grade|resolved_by|resolved_at|updated_by|updated_at|effective_status)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "attempt_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "advising_plan": {
@@ -444,6 +814,20 @@
     "order": {
       "pattern": "^(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "school_term_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "advising_plan_item": {
@@ -466,6 +850,28 @@
     "order": {
       "pattern": "^(?:id|advising_plan_id|student_id|school_term_id|course_offering_id|curriculum_term_course_id|display_order|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|advising_plan_id|student_id|school_term_id|course_offering_id|curriculum_term_course_id|display_order|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "advising_plan_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "school_term_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "course_offering_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "advising_note": {
@@ -486,6 +892,17 @@
     "order": {
       "pattern": "^(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "is_archived": { "pattern": "^eq\\.(true|false)$", "maxLength": 250 }
     }
   },
   "attempt_remark": {
@@ -507,6 +924,24 @@
     "order": {
       "pattern": "^(?:id|student_id|authored_by|body_text|created_at|attempt_id|curriculum_term_course_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|authored_by|body_text|created_at|attempt_id|curriculum_term_course_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "attempt_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "curriculum_term_course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "audit_log_entry": {
@@ -536,6 +971,56 @@
     "order": {
       "pattern": "^(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "actor_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "actor_name": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,150}$",
+        "maxLength": 160
+      },
+      "student_name": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,150}$",
+        "maxLength": 160
+      },
+      "student_number": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,64}$",
+        "maxLength": 70
+      },
+      "action": {
+        "pattern": "^(?:eq|ilike|like)\\.[^\\x00-\\x1f]{1,100}$",
+        "maxLength": 120
+      },
+      "action_category": {
+        "pattern": "^(?:eq\\.(?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)|in\\.\\((?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)(?:,(?:view|change|sign_in|record_view|grade_update|plan_save|note_change|override|export|auth_account|catalog_term)){0,10}\\))$",
+        "maxLength": 260
+      },
+      "entity_type": {
+        "pattern": "^eq\\.[^\\x00-\\x1f]{1,100}$",
+        "maxLength": 110
+      },
+      "created_at": {
+        "pattern": "^(?:gte|lte|gt|lt|eq)\\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+\\-Z]+)?$",
+        "maxLength": 64
+      },
+      "and": {
+        "pattern": "^\\(created_at\\.(?:gte|gt)\\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+\\-Z]+)?,created_at\\.(?:lte|lt)\\.[0-9]{4}-[0-9]{2}-[0-9]{2}(?:T[0-9:.+\\-Z]+)?\\)$",
+        "maxLength": 160
+      },
+      "or": {
+        "pattern": "^\\((?:(?:actor_name|student_name|student_number|target_label|action|details_summary|reason)\\.(?:ilike|like|eq)\\.[^\\x00-\\x1f,()]{1,100})(?:,(?:actor_name|student_name|student_number|target_label|action|details_summary|reason)\\.(?:ilike|like|eq)\\.[^\\x00-\\x1f,()]{1,100}){0,6}\\)$",
+        "maxLength": 700
+      }
     }
   },
   "grade_flag": {
@@ -557,6 +1042,24 @@
     "order": {
       "pattern": "^(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "attempt_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "status": {
+        "pattern": "^eq\\.(open|corrected|rejected)$",
+        "maxLength": 40
+      }
     }
   },
   "curriculum_transfer_request": {
@@ -577,6 +1080,20 @@
     "order": {
       "pattern": "^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "status": {
+        "pattern": "^eq\\.(pending|approved|rejected)$",
+        "maxLength": 40
+      }
     }
   },
   "curriculum_pair_equivalence": {
@@ -597,6 +1114,20 @@
     "order": {
       "pattern": "^(?:id|from_curriculum_version_id|to_curriculum_version_id|source_course_id|target_course_id|note|created_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|from_curriculum_version_id|to_curriculum_version_id|source_course_id|target_course_id|note|created_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "from_curriculum_version_id": {
+        "pattern": "^eq\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "maxLength": 100
+      },
+      "to_curriculum_version_id": {
+        "pattern": "^eq\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "maxLength": 100
+      }
     }
   },
   "outside_credit": {
@@ -617,6 +1148,20 @@
     "order": {
       "pattern": "^(?:id|student_id|entry_type|origin_school|original_course_code|original_course_title|units|grade|destination_curriculum_term_course_id|units_credited|decided_by|decided_at|revoked_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|entry_type|origin_school|original_course_code|original_course_title|units|grade|destination_curriculum_term_course_id|units_credited|decided_by|decided_at|revoked_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "student_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "destination_curriculum_term_course_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   },
   "notification": {
@@ -639,6 +1184,22 @@
     "order": {
       "pattern": "^(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "is_read": { "pattern": "^eq\\.(true|false)$", "maxLength": 20 },
+      "kind": {
+        "pattern": "^eq\\.(note|grade|alert|flag|import|person|transfer|report)$",
+        "maxLength": 32
+      },
+      "event_type": { "pattern": "^eq\\.[a-z0-9_]{3,64}$", "maxLength": 80 },
+      "target_student_id": {
+        "pattern": "^eq\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "maxLength": 100
+      }
     }
   },
   "system_settings": {
@@ -651,6 +1212,16 @@
     "order": {
       "pattern": "^(?:id|department_id|warning_pct|probation_pct|dismissal_pct|sender_email|last_backup_at|last_backup_by|last_backup_reference|last_backup_location|last_backup_scope|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|department_id|warning_pct|probation_pct|dismissal_pct|sender_email|last_backup_at|last_backup_by|last_backup_reference|last_backup_location|last_backup_scope|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
       "maxLength": 1000
+    },
+    "filters": {
+      "id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      },
+      "department_id": {
+        "pattern": "^(?:(?:eq|neq)\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|in\\.\\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,49}\\))$",
+        "maxLength": 1900
+      }
     }
   }
 }
