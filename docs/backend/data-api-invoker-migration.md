@@ -10,4 +10,8 @@ After applying, verify scoped Data API reads and direct-table denials with stude
 
 ## Resource controls boundary
 
-Contracted `/rest/v1/*` table/view reads require `Accept-Profile: saais_api`, while `public` remains the default schema for RPC endpoints (`Content-Profile: public`) and own-profile bootstrap. `supabase/config.toml` caps page size at `max_rows = 1000`. Because PostgREST cannot inspect URL query parameters (`select`, `order`) inside `db_pre_request`, strict rejection of arbitrary nested resource embeddings and non-whitelisted `order` parameters must be enforced at the API gateway/WAF layer; underlying RLS policies and column-level grants independently ensure that direct or embedded PostgREST queries cannot expose out-of-scope rows or restricted columns.
+Contracted reads use `Accept-Profile: saais_api`. The shared client routes them through the `data-api` Edge Function, which validates the frozen contract's query names, flat projections, and ordering before forwarding to PostgREST. The gateway expands an omitted or wildcard projection to the contract's explicit fields. The forwarded caller JWT continues to enforce row scope, and PostgREST caps responses at 1,000 rows.
+
+Migration `20261126002300` registers a PostgREST pre-request guard. Browser roles need the gateway's server-only credential for direct collection reads, including requests that omit the schema header. Trusted service clients and existing RPCs use their existing grants. The Edge Function obtains the generated gateway credential using Supabase's service role and never returns it to callers.
+
+Roll out the migration, the `data-api` Edge Function, and the updated shared client together. The gateway uses the existing Edge Function CORS and project-key configuration. Confirm that hosted PostgREST has loaded the pre-request hook and run the allowlisted and direct-read checks during staging setup under #51.

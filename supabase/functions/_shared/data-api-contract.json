@@ -1,0 +1,656 @@
+{
+  "profile": {
+    "projection": "id,role,email,full_name,student_number,status,invitation_status,invitation_sent_at,invitation_expires_at,created_at,updated_at,faculty_id,department_id,avatar_url,consultation_hours",
+    "query": [
+      "id",
+      "email",
+      "role",
+      "status",
+      "student_number",
+      "select",
+      "order",
+      "limit",
+      "offset",
+      "faculty_id",
+      "department_id"
+    ],
+    "select": {
+      "pattern": "^(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)(?:,(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|role|email|full_name|student_number|status|invitation_status|invitation_sent_at|invitation_expires_at|created_at|updated_at|faculty_id|department_id|avatar_url|consultation_hours)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "role_assignment": {
+    "projection": "id,profile_id,role,faculty_id,department_id,created_at",
+    "query": [
+      "id",
+      "profile_id",
+      "role",
+      "faculty_id",
+      "department_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|profile_id|role|faculty_id|department_id|created_at)(?:,(?:id|profile_id|role|faculty_id|department_id|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|profile_id|role|faculty_id|department_id|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|profile_id|role|faculty_id|department_id|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "faculty": {
+    "projection": "id,name,code,letterhead_prefix,letterhead_name,dean_name",
+    "query": ["id", "name", "select", "order", "limit", "offset"],
+    "select": {
+      "pattern": "^(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)(?:,(?:id|name|code|letterhead_prefix|letterhead_name|dean_name))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|name|code|letterhead_prefix|letterhead_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "department": {
+    "projection": "id,faculty_id,name,code,letterhead_prefix,letterhead_name,department_head_name,dean_name",
+    "query": ["id", "faculty_id", "name", "select", "order", "limit", "offset"],
+    "select": {
+      "pattern": "^(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)(?:,(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|faculty_id|name|code|letterhead_prefix|letterhead_name|department_head_name|dean_name)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "program": {
+    "projection": "id,code,name,nominal_duration,status,department_id",
+    "query": [
+      "id",
+      "code",
+      "name",
+      "or",
+      "status",
+      "select",
+      "order",
+      "limit",
+      "offset",
+      "department_id"
+    ],
+    "select": {
+      "pattern": "^(?:id|code|name|nominal_duration|status|department_id)(?:,(?:id|code|name|nominal_duration|status|department_id))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|code|name|nominal_duration|status|department_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|code|name|nominal_duration|status|department_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "curriculum_version": {
+    "projection": "id,program_id,version_label,effective_start,effective_end,delinquency_threshold,total_units,status,enrolled_student_count",
+    "query": [
+      "id",
+      "program_id",
+      "version_label",
+      "status",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|program_id|version_label|effective_start|effective_end|delinquency_threshold|total_units|status|enrolled_student_count)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "curriculum_term": {
+    "projection": "id,curriculum_version_id,year_level,term_sequence",
+    "query": [
+      "id",
+      "curriculum_version_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|curriculum_version_id|year_level|term_sequence)(?:,(?:id|curriculum_version_id|year_level|term_sequence))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|curriculum_version_id|year_level|term_sequence)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|curriculum_version_id|year_level|term_sequence)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "curriculum_term_course": {
+    "projection": "id,curriculum_term_id,course_id,is_elective_slot,slot_type,slot_label,nominal_units",
+    "query": [
+      "id",
+      "curriculum_term_id",
+      "course_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|curriculum_term_id|course_id|is_elective_slot|slot_type|slot_label|nominal_units)(?:,(?:id|curriculum_term_id|course_id|is_elective_slot|slot_type|slot_label|nominal_units))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|curriculum_term_id|course_id|is_elective_slot|slot_type|slot_label|nominal_units)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|curriculum_term_id|course_id|is_elective_slot|slot_type|slot_label|nominal_units)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "course": {
+    "projection": "id,department_id,code,title,units,status,repeatable_type,is_elective,category",
+    "query": [
+      "id",
+      "department_id",
+      "code",
+      "title",
+      "category",
+      "or",
+      "status",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)(?:,(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|department_id|code|title|units|status|repeatable_type|is_elective|category)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "prerequisite": {
+    "projection": "id,course_id,prerequisite_course_id,type",
+    "query": [
+      "id",
+      "course_id",
+      "prerequisite_course_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|course_id|prerequisite_course_id|type)(?:,(?:id|course_id|prerequisite_course_id|type))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|course_id|prerequisite_course_id|type)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|course_id|prerequisite_course_id|type)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "school_term": {
+    "projection": "id,start_year,end_year,term_type,school_year,is_locked,override_flag,override_actor_id,override_at,starts_on,ends_on,encoding_deadline,default_inc_deadline,closed_by,closed_by_name,closed_at,closure_note,chronological_key",
+    "query": [
+      "id",
+      "school_year",
+      "is_locked",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|start_year|end_year|term_type|school_year|is_locked|override_flag|override_actor_id|override_at|starts_on|ends_on|encoding_deadline|default_inc_deadline|closed_by|closed_by_name|closed_at|closure_note|chronological_key)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "department_term_encoding": {
+    "projection": "id,school_term_id,department_id,is_closed,closed_by,closed_by_name,closed_at,closure_note,updated_at",
+    "query": [
+      "id",
+      "school_term_id",
+      "department_id",
+      "is_closed",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)(?:,(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|school_term_id|department_id|is_closed|closed_by|closed_by_name|closed_at|closure_note|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "course_offering": {
+    "projection": "id,school_term_id,course_id,is_by_request,section,schedule,instructor",
+    "query": [
+      "id",
+      "school_term_id",
+      "course_id",
+      "is_by_request",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)(?:,(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|school_term_id|course_id|is_by_request|section|schedule|instructor)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "adviser_assignment": {
+    "projection": "id,adviser_id,adviser_name,adviser_email,adviser_faculty_name,adviser_consultation_hours,student_id,start_date,end_date,handed_over_to_adviser_id,handed_over_to_name,handover_label,created_at",
+    "query": [
+      "id",
+      "adviser_id",
+      "student_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)(?:,(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|adviser_id|adviser_name|adviser_email|adviser_faculty_name|adviser_consultation_hours|student_id|start_date|end_date|handed_over_to_adviser_id|handed_over_to_name|handover_label|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "student_curriculum_assignment": {
+    "projection": "id,student_id,curriculum_version_id,start_date,end_date,change_note,created_at",
+    "query": [
+      "id",
+      "student_id",
+      "curriculum_version_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|curriculum_version_id|start_date|end_date|change_note|created_at)(?:,(?:id|student_id|curriculum_version_id|start_date|end_date|change_note|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|curriculum_version_id|start_date|end_date|change_note|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|curriculum_version_id|start_date|end_date|change_note|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "attempt": {
+    "projection": "id,student_id,course_offering_id,curriculum_term_course_id,status,midterm_status,midterm_grade,final_grade,instructor,prerequisite_override,prerequisite_grade_override,inc_deadline,units_attempted,created_by,updated_by,revision,created_at,updated_at",
+    "query": [
+      "id",
+      "student_id",
+      "course_offering_id",
+      "status",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|course_offering_id|curriculum_term_course_id|status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|created_by|updated_by|revision|created_at|updated_at)(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|created_by|updated_by|revision|created_at|updated_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|course_offering_id|curriculum_term_course_id|status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|created_by|updated_by|revision|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|created_by|updated_by|revision|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "elective_mapping": {
+    "projection": "id,attempt_id,curriculum_term_course_id,mapped_by,units_credited,created_at,updated_at,student_id,revoked_at",
+    "query": [
+      "id",
+      "attempt_id",
+      "curriculum_term_course_id",
+      "select",
+      "order",
+      "limit",
+      "offset",
+      "student_id"
+    ],
+    "select": {
+      "pattern": "^(?:id|attempt_id|curriculum_term_course_id|mapped_by|units_credited|created_at|updated_at|student_id|revoked_at)(?:,(?:id|attempt_id|curriculum_term_course_id|mapped_by|units_credited|created_at|updated_at|student_id|revoked_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|attempt_id|curriculum_term_course_id|mapped_by|units_credited|created_at|updated_at|student_id|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|attempt_id|curriculum_term_course_id|mapped_by|units_credited|created_at|updated_at|student_id|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "equivalency_decision": {
+    "projection": "id,attempt_id,destination_curriculum_term_course_id,decision_type,decided_by,decided_at,units_credited,student_id,updated_at,revoked_at",
+    "query": [
+      "id",
+      "attempt_id",
+      "destination_curriculum_term_course_id",
+      "select",
+      "order",
+      "limit",
+      "offset",
+      "student_id"
+    ],
+    "select": {
+      "pattern": "^(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)(?:,(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|attempt_id|destination_curriculum_term_course_id|decision_type|decided_by|decided_at|units_credited|student_id|updated_at|revoked_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "student_organization": {
+    "projection": "student_id,student_curriculum_assignment_id,curriculum_version_id,program_id,department_id,faculty_id,adviser_id,entry_year",
+    "query": [
+      "id",
+      "student_id",
+      "program_id",
+      "department_id",
+      "faculty_id",
+      "adviser_id",
+      "entry_year",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)(?:,(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:student_id|student_curriculum_assignment_id|curriculum_version_id|program_id|department_id|faculty_id|adviser_id|entry_year)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "attempt_result": {
+    "projection": "id,student_id,course_offering_id,curriculum_term_course_id,recorded_status,midterm_status,midterm_grade,final_grade,instructor,prerequisite_override,prerequisite_grade_override,inc_deadline,units_attempted,revision,created_at,updated_at,completion_grade,resolved_at,effective_status,gwa_grade,is_lapsed_inc,is_repeated,counts_toward_cumulative_gwa",
+    "query": [
+      "id",
+      "student_id",
+      "course_offering_id",
+      "recorded_status",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|course_offering_id|curriculum_term_course_id|recorded_status|midterm_status|midterm_grade|final_grade|instructor|prerequisite_override|prerequisite_grade_override|inc_deadline|units_attempted|revision|created_at|updated_at|completion_grade|resolved_at|effective_status|gwa_grade|is_lapsed_inc|is_repeated|counts_toward_cumulative_gwa)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "inc_resolution": {
+    "projection": "id,student_id,attempt_id,completion_grade,resolved_by,resolved_at,updated_by,updated_at,effective_status",
+    "query": [
+      "id",
+      "student_id",
+      "attempt_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|attempt_id|completion_grade|resolved_by|resolved_at|updated_by|updated_at|effective_status)(?:,(?:id|student_id|attempt_id|completion_grade|resolved_by|resolved_at|updated_by|updated_at|effective_status))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|attempt_id|completion_grade|resolved_by|resolved_at|updated_by|updated_at|effective_status)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|attempt_id|completion_grade|resolved_by|resolved_at|updated_by|updated_at|effective_status)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "advising_plan": {
+    "projection": "id,student_id,school_term_id,student_curriculum_assignment_id,created_by,updated_by,created_at,updated_at,revision",
+    "query": [
+      "id",
+      "student_id",
+      "school_term_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)(?:,(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|school_term_id|student_curriculum_assignment_id|created_by|updated_by|created_at|updated_at|revision)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "advising_plan_item": {
+    "projection": "id,advising_plan_id,student_id,school_term_id,course_offering_id,curriculum_term_course_id,display_order,created_at",
+    "query": [
+      "id",
+      "advising_plan_id",
+      "student_id",
+      "school_term_id",
+      "course_offering_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|advising_plan_id|student_id|school_term_id|course_offering_id|curriculum_term_course_id|display_order|created_at)(?:,(?:id|advising_plan_id|student_id|school_term_id|course_offering_id|curriculum_term_course_id|display_order|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|advising_plan_id|student_id|school_term_id|course_offering_id|curriculum_term_course_id|display_order|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|advising_plan_id|student_id|school_term_id|course_offering_id|curriculum_term_course_id|display_order|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "advising_note": {
+    "projection": "id,student_id,authored_by,author_name,author_role_label,body_text,is_archived,archived_at,archived_by,created_at",
+    "query": [
+      "id",
+      "student_id",
+      "is_archived",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)(?:,(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|authored_by|author_name|author_role_label|body_text|is_archived|archived_at|archived_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "attempt_remark": {
+    "projection": "id,student_id,authored_by,body_text,created_at,attempt_id,curriculum_term_course_id",
+    "query": [
+      "id",
+      "student_id",
+      "attempt_id",
+      "curriculum_term_course_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|authored_by|body_text|created_at|attempt_id|curriculum_term_course_id)(?:,(?:id|student_id|authored_by|body_text|created_at|attempt_id|curriculum_term_course_id))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|authored_by|body_text|created_at|attempt_id|curriculum_term_course_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|authored_by|body_text|created_at|attempt_id|curriculum_term_course_id)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "audit_log_entry": {
+    "projection": "id,actor_id,actor_name,actor_role,student_id,student_name,student_number,target_label,action,action_category,entity_type,entity_id,details_summary,old_value,new_value,reason,created_at",
+    "query": [
+      "id",
+      "student_id",
+      "actor_id",
+      "actor_name",
+      "student_name",
+      "student_number",
+      "action",
+      "action_category",
+      "entity_type",
+      "created_at",
+      "and",
+      "or",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)(?:,(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|actor_id|actor_name|actor_role|student_id|student_name|student_number|target_label|action|action_category|entity_type|entity_id|details_summary|old_value|new_value|reason|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "grade_flag": {
+    "projection": "id,student_id,attempt_id,reported_stage,reported_grade_text,issue_type,details,status,resolution_action,corrected_grade,corrected_status,resolution_note,resolved_by,resolved_at,created_at,updated_at",
+    "query": [
+      "id",
+      "student_id",
+      "attempt_id",
+      "status",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)(?:,(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|attempt_id|reported_stage|reported_grade_text|issue_type|details|status|resolution_action|corrected_grade|corrected_status|resolution_note|resolved_by|resolved_at|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "curriculum_transfer_request": {
+    "projection": "id,student_id,from_curriculum_version_id,to_curriculum_version_id,endorsed_by,endorsed_by_name,endorsement_note,status,decision_note,decided_by,decided_by_name,decided_at,carried_units,created_at,updated_at",
+    "query": [
+      "id",
+      "student_id",
+      "status",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|from_curriculum_version_id|to_curriculum_version_id|endorsed_by|endorsed_by_name|endorsement_note|status|decision_note|decided_by|decided_by_name|decided_at|carried_units|created_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "curriculum_pair_equivalence": {
+    "projection": "id,from_curriculum_version_id,to_curriculum_version_id,source_course_id,target_course_id,note,created_by,created_at",
+    "query": [
+      "id",
+      "from_curriculum_version_id",
+      "to_curriculum_version_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|from_curriculum_version_id|to_curriculum_version_id|source_course_id|target_course_id|note|created_by|created_at)(?:,(?:id|from_curriculum_version_id|to_curriculum_version_id|source_course_id|target_course_id|note|created_by|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|from_curriculum_version_id|to_curriculum_version_id|source_course_id|target_course_id|note|created_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|from_curriculum_version_id|to_curriculum_version_id|source_course_id|target_course_id|note|created_by|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "outside_credit": {
+    "projection": "id,student_id,entry_type,origin_school,original_course_code,original_course_title,units,grade,destination_curriculum_term_course_id,units_credited,decided_by,decided_at,revoked_at,updated_at",
+    "query": [
+      "id",
+      "student_id",
+      "destination_curriculum_term_course_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|student_id|entry_type|origin_school|original_course_code|original_course_title|units|grade|destination_curriculum_term_course_id|units_credited|decided_by|decided_at|revoked_at|updated_at)(?:,(?:id|student_id|entry_type|origin_school|original_course_code|original_course_title|units|grade|destination_curriculum_term_course_id|units_credited|decided_by|decided_at|revoked_at|updated_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|student_id|entry_type|origin_school|original_course_code|original_course_title|units|grade|destination_curriculum_term_course_id|units_credited|decided_by|decided_at|revoked_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|student_id|entry_type|origin_school|original_course_code|original_course_title|units|grade|destination_curriculum_term_course_id|units_credited|decided_by|decided_at|revoked_at|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "notification": {
+    "projection": "id,recipient_id,kind,event_type,title,body,target_route,target_student_id,actor_id,entity_type,entity_id,dedupe_key,email_delivery_status,is_read,read_at,created_at",
+    "query": [
+      "id",
+      "is_read",
+      "kind",
+      "event_type",
+      "target_student_id",
+      "select",
+      "order",
+      "limit",
+      "offset"
+    ],
+    "select": {
+      "pattern": "^(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)(?:,(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|recipient_id|kind|event_type|title|body|target_route|target_student_id|actor_id|entity_type|entity_id|dedupe_key|email_delivery_status|is_read|read_at|created_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  },
+  "system_settings": {
+    "projection": "id,department_id,warning_pct,probation_pct,dismissal_pct,sender_email,last_backup_at,last_backup_by,last_backup_reference,last_backup_location,last_backup_scope,updated_at",
+    "query": ["id", "department_id", "select", "order", "limit", "offset"],
+    "select": {
+      "pattern": "^(?:id|department_id|warning_pct|probation_pct|dismissal_pct|sender_email|last_backup_at|last_backup_by|last_backup_reference|last_backup_location|last_backup_scope|updated_at)(?:,(?:id|department_id|warning_pct|probation_pct|dismissal_pct|sender_email|last_backup_at|last_backup_by|last_backup_reference|last_backup_location|last_backup_scope|updated_at))*$",
+      "maxLength": 2000
+    },
+    "order": {
+      "pattern": "^(?:id|department_id|warning_pct|probation_pct|dismissal_pct|sender_email|last_backup_at|last_backup_by|last_backup_reference|last_backup_location|last_backup_scope|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?(?:,(?:id|department_id|warning_pct|probation_pct|dismissal_pct|sender_email|last_backup_at|last_backup_by|last_backup_reference|last_backup_location|last_backup_scope|updated_at)\\.(?:asc|desc)(?:\\.nulls(?:first|last))?)*$",
+      "maxLength": 1000
+    }
+  }
+}
