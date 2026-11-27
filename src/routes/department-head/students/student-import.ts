@@ -1,4 +1,5 @@
 import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import { readAllCurriculumVersions, readAllPrograms } from "@/lib/api/catalog";
 import { getDepartmentAdvisers } from "../shared/dh-api";
 
 export const IMPORT_COLUMNS = [
@@ -148,32 +149,22 @@ export type ImportOutcome = {
   message: string;
 };
 
-async function lookups() {
-  const [programs, versions, advisers, profiles] = await Promise.all([
-    apiClient
-      .GET("/rest/v1/program", {
-        params: { query: { select: "*", limit: 100 } },
-      })
-      .then(unwrapApiResult),
-    apiClient
-      .GET("/rest/v1/curriculum_version", {
-        params: { query: { select: "*", limit: 100 } },
-      })
-      .then(unwrapApiResult),
-    getDepartmentAdvisers(),
-    apiClient
-      .GET("/rest/v1/profile", { params: { query: { limit: 100 } } })
-      .then(unwrapApiResult),
+async function lookups(departmentIds: readonly string[]) {
+  const [programs, versions, advisers] = await Promise.all([
+    readAllPrograms(),
+    readAllCurriculumVersions(),
+    getDepartmentAdvisers(departmentIds),
   ]);
-  return { programs, versions, advisers, profiles };
+  return { programs, versions, advisers };
 }
 
 /** Resolves spreadsheet text to ids and runs the API's preview (`dryRun`) or commit step. */
 export async function submitStudentImport(
   lines: ImportLine[],
   mode: "preview" | "commit",
+  departmentIds: readonly string[],
 ): Promise<{ results: ImportOutcome[]; imported: number }> {
-  const { programs, versions, advisers, profiles } = await lookups();
+  const { programs, versions, advisers } = await lookups(departmentIds);
   const rows: ApiSchema<"StudentBatchImportRowInput">[] = [];
   const local = new Map<number, string>();
   for (const line of lines) {
@@ -185,10 +176,9 @@ export async function submitStudentImport(
         item.program_id === program?.id &&
         item.version_label.toLowerCase() === line.curriculum.toLowerCase(),
     );
-    const adviserProfile = profiles.find(
+    const adviser = advisers.find(
       (item) => item.email.toLowerCase() === line.adviser_email.toLowerCase(),
     );
-    const adviser = advisers.find((item) => item.id === adviserProfile?.id);
     const year = line.entry_year ? Number(line.entry_year) : null;
     const problem =
       !line.student_number || !line.full_name || !line.email

@@ -40,21 +40,21 @@ export async function getDeanStudentChecklist(studentId: string): Promise<{
     fetchAllPages(
       (limit, offset) =>
         apiClient.GET("/rest/v1/curriculum_term_course", {
-          params: { query: { limit, offset } },
+          params: { query: { order: "id.asc", limit, offset } },
         }),
       "Curriculum slots",
     ),
     fetchAllPages(
       (limit, offset) =>
         apiClient.GET("/rest/v1/curriculum_term", {
-          params: { query: { limit, offset } },
+          params: { query: { order: "id.asc", limit, offset } },
         }),
       "Curriculum terms",
     ),
     fetchAllPages(
       (limit, offset) =>
         apiClient.GET("/rest/v1/course", {
-          params: { query: { limit, offset } },
+          params: { query: { order: "id.asc", limit, offset } },
         }),
       "Course catalog",
     ),

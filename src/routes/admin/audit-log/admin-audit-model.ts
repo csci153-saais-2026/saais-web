@@ -8,7 +8,7 @@ export const AUDIT_PAGE_SIZE = 25;
 export const AUDIT_SEARCH_MAX_LENGTH = 100;
 // The contract counts the two `%` wildcards toward these filters' 100 characters.
 export const AUDIT_WILDCARD_SEARCH_MAX_LENGTH = AUDIT_SEARCH_MAX_LENGTH - 2;
-export const MAX_AUDIT_OFFSET = 1_000_000;
+export const MAX_AUDIT_OFFSET = 100_000;
 
 export const AUDIT_LOG_SELECT =
   "id,actor_name,actor_role,student_name,student_number,target_label,action,action_category,entity_type,details_summary,created_at";

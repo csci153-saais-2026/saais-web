@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDepartmentHeadQueryKey } from "./use-dh-query-key";
+import { useHeadDepartmentIds } from "./use-head-department-ids";
 import {
   getAuditEvents,
   getDepartmentAdvisers,
@@ -25,11 +26,13 @@ export const useDirectoryStudents = () =>
     queryKey: useDepartmentHeadQueryKey(keys.students),
     queryFn: getDirectoryStudents,
   });
-export const useDepartmentAdvisers = () =>
-  useQuery({
+export const useDepartmentAdvisers = () => {
+  const departmentIds = useHeadDepartmentIds();
+  return useQuery({
     queryKey: useDepartmentHeadQueryKey(keys.advisers),
-    queryFn: getDepartmentAdvisers,
+    queryFn: () => getDepartmentAdvisers(departmentIds),
   });
+};
 export const useAuditEvents = () =>
   useQuery({
     queryKey: useDepartmentHeadQueryKey(keys.audit),
@@ -40,11 +43,13 @@ export const useStudentAuditEvents = (studentId: string) =>
     queryKey: [...useDepartmentHeadQueryKey(keys.audit), studentId],
     queryFn: () => getAuditEvents(studentId),
   });
-export const useDepartmentSettings = () =>
-  useQuery({
+export const useDepartmentSettings = () => {
+  const departmentIds = useHeadDepartmentIds();
+  return useQuery({
     queryKey: useDepartmentHeadQueryKey(keys.settings),
-    queryFn: getSettings,
+    queryFn: () => getSettings(departmentIds),
   });
+};
 export const useLastEncodingClosure = () =>
   useQuery({
     queryKey: useDepartmentHeadQueryKey(keys.closure),

@@ -5,6 +5,7 @@ import {
   type ApiSchema,
   type OperationQuery,
 } from "@/lib/api";
+import { readAllCurriculumVersions, readAllPrograms } from "@/lib/api/catalog";
 import { getAccountRoles } from "./admin-accounts-model";
 
 type FacultyOption = Pick<ApiSchema<"Faculty">, "id" | "name">;
@@ -79,28 +80,12 @@ export function useAdminAccountCatalogs() {
           },
         })
         .then(unwrapApiResult),
-      apiClient
-        .GET("/rest/v1/program", {
-          params: {
-            query: {
-              select: "id,code,name,department_id,status",
-              order: "name.asc",
-              limit: 1000,
-            },
-          },
-        })
-        .then(unwrapApiResult),
-      apiClient
-        .GET("/rest/v1/curriculum_version", {
-          params: {
-            query: {
-              select: "id,program_id,version_label,status",
-              order: "version_label.asc",
-              limit: 1000,
-            },
-          },
-        })
-        .then(unwrapApiResult),
+      readAllPrograms().then((rows) =>
+        rows.sort((x, y) => x.name.localeCompare(y.name)),
+      ),
+      readAllCurriculumVersions().then((rows) =>
+        rows.sort((x, y) => x.version_label.localeCompare(y.version_label)),
+      ),
       apiClient
         .GET("/functions/v1/accounts", {
           params: {

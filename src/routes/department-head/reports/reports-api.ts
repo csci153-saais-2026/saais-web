@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiClient, unwrapApiResult } from "@/lib/api";
+import {
+  readAllCurriculumVersions,
+  readAllSchoolTerms,
+} from "@/lib/api/catalog";
 import { getRoster } from "@/routes/adviser/advisees/advisees.api";
 import type { ReportOption, ReportStudent } from "./report-model";
 import { useDepartmentHeadQueryKey } from "../shared/use-dh-query-key";
@@ -16,16 +19,8 @@ export type ReportSource = {
 async function getReportSource(): Promise<ReportSource> {
   const [roster, versions, schoolTerms] = await Promise.all([
     getRoster("all"),
-    apiClient
-      .GET("/rest/v1/curriculum_version", {
-        params: { query: { select: "*", limit: 100 } },
-      })
-      .then(unwrapApiResult),
-    apiClient
-      .GET("/rest/v1/school_term", {
-        params: { query: { select: "*", limit: 100 } },
-      })
-      .then(unwrapApiResult),
+    readAllCurriculumVersions(),
+    readAllSchoolTerms(),
   ]);
   const ordered = [...schoolTerms].sort(
     (a, b) => b.chronological_key - a.chronological_key,
