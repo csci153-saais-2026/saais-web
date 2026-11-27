@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 // instrumentation, especially on CI. Keep async queries patient without
 // increasing the timeout for individual test cases.
 configure({
-  asyncUtilTimeout: 5000,
+  asyncUtilTimeout: 10_000,
   // Skeletons draw a hidden copy of the page from sample data. Text queries
   // should only ever see real content, never that copy (the selector must
   // match descendants too: `ignore` only skips elements that match it).

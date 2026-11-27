@@ -228,11 +228,7 @@ describe("Department Staff academic terms", () => {
     renderPage();
 
     expect(
-      await screen.findByRole(
-        "heading",
-        { name: "Academic terms", level: 1 },
-        { timeout: 5000 },
-      ),
+      await screen.findByRole("heading", { name: "Academic terms", level: 1 }),
     ).toBeTruthy();
     expect(
       screen.getByText(

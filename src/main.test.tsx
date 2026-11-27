@@ -24,7 +24,7 @@ it("renders the app and a visible warning when the mock worker fails", async () 
     "mock API could not start",
   );
   expect(screen.getByText("Application content")).toBeTruthy();
-}, 20_000);
+});
 
 it("shows a startup error when application configuration prevents loading", async () => {
   vi.stubEnv("DEV", false);
@@ -38,7 +38,7 @@ it("shows a startup error when application configuration prevents loading", asyn
     "Check the API configuration",
   );
   vi.doUnmock("./App.tsx");
-}, 20_000);
+});
 
 it("shows an error if rendering the application fails", async () => {
   vi.stubEnv("DEV", false);
@@ -54,4 +54,4 @@ it("shows an error if rendering the application fails", async () => {
     "encountered an error",
   );
   vi.doUnmock("./App.tsx");
-}, 20_000);
+});
