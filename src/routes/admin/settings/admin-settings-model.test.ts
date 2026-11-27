@@ -17,16 +17,16 @@ describe("admin settings form model", () => {
     ).toEqual({});
   });
 
-  it("enforces finite percentages from greater than zero through 100", () => {
+  it("enforces finite percentages from 0 through 100", () => {
     expect(
       validateThresholds({
-        warning: "0",
+        warning: "-1",
         probation: "50",
         dismissal: "101",
       }),
     ).toEqual({
-      warning: "Warning must be greater than 0% and no more than 100%.",
-      dismissal: "Dismissal must be greater than 0% and no more than 100%.",
+      warning: "Warning must be from 0% to 100%.",
+      dismissal: "Dismissal must be from 0% to 100%.",
     });
     expect(
       validateThresholds({
@@ -35,9 +35,19 @@ describe("admin settings form model", () => {
         dismissal: "75",
       }),
     ).toEqual({
-      warning: "Warning must be greater than 0% and no more than 100%.",
-      probation: "Probation must be greater than 0% and no more than 100%.",
+      warning: "Warning must be from 0% to 100%.",
+      probation: "Probation must be from 0% to 100%.",
     });
+  });
+
+  it("accepts a zero warning threshold, as the backend does", () => {
+    expect(
+      validateThresholds({
+        warning: "0",
+        probation: "25.5",
+        dismissal: "100",
+      }),
+    ).toEqual({});
   });
 
   it("requires warning < probation < dismissal", () => {
