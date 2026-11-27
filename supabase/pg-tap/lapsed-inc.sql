@@ -21,7 +21,7 @@ declare
   retake_offering uuid;
 begin
   update public.curriculum_version set delinquency_threshold = 3 where id = version;
-  update public.attempt set status = 'failed', final_grade = 4 where id = source;
+  update public.attempt set status = 'failed', final_grade = 5 where id = source;
   insert into public.course (department_id, code, title, units)
     select department_id, 'INC101', 'Incomplete Course', 3 from public.course where id = original_course
     returning id into late_course;
@@ -42,7 +42,7 @@ select is(saais_private.recompute_lapsed_inc_gwa('2098-12-01'), 0, 'The INC dead
 select is(saais_private.recompute_lapsed_inc_gwa('2098-12-02'), 1, 'Daily job finds the lapse after the deadline');
 select results_eq(
   'select cumulative_gwa, counted_units, failed_units, is_delinquent, lapsed_inc_count from saais_private.lapsed_inc_recomputation',
-  'values (4.50::numeric, 6::numeric, 3::numeric, true, 1)', 'Recompute GWA and term delinquency, retaining the failed grade during enrollment');
+  'values (5.00::numeric, 6::numeric, 3::numeric, true, 1)', 'Recompute GWA and term delinquency, retaining the failed grade during enrollment');
 select is(saais_private.recompute_lapsed_inc_gwa('2098-12-02'), 0, 'Retry does not invalidate again or add a duplicate');
 select is((select count(*) from saais_private.lapsed_inc_recomputation), 1::bigint, 'One result per student and term');
 select is((select status::text from public.attempt where inc_deadline = '2098-12-01'), 'inc',

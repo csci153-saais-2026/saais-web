@@ -5,7 +5,7 @@ begin
   select (value->>'id')::uuid into elective from test.records where name='elective_slot';
   body:=jsonb_build_object('attempt_id',source,'destination_curriculum_term_course_id',slot,'decision_type','transfer_equivalency','justification','Failed source test');
   perform test.login(4);
-  update public.attempt set status='failed',final_grade=4 where id=source;
+  update public.attempt set status='failed',final_grade=5 where id=source;
   select count(*) into before_count from public.equivalency_decision;
   perform test.expect('PT409','createEquivalencyDecision',jsonb_build_object('student_id',student),body);
   perform test.assert((select count(*)=before_count from public.equivalency_decision),'invalid equivalency survived');
