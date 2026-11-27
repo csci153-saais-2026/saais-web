@@ -63,7 +63,7 @@ export const CURRICULA_SKELETON_SAMPLE = layoutSample<CurriculaData>({
     status: i === 0 ? "active" : "retired",
     terms: [],
   })),
-  programs: [{ id: "p", code: "BSCS" }],
+  programs: [{ id: "p", code: "BSCS", departmentId: "d" }],
   departments: [{ id: "d", name: "Department of Sample Studies" }],
   courses: [],
 });

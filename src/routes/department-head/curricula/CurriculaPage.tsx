@@ -97,7 +97,6 @@ export default function CurriculaPage() {
   // Version form state
   const [vProg, setVProg] = React.useState("");
   const [vYear, setVYear] = React.useState("");
-  const [vUnits, setVUnits] = React.useState("147");
   const [vFrom, setVFrom] = React.useState("");
   const [vStatus, setVStatus] =
     React.useState<CurriculumVersionStatus>("draft");
@@ -134,6 +133,14 @@ export default function CurriculaPage() {
     (course) =>
       course.departmentId === currentVersion?.departmentId &&
       course.status === "active",
+  );
+
+  // Courses can only be copied within the chosen program's department.
+  const cloneDepartmentId = programs.find(
+    (program) => program.code === vProg,
+  )?.departmentId;
+  const cloneSources = versions.filter(
+    (version) => version.departmentId === cloneDepartmentId,
   );
 
   const deleteTargetVersion =
@@ -204,7 +211,6 @@ export default function CurriculaPage() {
   const openAddVersion = () => {
     setVProg(programs[0]?.code ?? "");
     setVYear("");
-    setVUnits("147");
     setVFrom("");
     setVStatus("draft");
     setVCloneFrom("");
@@ -216,7 +222,6 @@ export default function CurriculaPage() {
     if (!currentVersion) return;
     setVProg(currentVersion.prog);
     setVYear(currentVersion.year);
-    setVUnits(String(currentVersion.units));
     setVFrom(currentVersion.from);
     setVStatus(currentVersion.status);
     setFormError(null);
@@ -286,13 +291,8 @@ export default function CurriculaPage() {
   async function confirmDialog(active: NonNullable<CurriculaDialogState>) {
     if (active.kind === "add-version" || active.kind === "edit-version") {
       const year = vYear.trim();
-      const units = Number(vUnits);
       if (!year) {
         setFormError("Enter the academic year, for example 2023\u20132024.");
-        return;
-      }
-      if (!Number.isFinite(units) || units <= 0) {
-        setFormError("Required units must be a positive number.");
         return;
       }
       if (!vFrom) {
@@ -319,20 +319,18 @@ export default function CurriculaPage() {
         await actions.updateVersion(active.versionId, {
           label,
           start: vFrom,
-          units,
           ...(vStatus !==
           versions.find((v) => v.id === active.versionId)?.status
             ? { status: vStatus }
             : {}),
-          ...(vCloneFrom ? { cloneFromVersionId: vCloneFrom } : {}),
         });
       } else {
         const created = await actions.createVersion({
           programId: program.id,
           label,
           start: vFrom,
-          units,
           status: vStatus,
+          ...(vCloneFrom ? { cloneFromVersionId: vCloneFrom } : {}),
         });
         setSelectedVersionId(created.id);
       }
@@ -837,7 +835,13 @@ export default function CurriculaPage() {
                   dialog?.kind === "edit-version") && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField label="Program" htmlFor="cu-prog">
-                      <Select value={vProg} onValueChange={setVProg}>
+                      <Select
+                        value={vProg}
+                        onValueChange={(code) => {
+                          setVProg(code);
+                          setVCloneFrom("");
+                        }}
+                      >
                         <SelectTrigger id="cu-prog" className="w-full">
                           <SelectValue />
                         </SelectTrigger>
@@ -861,14 +865,6 @@ export default function CurriculaPage() {
                         value={vYear}
                         placeholder="2023–2024"
                         onChange={(e) => setVYear(e.target.value)}
-                      />
-                    </FormField>
-
-                    <FormField label="Required units" htmlFor="cu-units">
-                      <Input
-                        id="cu-units"
-                        value={vUnits}
-                        onChange={(e) => setVUnits(e.target.value)}
                       />
                     </FormField>
 
@@ -922,7 +918,7 @@ export default function CurriculaPage() {
                             <SelectItem value="blank">
                               Start with a blank version
                             </SelectItem>
-                            {versions.map((source) => (
+                            {cloneSources.map((source) => (
                               <SelectItem key={source.id} value={source.id}>
                                 {versionLabel(source)}
                               </SelectItem>

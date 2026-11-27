@@ -495,6 +495,29 @@ function nextSyntheticUuid(): string {
   return `99999999-0000-4000-8000-${hex}`;
 }
 
+// Like the database, a version's total is the sum of its slots' units. It is
+// recalculated only on writes, so seeded totals stay until then.
+function recomputeVersionTotal(versionId: string | undefined): void {
+  const db = getMockDatabase();
+  const version = db.curriculumVersions.find((item) => item.id === versionId);
+  if (!version) return;
+  const termIds = new Set(
+    db.curriculumTerms
+      .filter((term) => term.curriculum_version_id === version.id)
+      .map((term) => term.id),
+  );
+  version.total_units = db.curriculumTermCourses
+    .filter((slot) => termIds.has(slot.curriculum_term_id))
+    .reduce((sum, slot) => sum + slot.nominal_units, 0);
+}
+
+function recomputeTermVersionTotal(termId: string): void {
+  recomputeVersionTotal(
+    getMockDatabase().curriculumTerms.find((term) => term.id === termId)
+      ?.curriculum_version_id,
+  );
+}
+
 function isIncCompletionCorrectionRequest(
   value: unknown,
 ): value is ApiSchema<"INCCompletionCorrectionRequest"> {
@@ -2552,7 +2575,7 @@ export const saaisMswHandlers = [
         effective_start: String(body.effective_start ?? "2026-08-01"),
         effective_end: null,
         delinquency_threshold: Number(body.delinquency_threshold ?? 24),
-        total_units: Number(body.total_units ?? 162),
+        total_units: 0,
         status: "draft",
         enrolled_student_count: 0,
       };
@@ -2579,6 +2602,7 @@ export const saaisMswHandlers = [
             });
         }
       }
+      recomputeVersionTotal(created.id);
       return HttpResponse.json(created, { status: 201 });
     },
   ),
@@ -2605,6 +2629,7 @@ export const saaisMswHandlers = [
         ...body,
       };
       db.curriculumVersions[idx] = updated;
+      recomputeVersionTotal(updated.id);
       return HttpResponse.json(updated, { status: 200 });
     },
   ),
@@ -2727,6 +2752,7 @@ export const saaisMswHandlers = [
       term_sequence: body.term_sequence,
     };
     getMockDatabase().curriculumTerms.push(created);
+    recomputeVersionTotal(created.curriculum_version_id);
     return HttpResponse.json(created, { status: 201 });
   }),
 
@@ -2752,6 +2778,7 @@ export const saaisMswHandlers = [
         ...body,
       };
       db.curriculumTerms[idx] = updated;
+      recomputeVersionTotal(updated.curriculum_version_id);
       return HttpResponse.json(updated, { status: 200 });
     },
   ),
@@ -2845,6 +2872,7 @@ export const saaisMswHandlers = [
         (row) => !slotIds.has(row.id),
       );
       db.curriculumTerms.splice(idx, 1);
+      recomputeVersionTotal(version.id);
       recordMockAudit(auth.persona, {
         action: "curriculum_term_deleted",
         entityType: "curriculum_term",
@@ -2920,6 +2948,7 @@ export const saaisMswHandlers = [
         nominal_units: body.nominal_units,
       };
       db.curriculumTermCourses.push(created);
+      recomputeVersionTotal(version.id);
       return HttpResponse.json(created, { status: 201 });
     },
   ),
@@ -2969,6 +2998,7 @@ export const saaisMswHandlers = [
         ...body,
       };
       db.curriculumTermCourses[idx] = updated;
+      recomputeTermVersionTotal(updated.curriculum_term_id);
       return HttpResponse.json(updated, { status: 200 });
     },
   ),
@@ -3073,6 +3103,7 @@ export const saaisMswHandlers = [
         label: version.version_label,
         details: "Deleted an unreferenced curriculum slot.",
       });
+      recomputeVersionTotal(version.id);
       return new HttpResponse(null, { status: 204 });
     },
   ),
