@@ -11,6 +11,8 @@ export {
 
 const limit = 5 * 1024 * 1024;
 const maxPixels = 16_000_000;
+const stagedName =
+  /^upload-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(png|jpe?g)$/;
 type PhotoBody = {
   storage_object_path?: unknown;
   avatar_url?: unknown;
@@ -166,10 +168,8 @@ export async function preparePhoto(
     parts.length !== 3 ||
     parts[0] !== "students" ||
     parts[1] !== student ||
-    !/^[a-zA-Z0-9._-]+$/.test(parts[2]) ||
-    parts[2] === "." ||
-    parts[2] === ".." ||
-    parts[2].startsWith("validated-")
+    !stagedName.test(parts[2]) ||
+    (body.mime_type === "image/png") !== parts[2].endsWith(".png")
   )
     throw new PhotoError(400, "Invalid staging photo path.");
 

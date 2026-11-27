@@ -122,8 +122,21 @@ export function operationsFor(group: RouteGroup): Operation[] {
           matchesGroup(operation),
       )
       .map((operation) => ({ ...operation, usesAcademicRpc: true })),
+    ...(group === "students" ? [assistantHistoryOperation] : []),
   ];
 }
+
+// This read uses the separately scoped history RPC, outside the pinned write dispatcher.
+const assistantHistoryOperation: Operation = {
+  id: "getAdvisingAssistantHistory",
+  method: "GET",
+  path: "/functions/v1/students/{student_id}/assistant",
+  parameters: [{ name: "student_id", in: "path", schema: { type: "string" } }],
+  bodyRequired: false,
+  input: null,
+  status: 200,
+  errors: [400, 401, 403, 429, 500],
+};
 
 export function createHandler(group: RouteGroup, dependencies: Dependencies) {
   const { env } = dependencies;
@@ -346,6 +359,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       // Use the caller JWT, never a service-role credential. SQL rechecks active
       // session/profile/role/scope at commit and makes the operation atomic.
       const assistant = operation.id === "askAdvisingAssistant";
+      const assistantHistory = operation.id === "getAdvisingAssistantHistory";
       if (assistant && (!env.assistant || !env.serviceKey))
         return error(
           500,
@@ -353,14 +367,21 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           "The advising assistant is unavailable.",
           headers,
         );
-      const rpc = assistant
-        ? "matt_assistant_context"
-        : operation.usesAcademicRpc
-          ? "matt_operation"
-          : "jerome_operation";
-      const rpcBody = assistant
-        ? { p_student_id: params.student_id, p_body: body ?? {} }
-        : { p_operation: operation.id, p_params: params, p_body: body ?? {} };
+      let rpc = operation.usesAcademicRpc
+        ? "matt_operation"
+        : "jerome_operation";
+      let rpcBody: Record<string, unknown> = {
+        p_operation: operation.id,
+        p_params: params,
+        p_body: body ?? {},
+      };
+      if (assistant) {
+        rpc = "matt_assistant_context";
+        rpcBody = { p_student_id: params.student_id, p_body: body ?? {} };
+      } else if (assistantHistory) {
+        rpc = "saais_get_assistant_history";
+        rpcBody = { p_student_id: params.student_id };
+      }
       const result = await fetcher(`${env.url}/rest/v1/rpc/${rpc}`, {
         method: "POST",
         headers: { ...upstreamHeaders, "Content-Profile": "public" },

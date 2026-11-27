@@ -1,5 +1,10 @@
 # API & Developer Documentation Guide
 
+The adviser assistant uses `GET /functions/v1/students/{student_id}/assistant`
+to load the caller's own conversation and `POST` on the same path to ask a new
+question. Current and former advisers can read their own messages for the
+student. The history read does not contact the model provider.
+
 SAAIS maintains a single canonical OpenAPI 3.1 contract and exposes it through two synchronized surfaces: an in-app interactive reference for active contributors and a standalone static HTML bundle built in Continuous Integration (CI).
 
 ## Canonical Source of Truth

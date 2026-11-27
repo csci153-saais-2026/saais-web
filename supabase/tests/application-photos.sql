@@ -205,6 +205,33 @@ begin
   end;
 end$$;
 reset role;
+
+do $$
+declare
+  student uuid := '00000005-0000-4000-8000-000000000000';
+  other uuid := '00000009-0000-4000-8000-000000000000';
+  prefix text := 'students/' || student || '/upload-00000000-0000-4000-8000-0000000000';
+  abandoned text := prefix || '31.png';
+  fresh text := prefix || '32.png';
+  in_flight text := prefix || '33.png';
+  current_photo text := 'students/' || other || '/upload-00000000-0000-4000-8000-000000000034.png';
+  paths text[];
+begin
+  insert into storage.objects(bucket_id, name, created_at) values
+    ('student-photos', abandoned, now() - interval '25 hours'),
+    ('student-photos', fresh, now()),
+    ('student-photos', in_flight, now() - interval '25 hours'),
+    ('student-photos', current_photo, now() - interval '25 hours');
+  insert into saais_private.verified_student_photo(object_path, student_id, actor_id, staging_path)
+    values ('students/' || student || '/validated-00000000-0000-4000-8000-000000000099.png',
+      student, student, in_flight);
+  update public.profile set avatar_url = '/student-photos/' || current_photo where id = other;
+
+  paths := public.saais_reconcile_pending_deleted_photos(100);
+  perform test.assert(paths @> array[abandoned], 'Abandoned single-use staging object is queued');
+  perform test.assert(not paths && array[fresh, in_flight, current_photo],
+    'Fresh uploads, in-flight uploads and committed avatars are never queued');
+end $$;
 select test.login(4);
 set local role authenticated;
 do $$begin

@@ -7506,6 +7506,33 @@ export const saaisMswHandlers = [
     },
   ),
 
+  http.get(
+    "*/functions/v1/students/:student_id/assistant",
+    ({ request, params }) => {
+      const auth = authenticateRequest(request, ["adviser"]);
+      if ("response" in auth) return auth.response;
+      const studentId = String(params.student_id);
+      const adviserId = auth.persona.profileId;
+      const db = getMockDatabase();
+      const student = db.profiles.find((profile) => profile.id === studentId);
+      const assigned = db.adviserAssignments.some(
+        (assignment) =>
+          assignment.student_id === studentId &&
+          assignment.adviser_id === adviserId,
+      );
+      if (!student || student.status === "disabled" || !assigned) {
+        return errorJson(
+          403,
+          "INSUFFICIENT_PRIVILEGE",
+          "Student is outside your adviser assignment.",
+        );
+      }
+      return HttpResponse.json(
+        db.assistantHistories[`${adviserId}:${studentId}`] ?? [],
+      );
+    },
+  ),
+
   http.post(
     "*/functions/v1/students/:student_id/assistant",
     async ({ request, params }) => {
@@ -7551,6 +7578,13 @@ export const saaisMswHandlers = [
         grounded_at: "2026-11-10T09:00:00Z",
         mutates_records: false,
       };
+      const historyKey = `${auth.persona.profileId}:${studentId}`;
+      const saved: ApiSchema<"AdvisingAIMessage">[] = [
+        ...(db.assistantHistories[historyKey] ?? []),
+        { role: "user", content: body.message },
+        { role: "assistant", content: res.answer },
+      ];
+      db.assistantHistories[historyKey] = saved.slice(-20);
       return HttpResponse.json(res, { status: 200 });
     },
   ),
@@ -7579,8 +7613,9 @@ export const saaisMswHandlers = [
         !body.storage_object_path.trim() ||
         body.storage_object_path.length > 512 ||
         !body.avatar_url ||
-        !body.mime_type ||
-        !body.file_size_bytes
+        (body.mime_type !== "image/png" && body.mime_type !== "image/jpeg") ||
+        !Number.isSafeInteger(body.file_size_bytes) ||
+        body.file_size_bytes < 1
       ) {
         return errorJson(
           400,
@@ -7588,18 +7623,16 @@ export const saaisMswHandlers = [
           "storage_object_path, avatar_url, mime_type, and file_size_bytes are required.",
         );
       }
-      // The backend's staging path rule: students/<route student>/<file>.
       const [folder, owner, name, ...extra] =
         body.storage_object_path.split("/");
+      const stagingName =
+        /^upload-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(png|jpe?g)$/;
       if (
-        extra.length ||
         folder !== "students" ||
         owner !== studentId.toLowerCase() ||
-        !name ||
-        !/^[a-zA-Z0-9._-]+$/.test(name) ||
-        name === "." ||
-        name === ".." ||
-        name.startsWith("validated-")
+        extra.length > 0 ||
+        !stagingName.test(name) ||
+        (body.mime_type === "image/png") !== name.endsWith(".png")
       ) {
         return errorJson(400, "INVALID_INPUT", "Invalid staging photo path.");
       }
