@@ -80,7 +80,12 @@ export default async function handler(req, res) {
       : await readFile(filePath, "utf8");
     res.setHeader("Content-Type", document.type);
     return res.status(200).send(content);
-  } catch {
+  } catch (error) {
+    // The response stays empty; the cause goes to the function log only.
+    console.error(
+      `docs: could not serve "${name}":`,
+      error instanceof Error ? error.message : String(error),
+    );
     return res.status(503).end();
   }
 }
