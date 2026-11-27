@@ -678,7 +678,7 @@ describe("MSW contract handlers & role-based authorization (Issue #43)", () => {
         body: {
           school_term_id: MOCK_IDS.term2026Sem1Open,
           course_offering_id: newOfferingId,
-          final_grade: 3.25,
+          final_grade: 5,
           confirmed_enrollment: false,
           continue_with_prerequisite_override: false,
         },

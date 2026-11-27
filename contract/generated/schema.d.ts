@@ -3089,8 +3089,8 @@ export interface components {
             /** @description Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during grade recording. */
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | null;
-            final_grade?: number | null;
+            midterm_grade?: number | 5 | null;
+            final_grade?: number | 5 | null;
             /** @enum {string|null} */
             status?: "inc" | "dr" | "na" | null;
             instructor?: string | null;
@@ -3115,8 +3115,8 @@ export interface components {
             /** @description Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during term encoding. */
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | null;
-            final_grade?: number | null;
+            midterm_grade?: number | 5 | null;
+            final_grade?: number | 5 | null;
             status?: components["schemas"]["AttemptStatus"];
             instructor?: string | null;
             /** @description Optional staff remark. Because `AttemptRemark` is an append-only log, the server appends a new `AttemptRemark` row only when `remark` is non-empty and differs from the most recent remark on that attempt. */
@@ -3137,8 +3137,8 @@ export interface components {
             expected_revision: number;
             status?: components["schemas"]["AttemptStatus"];
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | null;
-            final_grade?: number | null;
+            midterm_grade?: number | 5 | null;
+            final_grade?: number | 5 | null;
             instructor?: string | null;
             reason: string;
         } | unknown | unknown | unknown | unknown | unknown;
@@ -3148,11 +3148,11 @@ export interface components {
             reason: string;
         };
         INCCompletionRequest: {
-            completion_grade: number;
+            completion_grade: number | 5;
             reason: string;
         };
         INCCompletionCorrectionRequest: {
-            completion_grade: number;
+            completion_grade: number | 5;
             reason: string;
             /** Format: date-time */
             expected_updated_at: string;
@@ -3759,7 +3759,7 @@ export interface components {
         GradeFlagResolveRequest: {
             /** @enum {string} */
             resolution_action: "correct" | "reject";
-            corrected_grade?: number | null;
+            corrected_grade?: number | 5 | null;
             corrected_status?: components["schemas"]["AttemptStatus"] | null;
             corrected_midterm_status?: components["schemas"]["MidtermStatus"] | null;
             resolution_note: string;
@@ -3777,8 +3777,8 @@ export interface components {
             /** @description Optional justification recorded when `curriculum_term_course_id` maps an imported elective attempt to an elective curriculum slot. */
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | null;
-            final_grade?: number | null;
+            midterm_grade?: number | 5 | null;
+            final_grade?: number | 5 | null;
             status?: components["schemas"]["AttemptStatus"];
             instructor?: string | null;
             remark?: string | null;
