@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import { FormField } from "@/components/features/form-field";
 
 /**
@@ -57,6 +58,7 @@ function OverrideDialog({
           >
             <Textarea
               id="override-reason"
+              maxLength={REASON_MAX_LENGTH}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Required. This is written to the audit log."

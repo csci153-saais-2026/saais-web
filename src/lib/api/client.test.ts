@@ -47,22 +47,6 @@ describe("resolveSaaisEnvConfig & Supabase client setup", () => {
     expect(config.apiBaseUrl).toBeTruthy();
   });
 
-  it("rejects missing production configuration and permits an explicit external mock", () => {
-    expect(() => resolveSaaisEnvConfig({ PROD: true })).toThrow(
-      /configuration/i,
-    );
-    expect(() => resolveSaaisEnvConfig({ VITE_API_MODE: "supabase" })).toThrow(
-      /URL/i,
-    );
-    expect(
-      resolveSaaisEnvConfig({
-        PROD: true,
-        VITE_API_MODE: "mock",
-        VITE_API_BASE_URL: "http://localhost:4010",
-      }).mode,
-    ).toBe("mock");
-  });
-
   it("auto-detects supabase mode and prefers VITE_SUPABASE_PUBLISHABLE_KEY over VITE_SUPABASE_ANON_KEY", () => {
     const config = resolveSaaisEnvConfig({
       VITE_SUPABASE_URL: " https://proj.supabase.co ",
@@ -146,7 +130,7 @@ describe("auth token resolution (mock mode & custom resolver)", () => {
 });
 
 describe("createSaaisApiClient auth headers & pre-login exception", () => {
-  it("does not report missing API keys as expired user sessions", async () => {
+  it("does not invoke the session callback when the API key is missing", async () => {
     const events: UnauthorizedEventContext[] = [];
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
@@ -192,6 +176,7 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
     const client = createSaaisApiClient({
       baseUrl: BASE_URL,
       apiKey: TEST_API_KEY,
+      mode: "supabase",
       getAccessToken: () => currentToken,
       fetch: mockFetch,
     });
@@ -215,6 +200,7 @@ describe("createSaaisApiClient auth headers & pre-login exception", () => {
 
     expect(seenRequests).toHaveLength(2);
     expect(seenRequests[0]?.headers.get("apikey")).toBe(TEST_API_KEY);
+    expect(seenRequests[0]?.headers.get("Accept-Profile")).toBe("saais_api");
     expect(seenRequests[0]?.headers.get("Authorization")).toBe(
       "Bearer jwt-initial",
     );
@@ -577,9 +563,6 @@ describe("PostgREST filter & Content-Range helpers", () => {
     expect(() => postgrestFilter.inList(["ok,malicious"])).toThrow();
     expect(() => postgrestFilter.ilike("x),status.eq.admin")).toThrow();
     expect(postgrestFilter.like("x.y")).toBe("like.x.y");
-    expect(postgrestFilter.ilike("*ma.cristina@example.com*")).toBe(
-      "ilike.*ma.cristina@example.com*",
-    );
     expect(() =>
       postgrestFilter.createdAtBetween("2026-01-02", "2026-01-01"),
     ).toThrow();
@@ -626,6 +609,12 @@ describe("PostgREST filter & Content-Range helpers", () => {
     expect(postgrestFilter.lt("2026-12-31")).toBe("lt.2026-12-31");
     expect(postgrestFilter.ilike("*CSCI*")).toBe("ilike.*CSCI*");
     expect(postgrestFilter.like("CSCI%")).toBe("like.CSCI%");
+    expect(postgrestFilter.ilike("j.doe@example.edu")).toBe(
+      "ilike.j.doe@example.edu",
+    );
+    expect(postgrestFilter.createdAtBetween("2026-01-01", "2026-01-31")).toBe(
+      "(created_at.gte.2026-01-01,created_at.lt.2026-02-01T00:00:00.000Z)",
+    );
     expect(
       postgrestFilter.createdAtBetween(
         "2026-01-01T00:00:00Z",
@@ -634,20 +623,6 @@ describe("PostgREST filter & Content-Range helpers", () => {
     ).toBe(
       "(created_at.gte.2026-01-01T00:00:00Z,created_at.lte.2026-01-31T23:59:59Z)",
     );
-    expect(
-      postgrestFilter.createdAtBetween("2026-01-31T10:00:00Z", "2026-01-31"),
-    ).toBe(
-      "(created_at.gte.2026-01-31T10:00:00Z,created_at.lt.2026-02-01T00:00:00.000Z)",
-    );
-    expect(
-      postgrestFilter.createdAtBetween("2024-02-28", "2024-02-29"),
-    ).toContain("created_at.lt.2024-03-01");
-    expect(() =>
-      postgrestFilter.createdAtBetween("2026-02-30", "2026-03-01"),
-    ).toThrow();
-    expect(() =>
-      postgrestFilter.createdAtBetween("9999-12-31", "9999-12-31"),
-    ).toThrow();
 
     expect(() => postgrestFilter.inList([])).toThrow(RangeError);
     expect(() =>

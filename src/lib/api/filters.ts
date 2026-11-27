@@ -9,6 +9,14 @@ const CONTENT_RANGE_PATTERN = /^(?:(\d+)-(\d+)|\*)\/(\d+|\*)$/;
  * and date/timestamp range comparisons).
  */
 export const postgrestFilter = {
+  /**
+   * Makes user text literal inside a like/ilike pattern. PostgREST turns every
+   * "*" into "%", so a literal "*" cannot be sent: it matches any one character.
+   */
+  likeLiteral(text: string): string {
+    return text.replace(/[\\%_]/g, "\\$&").replaceAll("*", "_");
+  },
+
   eq<T extends string | number | boolean>(value: T): `eq.${T}` {
     return `eq.${value}`;
   },
@@ -72,8 +80,7 @@ export const postgrestFilter = {
   },
 
   /**
-   * Builds a bounded UTC interval. A date-only upper bound includes the whole
-   * day; timestamp upper bounds are inclusive.
+   * Builds a bounded UTC interval. A date-only upper bound includes the whole day.
    */
   createdAtBetween(
     from: string,

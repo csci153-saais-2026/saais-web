@@ -1,4 +1,5 @@
 import * as React from "react";
+import { slotChildren } from "@/lib/slot-children";
 import { cn } from "@/lib/utils";
 import { Popover as PopoverPrimitive } from "radix-ui";
 
@@ -9,9 +10,14 @@ function Popover({
 }
 
 function PopoverTrigger({
+  children,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
+  return (
+    <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props}>
+      {slotChildren(children)}
+    </PopoverPrimitive.Trigger>
+  );
 }
 
 function PopoverContent({

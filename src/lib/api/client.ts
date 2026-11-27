@@ -95,7 +95,8 @@ export function createSaaisApiClient(
 
   const client = createClient<paths>({
     baseUrl,
-    ...(options.fetch ? { fetch: options.fetch } : {}),
+    // Resolve `fetch` per request so interceptors installed after the client was created (e.g. MSW in tests) apply.
+    fetch: options.fetch ?? ((request) => globalThis.fetch(request)),
   });
 
   const authAndErrorMiddleware: Middleware = {

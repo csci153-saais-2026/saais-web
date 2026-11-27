@@ -1,40 +1,69 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import type { ReactNode } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type Status } from "@/components/ui/status-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /** Avatar, name, meta line and standing badge for a single student record. */
 function StudentRecordHeader({
   name,
+  avatarUrl,
   initials,
   studentNumber,
   program,
+  curriculum,
   yearLabel,
   email,
   standing,
+  standingLabel,
+  headingAs: Heading = "h1",
 }: {
   name: string;
+  avatarUrl?: string | null;
   initials: string;
   studentNumber: string;
-  program: string;
+  program?: string;
+  curriculum?: string;
   yearLabel: string;
   email: string;
-  standing: Status;
+  standing?: Status;
+  standingLabel?: string;
+  /** Use "h2" when the header sits inside a dialog or under another page heading. */
+  headingAs?: "h1" | "h2";
 }) {
   return (
     <div className="mb-5 flex items-center gap-4">
-      <Avatar className="size-[52px]">
+      <Avatar className="size-[52px] shrink-0">
+        {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
         <AvatarFallback className="bg-primary font-heading text-lg font-bold text-primary-foreground">
           {initials}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        <h1 className="text-3xl leading-tight">{name}</h1>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+        <Heading
+          className="line-clamp-2 text-3xl leading-tight wrap-anywhere"
+          title={name}
+        >
+          {name}
+        </Heading>
+        <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
           <span className="font-mono text-[13px]">{studentNumber}</span>
-          <span>· {program}</span>
+          {program && (
+            <span className="max-w-full truncate" title={program}>
+              · {program}
+            </span>
+          )}
+          {curriculum && (
+            <span className="max-w-full truncate" title={curriculum}>
+              · {curriculum}
+            </span>
+          )}
           <span>· {yearLabel}</span>
-          <span>· {email}</span>
-          <StatusBadge status={standing} />
+          <span className="max-w-full truncate" title={email}>
+            · {email}
+          </span>
+          {standing && (
+            <StatusBadge status={standing}>{standingLabel}</StatusBadge>
+          )}
         </p>
       </div>
     </div>
@@ -46,14 +75,19 @@ function RecordTabs({
   tabs,
   value,
   onValueChange,
+  label,
+  children,
 }: {
   tabs: { value: string; label: string }[];
   value: string;
   onValueChange: (value: string) => void;
+  label?: string;
+  children?: ReactNode;
 }) {
   return (
     <Tabs value={value} onValueChange={onValueChange} className="mb-6">
       <TabsList
+        aria-label={label}
         variant="line"
         className="h-auto group-data-horizontal/tabs:h-auto w-full justify-start gap-6 overflow-x-auto border-b border-border p-0"
       >
@@ -67,6 +101,7 @@ function RecordTabs({
           </TabsTrigger>
         ))}
       </TabsList>
+      {children}
     </Tabs>
   );
 }

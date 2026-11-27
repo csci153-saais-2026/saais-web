@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { slotChildren } from "@/lib/slot-children";
 import { cn } from "@/lib/utils";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
@@ -14,9 +15,14 @@ function Dialog({
 }
 
 function DialogTrigger({
+  children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
+  return (
+    <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props}>
+      {slotChildren(children)}
+    </DialogPrimitive.Trigger>
+  );
 }
 
 function DialogPortal({
@@ -26,9 +32,14 @@ function DialogPortal({
 }
 
 function DialogClose({
+  children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
+  return (
+    <DialogPrimitive.Close data-slot="dialog-close" {...props}>
+      {slotChildren(children)}
+    </DialogPrimitive.Close>
+  );
 }
 
 function DialogOverlay({
@@ -61,7 +72,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-md border border-border bg-popover p-6 text-sm text-popover-foreground shadow-2xl duration-100 outline-none sm:max-w-lg data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-md border border-border bg-popover p-6 text-sm *:min-w-0 text-popover-foreground shadow-2xl duration-100 outline-none sm:max-w-lg data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         {...props}
@@ -128,7 +139,10 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("font-heading text-2xl leading-tight font-bold", className)}
+      className={cn(
+        "line-clamp-2 font-heading text-[22px] leading-tight font-bold wrap-anywhere",
+        className,
+      )}
       {...props}
     />
   );
@@ -142,7 +156,7 @@ function DialogDescription({
     <DialogPrimitive.Description
       data-slot="dialog-description"
       className={cn(
-        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "text-sm text-muted-foreground wrap-anywhere *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className,
       )}
       {...props}

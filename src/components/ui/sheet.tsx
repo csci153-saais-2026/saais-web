@@ -1,4 +1,5 @@
 import * as React from "react";
+import { slotChildren } from "@/lib/slot-children";
 import { cn } from "@/lib/utils";
 import { Dialog as SheetPrimitive } from "radix-ui";
 
@@ -10,15 +11,25 @@ function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
 }
 
 function SheetTrigger({
+  children,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
-  return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
+  return (
+    <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props}>
+      {slotChildren(children)}
+    </SheetPrimitive.Trigger>
+  );
 }
 
 function SheetClose({
+  children,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Close>) {
-  return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
+  return (
+    <SheetPrimitive.Close data-slot="sheet-close" {...props}>
+      {slotChildren(children)}
+    </SheetPrimitive.Close>
+  );
 }
 
 function SheetPortal({

@@ -3,7 +3,9 @@
 @import "@fontsource/ibm-plex-sans/500.css";
 @import "@fontsource/ibm-plex-sans/600.css";
 @import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -215,6 +217,7 @@
   }
   html {
     font-family: var(--font-sans);
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground;
@@ -261,6 +264,12 @@
     h1 {
       font-size: 26px;
     }
+  }
+  /* Native selects never grow past their container; long options show an ellipsis. */
+  select {
+    min-width: 0;
+    max-width: 100%;
+    text-overflow: ellipsis;
   }
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -329,4 +338,8 @@
     @apply font-mono text-code font-medium;
     font-variant-ligatures: none;
   }
+}
+
+.department-filter-typography :is(label, input, select, [role="combobox"]) {
+  font-weight: 600;
 }

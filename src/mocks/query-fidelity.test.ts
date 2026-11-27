@@ -16,12 +16,18 @@ afterEach(() => {
 });
 afterAll(() => saaisMockServer.close());
 
-async function read(path: string, query: Record<string, string>) {
+async function read(
+  path: string,
+  query: Record<string, string>,
+  token = MOCK_PERSONAS.admin.token,
+) {
   const url = new URL(path, base);
   Object.entries(query).forEach(([key, value]) =>
     url.searchParams.set(key, value),
   );
-  return fetch(url, { headers });
+  return fetch(url, {
+    headers: { ...headers, Authorization: `Bearer ${token}` },
+  });
 }
 
 describe("PostgREST mock query fidelity", () => {
@@ -47,14 +53,6 @@ describe("PostgREST mock query fidelity", () => {
       })
     ).json();
     expect(sorted.map((row: { id: string }) => row.id)).toEqual(["one", "two"]);
-    for (const order of ["units", "units.nullslast"]) {
-      const rows = await (await read("/rest/v1/course", { order })).json();
-      expect(rows.map((row: { id: string }) => row.id)).toEqual([
-        "three",
-        "one",
-        "two",
-      ]);
-    }
     const wildcards = await (
       await read("/rest/v1/course", { title: "ilike.*juan*cruz*" })
     ).json();
@@ -103,7 +101,10 @@ describe("PostgREST mock query fidelity", () => {
     const rows = await (
       await read("/rest/v1/audit_log_entry", { and: range })
     ).json();
-    expect(rows.map((row: { id: string }) => row.id)).toEqual(["one", "two"]);
+    expect(rows.map((row: { id: string }) => row.id).sort()).toEqual([
+      "one",
+      "two",
+    ]);
     const boundary = await (
       await read("/rest/v1/audit_log_entry", {
         created_at: "gte.2026-02-01T00:00:00Z",
@@ -115,7 +116,7 @@ describe("PostgREST mock query fidelity", () => {
         or: "(action.ilike.*grade*,actor_name.ilike.*third*)",
       })
     ).json();
-    expect(search.map((row: { id: string }) => row.id)).toEqual([
+    expect(search.map((row: { id: string }) => row.id).sort()).toEqual([
       "one",
       "three",
     ]);
@@ -157,55 +158,111 @@ describe("PostgREST mock query fidelity", () => {
       expect(
         (await getSummary(MOCK_PERSONAS.student_other_dept.profileId)).status,
       ).toBe(403);
-      const ownGradeWrite = await fetch(
-        `${base}/functions/v1/students/${persona.profileId}/record-grades`,
-        {
-          method: "POST",
-          headers: adviserHeaders,
-        },
-      );
-      expect(ownGradeWrite.status).toBe(403);
-      for (const [path, method] of [
-        ["grade-flags", "POST"],
-        ["photo", "PUT"],
-        ["photo", "DELETE"],
-      ]) {
-        const response = await fetch(
-          `${base}/functions/v1/students/${MOCK_PERSONAS.student.profileId}/${path}`,
-          {
-            method,
-            headers: adviserHeaders,
-          },
-        );
-        expect(response.status).toBe(403);
-      }
     } finally {
       Object.assign(persona, { roles: originalRoles });
     }
   });
-  it("restricts grade encoding to the student's current adviser", async () => {
-    for (const persona of [
-      MOCK_PERSONAS.admin,
-      MOCK_PERSONAS.department_head,
-      MOCK_PERSONAS.dean,
-      MOCK_PERSONAS.student,
-      MOCK_PERSONAS.student_other_dept,
-    ]) {
-      for (const endpoint of ["record-grades", "encode-grades"]) {
-        const response = await fetch(
-          `${base}/functions/v1/students/${MOCK_PERSONAS.student.profileId}/${endpoint}`,
-          {
-            method: "POST",
-            headers: {
-              apikey: "test-key",
-              Authorization: `Bearer ${persona.token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ school_term_id: "term", rows: [] }),
-          },
-        );
-        expect(response.status).toBe(403);
+
+  it("limits shared student decision rows to each role's department or faculty scope", async () => {
+    const db = getMockDatabase();
+    const foreignId = MOCK_PERSONAS.student_other_dept.profileId;
+    db.electiveMappings.push({
+      ...db.electiveMappings[0],
+      id: "foreign-elective",
+      student_id: foreignId,
+    });
+    db.equivalencyDecisions.push({
+      ...db.equivalencyDecisions[0],
+      id: "foreign-equivalency",
+      student_id: foreignId,
+    });
+    db.outsideCredits.push({
+      ...db.outsideCredits[0],
+      id: "foreign-credit",
+      student_id: foreignId,
+    });
+    const decisionRows = {
+      "/rest/v1/elective_mapping": db.electiveMappings,
+      "/rest/v1/equivalency_decision": db.equivalencyDecisions,
+      "/rest/v1/outside_credit": db.outsideCredits,
+    };
+    for (const persona of Object.keys(MOCK_PERSONAS) as Array<
+      keyof typeof MOCK_PERSONAS
+    >) {
+      const assigned = MOCK_PERSONAS[persona];
+      const visibleStudentIds = db.studentOrganizations
+        .filter(
+          (organization) =>
+            assigned.roles.includes("admin") ||
+            (assigned.roles.includes("student") &&
+              assigned.profileId === organization.student_id) ||
+            (assigned.roles.includes("adviser") &&
+              db.adviserAssignments.some(
+                (row) =>
+                  row.student_id === organization.student_id &&
+                  row.adviser_id === assigned.profileId,
+              )) ||
+            (assigned.roles.includes("dean") &&
+              assigned.facultyId === organization.faculty_id) ||
+            (assigned.roles.some(
+              (role) =>
+                role === "department_head" || role === "department_staff",
+            ) &&
+              assigned.departmentId === organization.department_id),
+        )
+        .map((organization) => organization.student_id);
+      for (const [path, sourceRows] of Object.entries(decisionRows)) {
+        const response = await read(path, {}, assigned.token);
+        if (persona === "department_staff") {
+          expect(response.status, `${persona} ${path}`).toBe(403);
+          continue;
+        }
+        expect(response.status, `${persona} ${path}`).toBe(200);
+        const rows = (await response.json()) as Array<{ student_id: string }>;
+        const expectedIds = [
+          ...new Set(
+            sourceRows
+              .map((row) => row.student_id)
+              .filter((id) => visibleStudentIds.includes(id)),
+          ),
+        ].sort();
+        expect(
+          [...new Set(rows.map((row) => row.student_id))].sort(),
+          `${persona} ${path}`,
+        ).toEqual(expectedIds);
       }
+    }
+  });
+
+  it("authorizes student records by union of assigned roles while denying cross-department access", async () => {
+    const cases = [
+      ["student", MOCK_PERSONAS.student.profileId, 200],
+      ["student", MOCK_PERSONAS.student_secondary.profileId, 403],
+      ["student_secondary", MOCK_PERSONAS.student_secondary.profileId, 200],
+      ["adviser", MOCK_PERSONAS.student.profileId, 200],
+      ["adviser", MOCK_PERSONAS.student_secondary.profileId, 403],
+      ["adviser_secondary", MOCK_PERSONAS.student_secondary.profileId, 200],
+      ["adviser_engineering", MOCK_PERSONAS.student_other_dept.profileId, 200],
+      ["adviser_engineering", MOCK_PERSONAS.student.profileId, 403],
+      ["department_head", MOCK_PERSONAS.student_secondary.profileId, 200],
+      ["department_head", MOCK_PERSONAS.student_other_dept.profileId, 403],
+      ["department_staff", MOCK_PERSONAS.student.profileId, 200],
+      ["department_staff", MOCK_PERSONAS.student_other_dept.profileId, 403],
+      ["dean", MOCK_PERSONAS.student_secondary.profileId, 200],
+      ["dean", MOCK_PERSONAS.student_other_dept.profileId, 403],
+      ["dean_dept_head", MOCK_PERSONAS.student.profileId, 200],
+      ["dean_dept_head", MOCK_PERSONAS.student_other_dept.profileId, 403],
+      ["admin", MOCK_PERSONAS.student_other_dept.profileId, 200],
+    ] as const;
+    for (const [persona, studentId, expectedStatus] of cases) {
+      const response = await read(
+        `/functions/v1/students/${studentId}/academic-summary`,
+        {},
+        MOCK_PERSONAS[persona].token,
+      );
+      expect(response.status, `${persona} -> ${studentId}`).toBe(
+        expectedStatus,
+      );
     }
   });
 

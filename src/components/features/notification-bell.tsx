@@ -1,3 +1,5 @@
+import { LinesSkeleton } from "@/components/features/loading-skeletons";
+import { useState } from "react";
 import { BellIcon } from "@/components/icons";
 import { Link } from "react-router";
 import {
@@ -20,41 +22,82 @@ function NotificationBell({
   items,
   allHref,
   onMarkAllRead,
+  loading = false,
+  error,
+  showUnreadCount = true,
 }: {
   items: NotificationItem[];
-  allHref: string;
-  onMarkAllRead?: () => void;
+  allHref?: string;
+  onMarkAllRead?: () => void | Promise<unknown>;
+  loading?: boolean;
+  error?: string | null;
+  showUnreadCount?: boolean;
 }) {
   const unread = items.filter((i) => i.unread).length;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const handleMarkAllRead = async () => {
+    if (!onMarkAllRead) return;
+    setActionError(null);
+    try {
+      await onMarkAllRead();
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update notifications.",
+      );
+    }
+  };
   return (
     <Popover>
       <PopoverTrigger
         aria-label={
-          unread ? `Notifications, ${unread} unread` : "Notifications"
+          showUnreadCount && unread
+            ? `Notifications, ${unread} unread`
+            : unread
+              ? "Notifications, unread items"
+              : "Notifications"
         }
         className="relative inline-flex size-11 items-center justify-center rounded-lg border border-transparent text-muted-2 hover:border-border hover:bg-background hover:text-primary data-[state=open]:border-border data-[state=open]:bg-background data-[state=open]:text-primary"
       >
         <BellIcon className="size-[19px]" />
-        {unread > 0 && (
+        {showUnreadCount && unread > 0 && (
           <span className="absolute top-1 right-0.5 min-w-4 rounded-full bg-destructive px-1 text-center text-[10.5px] leading-4 font-semibold text-white">
             {unread}
           </span>
         )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[360px] gap-0 p-0">
+      <PopoverContent
+        align="end"
+        className="w-[360px] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto gap-0 p-0"
+      >
         <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
           <h2 className="font-sans text-base font-semibold">Notifications</h2>
           {onMarkAllRead && (
             <button
               type="button"
-              onClick={onMarkAllRead}
-              className="text-[12.5px] font-semibold text-primary hover:underline"
+              onClick={() => void handleMarkAllRead()}
+              disabled={loading}
+              className="text-[12.5px] font-semibold text-primary hover:underline disabled:opacity-50"
             >
               Mark all as read
             </button>
           )}
         </div>
-        {items.length === 0 ? (
+        {loading ? (
+          <LinesSkeleton
+            lines={3}
+            label="Loading notifications…"
+            className="border-t border-line-soft px-4 py-4"
+          />
+        ) : error ? (
+          <p
+            role="alert"
+            className="border-t border-line-soft px-4 py-4 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        ) : items.length === 0 ? (
           <p className="border-t border-line-soft px-4 py-4 text-sm text-muted-foreground">
             You are all caught up.
           </p>
@@ -65,40 +108,66 @@ function NotificationBell({
                 key={n.id}
                 className="border-b border-line-soft last:border-b-0"
               >
-                <Link
-                  to={n.to ?? allHref}
-                  className="flex items-start gap-2.5 px-4 py-3 hover:bg-secondary/60"
-                >
-                  <span
-                    className={cn(
-                      "mt-1.5 size-2 shrink-0 rounded-full",
-                      n.unread ? "bg-gold" : "bg-transparent",
-                    )}
-                  />
-                  <span>
-                    <strong
-                      className={cn(
-                        "block text-[13.5px]",
-                        n.unread ? "font-semibold" : "font-medium",
-                      )}
-                    >
-                      {n.title}
-                    </strong>
-                    <small className="text-xs text-muted-2">{n.time}</small>
-                  </span>
-                </Link>
+                {n.to || allHref ? (
+                  <Link
+                    to={n.to ?? allHref!}
+                    className="flex items-start gap-2.5 px-4 py-3 hover:bg-secondary/60"
+                  >
+                    {notificationContent(n)}
+                  </Link>
+                ) : (
+                  <div className="flex items-start gap-2.5 px-4 py-3">
+                    {notificationContent(n)}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         )}
-        <Link
-          to={allHref}
-          className="block border-t border-line-soft px-4 py-3 text-center text-[13.5px] font-semibold text-primary hover:bg-secondary/60"
-        >
-          See all notifications
-        </Link>
+        {actionError && (
+          <p
+            role="alert"
+            className="border-t border-line-soft px-4 py-3 text-sm text-destructive"
+          >
+            {actionError}
+          </p>
+        )}
+        {allHref && (
+          <Link
+            to={allHref}
+            className="block border-t border-line-soft px-4 py-3 text-center text-[13.5px] font-semibold text-primary hover:bg-secondary/60"
+          >
+            See all notifications
+          </Link>
+        )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function notificationContent(item: NotificationItem) {
+  return (
+    <>
+      <span
+        aria-hidden
+        className={cn(
+          "mt-1.5 size-2 shrink-0 rounded-full",
+          item.unread ? "bg-gold" : "bg-transparent",
+        )}
+      />
+      <span className="min-w-0 flex-1">
+        <strong
+          title={item.title}
+          className={cn(
+            "line-clamp-2 block text-[13.5px]",
+            item.unread ? "font-semibold" : "font-medium",
+          )}
+        >
+          {item.title}
+        </strong>
+        <small className="text-xs text-muted-2">{item.time}</small>
+      </span>
+    </>
   );
 }
 
