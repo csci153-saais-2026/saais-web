@@ -152,6 +152,61 @@ test("empty queues do not request an OAuth access token", async () => {
   assert.equal((await send(handler)).status, 200);
 });
 
+test("Gmail MIME normalizes folded headers and encodes UTF-8 subjects and display names", async () => {
+  const mail = {
+    id,
+    lease: session,
+    kind: "notification",
+    email: "mail-fixture@example.test",
+    subject: "Advising update\r\n– review required",
+    message: "Sign in to SAAIS to read your new notification.",
+    token: null,
+  };
+  const config = readMailEnvironment(
+    (name) =>
+      ({
+        ...settings,
+        SAAIS_MAIL_FROM: "José Reyes <fixture@gmail.com>",
+        SAAIS_MAIL_ALLOWED_RECIPIENTS: mail.email,
+      })[name],
+  );
+  let headers = "";
+  const outcomes = [];
+  const handler = createMailHandler(config, async (url, options) => {
+    if (url.endsWith("/saais_claim_email")) return Response.json([mail]);
+    if (url.endsWith("/saais_finish_email")) {
+      outcomes.push(JSON.parse(options.body).p_outcome);
+      return new Response(null, { status: 204 });
+    }
+    if (url === "https://oauth2.googleapis.com/token") {
+      return Response.json({ access_token: "test-access-token" });
+    }
+    headers = decodeMime(JSON.parse(options.body).raw).headerBlock;
+    return Response.json({ id: "fixture-gmail-message" });
+  });
+
+  assert.equal((await send(handler)).status, 200);
+  assert.deepEqual(outcomes, ["sent"]);
+  const encode = (text) =>
+    `=?UTF-8?B?${Buffer.from(text).toString("base64")}?=`;
+  assert.deepEqual(headers.split("\r\n").slice(0, 3), [
+    `From: ${encode("José Reyes")} <fixture@gmail.com>`,
+    `To: ${mail.email}`,
+    `Subject: ${encode("Advising update – review required")}`,
+  ]);
+
+  let invalidSenderCalls = 0;
+  const invalidSenderHandler = createMailHandler(
+    { ...config, sender: "José\r\nReyes <fixture@gmail.com>" },
+    async () => {
+      invalidSenderCalls++;
+      return Response.json([]);
+    },
+  );
+  assert.equal((await send(invalidSenderHandler)).status, 503);
+  assert.equal(invalidSenderCalls, 0);
+});
+
 test("invitation links keep the site's base path", async () => {
   const mail = {
     id,

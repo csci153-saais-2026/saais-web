@@ -173,11 +173,22 @@ const ACTIONS: Partial<Record<ApiSchema<"AuditActionCategory">, AuditAction>> =
 
 export const DEPARTMENT_AUDIT_LIMIT = 1000;
 
-function auditDateQuery({ from, to }: { from: string; to: string }) {
-  const start = from && new Date(`${from}T00:00:00+08:00`).toISOString();
-  const end =
-    to &&
-    new Date(Date.parse(`${to}T00:00:00+08:00`) + 86_400_000).toISOString();
+function manilaAuditMidnight(date: string): number | undefined {
+  if (!date) return undefined;
+  const midnight = Date.parse(`${date}T00:00:00Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !Number.isFinite(midnight) ||
+    new Date(midnight).toISOString().slice(0, 10) !== date
+  ) {
+    throw new Error("Enter a valid audit date in YYYY-MM-DD format.");
+  }
+  return midnight - 8 * 60 * 60 * 1000;
+}
+
+function auditDateQuery(from: number | undefined, to: number | undefined) {
+  const start = from === undefined ? "" : new Date(from).toISOString();
+  const end = to === undefined ? "" : new Date(to + 86_400_000).toISOString();
   if (start && end)
     return { and: `(created_at.gte.${start},created_at.lt.${end})` };
   if (start) return { created_at: `gte.${start}` };
@@ -190,14 +201,17 @@ export async function getAuditEvents(
   studentId?: string,
   range = { from: "", to: "" },
 ): Promise<AuditEvent[]> {
-  if (range.from && range.to && range.from > range.to) return [];
+  const from = manilaAuditMidnight(range.from);
+  const to = manilaAuditMidnight(range.to);
+  if (from !== undefined && to !== undefined && from > to) return [];
+  const dateQuery = auditDateQuery(from, to);
   const readPage = (limit: number, offset: number) =>
     apiClient
       .GET("/rest/v1/audit_log_entry", {
         params: {
           query: {
             ...(studentId ? { student_id: postgrestFilter.eq(studentId) } : {}),
-            ...auditDateQuery(range),
+            ...dateQuery,
             order: "created_at.desc,id.desc",
             limit,
             offset,

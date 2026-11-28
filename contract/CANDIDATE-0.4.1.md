@@ -2,7 +2,7 @@
 
 Status: **pending review**. Approval is for the complete `0.4.1` bundle against the `0.3.1` baseline on `dev`. The intermediate `0.4.0` candidate covered assistant history and photo staging. This record includes both changes and the [grade-scale decision in #213](https://github.com/csci153-saais-2026/saais-web/issues/213#issuecomment-7221198225).
 
-- Bundled contract SHA-256: `4f35a518d60e01ba088f68b44d4704c51af2d4172d899eaacbe1407e7f88064e`. Recompute with `node contract/candidate-hash.cjs`.
+- Bundled contract SHA-256: `d0f10eea37b37f2a69ab062f7f17f91ca9c267bcd1ce6daff34eacfab97b4a12`. Recompute with `node contract/candidate-hash.cjs`.
 - Frontend approval of this version and hash: pending.
 - Backend approval of this version and hash: pending.
 
@@ -14,6 +14,6 @@ Status: **pending review**. Approval is for the complete `0.4.1` bundle against 
 ## Rollout
 
 1. Record frontend and backend approval of the complete version and bundle hash before promoting the integration changes to `dev`.
-2. Run `supabase/tools/preflight-grade-scale.sql` against the staging and production targets before applying the grade migration. The production preflight on 2026-11-28 returned zero in all three bands requested by #213 and zero violations of the exact proposed checks. Record the staging counts before rollout. If any rows would violate a check, agree on handling with the team before deployment. The migration validates the checks without rewriting historical grades.
-3. Once the bundle is approved, regenerate `supabase/functions/_shared/contract.json` and `academic-contract.json` from that pinned revision and hash. Generate the corresponding database contract snapshots in a forward migration. Replace the temporary hand-written assistant history operation with the generated entry while keeping the dedicated, caller-authenticated history RPC dispatch. Run the pinned snapshot, Edge, and SQL tests to verify both runtime layers use the approved schemas.
+2. Run `supabase/tools/preflight-grade-scale.sql` against each target before applying the grade migration. The Vercel deployment used for hosted QA, `saais.plenums.app`, connects to the production SAAIS Supabase project. The 2026-11-29 read-only check counted zero in all five grade bands and all three constraint-violation categories on that project. A separate staging Supabase target has yet to be verified. The migration checks the existing rows before altering the schema, lists any violations, and preserves historical grades.
+3. Once the bundle is approved, regenerate `supabase/functions/_shared/contract.json` and `academic-contract.json` from that pinned revision and hash. Generate the corresponding database contract snapshots in a forward migration. The grade migrations patch the stored database validators even while their snapshot metadata identifies `0.3.1`. Replace the temporary hand-written assistant history operation with the generated entry while keeping the dedicated, caller-authenticated history RPC dispatch. Run the pinned snapshot, Edge, and SQL tests to verify both runtime layers use the approved schemas.
 4. Apply `20261128000600_split_midterm_and_final_grade_scales.sql` and the approved snapshot updates before deploying the corresponding frontend, or coordinate them in one release. Verify the wider midterm range, final rejections, assistant history, and photo staging against the migrated backend before publishing the approved docs.

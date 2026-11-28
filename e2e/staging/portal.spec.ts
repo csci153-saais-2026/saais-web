@@ -237,6 +237,19 @@ for (const role of Object.keys(portals) as Role[]) {
           ),
         )
         .toBeLessThanOrEqual(1);
+      await expect
+        .poll(() =>
+          dialog.evaluate((element) => {
+            const { left, right } = element.getBoundingClientRect();
+            const viewport = document.documentElement;
+            return Math.max(
+              -left,
+              right - viewport.clientWidth,
+              viewport.scrollWidth - viewport.clientWidth,
+            );
+          }),
+        )
+        .toBeLessThanOrEqual(1);
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
     }

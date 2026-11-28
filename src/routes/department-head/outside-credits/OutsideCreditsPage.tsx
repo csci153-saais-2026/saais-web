@@ -61,6 +61,7 @@ const outsideCreditSchema = z.object({
       const units = Number(value);
       return Number.isInteger(units) && units >= 1;
     }, "Enter units as a whole number of 1 or more."),
+  // Transferred grades can use increments other than quarter steps.
   grade: z
     .string()
     .trim()

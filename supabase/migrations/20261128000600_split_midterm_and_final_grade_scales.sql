@@ -1,6 +1,39 @@
 -- Restore quarter-step midterms and use the stored stage for grade flag fixes.
 do $$
 declare
+  v_finals bigint;
+  v_completions bigint;
+  v_final_flags bigint;
+  v_midterm_flags bigint;
+begin
+  select count(*) into v_finals
+    from public.attempt
+    where final_grade is not null
+      and not saais_private.is_valid_numeric_grade(final_grade);
+  select count(*) into v_completions
+    from public.inc_resolution
+    where not saais_private.is_valid_numeric_grade(completion_grade);
+  select
+    count(*) filter (where reported_stage is distinct from 'midterm'
+      and not saais_private.is_valid_numeric_grade(corrected_grade)),
+    count(*) filter (where reported_stage = 'midterm'
+      and (corrected_grade not between 1 and 5 or mod(corrected_grade * 4, 1) <> 0))
+    into v_final_flags, v_midterm_flags
+    from public.grade_flag
+    where corrected_grade is not null;
+
+  if v_finals + v_completions + v_final_flags + v_midterm_flags > 0 then
+    raise exception using
+      errcode = '23514',
+      message = format(
+        'Grade scale migration halted. Off-scale grades: finals=%s, INC completions=%s, final-stage flag corrections=%s, midterm flag corrections=%s.',
+        v_finals, v_completions, v_final_flags, v_midterm_flags
+      );
+  end if;
+end $$;
+
+do $$
+declare
   v_grade constant jsonb := '{"anyOf":[{"type":"number","minimum":1,"maximum":5,"multipleOf":0.25},{"type":"null"}]}';
   v_table regclass;
   v_document jsonb;

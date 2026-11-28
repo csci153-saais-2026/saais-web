@@ -61,6 +61,11 @@ export default async function handler(req, res) {
       },
     });
     if (profileResponse.status === 401) return res.status(401).end();
+    if (profileResponse.status === 429) {
+      const retryAfter = profileResponse.headers.get("Retry-After");
+      if (retryAfter) res.setHeader("Retry-After", retryAfter);
+      return res.status(429).end();
+    }
     if (profileResponse.status >= 500) return res.status(503).end();
     if (!profileResponse.ok) return res.status(403).end();
 

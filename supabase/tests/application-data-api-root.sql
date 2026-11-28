@@ -22,4 +22,12 @@ begin
   perform set_config('role', 'service_role', true);
   perform public.saais_check_data_api_request();
   perform set_config('role', 'none', true);
+
+  perform set_config('request.path', '/rpc/saais_check_data_api_request', true);
+  perform set_config('request.method', 'POST', true);
+  perform set_config('role', 'anon', true);
+  perform public.saais_check_data_api_request();
+  perform set_config('request.headers', '{"content-profile":"public"}', true);
+  perform public.saais_check_data_api_request();
+  perform set_config('role', 'none', true);
 end $$;

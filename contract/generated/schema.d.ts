@@ -3915,7 +3915,7 @@ export interface components {
             original_course_code: string;
             original_course_title: string;
             units: number;
-            /** @description Passing grade on the institutional 1.00–3.00 scale, formatted to two decimals. */
+            /** @description Passing grade from 1.00 through 3.00, formatted to two decimals. Two-decimal grades are intentional because other schools may use increments other than quarter steps. */
             grade: string;
             /** Format: uuid */
             destination_curriculum_term_course_id: string;

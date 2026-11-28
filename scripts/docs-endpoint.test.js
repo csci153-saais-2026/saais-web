@@ -62,6 +62,7 @@ test("documentation endpoint verifies active users via Data API gateway and serv
 
   const userId = "11111111-1111-4111-8111-111111111111";
   let active = true;
+  let rateLimited = false;
   let gatewayCalls = 0;
 
   globalThis.fetch = async (input, options) => {
@@ -86,6 +87,12 @@ test("documentation endpoint verifies active users via Data API gateway and serv
       assert.equal(parsedUrl.searchParams.get("id"), `eq.${userId}`);
       assert.equal(parsedUrl.searchParams.get("status"), "eq.active");
       assert.equal(parsedUrl.searchParams.get("limit"), "1");
+      if (rateLimited) {
+        return new Response(null, {
+          status: 429,
+          headers: { "Retry-After": "30" },
+        });
+      }
       return Response.json(active ? [{ id: userId, status: "active" }] : []);
     }
     throw new Error(`Unexpected request: ${request.url}`);
@@ -161,6 +168,19 @@ test("documentation endpoint verifies active users via Data API gateway and serv
     assert.equal(res.statusCode, 200);
     assert.equal(res.headers["Content-Type"], "text/markdown; charset=utf-8");
 
+    rateLimited = true;
+    res = response();
+    await handler(
+      {
+        method: "GET",
+        query: { document: "guide" },
+        headers: { authorization: "Bearer valid-token" },
+      },
+      res,
+    );
+    assert.equal(res.statusCode, 429);
+    assert.equal(res.headers["Retry-After"], "30");
+    rateLimited = false;
     active = false;
     res = response();
     await handler(
@@ -172,7 +192,7 @@ test("documentation endpoint verifies active users via Data API gateway and serv
       res,
     );
     assert.equal(res.statusCode, 403);
-    assert.equal(gatewayCalls, 3);
+    assert.equal(gatewayCalls, 4);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldUrl === undefined) delete process.env.SUPABASE_URL;

@@ -130,18 +130,10 @@ export default function AuditLogPage() {
       subtitle="Review record views, changes, and sign-ins within your department."
     />
   );
-  if (audit.isError && !audit.data)
-    return (
-      <>
-        {heading}
-        <QueryMessage query={audit} label="the audit log" />
-      </>
-    );
-
   return (
     <AccountSkeleton
       id="dh-audit-log"
-      data={audit.data}
+      data={audit.isError ? [] : audit.data}
       sample={AUDIT_SKELETON_SAMPLE}
       label="Loading the audit log…"
     >
@@ -243,7 +235,11 @@ export default function AuditLogPage() {
                 </div>
               </div>
             </div>
-            {isUpdating ? (
+            {audit.isError ? (
+              <div className="p-5">
+                <QueryMessage query={audit} label="the audit log" />
+              </div>
+            ) : isUpdating ? (
               <p
                 role="status"
                 className="px-5 py-8 text-center text-sm text-muted-foreground"
@@ -264,7 +260,7 @@ export default function AuditLogPage() {
               />
             )}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-              {!isUpdating && (
+              {!isUpdating && !audit.isError && (
                 <span role="status" aria-live="polite" aria-atomic="true">
                   {events.length} matching{" "}
                   {events.length === 1 ? "event" : "events"} of{" "}
