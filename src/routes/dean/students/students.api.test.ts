@@ -113,8 +113,8 @@ describe("students.api", () => {
     const pageSize = 20;
     const pageTwoCourseId = "00000025-0000-4000-8000-000000000010";
     const pageTwoOfferingId = "00000025-0000-4000-8000-000000000011";
-    const courseOffsets: string[] = [];
-    const offeringOffsets: string[] = [];
+    const courseRequests: { id: string | null; offset: number }[] = [];
+    const offeringRequests: typeof courseRequests = [];
 
     const courses = Array.from({ length: total }, (_, i) => ({
       id:
@@ -143,42 +143,51 @@ describe("students.api", () => {
       instructor: null,
     }));
 
-    saaisMockServer.use(
-      http.get("*/rest/v1/course", ({ request }) => {
-        const offset = Number(
-          new URL(request.url).searchParams.get("offset") ?? "0",
-        );
-        courseOffsets.push(String(offset));
-        const slice = courses.slice(offset, offset + pageSize);
-        return HttpResponse.json(slice, {
-          headers: {
-            "Content-Range": `${offset}-${offset + slice.length - 1}/${courses.length}`,
-          },
-        });
-      }),
-      http.get("*/rest/v1/course_offering", ({ request }) => {
-        const offset = Number(
-          new URL(request.url).searchParams.get("offset") ?? "0",
-        );
-        offeringOffsets.push(String(offset));
-        const slice = offerings.slice(offset, offset + pageSize);
-        return HttpResponse.json(slice, {
-          headers: {
-            "Content-Range": `${offset}-${offset + slice.length - 1}/${offerings.length}`,
-          },
-        });
-      }),
-    );
+    function serveCatalogPage<T extends { id: string }>(
+      request: Request,
+      rows: T[],
+      requests: typeof courseRequests,
+    ) {
+      const query = new URL(request.url).searchParams;
+      const id = query.get("id");
+      const offset = Number(query.get("offset") ?? "0");
+      requests.push({ id, offset });
+      const ids = id?.match(/^in\.\((.+)\)$/)?.[1].split(",");
+      const matches = ids ? rows.filter((row) => ids.includes(row.id)) : rows;
+      const page = matches.slice(offset, offset + pageSize);
+      return HttpResponse.json(page, {
+        headers: {
+          "Content-Range": `${offset}-${offset + page.length - 1}/${matches.length}`,
+        },
+      });
+    }
 
+    saaisMockServer.use(
+      http.get("*/rest/v1/course", ({ request }) =>
+        serveCatalogPage(request, courses, courseRequests),
+      ),
+      http.get("*/rest/v1/course_offering", ({ request }) =>
+        serveCatalogPage(request, offerings, offeringRequests),
+      ),
+    );
+    const courseIds = courses.slice(2).map((row) => row.id);
+    const offeringIds = offerings.slice(2).map((row) => row.id);
     const [loadedCourses, loadedOfferings] = await Promise.all([
-      getDeanCourses(courses.map((row) => row.id)),
-      getDeanCourseOfferings(offerings.map((row) => row.id)),
+      getDeanCourses(courseIds),
+      getDeanCourseOfferings(offeringIds),
     ]);
 
-    expect(courseOffsets).toEqual(["0", "20"]);
-    expect(offeringOffsets).toEqual(["0", "20"]);
-    expect(loadedCourses).toHaveLength(total);
-    expect(loadedOfferings).toHaveLength(total);
+    expect(courseRequests).toEqual(
+      [0, 20].map((offset) => ({ id: `in.(${courseIds.join(",")})`, offset })),
+    );
+    expect(offeringRequests).toEqual(
+      [0, 20].map((offset) => ({
+        id: `in.(${offeringIds.join(",")})`,
+        offset,
+      })),
+    );
+    expect(loadedCourses.map((row) => row.id)).toEqual(courseIds);
+    expect(loadedOfferings.map((row) => row.id)).toEqual(offeringIds);
     const offering = loadedOfferings.find((o) => o.id === pageTwoOfferingId);
     const course = loadedCourses.find((c) => c.id === offering?.course_id);
     expect(course?.code).toBe("CSCI 299");

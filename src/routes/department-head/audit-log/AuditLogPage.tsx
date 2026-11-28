@@ -49,6 +49,7 @@ export default function AuditLogPage() {
   const dateError = Boolean(
     filters.from && filters.to && filters.from > filters.to,
   );
+  const isUpdating = audit.isPlaceholderData && !dateError;
   const events = filterAuditEvents(auditEvents, filters);
   const tableRows = events.map((event) => ({
     id: event.id,
@@ -242,26 +243,37 @@ export default function AuditLogPage() {
                 </div>
               </div>
             </div>
-            <AuditLogTable
-              ariaLabel="Department audit log"
-              columns={tableColumns}
-              rows={tableRows}
-              rowKey={(row) => row.id}
-              empty={
-                dateError
-                  ? "Choose a valid date range to view events."
-                  : "No entries match these filters."
-              }
-            />
+            {isUpdating ? (
+              <p
+                role="status"
+                className="px-5 py-8 text-center text-sm text-muted-foreground"
+              >
+                Loading audit entries for this date range…
+              </p>
+            ) : (
+              <AuditLogTable
+                ariaLabel="Department audit log"
+                columns={tableColumns}
+                rows={tableRows}
+                rowKey={(row) => row.id}
+                empty={
+                  dateError
+                    ? "Choose a valid date range to view events."
+                    : "No entries match these filters."
+                }
+              />
+            )}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-              <span role="status" aria-live="polite" aria-atomic="true">
-                {events.length} matching{" "}
-                {events.length === 1 ? "event" : "events"} of{" "}
-                {auditEvents.length}
-                {auditEvents.length >= DEPARTMENT_AUDIT_LIMIT &&
-                  ` (latest ${DEPARTMENT_AUDIT_LIMIT}; narrow the date range to find older entries)`}
-              </span>
-              <span>DCST department scope</span>
+              {!isUpdating && (
+                <span role="status" aria-live="polite" aria-atomic="true">
+                  {events.length} matching{" "}
+                  {events.length === 1 ? "event" : "events"} of{" "}
+                  {auditEvents.length}
+                  {auditEvents.length >= DEPARTMENT_AUDIT_LIMIT &&
+                    ` (latest ${DEPARTMENT_AUDIT_LIMIT}; narrow the date range to find older entries)`}
+                </span>
+              )}
+              <span className="ml-auto">DCST department scope</span>
             </div>
           </Panel>
         </>

@@ -35,6 +35,14 @@ Set these secrets for `mail-delivery` and redeploy:
 - `SAAIS_MAIL_WORKER_SECRET` — shared secret checked via the `x-saais-mail-secret` header
 - `SAAIS_MAIL_ALLOWED_RECIPIENTS` (staging/test) or `SAAIS_MAIL_ENVIRONMENT=production` (unrestricted production with `SAAIS_MAIL_ALLOWED_RECIPIENTS` unset)
 
+## 4. Schedule the Mail Worker
+
+Configure Supabase Cron to send an HTTPS POST to
+`/functions/v1/mail-delivery` on the Supabase project URL every minute
+(`* * * * *`). Set the `x-saais-mail-secret` header from the scheduler's
+secret store to the same value as `SAAIS_MAIL_WORKER_SECRET`. Verify a
+successful scheduled run with an authorized test mailbox.
+
 ## Delivery and retries
 
 Invites, resends, and committed student imports queue mail before responding.

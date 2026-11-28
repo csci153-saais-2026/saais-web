@@ -5723,14 +5723,23 @@ export const saaisMswHandlers = [
           "The attempt changed since the flag was raised.",
         );
       if (body.resolution_action === "correct") {
+        if (
+          currentAttempt.completion_grade != null ||
+          currentAttempt.resolved_at != null ||
+          db.incResolutions.some(
+            (resolution) =>
+              resolution.attempt_id === currentAttempt.id &&
+              resolution.student_id === currentAttempt.student_id,
+          )
+        ) {
+          return errorJson(
+            409,
+            "INC_COMPLETION_EXISTS",
+            "Use the INC completion correction operation.",
+          );
+        }
         const result = { ...currentAttempt };
         if (flag.reported_stage === "midterm") {
-          if (currentAttempt.completion_grade != null)
-            return errorJson(
-              409,
-              "INC_COMPLETION_EXISTS",
-              "Use the INC completion correction operation.",
-            );
           if (
             body.corrected_midterm_status != null &&
             !["graded", "dr"].includes(body.corrected_midterm_status)
@@ -5828,21 +5837,6 @@ export const saaisMswHandlers = [
               body.corrected_status === "inc" &&
               body.corrected_grade == null
             ) {
-              if (
-                currentAttempt.completion_grade != null ||
-                currentAttempt.resolved_at != null ||
-                db.incResolutions.some(
-                  (resolution) =>
-                    resolution.attempt_id === currentAttempt.id &&
-                    resolution.student_id === currentAttempt.student_id,
-                )
-              ) {
-                return errorJson(
-                  409,
-                  "INC_COMPLETION_EXISTS",
-                  "Use the INC completion correction operation.",
-                );
-              }
               const deadline = term?.default_inc_deadline;
               if (!deadline)
                 return errorJson(

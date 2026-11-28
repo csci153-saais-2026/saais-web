@@ -461,6 +461,7 @@ test(
   async (t) => {
     const tasks = [];
     const transport = Promise.withResolvers();
+    let workerSecret;
     const original = Object.getOwnPropertyDescriptor(globalThis, "EdgeRuntime");
     Object.defineProperty(globalThis, "EdgeRuntime", {
       configurable: true,
@@ -477,7 +478,9 @@ test(
       fetch: async (url, options) => {
         if (url.endsWith("/auth/v1/user")) return Response.json({ id });
         if (url.endsWith("/functions/v1/mail-delivery")) {
-          assert.equal(options.headers["x-saais-mail-secret"], "worker-secret");
+          workerSecret = new Headers(options.headers).get(
+            "x-saais-mail-secret",
+          );
           return transport.promise;
         }
         const rpc = JSON.parse(options.body);
@@ -494,6 +497,7 @@ test(
     );
     assert.equal(response.status, 200);
     assert.equal(tasks.length, 1);
+    assert.equal(workerSecret, "worker-secret");
     transport.resolve(Response.json({ sent: 1 }));
     await tasks[0];
   },

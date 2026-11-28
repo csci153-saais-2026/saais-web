@@ -7,6 +7,11 @@ import {
 
 export const DEAN_AUDIT_LIMIT = 1000;
 
+function subMillisecondMicros(timestamp: string): number {
+  const digits = /\.\d{3}(\d{1,3})/.exec(timestamp)?.[1];
+  return digits ? Number(digits.padEnd(3, "0")) : 0;
+}
+
 export async function getDeanAuditLogEntries(
   signal?: AbortSignal,
   student?: { id: string; number: string },
@@ -27,6 +32,8 @@ export async function getDeanAuditLogEntries(
       .sort(
         (a, b) =>
           Date.parse(b.created_at) - Date.parse(a.created_at) ||
+          subMillisecondMicros(b.created_at) -
+            subMillisecondMicros(a.created_at) ||
           b.id.localeCompare(a.id),
       )
       .slice(0, DEAN_AUDIT_LIMIT);
