@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Student Academic Advising Information System (SAAIS) API
-  version: 0.4.0
+  version: 0.4.1
   description: >-
     Target SAAIS API contract: read-only PostgREST projections and authenticated transactional Edge
     Function writes. The confirmed SRS governs business rules across the six assignable roles

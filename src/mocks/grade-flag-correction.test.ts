@@ -81,6 +81,38 @@ describe("flag midterm corrections", () => {
     });
   });
 
+  it.each([
+    ["midterm", 200],
+    ["final", 400],
+    [null, 400],
+  ] as const)(
+    "uses the stored %s stage for intermediate grades",
+    async (stage, status) => {
+      loginAsMockPersona("adviser");
+      const db = getMockDatabase();
+      const flag = db.gradeFlags.find((f) => f.id === MOCK_IDS.gradeFlag1)!;
+      const attempt = db.attemptResults.find((a) => a.id === flag.attempt_id)!;
+      flag.reported_stage = stage;
+      const response = await client().POST(
+        "/functions/v1/grade-flags/{flag_id}/resolve",
+        {
+          params: { path: { flag_id: flag.id } },
+          body: {
+            resolution_action: "correct",
+            resolution_note: "Grade-stage check",
+            expected_revision: attempt.revision,
+            corrected_grade: 4.75,
+          },
+        },
+      );
+      expect(response.response.status).toBe(status);
+      expect(db.attemptResults.find((a) => a.id === attempt.id)).toMatchObject({
+        midterm_grade: stage === "midterm" ? 4.75 : attempt.midterm_grade,
+        final_grade: attempt.final_grade,
+      });
+    },
+  );
+
   it("validates final grades against their derived status and initializes INC deadlines", async () => {
     loginAsMockPersona("adviser");
     const db = getMockDatabase();

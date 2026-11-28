@@ -210,14 +210,14 @@ describe("selected grade actions", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Correct grade" }),
     );
-    expect(screen.queryAllByRole("option", { name: "4.75" })).toHaveLength(0);
+    expect(screen.getAllByRole("option", { name: "4.75" })).toHaveLength(1);
     expect(screen.getAllByRole("option", { name: "5.00" })).toHaveLength(2);
     expect(
       screen.getAllByRole("option", { name: "DR" }).length,
     ).toBeGreaterThan(0);
     expect(screen.getByRole("option", { name: "INC" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Midterm grade"), {
-      target: { value: "1.75" },
+      target: { value: "4.75" },
     });
     fireEvent.change(screen.getByLabelText("Reason for change"), {
       target: { value: "Correction" },
@@ -229,7 +229,7 @@ describe("selected grade actions", () => {
     expect(correctGrade).toHaveBeenCalledWith(
       "student-one",
       ordinary,
-      1.75,
+      4.75,
       "Correction",
       "midterm",
     );

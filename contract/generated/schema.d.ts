@@ -3093,7 +3093,7 @@ export interface components {
             /** @description Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during grade recording. */
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | 5 | null;
+            midterm_grade?: number | null;
             final_grade?: number | 5 | null;
             /** @enum {string|null} */
             status?: "inc" | "dr" | "na" | null;
@@ -3119,7 +3119,7 @@ export interface components {
             /** @description Optional justification recorded when `curriculum_term_course_id` maps an elective attempt to an elective curriculum slot during term encoding. */
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | 5 | null;
+            midterm_grade?: number | null;
             final_grade?: number | 5 | null;
             status?: components["schemas"]["AttemptStatus"];
             instructor?: string | null;
@@ -3141,7 +3141,7 @@ export interface components {
             expected_revision: number;
             status?: components["schemas"]["AttemptStatus"];
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | 5 | null;
+            midterm_grade?: number | null;
             final_grade?: number | 5 | null;
             instructor?: string | null;
             reason: string;
@@ -3763,7 +3763,8 @@ export interface components {
         GradeFlagResolveRequest: {
             /** @enum {string} */
             resolution_action: "correct" | "reject";
-            corrected_grade?: number | 5 | null;
+            /** @description The server uses the flag's stored reported_stage. Midterm corrections accept 1.00 through 5.00 in quarter steps. Final corrections and flags with no stage accept 1.00 through 3.00 in quarter steps or 5.00. */
+            corrected_grade?: number | null;
             corrected_status?: components["schemas"]["AttemptStatus"] | null;
             corrected_midterm_status?: components["schemas"]["MidtermStatus"] | null;
             resolution_note: string;
@@ -3781,7 +3782,7 @@ export interface components {
             /** @description Optional justification recorded when `curriculum_term_course_id` maps an imported elective attempt to an elective curriculum slot. */
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
-            midterm_grade?: number | 5 | null;
+            midterm_grade?: number | null;
             final_grade?: number | 5 | null;
             status?: components["schemas"]["AttemptStatus"];
             instructor?: string | null;

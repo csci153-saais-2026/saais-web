@@ -1,6 +1,9 @@
 import { http, HttpResponse } from "msw";
 import type { ApiSchema } from "@/lib/api/types";
-import { isOnGradeScale } from "@/lib/validation/grade-scale";
+import {
+  isOnGradeScale,
+  isOnMidtermGradeScale,
+} from "@/lib/validation/grade-scale";
 import {
   canAccessDepartment,
   canAccessFaculty,
@@ -4772,7 +4775,7 @@ export const saaisMswHandlers = [
         (body.midterm_grade != null &&
           (typeof body.midterm_grade !== "number" ||
             !Number.isFinite(body.midterm_grade) ||
-            !isOnGradeScale(body.midterm_grade))) ||
+            !isOnMidtermGradeScale(body.midterm_grade))) ||
         (body.final_grade != null &&
           (typeof body.final_grade !== "number" ||
             !Number.isFinite(body.final_grade) ||
@@ -4918,7 +4921,7 @@ export const saaisMswHandlers = [
             (row.midterm_grade != null &&
               (typeof row.midterm_grade !== "number" ||
                 !Number.isFinite(row.midterm_grade) ||
-                !isOnGradeScale(row.midterm_grade))) ||
+                !isOnMidtermGradeScale(row.midterm_grade))) ||
             (row.final_grade != null &&
               (typeof row.final_grade !== "number" ||
                 !Number.isFinite(row.final_grade) ||
@@ -5130,11 +5133,10 @@ export const saaisMswHandlers = [
         "final_grade",
         "instructor",
       ];
-      const validGrade = (value: unknown) =>
-        value === null ||
-        (typeof value === "number" &&
-          Number.isFinite(value) &&
-          isOnGradeScale(value));
+      const validGrade = (
+        value: unknown,
+        isAllowed: (grade: number) => boolean,
+      ) => value === null || (typeof value === "number" && isAllowed(value));
       if (
         !body ||
         Object.keys(body).some((key) => !allowed.includes(key)) ||
@@ -5144,8 +5146,10 @@ export const saaisMswHandlers = [
         typeof body.reason !== "string" ||
         !body.reason.trim() ||
         body.reason.length > 2000 ||
-        ("final_grade" in body && !validGrade(body.final_grade)) ||
-        ("midterm_grade" in body && !validGrade(body.midterm_grade)) ||
+        ("final_grade" in body &&
+          !validGrade(body.final_grade, isOnGradeScale)) ||
+        ("midterm_grade" in body &&
+          !validGrade(body.midterm_grade, isOnMidtermGradeScale)) ||
         ("status" in body &&
           ![
             "passed",
@@ -5409,6 +5413,18 @@ export const saaisMswHandlers = [
       const body = (await request
         .json()
         .catch(() => ({}))) as ApiSchema<"PrerequisiteGradeCorrectionRequest">;
+      if (
+        !body ||
+        typeof body.final_grade !== "number" ||
+        body.final_grade > 3 ||
+        !isOnGradeScale(body.final_grade)
+      ) {
+        return errorJson(
+          400,
+          "INVALID_INPUT",
+          "Provide a passing prerequisite grade from 1.00 to 3.00 in quarter steps.",
+        );
+      }
       const result: ApiSchema<"AttemptResult"> = {
         id: attemptId,
         student_id: studentId,
@@ -5417,7 +5433,7 @@ export const saaisMswHandlers = [
         recorded_status: "passed",
         midterm_status: "graded",
         midterm_grade: 2.0,
-        final_grade: body.final_grade ?? 2.25,
+        final_grade: body.final_grade,
         inc_deadline: null,
         instructor: "Prof. Maria Clara Santos",
         prerequisite_override: false,
@@ -5430,7 +5446,7 @@ export const saaisMswHandlers = [
         completion_grade: null,
         resolved_at: null,
         effective_status: "passed",
-        gwa_grade: body.final_grade ?? 2.25,
+        gwa_grade: body.final_grade,
         is_lapsed_inc: false,
         is_repeated: false,
         counts_toward_cumulative_gwa: false,
@@ -5661,7 +5677,7 @@ export const saaisMswHandlers = [
         id: nextSyntheticUuid(),
         student_id: studentId,
         attempt_id: body.attempt_id,
-        reported_stage: body.reported_stage ?? "midterm",
+        reported_stage: body.reported_stage ?? null,
         reported_grade_text: body.reported_grade_text ?? null,
         issue_type: body.issue_type,
         details: body.details,
@@ -5784,7 +5800,7 @@ export const saaisMswHandlers = [
           if (
             body.corrected_grade != null &&
             (!Number.isFinite(body.corrected_grade) ||
-              !isOnGradeScale(body.corrected_grade))
+              !isOnMidtermGradeScale(body.corrected_grade))
           )
             return errorJson(
               400,
@@ -5988,14 +6004,13 @@ export const saaisMswHandlers = [
           : final <= 3
             ? "passed"
             : "failed");
-      const validGrade = (grade: unknown) =>
-        grade == null ||
-        (typeof grade === "number" &&
-          Number.isFinite(grade) &&
-          isOnGradeScale(grade));
+      const validGrade = (
+        grade: unknown,
+        isAllowed: (value: number) => boolean,
+      ) => grade == null || (typeof grade === "number" && isAllowed(grade));
       const invalid =
-        !validGrade(row.midterm_grade) ||
-        !validGrade(row.final_grade) ||
+        !validGrade(row.midterm_grade, isOnMidtermGradeScale) ||
+        !validGrade(row.final_grade, isOnGradeScale) ||
         !["passed", "failed", "currently_enrolled", "inc", "dr", "na"].includes(
           status,
         ) ||
