@@ -9,14 +9,14 @@ const id = "00000001-0000-4000-8000-000000000000";
 const session = "00000001-0000-4000-8000-000000000001";
 const env = { url: "https://supabase.example.test", serviceKey: "service-key" };
 const token = "a".repeat(64);
-const webhookUrl = "https://script.google.com/macros/s/AKfycb_fixture/exec";
 const settings = {
   SUPABASE_URL: env.url,
   SUPABASE_SERVICE_ROLE_KEY: env.serviceKey,
   SAAIS_MAIL_WORKER_SECRET: "worker-secret",
-  SAAIS_GOOGLE_MAILER_URL: webhookUrl,
-  SAAIS_GOOGLE_MAILER_SECRET: "gas-secret",
-  SAAIS_MAIL_FROM: "SAAIS Advising <fixture@vsu.edu.ph>",
+  SAAIS_GMAIL_CLIENT_ID: "gmail-client-id",
+  SAAIS_GMAIL_CLIENT_SECRET: "gmail-client-secret",
+  SAAIS_GMAIL_REFRESH_TOKEN: "gmail-refresh-token",
+  SAAIS_MAIL_FROM: "SAAIS Advising <fixture@gmail.com>",
   SAAIS_SITE_URL: "https://site.example.test",
 };
 
@@ -29,7 +29,14 @@ function send(handler, secret = "worker-secret") {
   );
 }
 
-test("mail delivery retries transient Apps Script errors with the same idempotencyKey", async () => {
+function decodeMime(rawBase64Url) {
+  const mime = Buffer.from(rawBase64Url, "base64url").toString("utf8");
+  const [headerBlock, bodyBase64] = mime.split("\r\n\r\n");
+  const body = Buffer.from(bodyBase64, "base64").toString("utf8");
+  return { headerBlock, body };
+}
+
+test("mail delivery refreshes OAuth once per run and retries transient Gmail API errors", async () => {
   const mail = {
     id,
     lease: session,
@@ -43,9 +50,8 @@ test("mail delivery retries transient Apps Script errors with the same idempoten
     (name) =>
       ({ ...settings, SAAIS_MAIL_ALLOWED_RECIPIENTS: mail.email })[name],
   );
-  assert.equal(config.senderName, "SAAIS Advising");
-
-  const keys = [];
+  let tokenRefreshes = 0;
+  let sendAttempts = 0;
   const outcomes = [];
   const handler = createMailHandler(config, async (url, options) => {
     if (url.endsWith("/saais_claim_email")) {
@@ -58,55 +64,52 @@ test("mail delivery retries transient Apps Script errors with the same idempoten
       outcomes.push(JSON.parse(options.body).p_outcome);
       return new Response(null, { status: 204 });
     }
-    assert.equal(url, webhookUrl);
-    assert.equal(options.redirect, "follow");
-    const sent = JSON.parse(options.body);
-    keys.push(sent.idempotencyKey);
-    assert.equal(sent.secret, "gas-secret");
-    assert.equal(sent.to, mail.email);
-    assert.equal(sent.fromName, "SAAIS Advising");
-    assert.ok(sent.text.includes("/invite#token="));
-
-    if (keys.length === 1) {
-      return Response.json({ ok: false, retry: true, error: "quota" });
+    if (url === "https://oauth2.googleapis.com/token") {
+      tokenRefreshes++;
+      const params = new URLSearchParams(options.body);
+      assert.equal(params.get("client_id"), "gmail-client-id");
+      assert.equal(params.get("client_secret"), "gmail-client-secret");
+      assert.equal(params.get("refresh_token"), "gmail-refresh-token");
+      assert.equal(params.get("grant_type"), "refresh_token");
+      return Response.json({ access_token: "access-token-1" });
     }
-    if (keys.length === 2) {
-      return new Response("<html>Apps Script error</html>", {
-        status: 200,
-        headers: { "Content-Type": "text/html" },
-      });
-    }
-    return Response.json({ ok: true });
+    assert.equal(
+      url,
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    );
+    assert.equal(options.headers.Authorization, "Bearer access-token-1");
+    sendAttempts++;
+    const { headerBlock, body } = decodeMime(JSON.parse(options.body).raw);
+    assert.match(headerBlock, /^From: "SAAIS Advising" <fixture@gmail\.com>/m);
+    assert.match(headerBlock, /^To: mail-fixture@example\.test$/m);
+    assert.ok(body.includes("/invite#token="));
+    return new Response(null, { status: sendAttempts === 1 ? 429 : 200 });
   });
 
   assert.equal((await send(handler, "wrong")).status, 401);
   assert.equal((await send(handler)).status, 200);
   assert.equal((await send(handler)).status, 200);
-  assert.equal((await send(handler)).status, 200);
-  assert.equal(keys[0], keys[1]);
-  assert.equal(keys[1], keys[2]);
-  assert.deepEqual(outcomes, ["retry", "retry", "sent"]);
+  assert.equal(tokenRefreshes, 2);
+  assert.deepEqual(outcomes, ["retry", "sent"]);
 });
 
-test("Apps Script permanent rejections mark mail failed and Workspace URLs are accepted", async () => {
-  const workspaceUrl =
-    "https://script.google.com/a/macros/vsu.edu.ph/s/AKfycb_ws/exec";
+test("token refresh failures retry claimed mail and permanent 400 rejections mark failed", async () => {
   const mail = {
     id,
     lease: session,
     kind: "notification",
-    email: "bad-recipient@example.test",
-    subject: "Notification",
-    message: "Check your account.",
+    email: "mail-fixture@example.test",
+    subject: "Advising update — review required",
+    message: "Sign in to SAAIS to read your new notification.",
     token: null,
   };
-  const finished = [];
+  const outcomes = [];
+  let failToken = true;
   const handler = createMailHandler(
     readMailEnvironment(
       (name) =>
         ({
           ...settings,
-          SAAIS_GOOGLE_MAILER_URL: workspaceUrl,
           SAAIS_MAIL_FROM: undefined,
           SAAIS_MAIL_ALLOWED_RECIPIENTS: mail.email,
         })[name],
@@ -114,44 +117,39 @@ test("Apps Script permanent rejections mark mail failed and Workspace URLs are a
     async (url, options) => {
       if (url.endsWith("/saais_claim_email")) return Response.json([mail]);
       if (url.endsWith("/saais_finish_email")) {
-        finished.push(JSON.parse(options.body).p_outcome);
+        outcomes.push(JSON.parse(options.body).p_outcome);
         return new Response(null, { status: 204 });
       }
-      assert.equal(url, workspaceUrl);
-      assert.equal(JSON.parse(options.body).fromName, "SAAIS");
-      return Response.json({ ok: false, retry: false, error: "invalid" });
+      if (url === "https://oauth2.googleapis.com/token") {
+        if (failToken) return new Response(null, { status: 400 });
+        return Response.json({ access_token: "access-token-2" });
+      }
+      const { headerBlock, body } = decodeMime(JSON.parse(options.body).raw);
+      assert.doesNotMatch(headerBlock, /^From:/m);
+      assert.match(headerBlock, /^Subject: =\?UTF-8\?B\?/m);
+      assert.equal(body, mail.message);
+      return new Response(null, { status: 400 });
     },
   );
+
   assert.equal((await send(handler)).status, 200);
-  assert.deepEqual(finished, ["failed"]);
+  failToken = false;
+  assert.equal((await send(handler)).status, 200);
+  assert.deepEqual(outcomes, ["retry", "failed"]);
 });
 
-test("invalid Apps Script URLs fail closed with 503", async () => {
-  for (const badUrl of [
-    "",
-    "http://script.google.com/macros/s/AKfycb_fixture/exec",
-    "https://evil.example.test/macros/s/AKfycb_fixture/exec",
-    "https://script.google.com/macros/s/AKfycb_fixture/dev",
-    "https://user:pass@script.google.com/macros/s/AKfycb_fixture/exec",
-  ]) {
-    let calls = 0;
-    const handler = createMailHandler(
-      readMailEnvironment(
-        (name) =>
-          ({
-            ...settings,
-            SAAIS_GOOGLE_MAILER_URL: badUrl,
-            SAAIS_MAIL_ALLOWED_RECIPIENTS: "allowed@example.test",
-          })[name],
-      ),
-      async () => {
-        calls++;
-        throw new Error("Invalid mailer URL must make no upstream request");
-      },
-    );
-    assert.equal((await send(handler)).status, 503);
-    assert.equal(calls, 0);
-  }
+test("empty queues do not request an OAuth access token", async () => {
+  const config = readMailEnvironment(
+    (name) =>
+      ({ ...settings, SAAIS_MAIL_ALLOWED_RECIPIENTS: "allowed@example.test" })[
+        name
+      ],
+  );
+  const handler = createMailHandler(config, async (url) => {
+    if (url.endsWith("/saais_claim_email")) return Response.json([]);
+    throw new Error(`Unexpected upstream call: ${url}`);
+  });
+  assert.equal((await send(handler)).status, 200);
 });
 
 test("invitation links keep the site's base path", async () => {
@@ -189,8 +187,11 @@ test("invitation links keep the site's base path", async () => {
         if (url.endsWith("/saais_claim_email")) return Response.json([mail]);
         if (url.endsWith("/saais_finish_email"))
           return new Response(null, { status: 204 });
-        text = JSON.parse(options.body).text;
-        return Response.json({ ok: true });
+        if (url === "https://oauth2.googleapis.com/token") {
+          return Response.json({ access_token: "access-token" });
+        }
+        text = decodeMime(JSON.parse(options.body).raw).body;
+        return new Response(null, { status: 200 });
       },
     );
     assert.equal((await send(handler)).status, 200);
@@ -243,6 +244,9 @@ test("an unapproved queued invitation is held, then sent after the allowlist is 
           })[name],
       ),
       async (url, options) => {
+        if (url === "https://oauth2.googleapis.com/token") {
+          return Response.json({ access_token: "access-token" });
+        }
         const body = JSON.parse(options.body);
         if (url.endsWith("/saais_claim_email")) {
           if (
@@ -261,10 +265,12 @@ test("an unapproved queued invitation is held, then sent after the allowlist is 
           state = "sent";
           return new Response(null, { status: 204 });
         }
-        assert.equal(url, webhookUrl);
-        assert.equal(body.to, mail.email);
+        assert.equal(
+          url,
+          "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        );
         providerCalls++;
-        return Response.json({ ok: true });
+        return new Response(null, { status: 200 });
       },
     );
 
