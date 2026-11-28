@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import migration from "../../supabase/migrations/20261128000200_notification_target_routes.sql?raw";
+import migration from "../../supabase/migrations/20261128000400_complete_notification_routes.sql?raw";
 import { isAuthorizedNotificationRoute } from "./use-notifications";
 
 const rows = [
@@ -9,6 +9,18 @@ const rows = [
 describe("database notification routes", () => {
   it("reads the route list from the migration", () => {
     expect(rows.length).toBeGreaterThan(50);
+  });
+
+  it.each([
+    ["inc_deadline_approaching", "department_head"],
+    ["credit_decision_recorded", "adviser"],
+    ["term_override_toggled", "department_staff"],
+    ["term_override_toggled", "dean"],
+    ["encoding_deadline_approaching", "dean"],
+  ])("covers %s for %s", (event, role) => {
+    expect(rows.some((row) => row.event === event && row.role === role)).toBe(
+      true,
+    );
   });
 
   it.each(rows)("$event opens $route for $role", ({ role, route }) => {
