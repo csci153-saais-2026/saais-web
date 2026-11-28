@@ -68,10 +68,14 @@ async function readPages<T>(
 }
 
 async function readBatches<T>(
-  ids: readonly string[],
+  ids: readonly (string | null | undefined)[],
   read: (filter: string, offset: number) => Promise<T[]>,
 ): Promise<T[]> {
-  const uniqueIds = [...new Set(ids)];
+  const uniqueIds = [
+    ...new Set(
+      ids.filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
   const rows: T[] = [];
   for (let start = 0; start < uniqueIds.length; start += 50) {
     const filter = postgrestFilter.inList(uniqueIds.slice(start, start + 50));

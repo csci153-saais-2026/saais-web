@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useDepartmentHeadQueryKey } from "./use-dh-query-key";
 import { useHeadDepartmentIds } from "./use-head-department-ids";
 import {
@@ -37,6 +42,7 @@ export const useAuditEvents = (from: string, to: string) =>
   useQuery({
     queryKey: [...useDepartmentHeadQueryKey(keys.audit), from, to],
     queryFn: () => getAuditEvents(undefined, { from, to }),
+    placeholderData: keepPreviousData,
   });
 export const useStudentAuditEvents = (studentId: string) =>
   useQuery({
