@@ -14,10 +14,8 @@ properties:
     anyOf:
       - type: number
         minimum: 1
-        maximum: 3
+        maximum: 5
         multipleOf: 0.25
-      - type: number
-        const: 5
       - type: "null"
   final_grade:
     anyOf:

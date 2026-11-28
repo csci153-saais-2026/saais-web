@@ -199,6 +199,34 @@ describe("grade flag identity", () => {
       }),
     );
   });
+  it("submits an intermediate grade for the selected midterm flag", async () => {
+    vi.mocked(getFlags).mockResolvedValue(data);
+    vi.mocked(resolveFlag).mockResolvedValue({} as ApiSchema<"GradeFlag">);
+    render(
+      <MemoryRouter>
+        <Flags />
+      </MemoryRouter>,
+    );
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Fix grade" }))[1]!,
+    );
+    fireEvent.change(screen.getByLabelText("Corrected grade"), {
+      target: { value: "3.25" },
+    });
+    fireEvent.change(screen.getByLabelText("Reason for change"), {
+      target: { value: "Checked the midterm" },
+    });
+    fireEvent.click(screen.getByLabelText("I reviewed the current grade"));
+    fireEvent.click(screen.getByRole("button", { name: "Save correction" }));
+    await waitFor(() =>
+      expect(resolveFlag).toHaveBeenCalledWith("flag-one", {
+        resolution_action: "correct",
+        resolution_note: "Checked the midterm",
+        expected_revision: 1,
+        corrected_grade: 3.25,
+      }),
+    );
+  });
   it("requires reviewing the refreshed grade after a stale response, including after a failed reload", async () => {
     const refreshed = {
       ...data,

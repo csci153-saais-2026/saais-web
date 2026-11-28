@@ -69,6 +69,47 @@ describe("grade import safeguards", () => {
       }
     }
   });
+  it.each([3.25, 4.75])(
+    "previews and commits a %s midterm",
+    async (midtermGrade) => {
+      loginAsMockPersona("adviser");
+      const db = getMockDatabase();
+      const student = db.profiles.find(
+        (p) => p.email === "sample.student01@vsu.edu.ph",
+      )!;
+      const offering = db.courseOfferings.find(
+        (o) =>
+          o.school_term_id === MOCK_IDS.term2026Sem1Open &&
+          !db.attemptResults.some(
+            (a) => a.student_id === student.id && a.course_offering_id === o.id,
+          ),
+      )!;
+      const course = db.courses.find((c) => c.id === offering.course_id)!;
+      const term = db.schoolTerms.find(
+        (t) => t.id === offering.school_term_id,
+      )!;
+      const row: ApiSchema<"GradeBatchImportRequest">["rows"][number] = {
+        row_number: 1,
+        student_number: student.student_number!,
+        course_code: course.code,
+        midterm_grade: midtermGrade,
+      };
+      const preview = await client().POST("/functions/v1/grades/import", {
+        body: { mode: "preview", school_term_id: term.id, rows: [row] },
+      });
+      expect(preview.data?.valid_count).toBe(1);
+      const result = await client().POST("/functions/v1/grades/import", {
+        body: { mode: "commit", school_term_id: term.id, rows: [row] },
+      });
+      expect(result.data?.imported_count).toBe(1);
+      expect(
+        db.attemptResults.find(
+          (a) =>
+            a.student_id === student.id && a.course_offering_id === offering.id,
+        ),
+      ).toMatchObject({ midterm_grade: midtermGrade, final_grade: null });
+    },
+  );
   it("uses the selected term deadline for an imported INC", async () => {
     loginAsMockPersona("adviser");
     const db = getMockDatabase();

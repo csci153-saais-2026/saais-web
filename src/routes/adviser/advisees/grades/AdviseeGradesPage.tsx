@@ -49,6 +49,7 @@ import { GradeSelect } from "../../GradeSelect";
 import {
   gradeInputSchema,
   gradeReasonSchema,
+  midtermGradeInputSchema,
 } from "../../record-grades/inc-completion.schema";
 
 const statuses: Record<ApiSchema<"AttemptStatus">, Status> = {
@@ -98,17 +99,17 @@ function GradeAction({
       setError(parsedReason.error.issues[0]?.message ?? "Enter a reason.");
       return;
     }
-    const parseCorrectionGrade = (value: string) =>
+    const parseCorrectionGrade = (value: string, schema = gradeInputSchema) =>
       value === "inc" || value === "dr"
         ? { success: true as const, data: value }
         : value
-          ? gradeInputSchema.safeParse(value)
+          ? schema.safeParse(value)
           : null;
     const parsedGrades =
       inc || completedInc
         ? [grade ? gradeInputSchema.safeParse(grade) : null]
         : [
-            midterm ? parseCorrectionGrade(midterm) : null,
+            parseCorrectionGrade(midterm, midtermGradeInputSchema),
             finalGrade ? parseCorrectionGrade(finalGrade) : null,
           ];
     const invalidGrade = parsedGrades.find(
@@ -208,6 +209,7 @@ function GradeAction({
                   <label className="grid gap-1">
                     Midterm grade
                     <GradeSelect
+                      stage="midterm"
                       allowDrop
                       disabled={completedInc}
                       value={midterm}

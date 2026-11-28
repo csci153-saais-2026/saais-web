@@ -15,7 +15,10 @@ import {
 } from "./encode.api";
 import { isApiClientError, type ApiSchema } from "@/lib/api";
 import { PrerequisiteOverrideDialog } from "./PrerequisiteOverrideDialog";
-import { isOnGradeScale } from "@/lib/validation/grade-scale";
+import {
+  isOnGradeScale,
+  isOnMidtermGradeScale,
+} from "@/lib/validation/grade-scale";
 import { getGrades } from "../advisees/checklist/record.api";
 import { PendingIncs, ExistingCourseRows } from "./ExistingGrades";
 import {
@@ -213,7 +216,6 @@ function TermEditor({
     data
       ?.filter((option) => takenCourseIds.has(option.offering.course_id))
       .map((option) => option.offering.id) ?? [];
-  const validGrade = (value: string) => !value || isOnGradeScale(Number(value));
   const invalid =
     !data ||
     rows.some(
@@ -221,8 +223,10 @@ function TermEditor({
         !row.offering ||
         !data.some((option) => option.offering.id === row.offering) ||
         occupied.includes(row.offering) ||
-        (row.midterm !== "dr" && !validGrade(row.midterm)) ||
-        !validGrade(row.final) ||
+        (row.midterm !== "" &&
+          row.midterm !== "dr" &&
+          !isOnMidtermGradeScale(Number(row.midterm))) ||
+        (row.final !== "" && !isOnGradeScale(Number(row.final))) ||
         (row.status && row.final) ||
         rows.filter((r) => r.offering === row.offering).length > 1,
     );
@@ -340,6 +344,7 @@ function TermEditor({
                         Midterm for {option?.code}
                       </span>
                       <GradeSelect
+                        stage="midterm"
                         allowDrop
                         disabled={busy}
                         placeholder="—"
