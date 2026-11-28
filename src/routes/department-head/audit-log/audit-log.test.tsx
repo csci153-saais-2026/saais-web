@@ -178,8 +178,33 @@ describe("Audit Log screen", () => {
     fireEvent.change(screen.getByLabelText("From date"), {
       target: { value: "2025-08-15" },
     });
-    expect(screen.getByRole("status").textContent).toBe(
-      "1 matching event of 1",
+    await screen.findByText("1 matching event of 1");
+  });
+
+  it("shows a loading message instead of an empty result while dates change", async () => {
+    await openPage();
+    let finishRequest!: () => void;
+    const responseGate = new Promise<void>((resolve) => {
+      finishRequest = resolve;
+    });
+    saaisMockServer.use(
+      http.get("*/rest/v1/audit_log_entry", async () => {
+        await responseGate;
+        return HttpResponse.json([]);
+      }),
     );
+
+    try {
+      fireEvent.change(screen.getByLabelText("From date"), {
+        target: { value: "2026-10-01" },
+      });
+      expect(screen.getByRole("status").textContent).toBe(
+        "Loading audit entries for this date range…",
+      );
+      expect(screen.queryByText("No entries match these filters.")).toBeNull();
+    } finally {
+      finishRequest();
+    }
+    await screen.findByText("No entries match these filters.");
   });
 });

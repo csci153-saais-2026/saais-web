@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, globSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  globSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
@@ -188,4 +195,32 @@ test("the deployed function includes every file the OpenAPI bundle reads", async
     clearBundledOpenApiCache();
     rmSync(deployed, { recursive: true, force: true });
   }
+});
+
+test("the OpenAPI bundle resolves escaped keys and array entries in YAML references", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "saais-docs-pointer-"));
+  t.after(() => {
+    clearBundledOpenApiCache();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  const entry = join(root, "openapi.yaml");
+  writeFileSync(entry, 'schema: { $ref: "fragment.yaml#/items/0/a~1b~0c" }\n');
+  writeFileSync(
+    join(root, "fragment.yaml"),
+    "items:\n  - a/b~c: { type: string }\n",
+  );
+
+  const spec = parse(await loadBundledOpenApiYaml(entry));
+  assert.deepEqual(spec.schema, { type: "string" });
+
+  const invalidEntry = join(root, "invalid.yaml");
+  writeFileSync(
+    invalidEntry,
+    'schema: { $ref: "fragment.yaml#/items/0/missing" }\n',
+  );
+  await assert.rejects(
+    loadBundledOpenApiYaml(invalidEntry),
+    /Unresolved OpenAPI pointer: #\/items\/0\/missing/,
+  );
 });

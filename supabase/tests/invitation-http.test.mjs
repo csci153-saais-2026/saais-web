@@ -454,3 +454,51 @@ test("inviteUser and resendAccountInvite trigger mail-delivery best-effort when 
   assert.equal(resendResponse.status, 200);
   assert.equal(mailTriggers, 2);
 });
+
+test(
+  "hosted resend responds before the background mail request completes",
+  { timeout: 2000 },
+  async (t) => {
+    const tasks = [];
+    const transport = Promise.withResolvers();
+    let workerSecret;
+    const original = Object.getOwnPropertyDescriptor(globalThis, "EdgeRuntime");
+    Object.defineProperty(globalThis, "EdgeRuntime", {
+      configurable: true,
+      value: { waitUntil: (promise) => tasks.push(promise) },
+    });
+    t.after(() => {
+      transport.resolve(Response.json({}));
+      if (original) Object.defineProperty(globalThis, "EdgeRuntime", original);
+      else delete globalThis.EdgeRuntime;
+    });
+
+    const handler = createHandler("accounts", {
+      env: { ...env, mailWorkerSecret: "worker-secret" },
+      fetch: async (url, options) => {
+        if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+        if (url.endsWith("/functions/v1/mail-delivery")) {
+          workerSecret = new Headers(options.headers).get(
+            "x-saais-mail-secret",
+          );
+          return transport.promise;
+        }
+        const rpc = JSON.parse(options.body);
+        if (rpc.p_stage === "admit") return Response.json({});
+        return Response.json({
+          profile_id: id,
+          success: true,
+          invitation_status: "pending",
+        });
+      },
+    });
+    const response = await handler(
+      request(`/accounts/${id}/resend-invite`, undefined, true),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(tasks.length, 1);
+    assert.equal(workerSecret, "worker-secret");
+    transport.resolve(Response.json({ sent: 1 }));
+    await tasks[0];
+  },
+);

@@ -6,23 +6,26 @@ export async function getRoster(
   search = "",
 ) {
   const items: ApiSchema<"StudentRosterItem">[] = [];
-  for (let offset = 0; ; offset += 100) {
+  const pageSize = 100;
+  for (let offset = 0; offset <= 100_000;) {
     const page = unwrapApiResult(
       await apiClient.GET("/functions/v1/students", {
         params: {
           query: {
             assignment_scope: scope,
             ...(search.trim() ? { search: search.trim() } : {}),
-            limit: 100,
+            limit: pageSize,
             offset,
           },
         },
       }),
     );
     items.push(...page.items);
-    if (items.length >= page.total_count || page.items.length === 0)
-      return items;
+    if (items.length >= page.total_count) return items;
+    if (page.items.length === 0) break;
+    offset += page.items.length;
   }
+  throw new Error("The complete student roster could not be loaded.");
 }
 
 export async function getSelectedStudent(

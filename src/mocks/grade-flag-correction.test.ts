@@ -177,49 +177,100 @@ describe("flag midterm corrections", () => {
     expect(db.gradeFlags[flagIndex]?.status).toBe("corrected");
   });
 
-  it("rejects changing a completed INC back to INC through flag resolution", async () => {
-    loginAsMockPersona("adviser");
-    const db = getMockDatabase();
-    const flagIndex = db.gradeFlags.findIndex(
-      (flag) => flag.id === MOCK_IDS.gradeFlag1,
-    );
-    const flag = {
-      ...db.gradeFlags[flagIndex]!,
-      attempt_id: MOCK_IDS.attemptPhEd11IncResolved,
-      reported_stage: "final" as const,
-      status: "open" as const,
-    };
-    db.gradeFlags[flagIndex] = flag;
-    const attemptIndex = db.attemptResults.findIndex(
-      (attempt) => attempt.id === flag.attempt_id,
-    );
-    const originalAttempt = structuredClone(db.attemptResults[attemptIndex]!);
-    const originalResolution = structuredClone(
-      db.incResolutions.find(
-        (resolution) => resolution.attempt_id === flag.attempt_id,
-      ),
-    );
+  it.each(["final", null] as const)(
+    "clears a numeric final and keeps the midterm when a %s flag drops the final",
+    async (stage) => {
+      loginAsMockPersona("adviser");
+      const db = getMockDatabase();
+      const flag = db.gradeFlags.find(
+        (item) => item.id === MOCK_IDS.gradeFlag1,
+      )!;
+      flag.reported_stage = stage;
+      const attempt = db.attemptResults.find(
+        (item) => item.id === flag.attempt_id,
+      )!;
+      Object.assign(attempt, {
+        midterm_grade: 4.75,
+        midterm_status: "graded",
+        final_grade: 2,
+        gwa_grade: 2,
+        recorded_status: "passed",
+        effective_status: "passed",
+      });
 
-    const response = await client().POST(
-      "/functions/v1/grade-flags/{flag_id}/resolve",
-      {
-        params: { path: { flag_id: flag.id } },
-        body: {
-          resolution_action: "correct",
-          corrected_status: "inc",
-          resolution_note: "Preserve completion",
-          expected_revision: originalAttempt.revision,
+      const response = await client().POST(
+        "/functions/v1/grade-flags/{flag_id}/resolve",
+        {
+          params: { path: { flag_id: flag.id } },
+          body: {
+            resolution_action: "correct",
+            corrected_status: "dr",
+            resolution_note: "Drop the final",
+            expected_revision: attempt.revision,
+          },
         },
-      },
-    );
+      );
 
-    expect(response.response.status).toBe(409);
-    expect(db.attemptResults[attemptIndex]).toEqual(originalAttempt);
-    expect(
-      db.incResolutions.find(
-        (resolution) => resolution.attempt_id === flag.attempt_id,
-      ),
-    ).toEqual(originalResolution);
-    expect(db.gradeFlags[flagIndex]?.status).toBe("open");
-  });
+      expect(response.response.status).toBe(200);
+      expect(
+        db.attemptResults.find((item) => item.id === attempt.id),
+      ).toMatchObject({
+        recorded_status: "dr",
+        effective_status: "dr",
+        final_grade: null,
+        gwa_grade: null,
+        midterm_grade: 4.75,
+        midterm_status: "graded",
+      });
+    },
+  );
+
+  it.each(["inc", "dr", "na", "currently_enrolled"] as const)(
+    "rejects changing a completed INC to %s through flag resolution",
+    async (correctedStatus) => {
+      loginAsMockPersona("adviser");
+      const db = getMockDatabase();
+      const flagIndex = db.gradeFlags.findIndex(
+        (flag) => flag.id === MOCK_IDS.gradeFlag1,
+      );
+      const flag = {
+        ...db.gradeFlags[flagIndex]!,
+        attempt_id: MOCK_IDS.attemptPhEd11IncResolved,
+        reported_stage: "final" as const,
+        status: "open" as const,
+      };
+      db.gradeFlags[flagIndex] = flag;
+      const attemptIndex = db.attemptResults.findIndex(
+        (attempt) => attempt.id === flag.attempt_id,
+      );
+      const originalAttempt = structuredClone(db.attemptResults[attemptIndex]!);
+      const originalResolution = structuredClone(
+        db.incResolutions.find(
+          (resolution) => resolution.attempt_id === flag.attempt_id,
+        ),
+      );
+
+      const response = await client().POST(
+        "/functions/v1/grade-flags/{flag_id}/resolve",
+        {
+          params: { path: { flag_id: flag.id } },
+          body: {
+            resolution_action: "correct",
+            corrected_status: correctedStatus,
+            resolution_note: "Preserve completion",
+            expected_revision: originalAttempt.revision,
+          },
+        },
+      );
+
+      expect(response.response.status).toBe(409);
+      expect(db.attemptResults[attemptIndex]).toEqual(originalAttempt);
+      expect(
+        db.incResolutions.find(
+          (resolution) => resolution.attempt_id === flag.attempt_id,
+        ),
+      ).toEqual(originalResolution);
+      expect(db.gradeFlags[flagIndex]?.status).toBe("open");
+    },
+  );
 });

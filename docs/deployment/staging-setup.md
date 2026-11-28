@@ -108,6 +108,38 @@ Verify a direct load and refresh while signed in on the chosen staging domain.
 
 ## Hosted verification procedure
 
+### Automated browser smoke
+
+**Hosted staging smoke** runs on pushes to the `staging` branch and waits for
+Vercel to serve that exact commit. Enable [Vercel's automatic system environment
+variables](https://vercel.com/docs/environment-variables/system-environment-variables)
+so the build can expose its Git revision. The workflow verifies password
+sign-in, a signed-in gateway collection read and a direct deep-link reload for
+each of the six roles. It also checks that a student is redirected away from
+the Admin Accounts page, that two offsets return distinct checklist slots, and
+that the sign-in form fits 320 CSS pixels with its fields reachable by
+keyboard. In the Admin Accounts page it selects a long department name in the
+Add account dialog at 375 CSS pixels and checks for horizontal overflow and
+Escape dismissal. Record the workflow run and deployed commit in #35. These
+checks complement the manual accessibility and role review.
+
+Configure the GitHub `staging` environment with `SAAIS_STAGING_URL` and
+`SAAIS_STAGING_SUPABASE_URL` as HTTPS origins. Set the environment secret
+`SAAIS_STAGING_ACCOUNTS` to a JSON object with the keys `student`, `adviser`,
+`department_head`, `department_staff`, `dean`, and `admin`. Each entry must have
+the `email` and `password` of a distinct, active institutional QA account with
+that role. Seed suitable sample records in the staging project, including
+two checklist slots for the QA student and the Department of Computer Science
+and Technology in the Faculty of Computing. Use QA
+accounts and synthetic data for this run. The browser suite creates independent
+sessions and keeps traces, screenshots, and video disabled.
+
+To run from a configured workstation, set those same three variables using
+your approved secret source, install Chromium with
+`npx playwright install chromium`, and run `npm run test:staging:e2e`.
+
+### Manual checks
+
 1. Sign in with a provisioned Google QA account and confirm its first identity
    activates the invitation. Confirm an unregistered Google account is denied.
 2. Run first sign-in with password and Google. Verify one
@@ -126,3 +158,8 @@ Verify a direct load and refresh while signed in on the chosen staging domain.
    application outcome for each job.
 6. Record the staged commit, Vercel origin, role flows, and a signed-in deep-link
    refresh. Put times, test results and redacted evidence links in issue #51.
+7. For milestone acceptance, use a disposable QA fixture to confirm the
+   same-term prerequisite warning and explicit override. Verify literal search
+   with names containing punctuation, and check photo visibility and fallback
+   in the authorized role views. Record the separate manual accessibility
+   review and final smoke results in #35.

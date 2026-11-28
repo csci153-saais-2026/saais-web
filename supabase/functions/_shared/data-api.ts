@@ -1,54 +1,13 @@
-import snapshot from "./data-api-contract.json" with { type: "json" };
+import {
+  defaultDataApiLimit,
+  getDataApiResource,
+  validateDataApiQuery,
+} from "./data-api-query.ts";
 import type { Environment } from "./http.ts";
 
 const profile = "saais_api";
 const proofHeader = "x-saais-data-api-key";
 const proofRejected = "Use the SAAIS Data API gateway for collection reads.";
-const maxQueryLength = 16_384;
-const allowedPrefer = new Set([
-  "count=exact",
-  "count=planned",
-  "count=estimated",
-]);
-const pagination = {
-  limit: { minimum: 1, maximum: 1000, default: 20 },
-  offset: { minimum: 0, maximum: 100000 },
-} as const;
-
-function hasControlCharacter(value: string) {
-  for (let index = 0; index < value.length; index++) {
-    if (value.charCodeAt(index) < 32) return true;
-  }
-  return false;
-}
-
-const resources = new Map(
-  Object.entries(snapshot).map(([name, resource]) => [
-    name,
-    {
-      projection: resource.projection,
-      defaultOrder: resource.defaultOrder,
-      query: new Set(resource.query),
-      select: {
-        pattern: new RegExp(resource.select.pattern),
-        maxLength: resource.select.maxLength,
-      },
-      order: {
-        pattern: new RegExp(resource.order.pattern),
-        maxLength: resource.order.maxLength,
-      },
-      filters: new Map(
-        Object.entries(resource.filters).map(([filterName, rule]) => [
-          filterName,
-          {
-            pattern: new RegExp(rule.pattern),
-            maxLength: rule.maxLength,
-          },
-        ]),
-      ),
-    },
-  ]),
-);
 
 type GatewayEnvironment = Pick<
   Environment,
@@ -120,7 +79,7 @@ export function createDataApiHandler(
     const resourceName = /^\/(?:functions\/v1\/)?data-api\/([a-z_]+)$/.exec(
       url.pathname,
     )?.[1];
-    const resource = resourceName && resources.get(resourceName);
+    const resource = resourceName && getDataApiResource(resourceName);
     if (!resource || request.method !== "GET") {
       return error(headers, 404, "NOT_FOUND", "Data API route not found.");
     }
@@ -143,86 +102,12 @@ export function createDataApiHandler(
     if (request.headers.get("accept-profile") !== profile) {
       return error(headers, 400, "PT400", "Use Accept-Profile: saais_api.");
     }
-    const rawPrefer = request.headers.get("prefer");
-    const prefer = rawPrefer === null ? null : rawPrefer.trim();
-    if (prefer !== null && !allowedPrefer.has(prefer)) {
-      return error(
-        headers,
-        400,
-        "PT400",
-        "Unsupported Data API Prefer header.",
-      );
-    }
-    if (url.search.length > maxQueryLength) {
-      return error(headers, 400, "PT400", "Data API query is too long.");
-    }
+    const prefer = request.headers.get("prefer")?.trim() ?? null;
+    const queryError = validateDataApiQuery(resource, url, prefer);
+    if (queryError !== null) return error(headers, 400, "PT400", queryError);
 
-    for (const name of url.searchParams.keys()) {
-      if (!resource.query.has(name)) {
-        return error(
-          headers,
-          400,
-          "PT400",
-          "Unsupported Data API query parameter.",
-        );
-      }
-    }
-    for (const name of ["select", "order"] as const) {
-      const values = url.searchParams.getAll(name);
-      const value = values[0];
-      const rule = resource[name];
-      if (
-        values.length > 1 ||
-        (value !== undefined &&
-          !(name === "select" && value === "*") &&
-          (value !== value.trim() ||
-            value.length > rule.maxLength ||
-            !rule.pattern.test(value)))
-      ) {
-        return error(headers, 400, "PT400", `Unsupported Data API ${name}.`);
-      }
-    }
-    for (const [name, { minimum, maximum }] of Object.entries(pagination)) {
-      const values = url.searchParams.getAll(name);
-      if (values.length === 0) continue;
-      const value = values[0];
-      if (
-        values.length !== 1 ||
-        !value ||
-        /\D/.test(value) ||
-        Number(value) < minimum ||
-        Number(value) > maximum
-      ) {
-        return error(
-          headers,
-          400,
-          "PT400",
-          `Data API ${name} must be an integer between ${minimum} and ${maximum}.`,
-        );
-      }
-    }
-    for (const name of new Set(url.searchParams.keys())) {
-      const rule = resource.filters.get(name);
-      if (!rule) continue;
-      const values = url.searchParams.getAll(name);
-      const value = values[0];
-      if (
-        values.length !== 1 ||
-        value === undefined ||
-        value.length > rule.maxLength ||
-        hasControlCharacter(value) ||
-        !rule.pattern.test(value)
-      ) {
-        return error(
-          headers,
-          400,
-          "PT400",
-          `Unsupported Data API ${name} filter.`,
-        );
-      }
-    }
     if (!url.searchParams.has("limit")) {
-      url.searchParams.set("limit", String(pagination.limit.default));
+      url.searchParams.set("limit", String(defaultDataApiLimit));
     }
     if (!url.searchParams.has("order")) {
       url.searchParams.set("order", resource.defaultOrder);

@@ -1,0 +1,40 @@
+name: Hosted staging smoke
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosted-staging-smoke
+  cancel-in-progress: true
+
+jobs:
+  staging-browser:
+    if: github.ref == 'refs/heads/staging'
+    name: Supabase role and browser smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Wait for the staging deployment
+        run: node scripts/wait-for-staging.mjs
+        env:
+          SAAIS_STAGING_URL: ${{ vars.SAAIS_STAGING_URL }}
+          SAAIS_STAGING_EXPECTED_SHA: ${{ github.sha }}
+      - run: npm run test:staging:e2e
+        env:
+          SAAIS_STAGING_URL: ${{ vars.SAAIS_STAGING_URL }}
+          SAAIS_STAGING_SUPABASE_URL: ${{ vars.SAAIS_STAGING_SUPABASE_URL }}
+          SAAIS_STAGING_EXPECTED_SHA: ${{ github.sha }}
+          SAAIS_STAGING_ACCOUNTS: ${{ secrets.SAAIS_STAGING_ACCOUNTS }}

@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
+const dataApiCollections = require("../supabase/functions/_shared/data-api-contract.json");
 
 const ALL_ROLES = [
   "student",
@@ -534,7 +535,7 @@ function toPostmanPathVariableUrl(openApiRoute, method = "get") {
   });
 }
 
-function buildQueryParams(spec, operation) {
+function buildQueryParams(spec, operation, route) {
   const params = (operation.parameters || []).map((p) => resolveRef(spec, p));
   const queryItems = [];
 
@@ -544,10 +545,13 @@ function buildQueryParams(spec, operation) {
     let defaultValue = "";
 
     if (param.name === "select") {
+      const collection = route.startsWith("/rest/v1/")
+        ? route.split("/").at(-1)
+        : null;
       defaultValue =
         Array.isArray(schema.enum) && schema.enum.length > 0
           ? schema.enum[0]
-          : "id";
+          : (dataApiCollections[collection]?.projection.split(",")[0] ?? "id");
     } else if (param.name === "student_id") {
       defaultValue =
         schema.format === "uuid" ? "{{student_id}}" : "eq.{{student_id}}";
@@ -735,7 +739,7 @@ function generatePostmanArtifacts() {
       const primaryRole = choosePrimaryRole(requiredRoles);
       const deniedRole = chooseUnauthorizedRole(requiredRoles);
 
-      const queryItems = buildQueryParams(spec, op);
+      const queryItems = buildQueryParams(spec, op, route);
       const hasBody = Boolean(op.requestBody);
       const bodyObj = hasBody ? (SAMPLE_BODIES[operationId] ?? {}) : undefined;
 

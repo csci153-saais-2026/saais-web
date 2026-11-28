@@ -20,18 +20,23 @@ async function read(
   path: string,
   query: Record<string, string>,
   token = MOCK_PERSONAS.admin.token,
+  prefer?: string,
 ) {
   const url = new URL(path, base);
   Object.entries(query).forEach(([key, value]) =>
     url.searchParams.set(key, value),
   );
   return fetch(url, {
-    headers: { ...headers, Authorization: `Bearer ${token}` },
+    headers: {
+      ...headers,
+      Authorization: `Bearer ${token}`,
+      ...(prefer === undefined ? {} : { Prefer: prefer }),
+    },
   });
 }
 
 describe("PostgREST mock query fidelity", () => {
-  it("compares numeric values numerically and matches anchored wildcard patterns", async () => {
+  it("sorts numeric values numerically and matches anchored wildcard patterns", async () => {
     const db = getMockDatabase();
     const course = db.courses[0];
     db.courses.splice(
@@ -41,10 +46,6 @@ describe("PostgREST mock query fidelity", () => {
       { ...course, id: "two", code: "CS 2", title: "Ma. Cristina", units: 10 },
       { ...course, id: "three", code: "CS 3", title: "Juana Cruz", units: 2 },
     );
-    const number = await (
-      await read("/rest/v1/course", { units: "gte.3" })
-    ).json();
-    expect(number.map((row: { id: string }) => row.id)).toEqual(["one", "two"]);
     const sorted = await (
       await read("/rest/v1/course", {
         order: "units.asc",
@@ -67,6 +68,51 @@ describe("PostgREST mock query fidelity", () => {
     expect(
       await (await read("/rest/v1/course", { title: "like.Cristina" })).json(),
     ).toEqual([]);
+  });
+
+  it("applies the contract's filters and Prefer checks before reading rows", async () => {
+    const course = getMockDatabase().courses[0];
+    const ids = Array.from(
+      { length: 50 },
+      (_, index) =>
+        `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    );
+    const path = "/rest/v1/course";
+    const valid = await read(
+      path,
+      { id: `in.(${[course.id, ...ids.slice(0, 49)].join(",")})` },
+      MOCK_PERSONAS.admin.token,
+      "count=exact",
+    );
+    expect(valid.status).toBe(200);
+    await expect(valid.json()).resolves.toEqual([course]);
+
+    for (const [query, prefer, message] of [
+      [
+        { id: `eqq.${course.id}` },
+        undefined,
+        "Unsupported Data API id filter.",
+      ],
+      [
+        { id: `in.(${[course.id, ...ids].join(",")})` },
+        undefined,
+        "Unsupported Data API id filter.",
+      ],
+      [{ units: "gte.3" }, undefined, "Unsupported Data API query parameter."],
+      [{}, "unsupported", "Unsupported Data API Prefer header."],
+    ] as const) {
+      const invalid = await read(
+        path,
+        query,
+        MOCK_PERSONAS.admin.token,
+        prefer,
+      );
+      expect(invalid.status).toBe(400);
+      await expect(invalid.json()).resolves.toMatchObject({
+        code: "PT400",
+        message,
+      });
+    }
   });
 
   it("compares timestamp offsets and includes the entire UTC upper date", async () => {
@@ -337,7 +383,7 @@ describe("PostgREST mock disjunction search", () => {
         const response = await read(path, { or });
         expect(response.status).toBe(400);
         await expect(response.json()).resolves.toMatchObject({
-          code: "INVALID_FILTER",
+          code: "PT400",
         });
       }
     },

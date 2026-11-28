@@ -1,4 +1,5 @@
 import { apiClient, unwrapApiResult } from "@/lib/api";
+import { parseContentRange } from "./filters";
 
 /**
  * Complete reads of shared catalog tables. The Data API gateway returns only 20
@@ -14,14 +15,24 @@ async function readAll<T>(
   ) => Promise<{ data?: T[]; error?: unknown; response: Response }>,
 ): Promise<T[]> {
   const rows: T[] = [];
-  for (let offset = 0; ; offset += PAGE_SIZE) {
+  for (let offset = 0; offset <= 100_000;) {
     // A stable order keeps offset pages from overlapping.
-    const page = unwrapApiResult(
-      await fetchPage({ order: "id.asc", limit: PAGE_SIZE, offset }),
-    );
+    const result = await fetchPage({
+      order: "id.asc",
+      limit: PAGE_SIZE,
+      offset,
+    });
+    const page = unwrapApiResult(result);
     rows.push(...page);
-    if (page.length < PAGE_SIZE) return rows;
+    const total = parseContentRange(
+      result.response.headers.get("Content-Range"),
+    )?.total;
+    if (total == null ? page.length < PAGE_SIZE : rows.length >= total)
+      return rows;
+    if (page.length === 0) break;
+    offset += page.length;
   }
+  throw new Error("The complete catalog could not be loaded.");
 }
 
 export const readAllCourses = () =>

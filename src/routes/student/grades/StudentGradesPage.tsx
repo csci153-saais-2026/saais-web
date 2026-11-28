@@ -2,7 +2,7 @@ import { AccountSkeleton } from "@/components/features/loading-skeletons";
 import { GRADES_SKELETON_SAMPLE } from "./grades.skeleton-sample";
 import { notify } from "@/lib/notify";
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import { AlertIcon } from "@/components/icons";
 import {
   GradesView,
@@ -18,18 +18,13 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/components/ui/status-badge";
-import {
-  apiClient,
-  postgrestFilter,
-  unwrapApiResult,
-  type ApiSchema,
-} from "@/lib/api";
+import type { ApiSchema } from "@/lib/api";
 import {
   formatGradeSummaryReport,
   type PdfReportPayload,
 } from "@/lib/pdf/student-report-formatter";
 import { cn } from "@/lib/utils";
-import { fetchAllPages } from "../fetch-all-pages";
+import { fetchStudentGradesMetadata } from "./student-grades.api";
 import {
   useCreateGradeFlag,
   useRecordGradesExport,
@@ -447,123 +442,7 @@ export interface GradesPageData {
   readonly faculty: Partial<ApiSchema<"Faculty">> | null;
 }
 
-interface GradesMetadata {
-  readonly schoolTerms: readonly ApiSchema<"SchoolTerm">[];
-  readonly offerings: readonly ApiSchema<"CourseOffering">[];
-  readonly courses: readonly ApiSchema<"Course">[];
-  readonly profile: ApiSchema<"Profile"> | null;
-  readonly org: ApiSchema<"StudentOrganization"> | null;
-  readonly programs: readonly ApiSchema<"Program">[];
-  readonly curricula: readonly ApiSchema<"CurriculumVersion">[];
-  readonly assignments: readonly Pick<
-    ApiSchema<"AdviserAssignment">,
-    "id" | "adviser_id" | "adviser_name" | "start_date" | "end_date"
-  >[];
-  readonly departments: readonly ApiSchema<"Department">[];
-  readonly faculties: readonly ApiSchema<"Faculty">[];
-}
-
-async function fetchStudentGradesMetadata(
-  studentId: string,
-): Promise<GradesMetadata> {
-  const [
-    schoolTerms,
-    offerings,
-    courses,
-    profiles,
-    orgs,
-    programs,
-    curricula,
-    assignments,
-    departments,
-    faculties,
-  ] = await Promise.all([
-    fetchAllPages(
-      (limit, offset) =>
-        apiClient.GET("/rest/v1/school_term", {
-          params: { query: { order: "id.asc", limit, offset } },
-        }),
-      (row) => row.id,
-    ),
-    fetchAllPages(
-      (limit, offset) =>
-        apiClient.GET("/rest/v1/course_offering", {
-          params: { query: { order: "id.asc", limit, offset } },
-        }),
-      (row) => row.id,
-    ),
-    fetchAllPages(
-      (limit, offset) =>
-        apiClient.GET("/rest/v1/course", {
-          params: { query: { order: "id.asc", limit, offset } },
-        }),
-      (row) => row.id,
-    ),
-    apiClient
-      .GET("/rest/v1/profile", {
-        params: { query: { id: postgrestFilter.eq(studentId) } },
-      })
-      .then(unwrapApiResult),
-    apiClient
-      .GET("/rest/v1/student_organization", {
-        params: { query: { student_id: postgrestFilter.eq(studentId) } },
-      })
-      .then(unwrapApiResult),
-    fetchAllPages(
-      (limit, offset) =>
-        apiClient.GET("/rest/v1/program", {
-          params: { query: { order: "id.asc", limit, offset } },
-        }),
-      (row) => row.id,
-    ),
-    fetchAllPages(
-      (limit, offset) =>
-        apiClient.GET("/rest/v1/curriculum_version", {
-          params: { query: { order: "id.asc", limit, offset } },
-        }),
-      (row) => row.id,
-    ),
-    apiClient
-      .GET("/rest/v1/adviser_assignment", {
-        params: {
-          query: {
-            student_id: postgrestFilter.eq(studentId),
-            select: "id,adviser_id,adviser_name,start_date,end_date",
-            order: "start_date.desc",
-            limit: 1000,
-          },
-        },
-      })
-      .then(unwrapApiResult),
-    fetchAllPages(
-      (limit, offset) =>
-        apiClient.GET("/rest/v1/department", {
-          params: { query: { order: "id.asc", limit, offset } },
-        }),
-      (row) => row.id,
-    ),
-    fetchAllPages(
-      (limit, offset) =>
-        apiClient.GET("/rest/v1/faculty", {
-          params: { query: { order: "id.asc", limit, offset } },
-        }),
-      (row) => row.id,
-    ),
-  ]);
-
-  return {
-    schoolTerms,
-    offerings,
-    courses,
-    profile: profiles[0] ?? null,
-    org: orgs[0] ?? null,
-    programs,
-    curricula,
-    assignments,
-    departments,
-    faculties,
-  };
-}
+type GradesMetadata = Awaited<ReturnType<typeof fetchStudentGradesMetadata>>;
 
 function buildGradesPageData(
   rawTerms: readonly ApiSchema<"TermGrades">[],
@@ -641,10 +520,27 @@ function buildGradesPageData(
 export function StudentGradesPage({ studentId }: { studentId: string }) {
   const gradesQuery = useStudentGrades(studentId);
   const flagsQuery = useStudentGradeFlags(studentId);
+  const gradeTerms = gradesQuery.data;
+  const catalogReferences = React.useMemo(() => {
+    if (!gradeTerms) return undefined;
+    return {
+      schoolTermIds: [
+        ...new Set(gradeTerms.map((term) => term.school_term_id)),
+      ].sort(),
+      offeringIds: [
+        ...new Set(
+          gradeTerms.flatMap((term) =>
+            term.attempts.map((attempt) => attempt.course_offering_id),
+          ),
+        ),
+      ].sort(),
+    };
+  }, [gradeTerms]);
   const metaQuery = useQuery({
-    queryKey: ["student", studentId, "grades-meta"],
-    queryFn: () => fetchStudentGradesMetadata(studentId),
-    enabled: Boolean(studentId),
+    queryKey: ["student", studentId, "grades-meta", catalogReferences],
+    queryFn: catalogReferences
+      ? () => fetchStudentGradesMetadata(studentId, catalogReferences)
+      : skipToken,
   });
   const createFlagMutation = useCreateGradeFlag(studentId);
   const recordExportMutation = useRecordGradesExport(studentId);
@@ -659,7 +555,9 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
   }, [gradesQuery.data, flagsQuery.data, metaQuery.data]);
 
   const isPending =
-    gradesQuery.isPending || flagsQuery.isPending || metaQuery.isPending;
+    gradesQuery.isPending ||
+    flagsQuery.isPending ||
+    (catalogReferences !== undefined && metaQuery.isPending);
   const isError =
     gradesQuery.isError || flagsQuery.isError || metaQuery.isError;
 
@@ -667,9 +565,9 @@ export function StudentGradesPage({ studentId }: { studentId: string }) {
     await Promise.all([
       gradesQuery.refetch(),
       flagsQuery.refetch(),
-      metaQuery.refetch(),
+      catalogReferences ? metaQuery.refetch() : undefined,
     ]);
-  }, [gradesQuery, flagsQuery, metaQuery]);
+  }, [gradesQuery, flagsQuery, metaQuery, catalogReferences]);
 
   async function handleCreateFlag(
     payload: ApiSchema<"GradeFlagCreateRequest">,

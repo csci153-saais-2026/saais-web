@@ -24,8 +24,26 @@ function bundledOpenApi(): Plugin {
 }
 
 // https://vite.dev/config/
+function deployedRevision(): Plugin {
+  return {
+    name: "saais-deployed-revision",
+    apply: "build",
+    transformIndexHtml() {
+      const sha = process.env.VITE_VERCEL_GIT_COMMIT_SHA;
+      if (!sha || !/^[a-f0-9]{40}$/.test(sha)) return;
+      return [
+        {
+          tag: "meta",
+          attrs: { name: "saais-revision", content: sha },
+          injectTo: "head",
+        },
+      ];
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [bundledOpenApi(), react(), tailwindcss()],
+  plugins: [bundledOpenApi(), deployedRevision(), react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
