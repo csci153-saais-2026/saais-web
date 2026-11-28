@@ -33,5 +33,6 @@ export const academicRoutes = new Set([
   "listRecommendations",
   "saveAdvisingPlan",
   "askAdvisingAssistant",
+  "getAdvisingAssistantHistory",
   "importGradesBatch",
 ]);

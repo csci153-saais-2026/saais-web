@@ -1,7 +1,7 @@
 {
-  "revision": "8df551183962d19ab724c9f33c9a5f6d884d3ba5",
-  "version": "0.3.1",
-  "candidateHash": "4be525583cfa343782e00e3c1daee087da92a213734e7ba75ff00006f5418d6f",
+  "revision": "b81a1a8b9c670d5c15699c44ea1e0e02af3f2c39",
+  "version": "0.4.1",
+  "candidateHash": "d0f10eea37b37f2a69ab062f7f17f91ca9c267bcd1ce6daff34eacfab97b4a12",
   "operations": [
     {
       "id": "inviteUser",
@@ -587,6 +587,35 @@
         "$ref": "#/components/schemas/AttemptRemark"
       },
       "errors": [400, 401, 403, 404, 409, 429, 500],
+      "public": false
+    },
+    {
+      "id": "getAdvisingAssistantHistory",
+      "path": "/functions/v1/students/{student_id}/assistant",
+      "method": "GET",
+      "roles": ["adviser"],
+      "parameters": [
+        {
+          "name": "student_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "input": null,
+      "status": 200,
+      "output": {
+        "type": "array",
+        "maxItems": 20,
+        "items": {
+          "$ref": "#/components/schemas/AdvisingAIMessage"
+        }
+      },
+      "errors": [400, 401, 403, 429, 500],
       "public": false
     },
     {
@@ -2380,16 +2409,34 @@
           ]
         },
         "midterm_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "final_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "number",
+              "const": 5
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "status": {
           "type": ["string", "null"],
@@ -2656,16 +2703,34 @@
           ]
         },
         "midterm_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "final_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "number",
+              "const": 5
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "status": {
           "$ref": "#/components/schemas/AttemptStatus"
@@ -2712,16 +2777,34 @@
           ]
         },
         "midterm_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "final_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "number",
+              "const": 5
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "instructor": {
           "type": ["string", "null"],
@@ -2782,10 +2865,18 @@
       "additionalProperties": false,
       "properties": {
         "completion_grade": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "number",
+              "const": 5
+            }
+          ]
         },
         "reason": {
           "type": "string",
@@ -2861,10 +2952,18 @@
       "additionalProperties": false,
       "properties": {
         "completion_grade": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "number",
+              "const": 5
+            }
+          ]
         },
         "reason": {
           "type": "string",
@@ -3214,6 +3313,23 @@
         "curriculum_term_course_id"
       ]
     },
+    "AdvisingAIMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "content"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant"]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        }
+      }
+    },
     "AdvisingAIRequest": {
       "type": "object",
       "additionalProperties": false,
@@ -3234,23 +3350,6 @@
         }
       },
       "required": ["message"]
-    },
-    "AdvisingAIMessage": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["role", "content"],
-      "properties": {
-        "role": {
-          "type": "string",
-          "enum": ["user", "assistant"]
-        },
-        "content": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 4000,
-          "pattern": "\\S"
-        }
-      }
     },
     "AdvisingAIResponse": {
       "type": "object",
@@ -4338,10 +4437,18 @@
           "enum": ["correct", "reject"]
         },
         "corrected_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The server uses the flag's stored reported_stage. Midterm corrections accept 1.00 through 5.00 in quarter steps. Final corrections and flags with no stage accept 1.00 through 3.00 in quarter steps or 5.00."
         },
         "corrected_status": {
           "anyOf": [
@@ -4440,16 +4547,34 @@
           ]
         },
         "midterm_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "final_grade": {
-          "type": ["number", "null"],
-          "minimum": 1,
-          "maximum": 5,
-          "multipleOf": 0.25
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "multipleOf": 0.25
+            },
+            {
+              "type": "number",
+              "const": 5
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "status": {
           "$ref": "#/components/schemas/AttemptStatus"
@@ -5619,11 +5744,11 @@
       "additionalProperties": false,
       "properties": {
         "storage_object_path": {
-          "type": ["string", "null"],
+          "type": "string",
           "minLength": 1,
           "maxLength": 512,
           "pattern": "\\S",
-          "description": "Object key inside the private `student-photos` Supabase Storage bucket (e.g. `students/<student_id>/avatar.png`) verified server-side for MIME type and byte size before updating the profile photo URL."
+          "description": "Single-use staging key in the private `student-photos` bucket (e.g. `students/00000000-0000-4000-8000-000000000001/upload-00000000-0000-4000-8000-000000000002.png`). Use a fresh UUID for each upload and a .png, .jpg, or .jpeg extension that matches the MIME type. The backend validates the image and saves a separate protected copy."
         },
         "avatar_url": {
           "type": "string",
@@ -5634,16 +5759,21 @@
         "mime_type": {
           "type": "string",
           "enum": ["image/jpeg", "image/png"],
-          "description": "Supported student profile photo MIME types (PNG or JPG only, matching the UI control)."
+          "description": "Supported student profile photo MIME types (static PNG or JPEG)."
         },
         "file_size_bytes": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 2097152,
-          "description": "File size in bytes; maximum 2 MB (`2,097,152` bytes)."
+          "maximum": 5242880,
+          "description": "File size in bytes; maximum 5 MiB (`5,242,880` bytes)."
         }
       },
-      "required": ["avatar_url", "mime_type", "file_size_bytes"]
+      "required": [
+        "storage_object_path",
+        "avatar_url",
+        "mime_type",
+        "file_size_bytes"
+      ]
     }
   }
 }

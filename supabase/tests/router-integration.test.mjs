@@ -37,13 +37,13 @@ function request(operation) {
   });
 }
 
-test("the shared router registers all 81 operations once and forwards to the correct RPC", async () => {
-  assert.equal(registered.length, 81);
-  assert.equal(new Set(registered.map((operation) => operation.id)).size, 81);
+test("the shared router registers all 82 operations once and forwards to the correct RPC", async () => {
+  assert.equal(registered.length, 82);
+  assert.equal(new Set(registered.map((operation) => operation.id)).size, 82);
   assert.equal(
     new Set(registered.map((operation) => operation.method + operation.path))
       .size,
-    81,
+    82,
   );
   for (const operation of registered) {
     const group = operation.path.split("/")[3];
@@ -60,6 +60,10 @@ test("the shared router registers all 81 operations once and forwards to the cor
       fetch: async (url, options) => {
         if (url.endsWith("/auth/v1/user")) return Response.json({ id });
         calls.push({ url, body: JSON.parse(options.body) });
+        if (url.endsWith("/saais_get_assistant_history")) {
+          assert.equal(options.headers.Authorization, headers.Authorization);
+          return Response.json([]);
+        }
         if (url.endsWith("/saais_record_assistant_turn")) {
           assert.equal(
             options.headers.Authorization,
@@ -93,14 +97,22 @@ test("the shared router registers all 81 operations once and forwards to the cor
     const response = await handler(request(operation));
     assert.equal(response.status, operation.status ?? 409, operation.id);
     const assistant = operation.id === "askAdvisingAssistant";
+    const history = operation.id === "getAdvisingAssistantHistory";
     const rpc = assistant
       ? "matt_assistant_context"
-      : academicRoutes.has(operation.id)
-        ? "matt_operation"
-        : "jerome_operation";
+      : history
+        ? "saais_get_assistant_history"
+        : academicRoutes.has(operation.id)
+          ? "matt_operation"
+          : "jerome_operation";
     assert.equal(calls[0].url, `${env.url}/rest/v1/rpc/${rpc}`, operation.id);
     assert.equal(calls.length, assistant ? 3 : 1, operation.id);
-    if (!assistant) assert.equal(calls[0].body.p_operation, operation.id);
+    if (history) {
+      assert.deepEqual(calls[0].body, { p_student_id: id });
+      assert.deepEqual(await response.json(), []);
+    } else if (!assistant) {
+      assert.equal(calls[0].body.p_operation, operation.id);
+    }
     if (operation.id === "listRecommendations") {
       assert.equal(response.headers.get("X-Excluded-Count"), "2");
       assert.deepEqual(await response.json(), []);

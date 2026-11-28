@@ -1,10 +1,10 @@
 # OpenAPI 0.4.1 candidate
 
-Status: **pending review**. Approval is for the complete `0.4.1` bundle against the `0.3.1` baseline on `dev`. The intermediate `0.4.0` candidate covered assistant history and photo staging. This record includes both changes and the [grade-scale decision in #213](https://github.com/csci153-saais-2026/saais-web/issues/213#issuecomment-7221198225).
+Status: **approved**. Approval covers the complete `0.4.1` bundle against the `0.3.1` baseline on `dev`. The intermediate `0.4.0` candidate covered assistant history and photo staging. This record includes both changes and the [grade-scale decision in #213](https://github.com/csci153-saais-2026/saais-web/issues/213#issuecomment-7221198225).
 
 - Bundled contract SHA-256: `d0f10eea37b37f2a69ab062f7f17f91ca9c267bcd1ce6daff34eacfab97b4a12`. Recompute with `node contract/candidate-hash.cjs`.
-- Frontend approval of this version and hash: pending.
-- Backend approval of this version and hash: pending.
+- Frontend representative @Htaruo approved this version and hash on 2026-11-29 (Asia/Manila). [Approval on PR #237](https://github.com/csci153-saais-2026/saais-web/pull/237#pullrequestreview-6099307833)
+- Backend representative @staagatajd approved this version and hash on 2026-11-29 (Asia/Manila). [Approval on PR #237](https://github.com/csci153-saais-2026/saais-web/pull/237#pullrequestreview-6099357259)
 
 - Assistant history adds `GET /functions/v1/students/{student_id}/assistant`. It returns up to 20 saved messages for the current or former adviser who authored the conversation. The existing scoped RPC remains callable during the transition.
 - Photo updates require a fresh `students/<student_id>/upload-<uuid>.<ext>` staging key with a MIME-matching extension. Clients that send reusable paths such as `avatar.png` must change before rollout.
