@@ -12,7 +12,7 @@ const {
   migration,
 } = require("../tools/snapshot-academic-contract.cjs");
 
-test("student and account runtime matches the approved 0.3.1 contract", () => {
+test("student and account runtime matches the pinned OpenAPI contract", () => {
   assert.deepEqual(snapshot, withPinnedContract(buildSnapshot));
   assert.equal(snapshot.version, catalog.version);
   assert.equal(snapshot.revision, catalog.revision);
@@ -20,7 +20,7 @@ test("student and account runtime matches the approved 0.3.1 contract", () => {
   const catalogIds = new Set(
     catalog.operations.map((operation) => operation.id),
   );
-  assert.equal(snapshot.operations.length, 41);
+  assert.equal(snapshot.operations.length, 42);
   assert.ok(
     snapshot.operations.every((operation) => !catalogIds.has(operation.id)),
   );
@@ -42,14 +42,14 @@ test("saved-attempt deletion declares only rejection responses", () => {
 
 test("the additive migration stores the runtime and restores shared schemas", () => {
   const sql = readFileSync(migration, "utf8");
-  assert.deepEqual(JSON.parse(sql.split("$contract$")[1]), snapshot);
+  assert.deepEqual(JSON.parse(sql.split("$academic_contract$")[1]), snapshot);
   assert.match(
     sql,
-    /on conflict \(id\) do update set document=excluded.document/,
+    /on conflict \(id\) do update set document = excluded.document/,
   );
   assert.match(
     sql,
-    /update saais_private\.contract set document = jsonb_set\(document, '\{schemas\}', document->'schemas' \|\|/,
+    /jsonb_set\(catalog\.document, '\{schemas\}', \(catalog\.document->'schemas'\) \|\| \(academic\.document->'schemas'\)\)/,
   );
   const initialSql = readFileSync(
     "supabase/migrations/20261113000010_matt_contract.sql",

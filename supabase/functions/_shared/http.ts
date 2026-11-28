@@ -123,21 +123,8 @@ export function operationsFor(group: RouteGroup): Operation[] {
           matchesGroup(operation),
       )
       .map((operation) => ({ ...operation, usesAcademicRpc: true })),
-    ...(group === "students" ? [assistantHistoryOperation] : []),
   ];
 }
-
-// This read uses the separately scoped history RPC, outside the pinned write dispatcher.
-const assistantHistoryOperation: Operation = {
-  id: "getAdvisingAssistantHistory",
-  method: "GET",
-  path: "/functions/v1/students/{student_id}/assistant",
-  parameters: [{ name: "student_id", in: "path", schema: { type: "string" } }],
-  bodyRequired: false,
-  input: null,
-  status: 200,
-  errors: [400, 401, 403, 429, 500],
-};
 
 export function createHandler(group: RouteGroup, dependencies: Dependencies) {
   const { env } = dependencies;

@@ -1,7 +1,7 @@
 {
-  "revision": "8df551183962d19ab724c9f33c9a5f6d884d3ba5",
-  "version": "0.3.1",
-  "candidateHash": "4be525583cfa343782e00e3c1daee087da92a213734e7ba75ff00006f5418d6f",
+  "revision": "b81a1a8b9c670d5c15699c44ea1e0e02af3f2c39",
+  "version": "0.4.1",
+  "candidateHash": "d0f10eea37b37f2a69ab062f7f17f91ca9c267bcd1ce6daff34eacfab97b4a12",
   "operations": [
     {
       "id": "createFaculty",
@@ -3258,7 +3258,7 @@
           "minLength": 4,
           "maxLength": 4,
           "pattern": "^(?:[12]\\.\\d{2}|3\\.00)$",
-          "description": "Passing grade on the institutional 1.00–3.00 scale, formatted to two decimals."
+          "description": "Passing grade from 1.00 through 3.00, formatted to two decimals. Two-decimal grades are intentional because other schools may use increments other than quarter steps."
         },
         "destination_curriculum_term_course_id": {
           "type": "string",
