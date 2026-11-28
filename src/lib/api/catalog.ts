@@ -1,4 +1,5 @@
-import { apiClient, parseContentRange, unwrapApiResult } from "@/lib/api";
+import { apiClient, unwrapApiResult } from "@/lib/api";
+import { parseContentRange } from "./filters";
 
 /**
  * Complete reads of shared catalog tables. The Data API gateway returns only 20

@@ -300,7 +300,12 @@ function getHeaderIndexes(
     (name) => !seen.has(name),
   );
   if (missing.length > 0) {
-    throw new Error(`Missing required columns: ${missing.join(", ")}.`);
+    const label = allowHeadAliases
+      ? missing.length === 1
+        ? "Missing column"
+        : "Missing columns"
+      : "Missing required columns";
+    throw new Error(`${label}: ${missing.join(", ")}.`);
   }
 
   return new Map(normalized.map((name, index) => [name, index]));
@@ -317,8 +322,8 @@ function parseDataRows(
   records: ParsedRecords,
   references: ImportReferences,
   allowHeadAliases: boolean,
+  headerIndexes: Map<string, number>,
 ): StudentImportParseResult {
-  const headerIndexes = getHeaderIndexes(records.header, allowHeadAliases);
   const candidates: CandidateRow[] = [];
   const issues: StudentImportIssue[] = [];
   let rowCount = 0;
@@ -372,12 +377,16 @@ function parseDataRows(
         textFor("adviser_email").trim().toLowerCase(),
     );
     const inactive = !!curriculum?.status && curriculum.status !== "active";
-    const referenceIssues = [
+    const staffIssues = [
       !program ? "Unknown department program." : "",
       !curriculum ? "Unknown curriculum for this program." : "",
       inactive ? "This curriculum version is not active." : "",
       !adviser ? "No active department adviser has this email." : "",
     ].filter(Boolean);
+    const referenceIssues =
+      allowHeadAliases && !program
+        ? [`Unknown program "${textFor("program").trim()}".`]
+        : staffIssues;
     const source: Record<string, unknown> = {
       row_number: sourceRow.rowNumber,
       student_number: textFor("student_number"),
@@ -479,7 +488,7 @@ function parseDataRows(
 
 export async function parseStudentFile(
   file: File,
-  references: ImportReferences,
+  references: ImportReferences | (() => Promise<ImportReferences>),
   options: { allowHeadAliases?: boolean } = {},
 ): Promise<StudentImportParseResult> {
   if (file.size > MAX_STUDENT_IMPORT_FILE_SIZE) {
@@ -503,7 +512,11 @@ export async function parseStudentFile(
       ? parseCsvRecords((await readFileAsText(file)).replace(/^\uFEFF/, ""))
       : await parseXlsxRecords(file);
 
-  return parseDataRows(records, references, options.allowHeadAliases === true);
+  const allowHeadAliases = options.allowHeadAliases === true;
+  const headerIndexes = getHeaderIndexes(records.header, allowHeadAliases);
+  const resolved =
+    typeof references === "function" ? await references() : references;
+  return parseDataRows(records, resolved, allowHeadAliases, headerIndexes);
 }
 
 export function createStudentImportTemplate(): Blob {

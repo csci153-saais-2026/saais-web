@@ -34,14 +34,14 @@ function resolveJsonPointer(document, pointer) {
     .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"));
   let current = document;
   for (const segment of segments) {
-    if (
-      current === null ||
-      typeof current !== "object" ||
-      !Object.hasOwn(current, segment)
-    ) {
+    const property =
+      current !== null && typeof current === "object"
+        ? Object.getOwnPropertyDescriptor(current, segment)
+        : undefined;
+    if (!property || !Object.hasOwn(property, "value")) {
       throw new Error(`Unresolved OpenAPI pointer: #${pointer}`);
     }
-    current = current[segment];
+    current = property.value;
   }
   return current;
 }
@@ -109,11 +109,15 @@ export async function loadBundledOpenApiYaml(
       const targetPath = resolve(currentDir, filePart);
       const relFromRoot = ensureWithinRoot(contractRoot, targetPath);
 
-      const siblings = {};
+      const siblingEntries = [];
       for (const [key, value] of Object.entries(node)) {
         if (key === "$ref") continue;
-        siblings[key] = await resolveNode(value, currentDir, activeFiles);
+        siblingEntries.push([
+          key,
+          await resolveNode(value, currentDir, activeFiles),
+        ]);
       }
+      const siblings = Object.fromEntries(siblingEntries);
 
       const component = !pointerPart ? componentTarget(relFromRoot) : null;
       if (component) {
@@ -125,15 +129,21 @@ export async function loadBundledOpenApiYaml(
             dirname(targetPath),
             new Set([targetPath]),
           );
-          const existingSection =
-            components[component.section] &&
-            typeof components[component.section] === "object"
-              ? components[component.section]
-              : {};
-          components[component.section] = {
-            ...existingSection,
-            [component.name]: resolvedComponent,
-          };
+          const existingSection = Object.getOwnPropertyDescriptor(
+            components,
+            component.section,
+          )?.value;
+          Object.defineProperty(components, component.section, {
+            value: {
+              ...(existingSection && typeof existingSection === "object"
+                ? existingSection
+                : {}),
+              [component.name]: resolvedComponent,
+            },
+            writable: true,
+            enumerable: true,
+            configurable: true,
+          });
         }
         return { ...siblings, $ref: component.ref };
       }
@@ -166,11 +176,11 @@ export async function loadBundledOpenApiYaml(
       return resolvedTarget;
     }
 
-    const result = {};
+    const entries = [];
     for (const [key, value] of Object.entries(node)) {
-      result[key] = await resolveNode(value, currentDir, activeFiles);
+      entries.push([key, await resolveNode(value, currentDir, activeFiles)]);
     }
-    return result;
+    return Object.fromEntries(entries);
   }
 
   const bundled = await resolveNode(

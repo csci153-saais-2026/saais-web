@@ -22,17 +22,19 @@ export async function parseHeadStudentImport(
   if (departmentIds.length === 0) {
     throw new Error("An active department head assignment is required.");
   }
-  const byDepartment = await Promise.all(
-    [...new Set(departmentIds)].map((departmentId) =>
-      loadImportReferences(departmentId),
-    ),
-  );
   return parseStudentFile(
     file,
-    {
-      programs: byDepartment.flatMap(({ programs }) => programs),
-      curricula: byDepartment.flatMap(({ curricula }) => curricula),
-      advisers: byDepartment.flatMap(({ advisers }) => advisers),
+    async () => {
+      const byDepartment = await Promise.all(
+        [...new Set(departmentIds)].map((departmentId) =>
+          loadImportReferences(departmentId),
+        ),
+      );
+      return {
+        programs: byDepartment.flatMap(({ programs }) => programs),
+        curricula: byDepartment.flatMap(({ curricula }) => curricula),
+        advisers: byDepartment.flatMap(({ advisers }) => advisers),
+      };
     },
     { allowHeadAliases: true },
   );

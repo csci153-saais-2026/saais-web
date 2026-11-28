@@ -35,10 +35,8 @@ describe("PostgREST mock query fidelity", () => {
       { ...course, id: "two", code: "CS 2", title: "Ma. Cristina", units: 10 },
       { ...course, id: "three", code: "CS 3", title: "Juana Cruz", units: 2 },
     );
-    const number = await (
-      await read("/rest/v1/course", { units: "gte.3" })
-    ).json();
-    expect(number.map((row: { id: string }) => row.id)).toEqual(["one", "two"]);
+    const unsupported = await read("/rest/v1/course", { units: "gte.3" });
+    expect(unsupported.status).toBe(400);
     const sorted = await (
       await read("/rest/v1/course", {
         order: "units.asc",
@@ -48,13 +46,16 @@ describe("PostgREST mock query fidelity", () => {
     ).json();
     expect(sorted.map((row: { id: string }) => row.id)).toEqual(["one", "two"]);
     for (const order of ["units", "units.nullslast"]) {
-      const rows = await (await read("/rest/v1/course", { order })).json();
-      expect(rows.map((row: { id: string }) => row.id)).toEqual([
-        "three",
-        "one",
-        "two",
-      ]);
+      expect((await read("/rest/v1/course", { order })).status).toBe(400);
     }
+    const rows = await (
+      await read("/rest/v1/course", { order: "units.asc.nullslast" })
+    ).json();
+    expect(rows.map((row: { id: string }) => row.id)).toEqual([
+      "three",
+      "one",
+      "two",
+    ]);
     const wildcards = await (
       await read("/rest/v1/course", { title: "ilike.*juan*cruz*" })
     ).json();

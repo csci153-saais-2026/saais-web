@@ -12840,7 +12840,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/rest/v1/student_organization?select=id&limit=20",
+                  "raw": "{{base_url}}/rest/v1/student_organization?select=student_id&limit=20",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -12894,7 +12894,7 @@
                     },
                     {
                       "key": "select",
-                      "value": "id",
+                      "value": "student_id",
                       "description": "Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults.",
                       "disabled": false
                     },
@@ -12954,7 +12954,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/rest/v1/student_organization?select=id&limit=20",
+                  "raw": "{{base_url}}/rest/v1/student_organization?select=student_id&limit=20",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -13008,7 +13008,7 @@
                     },
                     {
                       "key": "select",
-                      "value": "id",
+                      "value": "student_id",
                       "description": "Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults.",
                       "disabled": false
                     },
