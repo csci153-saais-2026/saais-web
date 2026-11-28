@@ -1,23 +1,23 @@
 # Staging setup and handoff
 
-Keep [issue #51](https://github.com/csci153-saais-2026/saais-web/issues/51)
-open until the team records ownership and verifies the hosted flows below.
+This document records the completed staging setup and hosted verification for
+[issue #51](https://github.com/csci153-saais-2026/saais-web/issues/51).
 
 ## Hosting and ownership
 
-| Service | Confirmed setup | Remaining evidence |
+| Service | Confirmed setup | Verification |
 | --- | --- | --- |
-| Supabase | The active `SAAIS` project has ref `jssexxjbgzrknlptddkg`. The public Vercel site's browser bundle uses this project. | JakeNLelis confirmed ownership. Record any additional team access. |
-| Vercel | GitHub deployment checks for this repo report the `mhac-monteras-projects/saais-web` project. The approved staging origin is https://saais.plenums.app. | JakeNLelis confirmed ownership. Record the deployed commit and additional team access. |
-| Google Cloud | The active OAuth client points to Google Cloud project `elegant-theorem-450011-i1`. Google sign-in is enabled. | JakeNLelis has the Owner role. The consent screen is External and in Testing. |
-| Secrets | Supabase lists mail worker and Google Apps Script relay secret names. | Confirm the approved secret stores and access owners for staging OAuth, Auth hooks, the mail relay and scheduled jobs. |
+| Supabase | The active `SAAIS` project has ref `jssexxjbgzrknlptddkg`. The public Vercel site's browser bundle uses this project. | JakeNLelis confirmed ownership. Hosted migrations and functions were applied and verified. |
+| Vercel | GitHub deployment checks for this repo report the `mhac-monteras-projects/saais-web` project. The approved staging origin is https://saais.plenums.app. | JakeNLelis confirmed ownership. The deployed app passed signed-in gateway and role-page checks. |
+| Google Cloud | The active OAuth client points to Google Cloud project `elegant-theorem-450011-i1`. Google sign-in is enabled. | JakeNLelis has the Owner role. The consent screen is External and in Testing; Verification Center says verification is unnecessary in Testing. |
+| Mailer and secrets | `mail-delivery` sends invitation and notification emails through the Gmail REST API using OAuth2. | [PR #231](https://github.com/csci153-saais-2026/saais-web/pull/231) replaced the Apps Script relay. The active hosted function uses the Gmail API; OAuth credentials and worker signing credentials remain in Supabase secret stores. No Gmail app password is used. |
 
 [PR #223](https://github.com/csci153-saais-2026/saais-web/pull/223) tracks promotion
 from `dev` to `staging`. The staging branch exists. The integration fixes still
 need to reach `dev` before the promotion includes them.
 
-Record any access or approval delays in issue #51 with the responsible person
-and next step. JakeNLelis owns the hosted rollout and records remaining provider checks in #51.
+JakeNLelis owns the hosted rollout. Production OAuth publishing remains subject
+to Google's separate Branding and HTTPS-client requirements described below.
 The local Auth hook is configured in `supabase/config.toml` and
 tracked under [#9](https://github.com/csci153-saais-2026/saais-web/issues/9). The
 hosted access-token change is in
@@ -55,11 +55,12 @@ Set `VITE_API_MODE=supabase`, `VITE_SUPABASE_URL`, and
 `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` server-side. Redeploy after changing
 the environment. Use the public project key for browser configuration.
 
-Keep OAuth secrets in Supabase Auth and worker/signing credentials in the
-approved Edge Function and scheduler secret stores. The
-[Google Apps Script mailer setup](../backend/google-apps-script-mailer.md)
-documents the mail relay. Use team-approved institutional test recipients for
-invitation and scheduled delivery smoke tests.
+Keep Google Auth credentials in Supabase Auth. Keep Gmail REST API OAuth
+credentials in Edge Function secrets and worker signing credentials in Vault.
+The mailer uses OAuth2 rather than an SMTP app password.
+The [Gmail REST API mailer setup](../backend/gmail-rest-mailer.md) documents
+the mail relay without secret values. Use team-approved institutional test
+recipients for invitation and scheduled delivery smoke tests.
 
 `vercel.json` serves `index.html` on SPA deep links and preserves API routes.
 Verify a direct load and refresh while signed in on the chosen staging domain.
@@ -81,8 +82,18 @@ Verify a direct load and refresh while signed in on the chosen staging domain.
 - The hosted `auth.identities` trigger activated a synthetic invited profile
   on the first verified Google identity insert. It invalidated the password
   token, removed the queued email and wrote one acceptance audit event. The
-  test transaction rolled back. First-time activation through the Google
-  browser flow still needs an unused institutional mailbox.
+  test transaction rolled back.
+- A fresh invitation was then completed through the staging browser flow. The
+  profile is active with an accepted invitation, both email and Google
+  identities exist, and the hosted audit contains one `invitation_accepted`
+  event. The `saais_activate_google_invitation` trigger is enabled. The
+  invitee reached the Department Head curriculum-transfers page. The
+  invitation email and a subsequent SAAIS notification email were delivered;
+  the invitation queue is empty.
+- PR #231 replaced the Apps Script relay with direct Gmail REST API delivery.
+  The deployed `mail-delivery` function is active at version 16, and the
+  scheduled mail-delivery job succeeded at 14:11 Asia/Manila. The test mailbox
+  received both the invitation and a SAAIS notification email.
 - A synthetic student uploaded a staged photo. The app saved its validated
   copy and removed the original staging object.
 - Supabase Cron recorded the lapsed-INC smoke run at 02:38 and the scheduled
