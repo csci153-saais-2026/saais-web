@@ -429,10 +429,12 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           ].includes(upstream.details || "")
             ? upstream.details
             : undefined;
+        // Match the Data API gateway: other client errors keep a PT status code.
+        const fallback =
+          status === 409 ? "23505" : status < 500 ? `PT${status}` : "XX000";
         return error(
           status,
-          conflict ??
-            (controlled ? upstream.code! : status === 409 ? "23505" : "XX000"),
+          conflict ?? (controlled ? upstream.code! : fallback),
           controlled
             ? (upstream.message || "Request rejected.").slice(0, 1000)
             : "The operation could not be completed.",

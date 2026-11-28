@@ -27,6 +27,7 @@ const resources = new Map(
     name,
     {
       projection: resource.projection,
+      defaultOrder: resource.defaultOrder,
       query: new Set(resource.query),
       select: {
         pattern: new RegExp(resource.select.pattern),
@@ -224,10 +225,7 @@ export function createDataApiHandler(
       url.searchParams.set("limit", String(pagination.limit.default));
     }
     if (!url.searchParams.has("order")) {
-      url.searchParams.set(
-        "order",
-        resourceName === "student_organization" ? "student_id.asc" : "id.asc",
-      );
+      url.searchParams.set("order", resource.defaultOrder);
     }
     const selection = url.searchParams.get("select");
     if (selection === null || selection === "*") {

@@ -229,19 +229,31 @@ test("valid Data API reads keep the caller's JWT and strip private gateway heade
   );
 });
 
-test("student organization uses its documented student ID order by default", async () => {
+test("each collection uses its documented order by default", async () => {
+  const expected = {
+    advising_note: "created_at.desc,id.desc",
+    audit_log_entry: "created_at.desc,id.desc",
+    curriculum_transfer_request: "created_at.desc,id.desc",
+    grade_flag: "created_at.desc,id.desc",
+    notification: "created_at.desc,id.desc",
+    outside_credit: "decided_at.desc,id.desc",
+    student_organization: "student_id.asc",
+  };
+  let order;
   const handle = createDataApiHandler(env, async (url) => {
     if (String(url).endsWith("/saais_read_data_api_gateway_key")) {
       return Response.json(gatewayKey);
     }
-    assert.equal(new URL(url).searchParams.get("order"), "student_id.asc");
+    order = new URL(url).searchParams.get("order");
     return Response.json([]);
   });
-  const request = new Request(
-    env.url + "/functions/v1/data-api/student_organization",
-    { headers },
-  );
-  assert.equal((await handle(request)).status, 200);
+  for (const name of Object.keys(contract)) {
+    const request = new Request(env.url + "/functions/v1/data-api/" + name, {
+      headers,
+    });
+    assert.equal((await handle(request)).status, 200, name);
+    assert.equal(order, expected[name] ?? "id.asc", name);
+  }
 });
 
 test("only a gateway proof rejection reloads the key and retries at most once", async () => {
