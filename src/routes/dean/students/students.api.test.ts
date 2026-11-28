@@ -171,8 +171,8 @@ describe("students.api", () => {
     );
 
     const [loadedCourses, loadedOfferings] = await Promise.all([
-      getDeanCourses(),
-      getDeanCourseOfferings(),
+      getDeanCourses(courses.map((row) => row.id)),
+      getDeanCourseOfferings(offerings.map((row) => row.id)),
     ]);
 
     expect(courseOffsets).toEqual(["0", "20"]);

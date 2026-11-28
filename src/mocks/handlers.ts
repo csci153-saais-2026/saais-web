@@ -5,6 +5,11 @@ import {
   isOnMidtermGradeScale,
 } from "@/lib/validation/grade-scale";
 import {
+  defaultDataApiLimit,
+  getDataApiResource,
+  validateDataApiQuery,
+} from "../../supabase/functions/_shared/data-api-query";
+import {
   canAccessDepartment,
   canAccessFaculty,
   hasMockRole,
@@ -583,6 +588,23 @@ function isAdvisingAIRequest(
   });
 }
 
+function gradeScaleError(input: {
+  midterm_grade?: unknown;
+  final_grade?: unknown;
+}) {
+  const { midterm_grade: midterm, final_grade: final } = input;
+  if (
+    midterm != null &&
+    (typeof midterm !== "number" || !isOnMidtermGradeScale(midterm))
+  ) {
+    return "Use a midterm grade from 1.00 to 5.00 in 0.25 steps.";
+  }
+  if (final != null && (typeof final !== "number" || !isOnGradeScale(final))) {
+    return "Use a final grade from 1.00 to 3.00 in 0.25 steps, or 5.00.";
+  }
+  return null;
+}
+
 function errorJson(
   status: number,
   code: string,
@@ -785,25 +807,20 @@ function recordMockAudit(
   });
 }
 
-const AUDIT_OR_FIELD_LIMITS: Record<string, number> = {
-  actor_name: 100,
-  student_name: 100,
-  student_number: 100,
-  target_label: 100,
-  action: 100,
-  details_summary: 100,
-  reason: 100,
-};
-
-const COURSE_OR_PATTERN =
-  /^\(code\.ilike\.%[^,()]{1,100}%,title\.ilike\.%[^,()]{1,250}%\)$/u;
-const PROGRAM_OR_PATTERN =
-  /^\(code\.ilike\.%[^,()]{1,100}%,name\.ilike\.%[^,()]{1,150}%\)$/u;
-
 function applyPostgrestQuery<T extends object>(
   rows: readonly T[],
-  url: URL,
+  request: Request,
 ): Response {
+  const url = new URL(request.url);
+  const resource = getDataApiResource(url.pathname.split("/").at(-1) ?? "");
+  if (resource) {
+    const prefer = request.headers.get("prefer")?.trim() ?? null;
+    const validationError = validateDataApiQuery(resource, url, prefer);
+    if (validationError !== null) {
+      return errorJson(400, "PT400", validationError);
+    }
+  }
+
   const reservedParams = new Set([
     "select",
     "order",
@@ -841,35 +858,17 @@ function applyPostgrestQuery<T extends object>(
 
   const orParam = url.searchParams.get("or");
   if (orParam !== null) {
-    const pattern = url.pathname.endsWith("/rest/v1/course")
-      ? COURSE_OR_PATTERN
-      : url.pathname.endsWith("/rest/v1/program")
-        ? PROGRAM_OR_PATTERN
-        : null;
-    const isAudit = url.pathname.endsWith("/rest/v1/audit_log_entry");
-    if (
-      (!pattern && !isAudit) ||
-      !orParam.startsWith("(") ||
-      !orParam.endsWith(")") ||
-      (pattern && !pattern.test(orParam))
-    )
+    if (!resource)
       return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
-    const rawTerms = orParam.slice(1, -1).split(",");
-    if (rawTerms.length > 7)
-      return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
-    const terms = rawTerms.map((term) => {
-      const match = term.match(/^([a-z_]+)\.(ilike|like|eq)\.([^,()]+)$/);
-      if (!match) return null;
-      const [, field, op, operand] = match;
-      if (
-        (isAudit &&
-          (!Object.hasOwn(AUDIT_OR_FIELD_LIMITS, field) ||
-            operand.length > AUDIT_OR_FIELD_LIMITS[field])) ||
-        Array.from(operand).some((char) => char.charCodeAt(0) < 32)
-      )
-        return null;
-      return { field, op, operand };
-    });
+    const terms = orParam
+      .slice(1, -1)
+      .split(",")
+      .map((term) => {
+        const match = term.match(/^([a-z_]+)\.(ilike|like|eq)\.([^,()]+)$/);
+        if (!match) return null;
+        const [, field, op, operand] = match;
+        return { field, op, operand };
+      });
     if (terms.some((term) => !term))
       return errorJson(400, "INVALID_FILTER", "Invalid disjunction filter.");
     filtered = filtered.filter((row) =>
@@ -932,7 +931,7 @@ function applyPostgrestQuery<T extends object>(
     return errorJson(400, "INVALID_PAGINATION", "Invalid limit or offset.");
   const total = filtered.length;
   const offset = offsetParam === null ? 0 : Number(offsetParam);
-  const limit = limitParam === null ? 20 : Number(limitParam);
+  const limit = limitParam === null ? defaultDataApiLimit : Number(limitParam);
   if (
     !Number.isSafeInteger(offset) ||
     offset > 100000 ||
@@ -1527,7 +1526,7 @@ export const saaisMswHandlers = [
     const rows = persona.roles.includes("student")
       ? db.profiles.filter((p) => p.id === persona.profileId)
       : db.profiles;
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/role_assignment", ({ request }) => {
@@ -1538,52 +1537,37 @@ export const saaisMswHandlers = [
     const rows = persona.roles.includes("student")
       ? db.roleAssignments.filter((r) => r.profile_id === persona.profileId)
       : db.roleAssignments;
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/faculty", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().faculties,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().faculties, request);
   }),
 
   http.get("*/rest/v1/department", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().departments,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().departments, request);
   }),
 
   http.get("*/rest/v1/program", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().programs,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().programs, request);
   }),
 
   http.get("*/rest/v1/curriculum_version", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().curriculumVersions,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().curriculumVersions, request);
   }),
 
   http.get("*/rest/v1/curriculum_term", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().curriculumTerms,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().curriculumTerms, request);
   }),
 
   http.get("*/rest/v1/curriculum_term_course", ({ request }) => {
@@ -1591,23 +1575,20 @@ export const saaisMswHandlers = [
     if ("response" in auth) return auth.response;
     return applyPostgrestQuery(
       getMockDatabase().curriculumTermCourses,
-      new URL(request.url),
+      request,
     );
   }),
 
   http.get("*/rest/v1/course", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(getMockDatabase().courses, new URL(request.url));
+    return applyPostgrestQuery(getMockDatabase().courses, request);
   }),
 
   http.get("*/rest/v1/prerequisite", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().prerequisites,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().prerequisites, request);
   }),
 
   http.get("*/rest/v1/curriculum_pair_equivalence", ({ request }) => {
@@ -1615,17 +1596,14 @@ export const saaisMswHandlers = [
     if ("response" in auth) return auth.response;
     return applyPostgrestQuery(
       getMockDatabase().curriculumPairEquivalences,
-      new URL(request.url),
+      request,
     );
   }),
 
   http.get("*/rest/v1/school_term", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().schoolTerms,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().schoolTerms, request);
   }),
 
   http.get("*/rest/v1/department_term_encoding", ({ request }) => {
@@ -1633,17 +1611,14 @@ export const saaisMswHandlers = [
     if ("response" in auth) return auth.response;
     return applyPostgrestQuery(
       getMockDatabase().departmentTermEncodings,
-      new URL(request.url),
+      request,
     );
   }),
 
   http.get("*/rest/v1/course_offering", ({ request }) => {
     const auth = authenticateRequest(request);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().courseOfferings,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().courseOfferings, request);
   }),
 
   http.get("*/rest/v1/adviser_assignment", ({ request }) => {
@@ -1654,7 +1629,7 @@ export const saaisMswHandlers = [
     const rows = db.adviserAssignments.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/student_curriculum_assignment", ({ request }) => {
@@ -1665,7 +1640,7 @@ export const saaisMswHandlers = [
     const rows = db.studentCurriculumAssignments.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/student_organization", ({ request }) => {
@@ -1676,7 +1651,7 @@ export const saaisMswHandlers = [
     const rows = db.studentOrganizations.filter((s) =>
       canAccessStudentRecord(persona, s.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/attempt", ({ request }) => {
@@ -1693,7 +1668,7 @@ export const saaisMswHandlers = [
     const rows = db.attempts.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/attempt_result", ({ request }) => {
@@ -1710,7 +1685,7 @@ export const saaisMswHandlers = [
     const rows = db.attemptResults.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(markRetakeResults(rows), new URL(request.url));
+    return applyPostgrestQuery(markRetakeResults(rows), request);
   }),
 
   http.get("*/rest/v1/inc_resolution", ({ request }) => {
@@ -1727,7 +1702,7 @@ export const saaisMswHandlers = [
     const rows = db.incResolutions.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/elective_mapping", ({ request }) => {
@@ -1744,7 +1719,7 @@ export const saaisMswHandlers = [
     const rows = db.electiveMappings.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/equivalency_decision", ({ request }) => {
@@ -1761,7 +1736,7 @@ export const saaisMswHandlers = [
     const rows = db.equivalencyDecisions.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/outside_credit", ({ request }) => {
@@ -1778,7 +1753,7 @@ export const saaisMswHandlers = [
     const rows = db.outsideCredits.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/curriculum_transfer_request", ({ request }) => {
@@ -1795,7 +1770,7 @@ export const saaisMswHandlers = [
     const rows = db.curriculumTransferRequests.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/advising_plan", ({ request }) => {
@@ -1812,7 +1787,7 @@ export const saaisMswHandlers = [
     const rows = db.advisingPlans.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/advising_plan_item", ({ request }) => {
@@ -1829,7 +1804,7 @@ export const saaisMswHandlers = [
     const rows = db.advisingPlanItems.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/advising_note", ({ request }) => {
@@ -1845,7 +1820,7 @@ export const saaisMswHandlers = [
     const rows = db.advisingNotes.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/attempt_remark", ({ request }) => {
@@ -1857,7 +1832,7 @@ export const saaisMswHandlers = [
     ]);
     if ("response" in auth) return auth.response;
     const db = getMockDatabase();
-    return applyPostgrestQuery(db.attemptRemarks, new URL(request.url));
+    return applyPostgrestQuery(db.attemptRemarks, request);
   }),
 
   http.get("*/rest/v1/grade_flag", ({ request }) => {
@@ -1874,7 +1849,7 @@ export const saaisMswHandlers = [
     const rows = db.gradeFlags.filter((a) =>
       canAccessStudentRecord(persona, a.student_id, true),
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/notification", ({ request }) => {
@@ -1885,7 +1860,7 @@ export const saaisMswHandlers = [
     const rows = db.notifications.filter(
       (n) => n.recipient_id === persona.profileId,
     );
-    return applyPostgrestQuery(rows, new URL(request.url));
+    return applyPostgrestQuery(rows, request);
   }),
 
   http.get("*/rest/v1/system_settings", ({ request }) => {
@@ -1903,7 +1878,7 @@ export const saaisMswHandlers = [
       : getMockDatabase().systemSettings.filter(
           (setting) => setting.department_id === auth.persona.departmentId,
         );
-    return applyPostgrestQuery(visibleSettings, new URL(request.url));
+    return applyPostgrestQuery(visibleSettings, request);
   }),
 
   http.get("*/rest/v1/audit_log", ({ request }) => {
@@ -1914,10 +1889,7 @@ export const saaisMswHandlers = [
       "department_staff",
     ]);
     if ("response" in auth) return auth.response;
-    return applyPostgrestQuery(
-      getMockDatabase().auditLogEntries,
-      new URL(request.url),
-    );
+    return applyPostgrestQuery(getMockDatabase().auditLogEntries, request);
   }),
 
   http.get("*/rest/v1/audit_log_entry", ({ request }) => {
@@ -1943,7 +1915,7 @@ export const saaisMswHandlers = [
           right.created_at.localeCompare(left.created_at) ||
           right.id.localeCompare(left.id),
       ),
-      new URL(request.url),
+      request,
     );
   }),
 
@@ -4771,22 +4743,8 @@ export const saaisMswHandlers = [
           "school_term_id and course_offering_id are required.",
         );
       }
-      if (
-        (body.midterm_grade != null &&
-          (typeof body.midterm_grade !== "number" ||
-            !Number.isFinite(body.midterm_grade) ||
-            !isOnMidtermGradeScale(body.midterm_grade))) ||
-        (body.final_grade != null &&
-          (typeof body.final_grade !== "number" ||
-            !Number.isFinite(body.final_grade) ||
-            !isOnGradeScale(body.final_grade)))
-      ) {
-        return errorJson(
-          400,
-          "INVALID_INPUT",
-          "Use a numeric grade from 1.00 to 3.00 in 0.25 steps, or 5.00.",
-        );
-      }
+      const gradeError = gradeScaleError(body);
+      if (gradeError) return errorJson(400, "INVALID_INPUT", gradeError);
       if (departmentEncodingClosed(studentId, body.school_term_id))
         return encodingClosedResponse();
       const db = getMockDatabase();
@@ -4915,24 +4873,9 @@ export const saaisMswHandlers = [
           "school_term_id and rows are required.",
         );
       }
-      if (
-        body.rows.some(
-          (row) =>
-            (row.midterm_grade != null &&
-              (typeof row.midterm_grade !== "number" ||
-                !Number.isFinite(row.midterm_grade) ||
-                !isOnMidtermGradeScale(row.midterm_grade))) ||
-            (row.final_grade != null &&
-              (typeof row.final_grade !== "number" ||
-                !Number.isFinite(row.final_grade) ||
-                !isOnGradeScale(row.final_grade))),
-        )
-      ) {
-        return errorJson(
-          400,
-          "INVALID_INPUT",
-          "Use a numeric grade from 1.00 to 3.00 in 0.25 steps, or 5.00.",
-        );
+      for (const row of body.rows) {
+        const gradeError = gradeScaleError(row);
+        if (gradeError) return errorJson(400, "INVALID_INPUT", gradeError);
       }
       if (!canAccessStudentRecord(auth.persona, studentId))
         return errorJson(403, "INSUFFICIENT_PRIVILEGE", "Out of scope.");
@@ -5912,6 +5855,15 @@ export const saaisMswHandlers = [
               result.completion_grade = null;
               result.resolved_at = null;
               result.inc_deadline = deadline;
+              result.is_lapsed_inc = false;
+            } else if (
+              body.corrected_status === "dr" ||
+              body.corrected_status === "na" ||
+              body.corrected_status === "currently_enrolled"
+            ) {
+              result.final_grade = null;
+              result.gwa_grade = null;
+              result.inc_deadline = null;
               result.is_lapsed_inc = false;
             }
             result.effective_status = body.corrected_status;

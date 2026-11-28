@@ -18,11 +18,12 @@ async function allPages<T>(
   load: (offset: number) => Promise<T[]>,
 ): Promise<T[]> {
   const rows: T[] = [];
-  for (let offset = 0; ; offset += PAGE) {
+  for (let offset = 0; offset <= 100_000; offset += PAGE) {
     const page = await load(offset);
     rows.push(...page);
     if (page.length < PAGE) return rows;
   }
+  throw new Error("The collection exceeds the supported page range.");
 }
 
 const ORDINALS = ["1st", "2nd", "3rd"];
@@ -170,24 +171,43 @@ const ACTIONS: Partial<Record<ApiSchema<"AuditActionCategory">, AuditAction>> =
     sign_in: "Sign-in",
   };
 
-/** Department-wide audit events, or only those for one student when `studentId` is given. */
+export const DEPARTMENT_AUDIT_LIMIT = 1000;
+
+function auditDateQuery({ from, to }: { from: string; to: string }) {
+  const start = from && new Date(`${from}T00:00:00+08:00`).toISOString();
+  const end =
+    to &&
+    new Date(Date.parse(`${to}T00:00:00+08:00`) + 86_400_000).toISOString();
+  if (start && end)
+    return { and: `(created_at.gte.${start},created_at.lt.${end})` };
+  if (start) return { created_at: `gte.${start}` };
+  if (end) return { created_at: `lt.${end}` };
+  return {};
+}
+
+/** Read the latest department events, or retain paged history for a single student. */
 export async function getAuditEvents(
   studentId?: string,
+  range = { from: "", to: "" },
 ): Promise<AuditEvent[]> {
-  const rows = await allPages((offset) =>
+  if (range.from && range.to && range.from > range.to) return [];
+  const readPage = (limit: number, offset: number) =>
     apiClient
       .GET("/rest/v1/audit_log_entry", {
         params: {
           query: {
             ...(studentId ? { student_id: postgrestFilter.eq(studentId) } : {}),
+            ...auditDateQuery(range),
             order: "created_at.desc,id.desc",
-            limit: PAGE,
+            limit,
             offset,
           },
         },
       })
-      .then(unwrapApiResult),
-  );
+      .then(unwrapApiResult);
+  const rows = await (studentId
+    ? allPages((offset) => readPage(PAGE, offset))
+    : readPage(DEPARTMENT_AUDIT_LIMIT, 0));
   return rows.map((row) => ({
     id: row.id,
     timestamp: row.created_at,

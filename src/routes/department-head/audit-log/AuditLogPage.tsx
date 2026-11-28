@@ -20,6 +20,7 @@ import {
 import { EMPTY_AUDIT_FILTERS, filterAuditEvents } from "./audit-model";
 import type { AuditAction } from "./audit-types";
 import { useAuditEvents } from "../shared/dh-queries";
+import { DEPARTMENT_AUDIT_LIMIT } from "../shared/dh-api";
 import { QueryMessage } from "../shared/dh-ui";
 
 const actionStatus: Record<AuditAction, Status> = {
@@ -42,9 +43,9 @@ const timeFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default function AuditLogPage() {
-  const audit = useAuditEvents();
-  const auditEvents = audit.data ?? AUDIT_SKELETON_SAMPLE;
   const [filters, setFilters] = useState(EMPTY_AUDIT_FILTERS);
+  const audit = useAuditEvents(filters.from, filters.to);
+  const auditEvents = audit.data ?? AUDIT_SKELETON_SAMPLE;
   const dateError = Boolean(
     filters.from && filters.to && filters.from > filters.to,
   );
@@ -257,6 +258,8 @@ export default function AuditLogPage() {
                 {events.length} matching{" "}
                 {events.length === 1 ? "event" : "events"} of{" "}
                 {auditEvents.length}
+                {auditEvents.length >= DEPARTMENT_AUDIT_LIMIT &&
+                  ` (latest ${DEPARTMENT_AUDIT_LIMIT}; narrow the date range to find older entries)`}
               </span>
               <span>DCST department scope</span>
             </div>

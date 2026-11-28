@@ -1,15 +1,52 @@
-import { apiClient, unwrapApiResult, type ApiSchema } from "@/lib/api";
+import {
+  apiClient,
+  postgrestFilter,
+  unwrapApiResult,
+  type ApiSchema,
+} from "@/lib/api";
 
 export const DEAN_AUDIT_LIMIT = 1000;
 
 export async function getDeanAuditLogEntries(
+  signal?: AbortSignal,
+  student?: { id: string; number: string },
+): Promise<ApiSchema<"AuditLogEntry">[]> {
+  if (student) {
+    const [linked, historical] = await Promise.all([
+      readAuditPage({ student_id: postgrestFilter.eq(student.id) }, signal),
+      readAuditPage(
+        { student_number: postgrestFilter.eq(student.number) },
+        signal,
+      ),
+    ]);
+    return [
+      ...new Map(
+        [...linked, ...historical].map((row) => [row.id, row]),
+      ).values(),
+    ]
+      .sort(
+        (a, b) =>
+          Date.parse(b.created_at) - Date.parse(a.created_at) ||
+          b.id.localeCompare(a.id),
+      )
+      .slice(0, DEAN_AUDIT_LIMIT);
+  }
+  return readAuditPage({}, signal);
+}
+
+async function readAuditPage(
+  filter: { student_id?: string; student_number?: string },
   signal?: AbortSignal,
 ): Promise<ApiSchema<"AuditLogEntry">[]> {
   return unwrapApiResult(
     // The newest entries, up to the gateway's page maximum.
     await apiClient.GET("/rest/v1/audit_log_entry", {
       params: {
-        query: { order: "created_at.desc,id.desc", limit: DEAN_AUDIT_LIMIT },
+        query: {
+          ...filter,
+          order: "created_at.desc,id.desc",
+          limit: DEAN_AUDIT_LIMIT,
+        },
       },
       signal,
     }),

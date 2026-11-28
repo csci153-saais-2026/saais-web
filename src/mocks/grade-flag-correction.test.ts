@@ -177,6 +177,54 @@ describe("flag midterm corrections", () => {
     expect(db.gradeFlags[flagIndex]?.status).toBe("corrected");
   });
 
+  it.each(["final", null] as const)(
+    "clears a numeric final and keeps the midterm when a %s flag drops the final",
+    async (stage) => {
+      loginAsMockPersona("adviser");
+      const db = getMockDatabase();
+      const flag = db.gradeFlags.find(
+        (item) => item.id === MOCK_IDS.gradeFlag1,
+      )!;
+      flag.reported_stage = stage;
+      const attempt = db.attemptResults.find(
+        (item) => item.id === flag.attempt_id,
+      )!;
+      Object.assign(attempt, {
+        midterm_grade: 4.75,
+        midterm_status: "graded",
+        final_grade: 2,
+        gwa_grade: 2,
+        recorded_status: "passed",
+        effective_status: "passed",
+      });
+
+      const response = await client().POST(
+        "/functions/v1/grade-flags/{flag_id}/resolve",
+        {
+          params: { path: { flag_id: flag.id } },
+          body: {
+            resolution_action: "correct",
+            corrected_status: "dr",
+            resolution_note: "Drop the final",
+            expected_revision: attempt.revision,
+          },
+        },
+      );
+
+      expect(response.response.status).toBe(200);
+      expect(
+        db.attemptResults.find((item) => item.id === attempt.id),
+      ).toMatchObject({
+        recorded_status: "dr",
+        effective_status: "dr",
+        final_grade: null,
+        gwa_grade: null,
+        midterm_grade: 4.75,
+        midterm_status: "graded",
+      });
+    },
+  );
+
   it("rejects changing a completed INC back to INC through flag resolution", async () => {
     loginAsMockPersona("adviser");
     const db = getMockDatabase();

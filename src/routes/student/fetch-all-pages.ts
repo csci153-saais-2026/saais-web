@@ -1,6 +1,7 @@
 import { parseContentRange, unwrapApiResult } from "@/lib/api";
 
 const PAGE_SIZE = 100;
+const MAX_OFFSET = 100_000;
 
 /**
  * Loads every row of a paginated PostgREST collection. Callers must pass a
@@ -16,6 +17,11 @@ export async function fetchAllPages<T>(
   const rows: T[] = [];
   const seen = new Set<string>();
   for (let offset = 0; ;) {
+    if (offset > MAX_OFFSET) {
+      throw new Error(
+        "Pagination reached the API offset limit before all records were read.",
+      );
+    }
     const result = await fetchPage(PAGE_SIZE, offset);
     const page = unwrapApiResult(result);
     for (const row of page) {

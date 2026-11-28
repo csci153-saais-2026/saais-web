@@ -33,10 +33,10 @@ export const useDepartmentAdvisers = () => {
     queryFn: () => getDepartmentAdvisers(departmentIds),
   });
 };
-export const useAuditEvents = () =>
+export const useAuditEvents = (from: string, to: string) =>
   useQuery({
-    queryKey: useDepartmentHeadQueryKey(keys.audit),
-    queryFn: () => getAuditEvents(),
+    queryKey: [...useDepartmentHeadQueryKey(keys.audit), from, to],
+    queryFn: () => getAuditEvents(undefined, { from, to }),
   });
 export const useStudentAuditEvents = (studentId: string) =>
   useQuery({

@@ -24,6 +24,54 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close());
 
 describe("grade import safeguards", () => {
+  it("reports the applicable grade scale on record and term encoding errors", async () => {
+    loginAsMockPersona("adviser");
+    const db = getMockDatabase();
+    const student = db.profiles.find(
+      (profile) => profile.email === "sample.student01@vsu.edu.ph",
+    )!;
+    const schoolTermId = MOCK_IDS.term2026Sem1Open;
+    const offering = db.courseOfferings.find(
+      (item) => item.school_term_id === schoolTermId,
+    )!;
+    const params = { path: { student_id: student.id } };
+    for (const [grade, message] of [
+      [
+        { midterm_grade: 4.6 },
+        "Use a midterm grade from 1.00 to 5.00 in 0.25 steps.",
+      ],
+      [
+        { final_grade: 4.75 },
+        "Use a final grade from 1.00 to 3.00 in 0.25 steps, or 5.00.",
+      ],
+    ] as const) {
+      const row = {
+        course_offering_id: offering.id,
+        continue_with_prerequisite_override: false,
+        ...grade,
+      };
+      const record = await client().POST(
+        "/functions/v1/students/{student_id}/record-grades",
+        {
+          params,
+          body: {
+            school_term_id: schoolTermId,
+            confirmed_enrollment: true,
+            ...row,
+          },
+        },
+      );
+      const encode = await client().POST(
+        "/functions/v1/students/{student_id}/encode-grades",
+        { params, body: { school_term_id: schoolTermId, rows: [row] } },
+      );
+      for (const result of [record, encode]) {
+        expect(result.response.status).toBe(400);
+        expect(result.error).toMatchObject({ code: "INVALID_INPUT", message });
+      }
+    }
+  });
+
   it("validates both modes and prevents replacing existing final grades", async () => {
     loginAsMockPersona("adviser");
     const db = getMockDatabase();

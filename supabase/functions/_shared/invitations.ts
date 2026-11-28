@@ -23,20 +23,40 @@ export class InvitationError extends Error {
 type Json = Record<string, unknown>;
 type Caller = { id: string; authorization: string };
 type Services = { url: string; serviceKey: string; mailWorkerSecret?: string };
+type BackgroundRuntime = { waitUntil: (task: Promise<void>) => void };
 
 async function triggerMailDelivery(services: Services, fetcher: typeof fetch) {
   if (!services.url || !services.mailWorkerSecret) return;
+  const runtime = (globalThis as { EdgeRuntime?: BackgroundRuntime })
+    .EdgeRuntime;
+  const hasBackgroundRuntime = typeof runtime?.waitUntil === "function";
+  const delivery = requestMailDelivery(
+    services.url,
+    services.mailWorkerSecret,
+    fetcher,
+    hasBackgroundRuntime ? 60_000 : 8_000,
+  );
+  if (runtime && hasBackgroundRuntime) {
+    runtime.waitUntil(delivery);
+  } else {
+    await delivery;
+  }
+}
+
+async function requestMailDelivery(
+  baseUrl: string,
+  workerSecret: string,
+  fetcher: typeof fetch,
+  timeout: number,
+) {
   try {
-    const response = await fetcher(
-      `${services.url}/functions/v1/mail-delivery`,
-      {
-        method: "POST",
-        headers: {
-          "x-saais-mail-secret": services.mailWorkerSecret,
-        },
-        signal: AbortSignal.timeout(8000),
+    const response = await fetcher(`${baseUrl}/functions/v1/mail-delivery`, {
+      method: "POST",
+      headers: {
+        "x-saais-mail-secret": workerSecret,
       },
-    );
+      signal: AbortSignal.timeout(timeout),
+    });
     await response.body?.cancel();
   } catch {
     /* Leave the invitation queued for the scheduled mail-delivery worker. */

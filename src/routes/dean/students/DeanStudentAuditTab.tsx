@@ -19,7 +19,10 @@ export function DeanStudentAuditTab({
 }: {
   student: DeanStudentSummary;
 }) {
-  const auditQuery = useDeanStudentAudit(student.studentId);
+  const auditQuery = useDeanStudentAudit(
+    student.studentId,
+    student.studentNumber,
+  );
 
   if (!auditQuery.data) {
     return (
