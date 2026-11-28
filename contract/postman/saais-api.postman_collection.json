@@ -1991,7 +1991,7 @@
                 "description": "Upload or update student profile photo\n\n- **Operation ID**: `uploadStudentPhoto`\n- **Authorized roles: student, admin**\nScope rules: `{\"student\":\"own-records\",\"admin\":\"institution-wide\"}`",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"storage_object_path\": \"student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
+                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"storage_object_path\": \"students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2059,7 +2059,7 @@
                 "description": "Verifies that role `adviser` is rejected with HTTP 403 Forbidden (`INSUFFICIENT_PRIVILEGE`) on `uploadStudentPhoto`.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"storage_object_path\": \"student-photos/00000000-0000-4000-8000-000000000101/avatar.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
+                  "raw": "{\n  \"avatar_url\": \"https://saais-test.supabase.co/storage/v1/object/authenticated/student-photos/students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"storage_object_path\": \"students/00000000-0000-4000-8000-000000000101/upload-00000000-0000-4000-8000-000000000001.png\",\n  \"mime_type\": \"image/png\",\n  \"file_size_bytes\": 204800\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -12463,6 +12463,113 @@
           ]
         },
         {
+          "name": "[GET] /functions/v1/students/{student_id}/assistant (getAdvisingAssistantHistory)",
+          "description": "Read the adviser's saved conversation\n\nAuthorized roles: adviser\nScope rules: `\"current-or-historic-assigned-students-read-only\"`",
+          "item": [
+            {
+              "name": "Authorized (adviser) — GET /functions/v1/students/{student_id}/assistant",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"getAdvisingAssistantHistory — status is one of [200]\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "apikey",
+                    "value": "{{supabase_publishable_key}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token_adviser}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/assistant",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "functions",
+                    "v1",
+                    "students",
+                    "{{student_id}}",
+                    "assistant"
+                  ],
+                  "query": []
+                },
+                "description": "Read the adviser's saved conversation\n\n- **Operation ID**: `getAdvisingAssistantHistory`\n- **Authorized roles: adviser**\nScope rules: `\"current-or-historic-assigned-students-read-only\"`"
+              },
+              "response": []
+            },
+            {
+              "name": "Denied (Unauthorized role: student) — GET /functions/v1/students/{student_id}/assistant",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"getAdvisingAssistantHistory — status is one of [403]\", function () {",
+                      "  pm.expect([403]).to.include(pm.response.code);",
+                      "});",
+                      "pm.test(\"getAdvisingAssistantHistory — error response includes sanitized code and message\", function () {",
+                      "  if (pm.response.code >= 400 && pm.response.headers.get(\"Content-Type\")?.includes(\"application/json\")) {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.be.an(\"object\");",
+                      "    pm.expect(body.code || body.error || body.message).to.be.ok;",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "apikey",
+                    "value": "{{supabase_publishable_key}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token_student}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/functions/v1/students/{{student_id}}/assistant",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "functions",
+                    "v1",
+                    "students",
+                    "{{student_id}}",
+                    "assistant"
+                  ],
+                  "query": []
+                },
+                "description": "Verifies that role `student` is rejected with HTTP 403 Forbidden (`INSUFFICIENT_PRIVILEGE`) on `getAdvisingAssistantHistory`."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
           "name": "[POST] /functions/v1/students/{student_id}/assistant (askAdvisingAssistant)",
           "description": "Ask record-grounded adviser assistant\n\nAuthorized roles: adviser\nScope rules: `\"current-or-historic-assigned-students-read-only\"`",
           "item": [
@@ -12733,7 +12840,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/rest/v1/student_organization?select=id&limit=20",
+                  "raw": "{{base_url}}/rest/v1/student_organization?select=student_id&limit=20",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -12787,7 +12894,7 @@
                     },
                     {
                       "key": "select",
-                      "value": "id",
+                      "value": "student_id",
                       "description": "Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults.",
                       "disabled": false
                     },
@@ -12847,7 +12954,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/rest/v1/student_organization?select=id&limit=20",
+                  "raw": "{{base_url}}/rest/v1/student_organization?select=student_id&limit=20",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -12901,7 +13008,7 @@
                     },
                     {
                       "key": "select",
-                      "value": "id",
+                      "value": "student_id",
                       "description": "Only these flat safe columns. On private-column tables the client must explicitly send this projection; PostgREST does not apply OpenAPI defaults.",
                       "disabled": false
                     },

@@ -22,7 +22,46 @@ export class InvitationError extends Error {
 
 type Json = Record<string, unknown>;
 type Caller = { id: string; authorization: string };
-type Services = { url: string; serviceKey: string };
+type Services = { url: string; serviceKey: string; mailWorkerSecret?: string };
+type BackgroundRuntime = { waitUntil: (task: Promise<void>) => void };
+
+async function triggerMailDelivery(services: Services, fetcher: typeof fetch) {
+  if (!services.url || !services.mailWorkerSecret) return;
+  const runtime = (globalThis as { EdgeRuntime?: BackgroundRuntime })
+    .EdgeRuntime;
+  const hasBackgroundRuntime = typeof runtime?.waitUntil === "function";
+  const delivery = requestMailDelivery(
+    services.url,
+    services.mailWorkerSecret,
+    fetcher,
+    hasBackgroundRuntime ? 60_000 : 8_000,
+  );
+  if (runtime && hasBackgroundRuntime) {
+    runtime.waitUntil(delivery);
+  } else {
+    await delivery;
+  }
+}
+
+async function requestMailDelivery(
+  baseUrl: string,
+  workerSecret: string,
+  fetcher: typeof fetch,
+  timeout: number,
+) {
+  try {
+    const response = await fetcher(`${baseUrl}/functions/v1/mail-delivery`, {
+      method: "POST",
+      headers: {
+        "x-saais-mail-secret": workerSecret,
+      },
+      signal: AbortSignal.timeout(timeout),
+    });
+    await response.body?.cancel();
+  } catch {
+    /* Leave the invitation queued for the scheduled mail-delivery worker. */
+  }
+}
 
 function bytesToHex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
@@ -133,11 +172,17 @@ export async function runInvitation(
         email_confirm: true,
         app_metadata: { saais_provisioning_id: prepared.reservation_id },
       });
-      if (!response.ok && response.status !== 422 && response.status !== 409) {
-        throw new InvitationError(
-          500,
-          "Auth provisioning failed. Retry the same request.",
-        );
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null);
+        if (
+          ![409, 422].includes(response.status) ||
+          (failure?.error_code ?? failure?.code) !== "email_exists"
+        ) {
+          throw new InvitationError(
+            500,
+            "Auth provisioning failed. Retry the same request.",
+          );
+        }
       }
       // A duplicate can also mean a concurrent or previously interrupted request
       // finished the Auth step. The database only attaches the reserved identity.
@@ -152,8 +197,18 @@ export async function runInvitation(
   // Protected operations use the authenticated actor budget.
   if (caller) await rpc("admit", {});
 
-  if (id === "inviteUser") return provision(data);
-  if (id === "resendAccountInvite") return rpc("start", data, newToken());
+  if (id === "inviteUser") {
+    const result = await provision(data);
+    if (result.invitation_status === "pending") {
+      await triggerMailDelivery(services, fetcher);
+    }
+    return result;
+  }
+  if (id === "resendAccountInvite") {
+    const result = await rpc("start", data, newToken());
+    await triggerMailDelivery(services, fetcher);
+    return result;
+  }
   if (id === "revokeAccountInvite") return rpc("start", data);
   if (id === "importStudentsBatch") {
     await rpc("validate", data);
@@ -243,6 +298,12 @@ export async function runInvitation(
       },
     );
     await Promise.all(workers);
+    const importedCount = results.filter(
+      (row) => row.outcome === "imported",
+    ).length;
+    if (data.mode === "commit" && importedCount > 0) {
+      await triggerMailDelivery(services, fetcher);
+    }
     return {
       mode: data.mode,
       valid_count: results.filter(
@@ -250,8 +311,7 @@ export async function runInvitation(
       ).length,
       warning_count: 0,
       error_count: results.filter((row) => row.outcome === "error").length,
-      imported_count: results.filter((row) => row.outcome === "imported")
-        .length,
+      imported_count: importedCount,
       results,
     };
   }

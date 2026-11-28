@@ -178,8 +178,74 @@ describe("Audit Log screen", () => {
     fireEvent.change(screen.getByLabelText("From date"), {
       target: { value: "2025-08-15" },
     });
-    expect(screen.getByRole("status").textContent).toBe(
-      "1 matching event of 1",
-    );
+    await screen.findByText("1 matching event of 1");
   });
+
+  it("shows a loading message instead of an empty result while dates change", async () => {
+    await openPage();
+    let finishRequest!: () => void;
+    const responseGate = new Promise<void>((resolve) => {
+      finishRequest = resolve;
+    });
+    saaisMockServer.use(
+      http.get("*/rest/v1/audit_log_entry", async () => {
+        await responseGate;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    try {
+      fireEvent.change(screen.getByLabelText("From date"), {
+        target: { value: "2026-10-01" },
+      });
+      expect(screen.getByRole("status").textContent).toBe(
+        "Loading audit entries for this date range…",
+      );
+      expect(screen.queryByText("No entries match these filters.")).toBeNull();
+    } finally {
+      finishRequest();
+    }
+    await screen.findByText("No entries match these filters.");
+  });
+
+  it("keeps the date filters available when a new range fails to load", async () => {
+    await openPage();
+    saaisMockServer.use(
+      http.get("*/rest/v1/audit_log_entry", ({ request }) => {
+        if (new URL(request.url).searchParams.has("created_at")) {
+          return HttpResponse.json(
+            { message: "Audit query unavailable" },
+            { status: 503 },
+          );
+        }
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const from = screen.getByLabelText<HTMLInputElement>("From date");
+    fireEvent.change(from, { target: { value: "2026-10-01" } });
+    await screen.findByText("We couldn’t load the audit log.");
+    expect(from.value).toBe("2026-10-01");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    await screen.findByRole("table", { name: "Department audit log" });
+    expect(from.value).toBe("");
+  });
+
+  it.each(["2026-02-30", "11/29/2026"])(
+    "rejects invalid audit date %s before fetching",
+    async (from) => {
+      const requests: Request[] = [];
+      saaisMockServer.use(
+        http.get("*/rest/v1/audit_log_entry", ({ request }) => {
+          requests.push(request);
+          return HttpResponse.json([]);
+        }),
+      );
+      await expect(getAuditEvents(undefined, { from, to: "" })).rejects.toThrow(
+        "Enter a valid audit date in YYYY-MM-DD format.",
+      );
+      expect(requests).toHaveLength(0);
+    },
+  );
 });

@@ -298,6 +298,27 @@ test("registration failure removes the trusted copy before returning an error", 
   assert.equal(JSON.parse(calls.at(-1).options.body).prefixes.length, 1);
 });
 
+test("legacy names, other students' paths and MIME mismatches fail before accessing Storage", async () => {
+  for (const storage_object_path of [
+    `students/${student}/avatar.png`,
+    `students/${student}/upload-arbitrary.png`,
+    raw.replace(student, "00000000-0000-4000-8000-000000000099"),
+    raw.replace(/\.png$/, ".jpg"),
+  ]) {
+    await assert.rejects(
+      preparePhoto(
+        env,
+        () => assert.fail("Invalid path must not reach Storage"),
+        headers,
+        student,
+        student,
+        { ...body, storage_object_path },
+      ),
+      { message: "Invalid staging photo path." },
+    );
+  }
+});
+
 test("invalid bytes, oversized data, and denied access cannot produce a trusted copy", async () => {
   for (const [payload, input] of [
     [

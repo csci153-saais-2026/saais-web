@@ -30,7 +30,7 @@ properties:
     minLength: 4
     maxLength: 4
     pattern: '^(?:[12]\.\d{2}|3\.00)$'
-    description: Passing grade on the institutional 1.00–3.00 scale, formatted to two decimals.
+    description: Passing grade from 1.00 through 3.00, formatted to two decimals. Two-decimal grades are intentional because other schools may use increments other than quarter steps.
   destination_curriculum_term_course_id:
     type: string
     format: uuid

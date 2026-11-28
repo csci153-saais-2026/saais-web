@@ -7,12 +7,16 @@ properties:
       - correct
       - reject
   corrected_grade:
-    type:
-      - number
-      - "null"
-    minimum: 1
-    maximum: 5
-    multipleOf: 0.25
+    anyOf:
+      - type: number
+        minimum: 1
+        maximum: 5
+        multipleOf: 0.25
+      - type: "null"
+    description: >-
+      The server uses the flag's stored reported_stage. Midterm corrections accept
+      1.00 through 5.00 in quarter steps. Final corrections and flags with no stage
+      accept 1.00 through 3.00 in quarter steps or 5.00.
   corrected_status:
     anyOf:
       - $ref: "./AttemptStatus.yaml"

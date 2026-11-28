@@ -22,7 +22,6 @@ export const curriculumVersionSchema = z
       z.iso.date("Enter a valid end date."),
       z.literal(""),
     ]),
-    total_units: units,
     delinquency_threshold: units,
     status: z.enum(["draft", "active", "retired", "teach_out", "closed"]),
   })
@@ -55,7 +54,6 @@ export function versionUpdateRequest(
     version_label: parsed.version_label,
     effective_start: parsed.effective_start,
     effective_end: parsed.effective_end || null,
-    total_units: parsed.total_units,
     delinquency_threshold: parsed.delinquency_threshold,
     status: parsed.status,
   };
@@ -69,7 +67,6 @@ export type NewCurriculumVersion = Pick<
   | "version_label"
   | "effective_start"
   | "effective_end"
-  | "total_units"
   | "delinquency_threshold"
   | "status"
 > & { clone_from_version_id?: string | null };

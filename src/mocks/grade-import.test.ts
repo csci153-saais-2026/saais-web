@@ -24,6 +24,54 @@ afterEach(() => {
 afterAll(() => saaisMockServer.close());
 
 describe("grade import safeguards", () => {
+  it("reports the applicable grade scale on record and term encoding errors", async () => {
+    loginAsMockPersona("adviser");
+    const db = getMockDatabase();
+    const student = db.profiles.find(
+      (profile) => profile.email === "sample.student01@vsu.edu.ph",
+    )!;
+    const schoolTermId = MOCK_IDS.term2026Sem1Open;
+    const offering = db.courseOfferings.find(
+      (item) => item.school_term_id === schoolTermId,
+    )!;
+    const params = { path: { student_id: student.id } };
+    for (const [grade, message] of [
+      [
+        { midterm_grade: 4.6 },
+        "Use a midterm grade from 1.00 to 5.00 in 0.25 steps.",
+      ],
+      [
+        { final_grade: 4.75 },
+        "Use a final grade from 1.00 to 3.00 in 0.25 steps, or 5.00.",
+      ],
+    ] as const) {
+      const row = {
+        course_offering_id: offering.id,
+        continue_with_prerequisite_override: false,
+        ...grade,
+      };
+      const record = await client().POST(
+        "/functions/v1/students/{student_id}/record-grades",
+        {
+          params,
+          body: {
+            school_term_id: schoolTermId,
+            confirmed_enrollment: true,
+            ...row,
+          },
+        },
+      );
+      const encode = await client().POST(
+        "/functions/v1/students/{student_id}/encode-grades",
+        { params, body: { school_term_id: schoolTermId, rows: [row] } },
+      );
+      for (const result of [record, encode]) {
+        expect(result.response.status).toBe(400);
+        expect(result.error).toMatchObject({ code: "INVALID_INPUT", message });
+      }
+    }
+  });
+
   it("validates both modes and prevents replacing existing final grades", async () => {
     loginAsMockPersona("adviser");
     const db = getMockDatabase();
@@ -57,16 +105,59 @@ describe("grade import safeguards", () => {
       db.attemptResults.find((a) => a.id === attempt.id)?.final_grade,
     ).toBe(2.5);
     for (const mode of ["preview", "commit"] as const) {
-      const result = await client().POST("/functions/v1/grades/import", {
-        body: {
-          mode,
-          school_term_id: term.id,
-          rows: [{ ...row, final_grade: 2.1 }],
-        },
-      });
-      expect(result.data?.error_count).toBe(1);
+      for (const badGrade of [2.1, 3.25, 4.75]) {
+        const result = await client().POST("/functions/v1/grades/import", {
+          body: {
+            mode,
+            school_term_id: term.id,
+            rows: [{ ...row, final_grade: badGrade }],
+          },
+        });
+        expect(result.data?.error_count).toBe(1);
+      }
     }
   });
+  it.each([3.25, 4.75])(
+    "previews and commits a %s midterm",
+    async (midtermGrade) => {
+      loginAsMockPersona("adviser");
+      const db = getMockDatabase();
+      const student = db.profiles.find(
+        (p) => p.email === "sample.student01@vsu.edu.ph",
+      )!;
+      const offering = db.courseOfferings.find(
+        (o) =>
+          o.school_term_id === MOCK_IDS.term2026Sem1Open &&
+          !db.attemptResults.some(
+            (a) => a.student_id === student.id && a.course_offering_id === o.id,
+          ),
+      )!;
+      const course = db.courses.find((c) => c.id === offering.course_id)!;
+      const term = db.schoolTerms.find(
+        (t) => t.id === offering.school_term_id,
+      )!;
+      const row: ApiSchema<"GradeBatchImportRequest">["rows"][number] = {
+        row_number: 1,
+        student_number: student.student_number!,
+        course_code: course.code,
+        midterm_grade: midtermGrade,
+      };
+      const preview = await client().POST("/functions/v1/grades/import", {
+        body: { mode: "preview", school_term_id: term.id, rows: [row] },
+      });
+      expect(preview.data?.valid_count).toBe(1);
+      const result = await client().POST("/functions/v1/grades/import", {
+        body: { mode: "commit", school_term_id: term.id, rows: [row] },
+      });
+      expect(result.data?.imported_count).toBe(1);
+      expect(
+        db.attemptResults.find(
+          (a) =>
+            a.student_id === student.id && a.course_offering_id === offering.id,
+        ),
+      ).toMatchObject({ midterm_grade: midtermGrade, final_grade: null });
+    },
+  );
   it("uses the selected term deadline for an imported INC", async () => {
     loginAsMockPersona("adviser");
     const db = getMockDatabase();

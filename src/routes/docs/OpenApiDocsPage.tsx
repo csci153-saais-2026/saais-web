@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { DocsAuthGate } from '@/routes/docs/DocsAuthGate'
 import { DocsShell } from '@/routes/docs/DocsShell'
 import type { SessionCheckFn } from '@/routes/docs/docs-auth'
-import { CANONICAL_OPENAPI_SPEC_URL, fetchDocumentation } from '@/routes/docs/docs-registry'
+import { CANONICAL_OPENAPI_SPEC_URL, CONTRACT_VERSION, fetchDocumentation } from '@/routes/docs/docs-registry'
 import {
   mountRedocStandalone,
   type MountRedocOptions,
@@ -42,6 +42,7 @@ function OpenApiContractViewer({
   const [viewerState, setViewerState] = React.useState<ViewerStatus>({
     status: 'loading',
   })
+  const [downloadError, setDownloadError] = React.useState<string | null>(null)
   const [attempt, setAttempt] = React.useState(0)
 
   React.useEffect(() => {
@@ -82,13 +83,22 @@ function OpenApiContractViewer({
   }, [attempt, mountRedoc, specUrl])
 
   const handleDownload = async () => {
+    setDownloadError(null)
     try {
       const content = await fetchDocumentation('openapi')
       const url = URL.createObjectURL(new Blob([content], { type: 'application/yaml' }))
-      const link = document.createElement('a'); link.href = url; link.download = 'saais-openapi.yaml'; link.click(); URL.revokeObjectURL(url)
-    } catch { setViewerState({ status: 'error', message: 'The document could not be downloaded.' }) }
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'saais-openapi.yaml'
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error: unknown) {
+      const detail = error instanceof Error && error.message ? ` ${error.message}` : ''
+      setDownloadError(`The document could not be downloaded.${detail}`)
+    }
   }
   const handleRetry = () => {
+    setDownloadError(null)
     setViewerState({ status: 'loading' })
     setAttempt((prev) => prev + 1)
   }
@@ -103,7 +113,7 @@ function OpenApiContractViewer({
       topbarTrailing={
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status="current" className="hidden sm:inline-flex">
-            OpenAPI 3.1 · v0.3.0
+            OpenAPI 3.1 · v{CONTRACT_VERSION}
           </StatusBadge>
           <code className="hidden rounded-sm bg-secondary px-2 py-0.5 font-mono text-caption text-muted-2 lg:inline-block">
             contract/openapi.yaml
@@ -112,6 +122,16 @@ function OpenApiContractViewer({
         </div>
       }
     >
+      {downloadError && (
+        <div className="max-w-2xl px-gutter-sm pt-6 md:px-gutter">
+          <Alert variant="destructive">
+            <AlertIcon />
+            <AlertTitle>Download failed</AlertTitle>
+            <AlertDescription>{downloadError}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {viewerState.status === 'loading' && (
         <div
           role="status"

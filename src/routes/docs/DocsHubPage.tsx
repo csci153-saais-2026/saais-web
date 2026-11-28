@@ -15,6 +15,7 @@ import {
   ALLOWLISTED_DOCS,
   loadGuide,
   fetchDocumentation,
+  CONTRACT_VERSION,
   type AllowlistedDocEntry,
 } from '@/routes/docs/docs-registry'
 import { MarkdownDocumentView } from '@/routes/docs/MarkdownDocumentView'
@@ -39,11 +40,15 @@ function DocsHubContent() {
   }, [])
   const allGuideSections = docs.flatMap((doc) => doc.sections)
   async function downloadSpec() {
+    setError('')
     try {
       const content = await fetchDocumentation('openapi')
       const url = URL.createObjectURL(new Blob([content], { type: 'application/yaml' }))
-      const link = document.createElement('a'); link.href = url; link.download = 'saais-openapi.yaml'; link.click()
-      URL.revokeObjectURL(url)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'saais-openapi.yaml'
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch { setError('The OpenAPI document could not be downloaded.') }
   }
 
@@ -52,7 +57,7 @@ function DocsHubContent() {
       crumbs={[{ label: 'Documentation' }]}
       guideSections={allGuideSections}
       topbarTrailing={
-        <StatusBadge status="current">OpenAPI 3.1 · v0.3.0</StatusBadge>
+        <StatusBadge status="current">OpenAPI 3.1 · v{CONTRACT_VERSION}</StatusBadge>
       }
     >
       <PageHeading
@@ -73,7 +78,7 @@ function DocsHubContent() {
       <div className="mb-6 grid gap-grid lg:grid-cols-2">
         <Panel
           title="OpenAPI 3.1 Contract Reference"
-          description="Interactive Redoc explorer bound directly to canonical contract/openapi.yaml (v0.3.0)."
+          description={`Interactive Redoc explorer bound directly to canonical contract/openapi.yaml (v${CONTRACT_VERSION}).`}
           action={<StatusBadge status="active">Canonical</StatusBadge>}
           className="mb-0"
         >

@@ -193,7 +193,11 @@ describe("encoding workspace identity", () => {
     });
     expect((await screen.findAllByText(/CS 1/)).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Resolve INC" }));
-    expect(screen.queryByRole("option", { name: "3.25" })).toBeNull();
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("option", {
+        name: "3.25",
+      }),
+    ).toBeNull();
     fireEvent.change(screen.getByLabelText("Completion grade"), {
       target: { value: "2.25" },
     });
@@ -457,7 +461,7 @@ describe("encoding workspace identity", () => {
     const mid = screen.getByLabelText("Midterm for CS 2") as HTMLSelectElement;
     const final = screen.getByLabelText("Final for CS 2") as HTMLSelectElement;
     const remark = screen.getByLabelText("Status for CS 2");
-    expect(within(mid).queryByRole("option", { name: "4.75" })).toBeNull();
+    expect(within(mid).getByRole("option", { name: "4.75" })).toBeTruthy();
     expect(within(final).queryByRole("option", { name: "4.75" })).toBeNull();
     fireEvent.change(mid, { target: { value: "dr" } });
     expect(final.value).toBe("dr");

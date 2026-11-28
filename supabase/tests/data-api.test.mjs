@@ -209,6 +209,7 @@ test("valid Data API reads keep the caller's JWT and strip private gateway heade
   );
   assert.equal(defaultPage.status, 206);
   assert.equal(requests[2].url.searchParams.get("limit"), "20");
+  assert.equal(requests[2].url.searchParams.get("order"), "id.asc");
   assert.equal(requests[2].url.searchParams.has("offset"), false);
   assert.equal(requests[2].headers.get("Range"), null);
   assert.equal(requests[2].headers.get("Range-Unit"), null);
@@ -226,6 +227,138 @@ test("valid Data API reads keep the caller's JWT and strip private gateway heade
     requests[2].url.searchParams.get("select"),
     contract.attempt_result.projection,
   );
+});
+
+test("each collection uses its documented order by default", async () => {
+  const expected = {
+    advising_note: "created_at.desc,id.desc",
+    audit_log_entry: "created_at.desc,id.desc",
+    curriculum_transfer_request: "created_at.desc,id.desc",
+    grade_flag: "created_at.desc,id.desc",
+    notification: "created_at.desc,id.desc",
+    outside_credit: "decided_at.desc,id.desc",
+    student_organization: "student_id.asc",
+  };
+  let order;
+  const handle = createDataApiHandler(env, async (url) => {
+    if (String(url).endsWith("/saais_read_data_api_gateway_key")) {
+      return Response.json(gatewayKey);
+    }
+    order = new URL(url).searchParams.get("order");
+    return Response.json([]);
+  });
+  for (const name of Object.keys(contract)) {
+    const request = new Request(env.url + "/functions/v1/data-api/" + name, {
+      headers,
+    });
+    assert.equal((await handle(request)).status, 200, name);
+    assert.equal(order, expected[name] ?? "id.asc", name);
+  }
+});
+
+test("only a gateway proof rejection reloads the key and retries at most once", async () => {
+  for (const recover of [true, false]) {
+    const rotated = "b".repeat(64);
+    const used = [];
+    let loads = 0;
+    const handle = createDataApiHandler(env, async (url, options) => {
+      if (String(url).endsWith("/saais_read_data_api_gateway_key")) {
+        return Response.json(++loads === 1 ? gatewayKey : rotated);
+      }
+      used.push(options.headers.get("x-saais-data-api-key"));
+      if (recover && used.at(-1) === rotated) return Response.json([]);
+      return Response.json(
+        {
+          code: "PT403",
+          message: "Use the SAAIS Data API gateway for collection reads.",
+        },
+        { status: 403 },
+      );
+    });
+    const response = await handle(read());
+    assert.equal(response.status, recover ? 200 : 403);
+    assert.deepEqual(used, [gatewayKey, rotated]);
+    assert.equal(loads, 2);
+    if (!recover) {
+      assert.equal(
+        (await response.json()).message,
+        "The collection read could not be completed.",
+      );
+    }
+  }
+});
+
+test("Data API normalizes upstream errors without exposing internal details", async () => {
+  for (const [
+    status,
+    code,
+    message,
+    expectedStatus,
+    expectedCode,
+    expectedMessage,
+  ] of [
+    [
+      400,
+      "PT400",
+      "Reviewed request error.",
+      400,
+      "PT400",
+      "Reviewed request error.",
+    ],
+    [
+      403,
+      "42501",
+      "Private column",
+      403,
+      "PT403",
+      "The collection read could not be completed.",
+    ],
+    [
+      401,
+      "PGRST301",
+      "Private JWT metadata",
+      401,
+      "PGRST301",
+      "The user session could not be verified.",
+    ],
+    [429, "PT429", "Please retry.", 429, "PT429", "Please retry."],
+    [
+      502,
+      "XX000",
+      "Internal relation",
+      500,
+      "XX000",
+      "The collection read could not be completed.",
+    ],
+  ]) {
+    let reads = 0;
+    const handle = createDataApiHandler(env, async (url) => {
+      if (String(url).endsWith("/saais_read_data_api_gateway_key")) {
+        return Response.json(gatewayKey);
+      }
+      reads++;
+      return Response.json(
+        { code, message, details: "SQL", hint: "DB schema" },
+        {
+          status,
+          headers: { "Retry-After": "60" },
+        },
+      );
+    });
+    const response = await handle(read());
+    assert.equal(response.status, expectedStatus);
+    assert.deepEqual(await response.json(), {
+      code: expectedCode,
+      message: expectedMessage,
+      details: null,
+      hint: null,
+    });
+    assert.equal(
+      response.headers.get("Retry-After"),
+      status === 429 ? "60" : null,
+    );
+    assert.equal(reads, 1);
+  }
 });
 
 test("Data API forwards pagination values at the contract boundaries", async () => {

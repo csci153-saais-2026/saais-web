@@ -20,6 +20,7 @@ import {
 import { EMPTY_AUDIT_FILTERS, filterAuditEvents } from "./audit-model";
 import type { AuditAction } from "./audit-types";
 import { useAuditEvents } from "../shared/dh-queries";
+import { DEPARTMENT_AUDIT_LIMIT } from "../shared/dh-api";
 import { QueryMessage } from "../shared/dh-ui";
 
 const actionStatus: Record<AuditAction, Status> = {
@@ -42,12 +43,13 @@ const timeFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default function AuditLogPage() {
-  const audit = useAuditEvents();
-  const auditEvents = audit.data ?? AUDIT_SKELETON_SAMPLE;
   const [filters, setFilters] = useState(EMPTY_AUDIT_FILTERS);
+  const audit = useAuditEvents(filters.from, filters.to);
+  const auditEvents = audit.data ?? AUDIT_SKELETON_SAMPLE;
   const dateError = Boolean(
     filters.from && filters.to && filters.from > filters.to,
   );
+  const isUpdating = audit.isPlaceholderData && !dateError;
   const events = filterAuditEvents(auditEvents, filters);
   const tableRows = events.map((event) => ({
     id: event.id,
@@ -128,18 +130,10 @@ export default function AuditLogPage() {
       subtitle="Review record views, changes, and sign-ins within your department."
     />
   );
-  if (audit.isError && !audit.data)
-    return (
-      <>
-        {heading}
-        <QueryMessage query={audit} label="the audit log" />
-      </>
-    );
-
   return (
     <AccountSkeleton
       id="dh-audit-log"
-      data={audit.data}
+      data={audit.isError ? [] : audit.data}
       sample={AUDIT_SKELETON_SAMPLE}
       label="Loading the audit log…"
     >
@@ -241,24 +235,41 @@ export default function AuditLogPage() {
                 </div>
               </div>
             </div>
-            <AuditLogTable
-              ariaLabel="Department audit log"
-              columns={tableColumns}
-              rows={tableRows}
-              rowKey={(row) => row.id}
-              empty={
-                dateError
-                  ? "Choose a valid date range to view events."
-                  : "No entries match these filters."
-              }
-            />
+            {audit.isError ? (
+              <div className="p-5">
+                <QueryMessage query={audit} label="the audit log" />
+              </div>
+            ) : isUpdating ? (
+              <p
+                role="status"
+                className="px-5 py-8 text-center text-sm text-muted-foreground"
+              >
+                Loading audit entries for this date range…
+              </p>
+            ) : (
+              <AuditLogTable
+                ariaLabel="Department audit log"
+                columns={tableColumns}
+                rows={tableRows}
+                rowKey={(row) => row.id}
+                empty={
+                  dateError
+                    ? "Choose a valid date range to view events."
+                    : "No entries match these filters."
+                }
+              />
+            )}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-soft px-5 py-3 text-xs text-muted-foreground">
-              <span role="status" aria-live="polite" aria-atomic="true">
-                {events.length} matching{" "}
-                {events.length === 1 ? "event" : "events"} of{" "}
-                {auditEvents.length}
-              </span>
-              <span>DCST department scope</span>
+              {!isUpdating && !audit.isError && (
+                <span role="status" aria-live="polite" aria-atomic="true">
+                  {events.length} matching{" "}
+                  {events.length === 1 ? "event" : "events"} of{" "}
+                  {auditEvents.length}
+                  {auditEvents.length >= DEPARTMENT_AUDIT_LIMIT &&
+                    ` (latest ${DEPARTMENT_AUDIT_LIMIT}; narrow the date range to find older entries)`}
+                </span>
+              )}
+              <span className="ml-auto">DCST department scope</span>
             </div>
           </Panel>
         </>

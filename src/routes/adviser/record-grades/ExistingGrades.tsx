@@ -291,6 +291,7 @@ function ExistingAttempt({
         <label>
           <span className="sr-only">New midterm grade</span>
           <GradeSelect
+            stage="midterm"
             allowDrop
             disabled={disabled}
             placeholder="—"
@@ -313,6 +314,7 @@ function ExistingAttempt({
         <label>
           <span className="sr-only">Midterm for {title}</span>
           <GradeSelect
+            stage="midterm"
             allowDrop
             disabled
             placeholder="—"

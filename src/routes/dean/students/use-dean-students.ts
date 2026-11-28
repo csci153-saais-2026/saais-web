@@ -47,27 +47,34 @@ export function useDeanStudents() {
 export function useDeanStudentChecklist(studentId: string) {
   return useQuery({
     queryKey: ["dean", "student-checklist", studentId],
-    queryFn: () => getDeanStudentChecklist(studentId),
+    queryFn: ({ signal }) => getDeanStudentChecklist(studentId, signal),
   });
 }
 
 export function useDeanStudentGrades(studentId: string) {
   return useQuery({
     queryKey: ["dean", "student-grades", studentId],
-    queryFn: async () => {
-      const [termGrades, courses, offerings] = await Promise.all([
-        getDeanStudentGrades(studentId),
-        getDeanCourses(),
-        getDeanCourseOfferings(),
-      ]);
+    queryFn: async ({ signal }) => {
+      const termGrades = await getDeanStudentGrades(studentId, signal);
+      const offerings = await getDeanCourseOfferings(
+        termGrades.flatMap((term) =>
+          term.attempts.map((attempt) => attempt.course_offering_id),
+        ),
+        signal,
+      );
+      const courses = await getDeanCourses(
+        offerings.map((offering) => offering.course_id),
+        signal,
+      );
       return { termGrades, courses, offerings };
     },
   });
 }
 
-export function useDeanStudentAudit(studentId: string) {
+export function useDeanStudentAudit(studentId: string, studentNumber: string) {
   return useQuery({
-    queryKey: ["dean", "audit-log", "student", studentId],
-    queryFn: ({ signal }) => getDeanAuditLogEntries(signal),
+    queryKey: ["dean", "audit-log", "student", studentId, studentNumber],
+    queryFn: ({ signal }) =>
+      getDeanAuditLogEntries(signal, { id: studentId, number: studentNumber }),
   });
 }

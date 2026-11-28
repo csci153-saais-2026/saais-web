@@ -1,6 +1,7 @@
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { http } from "msw";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   loginAsMockPersona,
@@ -40,6 +41,63 @@ afterAll(() => {
 });
 
 describe("student-grades API helpers and hooks (MSW)", () => {
+  it("requests only the grade terms, course references, and student organization metadata", async () => {
+    loginAsMockPersona("student");
+    const reads = new Map<string, URLSearchParams>();
+    const resources = [
+      "school_term",
+      "course_offering",
+      "course",
+      "program",
+      "curriculum_version",
+      "department",
+      "faculty",
+    ];
+    saaisMockServer.use(
+      ...resources.map((resource) =>
+        http.get(`*/rest/v1/${resource}`, ({ request }) => {
+          reads.set(resource, new URL(request.url).searchParams);
+        }),
+      ),
+    );
+    const studentId = MOCK_IDS.studentPrimary;
+    const terms = await api.fetchStudentGrades(studentId);
+    const schoolTermIds = terms.map((term) => term.school_term_id);
+    const offeringIds = terms.flatMap((term) =>
+      term.attempts.map((attempt) => attempt.course_offering_id),
+    );
+
+    const metadata = await api.fetchStudentGradesMetadata(studentId, {
+      schoolTermIds,
+      offeringIds,
+    });
+
+    expect(metadata.courses.length).toBeGreaterThan(0);
+    expect(reads.get("school_term")?.get("id")).toBe(
+      `in.(${[...new Set(schoolTermIds)].join(",")})`,
+    );
+    expect(reads.get("course_offering")?.get("id")).toBe(
+      `in.(${[...new Set(offeringIds)].join(",")})`,
+    );
+    const courses = [
+      ...new Set(metadata.offerings.map((offering) => offering.course_id)),
+    ];
+    expect(reads.get("course")?.get("id")).toBe(`in.(${courses.join(",")})`);
+    expect(metadata.org).not.toBeNull();
+    expect(reads.get("program")?.get("id")).toBe(
+      `eq.${metadata.org?.program_id}`,
+    );
+    expect(reads.get("curriculum_version")?.get("id")).toBe(
+      `eq.${metadata.org?.curriculum_version_id}`,
+    );
+    expect(reads.get("department")?.get("id")).toBe(
+      `eq.${metadata.org?.department_id}`,
+    );
+    expect(reads.get("faculty")?.get("id")).toBe(
+      `eq.${metadata.org?.faculty_id}`,
+    );
+  });
+
   it("fetches term grades, lists flags, creates a grade flag, and records export event", async () => {
     loginAsMockPersona("student");
     const studentId = MOCK_PERSONAS.student.profileId;

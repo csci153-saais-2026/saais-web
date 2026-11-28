@@ -30,6 +30,7 @@ export type Environment = {
   origins: string[];
   assistant?: AssistantConfig;
   serviceKey?: string;
+  mailWorkerSecret?: string;
 };
 export type RouteGroup = string;
 export type PhotoPreparer = (
@@ -260,7 +261,11 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
             body,
             params.profile_id,
             caller,
-            { url: env.url, serviceKey: env.serviceKey || "" },
+            {
+              url: env.url,
+              serviceKey: env.serviceKey || "",
+              mailWorkerSecret: env.mailWorkerSecret,
+            },
             fetcher,
           );
           return Response.json(result, {
@@ -346,6 +351,7 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
       // Use the caller JWT, never a service-role credential. SQL rechecks active
       // session/profile/role/scope at commit and makes the operation atomic.
       const assistant = operation.id === "askAdvisingAssistant";
+      const assistantHistory = operation.id === "getAdvisingAssistantHistory";
       if (assistant && (!env.assistant || !env.serviceKey))
         return error(
           500,
@@ -353,14 +359,21 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           "The advising assistant is unavailable.",
           headers,
         );
-      const rpc = assistant
-        ? "matt_assistant_context"
-        : operation.usesAcademicRpc
-          ? "matt_operation"
-          : "jerome_operation";
-      const rpcBody = assistant
-        ? { p_student_id: params.student_id, p_body: body ?? {} }
-        : { p_operation: operation.id, p_params: params, p_body: body ?? {} };
+      let rpc = operation.usesAcademicRpc
+        ? "matt_operation"
+        : "jerome_operation";
+      let rpcBody: Record<string, unknown> = {
+        p_operation: operation.id,
+        p_params: params,
+        p_body: body ?? {},
+      };
+      if (assistant) {
+        rpc = "matt_assistant_context";
+        rpcBody = { p_student_id: params.student_id, p_body: body ?? {} };
+      } else if (assistantHistory) {
+        rpc = "saais_get_assistant_history";
+        rpcBody = { p_student_id: params.student_id };
+      }
       const result = await fetcher(`${env.url}/rest/v1/rpc/${rpc}`, {
         method: "POST",
         headers: { ...upstreamHeaders, "Content-Profile": "public" },
@@ -403,10 +416,12 @@ export function createHandler(group: RouteGroup, dependencies: Dependencies) {
           ].includes(upstream.details || "")
             ? upstream.details
             : undefined;
+        // Match the Data API gateway: other client errors keep a PT status code.
+        const fallback =
+          status === 409 ? "23505" : status < 500 ? `PT${status}` : "XX000";
         return error(
           status,
-          conflict ??
-            (controlled ? upstream.code! : status === 409 ? "23505" : "XX000"),
+          conflict ?? (controlled ? upstream.code! : fallback),
           controlled
             ? (upstream.message || "Request rejected.").slice(0, 1000)
             : "The operation could not be completed.",

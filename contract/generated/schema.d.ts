@@ -1428,7 +1428,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Read the adviser's saved conversation
+         * @description Returns up to 20 saved messages, oldest first, for the authenticated adviser and the requested student. Current and former advisers can read only their own conversation. The request does not contact the model provider.
+         */
+        get: operations["getAdvisingAssistantHistory"];
         put?: never;
         /**
          * Ask record-grounded adviser assistant
@@ -3090,7 +3094,7 @@ export interface components {
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade?: number | null;
-            final_grade?: number | null;
+            final_grade?: number | 5 | null;
             /** @enum {string|null} */
             status?: "inc" | "dr" | "na" | null;
             instructor?: string | null;
@@ -3116,7 +3120,7 @@ export interface components {
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade?: number | null;
-            final_grade?: number | null;
+            final_grade?: number | 5 | null;
             status?: components["schemas"]["AttemptStatus"];
             instructor?: string | null;
             /** @description Optional staff remark. Because `AttemptRemark` is an append-only log, the server appends a new `AttemptRemark` row only when `remark` is non-empty and differs from the most recent remark on that attempt. */
@@ -3138,7 +3142,7 @@ export interface components {
             status?: components["schemas"]["AttemptStatus"];
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade?: number | null;
-            final_grade?: number | null;
+            final_grade?: number | 5 | null;
             instructor?: string | null;
             reason: string;
         } | unknown | unknown | unknown | unknown | unknown;
@@ -3148,11 +3152,11 @@ export interface components {
             reason: string;
         };
         INCCompletionRequest: {
-            completion_grade: number;
+            completion_grade: number | 5;
             reason: string;
         };
         INCCompletionCorrectionRequest: {
-            completion_grade: number;
+            completion_grade: number | 5;
             reason: string;
             /** Format: date-time */
             expected_updated_at: string;
@@ -3759,6 +3763,7 @@ export interface components {
         GradeFlagResolveRequest: {
             /** @enum {string} */
             resolution_action: "correct" | "reject";
+            /** @description The server uses the flag's stored reported_stage. Midterm corrections accept 1.00 through 5.00 in quarter steps. Final corrections and flags with no stage accept 1.00 through 3.00 in quarter steps or 5.00. */
             corrected_grade?: number | null;
             corrected_status?: components["schemas"]["AttemptStatus"] | null;
             corrected_midterm_status?: components["schemas"]["MidtermStatus"] | null;
@@ -3778,7 +3783,7 @@ export interface components {
             elective_mapping_justification?: string | null;
             midterm_status?: components["schemas"]["MidtermStatus"] | null;
             midterm_grade?: number | null;
-            final_grade?: number | null;
+            final_grade?: number | 5 | null;
             status?: components["schemas"]["AttemptStatus"];
             instructor?: string | null;
             remark?: string | null;
@@ -3910,7 +3915,7 @@ export interface components {
             original_course_code: string;
             original_course_title: string;
             units: number;
-            /** @description Passing grade on the institutional 1.00–3.00 scale, formatted to two decimals. */
+            /** @description Passing grade from 1.00 through 3.00, formatted to two decimals. Two-decimal grades are intentional because other schools may use increments other than quarter steps. */
             grade: string;
             /** Format: uuid */
             destination_curriculum_term_course_id: string;
@@ -4248,7 +4253,7 @@ export interface components {
             details?: string | null;
         };
         StudentPhotoUpdateRequest: {
-            /** @description Object key inside the private `student-photos` Supabase Storage bucket (e.g. `students/<student_id>/avatar.png`). The backend checks its bytes, decodes the image, and stores a protected validated copy before updating the profile photo URL. */
+            /** @description Single-use staging key in the private `student-photos` bucket (e.g. `students/00000000-0000-4000-8000-000000000001/upload-00000000-0000-4000-8000-000000000002.png`). Use a fresh UUID for each upload and a .png, .jpg, or .jpeg extension that matches the MIME type. The backend validates the image and saves a separate protected copy. */
             storage_object_path: string;
             avatar_url: string;
             /**
@@ -7303,6 +7308,33 @@ export interface operations {
             403: components["responses"]["403Forbidden"];
             404: components["responses"]["404NotFound"];
             409: components["responses"]["409Conflict"];
+            429: components["responses"]["429TooManyRequests"];
+            500: components["responses"]["500InternalError"];
+        };
+    };
+    getAdvisingAssistantHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved messages, or an empty array for a new conversation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisingAIMessage"][];
+                };
+            };
+            400: components["responses"]["400BadRequest"];
+            401: components["responses"]["401Unauthorized"];
+            403: components["responses"]["403Forbidden"];
             429: components["responses"]["429TooManyRequests"];
             500: components["responses"]["500InternalError"];
         };

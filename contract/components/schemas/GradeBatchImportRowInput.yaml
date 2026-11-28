@@ -35,19 +35,21 @@ properties:
       - $ref: "./MidtermStatus.yaml"
       - type: "null"
   midterm_grade:
-    type:
-      - number
-      - "null"
-    minimum: 1
-    maximum: 5
-    multipleOf: 0.25
+    anyOf:
+      - type: number
+        minimum: 1
+        maximum: 5
+        multipleOf: 0.25
+      - type: "null"
   final_grade:
-    type:
-      - number
-      - "null"
-    minimum: 1
-    maximum: 5
-    multipleOf: 0.25
+    anyOf:
+      - type: number
+        minimum: 1
+        maximum: 3
+        multipleOf: 0.25
+      - type: number
+        const: 5
+      - type: "null"
   status:
     $ref: "./AttemptStatus.yaml"
   instructor:

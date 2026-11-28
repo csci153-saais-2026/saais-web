@@ -19,6 +19,52 @@ const env = {
 };
 const token = "a".repeat(64);
 
+test("only an Auth email_exists error can resume invitation provisioning", async () => {
+  for (const [code, expected] of [
+    ["email_exists", 409],
+    ["validation_failed", 500],
+  ]) {
+    const stages = [];
+    const handler = createHandler("auth", {
+      env,
+      fetch: async (url, options) => {
+        if (String(url).endsWith("/auth/v1/user")) return Response.json({ id });
+        if (String(url).endsWith("/auth/v1/admin/users")) {
+          return Response.json(
+            { code: 422, error_code: code },
+            { status: 422 },
+          );
+        }
+        const { p_stage } = JSON.parse(options.body);
+        stages.push(p_stage);
+        if (p_stage === "admit") return Response.json({});
+        if (p_stage === "prepare") return Response.json({ reservation_id: id });
+        assert.equal(p_stage, "finish");
+        return Response.json(
+          { code: "PT409", message: "Email is already in use." },
+          { status: 409 },
+        );
+      },
+    });
+    const response = await handler(
+      request(
+        "/auth/invite",
+        {
+          email: "synthetic@vsu.edu.ph",
+        },
+        true,
+      ),
+    );
+    assert.equal(response.status, expected);
+    assert.deepEqual(
+      stages,
+      code === "email_exists"
+        ? ["admit", "prepare", "finish"]
+        : ["admit", "prepare"],
+    );
+  }
+});
+
 function request(path, body, signedIn = false, extraHeaders = {}) {
   return new Request(env.url + path, {
     method: "POST",
@@ -337,3 +383,122 @@ test("student imports reject whitespace variants of a student number before prov
     );
   }
 });
+
+test("inviteUser and resendAccountInvite trigger mail-delivery best-effort when worker secret is configured", async () => {
+  const mailEnv = { ...env, mailWorkerSecret: "worker-secret" };
+  let mailTriggers = 0;
+
+  const authHandler = createHandler("auth", {
+    env: mailEnv,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      if (url.endsWith("/functions/v1/mail-delivery")) {
+        mailTriggers++;
+        assert.equal(options.method, "POST");
+        assert.equal(options.headers["x-saais-mail-secret"], "worker-secret");
+        return Response.json({ sent: 1 });
+      }
+      const rpc = JSON.parse(options.body);
+      if (rpc.p_stage === "admit") return Response.json({});
+      if (rpc.p_stage === "prepare") {
+        return Response.json({ reservation_id: id, auth_ready: true });
+      }
+      return Response.json({
+        profile_id: id,
+        success: true,
+        invitation_status: "pending",
+      });
+    },
+  });
+
+  const inviteResponse = await authHandler(
+    request(
+      "/auth/invite",
+      {
+        email: "student-invite@vsu.edu.ph",
+        role: "student",
+        full_name: "Student Fixture",
+        student_number: "26-1-00010",
+        program_id: id,
+        curriculum_version_id: id,
+        adviser_id: id,
+      },
+      true,
+    ),
+  );
+  assert.equal(inviteResponse.status, 200);
+  assert.equal(mailTriggers, 1);
+
+  const accountsHandler = createHandler("accounts", {
+    env: mailEnv,
+    fetch: async (url, options) => {
+      if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+      if (url.endsWith("/functions/v1/mail-delivery")) {
+        mailTriggers++;
+        assert.equal(options.headers["x-saais-mail-secret"], "worker-secret");
+        throw new Error("Transient mail worker timeout");
+      }
+      const rpc = JSON.parse(options.body);
+      if (rpc.p_stage === "admit") return Response.json({});
+      return Response.json({
+        profile_id: id,
+        success: true,
+        invitation_status: "pending",
+      });
+    },
+  });
+
+  const resendResponse = await accountsHandler(
+    request(`/accounts/${id}/resend-invite`, undefined, true),
+  );
+  assert.equal(resendResponse.status, 200);
+  assert.equal(mailTriggers, 2);
+});
+
+test(
+  "hosted resend responds before the background mail request completes",
+  { timeout: 2000 },
+  async (t) => {
+    const tasks = [];
+    const transport = Promise.withResolvers();
+    let workerSecret;
+    const original = Object.getOwnPropertyDescriptor(globalThis, "EdgeRuntime");
+    Object.defineProperty(globalThis, "EdgeRuntime", {
+      configurable: true,
+      value: { waitUntil: (promise) => tasks.push(promise) },
+    });
+    t.after(() => {
+      transport.resolve(Response.json({}));
+      if (original) Object.defineProperty(globalThis, "EdgeRuntime", original);
+      else delete globalThis.EdgeRuntime;
+    });
+
+    const handler = createHandler("accounts", {
+      env: { ...env, mailWorkerSecret: "worker-secret" },
+      fetch: async (url, options) => {
+        if (url.endsWith("/auth/v1/user")) return Response.json({ id });
+        if (url.endsWith("/functions/v1/mail-delivery")) {
+          workerSecret = new Headers(options.headers).get(
+            "x-saais-mail-secret",
+          );
+          return transport.promise;
+        }
+        const rpc = JSON.parse(options.body);
+        if (rpc.p_stage === "admit") return Response.json({});
+        return Response.json({
+          profile_id: id,
+          success: true,
+          invitation_status: "pending",
+        });
+      },
+    });
+    const response = await handler(
+      request(`/accounts/${id}/resend-invite`, undefined, true),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(tasks.length, 1);
+    assert.equal(workerSecret, "worker-secret");
+    transport.resolve(Response.json({ sent: 1 }));
+    await tasks[0];
+  },
+);

@@ -24,6 +24,7 @@ import { REASON_MAX_LENGTH } from "@/lib/validation/limits";
 import {
   gradeInputSchema,
   gradeReasonSchema,
+  midtermGradeInputSchema,
 } from "../record-grades/inc-completion.schema";
 function Resolve({
   flag,
@@ -46,6 +47,7 @@ function Resolve({
   refreshing: boolean;
   refreshError?: string;
 }) {
+  const isMidterm = flag.reported_stage === "midterm";
   const [open, setOpen] = useState(false);
   const [grade, setGrade] = useState("");
   const [reason, setReason] = useState("");
@@ -60,17 +62,15 @@ function Resolve({
       setError(parsedReason.error.issues[0]?.message ?? "Enter a reason.");
       return;
     }
-    if (
-      action === "correct" &&
-      grade === "inc" &&
-      flag.reported_stage === "midterm"
-    ) {
+    if (action === "correct" && grade === "inc" && isMidterm) {
       setError("INC is a final status and cannot be used as a midterm grade.");
       return;
     }
     const parsedGrade =
       action === "correct" && grade !== "inc" && grade !== "dr"
-        ? gradeInputSchema.safeParse(grade)
+        ? (isMidterm ? midtermGradeInputSchema : gradeInputSchema).safeParse(
+            grade,
+          )
         : null;
     if (parsedGrade && !parsedGrade.success) {
       setError(parsedGrade.error.issues[0]?.message ?? "Choose a valid grade.");
@@ -87,7 +87,7 @@ function Resolve({
           ? grade === "inc"
             ? { corrected_status: "inc" as const }
             : grade === "dr"
-              ? flag.reported_stage === "midterm"
+              ? isMidterm
                 ? { corrected_midterm_status: "dr" as const }
                 : { corrected_status: "dr" as const }
               : { corrected_grade: parsedGrade?.data }
@@ -143,9 +143,8 @@ function Resolve({
             </div>
           )}
           <p>
-            Current {flag.reported_stage === "midterm" ? "midterm" : "final"}{" "}
-            grade:{" "}
-            {flag.reported_stage === "midterm"
+            Current {isMidterm ? "midterm" : "final"} grade:{" "}
+            {isMidterm
               ? (attempt.midterm_grade ??
                 attempt.midterm_status ??
                 "Not recorded")
@@ -161,6 +160,7 @@ function Resolve({
               <label className="grid gap-1">
                 Corrected grade
                 <GradeSelect
+                  stage={isMidterm ? "midterm" : "final"}
                   includeStatuses
                   placeholder="Choose the corrected grade"
                   required

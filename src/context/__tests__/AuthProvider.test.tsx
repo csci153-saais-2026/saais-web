@@ -490,7 +490,7 @@ describe("AuthProvider, useAuth & Environment Config", () => {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: { hd: "vsu.edu.ph" },
+        queryParams: { hd: "vsu.edu.ph", prompt: "select_account" },
       },
     });
 

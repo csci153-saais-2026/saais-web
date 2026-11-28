@@ -269,7 +269,6 @@ describe("Curriculum typed reads", () => {
       version_label: "Revised 2027",
       effective_start: "2027-08-01",
       effective_end: null,
-      total_units: 162.25,
       delinquency_threshold: 12,
       status: "active" as const,
     };
@@ -303,7 +302,6 @@ describe("Curriculum typed reads", () => {
       version_label: "2027",
       effective_start: "2027-08-01",
       effective_end: null,
-      total_units: 0,
       delinquency_threshold: 0,
       status: "draft" as const,
     };

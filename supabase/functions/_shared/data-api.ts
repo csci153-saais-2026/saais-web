@@ -1,52 +1,13 @@
-import snapshot from "./data-api-contract.json" with { type: "json" };
+import {
+  defaultDataApiLimit,
+  getDataApiResource,
+  validateDataApiQuery,
+} from "./data-api-query.ts";
 import type { Environment } from "./http.ts";
 
 const profile = "saais_api";
 const proofHeader = "x-saais-data-api-key";
-const maxQueryLength = 16_384;
-const allowedPrefer = new Set([
-  "count=exact",
-  "count=planned",
-  "count=estimated",
-]);
-const pagination = {
-  limit: { minimum: 1, maximum: 1000, default: 20 },
-  offset: { minimum: 0, maximum: 100000 },
-} as const;
-
-function hasControlCharacter(value: string) {
-  for (let index = 0; index < value.length; index++) {
-    if (value.charCodeAt(index) < 32) return true;
-  }
-  return false;
-}
-
-const resources = new Map(
-  Object.entries(snapshot).map(([name, resource]) => [
-    name,
-    {
-      projection: resource.projection,
-      query: new Set(resource.query),
-      select: {
-        pattern: new RegExp(resource.select.pattern),
-        maxLength: resource.select.maxLength,
-      },
-      order: {
-        pattern: new RegExp(resource.order.pattern),
-        maxLength: resource.order.maxLength,
-      },
-      filters: new Map(
-        Object.entries(resource.filters).map(([filterName, rule]) => [
-          filterName,
-          {
-            pattern: new RegExp(rule.pattern),
-            maxLength: rule.maxLength,
-          },
-        ]),
-      ),
-    },
-  ]),
-);
+const proofRejected = "Use the SAAIS Data API gateway for collection reads.";
 
 type GatewayEnvironment = Pick<
   Environment,
@@ -118,7 +79,7 @@ export function createDataApiHandler(
     const resourceName = /^\/(?:functions\/v1\/)?data-api\/([a-z_]+)$/.exec(
       url.pathname,
     )?.[1];
-    const resource = resourceName && resources.get(resourceName);
+    const resource = resourceName && getDataApiResource(resourceName);
     if (!resource || request.method !== "GET") {
       return error(headers, 404, "NOT_FOUND", "Data API route not found.");
     }
@@ -141,86 +102,15 @@ export function createDataApiHandler(
     if (request.headers.get("accept-profile") !== profile) {
       return error(headers, 400, "PT400", "Use Accept-Profile: saais_api.");
     }
-    const rawPrefer = request.headers.get("prefer");
-    const prefer = rawPrefer === null ? null : rawPrefer.trim();
-    if (prefer !== null && !allowedPrefer.has(prefer)) {
-      return error(
-        headers,
-        400,
-        "PT400",
-        "Unsupported Data API Prefer header.",
-      );
-    }
-    if (url.search.length > maxQueryLength) {
-      return error(headers, 400, "PT400", "Data API query is too long.");
-    }
+    const prefer = request.headers.get("prefer")?.trim() ?? null;
+    const queryError = validateDataApiQuery(resource, url, prefer);
+    if (queryError !== null) return error(headers, 400, "PT400", queryError);
 
-    for (const name of url.searchParams.keys()) {
-      if (!resource.query.has(name)) {
-        return error(
-          headers,
-          400,
-          "PT400",
-          "Unsupported Data API query parameter.",
-        );
-      }
-    }
-    for (const name of ["select", "order"] as const) {
-      const values = url.searchParams.getAll(name);
-      const value = values[0];
-      const rule = resource[name];
-      if (
-        values.length > 1 ||
-        (value !== undefined &&
-          !(name === "select" && value === "*") &&
-          (value !== value.trim() ||
-            value.length > rule.maxLength ||
-            !rule.pattern.test(value)))
-      ) {
-        return error(headers, 400, "PT400", `Unsupported Data API ${name}.`);
-      }
-    }
-    for (const [name, { minimum, maximum }] of Object.entries(pagination)) {
-      const values = url.searchParams.getAll(name);
-      if (values.length === 0) continue;
-      const value = values[0];
-      if (
-        values.length !== 1 ||
-        !value ||
-        /\D/.test(value) ||
-        Number(value) < minimum ||
-        Number(value) > maximum
-      ) {
-        return error(
-          headers,
-          400,
-          "PT400",
-          `Data API ${name} must be an integer between ${minimum} and ${maximum}.`,
-        );
-      }
-    }
-    for (const name of new Set(url.searchParams.keys())) {
-      const rule = resource.filters.get(name);
-      if (!rule) continue;
-      const values = url.searchParams.getAll(name);
-      const value = values[0];
-      if (
-        values.length !== 1 ||
-        value === undefined ||
-        value.length > rule.maxLength ||
-        hasControlCharacter(value) ||
-        !rule.pattern.test(value)
-      ) {
-        return error(
-          headers,
-          400,
-          "PT400",
-          `Unsupported Data API ${name} filter.`,
-        );
-      }
-    }
     if (!url.searchParams.has("limit")) {
-      url.searchParams.set("limit", String(pagination.limit.default));
+      url.searchParams.set("limit", String(defaultDataApiLimit));
+    }
+    if (!url.searchParams.has("order")) {
+      url.searchParams.set("order", resource.defaultOrder);
     }
     const selection = url.searchParams.get("select");
     if (selection === null || selection === "*") {
@@ -228,26 +118,74 @@ export function createDataApiHandler(
     }
 
     try {
-      gatewayKey ??= loadGatewayKey().catch((failure) => {
-        gatewayKey = undefined;
-        throw failure;
-      });
+      const getGatewayKey = () => {
+        gatewayKey ??= loadGatewayKey().catch((failure) => {
+          gatewayKey = undefined;
+          throw failure;
+        });
+        return gatewayKey;
+      };
+      const usedKey = getGatewayKey();
       const upstreamHeaders = new Headers({
         apikey: key,
         Authorization: authorization,
         Accept: "application/json",
         "Accept-Profile": profile,
-        [proofHeader]: await gatewayKey,
+        [proofHeader]: await usedKey,
       });
       if (prefer !== null) upstreamHeaders.set("Prefer", prefer);
-      const upstream = await fetcher(
-        `${env.url}/rest/v1/${resourceName}?${url.searchParams.toString()}`,
-        {
-          headers: upstreamHeaders,
-          redirect: "error",
-          signal: AbortSignal.timeout(15000),
-        },
-      );
+      const forward = () =>
+        fetcher(
+          `${env.url}/rest/v1/${resourceName}?${url.searchParams.toString()}`,
+          {
+            headers: upstreamHeaders,
+            redirect: "error",
+            signal: AbortSignal.timeout(15000),
+          },
+        );
+      let upstream = await forward();
+      let failure = upstream.ok ? null : await readUpstreamError(upstream);
+      if (
+        upstream.status === 403 &&
+        failure?.code === "PT403" &&
+        failure.message === proofRejected
+      ) {
+        if (gatewayKey === usedKey) gatewayKey = undefined;
+        upstreamHeaders.set(proofHeader, await getGatewayKey());
+        upstream = await forward();
+        failure = upstream.ok ? null : await readUpstreamError(upstream);
+      }
+      if (!upstream.ok) {
+        if (upstream.status === 401) {
+          return error(
+            headers,
+            401,
+            "PGRST301",
+            "The user session could not be verified.",
+          );
+        }
+        if (upstream.status === 429) {
+          const retryAfter = upstream.headers.get("Retry-After");
+          if (retryAfter !== null && /^\d+$/.test(retryAfter)) {
+            headers.set("Retry-After", retryAfter);
+          }
+        }
+        const status = [400, 403, 429].includes(upstream.status)
+          ? upstream.status
+          : 500;
+        const controlled =
+          failure?.code === `PT${status}` &&
+          status !== 500 &&
+          failure.message !== proofRejected;
+        return error(
+          headers,
+          status,
+          status === 500 ? "XX000" : `PT${status}`,
+          controlled && typeof failure?.message === "string" && failure.message
+            ? failure.message.slice(0, 1000)
+            : "The collection read could not be completed.",
+        );
+      }
       for (const name of [
         "Content-Type",
         "Content-Range",
@@ -263,4 +201,11 @@ export function createDataApiHandler(
       return error(headers, 503, "XX000", "Data API gateway is unavailable.");
     }
   };
+}
+
+async function readUpstreamError(
+  response: Response,
+): Promise<{ code?: unknown; message?: unknown } | null> {
+  const body: unknown = await response.json().catch(() => null);
+  return body !== null && typeof body === "object" ? body : null;
 }

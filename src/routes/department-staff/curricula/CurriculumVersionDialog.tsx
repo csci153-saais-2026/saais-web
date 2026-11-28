@@ -108,7 +108,6 @@ export function CurriculumVersionDialog({
           version_label: initialYear,
           effective_start: version.effective_start,
           effective_end: version.effective_end ?? "",
-          total_units: version.total_units,
           delinquency_threshold: version.delinquency_threshold,
           status: version.status,
         }
@@ -118,7 +117,6 @@ export function CurriculumVersionDialog({
           version_label: "",
           effective_start: "",
           effective_end: "",
-          total_units: 147,
           delinquency_threshold: 0,
           status: "draft",
         },
@@ -259,20 +257,6 @@ export function CurriculumVersionDialog({
                 maxLength={editing ? 250 : 100}
                 aria-invalid={!!errors.version_label}
                 {...register("version_label")}
-              />
-            </FormField>
-            <FormField
-              label="Required units"
-              htmlFor="new-version-units"
-              error={errors.total_units?.message}
-            >
-              <Input
-                id="new-version-units"
-                type="number"
-                min={0}
-                step={0.25}
-                aria-invalid={!!errors.total_units}
-                {...register("total_units", { valueAsNumber: true })}
               />
             </FormField>
             <FormField

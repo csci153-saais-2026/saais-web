@@ -38,6 +38,7 @@ export function environment(
       .filter(Boolean),
     assistant: readAssistantConfig(get),
     serviceKey: get("SUPABASE_SERVICE_ROLE_KEY"),
+    mailWorkerSecret: get("SAAIS_MAIL_WORKER_SECRET"),
   };
 }
 

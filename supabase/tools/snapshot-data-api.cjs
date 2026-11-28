@@ -20,7 +20,12 @@ function buildDataApiSnapshot(contract) {
       (parameter) => parameter.name === "select",
     )?.schema;
     const order = query.find((parameter) => parameter.name === "order")?.schema;
-    if (!projection?.length || !select?.pattern || !order?.pattern) {
+    if (
+      !projection?.length ||
+      !select?.pattern ||
+      !order?.pattern ||
+      !order.default
+    ) {
       throw new Error(
         `Data API resource ${resource} lacks projection or ordering rules.`,
       );
@@ -58,6 +63,10 @@ function buildDataApiSnapshot(contract) {
       query: [...new Set(query.map((parameter) => parameter.name))],
       select: { pattern: select.pattern, maxLength: select.maxLength },
       order: { pattern: order.pattern, maxLength: order.maxLength },
+      // Date-only defaults get an id tie-breaker so pages stay stable.
+      defaultOrder: /(^|,)(student_)?id\./.test(order.default)
+        ? order.default
+        : `${order.default},id.desc`,
       filters,
     };
   }

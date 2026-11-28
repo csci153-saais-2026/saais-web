@@ -13,17 +13,17 @@ const {
   buildSnapshot,
 } = require("../tools/snapshot-contract.cjs");
 
-test("the runtime snapshot matches the approved modular OpenAPI version and hash", () => {
+test("the runtime snapshot matches the pinned modular OpenAPI version and hash", () => {
   const expected = withPinnedContract(buildSnapshot);
   assert.equal(snapshot.revision, revision);
   assert.equal(snapshot.version, version);
   assert.equal(snapshot.candidateHash, candidateHash);
   assert.deepEqual(snapshot, expected);
   const sql = readFileSync(migration, "utf8");
-  assert.deepEqual(JSON.parse(sql.split("$contract$")[1]), snapshot);
+  assert.deepEqual(JSON.parse(sql.split("$catalog_contract$")[1]), snapshot);
   assert.match(
     sql,
-    /on conflict \(id\) do update set document=excluded.document/,
+    /on conflict \(id\) do update set document = excluded.document/,
   );
 });
 

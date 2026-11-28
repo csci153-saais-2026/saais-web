@@ -59,7 +59,6 @@ const values: CurriculumVersionValues = {
   version_label: "2027",
   effective_start: "2027-08-01",
   effective_end: "",
-  total_units: 0,
   delinquency_threshold: 0,
   status: "draft",
 };
@@ -67,6 +66,7 @@ const saved: CurriculumVersion = {
   ...values,
   version_label: "BSCS 2027",
   id: "new-version",
+  total_units: 0,
   effective_end: null,
   enrolled_student_count: 0,
 };
@@ -128,17 +128,12 @@ afterEach(() => {
 });
 
 describe("Blank version input validation", () => {
-  it("preserves zero and quarter units, trims labels, and normalizes optional end date", () => {
+  it("trims labels, normalizes optional end date and sends no total units", () => {
     expect(
-      blankVersionRequest({
-        ...values,
-        version_label: "  2027  ",
-        total_units: 162.25,
-      }),
-    ).toEqual({
+      blankVersionRequest({ ...values, version_label: "  2027  " }),
+    ).toStrictEqual({
       ...values,
       version_label: "2027",
-      total_units: 162.25,
       effective_end: null,
     });
   });
@@ -148,9 +143,6 @@ describe("Blank version input validation", () => {
     { program_id: "bad-id" },
     { effective_start: "2027-02-30" },
     { effective_end: "2027-07-31" },
-    { total_units: -1 },
-    { total_units: 1.1 },
-    { total_units: NaN },
     { delinquency_threshold: -0.25 },
     { status: "invented" },
   ])("rejects invalid or unsupported creation fields: %j", (fields) => {
@@ -182,18 +174,16 @@ describe("Edit version validation", () => {
         version_label: label + "x",
       }).success,
     ).toBe(false);
-    expect(versionUpdateRequest(values)).toEqual({
+    expect(versionUpdateRequest(values)).toStrictEqual({
       version_label: "2027",
       effective_start: "2027-08-01",
       effective_end: null,
-      total_units: 0,
       delinquency_threshold: 0,
       status: "draft",
     });
   });
   it.each([
     { effective_end: "2027-07-31" },
-    { total_units: -1 },
     { delinquency_threshold: 1.1 },
     { effective_start: "2027-02-30" },
   ])("rejects invalid dates and units: %j", (fields) => {
@@ -245,14 +235,9 @@ describe("Edit curriculum version", () => {
     expect(
       (screen.getByLabelText("Program") as HTMLInputElement).readOnly,
     ).toBe(true);
-    expect(
-      (screen.getByLabelText("Required units") as HTMLInputElement).value,
-    ).toBe("0");
+    expect(screen.queryByLabelText("Required units")).toBeNull();
     fireEvent.change(screen.getByLabelText("Academic year"), {
       target: { value: "  Revised 2027  " },
-    });
-    fireEvent.change(screen.getByLabelText("Required units"), {
-      target: { value: "162.25" },
     });
     fireEvent.keyDown(screen.getByRole("combobox", { name: "Status" }), {
       key: "ArrowDown",
@@ -276,7 +261,6 @@ describe("Edit curriculum version", () => {
       version_label: "BSCS Revised 2027",
       effective_start: "2027-08-01",
       effective_end: null,
-      total_units: 162.25,
       delinquency_threshold: 0,
       status: "active",
     });
@@ -422,7 +406,6 @@ describe("Create curriculum version", () => {
     expect(createCurriculumVersion).toHaveBeenCalledExactlyOnceWith({
       ...values,
       version_label: "BSCS 2027",
-      total_units: 147,
       effective_end: null,
     });
     expect(screen.queryByRole("dialog")).toBeNull();

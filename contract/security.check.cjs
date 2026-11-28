@@ -492,7 +492,42 @@ test("grade recording and correction are separate, with original prerequisite an
     "school_term_id",
     "course_offering_id",
   ]);
-  assert.equal(schemas.RecordGradesRequest.properties.final_grade.maximum, 5);
+  const expectedMidtermGradeScale = [
+    { type: "number", minimum: 1, maximum: 5, multipleOf: 0.25 },
+    { type: "null" },
+  ];
+  const expectedNullableGradeScale = [
+    { type: "number", minimum: 1, maximum: 3, multipleOf: 0.25 },
+    { type: "number", const: 5 },
+    { type: "null" },
+  ];
+  const expectedRequiredGradeScale = [
+    { type: "number", minimum: 1, maximum: 3, multipleOf: 0.25 },
+    { type: "number", const: 5 },
+  ];
+  for (const [schemaName, field, expected] of [
+    ["RecordGradesRequest", "midterm_grade", expectedMidtermGradeScale],
+    ["RecordGradesRequest", "final_grade", expectedNullableGradeScale],
+    ["EncodeTermGradeRowInput", "midterm_grade", expectedMidtermGradeScale],
+    ["EncodeTermGradeRowInput", "final_grade", expectedNullableGradeScale],
+    ["GradeBatchImportRowInput", "midterm_grade", expectedMidtermGradeScale],
+    ["GradeBatchImportRowInput", "final_grade", expectedNullableGradeScale],
+    ["GradeCorrectionRequest", "midterm_grade", expectedMidtermGradeScale],
+    ["GradeCorrectionRequest", "final_grade", expectedNullableGradeScale],
+    ["GradeFlagResolveRequest", "corrected_grade", expectedMidtermGradeScale],
+    ["INCCompletionRequest", "completion_grade", expectedRequiredGradeScale],
+    [
+      "INCCompletionCorrectionRequest",
+      "completion_grade",
+      expectedRequiredGradeScale,
+    ],
+  ]) {
+    assert.deepEqual(
+      schemas[schemaName].properties[field].anyOf,
+      expected,
+      `${schemaName}.${field}`,
+    );
+  }
   assert.equal(
     schemas.PrerequisiteGradeCorrectionRequest.properties.final_grade.maximum,
     3,

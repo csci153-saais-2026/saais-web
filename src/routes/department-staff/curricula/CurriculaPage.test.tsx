@@ -126,14 +126,10 @@ describe("Department Staff curricula", () => {
     renderPage();
 
     expect(
-      await screen.findByRole(
-        "heading",
-        {
-          name: "Shape the path to graduation.",
-          level: 1,
-        },
-        { timeout: 5000 },
-      ),
+      await screen.findByRole("heading", {
+        name: "Shape the path to graduation.",
+        level: 1,
+      }),
     ).toBeTruthy();
     await waitForLoaded();
     expect(

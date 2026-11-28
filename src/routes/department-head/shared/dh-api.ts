@@ -18,11 +18,12 @@ async function allPages<T>(
   load: (offset: number) => Promise<T[]>,
 ): Promise<T[]> {
   const rows: T[] = [];
-  for (let offset = 0; ; offset += PAGE) {
+  for (let offset = 0; offset <= 100_000; offset += PAGE) {
     const page = await load(offset);
     rows.push(...page);
     if (page.length < PAGE) return rows;
   }
+  throw new Error("The collection exceeds the supported page range.");
 }
 
 const ORDINALS = ["1st", "2nd", "3rd"];
@@ -170,24 +171,57 @@ const ACTIONS: Partial<Record<ApiSchema<"AuditActionCategory">, AuditAction>> =
     sign_in: "Sign-in",
   };
 
-/** Department-wide audit events, or only those for one student when `studentId` is given. */
+export const DEPARTMENT_AUDIT_LIMIT = 1000;
+
+function manilaAuditMidnight(date: string): number | undefined {
+  if (!date) return undefined;
+  const midnight = Date.parse(`${date}T00:00:00Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !Number.isFinite(midnight) ||
+    new Date(midnight).toISOString().slice(0, 10) !== date
+  ) {
+    throw new Error("Enter a valid audit date in YYYY-MM-DD format.");
+  }
+  return midnight - 8 * 60 * 60 * 1000;
+}
+
+function auditDateQuery(from: number | undefined, to: number | undefined) {
+  const start = from === undefined ? "" : new Date(from).toISOString();
+  const end = to === undefined ? "" : new Date(to + 86_400_000).toISOString();
+  if (start && end)
+    return { and: `(created_at.gte.${start},created_at.lt.${end})` };
+  if (start) return { created_at: `gte.${start}` };
+  if (end) return { created_at: `lt.${end}` };
+  return {};
+}
+
+/** Read the latest department events, or retain paged history for a single student. */
 export async function getAuditEvents(
   studentId?: string,
+  range = { from: "", to: "" },
 ): Promise<AuditEvent[]> {
-  const rows = await allPages((offset) =>
+  const from = manilaAuditMidnight(range.from);
+  const to = manilaAuditMidnight(range.to);
+  if (from !== undefined && to !== undefined && from > to) return [];
+  const dateQuery = auditDateQuery(from, to);
+  const readPage = (limit: number, offset: number) =>
     apiClient
       .GET("/rest/v1/audit_log_entry", {
         params: {
           query: {
             ...(studentId ? { student_id: postgrestFilter.eq(studentId) } : {}),
+            ...dateQuery,
             order: "created_at.desc,id.desc",
-            limit: PAGE,
+            limit,
             offset,
           },
         },
       })
-      .then(unwrapApiResult),
-  );
+      .then(unwrapApiResult);
+  const rows = await (studentId
+    ? allPages((offset) => readPage(PAGE, offset))
+    : readPage(DEPARTMENT_AUDIT_LIMIT, 0));
   return rows.map((row) => ({
     id: row.id,
     timestamp: row.created_at,
