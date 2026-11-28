@@ -13,5 +13,5 @@ This is compatible for request senders using `0.4.0`. Consumers reading newly sa
 ## Rollout
 
 1. Record the two approvals for the same version and bundle hash before merging.
-2. Record the staging and production counts requested in #213. Apply `20261128000300_split_midterm_and_final_grade_scales.sql` to update both stored validation schemas and enforce the split without rewriting historical grades. The existing final and INC completion constraints stay in place.
-3. Verify the wider midterm range and the existing final-grade rejections against the migrated backend before publishing the `0.4.1` docs and deploying the frontend.
+2. Record the staging and production counts requested in #213 for final grades, INC completion grades, and final-stage corrected grades from `3.25` through `4.75`. The read-only production preflight on 2026-11-28 returned zero for all three counts. Capture staging counts before applying the migration and proceed only when they are also zero. The migration validates the existing final and INC constraints and creates a validated stage-aware flag constraint. It does not rewrite stored grades, and it will fail if any stored value violates those checks.
+3. Apply `20261128000600_split_midterm_and_final_grade_scales.sql` before deploying the frontend, or deploy both together as one coordinated release. Verify the wider midterm range and final-grade rejections against the migrated backend, then publish the `0.4.1` docs and enable the wider range in the frontend.

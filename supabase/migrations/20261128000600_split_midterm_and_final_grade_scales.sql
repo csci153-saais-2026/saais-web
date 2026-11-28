@@ -171,7 +171,8 @@ $$;
 -- The original attempt constraint already covers the full midterm range.
 alter table public.attempt drop constraint attempt_midterm_grade_scale_valid;
 
--- Retain historical flag values. Enforce the stage-specific rule on future writes.
+-- Production preflight found no historical rows outside the final-grade
+-- scale. Validate the stage-specific rule for every stored flag.
 alter table public.grade_flag
   drop constraint grade_flag_corrected_grade_scale_valid,
   add constraint grade_flag_corrected_grade_scale_valid check (
@@ -182,4 +183,13 @@ alter table public.grade_flag
       corrected_grade = 5
       or (corrected_grade between 1 and 3 and mod(corrected_grade * 4, 1) = 0)
     end
-  ) not valid;
+  );
+
+-- These constraints were introduced as NOT VALID to preserve rows during the
+-- initial rollout. The production count in #219 was zero; validate now so
+-- unrelated updates cannot fail on legacy values hidden by NOT VALID checks.
+alter table public.attempt
+  validate constraint attempt_final_grade_scale_valid;
+
+alter table public.inc_resolution
+  validate constraint inc_resolution_completion_grade_scale_valid;

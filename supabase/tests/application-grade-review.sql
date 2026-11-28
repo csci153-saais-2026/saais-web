@@ -120,6 +120,7 @@ begin
     scale_rev bigint;
     scale_updated_at text;
     scale_rejected boolean;
+    scale_validated_constraints integer;
   begin
     insert into public.course(department_id,code,title,units) values(department,'SCALE101','Scale test course',3) returning id into scale_course;
     insert into public.course_offering(school_term_id,course_id) values(term.id,scale_course) returning id into scale_offering;
@@ -151,6 +152,19 @@ begin
       'recordGrades accepts 5.00 as failing');
     perform test.assert((scale_res->>'midterm_grade')::numeric=3.25,
       'recordGrades accepts 3.25 midterm');
+
+    -- Prerequisite corrections accept only passing final grades from the
+    -- strict final scale, not intermediate midterm values or 5.00.
+    select revision into scale_rev from public.attempt where id=scale_attempt;
+    foreach scale_bad in array array[3.25, 5.00] loop
+      scale_rejected := false;
+      begin
+        perform public.matt_operation('correctPrerequisiteGrade',
+          jsonb_build_object('student_id',student,'attempt_id',scale_attempt),
+          jsonb_build_object('expected_revision',scale_rev,'final_grade',scale_bad,'reason','Scale regression test'));
+      exception when sqlstate 'PT400' then scale_rejected := true; end;
+      perform test.assert(scale_rejected,'correctPrerequisiteGrade rejects ' || scale_bad);
+    end loop;
 
     -- Encoding a midterm does not change the final-grade scale.
     scale_res := public.matt_operation('encodeTermGrades',jsonb_build_object('student_id',student),
@@ -271,5 +285,16 @@ begin
       update public.grade_flag set corrected_grade=4.75 where id=scale_flag;
     exception when check_violation then scale_rejected := true; end;
     perform test.assert(scale_rejected,'grade_flag CHECK constraint rejects 4.75 corrected_grade');
+
+    select count(*) into scale_validated_constraints
+      from pg_constraint
+      where convalidated
+        and (conrelid,conname) in (
+          ('public.attempt'::regclass,'attempt_final_grade_scale_valid'),
+          ('public.inc_resolution'::regclass,'inc_resolution_completion_grade_scale_valid'),
+          ('public.grade_flag'::regclass,'grade_flag_corrected_grade_scale_valid')
+        );
+    perform test.assert(scale_validated_constraints=3,
+      'final, INC completion, and stage-aware flag grade constraints are validated');
   end;
 end $$;
